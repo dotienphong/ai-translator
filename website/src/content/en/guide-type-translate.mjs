@@ -113,7 +113,7 @@ ${appShot({
 <h2 id="accessibility">Auto-paste on macOS: the Accessibility permission</h2>
 <p>To paste the translation into another app for you, macOS requires the <strong>Accessibility</strong> permission. AI Translator uses it only to send the ⌘V paste keys to the chat box you are typing in; the app does not read text or content from other apps.</p>
 <ol>
-<li>The first time you press Enter without the permission, the compose box stays open: the translation has been copied and the box says “Translation copied. To let AI Translator paste it for you, allow it in Accessibility.” You can press Enter or Esc and paste with ⌘V in the chat box yourself.</li>
+<li>The first time you press Enter without the permission, the compose box stays open: the translation has been copied and the box says “Translation copied. To let AI Translator paste it for you, allow it in Accessibility. Already on but this box keeps showing (often after an update)? Click “Turn on auto-paste” to refresh the permission.” You can press Enter or Esc and paste with ⌘V in the chat box yourself.</li>
 <li>Click <strong>Turn on auto-paste</strong>. macOS opens System Settings › Privacy &amp; Security › Accessibility; turn on the switch for AI Translator.</li>
 <li>If you do not want to grant it, click <strong>Always copy only</strong>: from then on Enter only copies the translation and closes the compose box, and you paste with ⌘V. Change this back in <strong>Settings › Type &amp; Translate › Paste into the chat box automatically</strong>.</li>
 </ol>
@@ -121,7 +121,7 @@ ${appShot({
 ${callout({
   kind: "warn",
   title: "After an app update, you may have to turn the permission on again.",
-  text: "The macOS version is not yet signed with an Apple developer certificate, so after each update macOS may treat AI Translator as a different app: its entry in Accessibility is still on but the app still says it is not granted. Then remove AI Translator from the list (the − button) and add it again (the + button); just turning the switch off and on again does not fix it. Until it has the permission, Type & Translate still copies the translation for you to paste.",
+  text: "The macOS version is not yet signed with an Apple developer certificate, so after each update macOS may treat AI Translator as a different app: its entry in Accessibility is still on but the app still says it is not granted. From version 0.1.14, clicking <strong>Turn on auto-paste</strong> (in the permission box) or <strong>Open Accessibility settings</strong> (in Settings) makes the app clear the old permission itself, so you only turn the switch on once more. On an older version, remove AI Translator from the list (the − button) and add it again (the + button); just turning the switch off and on again does not fix it. Until it has the permission, Type & Translate still copies the translation for you to paste.",
 })}
 
 <h2 id="windows">On Windows</h2>

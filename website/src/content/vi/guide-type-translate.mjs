@@ -113,7 +113,7 @@ ${appShot({
 <h2 id="quyen-tro-nang">Tự dán trên macOS: quyền Trợ năng</h2>
 <p>Để tự dán bản dịch vào app khác, macOS yêu cầu quyền <strong>Trợ năng</strong> (Accessibility). AI Translator chỉ dùng quyền này để gửi tổ hợp dán ⌘V vào ô chat bạn đang gõ; app không đọc chữ hay nội dung của app khác.</p>
 <ol>
-<li>Lần đầu bạn bấm Enter khi chưa có quyền, ô soạn không đóng: bản dịch đã được chép và ô soạn ghi “Đã chép bản dịch. Muốn app tự dán, hãy cấp quyền Trợ năng cho AI Translator.” Bạn có thể bấm Enter hay Esc rồi tự bấm ⌘V ở ô chat.</li>
+<li>Lần đầu bạn bấm Enter khi chưa có quyền, ô soạn không đóng: bản dịch đã được chép và ô soạn ghi “Đã chép bản dịch. Muốn app tự dán, hãy cấp quyền Trợ năng cho AI Translator. Đã bật rồi mà vẫn hiện hộp này (thường sau khi cập nhật)? Bấm “Bật tự dán” để làm mới quyền.” Bạn có thể bấm Enter hay Esc rồi tự bấm ⌘V ở ô chat.</li>
 <li>Bấm <strong>Bật tự dán</strong>. macOS mở System Settings › Quyền riêng tư &amp; Bảo mật › Trợ năng; bật công tắc của AI Translator.</li>
 <li>Không muốn cấp quyền thì bấm <strong>Luôn chỉ chép</strong>: từ đó Enter chỉ chép bản dịch rồi đóng ô soạn, bạn tự dán bằng ⌘V. Đổi lại ở <strong>Cài đặt › Gõ dịch › Tự dán vào ô đang gõ</strong>.</li>
 </ol>
@@ -121,7 +121,7 @@ ${appShot({
 ${callout({
   kind: "warn",
   title: "Sau khi cập nhật app, có thể phải bật lại quyền.",
-  text: "Bản macOS hiện chưa được ký bằng chứng thư nhà phát triển của Apple, nên sau mỗi lần cập nhật macOS có thể coi AI Translator là app khác: mục của app trong Trợ năng vẫn bật mà app vẫn báo chưa cấp. Khi đó hãy xóa AI Translator khỏi danh sách (nút −) rồi thêm lại (nút +); chỉ tắt rồi bật lại công tắc thì không sửa được. Trong lúc chưa có quyền, Gõ dịch vẫn chép bản dịch để bạn tự dán.",
+  text: "Bản macOS hiện chưa được ký bằng chứng thư nhà phát triển của Apple, nên sau mỗi lần cập nhật macOS có thể coi AI Translator là app khác: mục của app trong Trợ năng vẫn bật mà app vẫn báo chưa cấp. Từ bản 0.1.14, bấm <strong>Bật tự dán</strong> (ở hộp quyền) hay <strong>Mở cài đặt Trợ năng</strong> (ở Cài đặt) là app tự xóa quyền cũ, bạn chỉ cần bật lại công tắc một lần. Với bản cũ hơn, hãy xóa AI Translator khỏi danh sách (nút −) rồi thêm lại (nút +); chỉ tắt rồi bật lại công tắc thì không sửa được. Trong lúc chưa có quyền, Gõ dịch vẫn chép bản dịch để bạn tự dán.",
 })}
 
 <h2 id="windows">Trên Windows</h2>
