@@ -1,6 +1,6 @@
 //! Chọn phần log đưa vào báo cáo lỗi (spec 2026-10-17-diagnostics-reports-design.md §2): 300 dòng cuối của `app.log`; với log
-//! của `asr-worker` và `llama-server` chỉ lấy dòng cảnh báo hay lỗi cộng 60 dòng cuối, bỏ hàng trăm dòng biên dịch Metal mỗi lần
-//! mở. Mỗi log bị cắt theo byte, giữ phần mới nhất. Chưa che dữ liệu ở đây (việc của `scrub`).
+//! của `asr-worker` và `llama-server` chỉ lấy dòng cảnh báo hay lỗi, dòng nói thiết bị, cộng 60 dòng cuối, bỏ hàng trăm dòng
+//! biên dịch Metal mỗi lần mở. Mỗi log bị cắt theo byte, giữ phần mới nhất. Chưa che dữ liệu ở đây (việc của `scrub`).
 
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
@@ -122,13 +122,21 @@ pub fn app_lines(text: &str) -> Vec<String> {
     all[from..].iter().map(|l| cap_line(l)).collect()
 }
 
-/// Log của tiến trình phụ: dòng cảnh báo hay lỗi, cộng `SIDECAR_TAIL_LINES` dòng cuối, giữ thứ tự gốc.
+/// Dòng nói tiến trình phụ chạy trên thiết bị nào: danh sách GPU của ggml, thiết bị whisper.cpp chọn, và các dòng trạng
+/// thái `asr-worker: …` (`backend=`, `gpu=`). Mỗi lần chạy chỉ vài dòng, nhưng ở đầu lần chạy nên xa đuôi log của phiên dài.
+fn is_device_line(line: &str) -> bool {
+    line.starts_with("asr-worker: ")
+        || line.starts_with("ggml_vulkan: ")
+        || line.starts_with("whisper_backend_init_gpu: ")
+}
+
+/// Log của tiến trình phụ: dòng cảnh báo hay lỗi, dòng nói thiết bị, cộng `SIDECAR_TAIL_LINES` dòng cuối, giữ thứ tự gốc.
 pub fn sidecar_lines(text: &str) -> Vec<String> {
     let all: Vec<&str> = text.lines().collect();
     let tail_from = all.len().saturating_sub(SIDECAR_TAIL_LINES);
     all.iter()
         .enumerate()
-        .filter(|(i, line)| *i >= tail_from || is_warn_or_error(line))
+        .filter(|(i, line)| *i >= tail_from || is_warn_or_error(line) || is_device_line(line))
         .map(|(_, line)| cap_line(line))
         .collect()
 }
@@ -203,6 +211,33 @@ mod tests {
         assert_eq!(lines.last().map(String::as_str), Some("tail 69"));
         assert_eq!(lines.len(), 1 + 1 + 60);
         assert!(!out.contains("kernel_7\n"), "dòng biên dịch Metal bị bỏ");
+    }
+
+    /// Dòng nói tiến trình phụ chạy trên card nào nằm ở đầu mỗi lần chạy, xa đuôi log của một phiên dài: vẫn phải có trong
+    /// báo cáo (máy hai GPU, báo cáo R-VBXX-951X).
+    #[test]
+    fn sidecar_logs_keep_the_lines_that_name_the_device_however_far_from_the_tail() {
+        let mut text = String::from(
+            "ggml_vulkan: Found 2 Vulkan devices:\n\
+             ggml_vulkan: 0 = Intel(R) UHD Graphics (Intel Corporation) | uma: 1\n\
+             ggml_vulkan: 1 = NVIDIA GeForce RTX 3050 Laptop GPU (NVIDIA) | uma: 0\n\
+             whisper_backend_init_gpu: using Vulkan1 backend\n\
+             asr-worker: backend=vulkan flash_attn=off decode_mode=shared\n\
+             asr-worker: gpu=NVIDIA GeForce RTX 3050 Laptop GPU (GPU, 3900 MiB trống, ưu tiên GPU còn đủ bộ nhớ)\n",
+        );
+        for i in 0..400 {
+            text.push_str(&format!("whisper_init_state: compute buffer {i}\n"));
+        }
+        let out = sidecar_lines(&text).join("\n");
+        for kept in [
+            "ggml_vulkan: 1 = NVIDIA GeForce RTX 3050 Laptop GPU",
+            "whisper_backend_init_gpu: using Vulkan1 backend",
+            "asr-worker: backend=vulkan",
+            "asr-worker: gpu=NVIDIA GeForce RTX 3050 Laptop GPU (GPU, 3900 MiB trống, ưu tiên GPU còn đủ bộ nhớ)",
+        ] {
+            assert!(out.contains(kept), "thiếu: {kept}");
+        }
+        assert!(!out.contains("compute buffer 7\n"));
     }
 
     #[test]

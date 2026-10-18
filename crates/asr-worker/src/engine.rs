@@ -129,6 +129,8 @@ pub struct Engine {
     lid_state: Option<WhisperState>,
     n_threads: usize,
     flash_attn: bool,
+    /// Card đã chọn lúc nạp (`backend::select_gpu`); `None` khi chạy CPU.
+    gpu: Option<crate::backend::Selected>,
     primers: Primers,
     /// Có giá trị khi chạy chế độ B.
     #[cfg(feature = "shared-encode")]
@@ -142,9 +144,12 @@ impl Engine {
         // Chỉ đặt `ASR_FLASH_ATTN=1` khi whisper.cpp đã có bản vá đó (spec §6.4, "Flash attention: tắt").
         let flash_attn = use_gpu && std::env::var("ASR_FLASH_ATTN").as_deref() == Ok("1");
         let n_threads = clamp_threads(n_threads);
+        // Chọn card một lần, trước khi nạp model: bộ nhớ trống đổi sau khi nạp, chọn lại sau đó có thể ra thiết bị khác.
+        let gpu = if use_gpu { crate::backend::select_gpu() } else { None };
         let params = WhisperContextParameters {
             use_gpu,
             flash_attn,
+            gpu_device: gpu.as_ref().map_or(0, |s| i32::try_from(s.choice.index).unwrap_or(0)),
             ..Default::default()
         };
         let ctx = WhisperContext::new_with_params(model_path, params)
@@ -169,6 +174,7 @@ impl Engine {
             lid_state,
             n_threads,
             flash_attn,
+            gpu,
             primers,
             #[cfg(feature = "shared-encode")]
             shared,
@@ -187,6 +193,11 @@ impl Engine {
     /// Flash attention có đang bật không. Mặc định tắt, xem `load`.
     pub fn flash_attn(&self) -> bool {
         self.flash_attn
+    }
+
+    /// Card whisper chạy trên đó; `None` là CPU.
+    pub fn gpu(&self) -> Option<&crate::backend::Selected> {
+        self.gpu.as_ref()
     }
 
     /// Câu mồi cho zh và ja có đang bật không. Mặc định tắt, xem [`Primers`].

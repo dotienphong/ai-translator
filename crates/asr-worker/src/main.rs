@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 use asr_protocol::{ErrorKind, PROTOCOL_VERSION, Request, Response, read_frame, write_frame};
-use asr_worker::backend::real_backend;
+use asr_worker::backend::{describe, real_backend};
 use asr_worker::engine::{Engine, classify};
 use std::io::{BufReader, BufWriter};
 
@@ -33,7 +33,7 @@ fn main() -> Result<()> {
                 n_threads,
             } => match Engine::load(&model_path, use_gpu, n_threads) {
                 Ok(e) => {
-                    let backend = real_backend(use_gpu);
+                    let backend = real_backend(e.gpu());
                     eprintln!(
                         "asr-worker: backend={} flash_attn={} decode_mode={}",
                         backend.as_str(),
@@ -42,6 +42,10 @@ fn main() -> Result<()> {
                     );
                     // Dòng riêng, để dòng trên giữ nguyên định dạng cũ (các phép kiểm log tìm đúng dòng đó).
                     eprintln!("asr-worker: primer={}", if e.primer_enabled() { "on" } else { "off" });
+                    // Báo cáo lỗi cần biết whisper chạy trên card nào (laptop hai GPU), nên ghi cả khi không có gì bất thường.
+                    if let Some(s) = e.gpu() {
+                        eprintln!("asr-worker: {}", describe(&s.candidate, s.choice.reason));
+                    }
                     let ready = Response::Ready {
                         protocol_version: PROTOCOL_VERSION,
                         backend,
