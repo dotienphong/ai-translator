@@ -138,6 +138,8 @@ impl<R: Runtime> Native for WinNative<R> {
 
     fn request_trust(&self) {}
 
+    fn reset_stale_trust(&self) {}
+
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
         // SAFETY: clipboard mở rồi đóng trong hàm này. Bộ nhớ cấp bằng `GlobalAlloc` đủ chỗ cho chữ cả số 0 cuối; sau khi

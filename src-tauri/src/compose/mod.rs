@@ -68,6 +68,11 @@ pub trait Native: Send + Sync + 'static {
     fn trusted(&self) -> bool;
     /// macOS: hỏi quyền Trợ năng (`AXIsProcessTrustedWithOptions` có hỏi), để app hiện trong danh sách của System Settings.
     fn request_trust(&self);
+    /// macOS: xóa dòng quyền Trợ năng cũ của app (`tccutil reset Accessibility <bundle id>`, không cần `sudo`). Bản ký ad-hoc
+    /// có chữ ký (cdhash) khác sau mỗi lần cập nhật, nên dòng cũ còn đó, công tắc vẫn bật, mà `AXIsProcessTrusted()` trả
+    /// `false`; hệ thống không hỏi lại và tắt rồi bật công tắc không sửa được (đo 2026-10-18, `results/spike.md` mục S3).
+    /// Xóa dòng cũ thì lần bật công tắc kế tiếp gắn chữ ký của bản đang chạy. Windows không làm gì.
+    fn reset_stale_trust(&self);
     /// Ghi chữ vào clipboard, dạng văn bản thuần.
     fn set_clipboard(&self, text: &str) -> Result<(), String>;
     /// Gọi sau khi ô soạn đã ẩn: chờ cửa sổ của app trước nhận lại bàn phím (Windows: đưa nó về phía trước) rồi gửi phím dán.
@@ -454,11 +459,17 @@ pub fn accessibility_trusted<R: Runtime>(app: &AppHandle<R>) -> bool {
 
 /// "Bật tự dán" ở hộp quyền và "Mở cài đặt Trợ năng" ở Cài đặt › Gõ dịch (spec §1.4, §4.2, chỉ macOS): hỏi quyền Trợ năng để
 /// app hiện trong danh sách, rồi mở trang Trợ năng của System Settings (qua `SystemOpener`, như mọi việc mở ra ngoài app).
+/// Chưa có quyền thì xóa dòng quyền cũ trước: sau khi cập nhật bản ký ad-hoc, dòng cũ còn đó với công tắc bật nhưng không còn
+/// khớp chữ ký, hệ thống không hỏi lại và người dùng không có cách nào sửa ngoài việc tự xóa dòng rồi thêm lại.
 pub fn open_accessibility<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
     if !cfg!(target_os = "macos") {
         return Err(CommandError::new(errors::UNSUPPORTED, None, "chỉ có trên macOS"));
     }
-    state(app)?.native.request_trust();
+    let native = &state(app)?.native;
+    if !native.trusted() {
+        native.reset_stale_trust();
+    }
+    native.request_trust();
     system::open_accessibility_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
 }
 

@@ -404,6 +404,37 @@ fn a_disabled_compose_hotkey_is_only_checked_and_saved() {
     assert!(error.contains("hotkeyDuplicate"), "{error}");
 }
 
+/// Spec §4.2 (macOS): sau khi cập nhật bản ký ad-hoc, dòng quyền Trợ năng cũ còn đó (công tắc vẫn bật) nhưng không còn khớp chữ
+/// ký, nên chỉ hỏi quyền rồi mở System Settings không sửa được (S3). Cả hai nút ("Bật tự dán" ở ô soạn, "Mở cài đặt Trợ năng"
+/// ở Cài đặt) xóa dòng cũ trước khi hỏi, khi chưa có quyền.
+#[cfg(target_os = "macos")]
+#[test]
+fn asking_for_the_permission_first_clears_a_stale_grant() {
+    use std::sync::atomic::Ordering;
+
+    use crate::test_support::{FakeNative, system_calls};
+
+    for (label, command) in [
+        ("compose", "compose_open_accessibility"),
+        ("main", "open_accessibility_settings"),
+    ] {
+        let app = mock_app();
+        app.state::<FakeNative>().trusted.store(false, Ordering::SeqCst);
+        invoke(&window(&app, label), command, json!({})).unwrap();
+        assert_eq!(compose_calls(&app), ["reset_stale_trust", "request_trust"], "{command}");
+        assert_eq!(system_calls(&app), ["open_accessibility_settings"], "{command}");
+    }
+}
+
+/// Đã có quyền dùng được thì không xóa gì: bấm nút lần nữa (hay lúc quyền vừa được bật) không được làm mất quyền đang chạy.
+#[cfg(target_os = "macos")]
+#[test]
+fn asking_for_the_permission_keeps_a_working_grant() {
+    let app = mock_app();
+    invoke(&window(&app, "compose"), "compose_open_accessibility", json!({})).unwrap();
+    assert_eq!(compose_calls(&app), ["request_trust"]);
+}
+
 /// Spec §1.4: Cài đặt › Gõ dịch đọc được trạng thái quyền Trợ năng (macOS hỏi hệ thống mỗi lần).
 #[test]
 fn the_main_window_reads_the_accessibility_permission() {

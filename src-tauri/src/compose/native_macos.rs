@@ -281,6 +281,22 @@ impl<R: Runtime> Native for MacNative<R> {
         log::info!("hỏi quyền Trợ năng; đã có quyền: {trusted}");
     }
 
+    fn reset_stale_trust(&self) {
+        let id = self.app.config().identifier.clone();
+        match std::process::Command::new("/usr/bin/tccutil")
+            .args(["reset", "Accessibility", &id])
+            .output()
+        {
+            Ok(out) if out.status.success() => log::info!("đã xóa dòng quyền Trợ năng cũ của {id}"),
+            Ok(out) => log::warn!(
+                "tccutil reset Accessibility {id} lỗi ({}): {}",
+                out.status,
+                String::from_utf8_lossy(&out.stderr).trim()
+            ),
+            Err(e) => log::warn!("không chạy được tccutil: {e}"),
+        }
+    }
+
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         let pasteboard = NSPasteboard::generalPasteboard();
         pasteboard.clearContents();

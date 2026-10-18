@@ -139,8 +139,8 @@ impl SystemOpener for FakeSystem {
     }
 }
 
-/// Bản giả của `compose::Native`: ghi lại từng lần gọi, dạng `show`, `hide`, `height 240`, `request_trust`, `clipboard <chữ>`,
-/// `paste`. Có quyền Trợ năng và dán được, trừ khi test đổi `trusted`, `paste_ok`.
+/// Bản giả của `compose::Native`: ghi lại từng lần gọi, dạng `show`, `hide`, `height 240`, `request_trust`,
+/// `reset_stale_trust`, `clipboard <chữ>`, `paste`. Có quyền Trợ năng và dán được, trừ khi test đổi `trusted`, `paste_ok`.
 #[derive(Clone)]
 pub struct FakeNative {
     pub calls: Arc<Mutex<Vec<String>>>,
@@ -189,6 +189,9 @@ impl crate::compose::Native for FakeNative {
     }
     fn request_trust(&self) {
         self.push("request_trust".into());
+    }
+    fn reset_stale_trust(&self) {
+        self.push("reset_stale_trust".into());
     }
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         self.push(format!("clipboard {text}"));
