@@ -10,6 +10,8 @@
 //!   - `version:<n>`: `Ready` báo phiên bản giao thức `n`;
 //!   - `backend:<cpu|metal|vulkan>`: thiết bị báo trong `Ready` (mặc định metal nếu xin GPU, cpu nếu không);
 //!   - `mode:split`: báo chế độ A;
+//!   - `note:<từ>`: in từ này ra stderr ngay trước khi thoát (`exit_at_start`, `crash_on`) hay treo (`hang_on`), như dòng cuối
+//!     của whisper.cpp hay ggml trước khi chết;
 //!   - `crash_on:<n>`: thoát với mã 3, không trả lời, khi nhận `Transcribe` thứ `n` của lần chạy này;
 //!   - `hang_on:<n>`: treo khi nhận `Transcribe` thứ `n`;
 //!   - `wrong_id_on:<n>`: kết quả của `Transcribe` thứ `n` mang id đoạn cộng 1000;
@@ -41,6 +43,7 @@ struct Plan {
     error_kind: ErrorKind,
     load_delay_ms: u64,
     words_per_sec: Option<f32>,
+    note: Option<String>,
 }
 
 fn next_plan_line() -> String {
@@ -70,6 +73,7 @@ fn parse(line: &str) -> Plan {
         error_kind: ErrorKind::Internal,
         load_delay_ms: 0,
         words_per_sec: None,
+        note: None,
     };
     for word in line.split_whitespace() {
         let (key, value) = word.split_once(':').unwrap_or((word, ""));
@@ -106,10 +110,18 @@ fn parse(line: &str) -> Plan {
             }
             "load_delay_ms" => plan.load_delay_ms = value.parse().expect("số ms"),
             "words_per_sec" => plan.words_per_sec = Some(value.parse().expect("số từ mỗi giây")),
+            "note" => plan.note = Some(value.to_string()),
             other => panic!("lệnh kịch bản lạ: {other}"),
         }
     }
     plan
+}
+
+/// Dòng cuối trên stderr trước khi chết hay treo (lệnh `note`).
+fn say(note: &Option<String>) {
+    if let Some(note) = note {
+        eprintln!("{note}");
+    }
 }
 
 fn log(line: &str) {
@@ -143,6 +155,7 @@ fn texts() -> Vec<(String, String, bool)> {
 fn main() {
     let plan = parse(&next_plan_line());
     if let Some(code) = plan.exit_at_start {
+        say(&plan.note);
         std::process::exit(code);
     }
     let texts = texts();
@@ -188,9 +201,11 @@ fn main() {
                     req.prompt_tokens.len()
                 ));
                 if plan.crash_on == Some(transcribes) {
+                    say(&plan.note);
                     std::process::exit(3);
                 }
                 if plan.hang_on == Some(transcribes) {
+                    say(&plan.note);
                     loop {
                         std::thread::sleep(std::time::Duration::from_secs(60));
                     }

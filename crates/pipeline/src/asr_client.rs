@@ -243,15 +243,23 @@ impl AsrWorker {
         let _ = watchdog.join();
         res.map_err(|e| {
             if timed_out.load(Ordering::SeqCst) {
-                return AsrError::TimedOut(format!("không trả lời sau {timeout:?}, đã kill"));
+                // Đã kill nên stderr đóng: chờ luồng chép log đọc hết để dòng cuối cho biết worker treo ở đâu.
+                self.join_pump();
+                return AsrError::TimedOut(with_tail(
+                    format!("không trả lời sau {timeout:?}, đã kill"),
+                    &self.tail.lines(),
+                ));
             }
             // Lỗi pipe thường là do worker vừa chết: chờ ngắn để lấy mã thoát (tiến trình có thể chưa kịp thành zombie).
             let deadline = Instant::now() + Duration::from_millis(200);
             while Instant::now() < deadline {
-                if let Ok(Some(status)) = self.child.lock().unwrap_or_else(|e| e.into_inner()).try_wait() {
-                    return AsrError::Crashed(format!(
-                        "{e}; asr-worker đã thoát ({status}), xem {}",
-                        self.log.display()
+                let exited = self.child.lock().unwrap_or_else(|e| e.into_inner()).try_wait();
+                if let Ok(Some(status)) = exited {
+                    // Chết giữa chừng mà không để lại gì trong log thì báo cáo chỉ còn mã thoát: ghép vài dòng stderr cuối.
+                    self.join_pump();
+                    return AsrError::Crashed(with_tail(
+                        format!("{e}; asr-worker đã thoát ({status}), xem {}", self.log.display()),
+                        &self.tail.lines(),
                     ));
                 }
                 std::thread::sleep(Duration::from_millis(10));
@@ -275,8 +283,15 @@ pub fn command(launch: &AsrLaunch) -> Command {
     cmd
 }
 
-/// Thêm tối đa 5 dòng cuối của stderr vào thông báo lỗi.
+/// Chỗ nối giữa thông báo lỗi và các dòng cuối của stderr.
+const TAIL_MARK: &str = "; stderr cuối: ";
+
+/// Thêm tối đa 5 dòng cuối của stderr vào thông báo lỗi. Thông báo đã có các dòng đó (do `call` ghép lúc worker chết)
+/// thì giữ nguyên, để lỗi lúc nạp model không bị ghép hai lần.
 pub fn with_tail(message: String, tail: &[String]) -> String {
+    if message.contains(TAIL_MARK) {
+        return message;
+    }
     let last: Vec<&str> = tail
         .iter()
         .rev()
@@ -288,7 +303,7 @@ pub fn with_tail(message: String, tail: &[String]) -> String {
         return message;
     }
     let joined: Vec<&str> = last.into_iter().rev().collect();
-    format!("{message}; stderr cuối: {}", joined.join(" | "))
+    format!("{message}{TAIL_MARK}{}", joined.join(" | "))
 }
 
 impl Drop for AsrWorker {
@@ -347,5 +362,12 @@ mod tests {
             "worker chết; stderr cuối: l3 | l4 | l5 | l6 | l7"
         );
         assert_eq!(with_tail("x".into(), &[]), "x");
+    }
+
+    #[test]
+    fn a_message_that_already_has_the_stderr_tail_is_left_alone() {
+        let once = with_tail("worker chết".into(), &["l1".into()]);
+        assert_eq!(once, "worker chết; stderr cuối: l1");
+        assert_eq!(with_tail(once.clone(), &["l2".into()]), once);
     }
 }

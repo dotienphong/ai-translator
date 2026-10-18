@@ -143,8 +143,18 @@ pub fn clean_meta(value: &str, max: usize) -> Option<String> {
     (!cleaned.is_empty()).then_some(cleaned)
 }
 
-fn truncate_chars(text: &str, max: usize) -> String {
-    text.chars().take(max).collect()
+/// Câu quá `max` ký tự thì giữ đầu (lỗi gì) và cuối (dòng stderr cuối của tiến trình phụ), bỏ khúc giữa.
+fn fit_message(text: &str, max: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= max {
+        return text.to_string();
+    }
+    let head = max / 3;
+    let tail = max - head - 1;
+    let mut fitted: String = chars[..head].iter().collect();
+    fitted.push('…');
+    fitted.extend(&chars[chars.len() - tail..]);
+    fitted
 }
 
 /// Các dòng log đã chọn và che, chưa cắt theo byte.
@@ -188,7 +198,7 @@ fn assemble(id: &str, event: &Event, facts: &Facts, message: &str, logs: [&str; 
 /// Dựng báo cáo `id` cho `event`. Che dữ liệu bằng `params`; còn mẫu nhạy cảm ở bất kỳ chuỗi tự do nào (câu lỗi, log, thông tin
 /// máy) thì trả `BuildError::Sensitive` và không có báo cáo nào (fail closed). Quá 64 KB thì cắt dần phần cũ nhất của mỗi log.
 pub fn build(event: &Event, facts: &Facts, raw: &RawLogs, params: &Params, id: String) -> Result<Report, BuildError> {
-    let message = truncate_chars(&scrub::scrub(&event.message, params), MAX_MESSAGE_CHARS);
+    let message = fit_message(&scrub::scrub(&event.message, params), MAX_MESSAGE_CHARS);
     let scrubbed = select_and_scrub(raw, params);
 
     let free_strings = [
@@ -448,6 +458,18 @@ mod tests {
             parsed(&report)["message"].as_str().unwrap().chars().count(),
             MAX_MESSAGE_CHARS
         );
+    }
+
+    /// Câu lỗi của tiến trình phụ chết có dòng stderr cuối ở cuối câu: cắt phải giữ phần đó, không chỉ phần đầu.
+    #[test]
+    fn a_long_message_keeps_its_beginning_and_its_last_lines() {
+        let mut e = event();
+        e.message = format!("asr-worker đã thoát {}; stderr cuối: ggml_boom", "x".repeat(900));
+        let report = build(&e, &facts(), &RawLogs::default(), &params(), "R-0000-0001".into()).unwrap();
+        let message = parsed(&report)["message"].as_str().unwrap().to_string();
+        assert_eq!(message.chars().count(), MAX_MESSAGE_CHARS);
+        assert!(message.starts_with("asr-worker đã thoát "), "{message}");
+        assert!(message.ends_with("; stderr cuối: ggml_boom"), "{message}");
     }
 
     #[test]

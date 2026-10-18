@@ -142,6 +142,42 @@ fn a_crash_or_a_missing_dll_is_a_crash_with_the_exit_status() {
     assert!(err.is_crash(), "{err}");
 }
 
+/// Worker chết giữa chừng thì lý do mang vài dòng stderr cuối (log whisper.cpp/ggml, không có âm thanh hay chữ chép lời):
+/// báo cáo lỗi gửi về dev cần dòng này để biết vì sao chết, mã thoát một mình chưa đủ.
+#[test]
+fn a_worker_that_dies_mid_request_reports_its_last_stderr_lines() {
+    let t = Temp::new("asr-crash-tail");
+    let (mut worker, _) = AsrWorker::spawn(&asr_launch(&t, &["crash_on:1 note:ggml_boom"])).unwrap();
+    let err = worker.transcribe(request(1)).unwrap_err();
+    assert!(
+        matches!(&err, AsrError::Crashed(m) if m.contains("; stderr cuối: ggml_boom")),
+        "{err}"
+    );
+}
+
+/// Chết lúc nạp model đi qua cả hai chỗ ghép dòng stderr cuối: chỉ được ghép một lần.
+#[test]
+fn a_worker_that_dies_at_start_reports_the_stderr_tail_once() {
+    let t = Temp::new("asr-start-tail");
+    let err = AsrWorker::spawn(&asr_launch(&t, &["exit_at_start:135 note:vulkan_gone"]))
+        .map(|_| ())
+        .unwrap_err();
+    assert!(err.is_crash(), "{err}");
+    assert_eq!(err.to_string().matches("vulkan_gone").count(), 1, "{err}");
+}
+
+/// Worker treo bị kill: dòng stderr cuối vẫn cho biết nó treo ở đâu (ví dụ driver GPU).
+#[test]
+fn a_hung_worker_reports_its_last_stderr_lines() {
+    let t = Temp::new("asr-hang-tail");
+    let (mut worker, _) = AsrWorker::spawn(&asr_launch(&t, &["hang_on:1 note:driver_stuck"])).unwrap();
+    let err = worker.transcribe(request(1)).unwrap_err();
+    assert!(
+        matches!(&err, AsrError::TimedOut(m) if m.contains("; stderr cuối: driver_stuck")),
+        "{err}"
+    );
+}
+
 /// Kết quả mang id của đoạn khác: luồng giao thức đã lệch, phải coi như worker hỏng.
 #[test]
 fn a_result_for_another_segment_is_a_crash() {
