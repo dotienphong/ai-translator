@@ -217,6 +217,31 @@ test("macOS: liên kết cứng với API chỉ có từ macOS 15 là lỗi, li�
   assert.deepEqual(newApiErrors("meeting-translator", []), []);
 });
 
+// `dyld_info -fixups` của llama-server dài khoảng 1,6 MB, hơn giới hạn mặc định 1 MiB của execFileSync: bước kiểm của Release 0.1.15
+// chết với `spawnSync xcrun ENOBUFS` dù binary đúng. otool và xcrun giả đặt trong PATH để không cần binary Mach-O thật.
+test("deps-macos đọc được output dyld_info dài hơn 1 MiB", { skip: process.platform === "win32" && "cần sh và PATH kiểu Unix" }, (t) => {
+  const dir = tempDir(t);
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const fake = (name, body) => writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  fake(
+    "otool",
+    'case "$1" in\n' +
+      '  -L) printf "%s:\\n\\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1.0.0)\\n" "$2";;\n' +
+      '  -l) printf "      cmd LC_BUILD_VERSION\\n  cmdsize 32\\n platform 1\\n    minos 14.2\\n      sdk 26.5\\n";;\n' +
+      "esac",
+  );
+  fake("xcrun", "head -c 2000000 /dev/zero | tr '\\0' x; echo");
+  const file = join(dir, "llama-server");
+  writeFileSync(file, "x");
+  const oldPath = process.env.PATH;
+  process.env.PATH = `${bin}:${oldPath}`;
+  t.after(() => {
+    process.env.PATH = oldPath;
+  });
+  assert.deepEqual(main(["deps-macos", file]), []);
+});
+
 test("build-sidecars-macos.sh đặt MACOSX_DEPLOYMENT_TARGET trước khi cargo build asr-worker", () => {
   const script = readFileSync(new URL("./build-sidecars-macos.sh", import.meta.url), "utf8");
   const exportAt = script.search(/^export MACOSX_DEPLOYMENT_TARGET=14\.2$/m);

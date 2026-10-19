@@ -293,7 +293,9 @@ export function main(argv) {
         const libs = parseOtoolLibraries(execFileSync("otool", ["-L", file], { encoding: "utf8" }));
         const minos = parseOtoolMinOs(execFileSync("otool", ["-l", file], { encoding: "utf8" }));
         errors.push(...macosErrors(basename(file), libs, minos, minOs));
-        const binds = parseDyldInfoBinds(execFileSync("xcrun", ["dyld_info", "-fixups", file], { encoding: "utf8" }));
+        // llama-server ra khoảng 1,6 MB, hơn maxBuffer mặc định (1 MiB): không nâng thì ENOBUFS dù binary đúng.
+        const fixups = execFileSync("xcrun", ["dyld_info", "-fixups", file], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+        const binds = parseDyldInfoBinds(fixups);
         errors.push(...newApiErrors(basename(file), binds));
         console.log(`${basename(file)}: minos ${minos}; ${libs.join(", ")}`);
       }
