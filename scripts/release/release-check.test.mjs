@@ -15,7 +15,9 @@ import {
   macosErrors,
   main,
   isVcRuntime,
+  newApiErrors,
   parseDumpbinDependents,
+  parseDyldInfoBinds,
   parseOtoolLibraries,
   parseOtoolMinOs,
   sidecarTable,
@@ -176,8 +178,51 @@ test("macOS: thư viện ngoài hệ thống và minos cao hơn đều là lỗi
   assert.deepEqual(macosErrors("asr-worker", ["/usr/lib/libc++.1.dylib"], "15.0", "14.2"), [
     "asr-worker cần macOS 15.0, cao hơn 14.2",
   ]);
-  assert.deepEqual(macosErrors("asr-worker", ["/usr/lib/libc++.1.dylib"], "13.3", "14.2"), []);
+  // Thấp hơn mức tối thiểu cũng là lỗi: asr-worker từng ra minos 11.0 vì cargo không đặt MACOSX_DEPLOYMENT_TARGET, trong khi
+  // mã ggml bên trong biên dịch theo SDK nên liên kết cứng với API của macOS 15 (báo cáo R-7048-CH57).
+  assert.deepEqual(macosErrors("asr-worker", ["/usr/lib/libc++.1.dylib"], "11.0", "14.2"), [
+    "asr-worker có minos 11.0, thấp hơn 14.2: build chưa đặt MACOSX_DEPLOYMENT_TARGET=14.2 nên mã bên trong có thể liên kết cứng với API mới hơn",
+  ]);
+  assert.deepEqual(macosErrors("asr-worker", ["/usr/lib/libc++.1.dylib"], "14.2", "14.2"), []);
   assert.deepEqual(macosErrors("asr-worker", [], null, "14.2"), ["asr-worker không có LC_BUILD_VERSION"]);
+});
+
+const DYLD_FIXUPS_STRONG = `/Applications/AI Translator.app/Contents/MacOS/asr-worker [arm64]:
+    -fixups:
+        segment      section          address     type          target
+        __DATA       __objc_classrefs 0x100164950 bind          Metal/_OBJC_CLASS_$_MTLCompileOptions
+        __DATA       __objc_classrefs 0x100164968 bind          Metal/_OBJC_CLASS_$_MTLResidencySetDescriptor
+        __DATA       __la_symbol_ptr  0x1001641A0 lazy-bind     libc++/__ZNSt3__119__shared_weak_count14__release_weakEv
+`;
+const DYLD_FIXUPS_WEAK = DYLD_FIXUPS_STRONG.replace(
+  "MTLResidencySetDescriptor\n",
+  "MTLResidencySetDescriptor [weak-import]\n",
+);
+
+test("dyld_info -fixups: đọc tên ký hiệu và cờ weak-import của từng bind", () => {
+  assert.deepEqual(parseDyldInfoBinds(DYLD_FIXUPS_STRONG), [
+    { symbol: "_OBJC_CLASS_$_MTLCompileOptions", weak: false },
+    { symbol: "_OBJC_CLASS_$_MTLResidencySetDescriptor", weak: false },
+    { symbol: "__ZNSt3__119__shared_weak_count14__release_weakEv", weak: false },
+  ]);
+  assert.equal(parseDyldInfoBinds(DYLD_FIXUPS_WEAK).find((b) => b.symbol.includes("Residency")).weak, true);
+});
+
+test("macOS: liên kết cứng với API chỉ có từ macOS 15 là lỗi, liên kết yếu thì được", () => {
+  assert.deepEqual(newApiErrors("asr-worker", parseDyldInfoBinds(DYLD_FIXUPS_STRONG)), [
+    "asr-worker liên kết cứng với _OBJC_CLASS_$_MTLResidencySetDescriptor (chỉ có từ macOS 15): macOS 14.2 sẽ không nạp được file",
+  ]);
+  assert.deepEqual(newApiErrors("asr-worker", parseDyldInfoBinds(DYLD_FIXUPS_WEAK)), []);
+  // Không bind tới ký hiệu nào trong danh sách: không có gì để báo (ví dụ file chính của app).
+  assert.deepEqual(newApiErrors("meeting-translator", []), []);
+});
+
+test("build-sidecars-macos.sh đặt MACOSX_DEPLOYMENT_TARGET trước khi cargo build asr-worker", () => {
+  const script = readFileSync(new URL("./build-sidecars-macos.sh", import.meta.url), "utf8");
+  const exportAt = script.search(/^export MACOSX_DEPLOYMENT_TARGET=14\.2$/m);
+  const cargoAt = script.indexOf("cargo build --release --locked -p asr-worker");
+  assert.ok(exportAt >= 0, "thiếu `export MACOSX_DEPLOYMENT_TARGET=14.2`");
+  assert.ok(cargoAt > exportAt, "export phải đứng trước cargo build asr-worker");
 });
 
 const DUMPBIN = `

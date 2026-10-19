@@ -4,7 +4,8 @@
 #   - asr-worker: whisper.cpp 1.8.3 đã vá trong third_party/, link tĩnh, Metal, shared-encode (dòng 119 của kế hoạch 00);
 #   - llama-server: llama.cpp ở commit khóa trong versions.env, build tĩnh (Metal nhúng sẵn shader, GGML_NATIVE=OFF, mức CPU
 #     như asr-worker), không web UI, không HTTPS; không có .dylib đi kèm (dòng 211 của kế hoạch 00).
-# Rồi kiểm mọi thư viện mà hai file nạp đều là của hệ thống, và macOS tối thiểu là 14.2 (`release-check.mjs deps-macos`).
+# Rồi kiểm mọi thư viện mà hai file nạp đều là của hệ thống, macOS tối thiểu đúng 14.2 (không cao hơn, cũng không thấp hơn), và
+# không liên kết cứng với API chỉ có từ macOS mới hơn (`release-check.mjs deps-macos`).
 #
 # Ký: đặt MT_SIGN_IDENTITY (ví dụ "Developer ID Application: <tên> (<Team ID>)") thì ký từng file với hardened runtime và
 # timestamp; không đặt thì ký ad-hoc. Phải ký trước khi build app: build.rs băm file trong binaries/, và nếu bundler của
@@ -50,6 +51,10 @@ if [ "${1:-}" = "--sign-only" ]; then
 fi
 
 echo "== asr-worker (metal, shared-encode)"
+# Phải đặt trước cargo build: whisper-rs-sys (cc-rs/cmake) lấy mục tiêu biên dịch của ggml từ biến này, không có thì rơi về bản SDK
+# của máy dựng. Khi đó ggml-metal liên kết cứng với MTLResidencySetDescriptor (chỉ có từ macOS 15), các khối @available bị gộp thành
+# luôn-đúng, và dyld từ chối nạp asr-worker trên macOS 14 (báo cáo R-7048-CH57). Giữ cùng giá trị với LSMinimumSystemVersion.
+export MACOSX_DEPLOYMENT_TARGET=14.2
 (cd "$root" && cargo build --release --locked -p asr-worker --features metal,shared-encode)
 
 echo "== llama.cpp $LLAMA_CPP_TAG"

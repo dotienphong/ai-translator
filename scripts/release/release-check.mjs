@@ -146,7 +146,7 @@ function versionLe(a, b) {
   return true;
 }
 
-/** Lỗi của một file Mach-O: thư viện ngoài hệ thống, hoặc `minos` cao hơn `minOs`. */
+/** Lỗi của một file Mach-O: thư viện ngoài hệ thống, hoặc `minos` khác `minOs` (cao hơn: máy cũ không chạy; thấp hơn: xem dưới). */
 export function macosErrors(file, libraries, minos, minOs) {
   const errors = [];
   for (const lib of libraries) {
@@ -156,7 +156,35 @@ export function macosErrors(file, libraries, minos, minOs) {
   }
   if (minos === null) errors.push(`${file} không có LC_BUILD_VERSION`);
   else if (!versionLe(minos, minOs)) errors.push(`${file} cần macOS ${minos}, cao hơn ${minOs}`);
+  // Thấp hơn cũng là lỗi: `minos` là bản rustc ghi lúc link, còn mã C/ObjC bên trong (ggml) biên dịch theo MACOSX_DEPLOYMENT_TARGET.
+  // asr-worker từng ra minos 11.0 vì cargo không đặt biến này, ggml biên dịch theo SDK nên liên kết cứng với API của macOS 15
+  // và dyld từ chối nạp trên macOS 14 (báo cáo R-7048-CH57).
+  else if (!versionLe(minOs, minos)) {
+    errors.push(
+      `${file} có minos ${minos}, thấp hơn ${minOs}: build chưa đặt MACOSX_DEPLOYMENT_TARGET=${minOs} nên mã bên trong có thể liên kết cứng với API mới hơn`,
+    );
+  }
   return errors;
+}
+
+/** Ký hiệu bind trong output của `dyld_info -fixups <file>`: `{ symbol, weak }`. */
+export function parseDyldInfoBinds(text) {
+  const binds = [];
+  for (const line of text.split("\n")) {
+    const match = line.match(/\bbind\s+[^\s/]+\/(\S+?)(\s+\[weak-import\])?\s*$/);
+    if (match) binds.push({ symbol: match[1], weak: match[2] !== undefined });
+  }
+  return binds;
+}
+
+/** Ký hiệu hệ thống chỉ có từ macOS mới hơn 14.2: nếu bị bind cứng thì dyld từ chối nạp file trên macOS 14.2. */
+const NEWER_THAN_14_2 = new Map([["_OBJC_CLASS_$_MTLResidencySetDescriptor", "macOS 15"]]);
+
+/** Lỗi khi một file bind cứng (không `[weak-import]`) tới ký hiệu chỉ có từ macOS mới hơn mức tối thiểu. */
+export function newApiErrors(file, binds) {
+  return binds
+    .filter((b) => !b.weak && NEWER_THAN_14_2.has(b.symbol))
+    .map((b) => `${file} liên kết cứng với ${b.symbol} (chỉ có từ ${NEWER_THAN_14_2.get(b.symbol)}): macOS 14.2 sẽ không nạp được file`);
 }
 
 /** DLL trong output của `dumpbin /dependents <file>`: các dòng giữa "Image has the following dependencies:" và "Summary". */
@@ -265,6 +293,8 @@ export function main(argv) {
         const libs = parseOtoolLibraries(execFileSync("otool", ["-L", file], { encoding: "utf8" }));
         const minos = parseOtoolMinOs(execFileSync("otool", ["-l", file], { encoding: "utf8" }));
         errors.push(...macosErrors(basename(file), libs, minos, minOs));
+        const binds = parseDyldInfoBinds(execFileSync("xcrun", ["dyld_info", "-fixups", file], { encoding: "utf8" }));
+        errors.push(...newApiErrors(basename(file), binds));
         console.log(`${basename(file)}: minos ${minos}; ${libs.join(", ")}`);
       }
       break;
