@@ -285,6 +285,6 @@ Windows: chạy lại GD1, GD4, GD5, GD6 khi có máy.
 - Từ điển thuật ngữ cho Gõ dịch; từ điển hai chiều.
 - Đổi nhanh ngôn ngữ đích trên ô soạn; nhớ ngôn ngữ đích theo từng app.
 - Lưu lịch sử tin đã soạn.
-- Mục Gõ dịch trong menu khay; dòng gợi ý phím tắt trên màn hình chính (có thể làm sau nếu người dùng không tìm ra tính năng).
+- Dòng gợi ý phím tắt trên màn hình chính (có thể làm sau nếu người dùng không tìm ra tính năng). Mục Gõ dịch trong menu khay đã làm: spec 2026-10-20-tray-menu-shortcuts-design.
 - Chạy riêng `llama-server` không kèm `asr-worker` để tiết kiệm RAM.
 - Kéo hay nhớ vị trí ô soạn.
