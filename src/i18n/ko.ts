@@ -382,7 +382,7 @@ export const ko: Record<MessageKey, string> = {
   "notice.loginItemsApproval": "AI Translator가 시스템 설정 › 일반 › 로그인 항목 및 확장 프로그램(macOS 14에서는 ‘로그인 항목’)에서 꺼져 있어 로그인할 때 열리지 않습니다. 그곳에서 켜세요.",
   "notice.openLoginItems": "로그인 항목 열기",
   "notice.updateReady": "버전 {version} 다운로드가 완료되었으며 종료할 때 설치됩니다. 지금 다시 시작하여 업데이트할까요?",
-  "notice.updateReprompt": "업데이트 후 macOS가 로그인 암호를 한 번, 오디오 녹음 권한을 한 번 요청합니다. 암호를 입력하고 ‘항상 허용’을 클릭한 다음 녹음 권한을 허용하세요.",
+  "notice.updateReprompt": "업데이트 후 macOS가 오디오 녹음 권한을 한 번 더 요청할 수 있습니다. 허용해 주세요.",
   "notice.restartToUpdate": "다시 시작",
   "notice.updateLater": "나중에",
 

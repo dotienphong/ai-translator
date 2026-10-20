@@ -382,7 +382,7 @@ export const ja: Record<MessageKey, string> = {
   "notice.loginItemsApproval": "AI Translator は、システム設定 › 一般 › ログイン項目と機能拡張（macOS 14 では「ログイン項目」）でオフになっているため、ログイン時に起動しません。そこでオンにしてください。",
   "notice.openLoginItems": "ログイン項目を開く",
   "notice.updateReady": "バージョン {version} をダウンロードしました。終了時にインストールされます。今すぐ再起動して更新しますか？",
-  "notice.updateReprompt": "更新後、macOS がログインパスワードの入力を 1 回、音声録音の許可を 1 回求めます。パスワードを入力して「常に許可」をクリックし、録音を許可してください。",
+  "notice.updateReprompt": "更新後、macOS が音声録音の許可をもう一度求めることがあります。許可してください。",
   "notice.restartToUpdate": "再起動",
   "notice.updateLater": "後で",
 

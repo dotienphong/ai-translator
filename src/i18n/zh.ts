@@ -382,7 +382,7 @@ export const zh: Record<MessageKey, string> = {
   "notice.loginItemsApproval": "AI Translator 在“系统设置 › 通用 › 登录项与扩展”（macOS 14 中为“登录项”）中处于关闭状态，所以登录时不会自动打开。请在那里开启它。",
   "notice.openLoginItems": "打开登录项",
   "notice.updateReady": "版本 {version} 已下载，将在你退出时安装。现在重启并更新吗？",
-  "notice.updateReprompt": "更新后，macOS 会要求你输入一次登录密码，并要求一次音频录制权限：请输入密码并点击“始终允许”，同时允许录制权限。",
+  "notice.updateReprompt": "更新后，macOS 可能会再次请求一次音频录制权限：请允许。",
   "notice.restartToUpdate": "重启",
   "notice.updateLater": "稍后",
 
