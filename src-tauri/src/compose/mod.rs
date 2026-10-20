@@ -172,6 +172,8 @@ struct Inner {
     ready: Option<(u64, String)>,
     /// Nơi gửi yêu cầu cho luồng dịch, tạo ở lần dịch đầu tiên.
     queue: Option<Sender<Request>>,
+    /// Lần mở này chỉ chép, không tự dán: mở từ menu khay trên Windows (spec 2026-10-20 §4). Đặt lại mỗi lần mở.
+    copy_only: bool,
 }
 
 struct Request {
@@ -212,6 +214,14 @@ fn state<R: Runtime>(app: &AppHandle<R>) -> Result<tauri::State<'_, Compose>, Co
         .ok_or_else(|| CommandError::new(errors::UNKNOWN, None, "chưa có ô soạn"))
 }
 
+/// Enter tự dán không: Windows luôn, macOS theo `compose.autoPaste`; lần mở chỉ chép (`Inner::copy_only`) thì không.
+fn auto_paste<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let copy_only = app
+        .try_state::<Compose>()
+        .is_some_and(|compose| compose.lock().copy_only);
+    !copy_only && (!cfg!(target_os = "macos") || app.state::<AppState>().settings().compose.auto_paste)
+}
+
 /// Phần cài đặt của ô soạn lúc này.
 pub fn view<R: Runtime>(app: &AppHandle<R>) -> ComposeView {
     let settings = app.state::<AppState>().settings();
@@ -219,7 +229,7 @@ pub fn view<R: Runtime>(app: &AppHandle<R>) -> ComposeView {
         ui_language: settings.ui_language,
         theme: settings.theme,
         target: target::resolve(&settings),
-        auto_paste: !cfg!(target_os = "macos") || settings.compose.auto_paste,
+        auto_paste: auto_paste(app),
         blocked: license::app::compose_check(app).err().map(|e| e.code),
         platform: if cfg!(target_os = "macos") { "macos" } else { "windows" },
     }
@@ -227,22 +237,39 @@ pub fn view<R: Runtime>(app: &AppHandle<R>) -> ComposeView {
 
 /// Phím tắt Gõ dịch (spec §1.3): ô đang mở thì đóng (như Esc), đang đóng thì mở.
 pub fn toggle<R: Runtime>(app: &AppHandle<R>) {
+    toggle_with(app, false);
+}
+
+/// Mục "Mở Gõ dịch" của menu khay (spec 2026-10-20 §4). Windows: khi menu khay đóng, cửa sổ ở phía trước là của khay chứ không phải
+/// app người dùng đang gõ, nên `Native::show` sẽ nhớ nhầm đích dán; lần mở này chỉ chép, người dùng tự dán. macOS: bấm icon menu
+/// bar không đổi app ở phía trước, nên làm như phím tắt.
+pub fn toggle_from_tray<R: Runtime>(app: &AppHandle<R>) {
+    toggle_with(app, cfg!(target_os = "windows"));
+}
+
+fn toggle_with<R: Runtime>(app: &AppHandle<R>, copy_only: bool) {
     let Some(compose) = app.try_state::<Compose>() else {
         return;
     };
     if compose.native.visible() {
         close(app);
     } else {
-        open(app);
+        open_with(app, copy_only);
     }
 }
 
 /// Mở ô soạn (spec §1.1 bước 2): gửi phần cài đặt của nó (`compose://open`) rồi hiện. Gõ dịch dùng được thì chạy sẵn hai tiến
 /// trình phụ trên luồng nền (`session::prewarm`), để lần dịch đầu ít phải chờ nạp model.
 pub fn open<R: Runtime>(app: &AppHandle<R>) {
+    open_with(app, false);
+}
+
+/// `open`; `copy_only` là lần mở chỉ chép (xem `toggle_from_tray`). Đặt cờ trước khi tính `view`, vì `view` đọc nó.
+fn open_with<R: Runtime>(app: &AppHandle<R>, copy_only: bool) {
     let Some(compose) = app.try_state::<Compose>() else {
         return;
     };
+    compose.lock().copy_only = copy_only;
     let view = view(app);
     let usable = view.blocked.is_none();
     events::compose_open(app, &view);
@@ -433,7 +460,7 @@ pub fn submit<R: Runtime>(app: &AppHandle<R>, id: u64) -> Result<Submitted, Comm
         .set_clipboard(&text)
         .map_err(|e| CommandError::new(errors::COPY_FAILED, None, e))?;
     compose.lock().ready = None;
-    let auto = !cfg!(target_os = "macos") || app.state::<AppState>().settings().compose.auto_paste;
+    let auto = auto_paste(app);
     if auto && !compose.native.trusted() {
         return Ok(Submitted::NeedsPermission);
     }

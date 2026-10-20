@@ -7,37 +7,55 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::hotkeys::HotkeyAction;
-use crate::i18n::{self, Strings};
+use crate::i18n;
 use crate::state::{AppState, SessionStatus};
-use crate::tray_menu::{TrayItem, TrayModel, menu_lines};
-use crate::{actions, events, updater, window};
+use crate::tray_menu::{TrayItem, TrayModel, accelerator, menu_lines};
+use crate::{actions, compose, events, updater, window};
 
 pub const TRAY_ID: &str = "main";
 
-fn model<R: Runtime>(app: &AppHandle<R>) -> (TrayModel, &'static Strings) {
+fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)> {
     let state = app.state::<AppState>();
-    let settings = state.settings();
-    let status = state.status();
+    let (settings, status) = (state.settings(), state.status());
     let model = TrayModel {
         running: matches!(status.session, SessionStatus::Starting | SessionStatus::Running),
         overlay_visible: status.overlay_visible,
         locked: settings.overlay.locked,
         hotkeys_failed: !status.hotkey_failures.is_empty(),
         update_ready: status.update_ready.is_some(),
+        compose_enabled: settings.compose.enabled,
     };
-    (model, i18n::strings(settings.ui_language))
-}
-
-fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)> {
-    let (model, strings) = model(app);
+    let strings = i18n::strings(settings.ui_language);
     let menu = Menu::new(app)?;
     for line in menu_lines(strings, model) {
         match line {
-            Some((item, text)) => menu.append(&MenuItem::with_id(app, item.id(), text, true, None::<&str>)?)?,
+            Some((item, text)) => {
+                let key = accelerator(item, &settings.hotkeys, &status.hotkey_failures);
+                append_item(app, &menu, item, text, key)?;
+            }
             None => menu.append(&PredefinedMenuItem::separator(app)?)?,
         }
     }
     Ok((menu, strings.tooltip(&app.package_info().name, model.running)))
+}
+
+/// Thêm một mục vào menu, kèm phím tắt nếu có (spec 2026-10-20 §3). `muda` không nhận vài phím mà plugin phím tắt nhận (phím
+/// numpad, media trên macOS; phím Win trên Windows) và báo lỗi lúc thêm mục, trước khi mục vào menu: thử lại không kèm phím,
+/// để menu khay không bao giờ thiếu mục.
+fn append_item<R: Runtime>(
+    app: &AppHandle<R>,
+    menu: &Menu<R>,
+    item: TrayItem,
+    text: &str,
+    key: Option<&str>,
+) -> tauri::Result<()> {
+    if let Some(key) = key {
+        match MenuItem::with_id(app, item.id(), text, true, Some(key)).and_then(|with_key| menu.append(&with_key)) {
+            Ok(()) => return Ok(()),
+            Err(e) => log::warn!("không gắn được phím {key} vào mục {} của menu khay: {e}", item.id()),
+        }
+    }
+    menu.append(&MenuItem::with_id(app, item.id(), text, true, None::<&str>)?)
 }
 
 pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
@@ -101,6 +119,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         Some(TrayItem::Session) => actions::run_hotkey(app, HotkeyAction::ToggleSession),
         Some(TrayItem::Overlay) => actions::run_hotkey(app, HotkeyAction::ToggleOverlay),
         Some(TrayItem::Lock) => actions::run_hotkey(app, HotkeyAction::ToggleLock),
+        Some(TrayItem::Compose) => compose::toggle_from_tray(app),
         Some(TrayItem::OpenMain) => window::show_main(app),
         // Mở Cài đặt › Chung, nơi hiện kết quả, rồi kiểm trên luồng riêng (có thể phải tải bản mới).
         Some(TrayItem::CheckForUpdates) => {
@@ -123,5 +142,38 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         }
         Some(TrayItem::Quit) => actions::quit(app),
         None => log::warn!("mục menu khay lạ: {id}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tauri::menu::MenuItem;
+
+    use crate::hotkeys::{self, HotkeyAction};
+    use crate::settings::Settings;
+
+    /// Phím app lưu (dạng chuẩn của `hotkeys::parse`) đều là chuỗi mà `muda` đọc được, nên `MenuItem` nhận làm accelerator.
+    /// Chỉ kiểm bước đọc chuỗi: `Menu` của macOS chỉ dựng được trên luồng chính, test không thêm mục vào menu được.
+    #[test]
+    fn stored_hotkeys_are_readable_as_menu_accelerators() {
+        let app = crate::test_support::mock_app();
+        let defaults = Settings::defaults(crate::settings::UiLanguage::Vi).hotkeys;
+        let mut keys: Vec<String> = HotkeyAction::ALL
+            .map(|action| defaults.get(action).to_string())
+            .to_vec();
+        for typed in [
+            "control+alt+KeyT",
+            "Ctrl+Alt+Digit1",
+            "Ctrl+Alt+Backquote",
+            "Ctrl+Shift+Alt+F10",
+            "Super+Alt+Space",
+            "Ctrl+Alt+ArrowUp",
+        ] {
+            keys.push(hotkeys::parse(typed).unwrap().1);
+        }
+        for key in keys {
+            MenuItem::with_id(app.handle(), "x", "X", true, Some(key.as_str()))
+                .unwrap_or_else(|e| panic!("{key}: {e}"));
+        }
     }
 }

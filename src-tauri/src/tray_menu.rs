@@ -1,7 +1,9 @@
 //! Nội dung menu khay (F10, spec §4.2, §4.3): các dòng và chữ theo trạng thái và ngôn ngữ giao diện.
 //! Phần dựng menu thật của Tauri ở `tray.rs`.
 
+use crate::hotkeys::HotkeyAction;
 use crate::i18n::Strings;
+use crate::settings::Hotkeys;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TrayItem {
@@ -9,6 +11,7 @@ pub enum TrayItem {
     Session,
     Overlay,
     Lock,
+    Compose,
     OpenMain,
     CheckForUpdates,
     RestartToUpdate,
@@ -16,11 +19,12 @@ pub enum TrayItem {
 }
 
 impl TrayItem {
-    pub const ALL: [TrayItem; 8] = [
+    pub const ALL: [TrayItem; 9] = [
         Self::HotkeyWarning,
         Self::Session,
         Self::Overlay,
         Self::Lock,
+        Self::Compose,
         Self::OpenMain,
         Self::CheckForUpdates,
         Self::RestartToUpdate,
@@ -33,6 +37,7 @@ impl TrayItem {
             Self::Session => "session",
             Self::Overlay => "overlay-visible",
             Self::Lock => "overlay-lock",
+            Self::Compose => "compose",
             Self::OpenMain => "open-main",
             Self::CheckForUpdates => "check-updates",
             Self::RestartToUpdate => "restart-to-update",
@@ -43,6 +48,24 @@ impl TrayItem {
     pub fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|item| item.id() == id)
     }
+
+    /// Việc có phím tắt toàn cục ứng với mục này; mục khác không có phím.
+    pub fn hotkey_action(self) -> Option<HotkeyAction> {
+        match self {
+            Self::Session => Some(HotkeyAction::ToggleSession),
+            Self::Overlay => Some(HotkeyAction::ToggleOverlay),
+            Self::Lock => Some(HotkeyAction::ToggleLock),
+            Self::Compose => Some(HotkeyAction::Compose),
+            Self::HotkeyWarning | Self::OpenMain | Self::CheckForUpdates | Self::RestartToUpdate | Self::Quit => None,
+        }
+    }
+}
+
+/// Phím tắt hiện bên phải mục (spec 2026-10-20 §2): phím người dùng đang đặt. Không hiện khi mục không có phím, hay khi việc đó
+/// không đăng ký được (`failed`): phím đó không chạy, hiện ra chỉ gây hiểu nhầm.
+pub fn accelerator<'a>(item: TrayItem, hotkeys: &'a Hotkeys, failed: &[HotkeyAction]) -> Option<&'a str> {
+    let action = item.hotkey_action()?;
+    (!failed.contains(&action)).then(|| hotkeys.get(action))
 }
 
 /// Những gì menu khay cần biết.
@@ -54,6 +77,8 @@ pub struct TrayModel {
     pub hotkeys_failed: bool,
     /// Có bản cập nhật đã tải (kế hoạch 07b). Dòng mời chỉ hiện khi không dịch (§6.11: "app đang rảnh").
     pub update_ready: bool,
+    /// Gõ dịch đang bật (`compose.enabled`): phím của nó chỉ đăng ký khi bật, nên mục chỉ hiện khi bật.
+    pub compose_enabled: bool,
 }
 
 /// Các dòng của menu theo thứ tự; `None` là đường kẻ ngang.
@@ -83,6 +108,9 @@ pub fn menu_lines(strings: &Strings, model: TrayModel) -> Vec<Option<(TrayItem, 
         strings.tray_lock_overlay
     };
     lines.push(Some((TrayItem::Lock, lock)));
+    if model.compose_enabled {
+        lines.push(Some((TrayItem::Compose, strings.tray_compose)));
+    }
     lines.push(None);
     lines.push(Some((TrayItem::OpenMain, strings.tray_open_main)));
     lines.push(Some((TrayItem::CheckForUpdates, strings.tray_check_updates)));
@@ -115,6 +143,7 @@ mod tests {
             locked: false,
             hotkeys_failed: false,
             update_ready: false,
+            compose_enabled: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::VI, model)),
@@ -139,6 +168,7 @@ mod tests {
             locked: true,
             hotkeys_failed: true,
             update_ready: true,
+            compose_enabled: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::EN, model)),
@@ -175,14 +205,15 @@ mod tests {
                 TrayItem::Session => 1,
                 TrayItem::Overlay => 2,
                 TrayItem::Lock => 3,
-                TrayItem::OpenMain => 4,
-                TrayItem::CheckForUpdates => 5,
-                TrayItem::RestartToUpdate => 6,
-                TrayItem::Quit => 7,
+                TrayItem::Compose => 4,
+                TrayItem::OpenMain => 5,
+                TrayItem::CheckForUpdates => 6,
+                TrayItem::RestartToUpdate => 7,
+                TrayItem::Quit => 8,
             };
             assert_eq!(position, index, "{item:?}");
         }
-        assert_eq!(TrayItem::ALL.len(), 8);
+        assert_eq!(TrayItem::ALL.len(), 9);
     }
 
     #[test]
@@ -193,6 +224,7 @@ mod tests {
             locked: false,
             hotkeys_failed: false,
             update_ready: true,
+            compose_enabled: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::VI, model(false)))[4..],
@@ -210,5 +242,62 @@ mod tests {
                 .any(|(id, _)| *id == "restart-to-update"),
             "đang dịch thì không mời"
         );
+    }
+
+    #[test]
+    fn compose_item_follows_the_setting() {
+        let model = |compose_enabled| TrayModel {
+            running: false,
+            overlay_visible: true,
+            locked: false,
+            hotkeys_failed: false,
+            update_ready: false,
+            compose_enabled,
+        };
+        let on = lines(&menu_lines(&i18n::VI, model(true)));
+        assert_eq!(
+            on[..4],
+            [
+                ("session", "Bắt đầu dịch"),
+                ("overlay-visible", "Ẩn phụ đề"),
+                ("overlay-lock", "Khóa phụ đề (click xuyên qua)"),
+                ("compose", "Mở Gõ dịch"),
+            ]
+        );
+        let off = lines(&menu_lines(&i18n::VI, model(false)));
+        assert!(
+            !off.iter().any(|(id, _)| *id == "compose"),
+            "tắt Gõ dịch thì không có mục"
+        );
+    }
+
+    #[test]
+    fn shortcuts_follow_the_bindings_and_skip_what_failed() {
+        let mut hotkeys = crate::settings::Settings::defaults(crate::settings::UiLanguage::Vi).hotkeys;
+        hotkeys.set(HotkeyAction::ToggleOverlay, "Ctrl+Alt+J".into());
+        let key = |item, failed: &[HotkeyAction]| accelerator(item, &hotkeys, failed);
+        assert_eq!(key(TrayItem::Session, &[]), Some("Ctrl+Alt+T"));
+        assert_eq!(
+            key(TrayItem::Overlay, &[]),
+            Some("Ctrl+Alt+J"),
+            "phím người dùng đã đổi"
+        );
+        assert_eq!(key(TrayItem::Lock, &[]), Some("Ctrl+Alt+L"));
+        assert_eq!(key(TrayItem::Compose, &[]), Some("Ctrl+Alt+G"));
+        assert_eq!(
+            key(TrayItem::Lock, &[HotkeyAction::ToggleLock]),
+            None,
+            "phím không đăng ký được thì không hiện"
+        );
+        assert_eq!(key(TrayItem::Session, &[HotkeyAction::ToggleLock]), Some("Ctrl+Alt+T"));
+        for item in [
+            TrayItem::HotkeyWarning,
+            TrayItem::OpenMain,
+            TrayItem::CheckForUpdates,
+            TrayItem::RestartToUpdate,
+            TrayItem::Quit,
+        ] {
+            assert_eq!(key(item, &[]), None, "{item:?}");
+        }
     }
 }

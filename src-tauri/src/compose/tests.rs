@@ -206,6 +206,47 @@ fn the_hotkey_opens_with_the_view_and_closes_again() {
     assert_eq!(compose_calls(&app), ["show", "hide"]);
 }
 
+/// Spec 2026-10-20 §4: mở từ menu khay trên Windows không biết người dùng đang gõ ở cửa sổ nào (cửa sổ ở phía trước là của khay),
+/// nên chỉ chép, không gửi phím dán; mở bằng phím tắt thì tự dán như thường.
+#[test]
+fn opened_from_the_tray_menu_it_only_copies_when_the_target_is_unknown() {
+    let app = mock_app();
+    let compose = window(&app, "compose");
+    let opened = heard(&compose, COMPOSE_OPEN);
+    let done = heard(&compose, COMPOSE_DONE);
+    super::open_with(app.handle(), true);
+    wait_until("đã gửi phần cài đặt", || opened.lock().unwrap().len() == 1);
+    assert_eq!(opened.lock().unwrap()[0]["autoPaste"], false);
+    let id = translate(&app, "Mai mình gửi");
+    outcome_of(&done, id);
+    assert_eq!(submit(&app, id).unwrap(), "copied");
+    assert_eq!(
+        compose_calls(&app),
+        ["show".to_string(), format!("clipboard {FAKE}"), "hide".into()]
+    );
+    super::open_with(app.handle(), false);
+    wait_until("đã gửi phần cài đặt lần hai", || {
+        opened.lock().unwrap().len() == 2
+    });
+    assert_eq!(opened.lock().unwrap()[1]["autoPaste"], true);
+    let id = translate(&app, "Mai mình gửi");
+    outcome_of(&done, id);
+    assert_eq!(submit(&app, id).unwrap(), "pasted");
+    assert_eq!(compose_calls(&app).last().map(String::as_str), Some("paste"));
+}
+
+/// Spec 2026-10-20 §2, §4: mục "Mở Gõ dịch" của menu khay mở rồi đóng ô soạn như phím tắt; chỉ Windows vào chế độ chỉ chép.
+#[test]
+fn the_tray_menu_item_toggles_like_the_hotkey() {
+    let app = mock_app();
+    let opened = heard(&window(&app, "compose"), COMPOSE_OPEN);
+    super::toggle_from_tray(app.handle());
+    wait_until("đã gửi phần cài đặt", || opened.lock().unwrap().len() == 1);
+    assert_eq!(opened.lock().unwrap()[0]["autoPaste"], !cfg!(target_os = "windows"));
+    super::toggle_from_tray(app.handle());
+    assert_eq!(compose_calls(&app), ["show", "hide"]);
+}
+
 /// Spec §1.3: đóng ô soạn hủy yêu cầu đang chạy; kết quả của nó không tới và không dán được.
 #[test]
 fn closing_cancels_the_request_in_flight() {

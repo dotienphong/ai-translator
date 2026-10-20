@@ -15,6 +15,14 @@ use crate::{
     compose, diagnostics, events, hotkey_registry, login_item, overlay, session, system, tray, updater, window,
 };
 
+/// Menu khay cần dựng lại không: chữ theo ngôn ngữ, mục khóa, phím tắt bên cạnh mục và mục Gõ dịch đều lấy từ cài đặt.
+fn tray_needs_refresh(previous: &Settings, next: &Settings) -> bool {
+    previous.ui_language != next.ui_language
+        || previous.overlay.locked != next.overlay.locked
+        || previous.hotkeys != next.hotkeys
+        || previous.compose.enabled != next.compose.enabled
+}
+
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
 pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings) -> Settings {
     let state = app.state::<AppState>();
@@ -27,7 +35,7 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     if view != OverlayView::from_settings(&previous) {
         events::overlay_view(app, &view);
     }
-    if previous.ui_language != next.ui_language || previous.overlay.locked != next.overlay.locked {
+    if tray_needs_refresh(&previous, &next) {
         tray::refresh(app);
     }
     if previous.update_channel != next.update_channel {
@@ -353,4 +361,37 @@ pub fn quit_blocked<R: Runtime>(app: &AppHandle<R>) {
 pub fn open_main_at<R: Runtime>(app: &AppHandle<R>, target: events::Navigate) {
     window::show_main(app);
     events::navigate(app, target);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::UiLanguage;
+
+    /// Menu khay hiện chữ theo ngôn ngữ, trạng thái khóa, phím tắt và Gõ dịch (spec 2026-10-20 §2): đổi một trong số đó thì
+    /// phải dựng lại.
+    #[test]
+    fn the_tray_menu_is_rebuilt_only_when_something_in_it_changes() {
+        let base = Settings::defaults(UiLanguage::Vi);
+        assert!(!tray_needs_refresh(&base, &base.clone()));
+        let mut other = base.clone();
+        other.ui_language = if base.ui_language == UiLanguage::Vi {
+            UiLanguage::En
+        } else {
+            UiLanguage::Vi
+        };
+        assert!(tray_needs_refresh(&base, &other), "ngôn ngữ");
+        let mut other = base.clone();
+        other.overlay.locked = !base.overlay.locked;
+        assert!(tray_needs_refresh(&base, &other), "khóa");
+        let mut other = base.clone();
+        other.hotkeys.set(HotkeyAction::ToggleSession, "Ctrl+Alt+J".into());
+        assert!(tray_needs_refresh(&base, &other), "phím tắt");
+        let mut other = base.clone();
+        other.compose.enabled = !base.compose.enabled;
+        assert!(tray_needs_refresh(&base, &other), "Gõ dịch bật hay tắt");
+        let mut other = base.clone();
+        other.save_history = !base.save_history;
+        assert!(!tray_needs_refresh(&base, &other), "cài đặt không liên quan");
+    }
 }
