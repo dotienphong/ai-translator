@@ -60,6 +60,8 @@ Chữ ký ad-hoc đổi theo từng bản build. Đã đo ngày 2026-10-05 trên
 
 Không dùng chứng thư `Apple Development` của Apple ID miễn phí để phát hành: dành cho phát triển, hết hạn sau 1 năm, và cần khóa riêng cá nhân trong CI.
 
+**Cập nhật 2026-10-20:** phần hộp thoại Keychain của quyết định trên đã được thay (số hộp thoại Keychain mỗi lần cập nhật về 0 nhờ kho khóa qua `/usr/bin/security`, không cần Developer ID; riêng lần cập nhật đầu tiên lên bản có kho này còn 1 hộp thoại, và con số 0 mới đo ở mức cơ chế, chưa đo trên hai bản phát hành thật): xem `2026-10-20-macos-keychain-security-cli-design.md`. Quyền thu âm vẫn hỏi lại một lần mỗi lần cập nhật và vẫn chỉ hết khi có Developer ID.
+
 ## 5. Giới hạn chấp nhận
 
 - **Chống sửa yếu hơn Developer ID.** Ai cố ý sửa file rồi ký ad-hoc lại thì qua phép kiểm này. Kẻ biết vá binary vẫn bẻ được phép kiểm dù có Developer ID; phương án này bỏ đi đúng một lớp cản nhỏ. Phần chống sao chép thật sự vẫn là token Ed25519 do server ký, giới hạn 2 máy và khóa tạm (spec §10.2).

@@ -1,6 +1,6 @@
 # Giảm hộp thoại Keychain và quyền ghi âm sau mỗi lần cập nhật macOS (nghiên cứu)
 
-Ngày 2026-10-09. Câu hỏi của chủ dự án: bản ad-hoc hiện làm macOS hỏi 5 hộp thoại Keychain + 1 quyền ghi âm sau mỗi lần cập nhật (spec 2026-10-05 §4, đã chốt chấp nhận); có cách giảm xuống 1–2, hay tắt hẳn, không? Số đo và các lựa chọn. **Chủ dự án chọn B (2026-10-09); đã cài đặt, xem mục 5.**
+Ngày 2026-10-09. Câu hỏi của chủ dự án: bản ad-hoc hiện làm macOS hỏi 5 hộp thoại Keychain + 1 quyền ghi âm sau mỗi lần cập nhật (spec 2026-10-05 §4, đã chốt chấp nhận); có cách giảm xuống 1–2, hay tắt hẳn, không? Số đo và các lựa chọn. **Chủ dự án chọn B (2026-10-09); đã cài đặt, xem mục 5.** **2026-10-20 chủ dự án hỏi lại "tắt hẳn Keychain mà không cần Developer ID" và chọn cách S (kho khóa qua `/usr/bin/security`): xem mục 6 và spec `2026-10-20-macos-keychain-security-cli-design.md`, thay cho lựa chọn B.**
 
 ## 1. Vì sao hỏi
 
@@ -55,3 +55,13 @@ Nếu chấp nhận rủi ro điều khoản: A (một cấu hình, không sửa
 
   Khớp kỳ vọng: 5 → 1 hộp thoại Keychain. Quyền ghi âm ở hai lần ký lại: chủ dự án chỉ báo "còn 1 hộp thoại Keychain", chưa nói rõ có hộp thoại ghi âm hay không; website ghi "có thể hỏi lại". Lưu ý: ký lại bằng `codesign` giả lập việc đổi chữ ký, chưa phải một bản phát hành thứ hai thật. Website đã sửa theo số đo (nhưng chưa deploy).
 - Lời mời cập nhật trong app đổi từ "vài lần" sang "một lần" (`notice.updateReprompt`, vi/en).
+
+## 6. Đã làm tiếp (2026-10-20): cách S, kho khóa qua `/usr/bin/security`
+
+Câu hỏi của chủ dự án: có cách tắt hẳn hộp thoại Keychain khi cập nhật mà không cần Developer ID không? Đo thêm (bench `bench/2026-10-20-keychain-security-cli/`, MacBook Pro M4 Pro, macOS 26.6.2):
+
+- Chứng thư tự cấp có `OU=` giả Team ID: `codesign` vẫn ghi `TeamIdentifier=not set`, vẫn hỏi. Cách "giả Team ID" không chạy.
+- **Một chương trình không đổi byte làm người đọc Keychain thì hết hỏi** (biên dịch lại, chép, ký lại cùng lệnh đều ra cùng `cdhash`). `/usr/bin/security` (Apple ký) là chương trình như vậy sẵn có: mục do nó tạo đọc được từ hai app có `cdhash` khác nhau mà không hỏi, khoảng 30 ms mỗi lần gọi.
+- Liệt kê tên mục cũ (thuộc tính) từ bản khác không hỏi; chỉ đọc bí mật mới hỏi.
+
+Chủ dự án chọn S thay cho cách H (helper tự viết, đóng băng) vì ít việc nhất, không đụng đường phát hành, và an toàn hơn về công sức bảo trì. Thiết kế, quy tắc, di trú, rủi ro: `2026-10-20-macos-keychain-security-cli-design.md`. Với S, lựa chọn B (gộp một mục `vault`) không còn cần: mỗi giá trị lại là một mục riêng, và `vault` chỉ còn được đọc một lần để di trú.
