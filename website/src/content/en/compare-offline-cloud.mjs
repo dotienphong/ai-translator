@@ -87,7 +87,7 @@ ${docLayout({
 
 <h2 id="privacy">Privacy and where processing happens</h2>
 <p>With cloud translation your audio is sent to the provider's servers. Many providers have contracts and security certifications, so cloud is not automatically less safe, but you have to trust their policies and weigh them against your organization's rules.</p>
-<p>With AI Translator, speech recognition and translation run on your machine: audio stays in memory, is not written to disk and is not sent anywhere. A proxy check on macOS showed no audio or transcript text leaving the computer while it translated (Windows has not been measured). See <a href="/en/data-security/">data and security</a>.</p>
+<p>With AI Translator, speech recognition and translation run on your machine: audio stays in memory, is not written to disk and is not sent anywhere. A proxy check on macOS showed no audio or transcript text leaving the computer while it translated. See<a href="/en/data-security/">data and security</a>.</p>
 
 <h2 id="internet-and-bots">Internet, bots and the meeting host</h2>
 <p>Cloud translation needs a steady connection during the meeting. AI Translator keeps translating on a flaky connection or when the connection drops. It only needs the internet to download models, start the trial, activate, buy a plan, check the license (a paid plan needs a check at least every 14 days) and update, so a network that is completely cut off from the internet is not a good fit.</p>

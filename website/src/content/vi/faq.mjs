@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
-        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Trên Windows, chúng tôi mới thử thu âm thanh hệ thống trong thử nghiệm nội bộ trên Windows 11, chưa thử từng app họp với bản phát hành. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
+        a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
       },
       {
         q: "Có cần bot, plugin hay tài khoản không?",
@@ -102,7 +102,7 @@ const GROUPS = [
       },
       {
         q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
-        a: `<p>Không. Âm thanh chỉ nằm trong RAM, không ghi đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy và nettop trên macOS: trong lúc dịch, app không gửi âm thanh hay chữ chép lời ra ngoài. Windows chưa được đo. Chi tiết ở <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>Không. Âm thanh chỉ nằm trong RAM, không ghi đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy và nettop trên macOS: trong lúc dịch, app không gửi âm thanh hay chữ chép lời ra ngoài. Chi tiết ở<a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",

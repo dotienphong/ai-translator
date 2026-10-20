@@ -72,7 +72,7 @@ ${facts([
   ["Disk space for models", "1.3 GB (Lite pack) or 2.5 GB (Standard pack)<small>Plus 1 GB free while downloading.</small>"],
   ["Internet", "Needed to download the model and register the Free trial<small>Possibly also during installation (see below). After that, translation runs offline.</small>"],
 ])}
-<p class="small muted">We have tried system audio capture and the subtitle bar on Windows 11, and run a preliminary latency test on one laptop with integrated graphics (slower than a Mac M4 Pro). We have not measured: a proxy check of network traffic on Windows, specific meeting apps with the release build, high-DPI screens or multiple monitors. So we make no latency promise on Windows. On a PC without a capable discrete card, use the Lite pack.</p>
+<p class="small muted">We have tried system audio capture and the subtitle bar on Windows 11, and run a preliminary latency test on one laptop with integrated graphics (slower than a Mac M4 Pro). So we make no latency promise on Windows. On a PC without a capable discrete card, use the Lite pack.</p>
 
 <h2 id="install-command">Quick way: install with one command</h2>
 <ol>

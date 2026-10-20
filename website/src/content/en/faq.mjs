@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
-        a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. On Windows, we have only tried system audio capture in internal testing on Windows 11, not each meeting app with the release build. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
+        a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
       },
       {
         q: "Do I need a bot, a plugin or an account?",
@@ -102,7 +102,7 @@ const GROUPS = [
       },
       {
         q: "Is my meeting audio sent anywhere?",
-        a: `<p>No. Audio stays in RAM, is never written to disk and never sent over the network. We checked with a proxy and nettop on macOS: while translating, the app sends no audio or transcript text out. Windows has not been measured yet. Details are on <a href="/en/data-security/">Data and security</a>.</p>`,
+        a: `<p>No. Audio stays in RAM, is never written to disk and never sent over the network. We checked with a proxy and nettop on macOS: while translating, the app sends no audio or transcript text out. Details are on<a href="/en/data-security/">Data and security</a>.</p>`,
       },
       {
         q: "Are there ads or data collection?",

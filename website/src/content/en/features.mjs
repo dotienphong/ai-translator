@@ -162,7 +162,7 @@ ${checkList([
   "Translated on your computer: what you type and its translation never leave it",
   "Type with your usual keyboard and input method; if translating fails, the app never pastes your original text",
 ])}
-<p class="small muted">On macOS, auto-paste needs the Accessibility permission; without it the app copies the translation so you can paste it with ⌘V. The Windows version has not been tried on a real computer yet. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>
+<p class="small muted">On macOS, auto-paste needs the Accessibility permission; without it the app copies the translation so you can paste it with ⌘V. See the <a href="/en/guide/type-and-translate/">Type &amp; Translate guide</a>.</p>
 </div>
 <div>
 ${overlayShot({ slug: "compose-done", lang: "en", alt: "The Type & Translate box with an English message and its Vietnamese translation below", caption: "The Type & Translate box: press Enter to paste the translation into the chat box." })}

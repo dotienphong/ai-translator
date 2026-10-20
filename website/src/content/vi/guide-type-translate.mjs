@@ -126,7 +126,6 @@ ${callout({
 
 <h2 id="windows">Trên Windows</h2>
 <p>Windows không cần cấp quyền. Khi bạn bấm Enter, AI Translator đưa cửa sổ bạn đang chat về phía trước rồi gửi Ctrl+V. Nếu cửa sổ đó đã đóng, hay không lên được phía trước kịp, app chỉ chép bản dịch (không gửi phím vào cửa sổ khác) để bạn tự dán bằng Ctrl+V.</p>
-<p class="small muted">Bản Windows có đủ tính năng này nhưng chúng tôi chưa thử nó trên máy Windows thật. Nếu gặp lỗi, hãy báo cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>.</p>
 
 <h2 id="khi-khong-dan-duoc">Giới hạn và khi không dán được</h2>
 <ul>

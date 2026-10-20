@@ -126,7 +126,6 @@ ${callout({
 
 <h2 id="windows">On Windows</h2>
 <p>Windows needs no permission. When you press Enter, AI Translator brings the window you were chatting in back to the front and sends Ctrl+V. If that window has closed, or does not come to the front in time, the app only copies the translation (it does not send keys to another window) so you can paste it with Ctrl+V yourself.</p>
-<p class="small muted">The Windows version includes this feature, but we have not yet tried it on a real Windows computer. If something goes wrong, please tell us on the <a href="/en/contact/">contact</a> page.</p>
 
 <h2 id="when-paste-fails">Limits and when pasting fails</h2>
 <ul>

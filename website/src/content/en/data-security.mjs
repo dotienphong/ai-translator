@@ -31,7 +31,7 @@ export default {
     "AI Translator processes audio on your computer and never sends it out. See what stays on your device, where it connects, what servers store, and how to delete it.",
   breadcrumbs: crumbs,
   modified: "2026-10-14",
-  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS (Windows not yet measured), what our servers store and for how long, automatic error reports (what is sent, how to turn them off), processors, protections, signing status and how to request deletion.",
+  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS, what our servers store and for how long, automatic error reports (what is sent, how to turn them off), processors, protections, signing status and how to request deletion.",
   llmTitle: "Data and security in AI Translator",
   body: () => `
 ${pageHero({
@@ -53,7 +53,7 @@ ${facts([
   ["Network", "Five places; none of them receives audio, transcripts or the text you type"],
   ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID, error reports"],
   ["Kept for", "Until you ask us to delete it; error reports 30 days"],
-  ["Checked", "Proxy and nettop on macOS; Windows not measured yet"],
+  ["Checked", "Proxy and nettop on macOS"],
   ["Code signing", "macOS ad-hoc signed, not notarized; Windows not signed"],
 ])}
 <h2 id="on-device">What data stays on your computer?</h2>
@@ -90,7 +90,7 @@ ${facts([
 <li><strong>Marker words</strong> from the sample sentence: found neither in the app's log nor in the recorded requests.</li>
 <li><strong>Automatic error reports</strong> (re-measured on 17 October 2026 with an ad-hoc signed release build that has this feature, same machine): in a 12-minute-31-second session we deliberately killed a helper program at the 5-minute mark so the app queued an error report. For the remaining 7-plus minutes of the session no request sent a report; it reached our server 1 second after Stop was pressed. The report body was 49.8 KB and contained no account name, personal folder path, email address or marker words from the sample sentence.</li>
 </ul>
-${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build; the automatic error report was measured once (one 12-minute session, one report). <strong>Windows has not been measured.</strong> This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
+${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build; the automatic error report was measured once (one 12-minute session, one report). This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
 
 <h2 id="server">What do our servers store, and for how long?</h2>
 <p>Our servers store the data below. The Free trial row applies to every device that registered for the trial; the other rows exist only if you buy a plan or activate a key, except the error-reports row, which applies to every device whose app sends a report.</p>

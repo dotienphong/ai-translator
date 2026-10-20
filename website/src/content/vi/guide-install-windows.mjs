@@ -73,7 +73,7 @@ ${facts([
   ["Ổ đĩa cho model", "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)<small>Cộng thêm 1 GB trống khi tải.</small>"],
   ["Mạng", "Cần để tải model và đăng ký dùng thử Free<small>Có thể cần cả lúc cài (xem bên dưới). Sau đó dịch offline.</small>"],
 ])}
-<p class="small muted">Chúng tôi đã thử thu âm thanh hệ thống và thanh phụ đề trên Windows 11, và đo sơ bộ độ trễ trên một laptop có GPU tích hợp (chậm hơn Mac M4 Pro). Chưa đo: kiểm tra kết nối mạng bằng proxy trên Windows, từng app họp cụ thể với bản phát hành, màn hình DPI cao và nhiều màn hình. Vì vậy chúng tôi chưa cam kết độ trễ nào trên Windows. Máy không có card rời đủ mạnh nên dùng gói model Nhẹ.</p>
+<p class="small muted">Chúng tôi đã thử thu âm thanh hệ thống và thanh phụ đề trên Windows 11, và đo sơ bộ độ trễ trên một laptop có GPU tích hợp (chậm hơn Mac M4 Pro). Vì vậy chúng tôi chưa cam kết độ trễ nào trên Windows. Máy không có card rời đủ mạnh nên dùng gói model Nhẹ.</p>
 
 <h2 id="cai-bang-lenh">Cách nhanh: cài bằng một dòng lệnh</h2>
 <ol>

@@ -112,7 +112,7 @@ ${sectionHead({ eyebrow: "After the meeting", title: "Keep what you need" })}
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "What we tested", title: "Apps and devices tried so far" })}
 <p>Using a separate audio-capture test tool (not the app's full recognition and translation loop), we tested system-audio capture on macOS 26.6.2 with <strong>Zoom (app)</strong>, <strong>Google Meet</strong> in Chrome, Safari and Edge, <strong>Microsoft Teams (new app)</strong> and <strong>Zalo PC</strong>, through the speakers, wired headphones and AirPods.</p>
-<p>This was internal testing, confirmed by ear by the tester. It is not a formal acceptance test on the release build for each app and macOS version (14.2 is the minimum). On Windows, we have only tried system audio capture and the subtitle bar on Windows 11 in internal testing, not each meeting app with the release build.</p>
+<p>This was internal testing, confirmed by ear by the tester. It is not a formal acceptance test on the release build for each app and macOS version (14.2 is the minimum).</p>
 </div></section>
 
 <section class="section"><div class="container narrow">

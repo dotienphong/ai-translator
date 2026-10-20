@@ -87,7 +87,7 @@ ${docLayout({
 
 <h2 id="rieng-tu">Quyền riêng tư và nơi xử lý</h2>
 <p>Với dịch cloud, âm thanh được gửi tới máy chủ của nhà cung cấp. Nhiều nhà cung cấp có hợp đồng và chứng nhận bảo mật, nên cloud không mặc nhiên kém an toàn, nhưng bạn phải tin chính sách của họ và cân với quy định của tổ chức.</p>
-<p>Với AI Translator, nhận dạng giọng nói và dịch chạy trên máy: âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Kiểm bằng proxy trên macOS cho thấy khi dịch không có âm thanh hay chữ chép lời rời máy (Windows chưa đo). Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
+<p>Với AI Translator, nhận dạng giọng nói và dịch chạy trên máy: âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi đi. Kiểm bằng proxy trên macOS cho thấy khi dịch không có âm thanh hay chữ chép lời rời máy. Xem<a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
 
 <h2 id="mang-va-bot">Internet, bot và phía chủ họp</h2>
 <p>Dịch cloud cần mạng ổn định khi họp. AI Translator vẫn dịch được khi mạng chập chờn hoặc mất mạng. Nó chỉ cần mạng để tải model, đăng ký dùng thử, kích hoạt, mua gói, kiểm tra bản quyền (gói trả phí cần kiểm tra ít nhất 14 ngày một lần) và cập nhật, nên một mạng nội bộ hoàn toàn không ra được internet thì chưa phù hợp.</p>

@@ -158,7 +158,7 @@ ${checkList([
   "Dịch trên máy bạn: chữ bạn gõ và bản dịch không rời máy",
   "Gõ Telex, VNI như bình thường; dịch lỗi thì app không bao giờ dán câu gốc",
 ])}
-<p class="small muted">Trên macOS, tự dán cần quyền Trợ năng; chưa có quyền thì app chép bản dịch để bạn tự dán bằng ⌘V. Bản Windows chưa được thử trên máy thật. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>
+<p class="small muted">Trên macOS, tự dán cần quyền Trợ năng; chưa có quyền thì app chép bản dịch để bạn tự dán bằng ⌘V. Xem <a href="/huong-dan/go-dich/">hướng dẫn Gõ dịch</a>.</p>
 </div>
 <div>
 ${overlayShot({ slug: "compose-done", lang: "vi", alt: "Ô soạn Gõ dịch với một tin nhắn tiếng Việt và bản dịch tiếng Anh bên dưới", caption: "Ô soạn Gõ dịch: Enter để dán bản dịch vào ô chat." })}

@@ -112,7 +112,7 @@ ${sectionHead({ eyebrow: "Sau cuộc họp", title: "Giữ lại những gì b�
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Đã thử với gì", title: "Những app và thiết bị đã thử" })}
 <p>Bằng một công cụ thử thu âm riêng (chưa phải toàn bộ vòng nhận dạng và dịch của app), chúng tôi đã thử thu âm thanh hệ thống trên macOS 26.6.2 với <strong>Zoom (app)</strong>, <strong>Google Meet</strong> trên Chrome, Safari và Edge, <strong>Microsoft Teams (app mới)</strong> và <strong>Zalo PC</strong>, qua loa, tai nghe có dây và AirPods.</p>
-<p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải kiểm thử chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2). Trên Windows, chúng tôi mới thử thu âm thanh hệ thống và thanh phụ đề trên Windows 11 trong thử nghiệm nội bộ; chưa thử từng app họp với bản phát hành.</p>
+<p>Đây là thử nghiệm nội bộ, kết quả do người thử nghe xác nhận, chưa phải kiểm thử chính thức trên bản phát hành cho từng app và phiên bản macOS (tối thiểu 14.2).</p>
 </div></section>
 
 <section class="section"><div class="container narrow">
