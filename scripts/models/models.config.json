@@ -36,8 +36,8 @@
       "id": "fast",
       "name": { "vi": "Nhanh", "en": "Fast" },
       "note": {
-        "vi": "Dịch nhanh nhất: trên MacBook M4 Pro, mỗi câu dịch xong nhanh khoảng {x} lần so với gói Chuẩn. Đổi lại, bản dịch kém chính xác hơn gói Chuẩn và gói Nhẹ, rõ nhất ở tiếng Hàn. Nhận dạng giọng nói giống gói Chuẩn, cần máy có RAM >= 16 GB.",
-        "en": "Fastest translation: on a MacBook M4 Pro, each sentence finishes about {x} times faster than with Standard. In exchange, translations are less accurate than Standard and Lite, most noticeably for Korean. Speech recognition is the same as Standard and needs a machine with RAM >= 16 GB."
+        "vi": "Thử nghiệm. Dịch nhanh nhất: trên MacBook M4 Pro, mỗi câu dịch xong nhanh khoảng 2 đến 3 lần so với gói Chuẩn. Đổi lại, bản dịch kém chính xác hơn gói Chuẩn và gói Nhẹ, rõ nhất ở tiếng Hàn, và không dùng từ điển thuật ngữ. Nhận dạng giọng nói giống gói Chuẩn, cần máy có RAM >= 16 GB.",
+        "en": "Experimental. Fastest translation: on a MacBook M4 Pro, each sentence finishes about 2 to 3 times faster than with Standard. In exchange, translations are less accurate than Standard and Lite, most noticeably for Korean, and the glossary is not used. Speech recognition is the same as Standard and needs a machine with RAM >= 16 GB."
       }
     }
   ],

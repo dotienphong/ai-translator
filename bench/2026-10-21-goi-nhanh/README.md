@@ -26,3 +26,21 @@ python -I comet_score.py <testset.jsonl> outputs/out-*.jsonl     # môi trườn
 ## Kết quả thô
 
 `outputs/out-<model>-<chế độ>.jsonl`: mỗi dòng `id`, `hyp`, và với `measure_llama.py` thêm `first_ms`, `total_ms`.
+
+## Tốc độ để chốt ghi chú gói (Task 13, 2026-10-21)
+
+`measure_llama.py`, Metal, mẫu LMT có dấu hai chấm (như app), bộ 332 câu. Ba model chạy xen kẽ, hai vòng liền nhau
+(`outputs/speed/*-r{1,2}.jsonl`). Máy không để rảnh; vòng 1 của Hy-MT2 Q8_0 chạy cùng lúc với một lần biên dịch.
+
+Thời gian tới hết câu, trung vị (ms):
+
+| Chiều | Chuẩn (Hy-MT2 Q8_0) v1 / v2 | Nhẹ (Hy-MT2 Q4_K_M) v1 / v2 | Nhanh (LMT Q8_0) v1 / v2 | Chuẩn ÷ Nhanh v1 / v2 |
+|---|---|---|---|---|
+| en→vi | 481 / 627 | 333 / 348 | 156 / 174 | 3,1 / 3,6 |
+| vi→en | 248 / 344 | 205 / 202 | 114 / 123 | 2,2 / 2,8 |
+| vi→zh | 212 / 276 | 182 / 178 | 108 / 124 | 2,0 / 2,2 |
+| vi→ja | 376 / 501 | 295 / 299 | 148 / 174 | 2,5 / 2,9 |
+| vi→ko | 402 / 511 | 324 / 336 | 176 / 194 | 2,3 / 2,6 |
+
+Chữ đầu tiên: Nhanh 18–25 ms, Chuẩn và Nhẹ 32–54 ms. Ghi chú gói dùng "khoảng 2 đến 3 lần so với gói Chuẩn" (thấp nhất
+2,0, cao nhất 3,6). So với gói Nhẹ: 1,7–2,1 lần.

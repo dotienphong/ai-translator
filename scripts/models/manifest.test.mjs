@@ -73,6 +73,7 @@ test("cấu hình trong repo có đủ file cho ba gói", () => {
     !config.recommend.rules.some((r) => r.pack === "fast") && config.recommend.fallback !== "fast",
     "không đề xuất gói Nhanh (spec 2026-10-21-goi-nhanh §3)",
   );
+  for (const pack of config.packs) assert.ok(!/\{x\}/.test(pack.note.vi + pack.note.en), `${pack.id}: ghi chú còn {x}`);
 });
 
 test("file mt có prompt khác hy-mt2 thì min_app_version >= 0.1.18 (spec 2026-10-21-goi-nhanh §4.2)", () => {

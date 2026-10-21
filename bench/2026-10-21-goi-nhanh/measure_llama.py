@@ -1,5 +1,7 @@
 """Đo model GGUF qua llama-server (stream) trên bộ test 2026-09-29: độ trễ chữ đầu, cả câu, chrF.
-Dùng: python -I measure_llama.py <llama-server> <gguf> <style:lmt|hymt> <mode:metal|cpu4> <testset> <out.jsonl>"""
+Dùng: python -I measure_llama.py <llama-server> <gguf> <style:lmt|lmt-dot|hymt> <mode:metal|cpu4> <testset> <out.jsonl>
+
+`lmt` là mẫu của app (dấu hai chấm, spec gói Nhanh §5.2); `lmt-dot` là mẫu dấu chấm của lượt đo đầu (§2)."""
 import json, sys, time, subprocess, urllib.request, statistics, sacrebleu
 srv, gguf, style, mode, testset, outp = sys.argv[1:7]
 PORT = 18431
@@ -17,6 +19,8 @@ try:
     def prompt(r):
         s, t, x = r["src_lang"], r["tgt_lang"], r["src"]
         if style == "lmt":
+            return f"Translate the following text from {NAMES[s]} into {NAMES[t]}:\n{NAMES[s]}: {x}\n{NAMES[t]}:"
+        if style == "lmt-dot":
             return f"Translate the following text from {NAMES[s]} into {NAMES[t]}.\n{NAMES[s]}: {x}\n{NAMES[t]}:"
         if "zh" in (s, t):
             return f"将以下文本翻译为{ZH[t]}，注意只需要输出翻译后的结果，不要额外解释：\n\n{x}"
