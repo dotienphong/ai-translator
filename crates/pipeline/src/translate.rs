@@ -7,7 +7,7 @@ use crate::config::MtConfig;
 use crate::glossary::Term;
 use crate::llama::{ChatRequest, LlamaServer, StreamEnd};
 use crate::postprocess::{PostProcessor, Step, Violation};
-use crate::prompt::{Lang, context_prompt, terminology_prompt, translation_prompt};
+use crate::prompt::{Lang, PromptKind, build};
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -112,13 +112,15 @@ fn describe(v: Violation) -> &'static str {
     }
 }
 
-/// Prompt theo §6.5: có thuật ngữ thì mẫu "terminology" (bỏ ngữ cảnh), có ngữ cảnh thì mẫu nền, còn lại mẫu mặc định.
-fn prompt_for(job: &Job) -> String {
-    match job.context {
-        _ if !job.terms.is_empty() => terminology_prompt(job.text, job.terms, job.src, job.tgt),
-        Some(context) => context_prompt(job.text, context, job.src, job.tgt),
-        None => translation_prompt(job.text, job.src, job.tgt),
-    }
+/// Prompt theo §6.5: có thuật ngữ thì mẫu "terminology" (bỏ ngữ cảnh), có ngữ cảnh thì mẫu nền, còn lại mẫu mặc định;
+/// mẫu cụ thể theo họ của model đang nạp (`MtConfig::prompt_family`, spec 2026-10-21-goi-nhanh §5).
+fn prompt_for(job: &Job, cfg: &MtConfig) -> String {
+    let kind = match job.context {
+        _ if !job.terms.is_empty() => PromptKind::Terminology(job.terms),
+        Some(context) => PromptKind::Context(context),
+        None => PromptKind::Plain,
+    };
+    build(cfg.prompt_family, kind, job.text, job.src, job.tgt)
 }
 
 /// Số gói tối đa trước khi coi là quá dài (ngưỡng tỉ lệ token của cặp, §6.5). Cách 2 của Q4: chỉ áp tỉ lệ khi câu gốc đủ
@@ -177,7 +179,7 @@ pub fn translate(
     if is_cancelled() {
         return Outcome::Cancelled;
     }
-    let prompt = prompt_for(job);
+    let prompt = prompt_for(job, cfg);
     let source_tokens = match mt.count_tokens(job.text) {
         Ok(n) => n,
         Err(MtError::Unavailable(e)) => return Outcome::Unavailable(e),
@@ -269,7 +271,7 @@ pub fn translate_live(
     if is_cancelled() {
         return Outcome::Cancelled;
     }
-    let prompt = prompt_for(job);
+    let prompt = prompt_for(job, cfg);
     let source_tokens = match mt.count_tokens(job.text) {
         Ok(n) => n,
         Err(MtError::Unavailable(e)) => return Outcome::Unavailable(e),
@@ -335,6 +337,7 @@ pub fn translate_live(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prompt::{PromptFamily, context_prompt, terminology_prompt, translation_prompt};
 
     /// Server giả: mỗi request trả một danh sách gói định sẵn, và ghi lại tham số đã nhận.
     struct Scripted {
@@ -408,6 +411,29 @@ mod tests {
         assert_eq!(
             mt.requests,
             [(translation_prompt("Good morning", Lang::En, Lang::Vi), 40, 1.05)]
+        );
+    }
+
+    #[test]
+    fn the_lmt_family_sends_the_lmt_template_and_its_own_thresholds() {
+        let mut mt = Scripted {
+            replies: vec![Ok((vec!["Chào", " buổi", " sáng"], "stop"))],
+            requests: vec![],
+        };
+        let cfg = MtConfig {
+            prompt_family: PromptFamily::Lmt,
+            ..MtConfig::default()
+        };
+        let outcome = translate(&mut mt, &job("Good morning"), &cfg, &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(outcome, Outcome::Done(_)), "{outcome:?}");
+        assert_eq!(
+            mt.requests,
+            [(
+                "Translate the following text from English into Vietnamese:\nEnglish: Good morning\nVietnamese:"
+                    .to_string(),
+                40,
+                1.05
+            )]
         );
     }
 

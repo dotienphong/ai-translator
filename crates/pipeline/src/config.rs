@@ -11,7 +11,7 @@
 //!
 //! Hạn dịch câu cuối khi Dừng thì nằm ở đây (`mt.stop_grace_ms`), vì nó quyết định câu nào thành `skipped`.
 
-use crate::prompt::Lang;
+use crate::prompt::{Lang, PromptFamily};
 use crate::segmenter::SegmenterConfig;
 use serde::{Deserialize, Serialize};
 
@@ -196,12 +196,19 @@ pub struct MtConfig {
     /// Ngưỡng theo cặp: 8 chiều có tiếng Việt lấy ở S7, 12 chiều không có tiếng Việt lấy ở Đ12. Cặp không có trong
     /// danh sách (ví dụ manifest chỉ ghi vài cặp) thì không kiểm tỉ lệ, chỉ chịu hạn mức sinh.
     pub ratio_thresholds: Vec<PairRatio>,
+    /// Ngưỡng của gói Nhanh (LMT, tokenizer Qwen3), đo theo cùng cách (spec 2026-10-21-goi-nhanh §6.2). Cặp không có thì
+    /// không kiểm tỉ lệ.
+    pub ratio_thresholds_lmt: Vec<PairRatio>,
     /// Chỉ kiểm tỉ lệ khi câu gốc có từ chừng này token (cách 2 của Q4, đề xuất của kế hoạch 00).
     pub ratio_min_source_tokens: usize,
     /// Timeout của một request dịch (kể cả stream).
     pub request_timeout_ms: u64,
     /// Khi bấm Dừng, câu cuối được dịch trong hạn chung này; quá hạn thì câu đó thành `skipped` (§7).
     pub stop_grace_ms: u64,
+    /// Họ mẫu prompt của model đang nạp. App đặt theo `ModelFiles::mt_prompt` của bộ tiến trình phụ đang chạy; manifest
+    /// không ghi đè được (`serde(skip)`).
+    #[serde(skip)]
+    pub prompt_family: PromptFamily,
 }
 
 /// Ngưỡng tỉ lệ token mặc định, đều là tỉ lệ lớn nhất đo được trên các câu gốc từ 10 token cộng biên 25%, làm tròn
@@ -237,6 +244,21 @@ pub const DEFAULT_RATIO_THRESHOLDS: &[(&str, &str, f32)] = &[
     ("zh", "ko", 3.7),
 ];
 
+/// Ngưỡng tỉ lệ token của LMT-60-0.6B Q8_0, cách lấy như [`DEFAULT_RATIO_THRESHOLDS`], đo ở Task 6 của kế hoạch gói
+/// Nhanh (`bench/2026-10-21-goi-nhanh/ratio.md`).
+pub const DEFAULT_RATIO_THRESHOLDS_LMT: &[(&str, &str, f32)] = &[];
+
+fn pair_ratios(table: &[(&str, &str, f32)]) -> Vec<PairRatio> {
+    table
+        .iter()
+        .map(|&(src, tgt, ratio)| PairRatio {
+            src: src.into(),
+            tgt: tgt.into(),
+            ratio,
+        })
+        .collect()
+}
+
 impl Default for MtConfig {
     fn default() -> Self {
         Self {
@@ -245,17 +267,12 @@ impl Default for MtConfig {
             max_tokens_per_source_token: 4,
             max_tokens_extra: 32,
             max_tokens_cap: 512,
-            ratio_thresholds: DEFAULT_RATIO_THRESHOLDS
-                .iter()
-                .map(|&(src, tgt, ratio)| PairRatio {
-                    src: src.into(),
-                    tgt: tgt.into(),
-                    ratio,
-                })
-                .collect(),
+            ratio_thresholds: pair_ratios(DEFAULT_RATIO_THRESHOLDS),
+            ratio_thresholds_lmt: pair_ratios(DEFAULT_RATIO_THRESHOLDS_LMT),
             ratio_min_source_tokens: 10,
             request_timeout_ms: 120_000,
             stop_grace_ms: 3_000,
+            prompt_family: PromptFamily::default(),
         }
     }
 }
@@ -270,11 +287,13 @@ impl MtConfig {
             .min(self.max_tokens_cap as usize) as u32
     }
 
+    /// Ngưỡng của cặp theo bảng của họ prompt đang dùng (spec gói Nhanh §6.2).
     pub fn ratio_for(&self, src: &str, tgt: &str) -> Option<f32> {
-        self.ratio_thresholds
-            .iter()
-            .find(|p| p.src == src && p.tgt == tgt)
-            .map(|p| p.ratio)
+        let table = match self.prompt_family {
+            PromptFamily::HyMt2 => &self.ratio_thresholds,
+            PromptFamily::Lmt => &self.ratio_thresholds_lmt,
+        };
+        table.iter().find(|p| p.src == src && p.tgt == tgt).map(|p| p.ratio)
     }
 }
 
@@ -543,6 +562,13 @@ impl PipelineConfig {
                     .iter()
                     .all(|p| p.ratio.is_finite() && p.ratio > 0.0),
             ),
+            (
+                "mt.ratio_thresholds_lmt",
+                self.mt
+                    .ratio_thresholds_lmt
+                    .iter()
+                    .all(|p| p.ratio.is_finite() && p.ratio > 0.0),
+            ),
             ("mt.request_timeout_ms", self.mt.request_timeout_ms >= 1_000),
             ("mt.stop_grace_ms", self.mt.stop_grace_ms <= 30_000),
             ("queue.asr_max_waiting", q.asr_max_waiting >= 1),
@@ -718,6 +744,54 @@ mod tests {
         pairs.sort();
         pairs.dedup();
         assert_eq!(pairs.len(), mt.ratio_thresholds.len());
+        let mut pairs: Vec<_> = mt.ratio_thresholds_lmt.iter().map(|p| (&p.src, &p.tgt)).collect();
+        pairs.sort();
+        pairs.dedup();
+        assert_eq!(pairs.len(), mt.ratio_thresholds_lmt.len());
+    }
+
+    #[test]
+    fn ratio_thresholds_follow_the_prompt_family() {
+        let mut mt = MtConfig::default();
+        assert_eq!(mt.prompt_family, PromptFamily::HyMt2);
+        assert_eq!(mt.ratio_for("en", "vi"), Some(4.4));
+        mt.prompt_family = PromptFamily::Lmt;
+        mt.ratio_thresholds_lmt = vec![PairRatio {
+            src: "en".into(),
+            tgt: "vi".into(),
+            ratio: 9.9,
+        }];
+        assert_eq!(mt.ratio_for("en", "vi"), Some(9.9));
+        assert_eq!(
+            mt.ratio_for("vi", "en"),
+            None,
+            "bảng LMT không có cặp này thì không kiểm tỉ lệ"
+        );
+    }
+
+    #[test]
+    fn the_prompt_family_never_comes_from_the_manifest() {
+        let c: PipelineConfig =
+            serde_json::from_value(serde_json::json!({ "mt": { "prompt_family": "Lmt" } })).unwrap();
+        assert_eq!(c.mt.prompt_family, PromptFamily::HyMt2);
+        assert!(serde_json::to_value(&c).unwrap()["mt"].get("prompt_family").is_none());
+    }
+
+    #[test]
+    fn manifest_can_override_lmt_thresholds() {
+        let c: PipelineConfig = serde_json::from_value(serde_json::json!({
+            "mt": { "ratio_thresholds_lmt": [{ "src": "en", "tgt": "vi", "ratio": 5.0 }] }
+        }))
+        .unwrap();
+        assert!(c.validate().is_ok());
+        let mut mt = c.mt;
+        mt.prompt_family = PromptFamily::Lmt;
+        assert_eq!(mt.ratio_for("en", "vi"), Some(5.0));
+        let bad: PipelineConfig = serde_json::from_value(serde_json::json!({
+            "mt": { "ratio_thresholds_lmt": [{ "src": "en", "tgt": "vi", "ratio": -1.0 }] }
+        }))
+        .unwrap();
+        assert_eq!(bad.validate(), Err("mt.ratio_thresholds_lmt".to_string()));
     }
 
     #[test]

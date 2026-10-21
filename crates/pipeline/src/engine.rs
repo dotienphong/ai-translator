@@ -33,7 +33,7 @@ use crate::config::{AudioConfig, FilterConfig, MtConfig, PipelineConfig};
 use crate::filter::{Evidence, Verdict, pcm_skip, verdict};
 use crate::glossary::SharedGlossary;
 use crate::metrics::SessionMetrics;
-use crate::prompt::{Lang, translation_prompt};
+use crate::prompt::Lang;
 use crate::prompt_history::PromptHistory;
 use crate::queue::{AsrQueue, MtItem, MtQueue, PartialRequest, PendingSegment, Popped, Ready};
 use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter, SegmenterConfig};
@@ -1018,7 +1018,13 @@ fn mt_loop(
     // Làm nóng khi bắt đầu phiên (§6.5); lỗi request ở đây không quan trọng, request thật sẽ báo lỗi của nó. Server không
     // dùng được (khởi động không nổi, §6.5) thì báo ngay để thanh phụ đề hiện "Dịch không khả dụng" từ đầu phiên, thay vì
     // chỉ hiện câu gốc đến khi câu đầu tiên xong. Bấm Dừng thì bỏ ngang lần làm nóng.
-    let warmup = translation_prompt("Hello.", Lang::En, target);
+    let warmup = crate::prompt::build(
+        cfg.prompt_family,
+        crate::prompt::PromptKind::Plain,
+        "Hello.",
+        Lang::En,
+        target,
+    );
     let req = crate::llama::ChatRequest {
         prompt: &warmup,
         max_tokens: 32,
@@ -2372,7 +2378,7 @@ mod tests {
     #[test]
     fn the_translation_thread_puts_matching_terms_into_the_prompt() {
         use crate::glossary::{Glossary, Term};
-        use crate::prompt::terminology_prompt;
+        use crate::prompt::{terminology_prompt, translation_prompt};
         use std::sync::RwLock;
 
         struct Recording(Arc<Mutex<Vec<String>>>);
