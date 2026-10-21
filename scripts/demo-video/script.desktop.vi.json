@@ -1,0 +1,77 @@
+{
+  "stage": "desktop",
+  "data": "vi",
+  "target": "vi",
+  "viewport": { "width": 1536, "height": 960, "dpr": 1.25 },
+  "timing": {
+    "voiceStartMs": 800,
+    "liveHoldMs": 2000,
+    "outroMs": 4000,
+    "meetingLabel": { "from": 800, "to": 3800 },
+    "chatLabel": { "from": 500, "to": 3500 },
+    "chat": {
+      "typing1StartMs": 300,
+      "typing1Ms": 1200,
+      "moveAfterMsgMs": 500,
+      "moveMs": 700,
+      "clickAfterMoveMs": 100,
+      "hotkeyAfterClickMs": 600,
+      "pressMs": 200,
+      "openAfterHotkeyMs": 250,
+      "typingAfterOpenMs": 600,
+      "pace": { "charMs": 70, "spaceMs": 110, "punctuationMs": 260 },
+      "readMs": 1500,
+      "pasteMs": 150,
+      "reviewMs": 1000,
+      "typing2StartMs": 700,
+      "typing2Ms": 1500,
+      "holdMs": 1500
+    }
+  },
+  "labels": {
+    "meeting": { "text": "Dịch cuộc họp trực tiếp · chạy trên máy" },
+    "chat": { "text": "Gõ dịch · Ctrl + Alt + G · nhắn tiếng Việt, gửi đi tiếng Anh" }
+  },
+  "call": {
+    "title": "Weekly sync",
+    "startClock": 727,
+    "people": [
+      { "name": "Sarah Collins", "still": "sarah" },
+      { "name": "David Park", "video": "p1" },
+      { "name": "Emma Wilson", "video": "p2" },
+      { "name": "Bạn", "video": "self" }
+    ]
+  },
+  "chat": {
+    "title": "Tin nhắn",
+    "contact": { "name": "Sarah Collins", "still": "sarah", "status": "Đang hoạt động" },
+    "list": [
+      { "name": "Sarah Collins", "still": "sarah", "time": "10:42", "active": true },
+      { "name": "David Park", "still": "p1-still", "last": "Thanks for the update!", "time": "09:15" },
+      { "name": "Emma Wilson", "still": "p2-still", "last": "See you at the sync.", "time": "Hôm qua" },
+      { "name": "Nhóm Checkout", "initials": "NC", "last": "Bạn: Đã gửi file thiết kế", "time": "T2" }
+    ],
+    "historyDay": "Hôm qua",
+    "history": [
+      { "from": "them", "text": "Meeting link for tomorrow: weekly sync at 10:00." },
+      { "from": "me", "text": "Got it, thanks!" }
+    ],
+    "todayDay": "Hôm nay 10:42",
+    "sarahMessage": "Hi! Following up on the quote we discussed in the meeting.",
+    "sarahReply": "Perfect, thank you!",
+    "reply": "Dạ vâng, em sẽ gửi báo giá mới cho chị trước thứ Sáu.",
+    "replyLang": "vi",
+    "replyTarget": "en",
+    "placeholder": "Aa"
+  },
+  "taskbar": { "time": "10:42", "date": "21/10/2026" },
+  "outro": { "name": "AI Translator", "url": "aitranslator.io.vn" },
+  "layout": {
+    "workArea": { "width": 1536, "height": 912 },
+    "meeting": { "titleBar": 32, "topBar": 48, "controlBar": 72, "padding": 12, "gap": 10 },
+    "overlay": { "width": 900, "height": 200, "fontSize": 22, "bottomGap": 72 },
+    "chat": { "left": 238, "top": 96, "width": 1060, "height": 720, "listWidth": 300 },
+    "compose": { "width": 560, "topRatio": 0.25 },
+    "cursor": { "rest": { "x": 1290, "y": 560 }, "input": { "x": 860, "y": 788 } }
+  }
+}
