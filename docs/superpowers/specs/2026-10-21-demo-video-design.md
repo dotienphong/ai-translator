@@ -29,6 +29,13 @@ không công bố công nghệ lõi.
   - bản dịch của Gõ dịch hiện dần trong đúng khoảng thời gian dịch đã đo (mục 3.3);
   - sau khi dán vẫn phải bấm Enter lần nữa mới gửi, đúng luồng thật (mục 1);
   - trang dựng cảnh có khung 540×960 điểm CSS ở mật độ điểm ảnh 2 (mục 2.4).
+- **Chốt thêm khi viết kế hoạch** (2026-10-21, sau khi đọc code):
+  - cỡ chữ mặc định của thanh phụ đề là 20 (không phải 28 như bản đầu); video đặt 24, trong khoảng 14–48 của Cài đặt › Phụ đề
+    (mục 2.4);
+  - nội dung quan trọng nằm trong vùng không bị giao diện TikTok/Reels che (mục 2.4);
+  - hạ mẫu 48 → 16 kHz bằng bộ lọc tự viết trong Node thay cho `afconvert`, để hai file khớp nhau tuyệt đối về thời gian (mục 2.2);
+  - thời gian ảo là đồng hồ tự cài vào mọi frame, không dùng thời gian ảo của Chrome (mục 2.5);
+  - chấm "đang nghe" của thanh phụ đề và vòng sáng người nói theo mức âm lượng thật của giọng đọc (mục 2.2, 3.1).
 
 ## 1. Kịch bản (khung 1080×1920, 30 khung/giây, khoảng 50 giây)
 
@@ -57,11 +64,15 @@ Tất cả nằm trong `scripts/demo-video/`. Kết quả trung gian và video r
 
 ### 2.2 Giọng đọc
 
-- `say -v <giọng>` đọc từng câu ra file 48 kHz. Script ghép các câu với khoảng nghỉ đã khai thành **một** file 48 kHz cho video.
-- Từ đúng file đó, `afconvert` (có sẵn trên macOS) tạo WAV 16 kHz mono cho bộ máy dịch. Cùng một nguồn nên hai file khớp nhau
-  từng mẫu về thời gian.
+- `say -v <giọng>` đọc từng câu ra file 48 kHz. Script cắt khoảng lặng đầu cuối của từng câu, rồi ghép các câu với khoảng nghỉ
+  đã khai thành **một** file 48 kHz cho video.
+- Từ đúng file đó, script hạ mẫu ra WAV 16 kHz mono cho bộ máy dịch: lọc thông thấp FIR đối xứng (không làm trễ) rồi lấy 1
+  trong 3 mẫu. Mẫu thứ n của file 16 kHz đúng là thời điểm của mẫu 3n của file 48 kHz, nên mốc câu khớp cả hai file.
 - Ghi `truth.json` cùng định dạng `bench/phase0/data/latency/*.truth.json` (`id`, `lang`, `start_ms`, `end_ms`, `vad_end_ms`,
   `text`), tính từ độ dài từng câu và khoảng nghỉ.
+- Ghi `scripts/demo-video/data/voice.<ngôn ngữ>.json` (commit): tên giọng, bản macOS, độ dài, mốc câu, mức âm lượng (RMS) mỗi
+  100 ms, mã băm SHA-256 của file 48 kHz. Lúc dựng, file 48 kHz phải đúng mã băm này (tức là đúng file đã dùng để lấy chữ),
+  không thì dừng.
 - Giọng khai trong kịch bản chưa được cài thì **dừng và báo**, không tự dùng giọng khác.
 
 ### 2.3 Chữ thật
@@ -78,8 +89,12 @@ Tất cả nằm trong `scripts/demo-video/`. Kết quả trung gian và video r
 ### 2.4 Trang dựng cảnh: `stage.html`
 
 - Chạy trên server của `scripts/ui-preview/vite.config.ts` (gốc là thư mục repo, nên trang ở `/scripts/demo-video/stage.html`).
-- Khung 540×960 điểm CSS, mật độ điểm ảnh 2 → ảnh 1080×1920. Chữ của thanh phụ đề ở cỡ mặc định 28 px hiện thành 56 px điểm ảnh,
-  đủ đọc trên điện thoại.
+- Khung 540×960 điểm CSS, mật độ điểm ảnh 2 → ảnh 1080×1920.
+- Thanh phụ đề rộng 470 điểm CSS, cỡ chữ 24 (Cài đặt › Phụ đề cho 14–48; mặc định của app là 20): chữ dịch hiện thành 48 px điểm
+  ảnh, đủ đọc trên điện thoại. Ô Gõ dịch giữ đúng bề rộng thật 560 điểm, thu còn 0,84 lần để vừa khung.
+- **Vùng an toàn:** chú thích, cửa sổ, thanh phụ đề, ô Gõ dịch và hình phím nằm trong khoảng dọc 126–720 và ngang tới 486 (điểm
+  CSS), tránh phần trên cùng, phần chữ mô tả ở dưới và cột nút bên phải mà TikTok/Reels vẽ đè lên video. Tham số `guides=1` tô đỏ
+  phần ngoài vùng an toàn để kiểm.
 - Trang tự vẽ: cửa sổ cuộc gọi, khung chat, chú thích, hình phím, màn kết.
 - Thanh phụ đề và ô Gõ dịch là **đúng** `overlay.html` và `compose.html` của app, nhúng bằng iframe cùng nguồn.
 - Trang nhận một mốc thời gian (lịch, mục 3) và đẩy từng sự kiện vào iframe đúng lúc.
@@ -90,14 +105,19 @@ Tất cả nằm trong `scripts/demo-video/`. Kết quả trung gian và video r
 
 - Chrome không đầu qua `website/tools/browser/cdp.mjs` (công cụ sẵn có; không thêm thư viện).
 - **Thời gian ảo:** mỗi khung tiến đúng 1/30 giây rồi chụp ảnh, nên không giật, không lệch tiếng, dựng lần nào cũng ra y hệt.
-  - Cách ưu tiên: thời gian ảo của Chrome (`Emulation.setVirtualTimePolicy`), áp cho cả trang lẫn iframe.
-  - Kế hoạch có bước thử trước: kiểm transition/animation CSS có đi theo thời gian ảo không. Không được thì dùng đồng hồ ảo tự cài
-    trong mọi frame (Date, performance.now, hẹn giờ, requestAnimationFrame), cộng Web Animations API để đặt thời điểm của
-    animation.
+  - Đồng hồ ảo tự cài (`vclock.js`), nạp vào mọi frame trước script của trang (`Page.addScriptToEvaluateOnNewDocument`). Nó thay
+    Date, performance.now, setTimeout/setInterval, requestAnimationFrame; mọi frame dùng chung đồng hồ của trang ngoài cùng, và
+    thời gian chỉ tiến khi `render.mjs` gọi.
+  - Trang dựng cảnh không dùng transition/animation CSS: mọi chuyển động tính theo thời điểm. Trong hai iframe, trang dựng cảnh
+    tắt transition (app chỉ có hai cái: chấm "đang nghe" 0,12 s và hiệu ứng rê chuột, không thấy được khi đứng yên) và ẩn con trỏ
+    nhấp nháy của ô gõ, vì các thứ này chạy theo giờ thật.
+  - Đã cân nhắc thời gian ảo của Chrome (`Emulation.setVirtualTimePolicy`): bỏ, vì không chắc nó điều khiển được mọi thứ trong
+    iframe, mà giao diện app lại gần như không có animation để cần tới.
 - **Âm thanh:** script ghép một file WAV 48 kHz gồm giọng đọc đặt đúng chỗ của cảnh 1 và tiếng gõ phím tự sinh (chuỗi xung ngắn)
   đặt đúng lúc từng chữ được gõ, theo cùng lịch với hình.
-- **ffmpeg:** ghép ảnh thành H.264 `yuv420p`, âm thanh AAC, MP4 có `+faststart`. Ra `target/demo-video/ai-translator-demo.vi.mp4`
-  và một ảnh bìa PNG.
+- **ffmpeg:** ghép ảnh thành H.264 `yuv420p` (ma trận màu BT.709, để màu không lệch so với ảnh chụp), âm thanh AAC, MP4 có
+  `+faststart`. Ra `target/demo-video/ai-translator-demo.vi.mp4`, một ảnh bìa PNG và khoảng 10 khung chính
+  (`target/demo-video/keyframes.vi/`) để xem lại.
 - `ffmpeg` chưa có trên máy: cài bằng `brew install ffmpeg` (công cụ của máy dev, không vào app); **hỏi chủ dự án trước khi cài**.
 
 ## 3. Lịch thời gian
@@ -109,6 +129,8 @@ cùng một lịch.
 
 - Giọng bắt đầu ở mốc `voiceStart` của cảnh 1 (dự kiến 3 s). Cảnh 1 kết thúc sau sự kiện phụ đề cuối cùng cộng một khoảng giữ để
   người xem đọc xong.
+- Chấm "đang nghe" (`audio://level`, mỗi 100 ms) và vòng sáng quanh ảnh đại diện người nói theo mức âm lượng của giọng đọc
+  (`voice.json`), không phải số ngẫu nhiên như trang xem trước.
 
 ### 3.2 Phụ đề
 
@@ -153,7 +175,7 @@ cùng một lịch.
 - `latency-bench session` phát WAV theo thời gian thực: máy nặng làm số đo lệch. Công cụ cảnh báo khi phát chậm hơn lịch quá
   100 ms; khi đó chạy lại.
 - Giọng máy có thể bị nhận dạng sai chữ: xử lý theo mục 4 (đổi câu, không sửa kết quả).
-- Thời gian ảo của Chrome có thể không điều khiển được animation CSS trong iframe: có cách dự phòng ở mục 2.5.
+- Đồng hồ ảo có thể sót một thứ chạy theo giờ thật: lần dựng hai lần so mã băm (mục 5.2) bắt được.
 
 ## 7. Ngoài phạm vi
 
