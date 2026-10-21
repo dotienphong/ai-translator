@@ -150,3 +150,23 @@ Tất cả trong `scripts/demo-video/`. File lớn tải về và ảnh tách ra
 ## 8. Ngoài phạm vi
 
 Dựng lại bản dọc 9:16 theo phong cách mới, bản tiếng Anh, nhạc nền.
+
+## 9. Bản tiếng Anh (Việt → Anh), duyệt 2026-10-21
+
+Chủ dự án duyệt bản 16:10 tiếng Việt, rồi yêu cầu thêm một bản "dịch từ Việt sang Anh". Đã chốt qua hội thoại:
+- **Người xem:** người nước ngoài làm việc với người Việt.
+  - Trong cuộc họp, đối tác nói tiếng Việt, phụ đề hiện tiếng Anh.
+  - Ở Gõ dịch, gõ tiếng Anh, gửi đi tiếng Việt.
+  - Giao diện app, nhãn, khung chat đều tiếng Anh; phím vẫn là Ctrl + Alt + G.
+- **Giọng:** **Linh (Enhanced)** của macOS (đã tải).
+- **Vai:**
+  - người nói **Thu Hà Nguyễn · Product Manager**, ảnh người phụ nữ châu Á (`self-still`);
+  - David Park, Sarah Collins;
+  - ô **You** dùng ảnh của Emma (`p2-still`), nên Thu Hà gọi "chị".
+- **Câu:** 4 câu tiếng Việt trong cuộc họp; tin nhắn tiếng Việt của Thu Hà; câu tiếng Anh "You" gõ; lời đáp tiếng Việt. Câu cụ thể nằm trong `script.desktop.en.json` và được duyệt theo bản dịch thật như bản Việt (đổi câu, không sửa kết quả).
+- **Code:**
+  - kịch bản `script.desktop.en.json`;
+  - chữ giao diện của trang dựng cảnh (tiêu đề danh sách chat, ô tìm, nút rời họp, tiền tố "Bạn:") đưa vào khối `ui` của kịch bản, bản Việt phải ra y hệt;
+  - `voice.mjs` nhận ngôn ngữ nguồn (`voice.lang`, mặc định `en`);
+  - bộ dữ liệu chữ thật mặc định trùng tên kịch bản (`data/*.desktop.en.json`).
+- **Ra:** `target/demo-video/ai-translator-demo.desktop.en.mp4`.
