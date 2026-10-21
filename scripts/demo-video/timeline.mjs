@@ -93,6 +93,7 @@ export function buildTimeline(script, voice, live, compose) {
   const enter2At = pasteAt + c.reviewMs;
   const chatEnd = enter2At + c.holdMs;
   const totalMs = chatEnd + s.outroMs;
+  const sarahAt = liveEnd + c.sarahMsgMs;
   return {
     totalMs,
     frames: Math.ceil(totalMs / FRAME_MS),
@@ -105,12 +106,25 @@ export function buildTimeline(script, voice, live, compose) {
       { ...script.captions.chat, from: liveEnd, to: chatEnd },
     ],
     overlayEvents: [...subtitles, ...levelEvents(voice.levels, voice.levelWindowMs, voiceStartMs)].sort((a, b) => a.at - b.at),
-    chat: { sarahAt: liveEnd + c.sarahMsgMs, hotkeyAt, pressAt, composeOpenAt, typing, translateAt, translatedAt, enter1At, pasteAt, enter2At },
+    chat: { sarahAt, hotkeyAt, pressAt, composeOpenAt, typing, translateAt, translatedAt, enter1At, pasteAt, enter2At },
     compose: {
       text: compose.hyp,
       deltas: revealDeltas(compose.hyp, compose.first_token_ms ?? 0, compose.total_ms),
       totalMs: compose.total_ms,
     },
-    clicks: [pressAt, ...typing.map((k) => k.at), enter1At, enter2At],
+    sounds: [pressAt, ...typing.map((k) => k.at), enter1At, enter2At].map((at) => ({ at, kind: "key" })),
+    // Khung chính để xem lại (spec §5.5): tên ảnh → thời điểm.
+    keyTimes: {
+      "01-mo-dau": 1500,
+      "02-dang-noi": voiceStartMs + 4000,
+      "03-phu-de": liveEnd - s.liveHoldMs / 2,
+      "04-tin-nhan": sarahAt + 600,
+      "05-phim-tat": pressAt + 60,
+      "06-dang-go": typing[Math.floor(typing.length / 2)].at + 10,
+      "07-ban-dich": translatedAt + 300,
+      "08-da-dan": pasteAt + 400,
+      "09-da-gui": enter2At + 700,
+      "10-ket": totalMs - 1500,
+    },
   };
 }

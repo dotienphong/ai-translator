@@ -119,7 +119,23 @@ test("lịch cả video: cảnh live hết sau sự kiện cuối, Gõ dịch đ
   assert.deepEqual(tl.scenes.chat, [liveEnd, c.enter2At + 2200]);
   assert.equal(tl.totalMs, c.enter2At + 2200 + 5000);
   assert.equal(tl.frames, Math.ceil(tl.totalMs / FRAME_MS));
-  assert.deepEqual(tl.clicks, [c.pressAt, ...c.typing.map((k) => k.at), c.enter1At, c.enter2At]);
+  assert.deepEqual(
+    tl.sounds,
+    [c.pressAt, ...c.typing.map((k) => k.at), c.enter1At, c.enter2At].map((at) => ({ at, kind: "key" })),
+  );
+  assert.equal(tl.clicks, undefined);
+  assert.deepEqual(tl.keyTimes, {
+    "01-mo-dau": 1500,
+    "02-dang-noi": 3000 + 4000,
+    "03-phu-de": liveEnd - 1250,
+    "04-tin-nhan": c.sarahAt + 600,
+    "05-phim-tat": c.pressAt + 60,
+    "06-dang-go": c.typing[1].at + 10,
+    "07-ban-dich": c.translatedAt + 300,
+    "08-da-dan": c.pasteAt + 400,
+    "09-da-gui": c.enter2At + 700,
+    "10-ket": tl.totalMs - 1500,
+  });
   assert.deepEqual(
     tl.overlayEvents.map((e) => e.event),
     ["audio://level", "audio://level", "audio://level", "subtitle://upsert"],

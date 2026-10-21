@@ -434,7 +434,7 @@ export function mouseSample(rate = AUDIO_RATE) {
     const t = i / rate;
     const env = Math.exp(-t / 0.002) + (t >= 0.045 ? 0.6 * Math.exp(-(t - 0.045) / 0.002) : 0);
     low += 0.25 * (noise - low);
-    out[i] = Math.max(-0.3, Math.min(0.3, low * env * 0.9));
+    out[i] = Math.max(-0.29, Math.min(0.29, low * env * 0.6));
   }
   return out;
 }
