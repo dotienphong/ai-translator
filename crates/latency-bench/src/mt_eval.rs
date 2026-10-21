@@ -484,15 +484,20 @@ mod tests {
         assert!(args.no_ratio_thresholds);
         let cfg = mt_config(&args);
         assert!(cfg.ratio_thresholds.is_empty());
+        assert!(cfg.ratio_thresholds_lmt.is_empty());
         assert_eq!(cfg.ratio_for("ko", "zh"), None);
         assert_eq!(
             MtConfig {
                 ratio_thresholds: MtConfig::default().ratio_thresholds,
+                ratio_thresholds_lmt: MtConfig::default().ratio_thresholds_lmt,
                 ..cfg
             },
             MtConfig::default(),
             "chỉ bỏ ngưỡng"
         );
+        let lmt = mt_config(&parse(&["--prompt", "lmt", "--no-ratio-thresholds"]));
+        assert_eq!(lmt.prompt_family, pipeline::prompt::PromptFamily::Lmt);
+        assert_eq!(lmt.ratio_for("en", "vi"), None, "bảng của LMT cũng rỗng");
     }
 
     /// N4 của review cuối 02: cờ được ghi trong `meta.json`, nên dịch tiếp không trộn kết quả có ngưỡng với không ngưỡng.
