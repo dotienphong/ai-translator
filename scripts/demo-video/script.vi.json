@@ -1,0 +1,59 @@
+{
+  "target": "vi",
+  "voice": {
+    "name": "Evan (Premium)",
+    "leadMs": 600,
+    "tailMs": 2000,
+    "lines": [
+      { "text": "Thanks for joining, everyone.", "gapAfterMs": 700 },
+      { "text": "We need to move the launch date to the second week of November.", "gapAfterMs": 800 },
+      { "text": "Our design team found a few issues in the checkout flow.", "gapAfterMs": 800 },
+      { "text": "Could you send us an updated quote for the extra work by Friday?", "gapAfterMs": 0 }
+    ]
+  },
+  "timing": {
+    "hookMs": 3000,
+    "liveHoldMs": 2500,
+    "outroMs": 5000,
+    "chat": {
+      "sarahMsgMs": 700,
+      "hotkeyMs": 2000,
+      "pressMs": 200,
+      "openAfterHotkeyMs": 250,
+      "typingAfterOpenMs": 600,
+      "pace": { "charMs": 70, "spaceMs": 110, "punctuationMs": 260 },
+      "readMs": 1600,
+      "pasteMs": 150,
+      "reviewMs": 1200,
+      "holdMs": 2200
+    }
+  },
+  "captions": {
+    "hook": { "title": "Họp với đối tác nước ngoài mà nghe không kịp?", "sub": "" },
+    "live": { "title": "Phụ đề tiếng Việt hiện ra trong lúc đối tác đang nói", "sub": "Chạy trên máy, âm thanh không gửi lên cloud" },
+    "chat": { "title": "Gõ tiếng Việt, gửi đi tiếng Anh", "sub": "Bấm ⌃⌥G khi đang ở ô chat" }
+  },
+  "call": { "title": "Weekly sync", "speaker": "Sarah", "role": "Product Lead", "initial": "S", "you": "Bạn" },
+  "chat": {
+    "contact": "Sarah",
+    "sarahMessage": "Hi! Following up on the quote we discussed in the meeting.",
+    "reply": "Dạ, em sẽ gửi báo giá mới trước thứ Sáu ạ.",
+    "replyLang": "vi",
+    "replyTarget": "en",
+    "placeholder": "Nhắn cho Sarah…"
+  },
+  "outro": {
+    "name": "AI Translator",
+    "tagline": "Dịch live + Gõ dịch · chạy offline",
+    "url": "aitranslator.io.vn",
+    "fine": "Phụ đề và bản dịch do app tạo ra; đo trên MacBook Pro M4 Pro, gói Chuẩn, bật Dịch trong lúc nói."
+  },
+  "layout": {
+    "safe": { "top": 126, "bottom": 720, "right": 486 },
+    "call": { "left": 16, "top": 256, "width": 470, "height": 174 },
+    "overlay": { "left": 16, "top": 438, "width": 470, "height": 278, "fontSize": 24 },
+    "chat": { "left": 16, "top": 256, "width": 470, "height": 384 },
+    "compose": { "top": 290, "scale": 0.84 },
+    "keys": { "top": 652 }
+  }
+}
