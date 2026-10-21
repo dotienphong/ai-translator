@@ -1,0 +1,255 @@
+{
+  "schema": 1,
+  "sequence": 3,
+  "published_at": "2026-10-21T05:03:38Z",
+  "files": [
+    {
+      "id": "whisper-large-v3-turbo-q5_0",
+      "tier": [
+        "standard",
+        "fast"
+      ],
+      "kind": "asr",
+      "version": "whisper.cpp-5359861",
+      "file": "ggml-large-v3-turbo-q5_0.bin",
+      "url": "whisper/ggml-large-v3-turbo-q5_0.bin",
+      "license_id": "MIT",
+      "min_app_version": "0.1.0",
+      "bytes": 574041195,
+      "sha256": "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"
+    },
+    {
+      "id": "whisper-small-q5_1",
+      "tier": [
+        "lite"
+      ],
+      "kind": "asr",
+      "version": "whisper.cpp-5359861",
+      "file": "ggml-small-q5_1.bin",
+      "url": "whisper/ggml-small-q5_1.bin",
+      "license_id": "MIT",
+      "min_app_version": "0.1.0",
+      "bytes": 190085487,
+      "sha256": "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"
+    },
+    {
+      "id": "whisper-license",
+      "tier": [
+        "standard",
+        "lite",
+        "fast"
+      ],
+      "kind": "license",
+      "version": "v20250625",
+      "file": "whisper-LICENSE.txt",
+      "url": "whisper/whisper-LICENSE.txt",
+      "license_id": "MIT",
+      "min_app_version": "0.1.0",
+      "bytes": 1063,
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    },
+    {
+      "id": "whisper-cpp-license",
+      "tier": [
+        "standard",
+        "lite",
+        "fast"
+      ],
+      "kind": "license",
+      "version": "v1.8.3",
+      "file": "whisper.cpp-LICENSE.txt",
+      "url": "whisper/whisper.cpp-LICENSE.txt",
+      "license_id": "MIT",
+      "min_app_version": "0.1.0",
+      "bytes": 1078,
+      "sha256": "e562a2ddfaf8280537795ac5ecd34e3012b6582a147ef69ba6a6a5c08c84757d"
+    },
+    {
+      "id": "hy-mt2-1.8b-q8_0",
+      "tier": [
+        "standard"
+      ],
+      "kind": "mt",
+      "version": "a0c709d",
+      "file": "Hy-MT2-1.8B-Q8_0.gguf",
+      "url": "hy-mt2/Hy-MT2-1.8B-Q8_0.gguf",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.1.0",
+      "bytes": 1908528192,
+      "sha256": "5c3fe0b1408a5ceb0143184ef247b11b579c525f4b02b060e6c851bb76fef1a4"
+    },
+    {
+      "id": "hy-mt2-1.8b-q4_k_m",
+      "tier": [
+        "lite"
+      ],
+      "kind": "mt",
+      "version": "a0c709d",
+      "file": "Hy-MT2-1.8B-Q4_K_M.gguf",
+      "url": "hy-mt2/Hy-MT2-1.8B-Q4_K_M.gguf",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.1.0",
+      "bytes": 1133080448,
+      "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
+    },
+    {
+      "id": "hy-mt2-license",
+      "tier": [
+        "standard",
+        "lite"
+      ],
+      "kind": "license",
+      "version": "a0c709d",
+      "file": "Hy-MT2-LICENSE.txt",
+      "url": "hy-mt2/Hy-MT2-LICENSE.txt",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.1.0",
+      "bytes": 11639,
+      "sha256": "a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114"
+    },
+    {
+      "id": "lmt-60-0.6b-q8_0",
+      "tier": [
+        "fast"
+      ],
+      "kind": "mt",
+      "prompt": "lmt",
+      "version": "dd18984",
+      "file": "LMT-60-0.6B-Q8_0.gguf",
+      "url": "lmt-60/LMT-60-0.6B-Q8_0.gguf",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.2.0",
+      "bytes": 804754272,
+      "sha256": "7b64cce458930ca3b6dd6da3d04503b309fdaacb6190eb6f9865263b6d67f55b"
+    },
+    {
+      "id": "lmt-60-license",
+      "tier": [
+        "fast"
+      ],
+      "kind": "license",
+      "version": "dd18984",
+      "file": "LMT-60-LICENSE.txt",
+      "url": "lmt-60/LMT-60-LICENSE.txt",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.2.0",
+      "bytes": 11343,
+      "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e"
+    },
+    {
+      "id": "notice-fast",
+      "tier": [
+        "fast"
+      ],
+      "kind": "license",
+      "version": "1",
+      "file": "NOTICE-fast.txt",
+      "url": "NOTICE-fast.txt",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.2.0",
+      "bytes": 605,
+      "sha256": "d26b5187686441cf081b32c6789a2180929f471935f7f5092f0f44b9c837dcf1"
+    },
+    {
+      "id": "silero-vad-v6.2.3",
+      "tier": [
+        "standard",
+        "lite",
+        "fast"
+      ],
+      "kind": "vad",
+      "version": "v6.2.3",
+      "file": "silero_vad_v6.2.3.onnx",
+      "url": "silero-vad/silero_vad_v6.2.3.onnx",
+      "license_id": "MIT",
+      "min_app_version": "0.1.0",
+      "bytes": 2327524,
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+    },
+    {
+      "id": "silero-vad-license",
+      "tier": [
+        "standard",
+        "lite",
+        "fast"
+      ],
+      "kind": "license",
+      "version": "v6.2.3",
+      "file": "silero-vad-LICENSE.txt",
+      "url": "silero-vad/silero-vad-LICENSE.txt",
+      "license_id": "MIT",
+      "min_app_version": "0.1.0",
+      "bytes": 1075,
+      "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"
+    },
+    {
+      "id": "notice",
+      "tier": [
+        "standard",
+        "lite",
+        "fast"
+      ],
+      "kind": "license",
+      "version": "1",
+      "file": "NOTICE.txt",
+      "url": "NOTICE.txt",
+      "license_id": "Apache-2.0",
+      "min_app_version": "0.1.0",
+      "bytes": 888,
+      "sha256": "d8a14ff8477260c5b61c3c1f3488a3379deb5c51f633979eb07f9c4a687c78b4"
+    }
+  ],
+  "packs": [
+    {
+      "id": "standard",
+      "name": {
+        "vi": "Chuẩn",
+        "en": "Standard"
+      },
+      "note": {
+        "vi": "Khả năng dịch chính xác nhất. Trên nhiều file thử nghiệm, lỗi từ tiếng Việt chỉ <9%, lỗi ký tự tiếng Nhật, Hàn, Trung 4–6%. Nên chọn nếu bạn cần dịch chính xác nhất, dịch chuyên sâu và có từ ngữ chuyên ngành. Cần máy có RAM >= 16 GB.",
+        "en": "Most accurate translation. Across many test files, Vietnamese word errors are under 9% and Japanese, Korean and Chinese character errors are 4–6%. Recommended if you need the most accurate, in-depth translation with specialized terminology. Needs a machine with RAM >= 16 GB."
+      }
+    },
+    {
+      "id": "lite",
+      "name": {
+        "vi": "Nhẹ",
+        "en": "Lite"
+      },
+      "note": {
+        "vi": "Nhẹ hơn gói Chuẩn. Chạy được trên máy RAM 8GB - 16GB, phù hợp với máy yếu và những tác vụ dịch đơn giản. Chất lượng dịch gần ngang gói Chuẩn. Tốc độ dịch nhanh hơn gói Chuẩn.",
+        "en": "Lighter than Standard. Runs on machines with 8 GB - 16 GB of RAM, suited to low-end machines and simple translation tasks. Translation quality is close to Standard. Translation is faster than Standard."
+      }
+    },
+    {
+      "id": "fast",
+      "name": {
+        "vi": "Nhanh",
+        "en": "Fast"
+      },
+      "note": {
+        "vi": "Thử nghiệm. Dịch nhanh nhất: trên MacBook M4 Pro, mỗi câu dịch xong nhanh khoảng 2 đến 3 lần so với gói Chuẩn. Đổi lại, bản dịch kém chính xác hơn gói Chuẩn và gói Nhẹ, rõ nhất ở tiếng Hàn, và không dùng từ điển thuật ngữ. Nhận dạng giọng nói giống gói Chuẩn, cần máy có RAM >= 16 GB.",
+        "en": "Experimental. Fastest translation: on a MacBook M4 Pro, each sentence finishes about 2 to 3 times faster than with Standard. In exchange, translations are less accurate than Standard and Lite, most noticeably for Korean, and the glossary is not used. Speech recognition is the same as Standard and needs a machine with RAM >= 16 GB."
+      }
+    }
+  ],
+  "recommend": {
+    "min_ram_mib": 6144,
+    "rules": [
+      {
+        "pack": "standard",
+        "os": "macos",
+        "min_ram_mib": 15360
+      },
+      {
+        "pack": "standard",
+        "os": "windows",
+        "min_ram_mib": 15360,
+        "gpu": "discrete",
+        "min_vram_mib": 5632
+      }
+    ],
+    "fallback": "lite"
+  }
+}
