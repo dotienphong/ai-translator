@@ -2794,3 +2794,9 @@ Cập nhật `memory/demo-video-2026-10-21.md`: bản 16:10 xong, đường dẫ
   - Lần kiểm dựng lặp lại đầu tiên **không** ra y hệt: 70 giá trị màu lệch tối đa 5/255 ở viền thanh điều khiển, vì Chrome vẽ lại mảng chứa các ô video lúc hết lúc một phần. Sửa bằng `will-change: transform` cho `.tile`. Sau đó cả đoạn cảnh họp (khung 60–179) lẫn cảnh chat (760–819) đều ra y hệt.
   - Điểm bấm của con trỏ dời sang `x: 1150` để không đè lên chữ đã dán.
 - **Kết quả:** `target/demo-video/ai-translator-demo.desktop.vi.mp4`, H.264 1920×1200, 30 khung/giây, AAC 48 kHz, 40,5 giây, 8,4 MB; 47 test node đạt, `tsc` không lỗi.
+- **Sau khi chủ dự án xem (2026-10-21):** cảnh họp chỉ để ảnh đại diện, không video người.
+  - `assets.json` bỏ ba clip p1, p2, self; thêm `self-still` (clip 4834, khung 0,5 giây).
+  - `assets.mjs` thêm `zoom` cho ảnh tĩnh, để cắt sát mặt khi cảnh quay rộng; có test.
+  - Kịch bản: mọi người dùng `still`, Sarah có `"speaker": true`.
+  - `desktop-meeting.mjs` hỗ trợ nhiều ô ảnh; ảnh đặt ở 30% chiều cao ô, cỡ 120 điểm.
+  - Dựng lặp lại (khung 150–239) vẫn ra y hệt.

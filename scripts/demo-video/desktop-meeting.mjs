@@ -1,6 +1,7 @@
 // Cửa sổ app họp phóng to trên desktop 1 (không logo, không tên Teams/Meet): thanh tiêu đề Windows, thanh thông tin (tên cuộc họp,
-// thời lượng), lưới 2×2 (Sarah tắt cam với ảnh đại diện và viền sáng khi nói; người khác bật cam: ảnh JPEG của đúng khung), thanh
-// điều khiển. `render(t)` đợi các ảnh của khung đã giải mã.
+// thời lượng), lưới 2×2, thanh điều khiển. Mỗi ô: tắt cam với ảnh đại diện (`still`) hay chữ viết tắt (`initials`), hoặc bật cam
+// (`video`: ảnh JPEG của đúng khung). Người nói (`speaker`) có mic bật, viền sáng và sóng âm khi nói. `render(t)` đợi các ảnh của
+// khung đã giải mã.
 import { meetingTiles } from "./desktop-layout.mjs";
 import { el, icon, place, titleBar } from "./desktop-dom.mjs";
 import { FRAME_MS, levelAt } from "./timeline.mjs";
@@ -35,16 +36,16 @@ export function buildMeeting(parent, { script, tl, voice, assets }) {
       const portrait = el("img", "portrait", tile);
       portrait.alt = "";
       portrait.src = assets.still(person.still);
-      speaker = { tile, ring: portrait };
+      if (person.speaker) speaker = { tile, ring: portrait };
     } else {
       el("div", "initials", tile, person.initials);
     }
     const tag = el("div", "name-tag", tile);
-    const isSpeaker = speaker?.tile === tile;
-    icon(isSpeaker ? "mic" : "micOff", tag, "icon");
+    icon(person.speaker ? "mic" : "micOff", tag, "icon");
     el("span", "", tag, person.name);
-    if (isSpeaker) speaker.bars = [0, 1, 2].map(() => el("i", "bar", tag));
+    if (person.speaker) speaker.bars = [0, 1, 2].map(() => el("i", "bar", tag));
   });
+  if (!speaker) throw new Error("call.people cần đúng một người nói (speaker: true, có still)");
 
   const controls = el("div", "meet-controls", win);
   el("span", "meet-clock", controls, script.taskbar.time);

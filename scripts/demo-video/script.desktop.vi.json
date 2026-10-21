@@ -36,10 +36,10 @@
     "title": "Weekly sync",
     "startClock": 727,
     "people": [
-      { "name": "Sarah Collins", "still": "sarah" },
-      { "name": "David Park", "video": "p1" },
-      { "name": "Emma Wilson", "video": "p2" },
-      { "name": "Bạn", "video": "self" }
+      { "name": "Sarah Collins", "still": "sarah", "speaker": true },
+      { "name": "David Park", "still": "p1-still" },
+      { "name": "Emma Wilson", "still": "p2-still" },
+      { "name": "Bạn", "still": "self-still" }
     ]
   },
   "chat": {

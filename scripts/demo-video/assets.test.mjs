@@ -52,3 +52,27 @@ test("cắt vùng lớn nhất đúng tỉ lệ ô quanh tâm khung rồi hạ c
     "crop=720:720:560:0,scale=320:320:flags=lanczos",
   );
 });
+
+test("zoom cắt sát hơn quanh tâm khung (ảnh đại diện từ cảnh quay rộng), vẫn không ra ngoài khung", () => {
+  assert.equal(
+    cropFilter({ width: 1280, height: 720 }, { width: 320, height: 320 }, { x: 0.5, y: 0.22 }, 2),
+    "crop=360:360:460:0,scale=320:320:flags=lanczos",
+  );
+  assert.equal(
+    cropFilter({ width: 1280, height: 720 }, { width: 320, height: 320 }, { x: 0.5, y: 0.5 }, 2),
+    "crop=360:360:460:180,scale=320:320:flags=lanczos",
+  );
+});
+
+test("zoom phải từ 1 trở lên", () => {
+  const item = {
+    name: "s",
+    kind: "still",
+    page: "https://mixkit.co/free-stock-video/having-a-video-call-working-from-home-10446/",
+    download: "https://assets.mixkit.co/videos/10446/10446-720.mp4",
+    at: 1,
+    focus: { x: 0.5, y: 0.5 },
+  };
+  assert.deepEqual(assetProblems({ license: LICENSE, items: [{ ...item, zoom: 2 }] }), []);
+  assert.ok(assetProblems({ license: LICENSE, items: [{ ...item, zoom: 0.5 }] }).some((p) => p.includes("zoom")));
+});

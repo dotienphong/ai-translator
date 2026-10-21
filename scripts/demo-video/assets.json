@@ -8,42 +8,9 @@
   },
   "items": [
     {
-      "name": "p1",
-      "kind": "video",
-      "role": "Người tham gia bật cam (David Park): nhìn màn hình, nghe, mỉm cười",
-      "page": "https://mixkit.co/free-stock-video/having-a-video-call-working-from-home-10446/",
-      "download": "https://assets.mixkit.co/videos/10446/10446-720.mp4",
-      "author": "Mixkit",
-      "start": 0,
-      "duration": 9,
-      "focus": { "x": 0.5, "y": 0.35 }
-    },
-    {
-      "name": "p2",
-      "kind": "video",
-      "role": "Người tham gia bật cam (Emma Wilson): đoạn đang nghe, trước khi nói",
-      "page": "https://mixkit.co/free-stock-video/a-business-woman-at-a-video-conference-at-the-office-14040/",
-      "download": "https://assets.mixkit.co/videos/14040/14040-720.mp4",
-      "author": "Mixkit",
-      "start": 0,
-      "duration": 4.8,
-      "focus": { "x": 0.5, "y": 0.3 }
-    },
-    {
-      "name": "self",
-      "kind": "video",
-      "role": "Ô \"Bạn\": người châu Á nhìn máy tính bảng, mỉm cười",
-      "page": "https://mixkit.co/free-stock-video/female-doctor-talking-on-a-video-call-4833/",
-      "download": "https://assets.mixkit.co/videos/4833/4833-720.mp4",
-      "author": "Mixkit",
-      "start": 0,
-      "duration": 14,
-      "focus": { "x": 0.5, "y": 0.35 }
-    },
-    {
       "name": "sarah",
       "kind": "still",
-      "role": "Ảnh đại diện Sarah Collins (tắt cam trong cuộc họp, ảnh trong chat)",
+      "role": "Ảnh đại diện Sarah Collins (người nói trong cuộc họp, ảnh trong chat)",
       "page": "https://mixkit.co/free-stock-video/young-woman-smiling-and-waving-in-greeting-to-people-on-48680/",
       "download": "https://assets.mixkit.co/videos/48680/48680-720.mp4",
       "author": "Mixkit",
@@ -53,7 +20,7 @@
     {
       "name": "p1-still",
       "kind": "still",
-      "role": "Ảnh đại diện David Park trong danh sách chat",
+      "role": "Ảnh đại diện David Park (ô họp, danh sách chat)",
       "page": "https://mixkit.co/free-stock-video/having-a-video-call-working-from-home-10446/",
       "download": "https://assets.mixkit.co/videos/10446/10446-720.mp4",
       "author": "Mixkit",
@@ -63,12 +30,24 @@
     {
       "name": "p2-still",
       "kind": "still",
-      "role": "Ảnh đại diện Emma Wilson trong danh sách chat",
+      "role": "Ảnh đại diện Emma Wilson (ô họp, danh sách chat)",
       "page": "https://mixkit.co/free-stock-video/a-business-woman-at-a-video-conference-at-the-office-14040/",
       "download": "https://assets.mixkit.co/videos/14040/14040-720.mp4",
       "author": "Mixkit",
       "at": 3.5,
-      "focus": { "x": 0.5, "y": 0.3 }
+      "focus": { "x": 0.55, "y": 0.25 },
+      "zoom": 1.6
+    },
+    {
+      "name": "self-still",
+      "kind": "still",
+      "role": "Ảnh đại diện ô \"Bạn\" trong cuộc họp: người châu Á nhìn vào máy",
+      "page": "https://mixkit.co/free-stock-video/therapist-in-his-office-talking-to-the-camera-4834/",
+      "download": "https://assets.mixkit.co/videos/4834/4834-720.mp4",
+      "author": "Mixkit",
+      "at": 0.5,
+      "focus": { "x": 0.5, "y": 0.22 },
+      "zoom": 2.2
     }
   ]
 }

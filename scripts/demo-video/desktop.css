@@ -166,14 +166,15 @@ body {
   height: 100%;
   object-fit: cover;
 }
+/* Ảnh đại diện ở 30% chiều cao ô (không phải giữa ô): ở hàng dưới, ảnh nằm trọn phía trên thanh phụ đề (đặt mặc định từ y 640). */
 .tile .portrait,
 .tile .initials {
   position: absolute;
   left: 50%;
-  top: 50%;
-  width: 132px;
-  height: 132px;
-  margin: -66px 0 0 -66px;
+  top: 30%;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
   border-radius: 50%;
   object-fit: cover;
 }

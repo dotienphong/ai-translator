@@ -19,6 +19,9 @@ chỗ móc `demo=1` của `scripts/ui-preview/tauri-mock.ts`). Vị trí cửa s
 - **Thương hiệu:** giao diện **giống thật nhưng không logo, không tên** Teams, Meet, Messenger (cũng không logo Windows, Apple).
 - **Người trong cuộc họp:** **clip người thật từ kho video miễn phí** cho phép dùng thương mại. Sarah (người nói tiếng Anh, giọng
   Ava) **tắt cam**: ô của cô hiện ảnh đại diện và viền sáng khi nói, nên không lộ lệch khẩu hình.
+  - **Đổi sau khi xem bản đầu (2026-10-21):** chủ dự án duyệt cả video nhưng muốn cảnh họp **không có video người, chỉ ảnh đại
+    diện**. Cả 4 ô đều tắt cam với ảnh đại diện tròn (ảnh tách từ clip Mixkit, cắt sát mặt), đặt ở 30% chiều cao ô để không bị
+    thanh phụ đề che. Chỉ Sarah có mic bật, viền sáng và sóng âm. Clip video không còn dùng.
 - **Chữ trên video:** **nhãn nhỏ** kiểu video demo sản phẩm, mỗi cảnh một nhãn 2–3 giây; có màn kết.
 - **Màn kết:** chỉ biểu tượng, tên app, địa chỉ web. **Không có dòng chữ nhỏ** về minh họa hay điều kiện đo (chủ dự án không muốn).
   Hệ quả: video **không ghi con số tốc độ nào** (quy tắc website: số đo phải kèm điều kiện đo).

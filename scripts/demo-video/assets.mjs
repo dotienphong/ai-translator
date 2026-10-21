@@ -37,13 +37,17 @@ export function assetProblems(doc) {
     }
     const f = a.focus ?? {};
     if (!(f.x >= 0 && f.x <= 1 && f.y >= 0 && f.y <= 1)) problems.push(`${who}: focus.x, focus.y phải trong [0, 1]`);
+    if (a.zoom !== undefined && !(a.zoom >= 1)) problems.push(`${who}: zoom phải từ 1 trở lên`);
   }
   return problems;
 }
 
-/** Bộ lọc ffmpeg: cắt vùng lớn nhất có tỉ lệ của `out`, tâm gần `focus` nhất mà không ra ngoài khung, rồi hạ cỡ. */
-export function cropFilter(src, out, focus) {
-  const scale = Math.min(src.width / out.width, src.height / out.height);
+/**
+ * Bộ lọc ffmpeg: cắt vùng có tỉ lệ của `out`, lớn nhất chia `zoom` (lớn hơn 1 thì cắt sát hơn, cho ảnh đại diện từ cảnh quay rộng),
+ * tâm gần `focus` nhất mà không ra ngoài khung, rồi hạ cỡ.
+ */
+export function cropFilter(src, out, focus, zoom = 1) {
+  const scale = Math.min(src.width / out.width, src.height / out.height) / zoom;
   const w = Math.floor((out.width * scale) / 2) * 2;
   const h = Math.floor((out.height * scale) / 2) * 2;
   const x = Math.round(Math.min(src.width - w, Math.max(0, focus.x * src.width - w / 2)));
@@ -100,7 +104,7 @@ function main(scriptName) {
     const file = fileOf(a);
     const src = probe(file);
     if (a.kind === "still") {
-      const filter = cropFilter(src, { width: STILL_PX, height: STILL_PX }, a.focus);
+      const filter = cropFilter(src, { width: STILL_PX, height: STILL_PX }, a.focus, a.zoom);
       execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(a.at), "-i", file, "-frames:v", "1", "-vf", filter, "-q:v", "2", path.join(frames, `${a.name}.jpg`)]);
       console.log(`  ảnh ${a.name}`);
       continue;
