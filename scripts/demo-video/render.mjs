@@ -13,7 +13,7 @@
 //     thêm --guides để tô đỏ phần ngoài vùng an toàn (bản dọc, chỉ khi ghi PNG)
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -69,6 +69,9 @@ const posterFrame = Math.round(tl.posterMs / FRAME_MS);
 
 let ffmpeg = null;
 let ffmpegDone = null;
+// Ghi ra file tạm, quay xong và kiểm đạt mới thay file chính: trong lúc quay lại, bản cũ vẫn mở xem được.
+let mp4 = null;
+let partial = null;
 if (full) {
   const voiceFile = path.join(out, `voice48.${data}.wav`);
   const bytes = readFileSync(voiceFile);
@@ -80,7 +83,8 @@ if (full) {
   const mixed = mixAudio({ voice: readWav(bytes).samples, voiceStartMs: tl.voiceStartMs, sounds: tl.sounds, totalMs: tl.totalMs });
   writeFileSync(audioFile, writeWav(mixed, AUDIO_RATE));
   mkdirSync(path.join(out, `keyframes.${name}`), { recursive: true });
-  const mp4 = path.join(out, `ai-translator-demo.${name}.mp4`);
+  mp4 = path.join(out, `ai-translator-demo.${name}.mp4`);
+  partial = `${mp4}.part`;
   ffmpeg = spawn(
     "ffmpeg",
     [
@@ -91,7 +95,7 @@ if (full) {
       "-c:v", "libx264", "-preset", "slow", "-crf", "18",
       "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
       "-c:a", "aac", "-b:a", "192k",
-      "-movflags", "+faststart", "-shortest", mp4,
+      "-movflags", "+faststart", "-shortest", "-f", "mp4", partial,
     ],
     { stdio: ["pipe", "inherit", "inherit"] },
   );
@@ -168,7 +172,9 @@ writeFileSync(
   `${JSON.stringify({ totalMs: tl.totalMs, frames: tl.frames, range: [from, to], timing, failures }, null, 1)}\n`,
 );
 if (failures.length > 0) {
+  if (partial) rmSync(partial, { force: true });
   console.error(`Không đạt:\n- ${failures.join("\n- ")}`);
   process.exit(1);
 }
+if (partial) renameSync(partial, mp4);
 console.log(`Xong: khung ${from}–${to - 1} / ${tl.frames}, video ${(tl.totalMs / 1000).toFixed(1)} giây; đã kiểm ${timing.length} phụ đề chốt.`);
