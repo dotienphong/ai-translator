@@ -244,9 +244,32 @@ pub const DEFAULT_RATIO_THRESHOLDS: &[(&str, &str, f32)] = &[
     ("zh", "ko", 3.7),
 ];
 
-/// Ngưỡng tỉ lệ token của LMT-60-0.6B Q8_0, cách lấy như [`DEFAULT_RATIO_THRESHOLDS`], đo ở Task 6 của kế hoạch gói
-/// Nhanh (`bench/2026-10-21-goi-nhanh/ratio.md`).
-pub const DEFAULT_RATIO_THRESHOLDS_LMT: &[(&str, &str, f32)] = &[];
+/// Ngưỡng tỉ lệ token của LMT-60-0.6B Q8_0 (gói Nhanh), cách lấy như [`DEFAULT_RATIO_THRESHOLDS`]: tỉ lệ lớn nhất trên câu
+/// gốc từ 10 token, cộng 25%, làm tròn lên 0,1. Đo ngày 2026-10-21 bằng `latency-bench mt-eval --prompt lmt
+/// --no-ratio-thresholds` trên `testset_phase0.jsonl` (8 chiều có tiếng Việt) và `testset_ratio.jsonl` (12 chiều còn lại),
+/// bảng ở `bench/2026-10-21-goi-nhanh/ratio.md`.
+pub const DEFAULT_RATIO_THRESHOLDS_LMT: &[(&str, &str, f32)] = &[
+    ("en", "vi", 3.1),
+    ("zh", "vi", 3.5),
+    ("ja", "vi", 2.2),
+    ("ko", "vi", 2.0),
+    ("vi", "en", 1.5),
+    ("vi", "zh", 1.6),
+    ("vi", "ja", 2.0),
+    ("vi", "ko", 2.3),
+    ("en", "ja", 2.7),
+    ("en", "ko", 3.4),
+    ("en", "zh", 2.0),
+    ("ja", "en", 2.0),
+    ("ja", "ko", 2.3),
+    ("ja", "zh", 1.8),
+    ("ko", "en", 1.6),
+    ("ko", "ja", 1.9),
+    ("ko", "zh", 1.7),
+    ("zh", "en", 2.2),
+    ("zh", "ja", 3.0),
+    ("zh", "ko", 3.8),
+];
 
 fn pair_ratios(table: &[(&str, &str, f32)]) -> Vec<PairRatio> {
     table
@@ -748,6 +771,20 @@ mod tests {
         pairs.sort();
         pairs.dedup();
         assert_eq!(pairs.len(), mt.ratio_thresholds_lmt.len());
+    }
+
+    #[test]
+    fn lmt_thresholds_cover_all_twenty_pairs() {
+        let langs = ["en", "zh", "ja", "ko", "vi"];
+        for s in langs {
+            for t in langs.iter().filter(|t| **t != s) {
+                assert!(
+                    DEFAULT_RATIO_THRESHOLDS_LMT.iter().any(|&(a, b, _)| a == s && b == *t),
+                    "{s}->{t}"
+                );
+            }
+        }
+        assert_eq!(DEFAULT_RATIO_THRESHOLDS_LMT.len(), 20);
     }
 
     #[test]
