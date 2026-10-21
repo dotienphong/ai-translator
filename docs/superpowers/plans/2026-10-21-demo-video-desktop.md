@@ -2781,3 +2781,16 @@ Gửi đường dẫn đầy đủ `target/demo-video/ai-translator-demo.desktop
 - [ ] **Step 2: Cập nhật bộ nhớ**
 
 Cập nhật `memory/demo-video-2026-10-21.md`: bản 16:10 xong, đường dẫn, clip đã dùng, việc còn lại.
+
+---
+
+## Ghi chú khi thực thi (2026-10-21)
+
+- **Task 4:** tiếng bấm chuột hạ âm lượng (đỉnh 0,26, kẹp ±0,29). Bản đầu bị kẹp ở 0,3, và giá trị đó lưu vào `Float32Array` thành 0,30000001, vượt ngưỡng test.
+- **Task 5:** `render.mjs` thêm bước phát hiện trang bị tải lại giữa lúc quay (`Page.frameNavigated` của khung chính). Lý do: Vite thấy file của trang đổi thì tải lại trang, và lượt quay đầu sau khi sửa code đã hỏng vì thế. Bản dọc vẫn ra y hệt mốc hồi quy.
+- **Task 8:** clip đã chọn: p1 10446, p2 14040 (đoạn 0–4,8 giây, khi đang nghe), Bạn 4833 (người châu Á, áo blouse trắng; Mixkit không có clip người châu Á ngồi webcam nào khác hợp hơn), ảnh Sarah từ 48680. Tên người giữ như kịch bản.
+- **Task 11:**
+  - Quay thẳng ra MP4 (vẫn kèm 13 khung chính) thay vì ghi toàn bộ khung ra PNG, vì PNG 1920×1200 cho cả video tốn khoảng 4 GB.
+  - Lần kiểm dựng lặp lại đầu tiên **không** ra y hệt: 70 giá trị màu lệch tối đa 5/255 ở viền thanh điều khiển, vì Chrome vẽ lại mảng chứa các ô video lúc hết lúc một phần. Sửa bằng `will-change: transform` cho `.tile`. Sau đó cả đoạn cảnh họp (khung 60–179) lẫn cảnh chat (760–819) đều ra y hệt.
+  - Điểm bấm của con trỏ dời sang `x: 1150` để không đè lên chữ đã dán.
+- **Kết quả:** `target/demo-video/ai-translator-demo.desktop.vi.mp4`, H.264 1920×1200, 30 khung/giây, AAC 48 kHz, 40,5 giây, 8,4 MB; 47 test node đạt, `tsc` không lỗi.
