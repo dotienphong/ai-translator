@@ -4,7 +4,8 @@
 //!
 //! - Mỗi file có các trường của §6.7: `id`, `tier` (danh sách gói có file này: VAD và giấy phép dùng chung), `kind`
 //!   (`asr`, `mt`, `vad`, và `license` cho LICENSE, NOTICE đặt cạnh model), `version`, `url`, `bytes`, `sha256`,
-//!   `license_id`, `min_app_version`; thêm `file` là tên file trên máy.
+//!   `license_id`, `min_app_version`; thêm `file` là tên file trên máy, và `prompt` (chỉ file `mt`, tùy chọn) là họ mẫu
+//!   prompt của model dịch (spec 2026-10-21-goi-nhanh §4.2).
 //! - Gói (`packs`) có tên và ghi chú chất lượng theo hai ngôn ngữ giao diện (§8), vì gói mới (ví dụ gói lai, Q15) thêm
 //!   bằng manifest, không phát hành lại app. Mỗi gói có đúng một file `asr`, một `mt`, một `vad`.
 //! - `recommend`: RAM tối thiểu và luật đề xuất gói, xét theo thứ tự, luật đầu tiên khớp thắng; không luật nào khớp thì
@@ -14,10 +15,14 @@
 //! Khóa lạ trong phần thân bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
 
 use pipeline::config::PipelineConfig;
+use pipeline::prompt::PromptFamily;
 use serde::{Deserialize, Serialize};
 
 /// Phiên bản định dạng phần thân mà app này đọc được.
 pub const SCHEMA: u32 = 1;
+/// Bản app đầu tiên hiểu trường `prompt` (spec gói Nhanh §4.2): file `mt` có họ khác `hy-mt2` phải đặt
+/// `min_app_version` từ bản này, vì app cũ bỏ qua `prompt` và sẽ dùng mẫu Hy-MT2.
+pub const PROMPT_FIELD_SINCE: &str = "0.1.18";
 /// Một file model không lớn hơn chừng này (Q8_0 là 1,91 GB).
 pub const MAX_FILE_BYTES: u64 = 16 << 30;
 const MAX_TEXT: usize = 500;
@@ -47,6 +52,19 @@ pub struct FileEntry {
     pub sha256: String,
     pub license_id: String,
     pub min_app_version: String,
+    /// Họ mẫu prompt của file `mt` (`hy-mt2`, `lmt`); bỏ trống là `hy-mt2`. Giá trị lạ thì gói không dùng được.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+}
+
+impl FileEntry {
+    /// Họ prompt mà app này hiểu; `None` khi giá trị lạ (họ của app mới hơn).
+    pub fn prompt_family(&self) -> Option<PromptFamily> {
+        match &self.prompt {
+            None => Some(PromptFamily::HyMt2),
+            Some(code) => PromptFamily::from_code(code),
+        }
+    }
 }
 
 /// Chữ theo ngôn ngữ giao diện (§4.5).
@@ -252,6 +270,9 @@ impl Manifest {
             if version(&f.min_app_version).is_none() {
                 return bad(at("min_app_version"));
             }
+            if f.prompt.as_ref().is_some_and(|p| f.kind != Kind::Mt || !is_id(p, 32)) {
+                return bad(at("prompt"));
+            }
         }
         for (i, pack) in self.packs.iter().enumerate() {
             for kind in [Kind::Asr, Kind::Mt, Kind::Vad] {
@@ -291,7 +312,8 @@ impl Manifest {
         self.files_of(pack).iter().map(|f| f.bytes).sum()
     }
 
-    /// Mọi file của gói đều chạy được với app bản `app_version` (`min_app_version`).
+    /// Mọi file của gói đều chạy được với app bản `app_version` (`min_app_version`), và app hiểu họ prompt của file
+    /// `mt` (họ lạ: gói của app mới hơn, spec gói Nhanh §4.2).
     pub fn usable_by(&self, pack: &str, app_version: &str) -> bool {
         let Some(app) = version(app_version) else {
             return false;
@@ -300,7 +322,23 @@ impl Manifest {
         !files.is_empty()
             && files
                 .iter()
-                .all(|f| version(&f.min_app_version).is_some_and(|min| min <= app))
+                .all(|f| version(&f.min_app_version).is_some_and(|min| min <= app) && f.prompt_family().is_some())
+    }
+
+    /// File `mt` có họ prompt khác `hy-mt2` mà `min_app_version` thấp hơn [`PROMPT_FIELD_SINCE`]: app cũ sẽ dùng nhầm mẫu
+    /// Hy-MT2. `check_manifest_body` chặn trước khi ký.
+    pub fn prompt_needs_newer_app(&self) -> Vec<String> {
+        let since = version(PROMPT_FIELD_SINCE).expect("hằng hợp lệ");
+        self.files
+            .iter()
+            .enumerate()
+            .filter_map(|(i, f)| {
+                let family = f.prompt.as_deref().filter(|p| *p != "hy-mt2")?;
+                version(&f.min_app_version)
+                    .is_none_or(|v| v < since)
+                    .then(|| format!("files[{i}]: {family} cần min_app_version >= {PROMPT_FIELD_SINCE}"))
+            })
+            .collect()
     }
 
     /// Ngưỡng của pipeline: mặc định, đè bằng phần `pipeline` của manifest nếu đọc được và hợp lệ.
@@ -560,6 +598,8 @@ pub(crate) mod tests {
     fn check_manifest_body() {
         let path = std::env::var("MANIFEST_BODY").expect("đặt MANIFEST_BODY");
         let m = Manifest::parse(&std::fs::read(path).unwrap()).unwrap();
+        let late = m.prompt_needs_newer_app();
+        assert!(late.is_empty(), "{late:?}");
         if let Ok(previous) = std::env::var("MANIFEST_PREVIOUS") {
             let old = Manifest::parse(&std::fs::read(previous).unwrap()).unwrap();
             assert!(old.sequence < m.sequence, "sequence phải tăng");
@@ -579,6 +619,63 @@ pub(crate) mod tests {
             );
         }
         println!("sequence {}", m.sequence);
+    }
+
+    #[test]
+    fn mt_files_carry_a_prompt_family() {
+        let m = parse(&sample()).unwrap();
+        let mt = |m: &Manifest, pack: &str| {
+            m.files_of(pack)
+                .into_iter()
+                .find(|f| f.kind == Kind::Mt)
+                .cloned()
+                .unwrap()
+        };
+        assert_eq!(
+            mt(&m, "standard").prompt_family(),
+            Some(PromptFamily::HyMt2),
+            "bỏ trống là hy-mt2"
+        );
+        let mut value = sample();
+        value["files"][3]["prompt"] = json!("lmt");
+        let m = parse(&value).unwrap();
+        assert_eq!(mt(&m, "lite").prompt_family(), Some(PromptFamily::Lmt));
+        assert_eq!(serde_json::to_value(mt(&m, "lite")).unwrap()["prompt"], "lmt");
+        assert!(
+            serde_json::to_value(mt(&m, "standard"))
+                .unwrap()
+                .get("prompt")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn prompt_is_only_for_mt_files() {
+        rejects(|v| v["files"][0]["prompt"] = json!("lmt"), "files[0].prompt");
+        rejects(|v| v["files"][3]["prompt"] = json!("LMT 2"), "files[3].prompt");
+    }
+
+    #[test]
+    fn an_unknown_prompt_family_makes_only_that_pack_unusable() {
+        let mut value = sample();
+        value["files"][3]["prompt"] = json!("tower");
+        let m = parse(&value).expect("manifest vẫn đọc được");
+        assert!(!m.usable_by("lite", "9.9.9"));
+        assert!(m.usable_by("standard", "0.1.0"));
+    }
+
+    #[test]
+    fn non_hy_mt2_prompts_need_a_new_enough_min_app_version() {
+        let mut value = sample();
+        value["files"][2]["prompt"] = json!("hy-mt2");
+        assert!(parse(&value).unwrap().prompt_needs_newer_app().is_empty());
+        value["files"][3]["prompt"] = json!("lmt");
+        assert_eq!(
+            parse(&value).unwrap().prompt_needs_newer_app(),
+            ["files[3]: lmt cần min_app_version >= 0.1.18"]
+        );
+        value["files"][3]["min_app_version"] = json!("0.1.18");
+        assert!(parse(&value).unwrap().prompt_needs_newer_app().is_empty());
     }
 
     /// N-8 của review 04 lần 2: bản mới đổi `id` của file model thì bị báo; đổi `file`, `version` thì không.
