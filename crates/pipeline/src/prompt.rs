@@ -1,4 +1,4 @@
-//! Mẫu prompt lấy nguyên văn từ model card của Hy-MT2 (spec §6.5).
+//! Mẫu prompt lấy nguyên văn từ model card: Hy-MT2 (spec §6.5) và LMT (spec 2026-10-21-goi-nhanh §5.2).
 
 use crate::glossary::Term;
 
@@ -54,6 +54,58 @@ impl Lang {
             Self::Vi => "越南语",
         }
     }
+}
+
+/// Họ mẫu prompt của model dịch, theo trường `prompt` của file `mt` trong manifest (spec gói Nhanh §4.2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PromptFamily {
+    #[default]
+    HyMt2,
+    Lmt,
+}
+
+impl PromptFamily {
+    pub fn from_code(code: &str) -> Option<Self> {
+        match code {
+            "hy-mt2" => Some(Self::HyMt2),
+            "lmt" => Some(Self::Lmt),
+            _ => None,
+        }
+    }
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::HyMt2 => "hy-mt2",
+            Self::Lmt => "lmt",
+        }
+    }
+}
+
+/// Loại prompt của một câu (§6.5): thường, có thuật ngữ, hay có ngữ cảnh câu trước.
+#[derive(Clone, Copy, Debug)]
+pub enum PromptKind<'a> {
+    Plain,
+    Terminology(&'a [Term]),
+    Context(&'a str),
+}
+
+/// Điểm vào duy nhất cho nơi dịch: chọn mẫu theo họ và loại. LMT không có mẫu ngữ cảnh (spec gói Nhanh §5.3); mẫu thuật
+/// ngữ của LMT theo kết quả spike (§6.1).
+pub fn build(family: PromptFamily, kind: PromptKind<'_>, text: &str, src: Lang, tgt: Lang) -> String {
+    match (family, kind) {
+        (PromptFamily::HyMt2, PromptKind::Plain) => translation_prompt(text, src, tgt),
+        (PromptFamily::HyMt2, PromptKind::Terminology(terms)) => terminology_prompt(text, terms, src, tgt),
+        (PromptFamily::HyMt2, PromptKind::Context(context)) => context_prompt(text, context, src, tgt),
+        (PromptFamily::Lmt, PromptKind::Terminology(_) | PromptKind::Context(_) | PromptKind::Plain) => {
+            lmt_prompt(text, src, tgt)
+        }
+    }
+}
+
+/// Mẫu của model card `NiuTrans/LMT-60-0.6B` (revision `dd18984`): một lượt `user`, có ngôn ngữ nguồn, tên tiếng Anh.
+fn lmt_prompt(text: &str, src: Lang, tgt: Lang) -> String {
+    let (s, t) = (src.english_name(), tgt.english_name());
+    format!("Translate the following text from {s} into {t}:\n{s}: {text}\n{t}:")
 }
 
 fn uses_chinese_template(src: Lang, tgt: Lang) -> bool {
@@ -183,6 +235,66 @@ mod tests {
             terminology_prompt("这个API", &terms()[1..], Lang::Zh, Lang::Vi),
             "参考下面的翻译：\nAPI 翻译成 giao diện lập trình\n将以下文本翻译为越南语，注意只需要输出翻译后的结果，不要额外解释：\n\n这个API"
         );
+    }
+
+    #[test]
+    fn lmt_template_is_the_model_card_text() {
+        assert_eq!(
+            build(PromptFamily::Lmt, PromptKind::Plain, "Hello", Lang::En, Lang::Vi),
+            "Translate the following text from English into Vietnamese:\nEnglish: Hello\nVietnamese:"
+        );
+        assert_eq!(
+            build(PromptFamily::Lmt, PromptKind::Plain, "你好", Lang::Zh, Lang::Ko),
+            "Translate the following text from Chinese into Korean:\nChinese: 你好\nKorean:"
+        );
+    }
+
+    #[test]
+    fn lmt_ignores_context() {
+        assert_eq!(
+            build(
+                PromptFamily::Lmt,
+                PromptKind::Context("câu trước"),
+                "B",
+                Lang::Ja,
+                Lang::Vi
+            ),
+            build(PromptFamily::Lmt, PromptKind::Plain, "B", Lang::Ja, Lang::Vi)
+        );
+    }
+
+    #[test]
+    fn hy_mt2_build_matches_the_existing_templates() {
+        let t = terms();
+        assert_eq!(
+            build(PromptFamily::HyMt2, PromptKind::Plain, "Hi", Lang::En, Lang::Vi),
+            translation_prompt("Hi", Lang::En, Lang::Vi)
+        );
+        assert_eq!(
+            build(
+                PromptFamily::HyMt2,
+                PromptKind::Terminology(&t),
+                "The sprint",
+                Lang::En,
+                Lang::Vi
+            ),
+            terminology_prompt("The sprint", &t, Lang::En, Lang::Vi)
+        );
+        assert_eq!(
+            build(PromptFamily::HyMt2, PromptKind::Context("A"), "B", Lang::Zh, Lang::Vi),
+            context_prompt("B", "A", Lang::Zh, Lang::Vi)
+        );
+    }
+
+    #[test]
+    fn family_codes() {
+        assert_eq!(PromptFamily::from_code("hy-mt2"), Some(PromptFamily::HyMt2));
+        assert_eq!(PromptFamily::from_code("lmt"), Some(PromptFamily::Lmt));
+        assert_eq!(PromptFamily::from_code("tower"), None);
+        assert_eq!(PromptFamily::default(), PromptFamily::HyMt2);
+        for f in [PromptFamily::HyMt2, PromptFamily::Lmt] {
+            assert_eq!(PromptFamily::from_code(f.code()), Some(f));
+        }
     }
 
     #[test]
