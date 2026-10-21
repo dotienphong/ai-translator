@@ -5,12 +5,13 @@
   "voice": {
     "name": "Linh (Enhanced)",
     "lang": "vi",
+    "wordsPerMinute": 215,
     "leadMs": 600,
     "tailMs": 2000,
     "lines": [
-      { "text": "Cảm ơn mọi người đã tham gia buổi họp hôm nay.", "gapAfterMs": 700 },
-      { "text": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần thứ hai của tháng Mười Một.", "gapAfterMs": 800 },
-      { "text": "Đội thiết kế đã phát hiện một vài lỗi ở bước thanh toán.", "gapAfterMs": 800 },
+      { "text": "Cảm ơn mọi người đã tham gia buổi họp hôm nay.", "gapAfterMs": 450 },
+      { "text": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần thứ hai của tháng Mười Một.", "gapAfterMs": 500 },
+      { "text": "Đội thiết kế đã phát hiện một vài lỗi ở bước thanh toán.", "gapAfterMs": 500 },
       { "text": "Em cần báo giá mới cho phần việc thêm trước cuối tuần này.", "gapAfterMs": 0 }
     ]
   },

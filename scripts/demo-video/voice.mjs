@@ -81,9 +81,11 @@ function main(lang) {
     process.exit(1);
   }
   mkdirSync(path.join(out, "voice"), { recursive: true });
+  // Tốc độ đọc (từ/phút, `say -r`); không khai thì theo mặc định của giọng.
+  const speed = script.voice.wordsPerMinute === undefined ? [] : ["-r", String(script.voice.wordsPerMinute)];
   const clips = lines.map((line, i) => {
     const file = path.join(out, "voice", `${lang}-${i + 1}.wav`);
-    execFileSync("say", ["-v", name, "--file-format=WAVE", `--data-format=LEI16@${VOICE_RATE}`, "-o", file, line.text]);
+    execFileSync("say", ["-v", name, ...speed, "--file-format=WAVE", `--data-format=LEI16@${VOICE_RATE}`, "-o", file, line.text]);
     const { rate, samples } = readWav(readFileSync(file));
     if (rate !== VOICE_RATE) throw new Error(`${file}: ${rate} Hz, cần ${VOICE_RATE} Hz`);
     return trimSilence(samples, rate);
@@ -97,6 +99,7 @@ function main(lang) {
   writeFileSync(path.join(out, `truth.${lang}.json`), `${JSON.stringify(truth, null, 1)}\n`);
   const voice = {
     voice: name,
+    wordsPerMinute: script.voice.wordsPerMinute ?? null,
     macos: execFileSync("sw_vers", ["-productVersion"], { encoding: "utf8" }).trim(),
     rate: VOICE_RATE,
     durationMs: Math.round((samples.length / VOICE_RATE) * 1000),
