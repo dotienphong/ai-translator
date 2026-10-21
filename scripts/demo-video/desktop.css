@@ -146,6 +146,9 @@ body {
   overflow: hidden;
   border-radius: 12px;
   background: #2a2c31;
+  /* Lớp vẽ riêng: ảnh clip đổi mỗi khung thì chỉ vẽ lại ô này. Không có thì Chrome vẽ lại cả mảng chứa ô và thanh điều khiển, lúc
+     vẽ hết lúc vẽ một phần, làm viền thanh điều khiển lệch vài mức màu giữa các lần dựng. */
+  will-change: transform;
 }
 .tile::after {
   content: "";

@@ -72,6 +72,6 @@
     "overlay": { "width": 900, "height": 200, "fontSize": 22, "bottomGap": 72 },
     "chat": { "left": 238, "top": 96, "width": 1060, "height": 720, "listWidth": 300 },
     "compose": { "width": 560, "topRatio": 0.25 },
-    "cursor": { "rest": { "x": 1290, "y": 560 }, "input": { "x": 860, "y": 788 } }
+    "cursor": { "rest": { "x": 1290, "y": 560 }, "input": { "x": 1150, "y": 788 } }
   }
 }
