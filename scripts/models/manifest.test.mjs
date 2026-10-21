@@ -76,7 +76,7 @@ test("cấu hình trong repo có đủ file cho ba gói", () => {
   for (const pack of config.packs) assert.ok(!/\{x\}/.test(pack.note.vi + pack.note.en), `${pack.id}: ghi chú còn {x}`);
 });
 
-test("file mt có prompt khác hy-mt2 thì min_app_version >= 0.1.18 (spec 2026-10-21-goi-nhanh §4.2)", () => {
+test("file mt có prompt khác hy-mt2 thì min_app_version >= 0.2.0 (spec 2026-10-21-goi-nhanh §4.2)", () => {
   const config = JSON.parse(readFileSync(script("models.config.json"), "utf8"));
   const v = (s) => s.split(".").map(Number);
   const atLeast = (a, b) => {
@@ -85,7 +85,7 @@ test("file mt có prompt khác hy-mt2 thì min_app_version >= 0.1.18 (spec 2026-
   };
   for (const f of config.files.filter((f) => f.prompt !== undefined)) {
     assert.equal(f.kind, "mt", `${f.id}: prompt chỉ dành cho file mt`);
-    if (f.prompt !== "hy-mt2") assert.ok(atLeast(v(f.min_app_version), v("0.1.18")), f.id);
+    if (f.prompt !== "hy-mt2") assert.ok(atLeast(v(f.min_app_version), v("0.2.0")), f.id);
   }
   assert.ok(config.files.some((f) => f.prompt === "lmt"));
 });

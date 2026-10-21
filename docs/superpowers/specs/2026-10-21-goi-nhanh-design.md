@@ -75,7 +75,7 @@ Script và kết quả thô của lượt đo này được chép vào `bench/20
 - Thêm file:
   - `lmt-60-0.6b-q8_0`: `tier: ["fast"]`, `kind: "mt"`, `prompt: "lmt"`, `file: "LMT-60-0.6B-Q8_0.gguf"`,
     `url: "lmt-60/LMT-60-0.6B-Q8_0.gguf"`, `version` là 7 ký tự đầu của revision Hugging Face, `license_id:
-    "Apache-2.0"`, `min_app_version` là bản app đầu tiên hiểu trường `prompt` (dự kiến `0.1.18`).
+    "Apache-2.0"`, `min_app_version` là bản app đầu tiên hiểu trường `prompt` (`0.2.0`; chủ dự án chọn nâng thẳng lên 0.2.0 ngày 2026-10-21).
   - `lmt-60-license`: `kind: "license"`, văn bản Apache License 2.0, `file: "LMT-60-LICENSE.txt"`.
   - `notice-fast`: `kind: "license"`, `file: "NOTICE-fast.txt"`, ghi nguồn, bản quyền và việc đã đổi định dạng (§7).
 - Thêm `"fast"` vào `tier` của các file dùng chung: whisper turbo, hai file giấy phép whisper, silero VAD và giấy phép của
@@ -92,7 +92,7 @@ Script và kết quả thô của lượt đo này được chép vào `bench/20
   bỏ trống, ghi vào thì manifest không hợp lệ (`files[i].prompt`).
 - Giá trị app này hiểu: `"hy-mt2"` và `"lmt"`. Bỏ trống nghĩa là `"hy-mt2"` (mọi file Hy-MT2 hiện có).
 - Giá trị lạ (họ prompt của app tương lai) **không** làm cả manifest hỏng: gói chứa file đó bị coi như "cần app mới hơn"
-  (`usable_by` trả `false`), giống `min_app_version`. Nhờ vậy manifest sau này thêm họ thứ ba không làm app 0.1.18 mất
+  (`usable_by` trả `false`), giống `min_app_version`. Nhờ vậy manifest sau này thêm họ thứ ba không làm app 0.2.0 mất
   luôn gói Chuẩn và gói Nhẹ.
 - App cũ bỏ qua khóa lạ, nên nếu chỉ dựa vào trường `prompt` thì app cũ sẽ dùng mẫu Hy-MT2 cho LMT. Điều đó không xảy ra
   vì file LMT đặt `min_app_version` mới (§4.1). Kiểm tra phát hành (`release-ready`, `manifest.test.mjs`) thêm luật: file
@@ -256,11 +256,11 @@ thường), và COMET. Ngưỡng ở §6.1.
 
 Thứ tự bắt buộc, vì app cũ phải thấy gói Nhanh là "cần bản mới hơn" trước khi manifest có gói này:
 
-1. Gộp `goi-nhanh` vào `main`, phát hành app 0.1.18 theo quy trình 5 bước (đẩy tag cần chủ dự án cho phép).
+1. Gộp `goi-nhanh` vào `main`, phát hành app 0.2.0 theo quy trình 5 bước (đẩy tag cần chủ dự án cho phép).
 2. Tải `LMT-60-0.6B-Q8_0.gguf`, `LMT-60-LICENSE.txt`, `NOTICE-fast.txt` lên R2 (chủ dự án chạy lệnh, hoặc cho phép).
 3. Dựng `body-3.json` bằng `build-manifest.mjs`, ký trong CI (`sign-manifest.yml`, secret chỉ có trong CI), tải
    `models.json` mới lên R2.
-4. Kiểm trên máy thật: app 0.1.18 thấy gói Nhanh và tải được; app 0.1.17 thấy nhãn "cần bản mới hơn".
+4. Kiểm trên máy thật: app 0.2.0 thấy gói Nhanh và tải được; app 0.1.17 thấy nhãn "cần bản mới hơn".
 
 Không push, không đẩy tag, không deploy khi chủ dự án chưa cho phép từng bước.
 

@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub const SCHEMA: u32 = 1;
 /// Bản app đầu tiên hiểu trường `prompt` (spec gói Nhanh §4.2): file `mt` có họ khác `hy-mt2` phải đặt
 /// `min_app_version` từ bản này, vì app cũ bỏ qua `prompt` và sẽ dùng mẫu Hy-MT2.
-pub const PROMPT_FIELD_SINCE: &str = "0.1.18";
+pub const PROMPT_FIELD_SINCE: &str = "0.2.0";
 /// Một file model không lớn hơn chừng này (Q8_0 là 1,91 GB).
 pub const MAX_FILE_BYTES: u64 = 16 << 30;
 const MAX_TEXT: usize = 500;
@@ -672,9 +672,9 @@ pub(crate) mod tests {
         value["files"][3]["prompt"] = json!("lmt");
         assert_eq!(
             parse(&value).unwrap().prompt_needs_newer_app(),
-            ["files[3]: lmt cần min_app_version >= 0.1.18"]
+            ["files[3]: lmt cần min_app_version >= 0.2.0"]
         );
-        value["files"][3]["min_app_version"] = json!("0.1.18");
+        value["files"][3]["min_app_version"] = json!("0.2.0");
         assert!(parse(&value).unwrap().prompt_needs_newer_app().is_empty());
     }
 
