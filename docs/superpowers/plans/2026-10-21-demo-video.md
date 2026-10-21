@@ -1601,7 +1601,7 @@ Kỳ vọng: `tsc` không báo lỗi; vitest đạt hết như trước.
 
 Rồi chạy bộ kiểm giao diện sẵn có, bộ này không dùng `demo`, nên phải đạt như cũ:
 ```bash
-cd /Users/dtphong/Desktop/software_business/ai-translator && (node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1431 > /dev/null 2>&1 &) && sleep 3 && node scripts/ui-preview/check-live.mjs; code=$?; pkill -f "vite --config scripts/ui-preview/vite.config.ts --port 1431"; exit $code
+cd /Users/dtphong/Desktop/software_business/ai-translator && (node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1431 > /dev/null 2>&1 &) && sleep 3 && node scripts/ui-preview/check-live.mjs; code=$?; pkill -f "scripts/ui-preview/vite.config.ts --port 1431"; exit $code
 ```
 Kỳ vọng: in đường dẫn các ảnh PNG, thoát mã 0 (không có dòng lỗi).
 
@@ -2515,7 +2515,7 @@ Kỳ vọng: mọi test đạt (33 test), `tsc` không lỗi.
 
 Tắt server Vite 1432 và kiểm không còn Chrome không đầu sót:
 ```bash
-pkill -f "vite --config scripts/ui-preview/vite.config.ts --port 1432"; pgrep -fl "remote-debugging-port=9[3-8][0-9][0-9]" || echo "không còn Chrome không đầu"
+pkill -f "scripts/ui-preview/vite.config.ts --port 1432"; pgrep -fl "remote-debugging-port=9[3-8][0-9][0-9]" || echo "không còn Chrome không đầu"
 ```
 Xóa các thư mục thử nếu muốn: `rm -rf target/demo-video/try-a target/demo-video/try-b target/demo-video/try-guides target/demo-video/*.sha`.
 
