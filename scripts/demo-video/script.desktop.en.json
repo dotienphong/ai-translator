@@ -5,7 +5,7 @@
   "voice": {
     "name": "Linh (Enhanced)",
     "lang": "vi",
-    "wordsPerMinute": 215,
+    "wordsPerMinute": 237,
     "leadMs": 600,
     "tailMs": 2000,
     "lines": [
