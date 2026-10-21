@@ -1,6 +1,10 @@
-# Tỉ lệ token cho cặp không có tiếng Việt và câu gốc rất ngắn (Đ12)
+# Tỉ lệ token của LMT-60-0.6B Q8_0 (gói Nhanh)
 
-Sinh bởi `bench/phase0/mt/ratio_stats.py` từ kết quả `latency-bench mt-eval` trên `testset_ratio.jsonl` (`build_ratio_set.py`).
+Sinh bởi `bench/phase0/mt/ratio_stats.py` ngày 2026-10-21 từ hai lượt `latency-bench mt-eval --prompt lmt --no-ratio-thresholds`:
+bảng đầu là `testset_phase0.jsonl` (8 chiều có tiếng Việt), bảng sau là `testset_ratio.jsonl` (12 chiều còn lại và câu gốc
+rất ngắn). Cột "ngưỡng đề xuất" vào `DEFAULT_RATIO_THRESHOLDS_LMT` (`crates/pipeline/src/config.rs`).
+
+Câu lỗi duy nhất (en-vi-826, tiếng Anh viết hoa toàn bộ): model chép lại câu gốc rồi sinh tới hạn mức token ở cả hai lần thử.
 
 ## LMT-60-0.6B-Q8_0-plain.jsonl
 
