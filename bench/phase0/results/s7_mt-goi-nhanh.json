@@ -1,0 +1,113 @@
+{
+ "runs": {
+  "LMT-60-0.6B-Q8_0-plain": {
+   "en->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 1,
+    "leaked": 0,
+    "token_ratio_max": 3.4285714285714284,
+    "token_ratio_p99": 2.4485714285714244,
+    "proposed_threshold": 4.3,
+    "total_ms_p50": 212.91754,
+    "comet": 0.8016572934389115,
+    "chrf": 44.815879622360036
+   },
+   "ja->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 2.6666666666666665,
+    "token_ratio_p99": 1.7461403508771978,
+    "proposed_threshold": 3.4,
+    "total_ms_p50": 191.319925,
+    "comet": 0.7798975986242295,
+    "chrf": 34.56978664915251
+   },
+   "ko->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.7777777777777777,
+    "token_ratio_p99": 1.5852777777777787,
+    "proposed_threshold": 2.3,
+    "total_ms_p50": 184.403685,
+    "comet": 0.7780611112713813,
+    "chrf": 34.853069762178286
+   },
+   "vi->en": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.5,
+    "token_ratio_p99": 1.157307692307694,
+    "proposed_threshold": 1.9,
+    "total_ms_p50": 137.65861,
+    "comet": 0.8037548613548279,
+    "chrf": 46.360494339473746
+   },
+   "vi->ja": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.5263157894736843,
+    "token_ratio_p99": 1.4749999999999999,
+    "proposed_threshold": 2.0,
+    "total_ms_p50": 206.49892499999999,
+    "comet": 0.8072264298796654,
+    "chrf": 18.441939493732562
+   },
+   "vi->ko": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.7692307692307692,
+    "token_ratio_p99": 1.761730769230769,
+    "proposed_threshold": 2.3,
+    "total_ms_p50": 237.24514499999998,
+    "comet": 0.7872511982917786,
+    "chrf": 18.317010363027652
+   },
+   "vi->zh": {
+    "n": 40,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 1.2142857142857142,
+    "token_ratio_p99": 1.1512406015037593,
+    "proposed_threshold": 1.6,
+    "total_ms_p50": 135.446405,
+    "comet": 0.8090129360556603,
+    "chrf": 22.98040639126551
+   },
+   "zh->vi": {
+    "n": 100,
+    "length_capped": 0,
+    "failed": 0,
+    "leaked": 0,
+    "token_ratio_max": 2.7857142857142856,
+    "token_ratio_p99": 2.750357142857143,
+    "proposed_threshold": 3.5,
+    "total_ms_p50": 180.234795,
+    "comet": 0.809123061299324,
+    "chrf": 38.097855184178584
+   }
+  }
+ },
+ "comparisons": {},
+ "token_ratio_thresholds": {
+  "en->vi": 4.3,
+  "ja->vi": 3.4,
+  "ko->vi": 2.3,
+  "vi->en": 1.9,
+  "vi->ja": 2.0,
+  "vi->ko": 2.3,
+  "vi->zh": 1.6,
+  "zh->vi": 3.5
+ }
+}

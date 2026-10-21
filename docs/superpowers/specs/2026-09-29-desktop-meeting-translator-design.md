@@ -114,7 +114,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 |---|---|
 | A1 | **Tương thích:** chạy được với Teams (app), Zoom (app), Google Meet (Chrome và Edge; thêm Safari trên Mac) và Zalo PC, trên cả hai hệ điều hành. Nghe được qua loa, tai nghe có dây và tai nghe Bluetooth. |
 | A2 | **Độ trễ**, tính từ lúc người nói thực sự dừng câu đến lúc bản dịch hiện đủ, kể cả khi đó vẫn là phụ đề tạm (§6.3). Không tính lần nạp model khi bắt đầu phiên (§5). **Máy khuyến nghị: p50 ≤ 2,0 giây, p90 ≤ 3,0 giây**, và chữ dịch đầu tiên hiện trong ≤ 1,0 giây (p50). Máy tối thiểu: p50 ≤ 3,5 giây. |
-| A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), chạy qua đúng `llama-server` và prompt của app. Bộ test gồm bộ của benchmark 2026-09-29, cộng thêm ba chiều Trung→Việt, Nhật→Việt, Hàn→Việt, mỗi chiều 100 câu, dựng từ WMT24++ giống các chiều đã có. **Mốc:** COMET của Q8_0 (gói Chuẩn) và Q4_K_M (gói Nhẹ), chấm ở S7, ghi ở bảng dưới. **Mức sàn** cho Anh→Việt: gói Chuẩn ≥ 0,83, gói Nhẹ ≥ 0,80; nếu không đạt thì xem lại D5 trước khi làm MVP. Ba chiều Trung/Nhật/Hàn→Việt chưa có mức sàn; chiều nào thấp hơn Anh→Việt quá 0,05 thì xem lại D5 cho chiều đó. **Chống thụt lùi:** sau mỗi lần đổi model, engine hay prompt, COMET của từng chiều không được thấp hơn mốc quá 0,01. |
+| A3 | **Chất lượng dịch**, chấm trên văn bản (không qua bước nhận dạng giọng nói), chạy qua đúng `llama-server` và prompt của app. Bộ test gồm bộ của benchmark 2026-09-29, cộng thêm ba chiều Trung→Việt, Nhật→Việt, Hàn→Việt, mỗi chiều 100 câu, dựng từ WMT24++ giống các chiều đã có. **Mốc:** COMET của Q8_0 (gói Chuẩn) và Q4_K_M (gói Nhẹ), chấm ở S7, ghi ở bảng dưới. **Mức sàn** cho Anh→Việt: gói Chuẩn ≥ 0,83, gói Nhẹ ≥ 0,80, gói Nhanh ≥ 0,77 (spec 2026-10-21-goi-nhanh §8.4); nếu không đạt thì xem lại D5 trước khi làm MVP. Ba chiều Trung/Nhật/Hàn→Việt chưa có mức sàn; chiều nào thấp hơn Anh→Việt quá 0,05 thì xem lại D5 cho chiều đó. **Chống thụt lùi:** sau mỗi lần đổi model, engine hay prompt, COMET của từng chiều không được thấp hơn mốc quá 0,01. |
 | A4 | **Chất lượng nhận dạng giọng nói**, đo trên bộ clip mẫu dựng ở Phase 0 (S7). Mỗi ngôn ngữ nguồn mặc định có ít nhất 15 phút âm thanh, kèm bản chép chuẩn đã được người kiểm lại, và có cả âm thanh thu qua tai nghe Bluetooth (băng hẹp). Chỉ dùng clip có quyền sử dụng: tự thu, hoặc bộ dữ liệu mở như FLEURS và AMI (CC BY 4.0). Tiếng Anh và tiếng Việt đo WER; tiếng Trung, Nhật, Hàn đo CER theo thông lệ cho các ngôn ngữ này. Lấy mốc cho cả gói Chuẩn và gói Nhẹ; mốc đo ở S7 ghi ở bảng dưới. Sau mỗi lần đổi model hay engine, WER/CER không được xấu hơn mốc quá 10% (tương đối). |
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
@@ -126,16 +126,21 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 
 - **A3** (`s7_mt_decisions.md`): COMET của lượt không có ngữ cảnh, qua `llama-server` b11146 và prompt của app. Anh/Trung/Nhật/Hàn→Việt và Việt→Anh mỗi chiều 100 câu; Việt→Trung/Nhật/Hàn mỗi chiều 40 câu.
 
-  | Chiều | Gói Chuẩn (Q8_0) | Gói Nhẹ (Q4_K_M) |
-  |---|---|---|
-  | Anh→Việt | 0,842 | 0,841 |
-  | Trung→Việt | 0,829 | 0,831 |
-  | Nhật→Việt | 0,830 | 0,815 |
-  | Hàn→Việt | 0,834 | 0,822 |
-  | Việt→Anh | 0,821 | 0,822 |
-  | Việt→Trung | 0,836 | 0,821 |
-  | Việt→Nhật | 0,847 | 0,845 |
-  | Việt→Hàn | 0,851 | 0,842 |
+  | Chiều | Gói Chuẩn (Q8_0) | Gói Nhẹ (Q4_K_M) | Gói Nhanh (LMT-60-0.6B Q8_0) |
+  |---|---|---|---|
+  | Anh→Việt | 0,842 | 0,841 | 0,802 |
+  | Trung→Việt | 0,829 | 0,831 | 0,809 |
+  | Nhật→Việt | 0,830 | 0,815 | 0,780 |
+  | Hàn→Việt | 0,834 | 0,822 | 0,778 |
+  | Việt→Anh | 0,821 | 0,822 | 0,804 |
+  | Việt→Trung | 0,836 | 0,821 | 0,809 |
+  | Việt→Nhật | 0,847 | 0,845 | 0,807 |
+  | Việt→Hàn | 0,851 | 0,842 | 0,787 |
+
+  - Cột gói Nhanh đo ngày 2026-10-21 bằng `latency-bench mt-eval --prompt lmt` (code dịch của app), cùng bộ 620 câu
+    (`bench/phase0/results/s7_mt-goi-nhanh.md`). Đạt sàn 0,77; Trung/Nhật/Hàn→Việt không thấp hơn Anh→Việt quá 0,05 (Hàn
+    thấp hơn 0,024). Một câu lỗi trên 620 (en-vi-826, tiếng Anh viết hoa toàn bộ: model chép lại câu gốc, quá ngưỡng tỉ lệ
+    cả hai lần thử, phụ đề hiện câu gốc).
 
   - Anh→Việt đạt mức sàn ở cả hai gói, nên không cần xem lại D5. Gói Chuẩn chỉ dư 0,012 so với sàn 0,83.
   - Không chiều Trung/Nhật/Hàn→Việt nào thấp hơn Anh→Việt quá 0,05. Chênh nhiều nhất là Nhật→Việt của gói Nhẹ, thấp hơn 0,026.

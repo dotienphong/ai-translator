@@ -7,13 +7,19 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from score_mt import chrf_pp, regression_lines, summarize  # noqa: E402
+from score_mt import chrf_pp, floor_cell, regression_lines, summarize  # noqa: E402
 
 BASE = {"runs": {"Q4_K_M-plain": {"en->vi": {"comet": 0.84}, "zh->vi": {"comet": 0.80}},
                  "Q8_0-plain": {"en->vi": {"comet": 0.85}}}}
 
 
 class RegressionLines(unittest.TestCase):
+    def test_the_fast_pack_has_its_own_floor(self):
+        per_dir = {"en->vi": {"comet": 0.78}, "zh->vi": {"comet": 0.74}}
+        self.assertEqual(floor_cell("LMT-60-0.6B-Q8_0-plain", "en->vi", per_dir), "0.770 (đạt)")
+        self.assertEqual(floor_cell("LMT-60-0.6B-Q8_0-plain", "zh->vi", per_dir), "0.730 (đạt)")
+        self.assertEqual(floor_cell("Hy-MT2-1.8B-Q8_0-plain", "en->vi", per_dir), "0.830 (KHÔNG ĐẠT)")
+
     def test_every_direction_is_compared(self):
         report = {"Q4_K_M-plain": {"en->vi": {"comet": 0.835}, "zh->vi": {"comet": 0.81}}}
         lines, regressed, missing = regression_lines(report, BASE)

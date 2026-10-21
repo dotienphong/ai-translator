@@ -23,7 +23,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 DATA = os.path.join(ROOT, "bench", "phase0", "data", "mt")
 RESULTS = os.path.join(ROOT, "bench", "phase0", "results")
-FLOOR = {"Q8_0": 0.83, "Q4_K_M": 0.80}  # mức sàn Anh→Việt (A3)
+# Mức sàn Anh→Việt (A3), chọn theo chuỗi con đầu tiên có trong tên lượt chạy, nên LMT (gói Nhanh, spec 2026-10-21 §8.4)
+# phải đứng trước Q8_0: tên của nó cũng có "Q8_0".
+FLOOR = {"LMT-60": 0.77, "Q8_0": 0.83, "Q4_K_M": 0.80}
 CJK_GAP = 0.05  # Trung/Nhật/Hàn→Việt thấp hơn Anh→Việt quá mức này thì xem lại D5 (A3)
 REGRESSION = 0.01  # chống thụt lùi A3: mỗi chiều không thấp hơn mốc quá mức này
 MARKERS = ("[", "【")  # tiêu đề của mẫu prompt có ngữ cảnh: [Background Information], 【背景信息】
