@@ -605,7 +605,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - macOS: `~/Library/Application Support/<bundle-id>/models`, tức `~/Library/Application Support/com.aitranslator.desktop/models`
   - Windows: `%LOCALAPPDATA%\<bundle-id>\models`. Không đặt trong `%LOCALAPPDATA%\<tên app>`, vì đó là thư mục cài đặt của bộ cài NSIS kiểu per-user. Ô "xóa dữ liệu app" của bộ gỡ cài đặt chỉ xóa `%APPDATA%\<bundle-id>` và `%LOCALAPPDATA%\<bundle-id>` (A6).
 - **Tự host model:** Apache 2.0 và MIT cho phép phân phối lại. File LICENSE và NOTICE được đặt cạnh file model. Không tải từ Hugging Face hay GitHub của người khác.
-- **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày (hay khi giờ máy lùi về trước lần kiểm trước). Có bản mới thì hỏi người dùng, không tự tải.
+- **Cập nhật model:** khi có mạng, app kiểm tra manifest lúc khởi động, tối đa một lần mỗi ngày (hay khi giờ máy lùi về trước lần kiểm trước). App chạy liên tục thì luồng nền xem lại mỗi giờ theo cùng luật một ngày, nên gói mới tới máy trong vòng một ngày mà không phải mở lại app; đang tải, xóa hay kiểm model thì bỏ lượt đó (từ 0.2.1, sau khi gói Nhanh không hiện ở máy đã mở app từ hôm trước). Có bản mới thì hỏi người dùng, không tự tải.
   - Đang tải bản cập nhật đè lên file của gói đang dùng thì không bắt đầu phiên dịch được (chủ dự án quyết 2026-10-02); đang dịch bằng gói đó thì không tải đè hay xóa nó. App tắt tiến trình phụ đang rảnh trước khi tải đè hay xóa model, vì Windows không cho đổi tên đè file đang mở.
 
 ### 6.8 Thanh toán (PayOS) và bản quyền

@@ -2,7 +2,8 @@
 //! và phát trạng thái cho cửa sổ chính qua sự kiện `models://state`.
 //!
 //! - Manifest: đọc bản đã lưu lúc khởi động, rồi tải bản mới nếu chưa có bản nào hay đã qua một ngày từ lần kiểm trước
-//!   ([`ModelService::load`]). Lỗi mạng không xóa bản đang có.
+//!   ([`ModelService::load`]). App chạy liên tục thì luồng nền xem lại mỗi giờ ([`ModelService::check_if_due`]), nên
+//!   manifest mới (ví dụ gói mới) tới máy trong vòng một ngày mà không cần mở lại app. Lỗi mạng không xóa bản đang có.
 //! - Tải một gói: chạy trên luồng riêng, từng file một ([`super::download`]); xong thì gói thành gói đang dùng
 //!   (`modelTier`). Tiến trình phụ đang mở model bị tắt trước khi tải bản cập nhật đè lên file đang dùng.
 //! - Gói mới dùng từ phiên sau: phiên đang chạy giữ gói cũ (`session.rs`, ghi chú 8 của review cuối 02).
@@ -267,6 +268,19 @@ impl ModelService {
     pub fn manifest(&self) -> Option<Signed> {
         self.ensure_loaded();
         self.lock().manifest.clone()
+    }
+
+    /// Lượt kiểm định kỳ của luồng nền: như [`Self::load`] (chưa đủ một ngày thì không gọi mạng), trừ khi đang tải hay
+    /// đang xóa, kiểm model; khi đó bỏ lượt này, giờ sau thử lại. Trả `false` khi bỏ lượt.
+    pub fn check_if_due<R: Runtime>(&self, app: &AppHandle<R>) -> bool {
+        {
+            let inner = self.lock();
+            if inner.job.state == JobState::Downloading || inner.maintenance.is_some() {
+                return false;
+            }
+        }
+        self.load(app);
+        true
     }
 
     /// Đang tải bản cập nhật đè lên file của gói đang dùng.
@@ -794,15 +808,28 @@ impl ModelService {
     }
 }
 
-/// Lúc khởi động: đọc manifest đã lưu và kiểm bản mới (tối đa mỗi ngày một lần), trên luồng nền.
+/// Lúc khởi động: đọc manifest đã lưu và kiểm bản mới (tối đa mỗi ngày một lần), trên luồng nền; rồi xem lại mỗi giờ.
 pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
     std::thread::spawn(move || {
         if let Some(service) = app.try_state::<Arc<ModelService>>() {
             service.load(&app);
         }
+        // App chạy liên tục nhiều ngày vẫn nhận manifest mới: thức dậy mỗi giờ, `check_if_due` tự so với lần kiểm trước
+        // theo giờ máy (máy ngủ thì đồng hồ đơn điệu dừng), như bộ kiểm cập nhật app (`updater::WAKE_EVERY`).
+        loop {
+            std::thread::sleep(MANIFEST_WAKE_EVERY);
+            if let Some(service) = app.try_state::<Arc<ModelService>>()
+                && !service.check_if_due(&app)
+            {
+                log::info!("bỏ lượt kiểm manifest model: đang tải hay bảo trì model");
+            }
+        }
     });
 }
+
+/// Luồng kiểm manifest thức dậy sau chừng này để xem đã tới hạn chưa (hạn là một ngày, `source::CHECK_EVERY_SECS`).
+pub const MANIFEST_WAKE_EVERY: Duration = Duration::from_secs(3600);
 
 /// Model nạp lỗi (§9): băm lại file của gói đang dùng trên luồng nền.
 pub fn verify_in_background<R: Runtime>(app: &AppHandle<R>) {
@@ -964,6 +991,34 @@ mod tests {
             Some(MODELS_NOW + DAY),
             "ghi lần kiểm"
         );
+    }
+
+    /// Spec 2026-10-21-goi-nhanh (sau phát hành 0.2.0): app chạy liên tục nhiều ngày vẫn nhận manifest mới. Luồng nền
+    /// gọi `check_if_due` mỗi giờ; chưa đủ một ngày thì không gọi mạng; đang tải hay bảo trì model thì để giờ sau.
+    #[test]
+    fn the_periodic_check_follows_the_daily_rule_and_waits_for_model_work() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(manifest_requests(&h), 1);
+        h.clock.fetch_add(3600, Ordering::SeqCst);
+        assert!(h.service().check_if_due(&h.app.handle().clone()));
+        assert_eq!(manifest_requests(&h), 1, "chưa đủ một ngày");
+        h.clock.fetch_add(DAY, Ordering::SeqCst);
+        h.service().lock().job.state = JobState::Downloading;
+        assert!(
+            !h.service().check_if_due(&h.app.handle().clone()),
+            "đang tải thì để giờ sau"
+        );
+        assert_eq!(manifest_requests(&h), 1);
+        h.service().lock().job.state = JobState::Done;
+        h.service().lock().maintenance = Some(false);
+        assert!(
+            !h.service().check_if_due(&h.app.handle().clone()),
+            "đang xóa hay kiểm thì để giờ sau"
+        );
+        h.service().lock().maintenance = None;
+        assert!(h.service().check_if_due(&h.app.handle().clone()));
+        assert_eq!(manifest_requests(&h), 2);
     }
 
     #[test]
