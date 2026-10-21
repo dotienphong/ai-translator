@@ -276,7 +276,9 @@ Không push, không đẩy tag, không deploy khi chủ dự án chưa cho phép
 
 - Chất lượng thấp hơn rõ ở tiếng Hàn (A3: Việt→Hàn 0,787 so với 0,851; Hàn→Việt 0,778 so với 0,834). Ghi chú gói phải nói thẳng điều này.
 - Với người dùng, chữ đầu tiên gần như không sớm hơn (§2). Nếu khách thật sự phàn nàn về lúc chữ bắt đầu hiện thì gói này
-  không giải quyết; khi đó cần bật "Dịch trong lúc người nói chưa dừng".
+  không giải quyết; khi đó cần bật "Dịch trong lúc người nói chưa dừng". Thử đầu cuối bằng engine thật (2026-10-21,
+  `bench/2026-10-21-goi-nhanh/README.md`): A2 p50 giảm 16–34% (en 789 xuống 523 ms), CPU còn khoảng một nửa, nhưng thời gian
+  từ đầu câu tới chữ dịch gần như không đổi (en 5496 và 5470 ms); bật chế độ dịch trong lúc nói thì còn 1270 ms.
 - Model của bên nhỏ (NiuTrans), chưa có cộng đồng dùng rộng: có thể có lỗi lặp hay dịch lạc đề chưa thấy trên 332 câu. A3
   đếm các lỗi này; bản phát hành ghi gói là thử nghiệm nếu cột "Lỗi" khác 0.
 - Windows chưa đo: số tốc độ ở ghi chú gói chỉ nói về Mac cho tới khi có số Windows.
