@@ -1984,8 +1984,10 @@ const [script, voice, live, compose] = await Promise.all([
 ]);
 const tl = buildTimeline(script, voice, live, compose);
 const L = script.layout;
+// Ngôn ngữ giao diện của app trong video: ngôn ngữ đích của phụ đề, cũng là tiếng của người xem (`lang` chỉ là tên file kịch bản).
+const ui = script.target;
 // Phần cài đặt mà phía Rust gửi kèm `compose://open` (ComposeView của src/lib/ipc.ts).
-const COMPOSE_VIEW = { uiLanguage: lang, theme: "light", target: script.chat.replyTarget, autoPaste: true, blocked: null, platform: "macos" };
+const COMPOSE_VIEW = { uiLanguage: ui, theme: "light", target: script.chat.replyTarget, autoPaste: true, blocked: null, platform: "macos" };
 // Trong hai iframe: tắt transition/animation và con trỏ nhấp nháy (chạy theo giờ thật, làm các lần dựng khác nhau).
 const FREEZE_CSS =
   "*,*::before,*::after{transition:none!important;animation:none!important}textarea{caret-color:transparent!important}";
@@ -2022,7 +2024,7 @@ el("div", "self", call, script.call.you);
 
 const overlayFrame = el("iframe", "frame overlay-frame", stage);
 place(overlayFrame, L.overlay);
-overlayFrame.src = `/overlay.html?demo=1&session=running&empty=1&locked=1&lang=${lang}&size=${L.overlay.fontSize}`;
+overlayFrame.src = `/overlay.html?demo=1&session=running&empty=1&locked=1&lang=${ui}&size=${L.overlay.fontSize}`;
 
 const chat = el("div", "window chat", stage);
 place(chat, L.chat);
@@ -2038,7 +2040,7 @@ el("div", "send", inputBox, "➤");
 
 // Ô Gõ dịch: đúng bề rộng thật 560 điểm (compose::WIDTH), thu nhỏ quanh mép trên cho vừa khung chat.
 const composeFrame = el("iframe", "frame compose-frame", stage);
-composeFrame.src = `/compose.html?demo=1&lang=${lang}&theme=light`;
+composeFrame.src = `/compose.html?demo=1&lang=${ui}&theme=light`;
 composeFrame.style.top = `${L.compose.top}px`;
 composeFrame.style.left = `${L.chat.left + L.chat.width / 2 - 280}px`;
 composeFrame.style.transform = `scale(${L.compose.scale})`;

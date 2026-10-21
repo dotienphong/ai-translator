@@ -5,7 +5,7 @@
     "leadMs": 600,
     "tailMs": 2000,
     "lines": [
-      { "text": "Thanks for joining, everyone.", "gapAfterMs": 700 },
+      { "text": "Thanks everyone for joining today.", "gapAfterMs": 700 },
       { "text": "We need to move the launch date to the second week of November.", "gapAfterMs": 800 },
       { "text": "Our design team found a few issues in the checkout flow.", "gapAfterMs": 800 },
       { "text": "Could you send us an updated quote for the extra work by Friday?", "gapAfterMs": 0 }
@@ -37,7 +37,7 @@
   "chat": {
     "contact": "Sarah",
     "sarahMessage": "Hi! Following up on the quote we discussed in the meeting.",
-    "reply": "Dạ, em sẽ gửi báo giá mới trước thứ Sáu ạ.",
+    "reply": "Dạ vâng, em sẽ gửi báo giá mới cho chị trước thứ Sáu.",
     "replyLang": "vi",
     "replyTarget": "en",
     "placeholder": "Nhắn cho Sarah…"
@@ -53,7 +53,7 @@
     "call": { "left": 16, "top": 256, "width": 470, "height": 174 },
     "overlay": { "left": 16, "top": 438, "width": 470, "height": 278, "fontSize": 24 },
     "chat": { "left": 16, "top": 256, "width": 470, "height": 384 },
-    "compose": { "top": 290, "scale": 0.84 },
+    "compose": { "top": 262, "scale": 0.84 },
     "keys": { "top": 652 }
   }
 }
