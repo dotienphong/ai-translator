@@ -323,7 +323,7 @@ impl Settings {
             },
             save_history: false,
             send_error_reports: false,
-            launch_at_login: false,
+            launch_at_login: true,
             theme: Theme::System,
             update_channel: UpdateChannel::Stable,
             experimental: Experimental {

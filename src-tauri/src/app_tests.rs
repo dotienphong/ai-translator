@@ -110,6 +110,7 @@ fn enabling_launch_at_login_blocked_in_login_items_shows_a_notice() {
     let app = mock_app();
     let main = window(&app, "main");
     let received = notices(&app);
+    invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": false } })).unwrap();
     login_state(&app, |s| s.status = Some(AgentStatus::RequiresApproval));
     let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
     assert_eq!(settings["launchAtLogin"], true);
@@ -125,6 +126,7 @@ fn turning_off_launch_at_login_works_and_reports_when_it_stays_on() {
         login_state(app, |s| value = s.registered);
         value
     };
+    invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": false } })).unwrap();
     let settings = invoke(&main, "update_settings", json!({ "patch": { "launchAtLogin": true } })).unwrap();
     assert_eq!(settings["launchAtLogin"], true);
     assert!(registered(&app), "bật thì gọi `enable()`");
@@ -138,6 +140,16 @@ fn turning_off_launch_at_login_works_and_reports_when_it_stays_on() {
     assert!(error.contains("autostartStillEnabled"), "{error}");
     let settings = invoke(&main, "get_settings", json!({})).unwrap();
     assert_eq!(settings["launchAtLogin"], true, "cài đặt giữ đúng trạng thái thật");
+}
+
+#[test]
+fn first_run_registers_the_default_launch_at_login() {
+    let app = mock_app();
+    let mut settings = crate::settings::Settings::defaults(crate::settings::UiLanguage::Vi);
+    assert!(settings.launch_at_login, "mặc định là Bật");
+    actions::register_default_launch_at_login(app.handle(), &settings);
+    assert!(!actions::sync_launch_at_login(app.handle(), &mut settings), "đã đăng ký thì cài đặt giữ Bật");
+    assert!(settings.launch_at_login);
 }
 
 #[test]

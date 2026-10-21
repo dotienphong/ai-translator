@@ -125,6 +125,10 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // File cài đặt đã có từ trước: không phải lần đầu chạy app, nên thiếu bộ đếm Free là mất bản ghi (§6.8).
     let had_settings = loaded.meta.version > 0;
     let mut settings = loaded.settings;
+    // Bản debug không tự đăng ký: mục khởi động trùng bundle identifier với app đã cài, sẽ ghi đè lên nó.
+    if !had_settings && !cfg!(debug_assertions) {
+        actions::register_default_launch_at_login(&handle, &settings);
+    }
     let launch_changed = actions::sync_launch_at_login(&handle, &mut settings);
     if needs_save || launch_changed {
         persist::save(&handle, &settings, &loaded.meta)?;

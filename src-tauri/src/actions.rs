@@ -229,6 +229,21 @@ fn set_launch_at_login<R: Runtime>(app: &AppHandle<R>, enabled: bool) -> Result<
     Ok(())
 }
 
+/// Lần chạy đầu (chưa có file cài đặt): mặc định là Bật, nên đăng ký mục khởi động với hệ điều hành ngay,
+/// nếu không `sync_launch_at_login` sẽ coi hệ điều hành là đúng và đưa cài đặt về Tắt. Lỗi thì để
+/// `sync_launch_at_login` sửa cài đặt cho khớp trạng thái thật.
+pub fn register_default_launch_at_login<R: Runtime>(app: &AppHandle<R>, settings: &Settings) {
+    if !settings.launch_at_login {
+        return;
+    }
+    let Ok(items) = login_items(app) else {
+        return;
+    };
+    if let Err(e) = items.0.enable() {
+        log::warn!("không đăng ký được khởi động cùng hệ thống ở lần chạy đầu: {e}");
+    }
+}
+
 /// Lúc khởi động: người dùng có thể đã tắt mục khởi động cùng hệ thống trong System Settings hay
 /// Task Manager, nên trạng thái thật của hệ điều hành là đúng (QĐ16). Trả về `true` nếu cài đặt phải sửa.
 pub fn sync_launch_at_login<R: Runtime>(app: &AppHandle<R>, settings: &mut Settings) -> bool {
