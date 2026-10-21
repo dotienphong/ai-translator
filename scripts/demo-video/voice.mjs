@@ -1,7 +1,8 @@
-// Tạo giọng đọc cho video (tiếng của `voice.lang`, mặc định tiếng Anh) (spec 2026-10-21-demo-video §2.2): `say` đọc từng câu của kịch bản (48 kHz), cắt khoảng lặng
-// đầu cuối, ghép với khoảng nghỉ đã khai; từ cùng file đó hạ mẫu ra WAV 16 kHz cho latency-bench và ghi mốc câu (truth.json).
-//   node scripts/demo-video/voice.mjs [vi]
-// Ra target/demo-video/voice48.<ngôn ngữ>.wav, voice16.<…>.wav, truth.<…>.json, và scripts/demo-video/data/voice.<…>.json
+// Tạo giọng đọc cho video (spec 2026-10-21-demo-video §2.2), bằng tiếng của `voice.lang` (mặc định tiếng Anh): `say` đọc từng câu
+// của kịch bản (48 kHz), cắt khoảng lặng đầu cuối, ghép với khoảng nghỉ đã khai; từ cùng file đó hạ mẫu ra WAV 16 kHz cho
+// latency-bench và ghi mốc câu (truth.json).
+//   node scripts/demo-video/voice.mjs [vi|desktop.en]       # tên kịch bản
+// Ra target/demo-video/voice48.<kịch bản>.wav, voice16.<…>.wav, truth.<…>.json, và scripts/demo-video/data/voice.<…>.json
 // (commit): độ dài, mốc câu, mức âm lượng mỗi 100 ms (chấm "đang nghe", vòng sáng người nói), mã băm của file 48 kHz để
 // render.mjs kiểm đúng file đã dùng lấy chữ.
 import { execFileSync } from "node:child_process";
