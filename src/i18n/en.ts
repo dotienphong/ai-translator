@@ -124,6 +124,7 @@ export const en = {
   "history.clear.confirm": "Delete every saved session? This cannot be undone.",
   "glossary.pro": "The glossary is a Pro feature: your terms are used when translating.",
   "glossary.hint": "Terms found in a sentence are given to the translator as hints; it may not use them every time. Matching ignores case; Chinese, Japanese and Korean terms also match inside words.",
+  "glossary.fastPack": "The Fast model pack does not apply the glossary. Switch to the Standard or Lite pack to use it.",
   "glossary.count": "{n} of {max} terms",
   "glossary.source": "Term",
   "glossary.target": "Translation",

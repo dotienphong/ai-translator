@@ -4,6 +4,7 @@ import {
   defaultChoice,
   downloadBlock,
   formatBytes,
+  glossaryApplies,
   jobFor,
   localized,
   needsManualDownload,
@@ -16,6 +17,15 @@ import {
 
 const pack = fakePack;
 const view = fakeModelsView;
+
+describe("glossaryApplies", () => {
+  it("chỉ gói Nhanh không áp từ điển thuật ngữ", () => {
+    expect(glossaryApplies("fast")).toBe(false);
+    expect(glossaryApplies("standard")).toBe(true);
+    expect(glossaryApplies("lite")).toBe(true);
+    expect(glossaryApplies(null)).toBe(true);
+  });
+});
 
 describe("formatBytes", () => {
   it("theo đơn vị thập phân, tiếng Việt dùng dấu phẩy", () => {

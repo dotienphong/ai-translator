@@ -125,6 +125,7 @@ export const ko: Record<MessageKey, string> = {
   "history.clear.confirm": "저장된 세션을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
   "glossary.pro": "용어집은 Pro 기능입니다. 등록한 용어가 번역할 때 사용됩니다.",
   "glossary.hint": "문장에서 발견된 용어는 번역 엔진에 힌트로 전달되지만 매번 사용되지는 않을 수 있습니다. 일치 여부는 대소문자를 구분하지 않으며, 중국어·일본어·한국어 용어는 단어 중간에서도 일치합니다.",
+  "glossary.fastPack": "Fast 모델 팩에서는 용어집이 적용되지 않습니다. 사용하려면 Standard 또는 Lite 모델 팩으로 바꾸세요.",
   "glossary.count": "{n} / {max}개 용어",
   "glossary.source": "용어",
   "glossary.target": "번역",

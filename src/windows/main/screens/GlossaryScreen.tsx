@@ -3,6 +3,7 @@ import { Icon } from "../../../components/Icon";
 import { ProLocked } from "../../../components/ProLocked";
 import { errorKey } from "../../../i18n";
 import type { GlossaryEntry } from "../../../lib/ipc";
+import { glossaryApplies } from "../../../lib/models";
 import type { UiError } from "../../../store/app";
 import { MAX_GLOSSARY } from "../../../store/library";
 import { useApp, useT } from "../appStore";
@@ -82,10 +83,12 @@ function EntryForm({
 }
 
 // Từ điển thuật ngữ (F5, Pro): tối đa 500 cặp; thêm, sửa, xóa; nhập và xuất CSV (hai cột `source,target`, UTF-8).
-// Thuật ngữ có trong câu được đưa vào prompt khi dịch (§6.5). Gói Free thì khóa, kèm nút Nâng cấp.
+// Thuật ngữ có trong câu được đưa vào prompt khi dịch (§6.5). Gói Free thì khóa, kèm nút Nâng cấp. Gói model Nhanh không áp
+// từ điển (spec 2026-10-21-goi-nhanh §6.1): hiện một dòng ghi chú.
 export function GlossaryScreen() {
   const t = useT();
   const pro = useApp((s) => s.status?.pro ?? false);
+  const pack = useApp((s) => s.settings?.modelTier ?? null);
   const navigate = useApp((s) => s.navigate);
   const entries = useGlossary((s) => s.entries);
   const error = useGlossary((s) => s.error);
@@ -109,6 +112,7 @@ export function GlossaryScreen() {
     <>
       <div className="card">
         <p className="hint">{t("glossary.hint")}</p>
+        {!glossaryApplies(pack) && <p className="hint">{t("glossary.fastPack")}</p>}
         <div className="row split">
           <span className="count">{t("glossary.count", { n: list.length, max: MAX_GLOSSARY })}</span>
           <span className="toolbar">

@@ -89,8 +89,8 @@ pub enum PromptKind<'a> {
     Context(&'a str),
 }
 
-/// Điểm vào duy nhất cho nơi dịch: chọn mẫu theo họ và loại. LMT không có mẫu ngữ cảnh (spec gói Nhanh §5.3); mẫu thuật
-/// ngữ của LMT theo kết quả spike (§6.1).
+/// Điểm vào duy nhất cho nơi dịch: chọn mẫu theo họ và loại. LMT không có mẫu ngữ cảnh (spec gói Nhanh §5.3) và không áp
+/// thuật ngữ: spike S-T không đạt (§6.1, `bench/2026-10-21-goi-nhanh/terms.md`), giao diện báo điều này ở màn hình Từ điển.
 pub fn build(family: PromptFamily, kind: PromptKind<'_>, text: &str, src: Lang, tgt: Lang) -> String {
     match (family, kind) {
         (PromptFamily::HyMt2, PromptKind::Plain) => translation_prompt(text, src, tgt),
@@ -246,6 +246,21 @@ mod tests {
         assert_eq!(
             build(PromptFamily::Lmt, PromptKind::Plain, "你好", Lang::Zh, Lang::Ko),
             "Translate the following text from Chinese into Korean:\nChinese: 你好\nKorean:"
+        );
+    }
+
+    /// Spike S-T không đạt (`bench/2026-10-21-goi-nhanh/terms.md`): gói Nhanh không áp từ điển thuật ngữ (spec §6.1).
+    #[test]
+    fn lmt_ignores_terms() {
+        assert_eq!(
+            build(
+                PromptFamily::Lmt,
+                PromptKind::Terminology(&terms()),
+                "The sprint",
+                Lang::En,
+                Lang::Vi
+            ),
+            build(PromptFamily::Lmt, PromptKind::Plain, "The sprint", Lang::En, Lang::Vi)
         );
     }
 

@@ -125,6 +125,7 @@ export const ja: Record<MessageKey, string> = {
   "history.clear.confirm": "保存したセッションをすべて削除しますか？この操作は元に戻せません。",
   "glossary.pro": "用語集は Pro 機能です。登録した用語は翻訳時に使われます。",
   "glossary.hint": "文中に見つかった用語はヒントとして翻訳エンジンに渡されますが、毎回使われるとは限りません。照合では大文字と小文字を区別しません。中国語・日本語・韓国語の用語は、単語の途中でも一致します。",
+  "glossary.fastPack": "Fast モデルパックでは用語集が適用されません。使うには Standard または Lite モデルパックに切り替えてください。",
   "glossary.count": "{n} / {max} 語",
   "glossary.source": "用語",
   "glossary.target": "翻訳",

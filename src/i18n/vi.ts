@@ -124,6 +124,7 @@ export const vi: Record<MessageKey, string> = {
   "history.clear.confirm": "Xóa mọi phiên đã lưu? Không khôi phục được.",
   "glossary.pro": "Từ điển thuật ngữ là tính năng Pro: thuật ngữ của bạn được dùng khi dịch.",
   "glossary.hint": "Thuật ngữ có trong câu được đưa cho bộ dịch như gợi ý; bộ dịch có thể không dùng đúng mọi lần. Không phân biệt hoa thường; thuật ngữ tiếng Trung, Nhật, Hàn khớp cả khi nằm giữa từ.",
+  "glossary.fastPack": "Gói Nhanh không áp dụng từ điển thuật ngữ. Đổi sang gói Chuẩn hoặc Nhẹ để dùng.",
   "glossary.count": "{n}/{max} thuật ngữ",
   "glossary.source": "Thuật ngữ",
   "glossary.target": "Bản dịch",

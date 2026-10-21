@@ -25,6 +25,13 @@ export interface PackView {
   enoughSpace: boolean;
 }
 
+// Gói Nhanh (spec 2026-10-21-goi-nhanh §6.1): model dịch của gói này không áp từ điển thuật ngữ.
+export const FAST_PACK = "fast";
+
+export function glossaryApplies(pack: string | null): boolean {
+  return pack !== FAST_PACK;
+}
+
 export interface Gpu {
   name: string;
   discrete: boolean;

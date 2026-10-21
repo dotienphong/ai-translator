@@ -125,6 +125,7 @@ export const zh: Record<MessageKey, string> = {
   "history.clear.confirm": "删除所有已保存的会话？此操作无法撤销。",
   "glossary.pro": "术语表是 Pro 功能：翻译时会使用你的术语。",
   "glossary.hint": "句子中出现的术语会作为提示交给翻译引擎，但它不一定每次都会采用。匹配时忽略大小写；中文、日文和韩文术语在词语中间也能匹配。",
+  "glossary.fastPack": "Fast 模型包不使用术语表。如需使用，请切换到 Standard 或 Lite 模型包。",
   "glossary.count": "{n} / {max} 条术语",
   "glossary.source": "术语",
   "glossary.target": "翻译",
