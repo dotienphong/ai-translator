@@ -9,9 +9,9 @@
     "tailMs": 2000,
     "lines": [
       { "text": "Cảm ơn mọi người đã tham gia buổi họp hôm nay.", "gapAfterMs": 700 },
-      { "text": "Chúng ta cần lùi ngày ra mắt sang tuần thứ hai của tháng Mười Một.", "gapAfterMs": 800 },
+      { "text": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần thứ hai của tháng Mười Một.", "gapAfterMs": 800 },
       { "text": "Đội thiết kế đã phát hiện một vài lỗi ở bước thanh toán.", "gapAfterMs": 800 },
-      { "text": "Chị có thể gửi báo giá mới cho phần việc thêm trước thứ Sáu không?", "gapAfterMs": 0 }
+      { "text": "Em cần báo giá mới cho phần việc thêm trước cuối tuần này.", "gapAfterMs": 0 }
     ]
   },
   "timing": {

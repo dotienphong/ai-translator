@@ -1,0 +1,10 @@
+{
+ "src": "Sure, I'll send you the new quote before Friday.",
+ "hyp": "Chắc chắn rồi, tôi sẽ gửi cho bạn báo giá mới trước thứ Sáu.",
+ "total_ms": 271.55783,
+ "first_token_ms": 47.55438,
+ "attempts": 1,
+ "model_file": "Hy-MT2-1.8B-Q8_0.gguf",
+ "git_head": "c93cbe7116eca4a99d4e1d1a2dd5e6ae163eb086",
+ "git_dirty": true
+}

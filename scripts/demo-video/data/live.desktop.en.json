@@ -1,0 +1,1639 @@
+{
+ "args": {
+  "asr_model": "models/ggml-large-v3-turbo-q5_0.bin",
+  "asr_worker": "src-tauri/binaries/asr-worker-aarch64-apple-darwin",
+  "end_silence_ms": "50",
+  "languages": "en,zh,ja,ko,vi",
+  "llama_server": "src-tauri/binaries/llama-server-aarch64-apple-darwin",
+  "mt_model": "models/Hy-MT2-1.8B-Q8_0.gguf",
+  "streaming": "true",
+  "streaming_end_silence_ms": "50",
+  "target": "en",
+  "tgt_agree": "mặc định",
+  "truth": "target/demo-video/truth.desktop.en.json",
+  "vad_model": "models/silero_vad_v6.2.3.onnx",
+  "wav": "target/demo-video/voice16.desktop.en.wav"
+ },
+ "machine": {
+  "asr_backend": "metal",
+  "asr_worker": "asr-worker: backend=metal flash_attn=off decode_mode=shared",
+  "cpu": "Apple M4 Pro",
+  "logical_cores": "12",
+  "os": "macOS 26.6.2 Tahoe",
+  "physical_cores": "12",
+  "ram_gb": "24.0"
+ },
+ "run": {
+  "session_ms": 20260.1,
+  "feed_lag_max_ms": 17.1,
+  "sidecar_restarts": 0
+ },
+ "summary": {
+  "a2_p50_ms": 561.7,
+  "a2_p90_ms": 638.4,
+  "a2_first_p50_ms": 408.2,
+  "first_from_start_p50_ms": 1348.3,
+  "first_from_start_p90_ms": 3488.4,
+  "word_lag_tentative_p50_ms": 689.2,
+  "word_lag_tentative_p90_ms": 2586,
+  "word_lag_stable_p50_ms": 1875.6,
+  "word_lag_stable_p90_ms": 2682.3,
+  "stable_flicker_ratio": 0.24,
+  "tentative_erasure_ratio": 1.18,
+  "busy_ratio": 0.4266,
+  "cpu_percent": 5.3,
+  "utterances": 4,
+  "segments": 4,
+  "partials": 17,
+  "cadence_p50_ms": 700,
+  "streaming_auto_off": 0
+ },
+ "events": [
+  {
+   "t_ms": 1912.6,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Cảm ơn mọi người.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 1963.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Cảm ơn mọi người.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 1973.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Cảm ơn mọi người.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 1985,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Cảm ơn mọi người.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you everyone",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 2967,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you everyone",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 3056.2,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you to everyone",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3066.3,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you to everyone who",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3075.9,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you to everyone who participated",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3085.5,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you to everyone who participated in",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3095.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you to everyone who participated in this",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3105,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "",
+   "tgt_tail": "Thank you to everyone who participated in this event",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3124.8,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi",
+   "src_tail": " người đã tham gia buổi.",
+   "tgt_stable": "Thank",
+   "tgt_tail": " you to everyone who participated in this event",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 3987.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi người đã tham gia",
+   "src_tail": " buổi họp hôm nay.",
+   "tgt_stable": "Thank",
+   "tgt_tail": " you to everyone who participated in this event",
+   "tgt_src_units": 8
+  },
+  {
+   "t_ms": 4312.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi người đã tham gia",
+   "src_tail": " buổi họp hôm nay.",
+   "tgt_stable": "Thank",
+   "tgt_tail": " you to everyone who participated in today’s meeting",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 4312.8,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 3968,
+   "src_lang": "vi",
+   "src_text": "Cảm ơn mọi người đã tham gia buổi họp hôm nay.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 4312.8,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Cảm ơn mọi người đã tham gia",
+   "src_tail": " buổi họp hôm nay.",
+   "tgt_stable": "Thank",
+   "tgt_tail": " you to everyone who participated in today’s meeting",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 4312.8,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 3968,
+   "src_lang": "vi",
+   "src_text": "Cảm ơn mọi người đã tham gia buổi họp hôm nay.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 4342,
+   "kind": "delta",
+   "id": 0,
+   "text": "Thank"
+  },
+  {
+   "t_ms": 4351.7,
+   "kind": "delta",
+   "id": 0,
+   "text": " you"
+  },
+  {
+   "t_ms": 4361.2,
+   "kind": "delta",
+   "id": 0,
+   "text": " to"
+  },
+  {
+   "t_ms": 4370.8,
+   "kind": "delta",
+   "id": 0,
+   "text": " everyone"
+  },
+  {
+   "t_ms": 4380.3,
+   "kind": "delta",
+   "id": 0,
+   "text": " who"
+  },
+  {
+   "t_ms": 4390,
+   "kind": "delta",
+   "id": 0,
+   "text": " participated"
+  },
+  {
+   "t_ms": 4400.2,
+   "kind": "delta",
+   "id": 0,
+   "text": " in"
+  },
+  {
+   "t_ms": 4409.8,
+   "kind": "delta",
+   "id": 0,
+   "text": " today"
+  },
+  {
+   "t_ms": 4419.6,
+   "kind": "delta",
+   "id": 0,
+   "text": "’"
+  },
+  {
+   "t_ms": 4429.5,
+   "kind": "delta",
+   "id": 0,
+   "text": "s"
+  },
+  {
+   "t_ms": 4439.1,
+   "kind": "delta",
+   "id": 0,
+   "text": " meeting"
+  },
+  {
+   "t_ms": 4448.6,
+   "kind": "delta",
+   "id": 0,
+   "text": "."
+  },
+  {
+   "t_ms": 4458.4,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 3968,
+   "src_lang": "vi",
+   "src_text": "Cảm ơn mọi người đã tham gia buổi họp hôm nay.",
+   "tgt_text": "Thank you to everyone who participated in today’s meeting.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 4458.4,
+   "kind": "live_end",
+   "id": 0
+  },
+  {
+   "t_ms": 5914.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "chúng ta phải họp hôm nay.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 5969,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "chúng ta phải họp hôm nay.",
+   "tgt_stable": "",
+   "tgt_tail": "We",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5993.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "chúng ta phải họp hôm nay.",
+   "tgt_stable": "",
+   "tgt_tail": "We must",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 6002.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "chúng ta phải họp hôm nay.",
+   "tgt_stable": "",
+   "tgt_tail": "We must meet",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 6012.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "chúng ta phải họp hôm nay.",
+   "tgt_stable": "",
+   "tgt_tail": "We must meet today",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 6603.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta",
+   "src_tail": " phải hoãn ra mắt.",
+   "tgt_stable": "",
+   "tgt_tail": "We must meet today",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 6695.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta",
+   "src_tail": " phải hoãn ra mắt.",
+   "tgt_stable": "",
+   "tgt_tail": "We must postpone the",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 6705.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta",
+   "src_tail": " phải hoãn ra mắt.",
+   "tgt_stable": "",
+   "tgt_tail": "We must postpone the launch",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 6724.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta",
+   "src_tail": " phải hoãn ra mắt.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the launch",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 7332.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the launch",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 7419.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the release",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 7429.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the release of",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 7439,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the release of the",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 7448.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the release of the clean",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 7459.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We",
+   "tgt_tail": " must postpone the release of the clean product",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 7479.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra",
+   "src_tail": " mắt sản phẩm sạch.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the release of the clean product",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 8039.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản",
+   "src_tail": " phẩm sang tuần thứ.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the release of the clean product",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 8156.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản",
+   "src_tail": " phẩm sang tuần thứ.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to next",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 8166.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản",
+   "src_tail": " phẩm sang tuần thứ.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to next week",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 8732,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to next week",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 8832.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to the second",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 8842.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to the second week",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 8852.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to the second week of",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 8861.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to the second week of this",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 8871.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone",
+   "tgt_tail": " the launch of the product to the second week of this month",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 8891.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone the launch of the product",
+   "tgt_tail": " to the second week of this month",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 9456.3,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 4640,
+   "end_ms": 9120,
+   "src_lang": "vi",
+   "src_text": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần thứ 2 của tháng 11.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 9456.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần",
+   "src_tail": " thứ 2 của thầm.",
+   "tgt_stable": "We must postpone the launch of the product",
+   "tgt_tail": " to the second week of this month",
+   "tgt_src_units": 14
+  },
+  {
+   "t_ms": 9456.3,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 4640,
+   "end_ms": 9120,
+   "src_lang": "vi",
+   "src_text": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần thứ 2 của tháng 11.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 9505.4,
+   "kind": "delta",
+   "id": 1,
+   "text": "We"
+  },
+  {
+   "t_ms": 9517.4,
+   "kind": "delta",
+   "id": 1,
+   "text": " need"
+  },
+  {
+   "t_ms": 9527.2,
+   "kind": "delta",
+   "id": 1,
+   "text": " to"
+  },
+  {
+   "t_ms": 9536.9,
+   "kind": "delta",
+   "id": 1,
+   "text": " post"
+  },
+  {
+   "t_ms": 9546.5,
+   "kind": "delta",
+   "id": 1,
+   "text": "pone"
+  },
+  {
+   "t_ms": 9556.2,
+   "kind": "delta",
+   "id": 1,
+   "text": " the"
+  },
+  {
+   "t_ms": 9565.8,
+   "kind": "delta",
+   "id": 1,
+   "text": " launch"
+  },
+  {
+   "t_ms": 9576,
+   "kind": "delta",
+   "id": 1,
+   "text": " of"
+  },
+  {
+   "t_ms": 9585.5,
+   "kind": "delta",
+   "id": 1,
+   "text": " the"
+  },
+  {
+   "t_ms": 9595,
+   "kind": "delta",
+   "id": 1,
+   "text": " product"
+  },
+  {
+   "t_ms": 9605.6,
+   "kind": "delta",
+   "id": 1,
+   "text": " to"
+  },
+  {
+   "t_ms": 9615.2,
+   "kind": "delta",
+   "id": 1,
+   "text": " the"
+  },
+  {
+   "t_ms": 9625.1,
+   "kind": "delta",
+   "id": 1,
+   "text": " second"
+  },
+  {
+   "t_ms": 9634.9,
+   "kind": "delta",
+   "id": 1,
+   "text": " week"
+  },
+  {
+   "t_ms": 9644.7,
+   "kind": "delta",
+   "id": 1,
+   "text": " of"
+  },
+  {
+   "t_ms": 9654.3,
+   "kind": "delta",
+   "id": 1,
+   "text": " November"
+  },
+  {
+   "t_ms": 9663.8,
+   "kind": "delta",
+   "id": 1,
+   "text": "."
+  },
+  {
+   "t_ms": 9673.5,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 4640,
+   "end_ms": 9120,
+   "src_lang": "vi",
+   "src_text": "Chúng ta phải hoãn ra mắt sản phẩm sang tuần thứ 2 của tháng 11.",
+   "tgt_text": "We need to postpone the launch of the product to the second week of November.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 9673.5,
+   "kind": "live_end",
+   "id": 1
+  },
+  {
+   "t_ms": 11198.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Đổi thiết kế đã.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 11267.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Đổi thiết kế đã.",
+   "tgt_stable": "",
+   "tgt_tail": "Change",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 11284.3,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Đổi thiết kế đã.",
+   "tgt_stable": "",
+   "tgt_tail": "Change the",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 11294.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Đổi thiết kế đã.",
+   "tgt_stable": "",
+   "tgt_tail": "Change the design",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 11304.3,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Đổi thiết kế đã.",
+   "tgt_stable": "",
+   "tgt_tail": "Change the design already",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 11884.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện.",
+   "tgt_stable": "",
+   "tgt_tail": "Change the design already",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 11972,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện.",
+   "tgt_stable": "",
+   "tgt_tail": "The design has been changed",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 11981.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện.",
+   "tgt_stable": "",
+   "tgt_tail": "The design has been changed as",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 11991.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện.",
+   "tgt_stable": "",
+   "tgt_tail": "The design has been changed as detected",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 12597.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi.",
+   "tgt_stable": "",
+   "tgt_tail": "The design has been changed as detected",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 12733.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi.",
+   "tgt_stable": "",
+   "tgt_tail": "The design team has identified a few errors",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 12753.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi.",
+   "tgt_stable": "The",
+   "tgt_tail": " design team has identified a few errors",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 13310.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước tháng.",
+   "tgt_stable": "The",
+   "tgt_tail": " design team has identified a few errors",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 13421.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước tháng.",
+   "tgt_stable": "The",
+   "tgt_tail": " design team has identified a few errors",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 13430.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước tháng.",
+   "tgt_stable": "The",
+   "tgt_tail": " design team has identified a few errors at",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 13440.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước tháng.",
+   "tgt_stable": "The",
+   "tgt_tail": " design team has identified a few errors at this",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 13449.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước tháng.",
+   "tgt_stable": "The",
+   "tgt_tail": " design team has identified a few errors at this stage",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 13469.3,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước tháng.",
+   "tgt_stable": "The design team has identified a few",
+   "tgt_tail": " errors at this stage",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 13997.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_stable": "The design team has identified a few",
+   "tgt_tail": " errors at this stage",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 14196.3,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_stable": "The design team has identified a few",
+   "tgt_tail": " errors in the payment",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 14226.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_stable": "The design team has identified a few",
+   "tgt_tail": " errors in the payment process",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 14277.6,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 9920,
+   "end_ms": 13792,
+   "src_lang": "vi",
+   "src_text": "Đội thiết kế đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 14277.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Đổi thiết kế",
+   "src_tail": " đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_stable": "The design team has identified a few",
+   "tgt_tail": " errors in the payment process",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 14277.6,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 9920,
+   "end_ms": 13792,
+   "src_lang": "vi",
+   "src_text": "Đội thiết kế đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 14290.1,
+   "kind": "delta",
+   "id": 2,
+   "text": "The"
+  },
+  {
+   "t_ms": 14300.8,
+   "kind": "delta",
+   "id": 2,
+   "text": " design"
+  },
+  {
+   "t_ms": 14310.4,
+   "kind": "delta",
+   "id": 2,
+   "text": " team"
+  },
+  {
+   "t_ms": 14320,
+   "kind": "delta",
+   "id": 2,
+   "text": " has"
+  },
+  {
+   "t_ms": 14329.7,
+   "kind": "delta",
+   "id": 2,
+   "text": " identified"
+  },
+  {
+   "t_ms": 14339.3,
+   "kind": "delta",
+   "id": 2,
+   "text": " a"
+  },
+  {
+   "t_ms": 14348.8,
+   "kind": "delta",
+   "id": 2,
+   "text": " few"
+  },
+  {
+   "t_ms": 14358.5,
+   "kind": "delta",
+   "id": 2,
+   "text": " errors"
+  },
+  {
+   "t_ms": 14368.1,
+   "kind": "delta",
+   "id": 2,
+   "text": " in"
+  },
+  {
+   "t_ms": 14377.7,
+   "kind": "delta",
+   "id": 2,
+   "text": " the"
+  },
+  {
+   "t_ms": 14387.2,
+   "kind": "delta",
+   "id": 2,
+   "text": " payment"
+  },
+  {
+   "t_ms": 14397,
+   "kind": "delta",
+   "id": 2,
+   "text": " process"
+  },
+  {
+   "t_ms": 14406.6,
+   "kind": "delta",
+   "id": 2,
+   "text": "."
+  },
+  {
+   "t_ms": 14417.4,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 9920,
+   "end_ms": 13792,
+   "src_lang": "vi",
+   "src_text": "Đội thiết kế đã phát hiện một vài lỗi ở bước thanh toán.",
+   "tgt_text": "The design team has identified a few errors in the payment process.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 14417.4,
+   "kind": "live_end",
+   "id": 2
+  },
+  {
+   "t_ms": 15833.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 15888.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15900.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15910.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15920.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to report",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15929.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to report this",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15939.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to report this to",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15948.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to report this to the",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 15959,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "",
+   "src_tail": "Em cần báo giám.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to report this to the supervisor",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 16525.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần",
+   "src_tail": " báo giá mới cho phần.",
+   "tgt_stable": "",
+   "tgt_tail": "I need to report this to the supervisor",
+   "tgt_src_units": 4
+  },
+  {
+   "t_ms": 16673.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần",
+   "src_tail": " báo giá mới cho phần.",
+   "tgt_stable": "I",
+   "tgt_tail": " need a new quote for this part",
+   "tgt_src_units": 7
+  },
+  {
+   "t_ms": 17230.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho",
+   "src_tail": " phần việc thêm.",
+   "tgt_stable": "I",
+   "tgt_tail": " need a new quote for this part",
+   "tgt_src_units": 7
+  },
+  {
+   "t_ms": 17360.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho",
+   "src_tail": " phần việc thêm.",
+   "tgt_stable": "I",
+   "tgt_tail": " need a new quote for the additional",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 17369.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho",
+   "src_tail": " phần việc thêm.",
+   "tgt_stable": "I",
+   "tgt_tail": " need a new quote for the additional work",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 17389.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho",
+   "src_tail": " phần việc thêm.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 17947.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 18036.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18046.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work before",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18056.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work before the",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18066.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work before the end",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18075.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work before the end of",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18086.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work before the end of the",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18096.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote",
+   "tgt_tail": " for the additional work before the end of the week",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18116.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote for the additional",
+   "tgt_tail": " work before the end of the week",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18563.7,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 14560,
+   "end_ms": 18240,
+   "src_lang": "vi",
+   "src_text": "Em cần báo giá mới cho phần việc thêm trước cuối tuần này.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 18563.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "vi",
+   "src_stable": "Em cần báo giá mới cho phần việc",
+   "src_tail": " thêm trước cuối tuần.",
+   "tgt_stable": "I need a new quote for the additional",
+   "tgt_tail": " work before the end of the week",
+   "tgt_src_units": 12
+  },
+  {
+   "t_ms": 18563.7,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 14560,
+   "end_ms": 18240,
+   "src_lang": "vi",
+   "src_text": "Em cần báo giá mới cho phần việc thêm trước cuối tuần này.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 18602.8,
+   "kind": "delta",
+   "id": 3,
+   "text": "I"
+  },
+  {
+   "t_ms": 18613.6,
+   "kind": "delta",
+   "id": 3,
+   "text": " need"
+  },
+  {
+   "t_ms": 18623.4,
+   "kind": "delta",
+   "id": 3,
+   "text": " a"
+  },
+  {
+   "t_ms": 18633.5,
+   "kind": "delta",
+   "id": 3,
+   "text": " quote"
+  },
+  {
+   "t_ms": 18643.7,
+   "kind": "delta",
+   "id": 3,
+   "text": " for"
+  },
+  {
+   "t_ms": 18653.3,
+   "kind": "delta",
+   "id": 3,
+   "text": " the"
+  },
+  {
+   "t_ms": 18663,
+   "kind": "delta",
+   "id": 3,
+   "text": " additional"
+  },
+  {
+   "t_ms": 18672.7,
+   "kind": "delta",
+   "id": 3,
+   "text": " work"
+  },
+  {
+   "t_ms": 18682.5,
+   "kind": "delta",
+   "id": 3,
+   "text": " by"
+  },
+  {
+   "t_ms": 18693.1,
+   "kind": "delta",
+   "id": 3,
+   "text": " the"
+  },
+  {
+   "t_ms": 18702.9,
+   "kind": "delta",
+   "id": 3,
+   "text": " end"
+  },
+  {
+   "t_ms": 18712.8,
+   "kind": "delta",
+   "id": 3,
+   "text": " of"
+  },
+  {
+   "t_ms": 18722.4,
+   "kind": "delta",
+   "id": 3,
+   "text": " this"
+  },
+  {
+   "t_ms": 18732,
+   "kind": "delta",
+   "id": 3,
+   "text": " week"
+  },
+  {
+   "t_ms": 18742.2,
+   "kind": "delta",
+   "id": 3,
+   "text": "."
+  },
+  {
+   "t_ms": 18751.8,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 14560,
+   "end_ms": 18240,
+   "src_lang": "vi",
+   "src_text": "Em cần báo giá mới cho phần việc thêm trước cuối tuần này.",
+   "tgt_text": "I need a quote for the additional work by the end of this week.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 18751.8,
+   "kind": "live_end",
+   "id": 3
+  }
+ ]
+}
