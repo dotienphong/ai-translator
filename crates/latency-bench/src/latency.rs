@@ -10,7 +10,7 @@ use pipeline::asr_client::{AsrLaunch, AsrWorker};
 use pipeline::config::{FilterConfig, PipelineConfig};
 use pipeline::filter::{Evidence, PcmSkip, Verdict, pcm_skip, verdict};
 use pipeline::llama::{LlamaLaunch, LlamaServer};
-use pipeline::prompt::{Lang, translation_prompt};
+use pipeline::prompt::{Lang, PromptFamily, PromptKind, build};
 use pipeline::segmenter::{FRAME_MS, FRAME_SAMPLES, Segment, Segmenter, SegmenterConfig};
 use pipeline::sentence::{OpenSentence, Piece, merge_window_ms, plan_merge};
 use pipeline::text::display_text;
@@ -112,6 +112,9 @@ pub struct LatencyArgs {
     /// Tham số thêm cho llama-server, cách nhau bằng dấu cách, ví dụ "--no-repack".
     #[arg(long, default_value = "", allow_hyphen_values = true)]
     llama_args: String,
+    /// Họ mẫu prompt của `--mt-model` (`hy-mt2`, hay `lmt` cho gói Nhanh).
+    #[arg(long, default_value = "hy-mt2", value_parser = ["hy-mt2", "lmt"])]
+    prompt: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -247,7 +250,8 @@ pub fn run(args: LatencyArgs) -> Result<()> {
         )
     };
     let llama = LlamaServer::spawn(&llama_launch)?;
-    llama.translate(&translation_prompt("Hello.", Lang::En, target), 32)?; // làm nóng
+    let family = PromptFamily::from_code(&args.prompt).expect("clap đã kiểm giá trị");
+    llama.translate(&build(family, PromptKind::Plain, "Hello.", Lang::En, target), 32)?; // làm nóng
     println!(
         "asr: {} ({}), chế độ giải mã {}, làm nóng {asr_warmup_ms:.0} ms",
         ready.backend.as_str(),
@@ -364,7 +368,7 @@ pub fn run(args: LatencyArgs) -> Result<()> {
                         // Tính `max_tokens` theo §6.5, trên cả câu. Lần gọi /tokenize nằm trong thời gian của bước dịch.
                         let src_tokens = llama.count_tokens(&source)?;
                         let max_tokens = mt_config.max_tokens_for(src_tokens);
-                        let t = llama.translate(&translation_prompt(&source, src, target), max_tokens)?;
+                        let t = llama.translate(&build(family, PromptKind::Plain, &source, src, target), max_tokens)?;
                         let done = now_ms();
                         rec.merged_segments = Some(merged);
                         rec.translated_source = Some(source);

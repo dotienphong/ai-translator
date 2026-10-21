@@ -12,7 +12,7 @@
 use anyhow::{Context, Result, bail};
 use pipeline::config::MtConfig;
 use pipeline::llama::{LlamaLaunch, LlamaServer};
-use pipeline::prompt::Lang;
+use pipeline::prompt::{Lang, PromptFamily};
 use pipeline::translate::{Job, Outcome, translate};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -45,15 +45,26 @@ pub struct MtEvalArgs {
     /// dịch như app, nên bản dịch bị cắt ở ngưỡng mặc định (N4 của review cuối 02).
     #[arg(long)]
     no_ratio_thresholds: bool,
+    /// Họ mẫu prompt của model (`hy-mt2` cho Hy-MT2, `lmt` cho gói Nhanh), như trường `prompt` của manifest.
+    #[arg(long, default_value = "hy-mt2", value_parser = ["hy-mt2", "lmt"])]
+    prompt: String,
 }
 
-/// Cấu hình dịch của lượt chạy: như app, trừ khi `--no-ratio-thresholds`.
+/// Cấu hình dịch của lượt chạy: như app với họ prompt `--prompt`, trừ khi `--no-ratio-thresholds`.
 fn mt_config(args: &MtEvalArgs) -> MtConfig {
-    let mut cfg = MtConfig::default();
+    let mut cfg = MtConfig {
+        prompt_family: PromptFamily::from_code(&args.prompt).expect("clap đã kiểm giá trị"),
+        ..MtConfig::default()
+    };
     if args.no_ratio_thresholds {
         cfg.ratio_thresholds.clear();
+        cfg.ratio_thresholds_lmt.clear();
     }
     cfg
+}
+
+fn hy_mt2() -> String {
+    "hy-mt2".into()
 }
 
 /// Điều kiện của một lượt chạy, ghi cạnh file kết quả.
@@ -73,6 +84,9 @@ struct Meta {
     /// `--no-ratio-thresholds`. `meta.json` cũ không có trường này: lúc đó chưa có cờ, tức là chạy có ngưỡng.
     #[serde(default)]
     no_ratio_thresholds: bool,
+    /// `--prompt`. `meta.json` cũ không có trường này: lúc đó chỉ có Hy-MT2.
+    #[serde(default = "hy_mt2")]
+    prompt: String,
     mt_config: serde_json::Value,
 }
 
@@ -95,7 +109,7 @@ fn git_state() -> (String, bool) {
 /// So điều kiện lần này với lần trước; trả các khóa khác nhau.
 fn meta_diff(old: &Meta, new: &Meta) -> Vec<&'static str> {
     let mut keys = Vec::new();
-    let pairs: [(&'static str, bool); 12] = [
+    let pairs: [(&'static str, bool); 13] = [
         ("git_head", old.git_head == new.git_head),
         ("git_dirty", old.git_dirty == new.git_dirty),
         ("model_file", old.model_file == new.model_file),
@@ -110,6 +124,7 @@ fn meta_diff(old: &Meta, new: &Meta) -> Vec<&'static str> {
             "no_ratio_thresholds",
             old.no_ratio_thresholds == new.no_ratio_thresholds,
         ),
+        ("prompt", old.prompt == new.prompt),
         ("mt_config", old.mt_config == new.mt_config),
     ];
     for (key, same) in pairs {
@@ -285,6 +300,7 @@ pub fn run(args: MtEvalArgs) -> Result<()> {
         testset_lines: lines,
         limit: args.limit,
         no_ratio_thresholds: args.no_ratio_thresholds,
+        prompt: args.prompt.clone(),
         mt_config: serde_json::to_value(&cfg)?,
     };
     let meta_path = args.out_dir.join(format!("{stem}-{}.meta.json", args.variant));
@@ -373,8 +389,25 @@ mod tests {
             testset_lines: 620,
             limit: 0,
             no_ratio_thresholds: false,
+            prompt: "hy-mt2".into(),
             mt_config: serde_json::to_value(MtConfig::default()).unwrap(),
         }
+    }
+
+    #[test]
+    fn old_meta_without_prompt_reads_as_hy_mt2() {
+        let mut old = serde_json::to_value(meta()).unwrap();
+        old.as_object_mut().unwrap().remove("prompt");
+        assert_eq!(serde_json::from_value::<Meta>(old).unwrap().prompt, "hy-mt2");
+    }
+
+    #[test]
+    fn a_different_prompt_family_is_a_different_run() {
+        let lmt = Meta {
+            prompt: "lmt".into(),
+            ..meta()
+        };
+        assert_eq!(meta_diff(&meta(), &lmt), ["prompt"]);
     }
 
     fn item() -> Item {
