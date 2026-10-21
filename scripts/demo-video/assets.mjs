@@ -67,7 +67,7 @@ function main(scriptName) {
     process.exit(1);
   }
   const script = json(`script.${scriptName}.json`);
-  const d = script.data;
+  const d = script.data ?? scriptName;
   const tl = buildDesktopTimeline(script, json(`data/voice.${d}.json`), json(`data/live.${d}.json`), json(`data/compose.${d}.json`));
 
   // Tải (bỏ qua file đã có).

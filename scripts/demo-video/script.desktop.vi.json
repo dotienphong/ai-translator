@@ -64,6 +64,7 @@
     "replyTarget": "en",
     "placeholder": "Aa"
   },
+  "ui": { "chats": "Đoạn chat", "search": "Tìm kiếm", "leave": "Rời", "youPrefix": "Bạn: " },
   "taskbar": { "time": "10:42", "date": "21/10/2026" },
   "outro": { "name": "AI Translator", "url": "aitranslator.io.vn" },
   "layout": {

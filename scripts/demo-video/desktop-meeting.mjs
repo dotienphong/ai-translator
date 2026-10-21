@@ -54,7 +54,7 @@ export function buildMeeting(parent, { script, tl, voice, assets }) {
   for (const n of ["cam", "share", "hand", "more"]) icon(n, buttons, "icon btn");
   const leave = el("div", "leave", buttons);
   icon("leave", leave);
-  el("span", "", leave, "Rời");
+  el("span", "", leave, script.ui.leave);
 
   return {
     async render(t) {

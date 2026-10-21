@@ -21,7 +21,8 @@ const load = async (url) => {
 };
 const here = (file) => new URL(file, import.meta.url).href;
 const script = await load(here(`./script.${name}.json`));
-const d = script.data;
+// Bộ dữ liệu chữ thật: kịch bản tự khai (`data`), không thì trùng tên kịch bản.
+const d = script.data ?? name;
 const [voice, live, compose, frameIndex] = await Promise.all([
   load(here(`./data/voice.${d}.json`)),
   load(here(`./data/live.${d}.json`)),

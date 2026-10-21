@@ -35,10 +35,10 @@ export function buildChat(parent, { script, tl, assets }) {
 
   const list = el("div", "chat-list", body);
   list.style.width = `${L.listWidth}px`;
-  el("div", "list-title", list, "Đoạn chat");
+  el("div", "list-title", list, script.ui.chats);
   const search = el("div", "search", list);
   icon("search", search);
-  el("span", "", search, "Tìm kiếm");
+  el("span", "", search, script.ui.search);
   let activeLast = null;
   for (const item of C.list) {
     const row = el("div", item.active ? "row active" : "row", list);
@@ -76,7 +76,7 @@ export function buildChat(parent, { script, tl, assets }) {
   icon("send", composer);
 
   const lastOfHistory = C.history.at(-1);
-  const lastLine = (from, text) => (from === "me" ? `Bạn: ${text}` : text);
+  const lastLine = (from, text) => (from === "me" ? `${script.ui.youPrefix}${text}` : text);
   const dotsAt = (dots, t) =>
     dots.forEach((d, k) => {
       const wave = 0.5 + 0.5 * Math.sin((t / 1000) * 2 * Math.PI * 1.6 - k * 0.9);
