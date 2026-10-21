@@ -1,4 +1,4 @@
-// Tạo giọng đọc tiếng Anh cho video (spec 2026-10-21-demo-video §2.2): `say` đọc từng câu của kịch bản (48 kHz), cắt khoảng lặng
+// Tạo giọng đọc cho video (tiếng của `voice.lang`, mặc định tiếng Anh) (spec 2026-10-21-demo-video §2.2): `say` đọc từng câu của kịch bản (48 kHz), cắt khoảng lặng
 // đầu cuối, ghép với khoảng nghỉ đã khai; từ cùng file đó hạ mẫu ra WAV 16 kHz cho latency-bench và ghi mốc câu (truth.json).
 //   node scripts/demo-video/voice.mjs [vi]
 // Ra target/demo-video/voice48.<ngôn ngữ>.wav, voice16.<…>.wav, truth.<…>.json, và scripts/demo-video/data/voice.<…>.json
@@ -53,11 +53,11 @@ export function rmsLevels(samples, rate, windowMs = LEVEL_WINDOW_MS) {
   return out;
 }
 
-/** Mốc câu cho `latency-bench session --truth` (định dạng `bench/phase0/data/latency/*.truth.json`). */
-export function truthFor(lines, spans) {
+/** Mốc câu cho `latency-bench session --truth` (định dạng `bench/phase0/data/latency/*.truth.json`); `lang` là tiếng của giọng đọc. */
+export function truthFor(lines, spans, lang = "en") {
   return lines.map((line, i) => ({
     id: `demo-${i + 1}`,
-    lang: "en",
+    lang,
     start_ms: Math.round(spans[i].startMs),
     end_ms: Math.round(spans[i].endMs),
     vad_end_ms: Math.round(spans[i].endMs),
@@ -92,7 +92,7 @@ function main(lang) {
   const wav48 = writeWav(samples, VOICE_RATE);
   writeFileSync(path.join(out, `voice48.${lang}.wav`), wav48);
   writeFileSync(path.join(out, `voice16.${lang}.wav`), writeWav(decimate3(samples), 16_000));
-  const truth = truthFor(lines, spans);
+  const truth = truthFor(lines, spans, script.voice.lang ?? "en");
   writeFileSync(path.join(out, `truth.${lang}.json`), `${JSON.stringify(truth, null, 1)}\n`);
   const voice = {
     voice: name,

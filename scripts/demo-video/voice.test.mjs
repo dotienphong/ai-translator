@@ -44,3 +44,8 @@ test("mốc câu theo định dạng truth.json của bench, làm tròn ms", () 
   const truth = truthFor([{ text: "Hello." }], [{ startMs: 600.4, endMs: 1500.6 }]);
   assert.deepEqual(truth, [{ id: "demo-1", lang: "en", start_ms: 600, end_ms: 1501, vad_end_ms: 1501, text: "Hello." }]);
 });
+
+test("mốc câu ghi đúng ngôn ngữ nguồn của giọng đọc", () => {
+  const truth = truthFor([{ text: "Xin chào." }], [{ startMs: 600, endMs: 1500 }], "vi");
+  assert.equal(truth[0].lang, "vi");
+});
