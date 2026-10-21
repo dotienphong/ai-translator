@@ -118,8 +118,11 @@ pub fn build(family: PromptFamily, kind: PromptKind<'_>, text: &str, src: Lang, 
 // PromptKind: Plain | Terminology(&[Term]) | Context(&str)
 ```
 
-`translate::prompt_for`, `engine.rs` (làm nóng) và `latency-bench` gọi qua hàm này. `Job` thêm trường
-`family: PromptFamily`; phiên dịch và Gõ dịch đặt trường này từ `ModelFiles::mt_prompt`.
+`translate::prompt_for`, `engine.rs` (làm nóng) và `latency-bench` gọi qua hàm này. Họ prompt đi trong
+`MtConfig::prompt_family` (`#[serde(skip)]`, manifest không ghi đè được), không phải một trường mới của `Job`: `translate`,
+`translate_live` và bước làm nóng đều đã nhận `&MtConfig`, còn `Job` được dựng ở hơn mười chỗ. `sidecar_key` đặt trường này
+theo `ModelFiles::mt_prompt`; `LiveDeps::pipeline_config` lấy theo bộ tiến trình phụ đang có, nên phiên dịch và Gõ dịch luôn
+dùng mẫu của model mà `llama-server` thật sự nạp.
 
 ### 5.2 Mẫu của LMT
 
@@ -164,6 +167,10 @@ Translate the following text from {Nguồn} into {Đích}:
 - **Không đạt** thì với họ `Lmt`, `PromptKind::Terminology` dùng mẫu thường. Màn hình Từ điển thuật ngữ hiện dòng ghi chú
   khi gói đang dùng là gói Nhanh: vi "Gói Nhanh không áp dụng từ điển thuật ngữ. Đổi sang gói Chuẩn hoặc Nhẹ để dùng."
   (đủ năm ngôn ngữ giao diện). Từ điển vẫn lưu và sửa được.
+- **Kết quả (2026-10-21): không đạt** (`bench/2026-10-21-goi-nhanh/terms.md`). Câu đủ thuật ngữ: Hy-MT2 66,7%, LMT mẫu ghép
+  35,0%, LMT mẫu thường 20,0%; COMET 0,847 / 0,790 / 0,785. Đã làm nhánh "không đạt". Mẫu ghép vẫn nâng tỉ lệ từ 20% lên
+  35% mà không làm COMET tụt: nếu chủ dự án muốn áp một phần thay vì tắt hẳn, chỉ cần đổi một nhánh của `prompt::build` và
+  câu ghi chú.
 
 ### 6.2 Ngưỡng tỉ lệ token
 
@@ -171,10 +178,13 @@ Translate the following text from {Nguồn} into {Đích}:
 (tokenizer Qwen3) đo lại đủ 20 chiều bằng `bench/phase0/mt/build_ratio_set.py` và `ratio_stats.py`, cùng cách lấy (tỉ
 lệ lớn nhất trên câu gốc ≥ 10 token, cộng 25%, làm tròn lên 0,1).
 
-- `MtConfig` giữ hai bảng: `ratio_thresholds` (Hy-MT2, như cũ) và `ratio_thresholds_lmt`. `ratio_for` nhận thêm
-  `PromptFamily` và chọn bảng theo họ.
-- Khối `pipeline` của manifest có thể ghi đè `mt.ratio_thresholds_lmt` như khóa cũ. Kiểm trong kế hoạch rằng app 0.1.17
-  gặp khóa lạ này thì bỏ qua, không làm hỏng khối `pipeline`; nếu làm hỏng thì không ghi khóa này vào manifest đầu tiên.
+- `MtConfig` giữ hai bảng: `ratio_thresholds` (Hy-MT2, như cũ) và `ratio_thresholds_lmt`. `ratio_for` giữ chữ ký cũ và
+  chọn bảng theo `self.prompt_family`.
+- Khối `pipeline` của manifest có thể ghi đè `mt.ratio_thresholds_lmt` như khóa cũ. App 0.1.17 bỏ qua khóa lạ này: mọi
+  struct của `PipelineConfig` là `#[serde(default)]` và không có `deny_unknown_fields` (`config.rs`), nên khối `pipeline`
+  không hỏng.
+- **Số đo (2026-10-21):** `DEFAULT_RATIO_THRESHOLDS_LMT` đủ 20 chiều (`bench/2026-10-21-goi-nhanh/ratio.md`). Trên bộ A3
+  chạy có ngưỡng, chỉ một câu chạm ngưỡng (câu lỗi ở §8.4), không có lần thử lại thừa.
 
 ### 6.3 Hậu xử lý
 
@@ -186,12 +196,13 @@ câu dài bất thường; A3 phải đếm cột "Bị cắt", "Lỗi", "Nghi l
 
 - Không dùng GGUF của bên thứ ba. Tự chuyển từ `NiuTrans/LMT-60-0.6B` revision
   `dd189845cdc73346cef33c7a94f4b8bd8efdd4eb` bằng `convert_hf_to_gguf.py` của llama.cpp b11146 (cùng bản với
-  `llama-server` của app), rồi `llama-quantize` ra Q8_0. Ghi lệnh, SHA-256 của file vào, phiên bản Python và thư viện vào
+  `llama-server` của app), ra thẳng Q8_0 bằng `--outtype q8_0` (không qua `llama-quantize`). Chạy hai lần ra cùng SHA-256. Ghi lệnh, SHA-256 của file vào, phiên bản Python và thư viện vào
   `bench/2026-10-21-goi-nhanh/CONVERT.md` để dựng lại được.
 - Kiểm token như S4 (§8.2) trước khi dùng file.
 - File đặt trên R2 cạnh model hiện có (`lmt-60/`), manifest ghi đường dẫn tương đối như Hy-MT2.
 - Giấy phép: model card ghi Apache-2.0, nền là `Qwen/Qwen3-0.6B-Base` (Apache-2.0). Repo NiuTrans không có file LICENSE,
-  nên `LMT-60-LICENSE.txt` là văn bản Apache License 2.0 lấy từ repo Qwen3 (ghim revision). `NOTICE-fast.txt` ghi: nguồn
+  nên `LMT-60-LICENSE.txt` là văn bản Apache License 2.0 lấy từ repo Qwen3 (ghim revision). Repo GitHub `NiuTrans/LMT` cũng
+  không có file giấy phép (kiểm ngày 2026-10-21): quyền dùng chỉ dựa vào nhãn `license: apache-2.0` trên model card (§11). `NOTICE-fast.txt` ghi: nguồn
   và revision của NiuTrans, "Copyright NiuTrans", nền Qwen3 của Alibaba Cloud, và câu "đã chuyển sang định dạng GGUF và
   lượng tử hóa Q8_0" (Apache-2.0 §4(b) yêu cầu ghi chú file đã sửa).
 - `THIRD_PARTY_NOTICES.txt` của app không đổi (model không đóng gói trong app).
@@ -263,9 +274,15 @@ Không push, không đẩy tag, không deploy khi chủ dự án chưa cho phép
 
 ## 11. Rủi ro
 
-- Chất lượng thấp hơn rõ ở tiếng Hàn (COMET 0,773 so với 0,851). Ghi chú gói phải nói thẳng điều này.
+- Chất lượng thấp hơn rõ ở tiếng Hàn (A3: Việt→Hàn 0,787 so với 0,851; Hàn→Việt 0,778 so với 0,834). Ghi chú gói phải nói thẳng điều này.
 - Với người dùng, chữ đầu tiên gần như không sớm hơn (§2). Nếu khách thật sự phàn nàn về lúc chữ bắt đầu hiện thì gói này
   không giải quyết; khi đó cần bật "Dịch trong lúc người nói chưa dừng".
 - Model của bên nhỏ (NiuTrans), chưa có cộng đồng dùng rộng: có thể có lỗi lặp hay dịch lạc đề chưa thấy trên 332 câu. A3
   đếm các lỗi này; bản phát hành ghi gói là thử nghiệm nếu cột "Lỗi" khác 0.
 - Windows chưa đo: số tốc độ ở ghi chú gói chỉ nói về Mac cho tới khi có số Windows.
+- Giấy phép chỉ được khai ở metadata của model card, không có file LICENSE ở repo Hugging Face lẫn GitHub của NiuTrans. Đây
+  là cách khai phổ biến trên Hugging Face, nhưng yếu hơn một file giấy phép. Chủ dự án quyết có cần hỏi NiuTrans xác nhận
+  trước khi phát hành không.
+- A3 có 1 câu lỗi trên 620 (§8.4): theo luật ở trên, ghi chú gói nói gói đang thử nghiệm.
+- Câu nhiều dòng: trong S4, câu tiếng Nhật có hai câu cách dòng thì LMT chỉ dịch câu đầu. Phụ đề hầu như là một dòng, nhưng
+  Gõ dịch có thể gửi văn bản nhiều dòng (Gõ dịch tách theo dòng trước khi dịch, spec chính §4.6, nên ảnh hưởng nhỏ).
