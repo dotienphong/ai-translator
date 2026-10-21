@@ -7,7 +7,8 @@ Trên Windows: `python bench/2026-10-10-do-tre/run_sessions.py …`, truyền `-
 tên sidecar của macOS); xem Task 4 của kế hoạch 04.
 Tham số sau `--` được chuyển nguyên cho `latency-bench session` (kế hoạch 02 thêm các cờ của chế độ dịch trong lúc nói).
 
-Gói: `chuan` = whisper turbo q5_0 + Hy-MT2 Q8_0; `nhe` = whisper small q5_1 + Hy-MT2 Q4_K_M. Tiến trình phụ là bản app dùng
+Gói: `chuan` = whisper turbo q5_0 + Hy-MT2 Q8_0; `nhe` = whisper small q5_1 + Hy-MT2 Q4_K_M; `nhanh` = whisper turbo q5_0 +
+LMT-60-0.6B Q8_0 (tự thêm `--prompt lmt`). Tiến trình phụ là bản app dùng
 (`src-tauri/binaries/`, do `scripts/copy-sidecars.sh` dựng). Ngôn ngữ và ngôn ngữ đích lấy từ
 `bench/phase0/data/latency/sessions.json`, như `bench/phase0/latency/run_matrix.py`: session tiếng Việt dịch sang tiếng Anh,
 các session khác sang tiếng Việt.
@@ -36,7 +37,10 @@ RESULTS = os.path.join(HERE, "results")
 PACKS = {
     "chuan": ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q8_0.gguf"),
     "nhe": ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
+    "nhanh": ("ggml-large-v3-turbo-q5_0.bin", "LMT-60-0.6B-Q8_0.gguf"),
 }
+# Họ mẫu prompt của model dịch (`--prompt` của latency-bench, spec 2026-10-21-goi-nhanh §5); gói không có ở đây là hy-mt2.
+PROMPTS = {"nhanh": "lmt"}
 SIDECARS = ("asr-worker", "llama-server")
 WINDOWS = os.name == "nt"
 # Danh sách tiến trình trên Windows: `pid<TAB>đường dẫn file chạy`, UTF-8 (đường dẫn có thể có dấu cách và chữ có dấu).
@@ -145,7 +149,7 @@ def main(argv):
                "--mt-model", os.path.join(ROOT, "models", mt_model),
                "--languages", info["languages"], "--target", info["target"],
                "--end-silence-ms", str(args.end_silence_ms),
-               "--out", full, *extra]
+               "--out", full, *(["--prompt", PROMPTS[args.pack]] if args.pack in PROMPTS else []), *extra]
         print(f"== {out_name} ({info['seconds']} giây, {info['utterances']} câu)", flush=True)
         timeout_s = info["seconds"] + 1800
         error = None

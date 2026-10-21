@@ -44,3 +44,28 @@ Thời gian tới hết câu, trung vị (ms):
 
 Chữ đầu tiên: Nhanh 18–25 ms, Chuẩn và Nhẹ 32–54 ms. Ghi chú gói dùng "khoảng 2 đến 3 lần so với gói Chuẩn" (thấp nhất
 2,0, cao nhất 3,6). So với gói Nhẹ: 1,7–2,1 lần.
+
+## Thử đầu cuối bằng engine thật (Task 15, 2026-10-21)
+
+Không chạy app dev: bản dev dùng chung bundle id và `settings.json` với app đã cài của chủ dự án, đổi gói ở đó là đổi cả app
+thật. Thay vào đó dùng `latency-bench session` (engine của app, `asr-worker` và `llama-server` của app, bản ghi S6 phát
+theo thời gian thực), qua `bench/2026-10-10-do-tre/run_sessions.py --pack nhanh` (tự thêm `--prompt lmt`). Kết quả rút gọn:
+`bench/2026-10-10-do-tre/results/goi-nhanh-*.json`. Máy không để rảnh.
+
+| Lượt | A2 p50 / p90 (ms) | Đầu câu → chữ dịch p50 (ms) | Theo từ, tạm p50 (ms) | CPU % |
+|---|---|---|---|---|
+| Chuẩn, en | 789 / 938 | 5496 | 2158 | 3,1 |
+| Nhanh, en | 523 / 629 | 5470 | 2111 | 1,7 |
+| Chuẩn, ja | 773 / 967 | 4170 | 2101 | 3,9 |
+| Nhanh, ja | 543 / 608 | 4109 | 1999 | 2,0 |
+| Chuẩn, vi | 510 / 604 | 1866 | 1122 | 2,2 |
+| Nhanh, vi | 428 / 489 | 1838 | 1101 | 1,4 |
+| Nhanh, dịch trong lúc nói, en | 571 / 690 | 1270 | 594 | 4,9 |
+| Nhanh, dịch trong lúc nói, vi | 392 / 473 | 1279 | 528 | 2,8 |
+
+- Mọi câu có bản dịch (`done`, cùng ngôn ngữ thì `same_lang`), không câu nào "chưa dịch được"; chữ dịch đúng ngôn ngữ đích.
+- Gói Nhanh rút ngắn thời gian sau khi người nói dừng (A2 p50 giảm 16–34%) và dùng nửa CPU. Thời gian từ đầu câu tới chữ dịch
+  gần như không đổi, vì phần lớn là chờ người nói ngắt câu. Bật "Dịch trong lúc người nói chưa dừng" mới giảm được phần đó
+  (5470 xuống 1270 ms ở bản ghi tiếng Anh).
+- Đọc bằng mắt thấy lỗi nghĩa rõ hơn gói Chuẩn, ví dụ "キリン" (hươu cao cổ) thành "lợn", "Sporting Shooters Association"
+  thành "Hiệp hội Bắn Shotgun thể thao".
