@@ -1,0 +1,10 @@
+AI Translator: model files of the Fast pack
+
+- LMT-60-0.6B-Q8_0.gguf
+  Source: https://huggingface.co/NiuTrans/LMT-60-0.6B (revision dd189845cdc73346cef33c7a94f4b8bd8efdd4eb)
+  NiuTrans LMT-60-0.6B by NiuTrans. Licensed under the Apache License, Version 2.0, as stated on its model card
+  (LMT-60-LICENSE.txt).
+  Based on Qwen3-0.6B-Base, Copyright 2024 Alibaba Cloud, Apache License, Version 2.0.
+  Modified: converted from safetensors to GGUF and quantized to Q8_0 with llama.cpp b11146 (convert_hf_to_gguf.py).
+
+The speech recognition and voice activity files of this pack are described in NOTICE.txt.

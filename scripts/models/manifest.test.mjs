@@ -59,14 +59,34 @@ test("build-manifest tính bytes và sha256 từ file thật", (t) => {
   assert.equal(run("build-manifest.mjs", ["--dir", dir, "--sequence", "0", "--config", config]).status, 2);
 });
 
-test("cấu hình trong repo có đủ file cho hai gói", () => {
+test("cấu hình trong repo có đủ file cho ba gói", () => {
   const config = JSON.parse(readFileSync(script("models.config.json"), "utf8"));
-  for (const pack of ["standard", "lite"]) {
+  for (const pack of ["standard", "lite", "fast"]) {
     const kinds = config.files.filter((f) => f.tier.includes(pack)).map((f) => f.kind);
     for (const kind of ["asr", "mt", "vad"]) assert.equal(kinds.filter((k) => k === kind).length, 1, `${pack} ${kind}`);
     assert.ok(kinds.includes("license"), pack);
   }
   assert.ok(config.files.some((f) => f.file === "NOTICE.txt"));
+  const asr = (pack) => config.files.find((f) => f.kind === "asr" && f.tier.includes(pack)).id;
+  assert.equal(asr("fast"), asr("standard"), "gói Nhanh dùng chung whisper turbo với gói Chuẩn");
+  assert.ok(
+    !config.recommend.rules.some((r) => r.pack === "fast") && config.recommend.fallback !== "fast",
+    "không đề xuất gói Nhanh (spec 2026-10-21-goi-nhanh §3)",
+  );
+});
+
+test("file mt có prompt khác hy-mt2 thì min_app_version >= 0.1.18 (spec 2026-10-21-goi-nhanh §4.2)", () => {
+  const config = JSON.parse(readFileSync(script("models.config.json"), "utf8"));
+  const v = (s) => s.split(".").map(Number);
+  const atLeast = (a, b) => {
+    for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
+    return true;
+  };
+  for (const f of config.files.filter((f) => f.prompt !== undefined)) {
+    assert.equal(f.kind, "mt", `${f.id}: prompt chỉ dành cho file mt`);
+    if (f.prompt !== "hy-mt2") assert.ok(atLeast(v(f.min_app_version), v("0.1.18")), f.id);
+  }
+  assert.ok(config.files.some((f) => f.prompt === "lmt"));
 });
 
 test("gen-manifest-key: chỉ ghi khóa riêng ra ngoài repo, quyền 0600, in khóa công khai", (t) => {
