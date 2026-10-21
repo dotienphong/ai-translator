@@ -1,14 +1,14 @@
 {
   "target": "vi",
   "voice": {
-    "name": "Evan (Premium)",
+    "name": "Ava (Premium)",
     "leadMs": 600,
     "tailMs": 2000,
     "lines": [
       { "text": "Thanks everyone for joining today.", "gapAfterMs": 700 },
-      { "text": "We need to move the launch date to the second week of November.", "gapAfterMs": 800 },
+      { "text": "We need to push the launch back to the second week of November.", "gapAfterMs": 800 },
       { "text": "Our design team found a few issues in the checkout flow.", "gapAfterMs": 800 },
-      { "text": "Could you send us an updated quote for the extra work by Friday?", "gapAfterMs": 0 }
+      { "text": "Can you send us a new quote for the extra work before Friday?", "gapAfterMs": 0 }
     ]
   },
   "timing": {
