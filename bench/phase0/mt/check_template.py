@@ -14,6 +14,7 @@ cách server ghép prompt. Cách gọi một lượt `user` với `add_generatio
 Dùng (môi trường có transformers 5.x, model card Hy-MT2 yêu cầu transformers ≥ 5.6):
   uv run --no-project --python 3.12 --with "transformers==5.17.0" --with "jinja2==3.1.6" \
     python bench/phase0/mt/check_template.py --model models/Hy-MT2-1.8B-Q8_0.gguf
+Gói Nhanh (LMT, tokenizer NiuTrans): thêm `--family lmt --model models/LMT-60-0.6B-Q8_0.gguf`.
 Mã thoát: 0 đạt, 1 không đạt, 2 lỗi công cụ (ví dụ thiếu `llama-server` hay model).
 Cảnh báo `special_eos_id is not in special_eog_ids` khi nạp GGUF là vô hại; `stopped_on_eos` mới là phép kiểm thật.
 Kết quả: bench/phase0/results/s4_template_<model>.json; log của llama-server ở bench/phase0/data/.
@@ -25,11 +26,15 @@ import sys
 
 import jinja2
 import transformers
-from common import ROOT, LlamaServer, translation_prompt
+from common import ROOT, LlamaServer, lmt_prompt, translation_prompt
 from transformers import AutoTokenizer
 
-TOKENIZER_REPO = "tencent/Hy-MT2-1.8B"
-TOKENIZER_REV = "9a341cd1b679d3efd23b46e847b01745a71ed792"  # main ngày 2026-09-29; template trùng từng byte với GGUF a0c709d9
+TOKENIZERS = {
+    # main ngày 2026-09-29; template trùng từng byte với GGUF a0c709d9
+    "hy-mt2": ("tencent/Hy-MT2-1.8B", "9a341cd1b679d3efd23b46e847b01745a71ed792", translation_prompt),
+    # revision dùng để tự chuyển GGUF của gói Nhanh (bench/2026-10-21-goi-nhanh/CONVERT.md)
+    "lmt": ("NiuTrans/LMT-60-0.6B", "dd189845cdc73346cef33c7a94f4b8bd8efdd4eb", lmt_prompt),
+}
 
 CASES = [
     ("en", "vi", "Could you share the latest version of the report after the meeting?"),
@@ -47,8 +52,10 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")  # stdout chuyển hướng trên Windows mặc định là cp1252
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
+    ap.add_argument("--family", choices=sorted(TOKENIZERS), default="hy-mt2", help="họ mẫu prompt (trường prompt của manifest)")
     args = ap.parse_args()
-    tok = AutoTokenizer.from_pretrained(TOKENIZER_REPO, revision=TOKENIZER_REV)
+    repo, rev, make_prompt = TOKENIZERS[args.family]
+    tok = AutoTokenizer.from_pretrained(repo, revision=rev)
     stem = os.path.basename(args.model).removesuffix(".gguf")
     log_dir = os.path.join(ROOT, "bench", "phase0", "data")
     os.makedirs(log_dir, exist_ok=True)
@@ -59,7 +66,7 @@ def main():
     with LlamaServer(args.model, log_path=os.path.join(log_dir, f"s4_{stem}.llama.log")) as server:
         build = server.build_info()
         for src, tgt, text in CASES:
-            prompt = translation_prompt(text, src, tgt)
+            prompt = make_prompt(text, src, tgt)
             msgs = [{"role": "user", "content": prompt}]
             hf_prompt = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False)
             hf_ids = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True, return_dict=True)["input_ids"]
@@ -84,7 +91,7 @@ def main():
             rows.append(row)
             print(json.dumps(row, ensure_ascii=False))
     result = {"model": os.path.basename(args.model), "pass": ok, "llama_server": build,
-              "tokenizer": {"repo": TOKENIZER_REPO, "revision": TOKENIZER_REV},
+              "family": args.family, "tokenizer": {"repo": repo, "revision": rev},
               "transformers": transformers.__version__, "jinja2": jinja2.__version__, "cases": rows}
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:

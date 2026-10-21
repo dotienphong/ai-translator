@@ -1,0 +1,78 @@
+{
+ "model": "LMT-60-0.6B-Q8_0.gguf",
+ "pass": true,
+ "llama_server": "b11146-7fe450e19",
+ "family": "lmt",
+ "tokenizer": {
+  "repo": "NiuTrans/LMT-60-0.6B",
+  "revision": "dd189845cdc73346cef33c7a94f4b8bd8efdd4eb"
+ },
+ "transformers": "5.17.0",
+ "jinja2": "3.1.6",
+ "cases": [
+  {
+   "dir": "en->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Bạn có thể chia sẻ phiên bản mới nhất của báo cáo sau cuộc họp không ạ?"
+  },
+  {
+   "dir": "zh->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Chúng tôi sẽ phải thử nghiệm sản phẩm mới vào tuần tới."
+  },
+  {
+   "dir": "ja->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Vui lòng kiểm tra lại ngân sách tháng tới."
+  },
+  {
+   "dir": "ko->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Khi cuộc họp kết thúc, quý vị có thể chia sẻ phiên bản mới nhất của báo cáo không ạ?"
+  },
+  {
+   "dir": "vi->en",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "We need to close the budget by Friday this week."
+  },
+  {
+   "dir": "en->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Vậy, ạ, chúng ta hãy bắt đầu thôi."
+  },
+  {
+   "dir": "zh->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Dạ, chúng ta hãy bắt đầu."
+  },
+  {
+   "dir": "ja->vi",
+   "tokens_equal": true,
+   "template_equal": true,
+   "stream_equals_completion": true,
+   "stopped_on_eos": true,
+   "translation": "Cảm ơn quý vị đã làm việc chăm chỉ."
+  }
+ ]
+}

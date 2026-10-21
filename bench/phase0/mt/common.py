@@ -1,6 +1,6 @@
 """Dùng chung cho S4 và S7: chạy llama-server đúng như app (spec §6.5) và dựng prompt.
 
-Mẫu prompt phải giống hệt `crates/pipeline/src/prompt.rs`.
+Mẫu prompt phải giống hệt `crates/pipeline/src/prompt.rs` (Hy-MT2 và LMT).
 """
 import glob
 import json
@@ -26,6 +26,11 @@ def translation_prompt(text, src, tgt):
         return f"将以下文本翻译为{CN_NAME[tgt]}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}"
     return (f"Translate the following text into {EN_NAME[tgt]}. Note that you should only output the translated "
             f"result without any additional explanation:\n\n{text}")
+
+
+def lmt_prompt(text, src, tgt):
+    """Mẫu của model card NiuTrans/LMT-60-0.6B (revision dd18984), spec gói Nhanh §5.2."""
+    return f"Translate the following text from {EN_NAME[src]} into {EN_NAME[tgt]}:\n{EN_NAME[src]}: {text}\n{EN_NAME[tgt]}:"
 
 
 def context_prompt(text, context, src, tgt):
