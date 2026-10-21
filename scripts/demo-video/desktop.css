@@ -1,0 +1,676 @@
+/* Trang dựng cảnh bản 16:10 (desktop.mjs): giả màn hình Windows 11, 1536×960 điểm CSS (1920×1200 ở tỉ lệ 125%). Không logo
+   Windows, Teams, Meet, Messenger. Không transition/animation: mọi chuyển động tính theo thời điểm trong các file desktop-*.mjs. */
+:root {
+  --font: "Demo UI", sans-serif;
+  --accent: #2f6bff;
+}
+
+html,
+body {
+  margin: 0;
+  background: #000000;
+}
+
+#screen {
+  position: relative;
+  width: 1536px;
+  height: 960px;
+  overflow: hidden;
+  color: #1b1b1f;
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+#screen > * {
+  position: absolute;
+}
+
+/* Hai desktop ảo cạnh nhau; chuyển cảnh là trượt cả dải sang trái. */
+.desks {
+  left: 0;
+  top: 0;
+  width: 3072px;
+  height: 912px;
+}
+.desk {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1536px;
+  height: 912px;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 70% at 28% 38%, rgba(91, 140, 255, 0.85), transparent 60%),
+    radial-gradient(55% 65% at 75% 65%, rgba(176, 108, 255, 0.75), transparent 60%),
+    linear-gradient(135deg, #0c1a3a, #1c0f38);
+}
+.desk.d2 {
+  left: 1536px;
+}
+.desk > * {
+  position: absolute;
+}
+
+/* Biểu tượng tự vẽ */
+.icon {
+  display: inline-grid;
+  place-items: center;
+}
+.icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Cửa sổ kiểu Windows 11 */
+.window {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.titlebar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding-left: 12px;
+  font-size: 12px;
+}
+.titlebar .app-ico {
+  margin-right: 10px;
+}
+.titlebar .app-ico svg {
+  width: 16px;
+  height: 16px;
+}
+.titlebar .title {
+  flex: 1;
+}
+.titlebar .wbtn {
+  width: 46px;
+  height: 32px;
+}
+.titlebar .wbtn svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.3;
+}
+.titlebar.dark {
+  background: #1f1f1f;
+  color: #e8e8e8;
+}
+.titlebar.light {
+  background: #f3f3f3;
+  color: #1b1b1f;
+}
+
+/* Cửa sổ họp (phóng to: không bo góc, không bóng) */
+.meeting {
+  border-radius: 0;
+  box-shadow: none;
+  background: #1b1c1f;
+  color: #e9eaee;
+}
+.meet-top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 48px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.meet-name {
+  font-weight: 600;
+}
+.meet-timer {
+  color: #a9adb8;
+  font-variant-numeric: tabular-nums;
+}
+.meet-top-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c9ccd4;
+}
+.tile {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #2a2c31;
+}
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 3px transparent;
+}
+.tile.speaking::after {
+  box-shadow: inset 0 0 0 3px #5b8cff;
+}
+.tile .feed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tile .portrait,
+.tile .initials {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.tile .initials {
+  display: grid;
+  place-items: center;
+  background: #5b6bd6;
+  color: #ffffff;
+  font-size: 52px;
+  font-weight: 600;
+}
+.name-tag {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: 13px;
+}
+.name-tag .icon svg {
+  width: 16px;
+  height: 16px;
+}
+.name-tag .bar {
+  display: inline-block;
+  width: 3px;
+  height: 4px;
+  border-radius: 2px;
+  background: #7fb0ff;
+}
+.meet-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.meet-clock {
+  position: absolute;
+  left: 20px;
+  font-size: 14px;
+  color: #c9ccd4;
+}
+.meet-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.meet-buttons .btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #34363c;
+  color: #ffffff;
+}
+.meet-buttons .btn.muted {
+  background: #d94a3d;
+}
+.leave {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  background: #d93a2f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Thanh phụ đề, ô Gõ dịch: iframe của app */
+.frame {
+  border: 0;
+  background: transparent;
+}
+.compose-frame {
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.35));
+}
+
+/* Cửa sổ chat */
+.chat {
+  background: #ffffff;
+}
+.chat-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.chat-list {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 10px;
+  border-right: 1px solid #e6e6ea;
+  box-sizing: border-box;
+}
+.list-title {
+  padding: 2px 8px 10px;
+  font-size: 22px;
+  font-weight: 700;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-bottom: 8px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: #f0f2f5;
+  color: #65676b;
+  font-size: 14px;
+}
+.search .icon svg {
+  width: 16px;
+  height: 16px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+}
+.row.active {
+  background: #eaf1ff;
+}
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #8a6cff;
+  color: #ffffff;
+  font-weight: 600;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatar.md {
+  width: 48px;
+  height: 48px;
+  font-size: 17px;
+}
+.avatar.sm {
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
+}
+.avatar.xs {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+.online {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #31a24c;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+.row-text {
+  flex: 1;
+  min-width: 0;
+}
+.row-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.row-last {
+  overflow: hidden;
+  color: #65676b;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.row-time {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: #65676b;
+  font-size: 12px;
+}
+.chat-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pane-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e6e6ea;
+}
+.pane-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.pane-status {
+  color: #65676b;
+  font-size: 12px;
+}
+.pane-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  color: var(--accent);
+}
+.thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  overflow: hidden;
+  padding: 16px 20px;
+}
+.day {
+  align-self: center;
+  margin: 10px 0 4px;
+  color: #65676b;
+  font-size: 12px;
+}
+.msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.msg.me {
+  justify-content: flex-end;
+}
+.bubble {
+  max-width: 62%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.msg.them .bubble {
+  background: #f0f0f0;
+  color: #050505;
+}
+.msg.me .bubble {
+  background: var(--accent);
+  color: #ffffff;
+}
+.typing .bubble {
+  display: flex;
+  gap: 4px;
+  padding: 12px 14px;
+}
+.typing .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #90949c;
+}
+.composer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  color: var(--accent);
+}
+.composer .input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: #f0f2f5;
+  color: #050505;
+  font-size: 15px;
+}
+.composer .input.focused {
+  box-shadow: inset 0 0 0 1px #b8c7ff;
+}
+.composer .placeholder {
+  color: #8a8d91;
+}
+
+/* Thanh tác vụ kiểu Windows 11 (không logo Windows) */
+.taskbar {
+  left: 0;
+  bottom: 0;
+  width: 1536px;
+  height: 48px;
+  background: rgba(238, 240, 246, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.6);
+}
+.tb-apps {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+.tb-app {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  color: #2b2f3a;
+}
+.tb-app .icon svg {
+  width: 22px;
+  height: 22px;
+}
+.tb-app.active {
+  background: rgba(255, 255, 255, 0.75);
+}
+.tb-app.active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.app-folder {
+  color: #d29b18;
+}
+.app-globe {
+  color: #0b8a5a;
+}
+.app-cam {
+  color: #5b5fc7;
+}
+.app-chat {
+  color: var(--accent);
+}
+.app-mail {
+  color: #1f6fd1;
+}
+.tb-tray {
+  position: absolute;
+  right: 12px;
+  top: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tray-ico svg {
+  width: 16px;
+  height: 16px;
+}
+.tray-app {
+  width: 16px;
+  height: 16px;
+}
+.tb-clock {
+  margin-left: 4px;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: right;
+}
+
+/* Nhãn nhỏ, ô hiện phím, con trỏ, màn kết */
+.label {
+  left: 20px;
+  bottom: 68px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 12px;
+  border-radius: 12px;
+  background: rgba(17, 19, 26, 0.86);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.label img {
+  width: 22px;
+  height: 22px;
+}
+.keys {
+  right: 24px;
+  bottom: 72px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(17, 19, 26, 0.86);
+  color: #ffffff;
+}
+.keys .cap {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #4a4e5c;
+  border-bottom-width: 3px;
+  border-radius: 8px;
+  background: #2c2f3a;
+  font-size: 17px;
+  font-weight: 600;
+}
+.keys .cap.down {
+  border-bottom-width: 1px;
+  background: #3a3e4c;
+  transform: translateY(2px);
+}
+.keys .plus {
+  color: #9aa0ae;
+  font-size: 15px;
+}
+.cursor {
+  left: 0;
+  top: 0;
+  z-index: 8;
+  width: 1px;
+  height: 1px;
+}
+.cursor svg {
+  position: absolute;
+}
+.cursor .arrow {
+  left: -2px;
+  top: -2px;
+}
+.cursor .text {
+  display: none;
+  left: -8px;
+  top: -14px;
+}
+.cursor[data-kind="text"] .arrow {
+  display: none;
+}
+.cursor[data-kind="text"] .text {
+  display: block;
+}
+.outro {
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(circle at 50% 45%, #1d2440, #0b0d14 70%);
+  color: #ffffff;
+}
+.outro img {
+  width: 128px;
+  height: 128px;
+  border-radius: 28px;
+}
+.outro .name {
+  font-size: 44px;
+  font-weight: 700;
+}
+.outro .url {
+  color: #8fb0ff;
+  font-size: 22px;
+  font-weight: 600;
+}
+.play {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 20;
+  padding: 14px 26px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 18px;
+  cursor: pointer;
+  translate: -50% -50%;
+}
