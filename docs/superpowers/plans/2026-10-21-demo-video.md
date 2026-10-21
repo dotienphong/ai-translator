@@ -1601,7 +1601,7 @@ Kỳ vọng: `tsc` không báo lỗi; vitest đạt hết như trước.
 
 Rồi chạy bộ kiểm giao diện sẵn có, bộ này không dùng `demo`, nên phải đạt như cũ:
 ```bash
-cd /Users/dtphong/Desktop/software_business/ai-translator && (node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1431 > /dev/null 2>&1 &) && sleep 3 && node scripts/ui-preview/check-live.mjs; status=$?; pkill -f "vite --config scripts/ui-preview/vite.config.ts --port 1431"; exit $status
+cd /Users/dtphong/Desktop/software_business/ai-translator && (node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1431 > /dev/null 2>&1 &) && sleep 3 && node scripts/ui-preview/check-live.mjs; code=$?; pkill -f "vite --config scripts/ui-preview/vite.config.ts --port 1431"; exit $code
 ```
 Kỳ vọng: in đường dẫn các ảnh PNG, thoát mã 0 (không có dòng lỗi).
 

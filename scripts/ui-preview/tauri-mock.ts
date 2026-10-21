@@ -24,6 +24,9 @@
 //     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission|reopen (mặc định empty; trừ empty, trang tự gõ
 //     chữ mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter; reopen còn mở
 //     lại ô khi bản nháp đang có, như Esc rồi ⌃⌥G)  paste=0 (tắt tự dán)
+//   video giới thiệu (scripts/demo-video, spec 2026-10-21-demo-video §2.4): demo=1 thì không tự phát mức âm lượng ngẫu nhiên và
+//     không tự mở ô soạn; trang dựng cảnh (frame ngoài cùng) phát sự kiện qua `window.__demoEmit` và trả lời lệnh dịch của ô soạn
+//     qua `window.top.__demo.composeTranslate(id, emit)`
 import conf from "../../src-tauri/tauri.conf.json";
 import type {
   AppInfo,
@@ -52,6 +55,7 @@ const platform = param("platform", "macos") as "macos" | "windows";
 const sessionParam = param("session", "idle") as AppStatus["session"];
 const plan = param("plan", "monthly") as "free" | "monthly" | "six_months" | "yearly";
 const empty = param("empty") === "1";
+const demo = param("demo") === "1";
 const sec = (ms: number) => Math.floor(ms / 1000);
 const DAY = 86_400_000;
 
@@ -492,6 +496,11 @@ export async function listen(event: string, handler: (e: { payload: unknown }) =
   return () => set.delete(handler);
 }
 
+// Video giới thiệu: trang dựng cảnh phát sự kiện vào trang này và trả lời lệnh dịch của ô soạn (thay phía Rust).
+type DemoHooks = { composeTranslate?: (id: number, emit: (event: string, payload: unknown) => void) => void };
+const demoHooks = (): DemoHooks => (window.top as unknown as { __demo?: DemoHooks } | null)?.__demo ?? {};
+if (demo) (window as unknown as { __demoEmit: typeof emit }).__demoEmit = emit;
+
 function changeStatus(patch: Partial<AppStatus>) {
   status = { ...status, ...patch, rev: status.rev + 1 };
   emit("app://status", status);
@@ -565,7 +574,7 @@ function overlayView() {
 }
 
 // Mức âm lượng nhảy như đang có người nói.
-if (sessionParam === "running") {
+if (sessionParam === "running" && !demo) {
   let t = 0;
   setInterval(() => {
     t += 1;
@@ -613,7 +622,9 @@ const handlers = {
   get_compose_view: () => composeView(),
   compose_translate: () => {
     const id = ++composeId;
-    setTimeout(() => composeAnswer(id), 60);
+    const answer = demo ? demoHooks().composeTranslate : undefined;
+    if (answer) answer(id, emit);
+    else setTimeout(() => composeAnswer(id), 60);
     return id;
   },
   compose_submit: () => (composeState === "permission" ? "needsPermission" : param("paste") === "0" ? "copied" : "pasted"),
@@ -720,7 +731,7 @@ setTimeout(async () => {
     const { appStore } = await import("../../src/windows/main/appStore");
     appStore.setState({ error: { code: "network", field: null } });
   }
-  if (location.pathname.endsWith("compose.html")) {
+  if (location.pathname.endsWith("compose.html") && !demo) {
     emit("compose://open", composeView());
     const input = document.querySelector("textarea");
     if (input && composeState !== "empty") {
