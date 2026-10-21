@@ -148,7 +148,10 @@ fn first_run_registers_the_default_launch_at_login() {
     let mut settings = crate::settings::Settings::defaults(crate::settings::UiLanguage::Vi);
     assert!(settings.launch_at_login, "mặc định là Bật");
     actions::register_default_launch_at_login(app.handle(), &settings);
-    assert!(!actions::sync_launch_at_login(app.handle(), &mut settings), "đã đăng ký thì cài đặt giữ Bật");
+    assert!(
+        !actions::sync_launch_at_login(app.handle(), &mut settings),
+        "đã đăng ký thì cài đặt giữ Bật"
+    );
     assert!(settings.launch_at_login);
 }
 
