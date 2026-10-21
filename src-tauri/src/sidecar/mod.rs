@@ -40,12 +40,15 @@ pub fn sidecar_key<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Resul
         .try_state::<Arc<ModelService>>()
         .map(|models| models.pipeline_config())
         .unwrap_or_default();
+    // Họ prompt theo model mà `llama-server` của bộ này sẽ nạp (spec gói Nhanh §4.3).
+    let mut mt = config.mt;
+    mt.prompt_family = models.mt_prompt;
     Ok(SidecarKey {
         tier: settings.model_tier.clone(),
         models,
         supervisor: config.supervisor,
         asr: config.asr,
-        mt: config.mt,
+        mt,
     })
 }
 

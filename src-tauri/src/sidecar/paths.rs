@@ -6,6 +6,7 @@
 //! - Model: theo kho model của kế hoạch 04 (`app_local_data_dir/models`, `models::store`). Bản dev chưa tải gói nào
 //!   thì dùng file của Phase 0 ở `MT_MODELS_DIR`, không đặt thì `<repo>/models`.
 
+use pipeline::prompt::PromptFamily;
 use std::path::{Path, PathBuf};
 
 /// Target triple lúc build (build.rs đặt).
@@ -61,19 +62,32 @@ pub struct ModelFiles {
     pub asr: PathBuf,
     pub mt: PathBuf,
     pub vad: PathBuf,
+    /// Họ mẫu prompt của model dịch (trường `prompt` của manifest, spec 2026-10-21-goi-nhanh §4.3).
+    pub mt_prompt: PromptFamily,
 }
 
 /// Bản dev chưa tải gói nào qua manifest: file model của Phase 0 trong `models/` của repo, theo tên cố định
-/// (§6.7). Gói `lite` dùng bộ của gói Nhẹ, mọi gói khác (kể cả chưa chọn) dùng gói Chuẩn.
+/// (§6.7). Gói `lite` dùng bộ của gói Nhẹ, `fast` dùng whisper turbo và LMT (gói Nhanh), mọi gói khác (kể cả chưa chọn)
+/// dùng gói Chuẩn.
 pub fn model_files(dir: &Path, tier: Option<&str>) -> ModelFiles {
-    let (asr, mt) = match tier {
-        Some("lite") => ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf"),
-        _ => ("ggml-large-v3-turbo-q5_0.bin", "Hy-MT2-1.8B-Q8_0.gguf"),
+    let (asr, mt, mt_prompt) = match tier {
+        Some("lite") => ("ggml-small-q5_1.bin", "Hy-MT2-1.8B-Q4_K_M.gguf", PromptFamily::HyMt2),
+        Some("fast") => (
+            "ggml-large-v3-turbo-q5_0.bin",
+            "LMT-60-0.6B-Q8_0.gguf",
+            PromptFamily::Lmt,
+        ),
+        _ => (
+            "ggml-large-v3-turbo-q5_0.bin",
+            "Hy-MT2-1.8B-Q8_0.gguf",
+            PromptFamily::HyMt2,
+        ),
     };
     ModelFiles {
         asr: dir.join(asr),
         mt: dir.join(mt),
         vad: dir.join("silero_vad_v6.2.3.onnx"),
+        mt_prompt,
     }
 }
 
@@ -145,5 +159,11 @@ mod tests {
         assert_eq!(lite.asr, Path::new("/m/ggml-small-q5_1.bin"));
         assert_eq!(lite.vad, Path::new("/m/silero_vad_v6.2.3.onnx"));
         assert_eq!(first_missing(&lite), Some(Path::new("/m/ggml-small-q5_1.bin")));
+        assert_eq!(std.mt_prompt, PromptFamily::HyMt2);
+        assert_eq!(lite.mt_prompt, PromptFamily::HyMt2);
+        let fast = model_files(Path::new("/m"), Some("fast"));
+        assert_eq!(fast.asr, Path::new("/m/ggml-large-v3-turbo-q5_0.bin"));
+        assert_eq!(fast.mt, Path::new("/m/LMT-60-0.6B-Q8_0.gguf"));
+        assert_eq!(fast.mt_prompt, PromptFamily::Lmt);
     }
 }

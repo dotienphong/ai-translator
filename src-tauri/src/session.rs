@@ -1186,11 +1186,18 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
             .map_or(errors::SIDECAR_FAILED, sidecar::give_up_code)
     }
 
+    /// Ngưỡng theo manifest, với họ prompt của bộ tiến trình phụ đang có: phiên và Gõ dịch gọi hàm này sau `prepare`,
+    /// nên mẫu prompt luôn khớp model mà `llama-server` thật sự nạp (spec gói Nhanh §4.3).
     fn pipeline_config(&self) -> PipelineConfig {
-        self.app
+        let mut config = self
+            .app
             .try_state::<Arc<crate::models::service::ModelService>>()
             .map(|models| models.pipeline_config())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        if let Some(live) = self.live.lock().unwrap().as_ref() {
+            config.mt.prompt_family = live.key.mt.prompt_family;
+        }
+        config
     }
 
     /// QĐ1 của kế hoạch 03: kết quả dò GPU (Windows; đã có sau `prepare`, không chờ) và thiết bị thật của `asr-worker` đang
@@ -1282,6 +1289,7 @@ mod tests {
                 asr: PathBuf::from("/m/asr.bin"),
                 mt: PathBuf::from(mt),
                 vad: PathBuf::from("/m/vad.onnx"),
+                ..Default::default()
             },
             ..sidecar::SidecarKey::default()
         };
@@ -1308,6 +1316,28 @@ mod tests {
             "ngưỡng mới của manifest"
         );
         assert!(reusable(None, &key("lite", "/m/q4.gguf")).is_none());
+    }
+
+    /// Spec gói Nhanh §4.3: ngưỡng dịch của phiên mang họ prompt của bộ tiến trình phụ đang có; chưa có bộ nào thì Hy-MT2.
+    #[test]
+    fn the_pipeline_config_follows_the_prompt_family_of_the_live_sidecars() {
+        use pipeline::prompt::PromptFamily;
+        let app = tauri::test::mock_app();
+        let deps = LiveDeps::new(app.handle().clone());
+        assert_eq!(deps.pipeline_config().mt.prompt_family, PromptFamily::HyMt2);
+        let mut key = sidecar::SidecarKey::default();
+        key.models.mt_prompt = PromptFamily::Lmt;
+        key.mt.prompt_family = PromptFamily::Lmt;
+        *deps.live.lock().unwrap() = Some(Live {
+            manager: SidecarManager::new(
+                missing_sidecars("family"),
+                Arc::new(pipeline::supervisor::FakeClock::default()),
+                Arc::new(CountSpawns::default()),
+            ),
+            key,
+            vad_model: PathBuf::new(),
+        });
+        assert_eq!(deps.pipeline_config().mt.prompt_family, PromptFamily::Lmt);
     }
 
     /// Q4-2 của review 02 lần 4: `asr-worker` chạy lại được bằng GPU thì bỏ chỉ báo "Đang chạy bằng CPU".

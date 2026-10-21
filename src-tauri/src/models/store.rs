@@ -254,10 +254,18 @@ impl Store {
                 Err(_) => Err(ResolveError::Missing(record.file.clone())),
             }
         };
+        // Họ lạ đã bị `usable_by` chặn từ trước (gói của app mới hơn); nhánh lỗi chỉ để phòng hờ.
+        let mt_prompt = manifest
+            .files_of(pack)
+            .into_iter()
+            .find(|f| f.kind == Kind::Mt)
+            .and_then(FileEntry::prompt_family)
+            .ok_or_else(|| ResolveError::Missing(format!("{pack}/Mt")))?;
         Ok(ModelFiles {
             asr: pick(Kind::Asr)?,
             mt: pick(Kind::Mt)?,
             vad: pick(Kind::Vad)?,
+            mt_prompt,
         })
     }
 
@@ -488,6 +496,26 @@ pub(crate) mod tests {
         assert_eq!(
             store.resolve(&m, "lite"),
             Err(ResolveError::Missing("silero_vad_v6.2.3.onnx".into()))
+        );
+    }
+
+    /// Spec gói Nhanh §4.3: `resolve` mang họ prompt của file `mt` của gói.
+    #[test]
+    fn resolve_carries_the_prompt_family_of_the_mt_file() {
+        let t = temp("resolve-prompt");
+        let store = Store::new(&t.0);
+        let mut value = real_sample();
+        value["files"][3]["prompt"] = serde_json::json!("lmt");
+        let m = manifest(&value);
+        install(&store, &m, "lite");
+        install(&store, &m, "standard");
+        assert_eq!(
+            store.resolve(&m, "lite").unwrap().mt_prompt,
+            pipeline::prompt::PromptFamily::Lmt
+        );
+        assert_eq!(
+            store.resolve(&m, "standard").unwrap().mt_prompt,
+            pipeline::prompt::PromptFamily::HyMt2
         );
     }
 
