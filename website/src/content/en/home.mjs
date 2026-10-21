@@ -1,6 +1,8 @@
 import { RELEASE } from "../../site.mjs";
-import { dataFlow, demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
-import { faqPage } from "../../build/schema.mjs";
+import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
+import { faqPage, videoObject } from "../../build/schema.mjs";
+
+const VIDEO_TEXT = "A video meeting where a colleague speaks Vietnamese and English subtitles appear, then Type & Translate turns an English reply into Vietnamese for a chat message. 39-second video with sound.";
 
 export const HOME_FAQ = [
   {
@@ -55,10 +57,13 @@ export default {
   description:
     "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
-  modified: "2026-10-15",
+  modified: "2026-10-21",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
-  schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],
+  schema: [
+    faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
+    videoObject({ lang: "en", name: "AI Translator demo: translated meeting subtitles and Type & Translate", description: VIDEO_TEXT, duration: "PT39S", uploadDate: "2026-10-21" }),
+  ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>
@@ -92,6 +97,11 @@ ${demo({
   floatB: { icon: "lock", text: "Audio stays on your device" },
 })}
 </div>
+</div></section>
+
+<section class="section-tight" id="video-demo"><div class="container">
+${sectionHead({ eyebrow: "Video demo", title: "See AI Translator in action", text: VIDEO_TEXT, center: true })}
+${demoVideo({ lang: "en", label: "AI Translator demo video: translated meeting subtitles and Type & Translate", fallback: "Download the demo video (MP4, 2 MB)" })}
 </div></section>
 
 <section class="section-tight"><div class="container narrow">

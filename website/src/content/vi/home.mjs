@@ -1,6 +1,8 @@
 import { RELEASE } from "../../site.mjs";
-import { dataFlow, demo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
-import { faqPage } from "../../build/schema.mjs";
+import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
+import { faqPage, videoObject } from "../../build/schema.mjs";
+
+const VIDEO_TEXT = "Một cuộc họp trực tuyến có phụ đề tiếng Việt dịch từ tiếng Anh, rồi Gõ dịch chuyển câu trả lời tiếng Việt thành tiếng Anh để gửi tin nhắn. Video 40 giây, có tiếng.";
 
 export const HOME_FAQ = [
   {
@@ -53,10 +55,13 @@ export default {
   description:
     "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-15",
+  modified: "2026-10-21",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
-  schema: [faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a })))],
+  schema: [
+    faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
+    videoObject({ lang: "vi", name: "Video demo AI Translator: phụ đề dịch cuộc họp và Gõ dịch", description: VIDEO_TEXT, duration: "PT40S", uploadDate: "2026-10-21" }),
+  ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
 <div>
@@ -90,6 +95,11 @@ ${demo({
   floatB: { icon: "lock", text: "Âm thanh ở lại trên máy" },
 })}
 </div>
+</div></section>
+
+<section class="section-tight" id="video-demo"><div class="container">
+${sectionHead({ eyebrow: "Video demo", title: "Xem AI Translator hoạt động", text: VIDEO_TEXT, center: true })}
+${demoVideo({ lang: "vi", label: "Video demo AI Translator: phụ đề dịch cuộc họp và Gõ dịch", fallback: "Tải video demo (MP4, 2 MB)" })}
 </div></section>
 
 <section class="section-tight"><div class="container narrow">

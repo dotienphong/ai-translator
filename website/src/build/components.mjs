@@ -17,15 +17,32 @@ const MANIFEST = (() => {
 })();
 const dims = (file, d) => MANIFEST.find((m) => m.file === file) ?? d;
 
-// Đường dẫn ảnh kèm mã băm nội dung: ảnh nằm trong cache trình duyệt 30 ngày (_headers), nên chụp lại ảnh (cùng tên file)
-// mà không đổi đường dẫn thì người đã vào trang vẫn thấy ảnh cũ. Thiếu file thì để đường dẫn trơn.
-const appImg = (file) => {
+// Đường dẫn tài nguyên (`dir` dưới src/assets/) kèm mã băm nội dung: ảnh và video nằm trong cache trình duyệt 30 ngày
+// (_headers), nên thay file (cùng tên) mà không đổi đường dẫn thì người đã vào trang vẫn thấy bản cũ. Thiếu file thì để
+// đường dẫn trơn.
+const hashed = (dir, file) => {
   try {
-    const hash = createHash("sha256").update(readFileSync(new URL(`../assets/img/app/${file}`, import.meta.url))).digest("hex");
-    return `/assets/img/app/${file}?v=${hash.slice(0, 10)}`;
+    const hash = createHash("sha256").update(readFileSync(new URL(`../assets/${dir}/${file}`, import.meta.url))).digest("hex");
+    return `/assets/${dir}/${file}?v=${hash.slice(0, 10)}`;
   } catch {
-    return `/assets/img/app/${file}`;
+    return `/assets/${dir}/${file}`;
   }
+};
+const appImg = (file) => hashed("img/app", file);
+
+/**
+ * Video demo của trang chủ (spec 2026-10-21-website-demo-video): file `ai-translator-demo.<lang>.{mp4,webp}` trong
+ * src/assets/video/. `preload="none"`: chỉ tải khi người xem bấm phát; ảnh bìa là khung có phụ đề. `label` là tên đọc cho
+ * trình đọc màn hình, `fallback` là chữ của liên kết tải MP4 khi trình duyệt không phát được video.
+ */
+export const demoVideo = ({ lang, label, fallback }) => {
+  const mp4 = hashed("video", `ai-translator-demo.${lang}.mp4`);
+  return `<figure class="shot video reveal">
+<video controls preload="none" playsinline width="1920" height="1200" poster="${hashed("video", `ai-translator-demo.${lang}.webp`)}" aria-label="${esc(label)}">
+<source src="${mp4}" type="video/mp4">
+<a href="${mp4}">${esc(fallback)}</a>
+</video>
+</figure>`;
 };
 
 /** Ảnh chụp cửa sổ chính của app (có thanh tiêu đề giả bằng CSS). */

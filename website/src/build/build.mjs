@@ -162,6 +162,8 @@ function headers() {
   Cache-Control: public, max-age=2592000
 /assets/og/*
   Cache-Control: public, max-age=2592000
+/assets/video/*
+  Cache-Control: public, max-age=2592000
 
 # Trang HTML (đường dẫn kết thúc bằng /, sâu tới 3 cấp). Không đặt no-transform: có nó thì Cloudflare không nén (br/gzip)
 # HTML (đo ngày 2026-10-09: 46 KB không nén so với khoảng 10 KB). Cloudflare Web Analytics tự chèn phải để TẮT ở zone, vì CSP
@@ -229,7 +231,7 @@ export async function build() {
 
   // 1. Tài nguyên tĩnh
   await copyDir(path.join(SRC, "assets", "fonts"), path.join(DIST, "assets", "fonts"));
-  for (const sub of ["img", "og"]) {
+  for (const sub of ["img", "og", "video"]) {
     try {
       await copyDir(path.join(SRC, "assets", sub), path.join(DIST, "assets", sub));
     } catch {

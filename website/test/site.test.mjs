@@ -117,10 +117,10 @@ test("liên kết nội bộ và neo (#) đều tồn tại", async () => {
   for (const [p, html] of htmlByPath) ids.set(p, new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])));
   for (const p of pages) {
     const html = strip(htmlByPath.get(p.path));
-    for (const m of html.matchAll(/<(?:a|link|img|script)\b[^>]*?\s(?:href|src)="([^"]+)"/g)) {
+    for (const m of html.matchAll(/<(?:a|link|img|script|source|video)\b[^>]*?\s(?:href|src|poster)="([^"]+)"/g)) {
       const url = m[1];
       if (/^(https?:|mailto:|tel:|data:)/.test(url)) continue;
-      // Bỏ query (`?v=<mã băm>` của ảnh app) trước khi tìm file.
+      // Bỏ query (`?v=<mã băm>` của ảnh app, video demo) trước khi tìm file.
       const [target, hash] = url.replace(/\?[^#]*/, "").split("#");
       const t = target === "" ? p.path : target;
       if (t.startsWith("#")) continue;
@@ -2124,4 +2124,38 @@ test("hướng dẫn mua gói, mục gia hạn và đổi gói: công thức dù
     errors.push(...needsIn(`${urlPath}#${id}`, text, needs), ...forbidsIn(`${urlPath}#${id}`, text, olds));
   }
   assert.deepEqual(errors, []);
+});
+
+test("trang chủ có video demo đúng ngôn ngữ: chỉ tải khi bấm phát, có kích thước và ảnh bìa, file có trong dist và dưới 25 MiB, có VideoObject", async () => {
+  // Workers Static Assets không phục vụ file lớn hơn 25 MiB.
+  const LIMIT = 25 * 1024 * 1024;
+  for (const [urlPath, lang, other] of [
+    ["/", "vi", "en"],
+    ["/en/", "en", "vi"],
+  ]) {
+    const html = htmlByPath.get(urlPath);
+    const videos = html.match(/<video\b[^>]*>/g) ?? [];
+    assert.equal(videos.length, 1, `${urlPath}: cần đúng một <video>`);
+    const tag = videos[0];
+    for (const attr of [/\scontrols[\s>]/, /\spreload="none"/, /\splaysinline[\s>]/, /\swidth="1920"/, /\sheight="1200"/]) {
+      assert.match(tag, attr, `${urlPath}: <video> thiếu ${attr}`);
+    }
+    const poster = /\sposter="([^"]+)"/.exec(tag)?.[1] ?? "";
+    const src = /<source src="([^"]+)" type="video\/mp4">/.exec(html)?.[1] ?? "";
+    assert.match(poster, new RegExp(`^/assets/video/ai-translator-demo\\.${lang}\\.webp\\?v=[0-9a-f]{10}$`), `${urlPath}: ảnh bìa`);
+    assert.match(src, new RegExp(`^/assets/video/ai-translator-demo\\.${lang}\\.mp4\\?v=[0-9a-f]{10}$`), `${urlPath}: file MP4`);
+    assert.ok(!html.includes(`ai-translator-demo.${other}.`), `${urlPath}: lẫn video của ngôn ngữ ${other}`);
+    for (const url of [poster, src]) {
+      const file = path.join(DIST, url.replace(/\?.*/, ""));
+      assert.ok(await exists(file), `${urlPath}: thiếu ${file}`);
+      assert.ok((await stat(file)).size < LIMIT, `${file} vượt 25 MiB`);
+    }
+    const ld = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)[1]);
+    const video = ld["@graph"].find((n) => n["@type"] === "VideoObject");
+    assert.ok(video, `${urlPath}: JSON-LD thiếu VideoObject`);
+    assert.equal(video.contentUrl, `${SITE.origin}/assets/video/ai-translator-demo.${lang}.mp4`);
+    assert.equal(video.thumbnailUrl, `${SITE.origin}/assets/video/ai-translator-demo.${lang}.webp`);
+    assert.equal(video.inLanguage, lang);
+    assert.match(video.duration, /^PT\d+S$/);
+  }
 });

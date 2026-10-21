@@ -137,6 +137,23 @@ export function faqPage(items, id) {
   };
 }
 
+/** Video demo của trang chủ (spec 2026-10-21-website-demo-video): `duration` dạng ISO 8601 (`PT40S`), `uploadDate` dạng ngày. */
+export function videoObject({ lang, name, description, duration, uploadDate }) {
+  const base = `/assets/video/ai-translator-demo.${lang}`;
+  return {
+    "@type": "VideoObject",
+    "@id": `${SITE.origin}${lang === "en" ? "/en" : ""}/#demo-video`,
+    name,
+    description,
+    thumbnailUrl: abs(`${base}.webp`),
+    contentUrl: abs(`${base}.mp4`),
+    duration,
+    uploadDate,
+    inLanguage: lang,
+    publisher: { "@id": ORG_ID },
+  };
+}
+
 export function howTo({ name, description, steps, totalTime }) {
   return {
     "@type": "HowTo",
