@@ -73,6 +73,14 @@ pub struct SessionArgs {
     /// File JSON kết quả.
     #[arg(long)]
     pub out: PathBuf,
+    /// Họ mẫu prompt của `--mt-model` (`hy-mt2`, hay `lmt` cho gói Nhanh), như trường `prompt` của manifest.
+    #[arg(long, default_value = "hy-mt2", value_parser = ["hy-mt2", "lmt"])]
+    pub prompt: String,
+}
+
+/// Họ prompt của lượt đo (clap đã kiểm giá trị).
+fn prompt_family(args: &SessionArgs) -> pipeline::prompt::PromptFamily {
+    pipeline::prompt::PromptFamily::from_code(&args.prompt).expect("clap đã kiểm giá trị")
 }
 
 /// `EventSink` ghi mọi sự kiện kèm giờ thật (ms từ `origin`, làm tròn 0,1 ms). Mức âm lượng bỏ qua; lỗi làm phiên dừng ghi
@@ -284,7 +292,10 @@ fn sidecar_spec(args: &SessionArgs) -> SidecarSpec {
         },
         supervisor: SupervisorConfig::default(),
         asr_config: AsrConfig::default(),
-        mt_config: MtConfig::default(),
+        mt_config: MtConfig {
+            prompt_family: prompt_family(args),
+            ..MtConfig::default()
+        },
     }
 }
 
@@ -379,6 +390,7 @@ fn apply_streaming(args: &SessionArgs, pipeline: &mut PipelineConfig) -> Result<
 fn engine_config(args: &SessionArgs, target: Lang) -> Result<EngineConfig> {
     let mut pipeline = PipelineConfig::default();
     pipeline.segmenter.end_silence_ms = args.end_silence_ms;
+    pipeline.mt.prompt_family = prompt_family(args);
     apply_streaming(args, &mut pipeline)?;
     Ok(EngineConfig {
         pipeline,
@@ -714,6 +726,13 @@ mod tests {
         assert!(spec.llama.extra_args.is_empty());
         assert_eq!(spec.mt_config, MtConfig::default());
         assert_eq!(args(&["--end-silence-ms", "400"]).end_silence_ms, 400);
+        let lmt = args(&["--prompt", "lmt"]);
+        assert_eq!(
+            sidecar_spec(&lmt).mt_config.prompt_family,
+            pipeline::prompt::PromptFamily::Lmt
+        );
+        let config = engine_config(&lmt, Lang::Vi).unwrap();
+        assert_eq!(config.pipeline.mt.prompt_family, pipeline::prompt::PromptFamily::Lmt);
     }
 
     #[test]
