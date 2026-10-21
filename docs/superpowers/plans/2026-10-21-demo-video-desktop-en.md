@@ -50,3 +50,14 @@
 - [ ] Dựng lặp lại một đoạn hai lần phải giống hệt.
 - [ ] Quay `--script desktop.en`; `ffprobe` (H.264 1920×1200, 30 khung/giây, AAC); xem 13 khung chính.
 - [ ] Chạy mọi test, `tsc`; tắt vite; dọn file thử; cập nhật bộ nhớ; báo chủ dự án.
+
+---
+
+## Ghi chú khi thực thi (2026-10-21)
+
+- **Task 2:** lượt quay đầu sau khi sửa file bị Vite tải lại trang giữa chừng; `render.mjs` đã dừng và báo lỗi đúng như thiết kế. Chạy lại thì bản Việt ra y hệt mốc.
+- **Task 5:** duyệt nội dung ba vòng (đổi câu, không sửa kết quả).
+  - Câu 2: "lùi ngày ra mắt" bị nghe thành "lùi ngài" → đổi thành "hoãn ra mắt sản phẩm".
+  - Câu 4: "…trước thứ Sáu không?" bị tách câu; "chị" bị nghe thành "chỉ"; "thứ 6" bị dịch thành Saturday → đổi thành "Em cần báo giá mới cho phần việc thêm trước cuối tuần này."
+  - Lệch phát 17,1 ms trên Apple M4 Pro.
+- **Kết quả:** `target/demo-video/ai-translator-demo.desktop.en.mp4`, 1920×1200, 43,0 giây, 2,2 MB. Dựng lặp lại (khung 150–209) ra y hệt. Khung chính 02 tình cờ rơi vào khoảng nghỉ giữa hai câu, nên viền "đang nói" tắt đúng như app thật.
