@@ -11,7 +11,7 @@ export default {
   path: "/zh/features/",
   title: "AI Translator 功能：字幕、术语表、导出",
   description:
-    "5 种语言的实时翻译字幕、字幕栏、聊天用的输入翻译、术语表、历史记录以及 TXT/SRT/Markdown 导出。全部在你的电脑上离线运行。",
+    "5 种语言的实时翻译字幕、字幕条、聊天用的输入翻译、术语表、历史记录以及 TXT/SRT/Markdown 导出。全部在你的电脑上离线运行。",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -22,7 +22,7 @@ ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", 
 <h2 class="sr-only">功能一览</h2>
 <div class="grid grid-4 reveal">
 <a class="card card-link" href="#live-translation"><h3>实时翻译</h3><p class="muted">5 种语言，自动检测</p></a>
-<a class="card card-link" href="#subtitle-bar"><h3>字幕栏</h3><p class="muted">拖动、锁定、调整字号</p></a>
+<a class="card card-link" href="#subtitle-bar"><h3>字幕条</h3><p class="muted">拖动、锁定、调整字号</p></a>
 <a class="card card-link" href="#transcript"><h3>转写记录</h3><p class="muted">历史记录、导出（Pro）</p></a>
 <a class="card card-link" href="#glossary"><h3>术语表</h3><p class="muted">人名和术语（Pro）</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>输入翻译</h3><p class="muted">用对方的语言聊天</p></a>
@@ -48,7 +48,7 @@ ${feature({ icon: "lock", title: "对话数据留在你的电脑上", text: "音
 <div class="stack-lg reveal">
 <span class="eyebrow">实时翻译</span>
 <h2>收听、识别、翻译、显示字幕，一气呵成</h2>
-<p>AI Translator 采集电脑上播放的音频，把它切分成句子，识别语音，进行翻译，再把结果显示在字幕栏上。在 Mac M4 Pro 上，说话人说完一句话后约 1 秒（中位数）就会显示完整译文；其他电脑可能更慢，请查看<a href=\"#performance\">测量数据</a>。</p>
+<p>AI Translator 采集电脑上播放的音频，把它切分成句子，识别语音，进行翻译，再把结果显示在字幕条上。在 Mac M4 Pro 上，说话人说完一句话后约 1 秒（中位数）就会显示完整译文；其他电脑可能更慢，请查看<a href=\"#performance\">测量数据</a>。</p>
 ${checkList([
   "源音频和译文都支持<strong>五种语言</strong>：英语、中文、日语（日本語）、韩语（한국어）、越南语（Tiếng Việt）。我们计划在未来增加更多语言（暂无时间表）",
   "在你于<em>会议中使用的语言</em>里勾选的语言中<strong>自动检测</strong>正在说的语言；如果你知道会说哪种语言，也可以在<em>源语言</em>中<strong>固定</strong>为一种",
@@ -68,22 +68,22 @@ ${callout({ title: "字幕是单向的：从会议到你。", text: "AI Translat
 <section class="section section-alt" id="subtitle-bar"><div class="container">
 <div class="split reverse">
 <div class="stack-lg reveal">
-<span class="eyebrow">字幕栏</span>
-<h2>可自定义的悬浮字幕栏，不妨碍你开会</h2>
-<p>字幕栏是一个独立的无边框窗口，背景半透明。它始终置顶，从不抢走会议应用的焦点，所以你可以像平时一样在聊天中打字或点击按钮。</p>
+<span class="eyebrow">字幕条</span>
+<h2>可自定义的悬浮字幕条，不妨碍你开会</h2>
+<p>字幕条是一个独立的无边框窗口，背景半透明。它始终置顶，从不抢走会议应用的焦点，所以你可以像平时一样在聊天中打字或点击按钮。</p>
 ${checkList([
   "<strong>拖动</strong>即可移动，拖动边缘或角即可调整大小；每个屏幕都会记住它的位置和大小",
   "<strong>字号</strong> 14–48 px，<strong>5 种文字颜色</strong>（白、黄、绿、浅蓝、橙），<strong>5 种背景颜色</strong>，背景不透明度 0–100%",
-  "<strong>锁定</strong>：鼠标点击会穿过字幕栏，也不会有按钮挡路；用快捷键或托盘菜单解锁",
+  "<strong>锁定</strong>：鼠标点击会穿过字幕条，也不会有按钮挡路；用快捷键或托盘菜单解锁",
   "保留最近 1,000 句；用鼠标滚轮或快捷键<strong>回看</strong>，按<em>最新</em>按钮回到当前句子",
   "在译文上方以小字显示<strong>原文</strong>（默认开启，可以关闭）",
   "角落里的小提示：检测到声音正在收听、正在加载模型、处理跟不上、剩余翻译时间不足 5 分钟",
 ])}
-<p class="more-link"><a href="/zh/guide/subtitle-bar-and-shortcuts/">了解字幕栏和快捷键的用法 ${icon("arrow-right")}</a></p>
+<p class="more-link"><a href="/zh/guide/subtitle-bar-and-shortcuts/">了解字幕条和快捷键的用法 ${icon("arrow-right")}</a></p>
 </div>
 <div class="stack-lg">
-${overlayShot({ slug: "overlay-custom", lang: "zh", alt: "大字号、藏青色背景上显示黄色文字的字幕栏", caption: "同一个字幕栏，改为黄色文字、藏青色背景、字号 26。" })}
-${appShot({ slug: "app-settings-subtitles", lang: "zh", alt: "字幕设置：例句预览、字号、文字颜色、背景颜色、背景不透明度以及显示原文的选项", caption: "设置 › 字幕：预览和字幕栏会立即更新。" })}
+${overlayShot({ slug: "overlay-custom", lang: "zh", alt: "大字号、藏青色背景上显示黄色文字的字幕条", caption: "同一个字幕条，改为黄色文字、藏青色背景、字号 26。" })}
+${appShot({ slug: "app-settings-subtitles", lang: "zh", alt: "字幕设置：例句预览、字号、文字颜色、背景颜色、背景不透明度以及显示原文的选项", caption: "设置 › 字幕：预览和字幕条会立即更新。" })}
 </div>
 </div>
 </div></section>
@@ -264,7 +264,7 @@ ${sectionHead({ eyebrow: "按套餐", title: "各功能包含在哪些套餐中"
 <thead><tr><th scope="col">功能</th><th scope="col">Free（试用）</th><th scope="col">Monthly</th><th scope="col">6 Months</th><th scope="col">Yearly</th></tr></thead>
 <tbody>
 <tr><th scope="row">实时翻译字幕，5 种语言</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
-<tr><th scope="row">可自定义的字幕栏、快捷键、托盘</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
+<tr><th scope="row">可自定义的字幕条、快捷键、托盘</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">查看、搜索和复制转写记录</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">术语表（最多 500 条）</th><td><span class="no">无</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">保存会话历史</th><td><span class="no">无</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>

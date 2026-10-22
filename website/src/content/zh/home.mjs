@@ -16,7 +16,7 @@ export const HOME_FAQ = [
   },
   {
     q: "如何不用机器人就把 Zoom 会议翻译成我的语言？",
-    a: "<p>打开 AI Translator，选择你想阅读的语言，然后点“开始”。应用会收听电脑上正在播放的 Zoom 音频，并在悬浮字幕栏中显示翻译字幕。不会有机器人加入会议，主持人也无需开启任何功能；其他参会者不会收到通知，如果你的规定要求告知，请自行告诉他们。</p>",
+    a: "<p>打开 AI Translator，选择你想阅读的语言，然后点“开始”。应用会收听电脑上正在播放的 Zoom 音频，并在悬浮字幕条中显示翻译字幕。不会有机器人加入会议，主持人也无需开启任何功能；其他参会者不会收到通知，如果你的规定要求告知，请自行告诉他们。</p>",
   },
   {
     q: "可以免费获得会议翻译字幕吗？",
@@ -83,7 +83,7 @@ ${demo({
   title: "团队会议（示意）",
   rec: "翻译中",
   langs: "EN → ZH",
-  note: "示意图：一场在线会议，屏幕底部浮动着翻译字幕栏",
+  note: "示意图：一场在线会议，屏幕底部浮动着翻译字幕条",
   names: ["Aiko", "Wei", "Maria", "Tom"],
   pairs: [
     { src: "We will send the quotation by next week.", dst: "我们会在下周之前把报价单发给您。" },
@@ -103,7 +103,7 @@ ${demoVideo({ lang: "zh", label: "AI Translator 演示视频：会议翻译字�
 
 <section class="section-tight"><div class="container narrow">
 <h2 class="sr-only">AI Translator 是什么？</h2>
-<p class="lead reveal"><strong>AI Translator</strong> 是一款为电脑上播放的音频显示实时翻译字幕的桌面应用。它识别语音、翻译，并把结果显示在悬浮字幕栏上，全部在你自己的电脑上完成：不会有机器人加入你的会议，也不需要注册账号。macOS 版（Apple 芯片）只需一行命令即可安装；Windows 10/11 版同样只需一行 PowerShell 命令。</p>
+<p class="lead reveal"><strong>AI Translator</strong> 是一款为电脑上播放的音频显示实时翻译字幕的桌面应用。它识别语音、翻译，并把结果显示在悬浮字幕条上，全部在你自己的电脑上完成：不会有机器人加入你的会议，也不需要注册账号。macOS 版（Apple 芯片）只需一行命令即可安装；Windows 10/11 版同样只需一行 PowerShell 命令。</p>
 <div class="reveal">${facts([
   ["产品类型", "实时翻译字幕桌面应用"],
   ["当前版本", RELEASE.zh],
@@ -136,7 +136,7 @@ ${sectionHead({ eyebrow: "工作方式", title: "从安装到第一条字幕，�
 ${steps([
   { title: "安装应用，下载一次模型", text: "打开应用，按照欢迎步骤操作，允许录制系统音频（macOS），然后把模型下载到你的电脑上（根据模型包不同，约 1.3 GB 或 2.5 GB）。之后一切都可以离线运行。" },
   { title: "会议开始时点“开始”", text: "选择你想阅读的语言（<strong>目标语言</strong>），然后点<strong>开始</strong>或使用快捷键。应用会收听电脑上正在播放的任何声音，无论是 Zoom、Teams、Meet 还是视频。" },
-  { title: "阅读悬浮字幕", text: "说话人说完一句话后，字幕栏很快就会显示译文（在 Mac M4 Pro 上延迟中位数低于 1.1 秒；其他电脑可能更慢），原文以小字显示在上方（可以关闭）。你可以拖动、调整大小、改变字号或锁定它的位置。" },
+  { title: "阅读悬浮字幕", text: "说话人说完一句话后，字幕条很快就会显示译文（在 Mac M4 Pro 上延迟中位数低于 1.1 秒；其他电脑可能更慢），原文以小字显示在上方（可以关闭）。你可以拖动、调整大小、改变字号或锁定它的位置。" },
 ])}
 <p class="center-text reveal"><a class="btn btn-ghost" href="/zh/guide/quick-start/">阅读快速入门指南 ${icon("arrow-right")}</a></p>
 </div></section>
@@ -144,19 +144,19 @@ ${steps([
 <section class="section"><div class="container">
 <div class="split wide-right">
 <div class="stack-lg reveal">
-<span class="eyebrow">字幕栏</span>
+<span class="eyebrow">字幕条</span>
 <h2>在任何背景上都清晰可读的悬浮字幕</h2>
-<p class="lead">一条始终置顶、从不抢走会议应用焦点的字幕栏。译文逐词出现，尚未定稿的句子颜色较浅，原文以小字显示在上方（默认开启，可以关闭）。</p>
+<p class="lead">一条始终置顶、从不抢走会议应用焦点的字幕条。译文逐词出现，尚未定稿的句子颜色较浅，原文以小字显示在上方（默认开启，可以关闭）。</p>
 ${checkList([
   "拖动即可移动，拖动边缘即可调整大小；每个屏幕都会记住它的位置",
   "字号 14–48 px，5 种文字颜色、5 种背景颜色，背景不透明度可调",
-  "<strong>锁定</strong>后鼠标点击会直接穿过字幕栏，从不妨碍你操作会议应用",
+  "<strong>锁定</strong>后鼠标点击会直接穿过字幕条，从不妨碍你操作会议应用",
   "用鼠标滚轮或快捷键回看之前的句子",
 ])}
 <p><a class="btn btn-secondary" href="/zh/features/">查看全部功能 ${icon("arrow-right")}</a></p>
 </div>
 <div>
-${overlayShot({ slug: "overlay-default", lang: "zh", alt: "AI Translator 字幕栏：原文以小字显示在上方，下方是中文译文", caption: "真实的字幕栏：上方是小字原文，下方是译文。" })}
+${overlayShot({ slug: "overlay-default", lang: "zh", alt: "AI Translator 字幕条：原文以小字显示在上方，下方是中文译文", caption: "真实的字幕条：上方是小字原文，下方是译文。" })}
 </div>
 </div>
 </div></section>

@@ -76,7 +76,7 @@ ${sectionHead({ eyebrow: "对比", title: "每个套餐包含什么", center: tr
 <tr><th scope="row">期限</th><td>10 天，每台电脑一次</td><td>每单 30 天</td><td>每单 180 天</td><td>每单 365 天</td></tr>
 <tr><th scope="row">翻译时间</th><td>每天 30 分钟</td><td>每个 30 天周期 50 小时（3,000 分钟）</td><td>每个 30 天周期 100 小时（6,000 分钟）</td><td>不限时长</td></tr>
 <tr><th scope="row">实时翻译字幕，5 种语言</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
-<tr><th scope="row">可自定义的字幕栏、快捷键</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
+<tr><th scope="row">可自定义的字幕条、快捷键</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">复制转写记录</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">聊天用的输入翻译（不消耗翻译时间）</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">术语表（Pro）</th><td><span class="no">无</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>

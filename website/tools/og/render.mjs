@@ -34,7 +34,7 @@ const SET = [
     vi: { t: "Mọi thứ để hiểu một cuộc họp bằng ngoại ngữ", s: "Thanh phụ đề, từ điển thuật ngữ, lịch sử, xuất file, 5 ngôn ngữ." },
     en: { t: "Everything to follow a meeting in another language", s: "Subtitle bar, glossary, history, export, 5 languages." },
     ja: { t: "外国語の会議を理解するためのすべて", s: "字幕バー、用語集、履歴、書き出し、5 言語。" },
-    zh: { t: "听懂外语会议所需的一切", s: "字幕栏、术语表、历史记录、导出、5 种语言。" },
+    zh: { t: "听懂外语会议所需的一切", s: "字幕条、术语表、历史记录、导出、5 种语言。" },
     ko: { t: "외국어 회의를 이해하는 데 필요한 모든 것", s: "자막 바, 용어집, 기록, 내보내기, 5개 언어." },
   }],
   ["pricing", {
