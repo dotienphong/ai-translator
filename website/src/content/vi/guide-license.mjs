@@ -38,8 +38,8 @@ export default {
       totalTime: "PT10M",
       steps: [
         { name: "Mở Nâng cấp Pro", text: "Bấm Nâng cấp Pro ở thanh bên để xem bốn gói. Mua gói cần kết nối mạng." },
-        { name: "Chọn Cách thanh toán và gói", text: "Chọn Cách thanh toán ở đầu màn hình: Chuyển khoản VietQR (VND) hoặc Thẻ quốc tế (USD); app chọn sẵn theo nước nơi bạn kết nối mạng và bạn đổi được. Rồi chọn khung Monthly, 6 Months hoặc Yearly; giá đổi theo cách trả." },
-        { name: "Nhập email nhận key", text: "Nhập Email nhận key, tick ô đồng ý (với thẻ quốc tế, email cũng được gửi cho Creem để điền sẵn trang thanh toán), rồi bấm Tạo mã thanh toán (VietQR) hoặc Thanh toán trong trình duyệt (thẻ quốc tế)." },
+        { name: "Chọn Cách thanh toán và gói", text: "Ở bước 1 Cách thanh toán, chọn Chuyển khoản VietQR (VND) hoặc Thẻ quốc tế (USD); app chọn sẵn theo ngôn ngữ giao diện (tiếng Việt thì VietQR, ngôn ngữ khác thì thẻ quốc tế) và bạn đổi được. Rồi ở bước 2 Chọn gói, chọn khung Monthly, 6 Months hoặc Yearly; giá đổi theo cách trả." },
+        { name: "Nhập email nhận key", text: "Ở bước 3 Thanh toán, nhập Email nhận key, tick ô đồng ý (với thẻ quốc tế, email cũng được gửi cho Creem để điền sẵn trang thanh toán), rồi bấm Tạo mã thanh toán (VietQR) hoặc Thanh toán trong trình duyệt (thẻ quốc tế)." },
         { name: "Trả tiền", text: "VietQR: quét mã bằng app ngân hàng Việt Nam trong 15 phút hoặc bấm Mở trang thanh toán. Thẻ quốc tế: trả trên trang thanh toán của Creem mà app tự mở trong trình duyệt, trong 30 phút (app ghi Trả trước …). Nếu bạn trả muộn hơn mà trang vẫn nhận, key vẫn gửi qua email; đã trả thì đừng trả lại." },
         { name: "Kích hoạt", text: "App tự kích hoạt khi nhận được tiền. Nếu cần, mở Cài đặt › Bản quyền, dán key trong email vào ô Nhập license key và bấm Kích hoạt." },
       ],
@@ -69,9 +69,9 @@ ${facts([
 <h2 id="mua-goi">Mua gói trong app</h2>
 <ol>
 <li>Bấm <strong>Nâng cấp Pro</strong> ở thanh bên. Màn hình hiện đủ bốn gói, gói đang dùng có nhãn “Đang dùng”. Mua gói cần kết nối mạng.</li>
-<li>Chọn <strong>Cách thanh toán</strong> ở đầu màn hình: <strong>Chuyển khoản VietQR (VND)</strong> hoặc <strong>Thẻ quốc tế (USD)</strong>. App chọn sẵn theo nước nơi bạn kết nối mạng (VietQR ở Việt Nam, thẻ quốc tế ở nước khác; dùng VPN thì có thể khác) và bạn đổi được; giá trên các khung gói đổi theo lựa chọn. Không thấy mục này: hãy cập nhật app lên bản mới nhất; nếu vẫn không có thì thẻ quốc tế chưa được bán lúc này, và app dùng VietQR.</li>
-<li>Bấm vào khung <strong>Monthly</strong>, <strong>6 Months</strong> hoặc <strong>Yearly</strong> (giá ghi chữ lớn theo cách trả đã chọn, như “50.000 đ / 30 ngày” hay “$3.99 / 30 ngày”; giá USD chưa gồm thuế); khung đã chọn có viền xanh.</li>
-<li>Nhập <strong>Email nhận key</strong> và tick ô đồng ý: ô này cho phép app lưu email để gửi và khôi phục key; với thẻ quốc tế, câu đồng ý còn ghi email được gửi cho Creem để điền sẵn trang thanh toán (đổi cách trả thì tick lại). Bên dưới có mục gập <strong>Chính sách quyền riêng tư</strong> và, với thẻ quốc tế, <strong>Thỏa thuận cấp phép (EULA)</strong>, để bạn đọc ngay trong app. Rồi bấm <strong>Tạo mã thanh toán</strong> (VietQR) hoặc <strong>Thanh toán trong trình duyệt</strong> (thẻ quốc tế).</li>
+<li>Màn hình chia ba bước. Ở bước 1 <strong>Cách thanh toán</strong>, chọn <strong>Chuyển khoản VietQR (VND)</strong> hoặc <strong>Thẻ quốc tế (USD)</strong>; ghi chú ngay dưới nói cách trả đó hoạt động thế nào. App chọn sẵn theo ngôn ngữ giao diện (tiếng Việt thì VietQR, ngôn ngữ khác thì thẻ quốc tế) và bạn đổi được; giá trên các khung gói đổi theo lựa chọn. Nếu bước này chỉ có VietQR thì thẻ quốc tế chưa được bán lúc này. Không thấy các bước này: hãy cập nhật app lên bản mới nhất.</li>
+<li>Bấm vào khung <strong>Monthly</strong>, <strong>6 Months</strong> hoặc <strong>Yearly</strong> ở bước 2 <strong>Chọn gói</strong> (giá ghi chữ lớn theo cách trả đã chọn, như “50.000 đ / 30 ngày” hay “$3.99 / 30 ngày”; giá USD chưa gồm thuế); khung đã chọn có viền xanh.</li>
+<li>Ở bước 3 <strong>Thanh toán</strong>, nhập <strong>Email nhận key</strong> và tick ô đồng ý: ô này cho phép app lưu email để gửi và khôi phục key; với thẻ quốc tế, câu đồng ý còn ghi email được gửi cho Creem để điền sẵn trang thanh toán (đổi cách trả thì tick lại). Bên dưới có mục gập <strong>Chính sách quyền riêng tư</strong> và, với thẻ quốc tế, <strong>Thỏa thuận cấp phép (EULA)</strong>, để bạn đọc ngay trong app. Rồi bấm <strong>Tạo mã thanh toán</strong> (VietQR) hoặc <strong>Thanh toán trong trình duyệt</strong> (thẻ quốc tế).</li>
 <li><strong>VietQR:</strong> quét mã bằng app ngân hàng, hoặc bấm <strong>Mở trang thanh toán</strong> (PayOS, mở trong trình duyệt). Mã dùng được 15 phút; giờ hết hạn ghi trên màn hình.</li>
 <li><strong>Thẻ quốc tế:</strong> app tự mở trang thanh toán của Creem trong trình duyệt và hiện khung <strong>Hoàn tất thanh toán trong trình duyệt</strong> kèm mã đơn, số tiền và giờ hẹn ghi dạng “Trả trước …”. Hãy trả trong 30 phút. Nếu bạn trả muộn hơn mà trang vẫn nhận, khoản trả vẫn được ghi nhận: app vẫn chờ xác nhận và key cũng gửi qua email, nên đừng trả lại. Trả xong, quay lại app; nếu trình duyệt không mở, bấm <strong>Mở lại trang thanh toán</strong>. Khi đơn đang chờ, cách thanh toán và gói bị khóa; đã trả thì đừng bấm Hủy hay tạo đơn mới.</li>
 <li>Chờ app xác nhận (app hỏi trạng thái đơn vài giây một lần; với thẻ, dòng trạng thái ghi “Đang chờ xác nhận thanh toán…”): “Đã nhận tiền. Gói đã có hiệu lực trên máy này; key đã gửi vào email.”</li>
@@ -79,19 +79,19 @@ ${facts([
 ${appShot({
   slug: "app-upgrade",
   lang: "vi",
-  alt: "Màn hình Nâng cấp khi chọn sẵn VietQR: nhóm Cách thanh toán với hai lựa chọn (Chuyển khoản VietQR (VND) đang chọn và Thẻ quốc tế (USD)), bốn gói Free, Monthly, 6 Months và Yearly với hạn mức và giá bằng VND, ô Email nhận key, ô đồng ý, mục gập Chính sách quyền riêng tư và nút Tạo mã thanh toán",
+  alt: "Màn hình Nâng cấp ở giao diện tiếng Việt, chọn sẵn VietQR: bước 1 Cách thanh toán (Chuyển khoản VietQR (VND) đang chọn, Thẻ quốc tế (USD)) kèm ghi chú VietQR, bước 2 Chọn gói với bốn gói Free, Monthly, 6 Months và Yearly, hạn mức và giá bằng VND, bước 3 Thanh toán với ô Email nhận key, ô đồng ý, mục gập Chính sách quyền riêng tư và nút Tạo mã thanh toán",
   caption: "Màn hình Nâng cấp.",
 })}
 ${appShot({
   slug: "app-upgrade-qr",
   lang: "vi",
-  alt: "Màn hình Nâng cấp khi đơn VietQR đang chờ: nhóm Cách thanh toán với VietQR đang chọn, mã VietQR hiện trong app kèm mã đơn, số tiền, giờ hết hạn của mã, dòng trạng thái đang chờ chuyển khoản, nút Mở trang thanh toán và nút Hủy",
+  alt: "Màn hình Nâng cấp khi đơn VietQR đang chờ: VietQR đang chọn ở bước 1, gói Monthly ở bước 2, và ở bước 3 mã VietQR hiện trong app kèm mã đơn, số tiền, giờ hết hạn của mã, dòng trạng thái đang chờ chuyển khoản, nút Mở trang thanh toán và nút Hủy",
   caption: "Mã VietQR trong app, kèm mã đơn.",
 })}
 ${appShot({
   slug: "app-upgrade-card",
   lang: "vi",
-  alt: "Màn hình Nâng cấp khi đơn thẻ quốc tế đang chờ: Thẻ quốc tế (USD) đang chọn, giá các gói bằng USD chưa gồm thuế, hai ghi chú nói trang thanh toán của Creem mở trong trình duyệt và Creem là bên bán lại (merchant of record), rồi khung Hoàn tất thanh toán trong trình duyệt với mã đơn, số tiền, giờ hẹn trả, dòng Đang chờ xác nhận thanh toán…, nút Mở lại trang thanh toán, nút Hủy và lời dặn đã trả thì đừng hủy hay tạo đơn mới",
+  alt: "Màn hình Nâng cấp khi đơn thẻ quốc tế đang chờ: Thẻ quốc tế (USD) đang chọn ở bước 1, kèm hai ghi chú nói trang thanh toán của Creem mở trong trình duyệt và Creem là bên bán lại (merchant of record); giá các gói bằng USD chưa gồm thuế ở bước 2; ở bước 3 khung Hoàn tất thanh toán trong trình duyệt với mã đơn, số tiền, giờ hẹn trả, dòng Đang chờ xác nhận thanh toán…, nút Mở lại trang thanh toán, nút Hủy và lời dặn đã trả thì đừng hủy hay tạo đơn mới",
   caption: "Đơn thẻ quốc tế đang chờ trong app.",
 })}
 <p>VietQR chỉ dùng được với tài khoản ngân hàng Việt Nam, bằng VND, qua PayOS; nếu thẻ quốc tế chưa được bán lúc này mà bạn không có tài khoản đó, hãy liên hệ hỗ trợ. Giá thẻ quốc tế tính bằng USD, chưa gồm thuế (nếu có thì Creem cộng thêm ở trang thanh toán). Creem là bên bán lại (merchant of record) của đơn thẻ và xử lý thanh toán, thuế, biên lai; sao kê thẻ thường ghi “CREEM.IO* STORE”. Giá và hạn mức xem ở <a href="/bang-gia/">bảng giá</a>.</p>

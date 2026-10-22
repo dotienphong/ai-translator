@@ -93,7 +93,7 @@ ${sectionHead({ eyebrow: "So sánh", title: "Mỗi gói gồm những gì", cent
 <section class="section section-alt"><div class="container">
 <div class="split wide-left reverse">
 <div>
-${appShot({ slug: "app-upgrade", lang: "vi", alt: "Màn hình Nâng cấp trong app khi chọn sẵn VietQR: nhóm Cách thanh toán (Chuyển khoản VietQR (VND) đang chọn, Thẻ quốc tế (USD)) và bốn gói Free, Monthly, 6 Months và Yearly với hạn mức và giá bằng VND", caption: "Màn hình Nâng cấp trong app: hai cách trả, bốn gói, giá và hạn mức." })}
+${appShot({ slug: "app-upgrade", lang: "vi", alt: "Màn hình Nâng cấp trong app ở giao diện tiếng Việt, chọn sẵn VietQR: bước 1 Cách thanh toán (Chuyển khoản VietQR (VND) đang chọn, Thẻ quốc tế (USD)) và bước 2 Chọn gói với bốn gói Free, Monthly, 6 Months và Yearly, hạn mức và giá bằng VND", caption: "Màn hình Nâng cấp trong app: hai cách trả, bốn gói, giá và hạn mức." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Thời lượng dịch</span>

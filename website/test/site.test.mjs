@@ -2001,7 +2001,7 @@ test("hướng dẫn mua gói và hỏi đáp: đơn thẻ không thành hay qu�
   const cfg = {
     vi: {
       steps: [
-        "chọn sẵn theo nước nơi bạn kết nối mạng", "cập nhật app lên bản mới nhất", "Bấm vào khung", "gửi cho Creem để điền sẵn trang thanh toán", "trả trong 30 phút", "đừng trả lại", "cách thanh toán và gói bị khóa",
+        "chọn sẵn theo ngôn ngữ giao diện", "Nếu bước này chỉ có VietQR thì thẻ quốc tế chưa được bán lúc này", "cập nhật app lên bản mới nhất", "Bấm vào khung", "gửi cho Creem để điền sẵn trang thanh toán", "trả trong 30 phút", "đừng trả lại", "cách thanh toán và gói bị khóa",
         "VietQR chỉ dùng được với tài khoản ngân hàng Việt Nam", "thẻ quốc tế chưa được bán lúc này mà bạn không có tài khoản đó, hãy liên hệ hỗ trợ", "sao kê thẻ thường ghi",
         // Giá USD chưa gồm thuế ở cả hai chỗ người đọc thấy giá: bước chọn khung gói và đoạn sau ảnh (không chỉ ở hàng "Thanh toán" của bảng tóm tắt).
         "giá USD chưa gồm thuế", "Giá thẻ quốc tế tính bằng USD, chưa gồm thuế (nếu có thì Creem cộng thêm ở trang thanh toán)",
@@ -2013,7 +2013,7 @@ test("hướng dẫn mua gói và hỏi đáp: đơn thẻ không thành hay qu�
       ],
       old: [
         "Đơn được giữ 30 phút", "Đang chờ thanh toán…", "Mục này chỉ hiện khi cả hai cách trả đều đang bán", "Trang thanh toán dùng được tới", "thẻ Monthly", "thẻ đã chọn", "thẻ Hoàn tất",
-        "Chúng tôi chưa xuất hóa đơn điện tử", "sao kê thẻ có thể ghi", "có thể lệch một ngày", ...REFUND_OLD.vi,
+        "Chúng tôi chưa xuất hóa đơn điện tử", "sao kê thẻ có thể ghi", "có thể lệch một ngày", "theo nước nơi bạn kết nối mạng", ...REFUND_OLD.vi,
       ],
       faq: "/cau-hoi-thuong-gap/",
       qCard: "Tôi trả tiền bằng cách nào? Trả bằng thẻ quốc tế được không?",
@@ -2023,7 +2023,7 @@ test("hướng dẫn mua gói và hỏi đáp: đơn thẻ không thành hay qu�
     },
     en: {
       steps: [
-        "based on the country you connect from", "Update the app to the latest version", "Click the Monthly", "sent to Creem to pre-fill the payment page", "Pay within 30 minutes", "do not pay again", "payment method and plan are locked",
+        "based on the interface language", "Update the app to the latest version", "Click the Monthly", "sent to Creem to pre-fill the payment page", "Pay within 30 minutes", "do not pay again", "payment method and plan are locked",
         "VietQR works only with a Vietnamese bank account", "card payment is not available right now", "if you change the payment method, tick the box again", "if card payment is not available right now and you have no such account, contact support", "your card statement usually shows",
         "USD prices exclude tax", "Card prices are in USD, excluding tax (if any; Creem adds it on the payment page)",
       ],
@@ -2034,7 +2034,7 @@ test("hướng dẫn mua gói và hỏi đáp: đơn thẻ không thành hay qu�
       ],
       old: [
         "The order is kept for 30 minutes", "Waiting for your payment…", "only appears when both ways to pay are on sale", "The payment page works until", "Monthly card", "selected card",
-        "Finish paying in your browser card", "We do not issue e-invoices yet", "international card is not on sale right now", "(change the payment method and you tick again)", "card statement may show", "can differ by one day", ...REFUND_OLD.en,
+        "Finish paying in your browser card", "We do not issue e-invoices yet", "international card is not on sale right now", "(change the payment method and you tick again)", "card statement may show", "can differ by one day", "the country you connect from", ...REFUND_OLD.en,
       ],
       faq: "/en/faq/",
       qCard: "How do I pay? Can I pay by international card?",

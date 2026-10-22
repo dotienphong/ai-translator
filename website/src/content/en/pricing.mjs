@@ -95,7 +95,7 @@ ${sectionHead({ eyebrow: "Compare", title: "What each plan includes", center: tr
 <section class="section section-alt"><div class="container">
 <div class="split wide-left reverse">
 <div>
-${appShot({ slug: "app-upgrade-usd", lang: "en", alt: "The Upgrade screen in the app with International card (USD) preselected, as shown when you connect from outside Vietnam: the Payment method group next to VietQR bank transfer (VND), the Free, Monthly, 6 Months and Yearly plans with their allowances and USD prices excluding tax ($3.99, $21.99 and $39.99), a note that Creem is the merchant of record for card orders, the Email to receive your key box and the Pay in your browser button", caption: "The Upgrade screen in the app with the international card selected: two ways to pay, four plans, USD prices (excluding tax) and allowances." })}
+${appShot({ slug: "app-upgrade", lang: "en", alt: "The Upgrade screen in the app in English, with International card (USD) preselected: step 1 Payment method next to VietQR bank transfer (VND), with a note that Creem is the merchant of record for card orders, step 2 Choose a plan with the Free, Monthly, 6 Months and Yearly plans, their allowances and USD prices excluding tax ($3.99, $21.99 and $39.99), and step 3 Checkout with the Email to receive your key box and the Pay in your browser button", caption: "The Upgrade screen in the app with the international card selected: two ways to pay, four plans, USD prices (excluding tax) and allowances." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Translation time</span>

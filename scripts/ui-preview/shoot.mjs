@@ -11,8 +11,8 @@
 // Cài đặt › Model): ảnh Giới thiệu chỉ lấy phần trên. Ảnh lặp lại được: múi giờ của Chrome cố định (TIMEZONE), cảnh có giờ
 // hạn đơn dùng giờ cố định (FROZEN, tham số `now=` của mock), phiên bản ở chân thanh bên lấy từ src-tauri/tauri.conf.json.
 //
-// Các cảnh `app-upgrade*` hiện lựa chọn thẻ quốc tế và giá USD (mặc định của mock): chỉ đăng ảnh chụp lại khi Creem đã bán
-// thật, nếu không website nói về một cách trả chưa có; muốn chụp cảnh chưa bán thẻ thì thêm `usd=0` vào tham số cảnh.
+// Các cảnh `app-upgrade*` có thẻ quốc tế và giá USD (bản en chọn sẵn thẻ, theo ngôn ngữ giao diện): chỉ đăng ảnh chụp lại khi
+// Creem đã bán thật, nếu không website nói về một cách trả chưa có; muốn chụp cảnh chưa bán thẻ thì thêm `usd=0` vào tham số cảnh.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -49,10 +49,8 @@ const APP = [
   ["app-settings-license", "screen=settings&group=license"],
   ["app-settings-privacy", "screen=settings&group=privacy&history=0"],
   ["app-upgrade", "screen=upgrade&plan=free", { fit: true }],
-  // Cảnh khách ở nước ngoài thấy (server gợi ý USD, app chọn sẵn thẻ quốc tế): ảnh của trang Bảng giá tiếng Anh.
-  ["app-upgrade-usd", "screen=upgrade&plan=free&suggest=usd", { fit: true, langs: ["en"] }],
   ["app-upgrade-qr", `screen=upgrade&plan=free&checkout=1&${FROZEN}`, { fit: true }],
-  ["app-upgrade-card", `screen=upgrade&plan=free&suggest=usd&checkout=card&${FROZEN}`, { fit: true }],
+  ["app-upgrade-card", `screen=upgrade&plan=free&checkout=card&${FROZEN}`, { fit: true }],
   ["app-about", "screen=about", { height: 580 }],
   ...Array.from({ length: 9 }, (_, i) => [`app-onboarding-${i + 1}`, `onboarding=${i + 1}${i === 3 ? "&download=1" : ""}`]),
 ];
