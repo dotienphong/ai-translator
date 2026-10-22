@@ -194,6 +194,9 @@ test("secret bắt buộc có đủ và không nằm trong vars", () => {
     "TOKEN_SIGNING_KEY_A",
     "TOKEN_SIGNING_KEY_B",
     "RATE_LIMIT_PEPPER",
+    "ZALO_BOT_TOKEN",
+    "ZALO_WEBHOOK_SECRET",
+    "ZALO_OWNER_CHAT_ID",
   ]);
   for (const name of api.secrets.required) assert.equal(name in api.vars, false, name);
   // Worker admin có khóa API Creem để xem trạng thái đơn, nhưng không có secret webhook (không nhận webhook).
@@ -361,4 +364,11 @@ test("package.json: ui:build và ui:check báo lỗi khi tên package sai, và c
   const uiCheck = steps.indexOf("pnpm ui:check");
   assert.notEqual(uiCheck, -1, "check phải chạy ui:check");
   assert.ok(steps.indexOf("pnpm dry-run") > uiCheck, "dry-run phải chạy sau ui:check để kiểm cả assets đã build");
+});
+
+test("chat hỗ trợ (spec 2026-10-22 §2.2): Worker API có binding Rate Limiting cho việc hỏi tin mới, 60 lần mỗi 60 giây; Worker admin không có", () => {
+  assert.deepEqual(api.ratelimits, [{ name: "SUPPORT_POLL_LIMITER", namespace_id: "20261022", simple: { limit: 60, period: 60 } }]);
+  assert.equal("ratelimits" in admin, false);
+  assert.equal("ZALO_BOT_TOKEN" in (admin.vars ?? {}), false);
+  assert.equal((admin.secrets?.required ?? []).some((n) => n.startsWith("ZALO_")), false);
 });

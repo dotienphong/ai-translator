@@ -2,7 +2,8 @@
 // `wrangler deploy`, không có `--env`. Worker admin cấu hình riêng ở wrangler.admin.jsonc.
 // Test (vitest) đọc file này nhưng ghi đè ENVIRONMENT thành "test" và mọi secret thành giá trị giả (vitest.config.ts).
 // Secret nhập bằng `wrangler secret put`, không bao giờ ghi vào file này (test Node quét cả chú thích): bắt buộc là đúng danh
-// sách `secrets.required` ở cuối file (ba secret PayOS, khóa API và secret webhook của Creem, Resend, hai ô khóa ký, pepper);
+// sách `secrets.required` ở cuối file (ba secret PayOS, khóa API và secret webhook của Creem, Resend, hai ô khóa ký, pepper, ba
+// secret Zalo Bot của chat hỗ trợ: token, secret webhook, chat_id của chủ dự án);
 // OPERATOR_EMAIL (email người vận hành nhận cảnh báo) là secret tùy chọn.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -50,11 +51,15 @@
     "TOKEN_SIGNING_SLOT": "a"
   },
   "secrets": {
-    "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "CREEM_API_KEY", "CREEM_WEBHOOK_SECRET", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER"]
+    "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "CREEM_API_KEY", "CREEM_WEBHOOK_SECRET", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER", "ZALO_BOT_TOKEN", "ZALO_WEBHOOK_SECRET", "ZALO_OWNER_CHAT_ID"]
   },
   "d1_databases": [
     // database_id: thay bằng ID do `wrangler d1 create mt-license-production` in ra (Task 21).
     { "binding": "DB", "database_name": "mt-license-production", "database_id": "047c4ba4-4ad2-4ece-937c-2d91eafe2445" }
   ],
+  // Chat hỗ trợ (spec 2026-10-22 §2.2): chặn hỏi tin mới quá nhanh mà không ghi D1 (bảng rate_limits tốn một lần ghi mỗi request).
+  // Khóa là id cuộc chat; khách hỏi mỗi 3 giây nên 60 lần mỗi 60 giây còn dư cho vài tab. namespace_id là số tự chọn, duy nhất
+  // trong tài khoản Cloudflare (tài khoản dùng chung với dự án khác: đừng đổi sang số nhỏ dễ trùng).
+  "ratelimits": [{ "name": "SUPPORT_POLL_LIMITER", "namespace_id": "20261022", "simple": { "limit": 60, "period": 60 } }],
   "triggers": { "crons": ["*/5 * * * *"] }
 }

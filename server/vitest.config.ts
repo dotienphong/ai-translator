@@ -14,6 +14,10 @@ const FAKE_SECRETS = {
   TOKEN_SIGNING_KEY_A: "{}",
   TOKEN_SIGNING_KEY_B: "{}",
   RATE_LIMIT_PEPPER: "test-pepper",
+  // Khớp các hằng TEST_ZALO_* ở test/fakes.ts.
+  ZALO_BOT_TOKEN: "test-zalo-token",
+  ZALO_WEBHOOK_SECRET: "test-zalo-webhook-secret",
+  ZALO_OWNER_CHAT_ID: "owner-chat-id",
 };
 Object.assign(process.env, FAKE_SECRETS);
 

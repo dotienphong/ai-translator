@@ -240,6 +240,9 @@ chủ tài khoản Resend: chưa đủ để bán.
    dùng `x` hay `test`: server tin webhook hoàn tiền theo chữ ký mà không hỏi lại Creem, và server không kiểm độ dài secret.
    Khi có tài khoản Creem thì mục 9 bước 5 ghi đè cả hai bằng giá trị thật.
 
+   Từ đợt chat hỗ trợ (mục 11), `secrets.required` của Worker API còn có `ZALO_BOT_TOKEN`, `ZALO_WEBHOOK_SECRET` và
+   `ZALO_OWNER_CHAT_ID`: thiếu thì `wrangler deploy` từ chối. Cách tạo bot, lấy `chat_id` và đặt ba secret ở mục 11, bước 1 đến 3.
+
 6. **Hai khóa ký token** (khóa riêng đi thẳng vào secret, không ra terminal, không ra file; nếu đã có CI thì tạo trong một job
    CI chạy tay thay vì trên máy dev, Q11). `<năm>` và `<tháng>` là hôm nay, ví dụ `prod-2026-10-1`; số thứ tự là số kế tiếp
    chưa từng dùng (script từ chối `kid` không đúng dạng `prod-<năm>-<tháng>-<n>` hay đã có trong `keys/public-keys.json`):

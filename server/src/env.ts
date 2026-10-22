@@ -3,6 +3,8 @@
 
 export interface ApiEnv {
   DB: D1Database;
+  /** Binding Rate Limiting cho việc hỏi tin mới của chat hỗ trợ (60 lần mỗi 60 giây mỗi cuộc chat). Thiếu thì không chặn. */
+  SUPPORT_POLL_LIMITER?: RateLimit;
   /** "production" (cố định trong wrangler.jsonc) | "test" (chỉ vitest.config.ts) */
   ENVIRONMENT: string;
   /** Bảng gói trả phí (src/plans.ts): hạn mức, số ngày mỗi đơn, giá theo loại tiền. Đọc bằng parsePlans. */
@@ -33,6 +35,12 @@ export interface ApiEnv {
   RATE_LIMIT_PEPPER: string;
   /** Email người vận hành nhận cảnh báo. Không bắt buộc; thiếu thì cảnh báo chỉ ghi log. */
   OPERATOR_EMAIL?: string;
+  /** Token Zalo Bot của chat hỗ trợ (spec 2026-10-22 §1). Nằm trong URL gọi Zalo: không bao giờ ghi vào log hay lỗi. */
+  ZALO_BOT_TOKEN: string;
+  /** Secret của webhook Zalo Bot (8–256 ký tự); Zalo gửi lại trong header X-Bot-Api-Secret-Token. */
+  ZALO_WEBHOOK_SECRET: string;
+  /** chat_id của chủ dự án với bot: người duy nhất nhận tin của khách và được trả lời. Là secret vì repo công khai. */
+  ZALO_OWNER_CHAT_ID: string;
 }
 
 /** Các hàm Worker API mở cho Worker admin qua service binding (src/index.ts, AdminRpc; QĐ34). */
