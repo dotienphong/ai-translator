@@ -270,3 +270,50 @@ fn only_the_main_window_can_send_a_log_report() {
     assert!(!denied(&result), "main gọi được: {result:?}");
     assert_eq!(rig.api.bodies.lock().unwrap().len(), 1);
 }
+
+/// Lệnh của chat hỗ trợ, theo thứ tự gọi thử ở test dưới (gửi trước khi lấy lại cuộc chat, xóa sau cùng).
+const SUPPORT_COMMANDS: &[&str] = &[
+    "support_screen",
+    "support_send",
+    "support_fetch",
+    "support_set_email",
+    "support_delete",
+    "support_machine_info",
+];
+
+/// Spec 2026-10-22-chat-ho-tro-zalo §4: chỉ cửa sổ chính dùng được chat hỗ trợ. Lệnh bị chặn không tới server chat; lệnh được
+/// phép tới đúng server giả (không ra mạng thật), và không lệnh nào trả token của cuộc chat.
+#[test]
+fn only_the_main_window_reaches_the_support_chat() {
+    let app = mock_app();
+    let rig = crate::test_support::install_support(&app);
+    let args = |cmd: &str| match cmd {
+        "support_screen" => json!({ "open": true }),
+        "support_send" => json!({ "text": "Chào", "withMachineInfo": false }),
+        "support_set_email" => json!({ "email": "khach@example.com" }),
+        _ => json!({}),
+    };
+    for other in [
+        window(&app, "overlay"),
+        window(&app, "compose"),
+        window(&app, "stranger"),
+    ] {
+        for cmd in SUPPORT_COMMANDS {
+            let result = invoke(&other, cmd, args(cmd));
+            assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", other.label());
+        }
+    }
+    assert!(rig.api.calls().is_empty(), "lệnh bị chặn không tới server chat");
+    let main = window(&app, "main");
+    for cmd in SUPPORT_COMMANDS {
+        let result = invoke(&main, cmd, args(cmd)).unwrap_or_else(|e| panic!("main gọi được {cmd}: {e}"));
+        assert!(
+            !result.to_string().contains(crate::test_support::FakeSupportApi::TOKEN),
+            "{cmd} không trả token"
+        );
+    }
+    assert_eq!(
+        rig.api.calls(),
+        ["start", "messages 0", "email khach@example.com", "delete"]
+    );
+}

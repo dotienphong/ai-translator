@@ -59,6 +59,12 @@
     "allow-check-for-updates",
     "allow-restart-to-update",
     "allow-send-log-report",
+    "allow-support-screen",
+    "allow-support-fetch",
+    "allow-support-send",
+    "allow-support-set-email",
+    "allow-support-delete",
+    "allow-support-machine-info",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:webview:allow-set-webview-zoom"

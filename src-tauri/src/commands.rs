@@ -22,6 +22,7 @@ use crate::license::purchase::{CheckoutView, PlansView};
 use crate::overlay::{self, placement::Edge};
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
+use crate::support::{self, chat::SupportView};
 use crate::transcript::export::{Format, SrtText};
 use crate::transcript::history::SessionSummary;
 use crate::transcript::store::Transcript;
@@ -392,6 +393,51 @@ pub async fn send_log_report<R: Runtime>(app: AppHandle<R>) -> Result<crate::dia
     blocking(app, crate::diagnostics::send_manual).await
 }
 
+// ---- Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): chỉ cửa sổ `main`. Lệnh gọi server chờ mạng tới 15 giây nên là `async`,
+// chạy việc trên luồng của `spawn_blocking`; `support_screen` chỉ đọc bộ nhớ. Không lệnh nào trả token của cuộc chat. ----
+
+/// Màn hình Hỗ trợ mở (`open: true`) hay đóng. Cửa sổ chính gọi với `false` lúc mở để có trạng thái ban đầu (chấm đỏ). Không gọi
+/// mạng, kể cả khi chưa có cuộc chat.
+#[tauri::command]
+pub fn support_screen<R: Runtime>(app: AppHandle<R>, open: bool) -> Result<SupportView, CommandError> {
+    support::screen(&app, open)
+}
+
+/// Lấy lại toàn bộ cuộc chat (`after=0`) lúc mở màn hình. Chưa có cuộc chat thì không gọi mạng.
+#[tauri::command]
+pub async fn support_fetch<R: Runtime>(app: AppHandle<R>) -> Result<SupportView, CommandError> {
+    blocking(app, support::fetch).await
+}
+
+/// Gửi một tin. `with_machine_info`: ô "Gửi kèm thông tin máy" đang tích (chỉ có tác dụng ở tin đầu tiên của cuộc chat).
+#[tauri::command]
+pub async fn support_send<R: Runtime>(
+    app: AppHandle<R>,
+    text: String,
+    with_machine_info: bool,
+) -> Result<SupportView, CommandError> {
+    blocking(app, move |app| support::send(app, &text, with_machine_info)).await
+}
+
+/// Để lại email (hay `null` để bỏ) cho cuộc chat hiện tại.
+#[tauri::command]
+pub async fn support_set_email<R: Runtime>(app: AppHandle<R>, email: Option<String>) -> Result<(), CommandError> {
+    blocking(app, move |app| support::set_email(app, email.as_deref())).await
+}
+
+/// "Xóa cuộc trò chuyện": xóa trên server rồi bỏ `support.json`.
+#[tauri::command]
+pub async fn support_delete<R: Runtime>(app: AppHandle<R>) -> Result<SupportView, CommandError> {
+    blocking(app, support::delete).await
+}
+
+/// Dòng thông tin máy gửi kèm tin đầu tiên, để giao diện hiện nguyên văn cạnh ô tích. Đọc trạng thái bản quyền và manifest model
+/// nên chạy trên luồng của `spawn_blocking`.
+#[tauri::command]
+pub async fn support_machine_info<R: Runtime>(app: AppHandle<R>) -> Result<String, CommandError> {
+    blocking(app, |app| Ok(support::machine_line(app))).await
+}
+
 // ---- Lệnh của cửa sổ `compose` (Gõ dịch, spec 2026-10-17-go-dich §3.6): chỉ đụng tới ô soạn và các việc của nó. Lệnh dán
 // nhận số của yêu cầu dịch, không nhận chữ: cửa sổ này không gửi được chữ tùy ý vào app khác. ----
 
@@ -499,6 +545,12 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "check_for_updates",
     "restart_to_update",
     "send_log_report",
+    "support_screen",
+    "support_fetch",
+    "support_send",
+    "support_set_email",
+    "support_delete",
+    "support_machine_info",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -570,6 +622,12 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         check_for_updates,
         restart_to_update,
         send_log_report,
+        support_screen,
+        support_fetch,
+        support_send,
+        support_set_email,
+        support_delete,
+        support_machine_info,
         get_overlay_view,
         hide_overlay,
         begin_overlay_resize,
