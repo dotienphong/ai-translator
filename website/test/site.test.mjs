@@ -2166,3 +2166,21 @@ test("trang chủ mọi ngôn ngữ đã mở có video demo đúng ngôn ngữ:
     assert.equal(video.duration, meta.iso);
   }
 });
+
+test("ảnh chia sẻ (og:image) của mọi trang có trong dist, đúng ngôn ngữ của trang", async () => {
+  const errors = [];
+  for (const p of pages) {
+    const url = /<meta property="og:image" content="([^"]+)"/.exec(htmlByPath.get(p.path))?.[1] ?? "";
+    const file = url.replace(SITE.origin, "");
+    if (!file.endsWith(`-${p.lang}.jpg`)) errors.push(`${p.path}: og:image không phải ảnh ${p.lang}: ${file}`);
+    else if (!(await exists(path.join(DIST, file)))) errors.push(`${p.path}: thiếu ${file}`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("manifest ảnh app: mỗi slug có đủ năm ngôn ngữ", async () => {
+  const manifest = JSON.parse(await readFile(path.join(ROOT, "src/assets/img/app/manifest.json"), "utf8"));
+  const bySlug = new Map();
+  for (const e of manifest) bySlug.set(e.slug, [...(bySlug.get(e.slug) ?? []), e.lang]);
+  for (const [slug, langs] of bySlug) assert.deepEqual(langs.sort(), [...LANG_CODES].sort(), slug);
+});

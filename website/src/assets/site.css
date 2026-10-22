@@ -88,6 +88,8 @@ html:lang(ja) { --font: "Be Vietnam Pro", "Hiragino Sans", "Hiragino Kaku Gothic
 html:lang(zh-Hans) { --font: "Be Vietnam Pro", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif; line-break: strict; }
 html:lang(ko) { --font: "Be Vietnam Pro", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; word-break: keep-all; overflow-wrap: break-word; }
 html:is(:lang(ja), :lang(zh-Hans), :lang(ko)) :is(h1, h2, h3, h4) { letter-spacing: 0; }
+/* Tiêu đề tiếng Nhật ngắt theo cụm từ (Chrome 119 trở lên; trình duyệt khác bỏ qua, vẫn ngắt theo line-break: strict). */
+html:lang(ja) :is(h1, h2, h3) { word-break: auto-phrase; }
 h1, h2, h3, h4 { color: var(--ink); font-weight: 700; line-height: 1.18; letter-spacing: -0.02em; margin: 0 0 .5em; text-wrap: balance; }
 h1 { font-size: clamp(2.05rem, 1.1rem + 3.4vw, 3.45rem); letter-spacing: -0.03em; line-height: 1.08; }
 h2 { font-size: clamp(1.7rem, 1.1rem + 2vw, 2.55rem); letter-spacing: -0.025em; }

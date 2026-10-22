@@ -12,6 +12,10 @@ body{width:1200px;height:630px;font-family:"BVP",system-ui,sans-serif;background
 .brand img{width:56px;height:56px;border-radius:15px}
 .tag{position:absolute;right:72px;top:68px;font-size:22px;padding:8px 18px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}
 h1{position:absolute;left:72px;top:176px;width:600px;font-size:62px;line-height:1.12;letter-spacing:-.03em;font-weight:700}
+html:is(:lang(ja),:lang(zh-Hans),:lang(ko)) h1{letter-spacing:0;line-height:1.25}
+html:lang(ko) body{word-break:keep-all}
+html:is(:lang(ja),:lang(zh-Hans)) body{line-break:strict}
+html:lang(ja) h1{word-break:auto-phrase}
 p{position:absolute;left:72px;bottom:70px;width:600px;font-size:28px;line-height:1.4;color:#cfe0ff}
 .card{position:absolute;right:64px;top:196px;width:400px;border-radius:26px;background:rgba(8,13,26,.82);border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 60px -20px rgba(0,0,0,.6);padding:26px 28px 28px}
 .card .lang{display:inline-block;font-size:17px;font-weight:700;letter-spacing:.06em;background:#2f7be8;padding:5px 14px;border-radius:999px;margin-bottom:18px}
