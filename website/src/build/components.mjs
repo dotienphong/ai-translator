@@ -38,7 +38,8 @@ const appImg = (file) => hashed("img/app", file);
  * src/assets/video/. `preload="none"`: chỉ tải khi người xem bấm phát; ảnh bìa là khung có phụ đề. `label` là tên đọc cho
  * trình đọc màn hình, `fallback` là chữ của liên kết tải MP4 khi trình duyệt không phát được video.
  * Nút phát lớn giữa khung (spec 2026-10-22-website-ja-zh-ko §4) mặc định `hidden`: site.js bật nó và tạm bỏ `controls`, nên khi
- * tắt JS vẫn là `<video controls>` như cũ. Thời lượng trên nhãn đọc từ file MP4.
+ * tắt JS vẫn là `<video controls>` như cũ. Thời lượng trên nhãn đọc từ file MP4. Nút nằm trong `llm-skip`: nhãn của nó không vào
+ * llms-full*.txt.
  */
 export const demoVideo = ({ lang, label, fallback }) => {
   const mp4 = hashed("video", `ai-translator-demo.${lang}.mp4`);
@@ -49,7 +50,7 @@ export const demoVideo = ({ lang, label, fallback }) => {
 <source src="${mp4}" type="video/mp4">
 <a href="${mp4}">${esc(fallback)}</a>
 </video>
-<button class="video-play" type="button" hidden aria-label="${esc(`${v.play} (${clock}, ${v.sound})`)}"><span class="video-play-btn" aria-hidden="true">${icon("play")}</span><span class="video-play-label" aria-hidden="true">${esc(`${v.cta} · ${clock} · ${v.sound}`)}</span></button>
+<!--llm-skip--><button class="video-play" type="button" hidden aria-label="${esc(`${v.play} (${clock}, ${v.sound})`)}"><span class="video-play-btn" aria-hidden="true">${icon("play")}</span><span class="video-play-label" aria-hidden="true">${esc(`${v.cta} · ${clock} · ${v.sound}`)}</span></button><!--/llm-skip-->
 </figure>`;
 };
 
