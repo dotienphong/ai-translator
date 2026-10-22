@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { LANGS, LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, fromEn, formatDate } from "../src/langs.mjs";
 import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
+import { S } from "../src/strings.mjs";
 
 test("LANGS: năm ngôn ngữ, thẻ BCP 47 (tiếng Trung giản thể là zh-Hans), tiền tố, og:locale, tên bản ngữ", () => {
   assert.deepEqual(LANG_CODES, ["vi", "en", "ja", "zh", "ko"]);
@@ -84,4 +85,14 @@ test("mp4DurationMs đọc hộp mvhd (phiên bản 0 và 1); thiếu moov hay m
 test("videoMeta: thời lượng thật của video vi và en (làm tròn giây), dạng m:ss và ISO 8601", () => {
   assert.deepEqual(videoMeta("vi"), { seconds: 40, clock: "0:40", iso: "PT40S" });
   assert.deepEqual(videoMeta("en"), { seconds: 39, clock: "0:39", iso: "PT39S" });
+});
+
+test("strings.mjs: mỗi ngôn ngữ có đủ khóa như bản en (cùng cấu trúc, không chuỗi rỗng)", () => {
+  const shape = (v) => (typeof v === "function" ? "fn" : Array.isArray(v) ? v.map(shape) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shape(x)])) : typeof v);
+  const empty = (v, at) => (typeof v === "string" ? (v.trim() ? [] : [at]) : v && typeof v === "object" ? Object.entries(v).flatMap(([k, x]) => empty(x, `${at}.${k}`)) : []);
+  for (const l of LANG_CODES) {
+    assert.deepEqual(shape(S[l]), shape(S.en), `${l}: khác cấu trúc bản en`);
+    assert.deepEqual(empty(S[l], l), []);
+  }
+  assert.equal(S.ja.plans.usd("US$3.99"), "またはカードで US$3.99");
 });
