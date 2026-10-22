@@ -52,7 +52,7 @@ ${facts([
   ["Dữ liệu cuộc họp", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
   ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh, chữ chép lời hay chữ bạn gõ ở Gõ dịch"],
-  ["Máy chủ lưu", "Email (khi mua), đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
+  ["Máy chủ lưu", "Email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
   ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày; chat hỗ trợ 90 ngày"],
   ["Đã kiểm", "Proxy và nettop trên macOS"],
   ["Ký số", "macOS ký ad-hoc, chưa notarize; Windows chưa ký"],
@@ -128,7 +128,7 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 <ul>
 <li><strong>Máy chủ lưu:</strong> tin nhắn của bạn và câu trả lời, thời điểm, nguồn (website hay app), ngôn ngữ, trang bạn đang xem lúc mở chat (website), dòng thông tin máy nếu bạn để tích (app), và email nếu bạn tự để lại. Không lưu địa chỉ IP cùng cuộc chat.</li>
 <li><strong>Thông tin máy (app):</strong> ô này tích sẵn, bỏ tích được, chỉ đi kèm tin đầu tiên và hiện nguyên văn trước khi gửi; không bao giờ có key, email, mã máy hay tên máy.</li>
-<li><strong>Email:</strong> không bắt buộc; chỉ dùng để gửi câu trả lời qua email khi bạn đã rời khung chat.</li>
+<li><strong>Email:</strong> không bắt buộc; chỉ dùng để gửi câu trả lời qua email khi câu trả lời chưa tới được khung chat của bạn sau khoảng 2 phút (ví dụ bạn đã đóng trang hay ứng dụng).</li>
 <li><strong>Giữ bao lâu:</strong> tự xóa sau 90 ngày kể từ tin cuối. Bạn xóa ngay được cuộc trò chuyện ở menu ⋯ của khung chat; bản sao tin nhắn đã tới người trả lời thì được xóa khi bạn yêu cầu qua email.</li>
 </ul>
 <p>Văn bản đầy đủ, kể cả bên chuyển tin nhắn, ở mục 11 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>

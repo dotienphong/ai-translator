@@ -2260,7 +2260,10 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
       11: [
         "Chat hỗ trợ",
         "Bạn không cần có Zalo",
-        "Email của bạn không bao giờ được gửi sang Zalo",
+        "sau khoảng 2 phút",
+        "xóa cuộc trò chuyện bằng nút trong khung chat",
+        "chưa mở khung chat thì trình duyệt không kết nối gì cho chat",
+        "Email bạn nhập ở ô email không bao giờ được gửi sang Zalo",
         "Không lưu cùng cuộc chat",
         "Không bao giờ có license key, email, mã máy, tên máy",
         "localStorage",
@@ -2280,7 +2283,10 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
       11: [
         "Support chat",
         "You do not need Zalo",
-        "Your email is never sent to Zalo",
+        "after about 2 minutes",
+        "delete the conversation with the button in the chat",
+        "if you have not opened the chat, the browser makes no connection for it",
+        "The email you enter in the email box is never sent to Zalo",
         "Not stored with the chat",
         "never contains a license key, email, machine ID, computer name",
         "localStorage",

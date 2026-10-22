@@ -52,7 +52,7 @@ ${facts([
   ["Meeting data", "Only on your computer; our server has none"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
   ["Network", "Five places; none of them receives audio, transcripts or the text you type in Type &amp; Translate"],
-  ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID, error reports, support chat messages"],
+  ["Servers store", "Email (when you buy, or when you choose to leave it in the support chat), orders, licenses, hashed machine ID, error reports, support chat messages"],
   ["Kept for", "Until you ask us to delete it; error reports 30 days; support chat 90 days"],
   ["Checked", "Proxy and nettop on macOS"],
   ["Code signing", "macOS ad-hoc signed, not notarized; Windows not signed"],
@@ -128,7 +128,7 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 <ul>
 <li><strong>Our server stores:</strong> your messages and our replies, their times, the source (website or app), the language, the page you were on when you opened the chat (website), the machine details line if you left it ticked (app), and your email if you chose to leave it. No IP address is stored with the chat.</li>
 <li><strong>Machine details (app):</strong> the box is ticked by default, can be unticked, goes only with your first message and is shown word for word before sending; it never contains your key, email, machine ID or computer name.</li>
-<li><strong>Email:</strong> optional; used only to email you our reply when you have left the chat.</li>
+<li><strong>Email:</strong> optional; used only to email you our reply when it has not reached your chat after about 2 minutes (for example because you closed the page or the app).</li>
 <li><strong>How long:</strong> deleted automatically 90 days after the last message. You can delete the conversation right away from the ⋯ menu of the chat; the copy of your messages that reached the person who replies is deleted when you ask us by email.</li>
 </ul>
 <p>The full text, including who carries the messages, is in section 11 of the <a href="/en/privacy/">Privacy policy</a>.</p>
