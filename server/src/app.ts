@@ -10,6 +10,7 @@ import { fail, isJsonContentType } from "./http";
 import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
 import { registerSupport, supportCors } from "./support/routes";
+import { registerZaloWebhook } from "./support/webhook";
 import { registerTrial } from "./trial";
 
 export type AppEnv = { Bindings: ApiEnv; Variables: { deps: Deps } };
@@ -44,6 +45,8 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
     await next();
   });
   app.get("/v1/health", (c) => c.json({ ok: true }));
+  // Trước registerOrders: route `/v1/webhooks/:provider` của cổng thanh toán bắt cả `/v1/webhooks/zalo` và trả 404 (Hono chọn route khớp đầu tiên).
+  registerZaloWebhook(app);
   registerCheckout(app);
   registerOrders(app);
   registerLicenses(app);
