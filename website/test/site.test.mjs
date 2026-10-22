@@ -2458,3 +2458,34 @@ test("Trang chủ và Hỏi đáp (năm ngôn ngữ): câu liệt kê dữ liệ
   const errors = Object.entries(need).flatMap(([p, needles]) => needsIn(p, textOf(htmlByPath.get(p) ?? ""), needles));
   assert.deepEqual(errors, []);
 });
+
+// Kênh chuyển tin của chat hỗ trợ là kiến trúc nội bộ (website/README.md, "Không công bố công nghệ lõi"): chỉ Chính sách quyền riêng tư
+// được nêu bên xử lý, vì luật buộc. Chữ "Zalo" đứng riêng vẫn được (tên app chat ở hướng dẫn Gõ dịch).
+const SUPPORT_INTERNAL = /zalo\s*bot|zaloplatforms/i;
+const POLICY_PAGES = ["/chinh-sach-quyen-rieng-tu/", "/en/privacy/"];
+/** Các chỗ trong `sources` (Map nơi → chữ) nhắc kênh nội bộ của chat. Hàm thuần: ca âm cố định ở test dưới. */
+const supportInternalHits = (sources) =>
+  [...sources].flatMap(([where, text]) => {
+    const m = SUPPORT_INTERNAL.exec(text);
+    return m ? [`${where}: “${m[0]}” …${text.slice(Math.max(0, m.index - 40), m.index + 40).replace(/\s+/g, " ")}…`] : [];
+  });
+
+test("chat hỗ trợ: ngoài hai trang Chính sách quyền riêng tư, không nguồn chữ nào của site và không file chữ nào của dist nhắc \"Zalo Bot\" hay \"zaloplatforms\"", async () => {
+  const fake = new Map([["a", "Tin đi qua Zalo Bot"], ["b", "https://bot-api.ZaloPlatforms.com/bot123/sendMessage"], ["c", "zalobot"], ["d", "Messenger, Slack, Zalo, khung chat của Zoom"]]);
+  assert.deepEqual(supportInternalHits(fake).map((h) => h.split(":")[0]), ["a", "b", "c"]);
+  const sources = await siteTexts();
+  for (const p of pages) sources.set(`${p.path} [html]`, htmlByPath.get(p.path));
+  for (const key of [...sources.keys()]) if (POLICY_PAGES.some((p) => key === p || key.startsWith(`${p} [`))) sources.delete(key);
+  // Mọi file chữ khác của dist (JS và CSS của khung chat, _headers, sitemap, llms…), trừ HTML của hai trang chính sách.
+  const skip = new Set(POLICY_PAGES.map((p) => path.join(DIST, p, "index.html")));
+  const walk = async (dir) => {
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      const f = path.join(dir, e.name);
+      if (e.isDirectory()) await walk(f);
+      else if ((/\.(?:html|m?js|css|txt|xml|json|webmanifest)$/.test(e.name) || e.name === "_headers" || e.name === "_redirects") && !skip.has(f)) sources.set(path.relative(DIST, f), await readFile(f, "utf8"));
+    }
+  };
+  await walk(DIST);
+  assert.ok(sources.has("_headers") && sources.has("sitemap.xml"), "bộ quét không đọc được dist");
+  assert.deepEqual(supportInternalHits(sources), []);
+});
