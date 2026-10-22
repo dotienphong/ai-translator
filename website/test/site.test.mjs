@@ -2435,3 +2435,20 @@ test("Dữ liệu và bảo mật (năm ngôn ngữ): mục Chat hỗ trợ, hà
   }
   assert.deepEqual(errors, []);
 });
+
+test("Trang chủ và Hỏi đáp (năm ngôn ngữ): câu liệt kê dữ liệu máy chủ lưu có tin nhắn chat hỗ trợ giữ 90 ngày", () => {
+  const need = {
+    "/": ["tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày)", "không có nội dung cuộc họp"],
+    "/en/": ["support chat messages if you use the chat (kept for 90 days)", "never meeting content"],
+    "/ja/": ["サポートチャットのメッセージ（90 日間保存）", "会議の内容は一切保存しません"],
+    "/zh/": ["聊天消息（保存 90 天）", "从不保存会议内容"],
+    "/ko/": ["지원 채팅 메시지(90일 보관)", "회의 내용은 절대 저장하지 않습니다"],
+    "/cau-hoi-thuong-gap/": ["tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày)"],
+    "/en/faq/": ["support chat messages if you use the chat (kept for 90 days)"],
+    "/ja/faq/": ["サポートチャットのメッセージ（90 日間保存）"],
+    "/zh/faq/": ["聊天消息（保存 90 天）"],
+    "/ko/faq/": ["지원 채팅 메시지(90일 보관)"],
+  };
+  const errors = Object.entries(need).flatMap(([p, needles]) => needsIn(p, textOf(htmlByPath.get(p) ?? ""), needles));
+  assert.deepEqual(errors, []);
+});

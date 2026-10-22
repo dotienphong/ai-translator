@@ -106,7 +106,7 @@ const GROUPS = [
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",
-        a: `<p>Không có quảng cáo và không có analytics. Khi app gặp lỗi, nó tự gửi một báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh, chữ chép lời, key hay email); bạn tắt được ở Cài đặt › Quyền riêng tư. Máy chủ chỉ lưu email (khi bạn mua), đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free, nhật ký thay đổi license và các báo cáo lỗi (giữ 30 ngày), để cấp key, bảo đảm mỗi key một máy, mỗi máy dùng thử một lần và sửa lỗi. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo. Chi tiết ở <a href="/bao-mat-du-lieu/#bao-cao-loi">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>Không có quảng cáo và không có analytics. Khi app gặp lỗi, nó tự gửi một báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh, chữ chép lời, key hay email); bạn tắt được ở Cài đặt › Quyền riêng tư. Máy chủ chỉ lưu email (khi bạn mua, hay khi bạn tự để lại trong chat hỗ trợ), đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free, nhật ký thay đổi license, các báo cáo lỗi (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), để cấp key, bảo đảm mỗi key một máy, mỗi máy dùng thử một lần, sửa lỗi và trả lời bạn. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo. Chi tiết ở <a href="/bao-mat-du-lieu/#bao-cao-loi">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "Bản chép lời có được lưu lại không?",
@@ -235,7 +235,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-10-15",
+  modified: "2026-10-22",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

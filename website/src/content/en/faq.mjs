@@ -106,7 +106,7 @@ const GROUPS = [
       },
       {
         q: "Are there ads or data collection?",
-        a: `<p>There are no ads and no analytics. When the app hits an error, it automatically sends an error report with personal data scrubbed out (no audio, no transcript text, no keys and no email); you can turn it off in Settings › Privacy. Our servers store only your email (when you buy), orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates, a license change log and error reports (kept for 30 days), so we can issue keys, keep to one device per key and one trial per device, and fix bugs. We do not sell your data or share it for advertising. Details are on <a href="/en/data-security/#error-reports">Data and security</a>.</p>`,
+        a: `<p>There are no ads and no analytics. When the app hits an error, it automatically sends an error report with personal data scrubbed out (no audio, no transcript text, no keys and no email); you can turn it off in Settings › Privacy. Our servers store only your email (when you buy, or when you choose to leave it in the support chat), orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates, a license change log, error reports (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), so we can issue keys, keep to one device per key and one trial per device, fix bugs and reply to you. We do not sell your data or share it for advertising. Details are on <a href="/en/data-security/#error-reports">Data and security</a>.</p>`,
       },
       {
         q: "Are transcripts saved?",
@@ -235,7 +235,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-10-15",
+  modified: "2026-10-22",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

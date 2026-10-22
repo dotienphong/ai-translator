@@ -56,7 +56,7 @@ export default {
   description:
     "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-21",
+  modified: "2026-10-22",
   llm: "Trang chủ: AI Translator là gì, cách hoạt động, tính năng, độ trễ đo được, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
   schema: [
@@ -128,7 +128,7 @@ ${dataFlow("vi")}
 <div class="grid grid-3">
 ${feature({ icon: "lock", title: "Không gửi lên cloud", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng. Bản chép lời và bản dịch hiện trên màn hình và nằm trên máy bạn; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy.", accent: true })}
 ${feature({ icon: "zap", title: "Độ trễ thấp", text: "Không phải gửi âm thanh đi rồi chờ máy chủ trả về, nên phụ đề hiện ngay sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn). Máy khác chậm hơn: đo sơ bộ trên một laptop Windows có GPU tích hợp cho trung vị 1,3–5,4 giây (xem mục Hiệu năng ở trang Tính năng)." })}
-${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy), nhật ký thay đổi license và báo cáo lỗi đã che dữ liệu cá nhân (giữ 30 ngày), không có dữ liệu cuộc hội thoại." })}
+${feature({ icon: "shield", title: "Giảm rủi ro lộ thông tin", text: "Hợp đồng, nhân sự, tài chính, kế hoạch sản phẩm: nội dung cuộc họp không đi qua bên thứ ba nào để dịch. Máy chủ của chúng tôi chỉ lưu email (khi mua), đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy), nhật ký thay đổi license, báo cáo lỗi đã che dữ liệu cá nhân (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), không có nội dung cuộc họp." })}
 </div>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/bao-mat-du-lieu/">Xem chính xác dữ liệu nào đi đâu ${icon("arrow-right")}</a></p>
 </div></section>

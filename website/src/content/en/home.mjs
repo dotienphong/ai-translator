@@ -58,7 +58,7 @@ export default {
   description:
     "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
-  modified: "2026-10-21",
+  modified: "2026-10-22",
   llm: "Home page: what AI Translator is, how it works, features, measured latency, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [
@@ -130,7 +130,7 @@ ${dataFlow("en")}
 <div class="grid grid-3">
 ${feature({ icon: "lock", title: "Nothing goes to the cloud", text: "Audio lives only in RAM: it is never written to disk and never sent over the network. The transcript and the translation appear on your screen and stay on your computer; history is off by default, and if you turn it on it is stored encrypted on your machine.", accent: true })}
 ${feature({ icon: "zap", title: "Low latency", text: "There is no round trip to a server, so subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack). Other computers are slower: a preliminary test on one Windows laptop with integrated graphics gave a median of 1.3–5.4 seconds (see Performance on the Features page)." })}
-${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes and error reports with personal data scrubbed out (kept for 30 days), never conversation data." })}
+${feature({ icon: "shield", title: "Less risk of leaking information", text: "Contracts, HR, finance, product plans: your meeting content is not passed to any third party for translation. Our server only stores your email (when you buy), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes, error reports with personal data scrubbed out (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), never meeting content." })}
 </div>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>
 </div></section>
