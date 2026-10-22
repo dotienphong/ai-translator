@@ -61,7 +61,7 @@
 | `website/src/build/layout.mjs` | `chatAttrs()`: thuộc tính `data-chat-*` trên thẻ script `site.js` |
 | `website/test/chat-core.test.mjs` (mới) | 19 test đơn vị của lõi |
 | `website/test/chat-strings.test.mjs` (mới) | 6 test: đủ năm ngôn ngữ, câu của hợp đồng, liên kết chính sách, nút bỏ qua thẻ email, không nhắc Zalo |
-| `website/test/chat-widget.test.mjs` (mới) | 16 test trình duyệt với API giả |
+| `website/test/chat-widget.test.mjs` (mới) | 21 test trình duyệt với API giả (16 của Task 6 và 7, 5 thêm sau đợt rà Task 7) |
 | `website/test/site.test.mjs` | Thêm 4 test: CSP, `data-chat-*`, không tải sẵn file chat, `chat.js` nhập đúng file đã băm |
 | `website/README.md` | Mục "Chat hỗ trợ (bong bóng)" |
 
@@ -78,8 +78,10 @@
 | 4 | 177 | 175 | 0 | 2 |
 | 5 | 180 | 178 | 0 | 2 |
 | 6 | 184 | 182 | 0 | 2 |
-| 7 | 197 | 195 | 0 | 2 |
-| 8, 9 | 197 | 195 | 0 | 2 |
+| 7 | 202 | 200 | 0 | 2 |
+| 8, 9 | 202 | 200 | 0 | 2 |
+
+Từ Task 7 số test cộng thêm 5 test của `chat-widget.test.mjs` viết sau đợt rà Task 7 (2026-10-22): HTML trong tin của chủ dự án hiện thành chữ; tiêu điểm sang nút Đóng khi ô nhập bị ẩn hay lưu email xong, `role="status"` của dòng báo tắt, không có `aria-haspopup`; Esc ở ngoài khung và Esc của bộ gõ; hàng đợi gửi không kẹt khi thân phản hồi hỏng và tin không hiện hai lần; chữ 16px trên điện thoại và bong bóng không che dòng cuối chân trang (197 + 5 = 202).
 
 Từ Task 4 trở đi số test đã gồm 6 test thêm sau đợt rà (5 ở `chat-core.test.mjs`: luật chữ như `parseText` của server, `cache: "no-store"` và `signal`, hạn 15 giây của request, vòng hỏi không đứng khi request treo, `watchReply` dừng khi chat tắt hay đóng; 1 ở `chat-strings.test.mjs`: nút bỏ qua thẻ email), nên mốc cao hơn 6 so với cộng dồn theo từng task ở trên (ví dụ Task 4: 171 + 6 = 177).
 
@@ -2710,20 +2712,22 @@ Tệp: `website/src/build/layout.mjs`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && node --test test/site.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)" && node --test test/chat-widget.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)" && node --test test/chat-strings.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)"
 ```
-Expected: `ℹ tests 78`, `ℹ pass 78`, `ℹ fail 0`; `ℹ tests 16`, `ℹ pass 16`, `ℹ fail 0` (khoảng 50 giây); `ℹ tests 6`, `ℹ pass 6`, `ℹ fail 0` (test "không nhắc Zalo" giờ quét cả `chat.js`, `chat.css`). Một test trình duyệt đỏ thì đọc thông báo `assert` và `p.errors` (lỗi CSP hiện ở đó dạng `security: … violates the following Content Security Policy directive …`); sửa mã cho đúng hợp đồng, không nới test.
+Expected: `ℹ tests 78`, `ℹ pass 78`, `ℹ fail 0`; `ℹ tests 21`, `ℹ pass 21`, `ℹ fail 0` (khoảng 70 giây); `ℹ tests 6`, `ℹ pass 6`, `ℹ fail 0` (test "không nhắc Zalo" giờ quét cả `chat.js`, `chat.css`). Một test trình duyệt đỏ thì đọc thông báo `assert` và `p.errors` (lỗi CSP hiện ở đó dạng `security: … violates the following Content Security Policy directive …`); sửa mã cho đúng hợp đồng, không nới test.
 
 - [ ] **Step 8: Cả bộ test và bản dựng**
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)" && pnpm build 2>&1 | tail -1 && ls dist/assets/bundle/
 ```
-Expected: `ℹ tests 197`, `ℹ pass 195`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; `dist/assets/bundle/` có sáu file: `chat-core.<10 hex>.js`, `chat-strings.<10 hex>.js`, `chat.<10 hex>.js`, `chat.<10 hex>.css`, `site.<10 hex>.css`, `site.<10 hex>.js`.
+Expected: `ℹ tests 202`, `ℹ pass 200`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; `dist/assets/bundle/` có sáu file: `chat-core.<10 hex>.js`, `chat-strings.<10 hex>.js`, `chat.<10 hex>.js`, `chat.<10 hex>.css`, `site.<10 hex>.css`, `site.<10 hex>.js`.
 
 - [ ] **Step 9: Commit**
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && test "$(git branch --show-current)" = main && git add website/src/assets/chat.css website/src/assets/chat.js website/src/build/build.mjs website/src/build/layout.mjs website/test/site.test.mjs website/test/chat-widget.test.mjs && git commit -q -m "feat(website): khung chat hỗ trợ (gửi, nhận trả lời, thẻ email, xóa, chế độ tắt)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline -1
 ```
+
+**Sau khi rà (2026-10-22):** mã `chat.js`, `chat.css`, `site.js`, `site.css` trong repo đã khác khối mã ở trên (commit `fix(website): chat hỗ trợ sau rà…`); khối mã trong kế hoạch là bản trước rà, bản thật nằm trong repo. Thay đổi: chữ 16px cho ô nhập trên điện thoại (iOS không phóng to); `.site-footer` chừa đáy 88px để cuộn dòng cuối ra khỏi bong bóng; tiêu điểm sang nút Đóng khi `setMode` ẩn ô nhập đang có tiêu điểm hay sau khi lưu email; Esc nghe ở `document` khi khung mở (gỡ khi đóng) và bỏ qua Esc của bộ gõ (`isComposing`); `.chat-off` có `role="status"`; bỏ `aria-haspopup` ở nút menu; hàng đợi gửi (`enqueue`) bắt lỗi của `deliver` (đánh dấu tin lỗi, chạy tiếp), đọc `result.data?.message` an toàn, 2xx mà thân hỏng coi như lỗi mạng; tin đã về qua lượt hỏi trước phản hồi POST thì bỏ dòng tạm (không hiện hai lần); `loading ??=` thành `if (!loading) loading = …` (Safari < 14); thêm 5 test `chat-widget` (tổng 21; fake API có `postDelay` và `fail` với `raw`).
 
 ---
 
@@ -2800,7 +2804,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && test "$(git branch 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)" && pnpm build 2>&1 | tail -1 && grep "Content-Security-Policy" dist/_headers
 ```
-Expected: `ℹ tests 197`, `ℹ pass 195`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; dòng CSP có `connect-src 'self' https://api.aitranslator.io.vn`, còn `script-src 'self' 'sha256-…'`, `style-src 'self'`, `font-src 'self'`, `img-src 'self' data:` như cũ.
+Expected: `ℹ tests 202`, `ℹ pass 200`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; dòng CSP có `connect-src 'self' https://api.aitranslator.io.vn`, còn `script-src 'self' 'sha256-…'`, `style-src 'self'`, `font-src 'self'`, `img-src 'self' data:` như cũ.
 
 - [ ] **Step 2: Không thêm thư viện, không đụng phần của kế hoạch khác, không nhắc Zalo trong mã gửi xuống trình duyệt**
 
@@ -2818,7 +2822,7 @@ Mở `http://127.0.0.1:4173/`: bong bóng ở góc dưới phải; bấm thì kh
 
 - [ ] **Step 4: Báo cho người giao việc**
 
-Ghi lại: số test (197, `pass` 195 so với mốc 150), danh sách commit (`git log --oneline -8`), và nhắc: **chưa deploy website**; website chỉ deploy sau khi server (kế hoạch 01) đã chạy và app 0.2.4 lên R2 (spec mục 7); trước khi server có `/v1/support/*`, khung chat trên website thật sẽ báo "Không gửi được tin này." (máy chủ trả 404). Kế hoạch 04 còn phải nói về chat trên trang Liên hệ, Dữ liệu và bảo mật và chính sách (kể cả bản lưu `support.v1` trong `localStorage` của trình duyệt).
+Ghi lại: số test (202, `pass` 200 so với mốc 150), danh sách commit (`git log --oneline -8`), và nhắc: **chưa deploy website**; website chỉ deploy sau khi server (kế hoạch 01) đã chạy và app 0.2.4 lên R2 (spec mục 7); trước khi server có `/v1/support/*`, khung chat trên website thật sẽ báo "Không gửi được tin này." (máy chủ trả 404). Kế hoạch 04 còn phải nói về chat trên trang Liên hệ, Dữ liệu và bảo mật và chính sách (kể cả bản lưu `support.v1` trong `localStorage` của trình duyệt).
 
 ---
 
