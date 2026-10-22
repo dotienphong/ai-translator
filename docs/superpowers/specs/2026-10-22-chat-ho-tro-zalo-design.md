@@ -77,7 +77,7 @@ Token đi trong header `Authorization: Bearer <token>`. Mọi thân là JSON, t�
 
 Mã lỗi (thân `{ error }`): `support_disabled` (503), `conversation_closed` (403, cuộc chat bị chặn), `invalid_token` (401), `invalid_request` (400, kèm `field`), `rate_limited` (429, kèm `Retry-After`), `support_busy` (429, chạm trần toàn hệ thống).
 
-Token sai hay không tồn tại tính là một lần thất bại của IP (`noteFailure`, bộ đếm `failure_ip` có sẵn); IP đã chạm ngưỡng thì nhận `429`. Hợp đồng chi tiết (thân, mã trạng thái, CORS) ở `docs/superpowers/plans/2026-10-22-chat-ho-tro-00-tong-quan.md`.
+Token **đúng dạng** mà không khớp cuộc chat nào tính là một lần thất bại của IP (`noteFailure`, bộ đếm `failure_ip` có sẵn); IP đã chạm ngưỡng thì nhận `429`. Thiếu header hay token sai dạng thì `401` mà **không** đếm: `GET` là simple request, trang lạ nhúng `<img>` được, và nếu đếm thì làm IP người xem bị chặn cả kích hoạt license (trình duyệt không gửi được `Authorization` tới origin khác nếu không qua preflight CORS, nên token đúng dạng chỉ đến từ client không phải trình duyệt). Hợp đồng chi tiết (thân, mã trạng thái, CORS) ở `docs/superpowers/plans/2026-10-22-chat-ho-tro-00-tong-quan.md`.
 
 **Polling không ghi D1 khi không có tin mới.** Chỉ cập nhật `delivered_owner_id` khi lần hỏi trả về tin của chủ dự án. Polling không đi qua bảng `rate_limits` (mỗi lần hỏi sẽ là một lần ghi); dùng binding Rate Limiting của Workers `SUPPORT_POLL_LIMITER` (60 lần mỗi 60 giây, khóa là id cuộc chat; đã kiểm wrangler 4.145 và miniflare hỗ trợ) để chặn lạm dụng. Token sai không tới bước này mà tính vào `failure_ip` như trên.
 
@@ -152,6 +152,7 @@ Phụ đề không hiện khi họp Teams
 | `support_email_conv`: lần đặt email mỗi cuộc chat | 5 |
 | `support_global`: tin khách được nhận, toàn hệ thống | 200; chạm ngưỡng thì trả `support_busy` và cảnh báo `support_flood` |
 
+- Thông báo Zalo của việc khách để lại email hay xóa cuộc chat chỉ gửi khi chat đang bật và tính vào `support_global`; vượt trần thì bỏ thông báo (vẫn lưu email, vẫn xóa), để không ai dùng chúng spam Zalo của chủ dự án.
 - CORS chỉ cho `https://aitranslator.io.vn`; app gọi không có `Origin`.
 - **Chưa dùng Turnstile** ở bản đầu (thêm script và việc cài đặt). Gặp spam thật thì dùng `/chan`, `/tat` trước, rồi mới tính Turnstile.
 - Hai loại cảnh báo mới trong `alerts.ts`: `support_zalo_failed` (kèm cách kiểm token và trạng thái bot), `support_flood`. Đi qua `OPERATOR_EMAIL` như các cảnh báo khác, tối đa một thư mỗi loại mỗi giờ.
