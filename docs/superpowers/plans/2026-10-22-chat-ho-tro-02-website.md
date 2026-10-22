@@ -59,8 +59,8 @@
 | `website/src/assets/site.css` | Token `--danger`; CSS bong bóng |
 | `website/src/build/build.mjs` | `chatAssets()` băm các file chat (đổi `import` của `chat.js`); CSP `connect-src 'self' https://api.aitranslator.io.vn` |
 | `website/src/build/layout.mjs` | `chatAttrs()`: thuộc tính `data-chat-*` trên thẻ script `site.js` |
-| `website/test/chat-core.test.mjs` (mới) | 14 test đơn vị của lõi |
-| `website/test/chat-strings.test.mjs` (mới) | 5 test: đủ năm ngôn ngữ, câu của hợp đồng, liên kết chính sách, không nhắc Zalo |
+| `website/test/chat-core.test.mjs` (mới) | 19 test đơn vị của lõi |
+| `website/test/chat-strings.test.mjs` (mới) | 6 test: đủ năm ngôn ngữ, câu của hợp đồng, liên kết chính sách, nút bỏ qua thẻ email, không nhắc Zalo |
 | `website/test/chat-widget.test.mjs` (mới) | 16 test trình duyệt với API giả |
 | `website/test/site.test.mjs` | Thêm 4 test: CSP, `data-chat-*`, không tải sẵn file chat, `chat.js` nhập đúng file đã băm |
 | `website/README.md` | Mục "Chat hỗ trợ (bong bóng)" |
@@ -75,11 +75,13 @@
 | 1 | 157 | 155 | 0 | 2 |
 | 2 | 160 | 158 | 0 | 2 |
 | 3 | 166 | 164 | 0 | 2 |
-| 4 | 171 | 169 | 0 | 2 |
-| 5 | 174 | 172 | 0 | 2 |
-| 6 | 178 | 176 | 0 | 2 |
-| 7 | 191 | 189 | 0 | 2 |
-| 8, 9 | 191 | 189 | 0 | 2 |
+| 4 | 177 | 175 | 0 | 2 |
+| 5 | 180 | 178 | 0 | 2 |
+| 6 | 184 | 182 | 0 | 2 |
+| 7 | 197 | 195 | 0 | 2 |
+| 8, 9 | 197 | 195 | 0 | 2 |
+
+Từ Task 4 trở đi số test đã gồm 6 test thêm sau đợt rà (5 ở `chat-core.test.mjs`: luật chữ như `parseText` của server, `cache: "no-store"` và `signal`, hạn 15 giây của request, vòng hỏi không đứng khi request treo, `watchReply` dừng khi chat tắt hay đóng; 1 ở `chat-strings.test.mjs`: nút bỏ qua thẻ email), nên mốc cao hơn 6 so với cộng dồn theo từng task ở trên (ví dụ Task 4: 171 + 6 = 177).
 
 Không có Chrome thì mọi test trình duyệt (cả các test có từ trước) bị bỏ qua: `skipped` tăng, `pass` giảm tương ứng; báo người giao việc, vì Task 6 và 7 chỉ kiểm được thật khi có Chrome. Có PowerShell 7 thì `skipped` là 0 và `pass` cộng 2.
 
@@ -947,7 +949,7 @@ EOF
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && node --test test/chat-core.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)"
 ```
-Expected: `ℹ tests 14`, `ℹ pass 14`, `ℹ fail 0`.
+Expected: `ℹ tests 19`, `ℹ pass 19`, `ℹ fail 0` (14 test của kế hoạch gốc cộng 5 test thêm sau đợt rà: xem ghi chú dưới bảng mốc).
 
 - [ ] **Step 5: Cả bộ test**
 
@@ -1162,7 +1164,7 @@ export const CHAT = {
     emailAsk: "ページを離れても返信を受け取れるよう、メールアドレスを残せます（任意）",
     emailLabel: "メールアドレス",
     emailSave: "保存",
-    emailClose: "閉じる",
+    emailClose: "スキップ",
     emailSaved: "メールアドレスを保存しました。ページを離れた場合、返信はメールで届きます。",
     emailBad: "メールアドレスの形式が正しくありません。",
     emailFail: "メールアドレスを保存できませんでした。後でもう一度お試しください。",
@@ -1201,7 +1203,7 @@ export const CHAT = {
     emailAsk: "留下邮箱，离开页面后也能收到回复（可选）",
     emailLabel: "你的邮箱",
     emailSave: "保存",
-    emailClose: "关闭",
+    emailClose: "跳过",
     emailSaved: "邮箱已保存。离开页面后，回复会通过邮件发给你。",
     emailBad: "邮箱格式不正确。",
     emailFail: "邮箱保存失败，请稍后再试。",
@@ -1240,7 +1242,7 @@ export const CHAT = {
     emailAsk: "페이지를 떠나도 답변을 받을 수 있도록 이메일을 남겨 주세요(선택)",
     emailLabel: "이메일",
     emailSave: "저장",
-    emailClose: "닫기",
+    emailClose: "건너뛰기",
     emailSaved: "이메일을 저장했습니다. 페이지를 떠나면 답변이 이메일로 전송됩니다.",
     emailBad: "이메일 형식이 올바르지 않습니다.",
     emailFail: "이메일을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -1263,14 +1265,14 @@ export const CHAT = {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && node --test test/chat-strings.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)"
 ```
-Expected: `ℹ tests 5`, `ℹ pass 5`, `ℹ fail 0` (khoảng 15 giây: test nạp danh mục trang).
+Expected: `ℹ tests 6`, `ℹ pass 6`, `ℹ fail 0` (khoảng 15 giây: test nạp danh mục trang).
 
 - [ ] **Step 5: Cả bộ test**
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)"
 ```
-Expected: `ℹ tests 171`, `ℹ pass 169`, `ℹ fail 0`, `ℹ skipped 2`.
+Expected: `ℹ tests 177`, `ℹ pass 175`, `ℹ fail 0`, `ℹ skipped 2`.
 
 - [ ] **Step 6: Commit**
 
@@ -1428,7 +1430,7 @@ Expected: `ℹ tests 77`, `ℹ pass 77`, `ℹ fail 0`; rồi `ℹ tests 15`, `�
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)"
 ```
-Expected: `ℹ tests 174`, `ℹ pass 172`, `ℹ fail 0`, `ℹ skipped 2`.
+Expected: `ℹ tests 180`, `ℹ pass 178`, `ℹ fail 0`, `ℹ skipped 2`.
 
 - [ ] **Step 7: Commit**
 
@@ -1794,7 +1796,7 @@ Expected: `ℹ tests 4`, `ℹ pass 4`, `ℹ fail 0`.
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)"
 ```
-Expected: `ℹ tests 178`, `ℹ pass 176`, `ℹ fail 0`, `ℹ skipped 2`.
+Expected: `ℹ tests 184`, `ℹ pass 182`, `ℹ fail 0`, `ℹ skipped 2`.
 
 - [ ] **Step 8: Commit**
 
@@ -2708,14 +2710,14 @@ Tệp: `website/src/build/layout.mjs`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && node --test test/site.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)" && node --test test/chat-widget.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)" && node --test test/chat-strings.test.mjs 2>&1 | grep -E "^✖|ℹ (tests|pass|fail)"
 ```
-Expected: `ℹ tests 78`, `ℹ pass 78`, `ℹ fail 0`; `ℹ tests 16`, `ℹ pass 16`, `ℹ fail 0` (khoảng 50 giây); `ℹ tests 5`, `ℹ pass 5`, `ℹ fail 0` (test "không nhắc Zalo" giờ quét cả `chat.js`, `chat.css`). Một test trình duyệt đỏ thì đọc thông báo `assert` và `p.errors` (lỗi CSP hiện ở đó dạng `security: … violates the following Content Security Policy directive …`); sửa mã cho đúng hợp đồng, không nới test.
+Expected: `ℹ tests 78`, `ℹ pass 78`, `ℹ fail 0`; `ℹ tests 16`, `ℹ pass 16`, `ℹ fail 0` (khoảng 50 giây); `ℹ tests 6`, `ℹ pass 6`, `ℹ fail 0` (test "không nhắc Zalo" giờ quét cả `chat.js`, `chat.css`). Một test trình duyệt đỏ thì đọc thông báo `assert` và `p.errors` (lỗi CSP hiện ở đó dạng `security: … violates the following Content Security Policy directive …`); sửa mã cho đúng hợp đồng, không nới test.
 
 - [ ] **Step 8: Cả bộ test và bản dựng**
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)" && pnpm build 2>&1 | tail -1 && ls dist/assets/bundle/
 ```
-Expected: `ℹ tests 191`, `ℹ pass 189`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; `dist/assets/bundle/` có sáu file: `chat-core.<10 hex>.js`, `chat-strings.<10 hex>.js`, `chat.<10 hex>.js`, `chat.<10 hex>.css`, `site.<10 hex>.css`, `site.<10 hex>.js`.
+Expected: `ℹ tests 197`, `ℹ pass 195`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; `dist/assets/bundle/` có sáu file: `chat-core.<10 hex>.js`, `chat-strings.<10 hex>.js`, `chat.<10 hex>.js`, `chat.<10 hex>.css`, `site.<10 hex>.css`, `site.<10 hex>.js`.
 
 - [ ] **Step 9: Commit**
 
@@ -2798,7 +2800,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && test "$(git branch 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)" && pnpm build 2>&1 | tail -1 && grep "Content-Security-Policy" dist/_headers
 ```
-Expected: `ℹ tests 191`, `ℹ pass 189`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; dòng CSP có `connect-src 'self' https://api.aitranslator.io.vn`, còn `script-src 'self' 'sha256-…'`, `style-src 'self'`, `font-src 'self'`, `img-src 'self' data:` như cũ.
+Expected: `ℹ tests 197`, `ℹ pass 195`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; dòng CSP có `connect-src 'self' https://api.aitranslator.io.vn`, còn `script-src 'self' 'sha256-…'`, `style-src 'self'`, `font-src 'self'`, `img-src 'self' data:` như cũ.
 
 - [ ] **Step 2: Không thêm thư viện, không đụng phần của kế hoạch khác, không nhắc Zalo trong mã gửi xuống trình duyệt**
 
@@ -2816,7 +2818,7 @@ Mở `http://127.0.0.1:4173/`: bong bóng ở góc dưới phải; bấm thì kh
 
 - [ ] **Step 4: Báo cho người giao việc**
 
-Ghi lại: số test (191, `pass` 189 so với mốc 150), danh sách commit (`git log --oneline -8`), và nhắc: **chưa deploy website**; website chỉ deploy sau khi server (kế hoạch 01) đã chạy và app 0.2.4 lên R2 (spec mục 7); trước khi server có `/v1/support/*`, khung chat trên website thật sẽ báo "Không gửi được tin này." (máy chủ trả 404). Kế hoạch 04 còn phải nói về chat trên trang Liên hệ, Dữ liệu và bảo mật và chính sách (kể cả bản lưu `support.v1` trong `localStorage` của trình duyệt).
+Ghi lại: số test (197, `pass` 195 so với mốc 150), danh sách commit (`git log --oneline -8`), và nhắc: **chưa deploy website**; website chỉ deploy sau khi server (kế hoạch 01) đã chạy và app 0.2.4 lên R2 (spec mục 7); trước khi server có `/v1/support/*`, khung chat trên website thật sẽ báo "Không gửi được tin này." (máy chủ trả 404). Kế hoạch 04 còn phải nói về chat trên trang Liên hệ, Dữ liệu và bảo mật và chính sách (kể cả bản lưu `support.v1` trong `localStorage` của trình duyệt).
 
 ---
 

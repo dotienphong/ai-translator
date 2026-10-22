@@ -52,6 +52,11 @@ test("chat-strings: bản ja/zh/ko đã dịch (không chuỗi nào trùng bản
   }
 });
 
+test("chat-strings: nút bỏ qua thẻ email của ja/zh/ko là chữ \"bỏ qua\", không trùng nút Đóng", () => {
+  assert.deepEqual([CHAT.ja.emailClose, CHAT.zh.emailClose, CHAT.ko.emailClose], ["スキップ", "跳过", "건너뛰기"]);
+  for (const l of LANG_CODES) assert.notEqual(CHAT[l].emailClose, CHAT[l].close, l);
+});
+
 test("chat: không file nào trong src/assets (mã gửi xuống trình duyệt) nhắc tên dịch vụ chuyển tin, kể cả trong chú thích", async () => {
   const dir = new URL("../src/assets/", import.meta.url);
   const files = (await readdir(dir)).filter((f) => /\.(js|css)$/.test(f));

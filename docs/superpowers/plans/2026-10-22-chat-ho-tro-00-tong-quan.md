@@ -117,6 +117,6 @@ Luật nội dung (server kiểm, khách kiểm trước để báo sớm):
 |---|---|---|---|
 | Server (vitest) | `pnpm -C server test` | 1523 | 1625 (01) |
 | Server (script Node) | `pnpm -C server test:scripts` | 43 (42 đạt, 1 bỏ qua) | 44 (01) |
-| Website | `cd website && pnpm test` | 152 (150 đạt, 2 bỏ qua) | 191 (02), rồi +7 (04) |
+| Website | `cd website && pnpm test` | 152 (150 đạt, 2 bỏ qua) | 197 (02), rồi +7 (04) |
 | Giao diện app | `pnpm test` | 331 (26 file) | 359 (28 file) (03) |
 | Rust app | `cargo test --locked -p meeting-translator --lib` | 753 passed, 6 ignored | 798 (03) |
