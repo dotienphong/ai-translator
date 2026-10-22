@@ -1097,3 +1097,103 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
 9. **Thử tay với app thật** (bản vừa phát hành, trên máy chưa từng cài, hoặc sau khi xóa dữ liệu): (a) onboarding bước Điều khoản có ô báo cáo lỗi **tích sẵn**; (b) Giới thiệu › Gửi log cho hỗ trợ hiện mã báo cáo, và tìm được báo cáo đó ở Web Admin › Báo cáo lỗi bằng mã; (c) tắt công tắc ở Cài đặt › Quyền riêng tư rồi bấm lại nút gửi tay: vẫn gửi được; (d) xóa báo cáo thử ở Web Admin. Báo cáo thật đầu tiên đến từ máy người dùng: mở xem và kiểm log **không** có đường dẫn thư mục cá nhân, key, token hay email; có thì xóa ngay, và sửa bộ che dữ liệu (kế hoạch 03) trước khi để báo cáo tiếp theo vào.
 
 **Đường lui.** Không có công tắc tắt nhận báo cáo riêng. Muốn dừng nhận khẩn cấp: `pnpm exec wrangler rollback` (Worker API) về bản trước đợt này: route `POST /v1/diagnostics` biến mất, app nhận `404` và bỏ báo cáo, người dùng không thấy lỗi gì. Worker admin lỗi thì `pnpm exec wrangler rollback -c wrangler.admin.jsonc`. Schema mới tương thích với code cũ (code cũ không biết hai bảng); sau khi lùi Worker admin, thao tác xóa theo email **không** xóa báo cáo, nên xóa tay nếu có yêu cầu. Xóa toàn bộ báo cáo: `DELETE FROM error_report_logs` rồi `DELETE FROM error_reports` (hai lệnh `wrangler d1 execute --remote --command`, bảng log trước). Migration 0004 không có bước lùi vì chỉ thêm bảng và không đổi dữ liệu cũ; không cần Time Travel.
+
+## 11. Đợt thêm chat hỗ trợ (migration D1 0005)
+
+Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.io.vn`.
+
+Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn index), không đổi bảng nào đã có, nên Worker cũ chạy đúng trên schema mới; Worker mới cần bốn bảng và ba secret Zalo (thiếu secret thì `wrangler deploy` từ chối); `setWebhook` cần route đã có (Zalo thử URL ngay khi lưu); chat mặc định **tắt** (`support_settings.enabled = '0'`), nên trong lúc chờ app và website, không ai gửi được tin; app và website chỉ nói điều đã thật nên đi sau; bật chat là bước cuối, bằng lệnh `/bat` gửi cho bot.
+
+**Điều kiện trước khi bắt đầu.**
+
+- **Mã xong.** Kế hoạch 01 đến 04 đã làm và đã rà, `pnpm check` trong `server/` xanh trên `main`.
+- **Bước 0 của kế hoạch 01 đạt** (`bench/2026-10-22-chat-ho-tro/spike.md`): điều 1, 3, 4. Điều 2 (bot vẫn nhắn được sau ít nhất 3 ngày không ai nhắn) có thể xong sau các bước server, nhưng **phải xong trước khi bật chat**.
+
+1. **Tạo Zalo Bot** (bước 0 đã tạo thì dùng lại bot đó): Zalo › tìm OA **Zalo Bot Manager** › **Tạo bot** › tên `Bot AI Translator` (phải bắt đầu bằng "Bot"). Zalo gửi Bot Token qua tin nhắn. Không dán token vào chat với Claude, vào file trong repo hay vào lệnh có lưu lịch sử.
+
+2. **Lấy `chat_id` của bạn.** Nhắn cho bot một tin bất kỳ, rồi (dòng `read` chờ bạn dán token, không hiện ra màn hình):
+
+   ```bash
+   read -rs ZALO_TOKEN && export ZALO_TOKEN
+   curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/getUpdates" -H 'content-type: application/json' -d '{"timeout":"5"}'
+   ```
+
+   Expected: JSON có `"ok":true`, trong `result` có `"event_name":"message.text.received"` và `"chat":{"id":"<chat_id>",…}`. Chép `<chat_id>`. `getUpdates` không chạy khi bot đã có webhook: lúc đó gọi `deleteWebhook` (cùng dạng URL, thân `{}`) rồi chạy lại.
+
+3. **Ba secret của Worker API** (giữ nguyên cửa sổ terminal tới bước 9, vì bước 8 cần `ZALO_HOOK`):
+
+   ```bash
+   ZALO_HOOK=$(openssl rand -hex 32)
+   printf '%s' "$ZALO_TOKEN" | pnpm exec wrangler secret put ZALO_BOT_TOKEN
+   printf '%s' "$ZALO_HOOK" | pnpm exec wrangler secret put ZALO_WEBHOOK_SECRET
+   printf '%s' '<chat_id>' | pnpm exec wrangler secret put ZALO_OWNER_CHAT_ID
+   ```
+
+   Expected: mỗi lệnh kết thúc bằng `✨ Success! Uploaded secret <TÊN>`. Đặt secret lên Worker đang chạy bản cũ không đổi hành vi (bản cũ không đọc ba secret này).
+
+4. **Kiểm trước khi áp (chỉ đọc), ghi lại kết quả để so sau:**
+
+   ```bash
+   pnpm exec wrangler d1 time-travel info mt-license-production
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE name LIKE 'support_%'"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM licenses) AS licenses, (SELECT COUNT(*) FROM orders) AS orders, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA foreign_key_check"
+   ```
+
+   Expected: `time-travel info` in mốc hiện tại (chép lại); câu thứ hai không trả dòng nào; chép lại ba số của câu thứ ba; `foreign_key_check` không trả dòng nào. Đã có bảng hay index `support_%` thì dừng và báo: ai đó đã áp tay.
+
+5. **Áp migration lên production:**
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: chỉ liệt kê `0005_support_chat.sql`, hỏi xác nhận (trả lời `y`), rồi `✅`. Lỗi thì dừng, không deploy Worker, báo chủ dự án.
+
+6. **Kiểm sau khi áp:**
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT type, name FROM sqlite_master WHERE name LIKE 'support_%' ORDER BY type, name"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT key, value FROM support_settings ORDER BY key"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM licenses) AS licenses, (SELECT COUNT(*) FROM orders) AS orders, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq"
+   ```
+
+   Expected: bốn index (`support_conversations_activity`, `support_conversations_customer`, `support_messages_conversation`, `support_messages_pending`) và bốn bảng (`support_conversations`, `support_messages`, `support_settings`, `support_zalo_updates`); hai dòng cài đặt `enabled = 0`, `zalo_fail_streak = 0`; ba số **bằng đúng** bước 4. Lệch thì dừng.
+
+7. **Deploy Worker API:**
+
+   ```bash
+   pnpm check && pnpm exec wrangler deploy
+   curl -s "$PROD/v1/health"; echo
+   curl -s "$PROD/v1/support/status"; echo
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST "$PROD/v1/webhooks/zalo"
+   ```
+
+   Expected: như mục 4 bước 9 (`Uploaded mt-license`, `schedule: */5 * * * *`, binding `SUPPORT_POLL_LIMITER`); `{"ok":true}`; `{"enabled":false}`; `403` (route có, từ chối vì thiếu header secret). **Kiểm cron chạy thật**: `pnpm exec wrangler tail mt-license --format pretty` qua một mốc 5 phút; Expected: có `{"event":"reconcile",…}` và **không có** `reconcile_step_failed` với `"step":"support_forward"`, `"support_emails"` hay `"support_prune"`. Không thấy cron thì `pnpm exec wrangler triggers deploy` rồi kiểm lại (sự cố 2026-10-07).
+
+8. **Đặt webhook.** Trước tiên `dig @8.8.8.8 api.aitranslator.io.vn +short` phải in địa chỉ IP (sự cố DNSSEC của `io.vn` ngày 2026-10-22: `SERVFAIL` thì Zalo cũng không gọi được webhook; đợi rồi làm lại). Rồi:
+
+   ```bash
+   curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/setWebhook" -H 'content-type: application/json' -d "{\"url\":\"$PROD/v1/webhooks/zalo\",\"secret_token\":\"$ZALO_HOOK\"}"; echo
+   curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/getWebhookInfo" -H 'content-type: application/json' -d '{}'; echo
+   ```
+
+   Expected: lệnh đầu `"ok":true` và `"verification":{"ok":true,…,"outcome":"webhook.ok",…}`; lệnh sau có `"url":"https://api.aitranslator.io.vn/v1/webhooks/zalo"`. `verification` không `ok` thì xem `hint`, sửa, chạy lại.
+
+9. **Thử hai chiều, rồi tắt lại.** Nhắn `/bat` cho bot (bot trả `Đã BẬT chat trên website và app.`), rồi gửi một tin như khách:
+
+   ```bash
+   R=$(curl -s -H 'content-type: application/json' -d '{"text":"Tin thử sau triển khai","lang":"vi","source":"app-debug","context":"kiểm tra runbook mục 11"}' "$PROD/v1/support/messages"); echo "$R"
+   T=$(printf '%s' "$R" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+   ```
+
+   Expected: JSON có `token` và `message`; Zalo của bạn nhận `🆕 #<MÃ> · app (debug) · vi · kiểm tra runbook mục 11` rồi dòng `Tin thử sau triển khai`. Trả lời bot `#<MÃ> Đã nhận` (bot đáp `✓ đã gửi tới #<MÃ>`), rồi:
+
+   ```bash
+   curl -s -H "authorization: Bearer $T" "$PROD/v1/support/messages?after=0"; echo
+   curl -s -X DELETE -H 'content-type: application/json' -H "authorization: Bearer $T" -d '{}' "$PROD/v1/support/conversation"; echo
+   ```
+
+   Expected: lệnh đầu có hai tin, tin thứ hai `"sender":"owner","text":"Đã nhận"`; lệnh sau `{"ok":true}` và Zalo nhận `#<MÃ> 🗑 khách đã xóa cuộc chat`. Nhắn `/ds` (bot trả `Không có cuộc chat nào trong 7 ngày qua.`), rồi `/tat` (bot trả `Đã TẮT chat…`); `curl -s "$PROD/v1/support/status"` in `{"enabled":false}`. Cuối cùng `unset ZALO_TOKEN ZALO_HOOK T R` và đóng terminal. Tin thử không về Zalo: xem `pnpm exec wrangler tail mt-license --format pretty` (sự kiện `support_forward_failed`), kiểm lại token ở bước 3. Câu trả lời không vào cuộc chat: xem sự kiện `zalo_webhook_*` trong tail; `zalo_webhook_unreadable` nghĩa là Zalo gửi dạng khác tài liệu (sửa `parseUpdate` ở `server/src/support/webhook.ts`, kèm test, rồi deploy lại).
+
+<!-- kế hoạch 04: các bước app, website, bật chat và thử tay -->
