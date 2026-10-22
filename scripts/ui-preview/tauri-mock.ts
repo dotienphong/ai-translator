@@ -5,7 +5,7 @@
 //
 // Tham số URL (đều không bắt buộc):
 //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
-//   screen=home|transcript|history|glossary|settings|upgrade|about  group=general|subtitles|audio|model|hotkeys|license|privacy
+//   screen=home|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|privacy
 //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
 //   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
@@ -24,6 +24,10 @@
 //     compose.html: state=empty|typing|loading|done|same|failed|blocked|permission|reopen (mặc định empty; trừ empty, trang tự gõ
 //     chữ mẫu rồi để giao diện đi đúng đường thật: chờ 400 ms, xin dịch, nhận chữ dịch; permission còn bấm Enter; reopen còn mở
 //     lại ô khi bản nháp đang có, như Esc rồi ⌃⌥G)  paste=0 (tắt tự dán)
+//   chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): chat=none|open|unread (chưa có cuộc chat, mặc định; cuộc chat mẫu một hỏi
+//     một đáp; như open mà câu trả lời chưa xem, mục Hỗ trợ có chấm đỏ)  support=off|closed (chủ dự án tắt chat; cuộc chat bị chặn)
+//     send=failed|ratelimited|busy|expired|disabled (kết quả của lệnh gửi tin; disabled: chat đã tắt, như phía Rust báo trạng
+//     tắt qua sự kiện rồi trả lỗi)  email=invalid (lưu email lỗi sai dạng)
 //   video giới thiệu (scripts/demo-video, spec 2026-10-21-demo-video §2.4): demo=1 thì không tự phát mức âm lượng ngẫu nhiên và
 //     không tự mở ô soạn; trang dựng cảnh (frame ngoài cùng) phát sự kiện qua `window.__demoEmit` và trả lời lệnh dịch của ô soạn
 //     qua `window.top.__demo.composeTranslate(id, emit)`
@@ -42,6 +46,7 @@ import type {
   PlansView,
   Settings,
   Subtitle,
+  SupportView,
 } from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
 
@@ -480,6 +485,66 @@ function orderFromUrl(): CheckoutView | null {
 }
 let pendingOrder = orderFromUrl();
 
+// ---------------------------------------------------------------- chat hỗ trợ
+
+// Cuộc chat mẫu theo ngôn ngữ giao diện: [câu hỏi của khách, câu trả lời của chủ dự án].
+const SUPPORT_SAMPLE: Record<UiLang, [string, string]> = {
+  vi: [
+    "Phụ đề không hiện khi họp Teams",
+    "Chào bạn, bạn đang dùng macOS bản nào? Bạn thử chọn nguồn âm thanh là Microsoft Teams ở màn hình chính nhé.",
+  ],
+  en: [
+    "Subtitles don't show up during Teams meetings",
+    "Hi! Which macOS version are you on? Please try choosing Microsoft Teams as the audio source on the home screen.",
+  ],
+  ja: [
+    "Teams の会議中に字幕が表示されません",
+    "こんにちは。macOS のバージョンを教えてください。ホーム画面で音声ソースに Microsoft Teams を選んでみてください。",
+  ],
+  zh: ["开 Teams 会议时字幕不显示", "你好！你用的是哪个 macOS 版本？请在主屏幕把音频来源选为 Microsoft Teams 试试。"],
+  ko: [
+    "Teams 회의 중에 자막이 나오지 않아요",
+    "안녕하세요! 어떤 macOS 버전을 쓰고 계신가요? 홈 화면에서 오디오 소스를 Microsoft Teams로 선택해 보세요.",
+  ],
+};
+const PLAN_NAMES = { free: "Free", monthly: "Monthly", six_months: "6 Months", yearly: "Yearly" } as const;
+
+function supportStart(): SupportView {
+  const chat = param("chat", "none");
+  const [question, answer] = pick(SUPPORT_SAMPLE);
+  const t0 = sec(now) - 600;
+  const messages =
+    chat === "open" || chat === "unread"
+      ? [
+          { id: 41, sender: "customer" as const, text: question, createdAt: t0 },
+          { id: 42, sender: "owner" as const, text: answer, createdAt: t0 + 300 },
+        ]
+      : [];
+  return {
+    enabled: param("support") !== "off",
+    closed: param("support") === "closed",
+    hasConversation: messages.length > 0,
+    messages,
+    unread: chat === "unread",
+    rev: 1,
+  };
+}
+let supportView = supportStart();
+
+function changeSupport(patch: Partial<SupportView>): SupportView {
+  supportView = { ...supportView, ...patch, rev: supportView.rev + 1 };
+  return supportView;
+}
+
+// Dòng thông tin máy mẫu như phía Rust dựng (`support::context::line`), theo hệ điều hành, gói và ngôn ngữ giao diện.
+function machineLine(): string {
+  const os =
+    platform === "macos"
+      ? "macOS 15.6 · Apple M4 Pro · 24 GB"
+      : "Windows 11 (26100) · Intel(R) Core(TM) i5-1345U · 16 GB · GPU Intel(R) Iris(R) Xe Graphics";
+  return `${info.name} ${info.version} · ${os} · ${PLAN_NAMES[plan]} · ${lang === "vi" ? "Chuẩn" : "Standard"} · UI ${lang}`;
+}
+
 // ---------------------------------------------------------------- sự kiện
 
 const listeners = new Map<string, Set<(e: { payload: unknown }) => void>>();
@@ -683,6 +748,36 @@ const handlers = {
     if (code) throw { code, field: null, message: "…" };
     return { id: "R-7F3K-92QD" };
   },
+  // Chat hỗ trợ: trạng thái trong bộ nhớ theo `chat=`, `support=`; gửi tin sau nửa giây, hay đúng lỗi của lệnh thật theo `send=`.
+  support_screen: ({ open }) => changeSupport(open ? { unread: false } : {}),
+  support_fetch: () => changeSupport({}),
+  support_machine_info: () => machineLine(),
+  support_send: async ({ text }) => {
+    await wait(500);
+    const codes: Record<string, string> = {
+      failed: "supportOffline",
+      ratelimited: "supportRateLimited",
+      busy: "supportBusy",
+      expired: "supportExpired",
+    };
+    const code = codes[param("send")];
+    if (code) throw { code, field: null, message: "…" };
+    if (param("send") === "disabled") {
+      emit("support://view", changeSupport({ enabled: false }));
+      throw { code: "supportDisabled", field: null, message: "…" };
+    }
+    const id = Math.max(42, ...supportView.messages.map((m) => m.id)) + 1;
+    return changeSupport({
+      hasConversation: true,
+      messages: [...supportView.messages, { id, sender: "customer", text, createdAt: sec(Date.now()) }],
+    });
+  },
+  support_set_email: async () => {
+    await wait(300);
+    if (param("email") === "invalid") throw { code: "supportInvalid", field: "email", message: "…" };
+    return null;
+  },
+  support_delete: () => changeSupport({ hasConversation: false, messages: [], unread: false }),
   check_for_updates: async () => {
     changeStatus({ updateCheck: "checking" });
     await wait(700);

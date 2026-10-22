@@ -10,7 +10,10 @@
 // chọn), công tắc ở Quyền riêng tư (bấm thì lưu), nút "Gửi log cho hỗ trợ" ở Giới thiệu (đang gửi, mã báo cáo, nút Sao chép, ba câu
 // lỗi). Gõ dịch (spec 2026-10-17-go-dich §1.2–§1.4): nhóm Cài đặt "Gõ dịch" (macOS có quyền, chưa có quyền; Windows không có mục
 // tự dán), và ô soạn (compose.html, 560×420) ở từng trạng thái: trống, đang dịch, đang nạp model, đã dịch, đã là ngôn ngữ đích,
-// lỗi, bị chặn vì bản quyền, hộp quyền Trợ năng, chỉ chép, giao diện tối. Ảnh PNG cho người kiểm xem ở
+// lỗi, bị chặn vì bản quyền, hộp quyền Trợ năng, chỉ chép, giao diện tối. Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): mục Hỗ
+// trợ giữa Nâng cấp và Giới thiệu, chấm đỏ, chữ của hợp đồng phía khách, ô "Gửi kèm thông tin máy", gửi bằng Enter (Shift+Enter xuống
+// dòng), tin gửi lỗi và gửi lại, thẻ email, menu ⋯ xóa, đính kèm log, chính sách mở trong app, chat tắt và cuộc chat đóng. Ảnh PNG
+// cho người kiểm xem ở
 // target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
 // thì in ra và thoát mã 1; không mở được trang thì báo ngay và thoát mã 1. Chrome luôn đóng (xóa thư mục hồ sơ tạm) khi xong.
 //
@@ -363,6 +366,130 @@ async function toggleReportsSwitch(page, ck) {
   await ck(`(() => { const c = ${reportSettingCalls}; return c.length === 2 && c[1].args.patch.sendErrorReports === true; })()`, "bấm lần nữa thì lưu sendErrorReports = true");
 }
 
+// ---------------------------------------------------------------- chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4)
+
+const TEXTAREA = ".support-compose textarea";
+const TWO_LINES = JSON.stringify("Dòng một\ndòng hai");
+const SEND = '.support-compose button[type="submit"]';
+// Các lần gọi một lệnh của IPC giả (window.__ipcCalls).
+const callsOf = (cmd) => `window.__ipcCalls.filter((c) => c.cmd === ${JSON.stringify(cmd)})`;
+
+// Shift+Enter trong ô nhập: xuống dòng (trình duyệt tự chèn, giao diện không chặn).
+async function shiftEnter(page) {
+  const key = { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 };
+  await page.s.send("Input.dispatchKeyEvent", { type: "keyDown", text: "\r", ...key });
+  await page.s.send("Input.dispatchKeyEvent", { type: "keyUp", ...key });
+  await sleep(100);
+}
+
+// Bấm thật: gõ hai dòng (Shift+Enter xuống dòng), Enter gửi; đang gửi hiện "Đang gửi…"; lệnh gửi nhận đúng chữ và cờ thông tin
+// máy (tích sẵn); gửi xong tin ghi "Đã gửi", ô tích biến mất, thẻ email hiện; lưu email thì gọi lệnh lưu và thẻ báo đã lưu.
+async function supportSendFirst(page, ck, lang) {
+  await type(page, TEXTAREA, "Dòng một");
+  await shiftEnter(page);
+  await type(page, TEXTAREA, "dòng hai");
+  await ck(`document.querySelector(${JSON.stringify(TEXTAREA)}).value === ${TWO_LINES}`, "Shift+Enter xuống dòng, không gửi");
+  await ck(`${callsOf("support_send")}.length === 0`, "chưa gửi gì");
+  await page.press("Enter");
+  await sleep(150);
+  await ck(
+    inPage(lang, `return document.querySelector(".msg.customer.sending .msg-status")?.textContent === t("support.sending");`),
+    "đang gửi: tin hiện ngay với support.sending",
+  );
+  await ck(`document.querySelector(${JSON.stringify(TEXTAREA)}).value === ""`, "gửi thì ô nhập trống");
+  await sleep(700);
+  await ck(
+    `(() => { const c = ${callsOf("support_send")}; return c.length === 1 && c[0].args.text === ${TWO_LINES} && c[0].args.withMachineInfo === true; })()`,
+    "Enter gửi đúng một lệnh support_send, kèm thông tin máy (ô tích sẵn)",
+  );
+  await ck(
+    inPage(lang, `const m = document.querySelector(".msg.customer:not(.sending)"); return !!m && m.querySelector(".msg-status").textContent === t("support.sent");`),
+    "gửi xong: tin ghi support.sent",
+  );
+  await ck(`!document.querySelector(".support-machine")`, "đã có cuộc chat: ô Gửi kèm thông tin máy biến mất");
+  await ck(
+    inPage(lang, `return document.querySelector(".support-email label")?.textContent === t("support.email.prompt");`),
+    "sau tin đầu tiên: thẻ email (support.email.prompt)",
+  );
+  await type(page, "#support-email", "khach@example.com");
+  await page.click('.support-email button[type="submit"]');
+  await sleep(500);
+  await ck(
+    `(() => { const c = ${callsOf("support_set_email")}; return c.length === 1 && c[0].args.email === "khach@example.com"; })()`,
+    "Lưu gọi support_set_email với đúng email",
+  );
+  await ck(inPage(lang, `return document.querySelector(".support-email").textContent.includes(t("support.email.saved"));`), "thẻ báo support.email.saved");
+}
+
+// Bấm thật: gửi lỗi (`send=ratelimited`): tin ở lại với câu lỗi đúng mã và nút gửi lại; bấm gửi lại thì gọi lệnh lần nữa với đúng chữ.
+async function supportSendFails(page, ck, lang) {
+  await type(page, TEXTAREA, "Còn đó không?");
+  await page.click(SEND);
+  await sleep(800);
+  await ck(
+    inPage(
+      lang,
+      `const m = document.querySelector(".msg.customer.failed"); return !!m && m.querySelector(".msg-status.error").textContent === t("error.supportRateLimited") && m.querySelector(".msg-retry").textContent === t("support.failed");`,
+    ),
+    "gửi lỗi: câu error.supportRateLimited và nút support.failed",
+  );
+  await page.click(".msg-retry");
+  await sleep(800);
+  await ck(
+    `(() => { const c = ${callsOf("support_send")}; return c.length === 2 && c.every((x) => x.args.text === "Còn đó không?" && x.args.withMachineInfo === false); })()`,
+    "gửi lại đúng nội dung đó (đã có cuộc chat: không kèm thông tin máy)",
+  );
+}
+
+// Bấm thật: menu ⋯ › Xóa cuộc trò chuyện hỏi lại; Hủy thì không xóa; đồng ý thì gọi lệnh xóa, về trạng thái mới (ô tích hiện lại).
+async function supportDelete(page, ck, lang) {
+  await page.click(".support-menu > button");
+  await ck(inPage(lang, `return document.querySelector(".support-menu-list button")?.textContent === t("support.delete");`), "menu ⋯ có support.delete");
+  await page.click(".support-menu-list button");
+  await ck(inPage(lang, `return document.querySelector(".support-chat .confirm span")?.textContent === t("support.delete.confirm");`), "hỏi lại trước khi xóa");
+  await page.click(".support-chat .confirm button:not(.danger)");
+  await ck(`!document.querySelector(".support-chat .confirm") && ${callsOf("support_delete")}.length === 0`, "Hủy thì không xóa");
+  await page.click(".support-menu > button");
+  await page.click(".support-menu-list button");
+  await page.click(".support-chat .confirm button.danger");
+  await sleep(300);
+  await ck(`${callsOf("support_delete")}.length === 1`, "đồng ý thì gọi đúng một lệnh support_delete");
+  await ck(`document.querySelectorAll(".support-log .msg").length === 1 && !!document.querySelector(".support-machine")`, "về trạng thái mới: chỉ còn lời chào, ô tích hiện lại");
+}
+
+// Bấm thật: chưa có cuộc chat, chat đã tắt (`send=disabled`): gửi tin đầu thì tin đó báo lỗi và ô nhập thành dòng chat tắt.
+async function supportSendDisabled(page, ck, lang) {
+  await type(page, TEXTAREA, "Chào");
+  await page.press("Enter");
+  await sleep(800);
+  await ck(
+    inPage(lang, `return document.querySelector(".msg.customer.failed .msg-status.error")?.textContent === t("error.supportDisabled");`),
+    "tin đầu báo lỗi error.supportDisabled",
+  );
+  await ck(
+    inPage(lang, `return !document.querySelector(${JSON.stringify(TEXTAREA)}) && document.querySelector(".support-blocked")?.textContent === t("error.supportDisabled");`),
+    "ô nhập thành dòng error.supportDisabled",
+  );
+}
+
+// Bấm thật: "Đính kèm log" chạy lệnh của nút Gửi log cho hỗ trợ, rồi gửi tin chứa mã báo cáo.
+async function supportAttachLog(page, ck, lang) {
+  await page.click(".support-actions button.ghost");
+  await sleep(1400);
+  await ck(`${callsOf("send_log_report")}.length === 1`, "đúng một lệnh send_log_report");
+  await ck(
+    inPage(lang, `const c = ${callsOf("support_send")}; return c.length === 1 && c[0].args.text === t("support.logMessage", { id: "R-7F3K-92QD" });`),
+    "gửi tin support.logMessage với mã R-7F3K-92QD",
+  );
+}
+
+// Bấm thật: "Quyền riêng tư" ở chân khung mở chính sách ngay trong app.
+async function supportPrivacy(page, ck) {
+  await page.click(".support-foot button.link");
+  await sleep(900);
+  await ck(`!!document.querySelector(".support-privacy .legal")`, "mở chính sách quyền riêng tư trong app");
+}
+
 // [tên, tham số URL, tùy chọn { prepare: biểu thức chạy trước khi kiểm, wait: ms, interact: async (page, ck, lang) bấm thật }]
 const SCREENS = [
   ["home", "screen=home"],
@@ -408,6 +535,20 @@ const SCREENS = [
   // Bấm thật (tên có "start": ảnh chụp là màn hình sau khi tạo đơn).
   ["upgrade-start-card", "screen=upgrade&plan=free", { interact: startByCard }],
   ["upgrade-start-qr", "screen=upgrade&plan=free", { interact: startByQr }],
+  // Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4).
+  ["support", "screen=support"],
+  ["support-windows", "screen=support&platform=windows"],
+  ["support-chat", "screen=support&chat=open"],
+  ["support-chat-dark", "screen=support&chat=open&theme=dark"],
+  ["support-unread", "screen=home&chat=unread"],
+  ["support-off", "screen=support&chat=open&support=off"],
+  ["support-closed", "screen=support&chat=open&support=closed"],
+  ["support-send", "screen=support", { interact: supportSendFirst }],
+  ["support-send-failed", "screen=support&chat=open&send=ratelimited", { interact: supportSendFails }],
+  ["support-send-disabled", "screen=support&send=disabled", { interact: supportSendDisabled }],
+  ["support-delete", "screen=support&chat=open", { interact: supportDelete }],
+  ["support-log", "screen=support&chat=open", { interact: supportAttachLog }],
+  ["support-privacy", "screen=support", { interact: supportPrivacy }],
   ["about", "screen=about"],
   // Nút "Gửi log cho hỗ trợ" (spec 2026-10-17 §5): bấm thật ra mã báo cáo, và ba lỗi của lệnh.
   ["about-report-sent", "screen=about", { interact: sendReport }],
@@ -620,6 +761,57 @@ const EXTRA = {
       ),
       "nhãn settings.privacy.errorReports và lời giải thích settings.privacy.errorReports.hint",
     ],
+  ],
+  // Chưa có cuộc chat: chữ của hợp đồng phía khách, ô tích sẵn và dòng thông tin máy, mục Hỗ trợ giữa Nâng cấp và Giới thiệu, mở màn
+  // hình không gọi lệnh nào ra mạng.
+  support: (lang) => [
+    [inPage(lang, `return document.querySelector(".support-head .hint").textContent === t("support.subtitle");`), "dòng phụ support.subtitle"],
+    [inPage(lang, `return document.querySelector(".support-log .msg.owner .msg-text").textContent === t("support.greeting");`), "lời chào support.greeting"],
+    [
+      inPage(lang, `return document.querySelector(".support-foot").textContent === t("support.footer") + " · " + t("support.privacy");`),
+      "chân khung support.footer · support.privacy",
+    ],
+    [`document.querySelector(".support-machine input[type=checkbox]")?.checked === true`, "ô Gửi kèm thông tin máy tích sẵn"],
+    [`document.querySelector(".support-machine-line")?.textContent.includes(" · UI ") === true`, "dòng thông tin máy hiện nguyên văn"],
+    [`document.querySelector(${JSON.stringify(SEND)}).disabled === true`, "ô trống: nút Gửi bị khóa"],
+    [
+      `${callsOf("support_screen")}.some((c) => c.args.open === true) && window.__ipcCalls.every((c) => !["support_fetch", "support_send", "support_set_email", "support_delete"].includes(c.cmd))`,
+      "mở màn hình khi chưa có cuộc chat: chỉ báo mở, không lệnh nào gọi mạng",
+    ],
+    [
+      inPage(
+        lang,
+        `const b = [...document.querySelectorAll(".nav button")]; return b.length === 8 && b[5].textContent === t("nav.upgrade") && b[6].textContent === t("nav.support") && b[6].getAttribute("aria-current") === "page" && b[7].textContent === t("nav.about");`,
+      ),
+      "mục Hỗ trợ nằm giữa Nâng cấp và Giới thiệu",
+    ],
+    [`!document.querySelector(".nav-dot")`, "không có chấm đỏ"],
+  ],
+  "support-windows": () => [
+    [`document.querySelector(".support-machine-line")?.textContent.includes("Windows 11 (26100)") === true`, "dòng thông tin máy của Windows"],
+  ],
+  // Đã có cuộc chat: lấy cả cuộc chat, không còn ô tích, có menu ⋯.
+  "support-chat": (lang) => [
+    [`document.querySelectorAll(".support-log .msg").length === 3`, "lời chào và hai tin của cuộc chat"],
+    [`!document.querySelector(".support-machine")`, "không còn ô Gửi kèm thông tin máy"],
+    [inPage(lang, `return document.querySelector(".support-menu > button")?.getAttribute("aria-label") === t("support.menu");`), "có menu ⋯ (support.menu)"],
+    [`${callsOf("support_fetch")}.length > 0`, "đã có cuộc chat: lấy cả cuộc chat"],
+  ],
+  // Câu trả lời chưa xem: chấm đỏ ở mục Hỗ trợ, nhãn của nút nói có câu trả lời mới.
+  "support-unread": (lang) => [
+    [
+      inPage(lang, `const b = [...document.querySelectorAll(".nav button")][6]; return !!b.querySelector(".nav-dot") && b.getAttribute("aria-label") === t("support.unread");`),
+      "mục Hỗ trợ có chấm đỏ và nhãn support.unread",
+    ],
+  ],
+  "support-off": (lang) => [
+    [`!document.querySelector(${JSON.stringify(TEXTAREA)})`, "chat tắt: không có ô nhập"],
+    [inPage(lang, `return document.querySelector(".support-blocked").textContent === t("error.supportDisabled");`), "dòng error.supportDisabled thay ô nhập"],
+    [`document.querySelectorAll(".support-log .msg").length === 3`, "lịch sử cũ vẫn hiện"],
+  ],
+  "support-closed": (lang) => [
+    [`!document.querySelector(${JSON.stringify(TEXTAREA)})`, "cuộc chat đóng: không có ô nhập"],
+    [inPage(lang, `return document.querySelector(".support-blocked").textContent === t("error.supportClosed");`), "dòng error.supportClosed thay ô nhập"],
   ],
   "settings-privacy-off": () => [[`document.querySelector("#error-reports").checked === false`, "reports=0: công tắc báo cáo lỗi tắt"]],
   "onboarding-2": (lang) => {
