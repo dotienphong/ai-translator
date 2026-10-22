@@ -452,6 +452,31 @@ export type OrderOutcome =
   | { state: "failed"; order_code: number }
   | { state: "paidButNotApplied"; order_code: number; code: string };
 
+// Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4; `support::api::SupportMessage`, `support::chat::SupportView`). Phía Rust giữ
+// token và nhịp hỏi tin mới; giao diện chỉ nhận trạng thái này, không có token.
+export interface SupportMessage {
+  id: number;
+  sender: "customer" | "owner";
+  text: string;
+  // Giây Unix.
+  createdAt: number;
+}
+
+export interface SupportView {
+  // Chat đang bật trên server. Chưa biết (chưa có cuộc chat: app không hỏi server khi chưa nhắn) thì `true`, để hiện ô nhập.
+  enabled: boolean;
+  // Chủ dự án đã chặn cuộc chat này.
+  closed: boolean;
+  // Đã có cuộc chat: ô "Gửi kèm thông tin máy" chỉ hiện khi chưa có.
+  hasConversation: boolean;
+  // Các tin đã biết, `id` tăng dần.
+  messages: SupportMessage[];
+  // Có câu trả lời mới chưa xem: chấm đỏ ở mục Hỗ trợ.
+  unread: boolean;
+  // Tăng mỗi lần trạng thái đổi: bản có `rev` nhỏ hơn bản đang có là cũ, bỏ qua.
+  rev: number;
+}
+
 export interface Commands {
   get_settings: { args: undefined; result: Settings };
   update_settings: { args: { patch: SettingsPatch }; result: Settings };
@@ -518,6 +543,19 @@ export interface Commands {
   // Nút "Gửi log cho hỗ trợ" ở Giới thiệu (spec 2026-10-17 §1, §5): dựng và gửi báo cáo ngay, kể cả khi tắt báo cáo tự động. Trả mã
   // báo cáo để người dùng đọc cho hỗ trợ. Lỗi: `reportFailed` (mạng hỏng), `reportRateLimited` (gửi quá nhiều), `reportRejected`.
   send_log_report: { args: undefined; result: { id: string } };
+  // Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4), chỉ cửa sổ chính. `support_screen`: màn hình Hỗ trợ mở hay đóng (lúc mở
+  // cửa sổ gọi với `false` để có chấm đỏ), không gọi mạng. Lúc mở màn hình: `support_fetch` (cả cuộc chat) chỉ khi đã có cuộc chat;
+  // chưa từng nhắn thì không gọi mạng. Lỗi: `supportOffline`, `supportRateLimited`, `supportBusy`, `supportDisabled`,
+  // `supportClosed`, `supportExpired`, `supportInvalid` (kèm `field`).
+  support_screen: { args: { open: boolean }; result: SupportView };
+  support_fetch: { args: undefined; result: SupportView };
+  // `withMachineInfo`: ô "Gửi kèm thông tin máy" đang tích; chỉ có tác dụng ở tin đầu tiên của cuộc chat.
+  support_send: { args: { text: string; withMachineInfo: boolean }; result: SupportView };
+  // `null`: bỏ email đã để lại.
+  support_set_email: { args: { email: string | null }; result: null };
+  support_delete: { args: undefined; result: SupportView };
+  // Dòng thông tin máy gửi kèm tin đầu tiên (không có key, email, mã máy, tên máy, tên người dùng), hiện nguyên văn cạnh ô tích.
+  support_machine_info: { args: undefined; result: string };
   hide_overlay: { args: undefined; result: null };
   begin_overlay_resize: { args: { edge: ResizeEdge }; result: null };
   overlay_resize_move: { args: undefined; result: null };
@@ -570,6 +608,8 @@ export interface Events {
   "compose://loading": { id: number };
   "compose://delta": ComposeDelta;
   "compose://done": ComposeDone;
+  // Chat hỗ trợ: trạng thái mới sau lần hỏi tin nền (tin mới, chấm đỏ, chat tắt, cuộc chat không còn).
+  "support://view": SupportView;
 }
 
 export type Command = keyof Commands;
