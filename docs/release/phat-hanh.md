@@ -1113,14 +1113,14 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
 
 1. **Tạo Zalo Bot** (bước 0 đã tạo thì dùng lại bot đó): Zalo › tìm OA **Zalo Bot Manager** › **Tạo bot** › tên `Bot AI Translator` (phải bắt đầu bằng "Bot"). Zalo gửi Bot Token qua tin nhắn. Không dán token vào chat với Claude, vào file trong repo hay vào lệnh có lưu lịch sử.
 
-2. **Lấy `chat_id` của bạn.** Nhắn cho bot một tin bất kỳ, rồi (dòng `read` chờ bạn dán token, không hiện ra màn hình):
+2. **Lấy `chat_id` của bạn.** Zalo **không giữ tin** cho `getUpdates`: chỉ tin nhắn tới **trong lúc** lệnh đang chờ mới tới (bước 0, `bench/2026-10-22-chat-ho-tro/spike.md`). Nên chạy lệnh trước (dòng `read` chờ bạn dán token, không hiện ra màn hình), rồi trong 30 giây lệnh đang chờ, nhắn cho bot một tin bất kỳ:
 
    ```bash
    read -rs ZALO_TOKEN && export ZALO_TOKEN
-   curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/getUpdates" -H 'content-type: application/json' -d '{"timeout":"5"}'
+   curl -s --max-time 40 -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/getUpdates" -H 'content-type: application/json' -d '{"timeout":30}'
    ```
 
-   Expected: JSON có `"ok":true`, trong `result` có `"event_name":"message.text.received"` và `"chat":{"id":"<chat_id>",…}`. Chép `<chat_id>`. `getUpdates` không chạy khi bot đã có webhook: lúc đó gọi `deleteWebhook` (cùng dạng URL, thân `{}`) rồi chạy lại.
+   Expected: JSON có `"ok":true`, `result` là object có `"event_name":"message.text.received"` và `"chat":{"id":"<chat_id>",…}`. Chép `<chat_id>`. Ra `{"ok":false,"description":"Request timeout","error_code":408}` nghĩa là không có tin nào trong lúc chờ: chạy lại lệnh `curl` rồi nhắn lại. Bot của bước 0 đã có `chat_id` trong `.env.zalo-spike` (dòng `ZALO_SPIKE_CHAT_ID`) thì dùng luôn. `getUpdates` không chạy khi bot đã có webhook: lúc đó gọi `deleteWebhook` (cùng dạng URL, thân `{}`) rồi chạy lại.
 
 3. **Ba secret của Worker API** (giữ nguyên cửa sổ terminal tới bước 9, vì bước 8 cần `ZALO_HOOK`):
 
