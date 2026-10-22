@@ -2389,3 +2389,49 @@ test("Liên hệ (năm ngôn ngữ): chat hỗ trợ cạnh email, ô Kênh khá
   }
   assert.deepEqual(errors, []);
 });
+
+test("Dữ liệu và bảo mật (năm ngôn ngữ): mục Chat hỗ trợ, hàng chat ở bảng máy chủ, chat trong mục kết nối và bên xử lý, không nêu tên bên chuyển tin", () => {
+  const cfg = [
+    {
+      path: "/bao-mat-du-lieu/", ids: { chat: "chat-ho-tro", server: "may-chu", network: "ket-noi-mang", processors: "ben-xu-ly" }, row: "Chat hỗ trợ:",
+      chat: ["Không lưu địa chỉ IP cùng cuộc chat", "chỉ đi kèm tin đầu tiên", "không bao giờ có key, email, mã máy hay tên máy", "không bắt buộc", "tự xóa sau 90 ngày kể từ tin cuối", "khi bạn yêu cầu qua email", "mục 11 của Chính sách quyền riêng tư"],
+      rowNeeds: ["tự xóa sau 90 ngày kể từ tin cuối"], network: ["cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi", "tin chat hỗ trợ bạn gửi"], processors: ["kể cả báo cáo lỗi và chat hỗ trợ", "dịch vụ nhắn tin đặt máy chủ ở Việt Nam"],
+    },
+    {
+      path: "/en/data-security/", ids: { chat: "support-chat", server: "server", network: "network", processors: "processors" }, row: "Support chat:",
+      chat: ["No IP address is stored with the chat", "goes only with your first message", "never contains your key, email, machine ID or computer name", "optional", "deleted automatically 90 days after the last message", "when you ask us by email", "section 11 of the Privacy policy"],
+      rowNeeds: ["deleted automatically 90 days after the last message"], network: ["plus support chat messages while you have the Support screen open or press send", "support chat messages you send"], processors: ["including error reports and the support chat", "messaging service with servers in Vietnam"],
+    },
+    {
+      path: "/ja/data-security/", ids: { chat: "support-chat", server: "server", network: "network", processors: "processors" }, row: "サポートチャット：",
+      chat: ["IP アドレスはチャットと一緒に保存しません", "最初のメッセージにだけ付き", "最後のメッセージから 90 日後に自動で削除します", "メールでご依頼いただいたときに削除します", "第 11 節"],
+      rowNeeds: ["最後のメッセージから 90 日後に自動で削除"], network: ["送信を押したときのサポートチャットのメッセージ", "送信したサポートチャットのメッセージ"], processors: ["エラーレポートとサポートチャットを含む", "ベトナム国内にサーバーを置くメッセージサービス"],
+    },
+    {
+      path: "/zh/data-security/", ids: { chat: "support-chat", server: "server", network: "network", processors: "processors" }, row: "客服聊天：",
+      chat: ["不会把 IP 地址和聊天一起保存", "只随第一条消息发送", "最后一条消息 90 天后自动删除", "在你通过邮件提出要求时删除", "第 11 节"],
+      rowNeeds: ["最后一条消息 90 天后自动删除"], network: ["点击发送时的客服聊天消息", "你发送的客服聊天消息"], processors: ["包括错误报告和客服聊天", "服务器位于越南的消息服务"],
+    },
+    {
+      path: "/ko/data-security/", ids: { chat: "support-chat", server: "server", network: "network", processors: "processors" }, row: "지원 채팅:",
+      chat: ["IP 주소는 채팅과 함께 저장하지 않습니다", "첫 메시지에만 붙으며", "마지막 메시지 90일 뒤 자동 삭제됩니다", "이메일로 요청하시면 삭제합니다", "제11절"],
+      rowNeeds: ["마지막 메시지 90일 뒤 자동 삭제"], network: ["보내기를 눌렀을 때의 지원 채팅 메시지", "보낸 지원 채팅 메시지"], processors: ["오류 보고서와 지원 채팅 포함", "베트남에 서버를 둔 메시징 서비스"],
+    },
+  ];
+  const errors = [];
+  for (const c of cfg) {
+    errors.push(...needsIn(`${c.path} #${c.ids.chat}`, textOf(pageSection(c.path, c.ids.chat)), c.chat));
+    const row = rowText(pageSection(c.path, c.ids.server), c.row);
+    if (!row) errors.push(`${c.path} #${c.ids.server}: không có hàng "${c.row}"`);
+    else errors.push(...needsIn(`${c.path} #${c.ids.server} hàng "${c.row}"`, row, c.rowNeeds));
+    errors.push(...needsIn(`${c.path} #${c.ids.network}`, textOf(pageSection(c.path, c.ids.network)), c.network));
+    errors.push(...needsIn(`${c.path} #${c.ids.processors}`, textOf(pageSection(c.path, c.ids.processors)), c.processors));
+    // Tên bên chuyển tin chỉ nằm ở Chính sách quyền riêng tư (spec mục 5). Chỉ đọc phần thân <main>: chân trang chung của mọi trang
+    // có câu nhãn hiệu "Zoom, Microsoft Teams, Google Meet, Zalo… thuộc về chủ sở hữu" (tên app họp, không phải bên xử lý).
+    const main = /<main id="main">([\s\S]*)<\/main>/.exec(htmlByPath.get(c.path) ?? "")?.[1] ?? "";
+    if (!main) errors.push(`${c.path}: không tìm thấy <main id="main">`);
+    const leak = /zalo|\bVNG\b/i.exec(textOf(main));
+    if (leak) errors.push(`${c.path}: thân trang nêu "${leak[0]}" (chỉ chính sách được nêu bên xử lý)`);
+  }
+  assert.deepEqual(errors, []);
+});

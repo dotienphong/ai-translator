@@ -13,6 +13,7 @@ const TOC = [
   { level: 2, id: "da-kiem", text: "Chúng tôi đã kiểm tra điều đó thế nào?" },
   { level: 2, id: "may-chu", text: "Máy chủ lưu gì và giữ bao lâu?" },
   { level: 2, id: "bao-cao-loi", text: "Báo cáo lỗi: app gửi gì khi gặp lỗi?" },
+  { level: 2, id: "chat-ho-tro", text: "Chat hỗ trợ: tin nhắn đi đâu, giữ bao lâu?" },
   { level: 2, id: "xoa-du-lieu", text: "Làm sao để xóa dữ liệu của bạn?" },
   { level: 2, id: "ben-xu-ly", text: "Bên nào khác xử lý dữ liệu?" },
   { level: 2, id: "bao-ve", text: "Những lớp bảo vệ khác" },
@@ -30,8 +31,8 @@ export default {
   description:
     "AI Translator xử lý âm thanh trên máy bạn, không gửi đi. Xem dữ liệu nào ở lại trên máy, app kết nối tới đâu, máy chủ lưu gì, giữ bao lâu và cách yêu cầu xóa.",
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
-  llm: "Dữ liệu ở lại trên máy, năm nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS, dữ liệu máy chủ lưu và thời gian giữ, báo cáo lỗi tự động (gửi gì, tắt thế nào), bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
+  modified: "2026-10-22",
+  llm: "Dữ liệu ở lại trên máy, năm nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS, dữ liệu máy chủ lưu và thời gian giữ, báo cáo lỗi tự động (gửi gì, tắt thế nào), chat hỗ trợ (lưu gì, giữ bao lâu), bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
   llmTitle: "Dữ liệu và bảo mật của AI Translator",
   body: () => `
 ${pageHero({
@@ -48,11 +49,11 @@ ${docLayout({
   body: `
 ${facts([
   ["Xử lý AI", "Nhận dạng và dịch bằng model AI chạy trên máy bạn; không dùng AI trên cloud"],
-  ["Dữ liệu cuộc hội thoại", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
+  ["Dữ liệu cuộc họp", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
-  ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh, chữ chép lời hay chữ bạn gõ"],
-  ["Máy chủ lưu", "Email (khi mua), đơn hàng, license, mã băm ID máy, báo cáo lỗi"],
-  ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày"],
+  ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh, chữ chép lời hay chữ bạn gõ ở Gõ dịch"],
+  ["Máy chủ lưu", "Email (khi mua), đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
+  ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày; chat hỗ trợ 90 ngày"],
   ["Đã kiểm", "Proxy và nettop trên macOS"],
   ["Ký số", "macOS ký ad-hoc, chưa notarize; Windows chưa ký"],
 ])}
@@ -71,11 +72,11 @@ ${facts([
 <p>Trên macOS, Gõ dịch xin quyền Trợ năng (Accessibility) chỉ để gửi tổ hợp dán ⌘V vào ô chat bạn đang gõ. App không đọc chữ, nội dung hay clipboard của app khác; không cấp quyền thì app chỉ chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>).</p>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
+<p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ ở Gõ dịch. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn), cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi. Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch)</td></tr>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi, chat hỗ trợ; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch); tin chat hỗ trợ bạn gửi, kèm dòng thông tin máy nếu bạn để tích và email nếu bạn tự để lại (chỉ khi bạn dùng chat)</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>Tải model và kiểm tra, tải bản cập nhật</td><td>Chỉ yêu cầu tải file</td></tr>
 <tr><th scope="row">Trang thanh toán PayOS (pay.payos.vn)</th><td>Thanh toán VietQR khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
 <tr><th scope="row">Trang thanh toán Creem (www.creem.io)</th><td>Thanh toán bằng thẻ quốc tế khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app. Email bạn nhập đi từ máy chủ của chúng tôi sang Creem, không đi từ app (xem bảng “Bên nào khác xử lý dữ liệu?”)</td></tr>
@@ -90,10 +91,10 @@ ${facts([
 <li><strong>Từ đánh dấu</strong> trong câu mẫu: không có trong log của app lẫn trong các request đã ghi.</li>
 <li><strong>Báo cáo lỗi tự động</strong> (đo lại ngày 17/10/2026 với bản release ký ad-hoc có tính năng này, cùng máy): trong một phiên 12 phút 31 giây, chúng tôi cố ý làm một tiến trình phụ chết ở phút thứ 5 để app xếp một báo cáo lỗi vào hàng đợi. Suốt hơn 7 phút còn lại của phiên không có request nào gửi báo cáo; báo cáo tới máy chủ của chúng tôi 1 giây sau khi bấm Dừng. Thân báo cáo nặng 49,8 KB và không chứa tên tài khoản, đường dẫn thư mục cá nhân, email hay từ đánh dấu của câu mẫu.</li>
 </ul>
-${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đo trên macOS, một máy, một bản dựng ký ad-hoc; phần báo cáo lỗi tự động chỉ đo một lượt (một phiên 12 phút, một báo cáo). Đây là kiểm tra nội bộ, chưa qua kiểm toán độc lập; chế độ proxy không bắt được request của WebView và luồng không phải HTTP nên chúng tôi bù bằng nettop." })}
+${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đo trên macOS, một máy, một bản dựng ký ad-hoc; phần báo cáo lỗi tự động chỉ đo một lượt (một phiên 12 phút, một báo cáo), còn chat hỗ trợ chưa được đo bằng proxy. Đây là kiểm tra nội bộ, chưa qua kiểm toán độc lập; chế độ proxy không bắt được request của WebView và luồng không phải HTTP nên chúng tôi bù bằng nettop." })}
 
 <h2 id="may-chu">Máy chủ lưu gì và giữ bao lâu?</h2>
-<p>Máy chủ lưu những dữ liệu dưới đây. Dòng dùng thử Free áp cho mọi máy đã đăng ký dùng thử; các dòng còn lại chỉ có khi bạn mua gói hoặc kích hoạt key, trừ dòng báo cáo lỗi (áp cho mọi máy mà app gửi báo cáo).</p>
+<p>Máy chủ lưu những dữ liệu dưới đây. Dòng dùng thử Free áp cho mọi máy đã đăng ký dùng thử; các dòng còn lại chỉ có khi bạn mua gói hoặc kích hoạt key, trừ dòng báo cáo lỗi (áp cho mọi máy mà app gửi báo cáo) và dòng chat hỗ trợ (áp cho mọi người đã nhắn ở chat).</p>
 <div class="table-wrap" role="region" aria-label="Dữ liệu máy chủ lưu" tabindex="0"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Mục đích</th></tr></thead>
 <tbody>
@@ -105,8 +106,9 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 <tr><th scope="row">Nhật ký thay đổi license</th><td>Hỗ trợ và tra soát sự cố</td></tr>
 <tr><th scope="row">Bộ đếm giới hạn tần suất (chỉ giá trị băm, tự hết hạn sau khoảng 3 giờ)</th><td>Chặn dò key và spam</td></tr>
 <tr><th scope="row">Báo cáo lỗi: loại và mã lỗi, thông tin máy, mã băm ID máy, phần log liên quan</th><td>Tìm và sửa lỗi; tự xóa sau 30 ngày (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>)</td></tr>
+<tr><th scope="row">Chat hỗ trợ: tin nhắn của bạn và câu trả lời, nguồn, ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (app), email nếu bạn tự để lại</th><td>Trả lời bạn; tự xóa sau 90 ngày kể từ tin cuối (xem <a href="#chat-ho-tro">Chat hỗ trợ</a>)</td></tr>
 </tbody></table></div>
-<p><strong>Giữ bao lâu:</strong> cho tới khi bạn yêu cầu xóa; chúng tôi không tự xóa (trừ báo cáo lỗi, tự xóa sau 30 ngày). Chúng tôi không nhận số thẻ hay số tài khoản ngân hàng của bạn. Với VietQR, chúng tôi không gửi email của bạn sang PayOS; với thẻ quốc tế, chúng tôi gửi email bạn nhập ở màn hình Nâng cấp cho Creem, để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Nếu chỉ dùng Free, máy chủ không có email hay tên máy của bạn.</p>
+<p><strong>Giữ bao lâu:</strong> cho tới khi bạn yêu cầu xóa; chúng tôi không tự xóa (trừ báo cáo lỗi, tự xóa sau 30 ngày, và chat hỗ trợ, tự xóa sau 90 ngày kể từ tin cuối). Chúng tôi không nhận số thẻ hay số tài khoản ngân hàng của bạn. Với VietQR, chúng tôi không gửi email của bạn sang PayOS; với thẻ quốc tế, chúng tôi gửi email bạn nhập ở màn hình Nâng cấp cho Creem, để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Nếu chỉ dùng Free, máy chủ không có email hay tên máy của bạn, trừ email bạn tự để lại trong chat hỗ trợ.</p>
 
 <h2 id="bao-cao-loi">Báo cáo lỗi: app gửi gì khi gặp lỗi?</h2>
 <p>Khi app gặp lỗi, nó tự gửi một báo cáo lỗi cho chúng tôi để chúng tôi biết và sửa. Tính năng này bật mặc định (kể cả sau khi bạn cập nhật từ bản cũ hơn); bạn tắt hay bật lại ở <strong>Cài đặt › Quyền riêng tư</strong>, và bỏ tích được ngay ở bước Điều khoản khi mở app lần đầu. Ở màn hình <strong>Giới thiệu</strong>, nút <strong>Gửi log cho hỗ trợ</strong> gửi ngay một báo cáo (kể cả khi bạn đã tắt gửi tự động) và cho bạn <strong>mã báo cáo</strong> để ghi vào thư gửi hỗ trợ.</p>
@@ -121,12 +123,22 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 </tbody></table></div>
 <p>Chúng tôi chỉ dùng báo cáo để tìm và sửa lỗi, không dùng cho quảng cáo và không chia sẻ cho bên nào ngoài các bên xử lý ở bảng bên dưới. Văn bản đầy đủ ở mục 10 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>
 
+<h2 id="chat-ho-tro">Chat hỗ trợ: tin nhắn đi đâu, giữ bao lâu?</h2>
+<p>Bạn nhắn cho chúng tôi được bằng nút chat ở góc dưới bên phải mỗi trang của website này, hoặc ở mục <strong>Hỗ trợ</strong> trong app. Tin nhắn đi qua máy chủ của chúng tôi tới người vận hành AI Translator, và câu trả lời hiện lại trong khung chat. Dùng chat là do bạn chọn: chưa từng nhắn thì app không kết nối gì cho chat.</p>
+<ul>
+<li><strong>Máy chủ lưu:</strong> tin nhắn của bạn và câu trả lời, thời điểm, nguồn (website hay app), ngôn ngữ, trang bạn đang xem lúc mở chat (website), dòng thông tin máy nếu bạn để tích (app), và email nếu bạn tự để lại. Không lưu địa chỉ IP cùng cuộc chat.</li>
+<li><strong>Thông tin máy (app):</strong> ô này tích sẵn, bỏ tích được, chỉ đi kèm tin đầu tiên và hiện nguyên văn trước khi gửi; không bao giờ có key, email, mã máy hay tên máy.</li>
+<li><strong>Email:</strong> không bắt buộc; chỉ dùng để gửi câu trả lời qua email khi bạn đã rời khung chat.</li>
+<li><strong>Giữ bao lâu:</strong> tự xóa sau 90 ngày kể từ tin cuối. Bạn xóa ngay được cuộc trò chuyện ở menu ⋯ của khung chat; bản sao tin nhắn đã tới người trả lời thì được xóa khi bạn yêu cầu qua email.</li>
+</ul>
+<p>Văn bản đầy đủ, kể cả bên chuyển tin nhắn, ở mục 11 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>
+
 <h2 id="xoa-du-lieu">Làm sao để xóa dữ liệu của bạn?</h2>
 ${steps(
   [
     { title: "Xóa dữ liệu trên máy", text: "Vào <strong>Cài đặt › Quyền riêng tư</strong>. <em>Xóa toàn bộ dữ liệu</em> xóa lịch sử và từ điển; <em>Xóa model và dữ liệu</em> xóa thêm model đã tải (trên macOS, bấm nút này trước khi kéo app vào Thùng rác). Bản quyền, hạn mức và cài đặt được giữ." },
     { title: "Yêu cầu xóa trên máy chủ", text: `Gửi email tới ${MAIL} <strong>từ chính email đã dùng khi mua</strong> để chúng tôi xác nhận là bạn. Chính sách quyền riêng tư cũng cho bạn quyền biết dữ liệu nào đang được lưu, rút lại sự đồng ý và khiếu nại theo quy định của Luật Bảo vệ dữ liệu cá nhân của Việt Nam. Chúng tôi xử lý trong thời hạn pháp luật quy định.` },
-    { title: "Điều chúng tôi làm", text: "Bỏ email và tên máy của bạn, và xóa báo cáo lỗi của các máy từng kích hoạt key của email đó. License vẫn dùng được, nhưng không khôi phục qua email được nữa." },
+    { title: "Điều chúng tôi làm", text: "Bỏ email và tên máy của bạn, xóa báo cáo lỗi của các máy từng kích hoạt key của email đó, và xóa các cuộc chat hỗ trợ mà bạn đã để lại email đó (kể cả bản đã tới người trả lời). License vẫn dùng được, nhưng không khôi phục qua email được nữa." },
   ],
   true,
 )}
@@ -138,10 +150,10 @@ ${steps(
 <tbody>
 <tr><th scope="row">PayOS (Việt Nam)</th><td>Xử lý thanh toán VietQR</td><td>Mã đơn, số tiền, mô tả đơn. Không có email của bạn.</td></tr>
 <tr><th scope="row">Creem (Armitage Labs OÜ, Estonia)</th><td>Bên bán lại (merchant of record) của đơn thẻ: xử lý thanh toán, thuế và biên lai</td><td>Chúng tôi gửi mã đơn, gói, số tiền, loại tiền và email bạn nhập, ngay khi bạn bấm thanh toán bằng thẻ (kể cả khi bạn không trả), để điền sẵn trang thanh toán và để Creem gửi biên lai. Ở trang thanh toán, Creem tự thu số thẻ, tên, địa chỉ thanh toán và nước (để tính thuế), địa chỉ IP (chống gian lận); chúng tôi không nhận số thẻ. Creem xử lý các dữ liệu đó theo chính sách riêng (https://www.creem.io/privacy). Thông báo thanh toán Creem gửi máy chủ của chúng tôi có tên và nước người mua; chúng tôi không lưu hai thông tin này.</td></tr>
-<tr><th scope="row">Cloudflare</th><td>Chạy máy chủ bản quyền, cơ sở dữ liệu; lưu và phân phối model, bản cập nhật</td><td>Dữ liệu ở bảng trên, kể cả báo cáo lỗi; nhật ký kỹ thuật tự hết hạn</td></tr>
-<tr><th scope="row">Resend</th><td>Gửi email chứa key</td><td>Email của bạn và nội dung thư (có key); nhật ký thư theo chính sách lưu của Resend</td></tr>
+<tr><th scope="row">Cloudflare</th><td>Chạy máy chủ bản quyền, cơ sở dữ liệu; lưu và phân phối model, bản cập nhật</td><td>Dữ liệu ở bảng trên, kể cả báo cáo lỗi và chat hỗ trợ; nhật ký kỹ thuật tự hết hạn</td></tr>
+<tr><th scope="row">Resend</th><td>Gửi email chứa key, và câu trả lời chat hỗ trợ khi bạn để lại email</td><td>Email của bạn và nội dung thư (có key, hay câu trả lời chat); nhật ký thư theo chính sách lưu của Resend</td></tr>
 </tbody></table></div>
-<p>Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu có thể được xử lý ở nước ngoài. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.</p>
+<p>Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu có thể được xử lý ở nước ngoài. Tin nhắn chat hỗ trợ còn đi qua một dịch vụ nhắn tin đặt máy chủ ở Việt Nam để tới người trả lời (không kèm email của bạn); tên bên này và dữ liệu họ nhận có ở mục 6 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.</p>
 
 <h2 id="bao-ve">Những lớp bảo vệ khác</h2>
 <ul>

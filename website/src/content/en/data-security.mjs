@@ -13,6 +13,7 @@ const TOC = [
   { level: 2, id: "verified", text: "How did we check that?" },
   { level: 2, id: "server", text: "What do our servers store, and for how long?" },
   { level: 2, id: "error-reports", text: "Error reports: what does the app send?" },
+  { level: 2, id: "support-chat", text: "Support chat: where do messages go?" },
   { level: 2, id: "delete-data", text: "How do I delete my data?" },
   { level: 2, id: "processors", text: "Who else processes data?" },
   { level: 2, id: "protections", text: "Other protections" },
@@ -30,8 +31,8 @@ export default {
   description:
     "AI Translator processes audio on your computer and never sends it out. See what stays on your device, where it connects, what servers store, and how to delete it.",
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
-  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS, what our servers store and for how long, automatic error reports (what is sent, how to turn them off), processors, protections, signing status and how to request deletion.",
+  modified: "2026-10-22",
+  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS, what our servers store and for how long, automatic error reports (what is sent, how to turn them off), the support chat (what is stored, for how long), processors, protections, signing status and how to request deletion.",
   llmTitle: "Data and security in AI Translator",
   body: () => `
 ${pageHero({
@@ -48,11 +49,11 @@ ${docLayout({
   body: `
 ${facts([
   ["AI processing", "Speech recognition and translation use AI models running on your computer; no cloud AI"],
-  ["Conversation data", "Only on your computer; our server has none"],
+  ["Meeting data", "Only on your computer; our server has none"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
-  ["Network", "Five places; none of them receives audio, transcripts or the text you type"],
-  ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID, error reports"],
-  ["Kept for", "Until you ask us to delete it; error reports 30 days"],
+  ["Network", "Five places; none of them receives audio, transcripts or the text you type in Type &amp; Translate"],
+  ["Servers store", "Email (when you buy), orders, licenses, hashed machine ID, error reports, support chat messages"],
+  ["Kept for", "Until you ask us to delete it; error reports 30 days; support chat 90 days"],
   ["Checked", "Proxy and nettop on macOS"],
   ["Code signing", "macOS ad-hoc signed, not notarized; Windows not signed"],
 ])}
@@ -71,11 +72,11 @@ ${facts([
 <p>On macOS, Type &amp; Translate asks for the Accessibility permission only to send the ⌘V paste keys to the chat box you are typing in. The app does not read text, content or the clipboard of other apps; without the permission it only copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>).</p>
 
 <h2 id="network">Where does the app connect?</h2>
-<p>To exactly five places, and none of them receives audio, transcript content or the text you type. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
+<p>To exactly five places, and none of them receives audio, transcript content or the text you type in Type &amp; Translate. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due), plus support chat messages while you have the Support screen open or press send. Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating)</td></tr>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports, the support chat; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating); support chat messages you send, with the machine details line if you leave it ticked and your email if you choose to leave it (only if you use the chat)</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>Downloading models, checking for and downloading app updates</td><td>File download requests only</td></tr>
 <tr><th scope="row">PayOS payment page (pay.payos.vn)</th><td>VietQR payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
 <tr><th scope="row">Creem payment page (www.creem.io)</th><td>International card payment when you buy a plan</td><td>Opens in your browser, not inside the app. Your email goes to Creem from our server, not from the app (see “Who else processes data?”)</td></tr>
@@ -90,10 +91,10 @@ ${facts([
 <li><strong>Marker words</strong> from the sample sentence: found neither in the app's log nor in the recorded requests.</li>
 <li><strong>Automatic error reports</strong> (re-measured on 17 October 2026 with an ad-hoc signed release build that has this feature, same machine): in a 12-minute-31-second session we deliberately killed a helper program at the 5-minute mark so the app queued an error report. For the remaining 7-plus minutes of the session no request sent a report; it reached our server 1 second after Stop was pressed. The report body was 49.8 KB and contained no account name, personal folder path, email address or marker words from the sample sentence.</li>
 </ul>
-${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build; the automatic error report was measured once (one 12-minute session, one report). This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
+${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on macOS, one machine, one ad-hoc signed build; the automatic error report was measured once (one 12-minute session, one report), and the support chat has not been measured with the proxy yet. This is an internal check, not an independent audit; the proxy mode cannot see WebView requests or non-HTTP traffic, so we covered that with nettop." })}
 
 <h2 id="server">What do our servers store, and for how long?</h2>
-<p>Our servers store the data below. The Free trial row applies to every device that registered for the trial; the other rows exist only if you buy a plan or activate a key, except the error-reports row, which applies to every device whose app sends a report.</p>
+<p>Our servers store the data below. The Free trial row applies to every device that registered for the trial; the other rows exist only if you buy a plan or activate a key, except the error-reports row, which applies to every device whose app sends a report, and the support-chat row, which applies to everyone who writes in the chat.</p>
 <div class="table-wrap" role="region" aria-label="Data our servers store" tabindex="0"><table>
 <thead><tr><th scope="col">Data</th><th scope="col">Purpose</th></tr></thead>
 <tbody>
@@ -105,8 +106,9 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 <tr><th scope="row">License change log</th><td>Support and incident investigation</td></tr>
 <tr><th scope="row">Rate-limit counters (hashed values only, expire after about 3 hours)</th><td>Blocking key guessing and spam</td></tr>
 <tr><th scope="row">Error reports: error type and code, machine details, hashed machine ID, the relevant part of the log</th><td>Finding and fixing bugs; deleted automatically after 30 days (see <a href="#error-reports">Error reports</a>)</td></tr>
+<tr><th scope="row">Support chat: your messages and our replies, source, language, the page you were on (website), the machine details line if you left it ticked (app), your email if you chose to leave it</th><td>Replying to you; deleted automatically 90 days after the last message (see <a href="#support-chat">Support chat</a>)</td></tr>
 </tbody></table></div>
-<p><strong>Kept for:</strong> until you ask us to delete it; we never delete personal data on our own (except error reports, which are deleted automatically after 30 days). We do not receive your card or bank account numbers. For VietQR we do not send your email to PayOS; for an international card, we send the email you enter on the Upgrade screen to Creem, to pre-fill its payment page and so that Creem can email you a receipt. If you only use Free, our servers hold no email or device name for you.</p>
+<p><strong>Kept for:</strong> until you ask us to delete it; we never delete personal data on our own (except error reports, which are deleted automatically after 30 days, and the support chat, deleted 90 days after the last message). We do not receive your card or bank account numbers. For VietQR we do not send your email to PayOS; for an international card, we send the email you enter on the Upgrade screen to Creem, to pre-fill its payment page and so that Creem can email you a receipt. If you only use Free, our servers hold no email or device name for you, except an email you choose to leave in the support chat.</p>
 
 <h2 id="error-reports">Error reports: what does the app send when it hits an error?</h2>
 <p>When the app hits an error, it automatically sends us an error report so we can find and fix the problem. This is on by default (including after you update from an older version); you turn it off or back on in <strong>Settings › Privacy</strong>, and you can untick it right at the Terms step the first time you open the app. The <strong>Send log to support</strong> button on the <strong>About</strong> screen sends a report immediately (even if you turned automatic sending off) and gives you a <strong>report code</strong> to put in your email to support.</p>
@@ -121,12 +123,22 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 </tbody></table></div>
 <p>We use reports only to find and fix bugs, not for advertising, and we do not share them with anyone other than the processors in the table below. The full text is in section 10 of the <a href="/en/privacy/">Privacy policy</a>.</p>
 
+<h2 id="support-chat">Support chat: where do your messages go, and for how long?</h2>
+<p>You can write to us with the chat button at the bottom right of every page of this website, or on the <strong>Support</strong> screen in the app. Your messages go through our server to the person who runs AI Translator, and the reply appears in the same chat. Using the chat is up to you: if you have never written in it, the app makes no connection for it.</p>
+<ul>
+<li><strong>Our server stores:</strong> your messages and our replies, their times, the source (website or app), the language, the page you were on when you opened the chat (website), the machine details line if you left it ticked (app), and your email if you chose to leave it. No IP address is stored with the chat.</li>
+<li><strong>Machine details (app):</strong> the box is ticked by default, can be unticked, goes only with your first message and is shown word for word before sending; it never contains your key, email, machine ID or computer name.</li>
+<li><strong>Email:</strong> optional; used only to email you our reply when you have left the chat.</li>
+<li><strong>How long:</strong> deleted automatically 90 days after the last message. You can delete the conversation right away from the ⋯ menu of the chat; the copy of your messages that reached the person who replies is deleted when you ask us by email.</li>
+</ul>
+<p>The full text, including who carries the messages, is in section 11 of the <a href="/en/privacy/">Privacy policy</a>.</p>
+
 <h2 id="delete-data">How do I delete my data?</h2>
 ${steps(
   [
     { title: "Delete data on your computer", text: "Go to <strong>Settings › Privacy</strong>. <em>Delete all data</em> removes history and glossary; <em>Delete models and data</em> also removes downloaded models (on macOS, do this before you drag the app to the Trash). Your license, quota and settings are kept." },
     { title: "Ask us to delete server data", text: `Email ${MAIL} <strong>from the same email you used to buy</strong>, so we can confirm it is you. Our Privacy policy also gives you the right to know what is stored, to withdraw consent and to complain, as set out in Vietnam's personal data protection law. We handle requests within the time the law sets.` },
-    { title: "What we do", text: "We remove your email and device name, and delete the error reports of the machines that ever activated a key for that email. Your license still works, but can no longer be recovered by email." },
+    { title: "What we do", text: "We remove your email and device name, delete the error reports of the machines that ever activated a key for that email, and delete the support chats in which you left that email (including the copy that reached the person who replies). Your license still works, but can no longer be recovered by email." },
   ],
   true,
 )}
@@ -138,10 +150,10 @@ ${steps(
 <tbody>
 <tr><th scope="row">PayOS (Vietnam)</th><td>Processes VietQR payments</td><td>Order code, amount, order description. Not your email.</td></tr>
 <tr><th scope="row">Creem (Armitage Labs OÜ, Estonia)</th><td>Merchant of record (reseller) for card orders: handles the payment, tax and receipt</td><td>We send the order code, plan, amount, currency and the email you entered as soon as you click to pay by card (even if you then do not pay), to pre-fill the payment page and so that Creem can email you a receipt. On its payment page, Creem itself collects your card number, name, billing address and country (to calculate tax) and IP address (to prevent fraud); we do not receive your card number. Creem processes that data under its own policy (https://www.creem.io/privacy). The payment notification Creem sends to our server includes the buyer's name and country; we do not store these two items.</td></tr>
-<tr><th scope="row">Cloudflare</th><td>Runs the license server and database; stores and serves models and updates</td><td>The data in the table above, including error reports; technical logs that expire on their own</td></tr>
-<tr><th scope="row">Resend</th><td>Sends the email that contains your key</td><td>Your email and the message (with the key); mail logs kept under Resend's own policy</td></tr>
+<tr><th scope="row">Cloudflare</th><td>Runs the license server and database; stores and serves models and updates</td><td>The data in the table above, including error reports and the support chat; technical logs that expire on their own</td></tr>
+<tr><th scope="row">Resend</th><td>Sends the email that contains your key, and our support chat reply if you left an email</td><td>Your email and the message (with the key, or our chat reply); mail logs kept under Resend's own policy</td></tr>
 </tbody></table></div>
-<p>Cloudflare and Resend operate servers outside Vietnam, and Creem is an Estonian company, so data may be processed abroad. We do not sell your data and do not share it for advertising.</p>
+<p>Cloudflare and Resend operate servers outside Vietnam, and Creem is an Estonian company, so data may be processed abroad. Support chat messages also pass through a messaging service with servers in Vietnam to reach the person who replies (without your email); its name and the data it receives are in section 6 of the <a href="/en/privacy/">Privacy policy</a>. We do not sell your data and do not share it for advertising.</p>
 
 <h2 id="protections">Other protections</h2>
 <ul>
