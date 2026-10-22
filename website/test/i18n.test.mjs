@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LANGS, LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, fromEn, formatDate } from "../src/langs.mjs";
 import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
+import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
 
 test("LANGS: năm ngôn ngữ, thẻ BCP 47 (tiếng Trung giản thể là zh-Hans), tiền tố, og:locale, tên bản ngữ", () => {
   assert.deepEqual(LANG_CODES, ["vi", "en", "ja", "zh", "ko"]);
@@ -52,4 +53,35 @@ test("tên gói: tiếng Việt dùng nameVi, mọi ngôn ngữ khác dùng tên
   for (const l of ["en", "ja", "zh", "ko"]) assert.equal(planName(monthly, l), "Monthly");
   for (const p of PLANS) for (const l of ["vi", "en", "ja", "zh", "ko"]) assert.ok(planSummary(p, l)?.length > 5, `${p.code} ${l}`);
   assert.equal(planSummary(monthly, "en"), monthly.summaryEn);
+});
+
+/** Một file MP4 tối giản: ftyp rồi moov chứa mvhd (phiên bản 0 hay 1) với timescale và duration cho trước. */
+function fakeMp4({ version, timescale, duration }) {
+  const box = (type, body) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(8 + body.length);
+    head.write(type, 4, "latin1");
+    return Buffer.concat([head, body]);
+  };
+  const mvhd = Buffer.alloc(version === 1 ? 112 : 100);
+  mvhd[0] = version;
+  if (version === 1) {
+    mvhd.writeUInt32BE(timescale, 20);
+    mvhd.writeBigUInt64BE(BigInt(duration), 24);
+  } else {
+    mvhd.writeUInt32BE(timescale, 12);
+    mvhd.writeUInt32BE(duration, 16);
+  }
+  return Buffer.concat([box("ftyp", Buffer.from("isom0000", "latin1")), box("moov", box("mvhd", mvhd))]);
+}
+
+test("mp4DurationMs đọc hộp mvhd (phiên bản 0 và 1); thiếu moov hay mvhd thì báo lỗi", () => {
+  assert.equal(mp4DurationMs(fakeMp4({ version: 0, timescale: 1000, duration: 40494 })), 40494);
+  assert.equal(mp4DurationMs(fakeMp4({ version: 1, timescale: 90000, duration: 3486487 })), 38739);
+  assert.throws(() => mp4DurationMs(Buffer.from("00000008ftyp", "latin1")), /moov/);
+});
+
+test("videoMeta: thời lượng thật của video vi và en (làm tròn giây), dạng m:ss và ISO 8601", () => {
+  assert.deepEqual(videoMeta("vi"), { seconds: 40, clock: "0:40", iso: "PT40S" });
+  assert.deepEqual(videoMeta("en"), { seconds: 39, clock: "0:39", iso: "PT39S" });
 });
