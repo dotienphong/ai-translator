@@ -49,3 +49,9 @@ Dạng một sự kiện (đã che id và tên):
 - Lần đầu `setWebhook`: URL được lưu nhưng `verification` báo `webhook.http.403`. Log của Worker không có request nào: Cloudflare chặn ở rìa. Security › Events: **Service = Browser integrity check, Action = Block** (Zalo gọi từ máy chủ với User-Agent `Java/1.8.0_192`).
 - Sửa ở zone `aitranslator.io.vn`: Configuration Rule `zalo-webhook-no-bic` (`http.host eq "api.aitranslator.io.vn" and http.request.uri.path eq "/v1/webhooks/zalo"`) đặt Browser Integrity Check = Off; luật rate limit `webhook-rate-limit` đổi thành `(starts_with(http.request.uri.path, "/v1/webhooks/") and not http.request.uri.path eq "/v1/webhooks/zalo")`.
 - Lần hai `setWebhook`: `"verification":{"ok":true,"outcome":"webhook.ok"}`. Request thử tới Worker, **có** header `X-Bot-Api-Secret-Token`; thân **không bọc** trong `result` và **không có** `chat`/`from`: `{"event_name": string, "message": {"date": number, "message_id": string, "text": string}}`, nên Worker ghi `zalo_webhook_unreadable` và trả 200 (đúng: không có người gửi để kiểm).
+
+## Bật chat trên production (2026-10-23)
+
+- Chủ dự án quyết **bỏ chờ điều 2** (3 ngày) và bật chat cùng ngày phát hành 0.2.4 (tag `v0.2.4` → `46b1cbb6`). Chat bật bằng D1 (`support_settings.enabled = 1`).
+- Thử bằng tin thật: website (`#3MG`): 2 tin khách tới Zalo, chủ dự án trả lời `#3MG …` trong Zalo, câu trả lời hiện trên website (`delivered_owner_id` cập nhật). App 0.2.4 trên macOS 26.6.2 (`#L75`): tin khách tới Zalo kèm dòng thông tin máy `AI Translator 0.2.4 · macOS 26.6.2 · Apple M4 Pro · 24 GB · 6 Months · Chuẩn · UI vi`. Hai cuộc chat thử đã được xóa bằng nút trong khung chat.
+- Điều 2 vẫn chưa kiểm: nếu Zalo chặn bot nhắn chủ dự án sau một thời gian chủ dự án không nhắn bot, server báo `support_zalo_failed` qua email sau 3 lần cron lỗi liền; khi đó chủ dự án nhắn bot một tin bất kỳ rồi kiểm lại.
