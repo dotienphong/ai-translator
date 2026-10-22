@@ -1,0 +1,10 @@
+{
+ "src": "承知しました。金曜日までに新しい見積もりをお送りします。",
+ "hyp": "I understand. I will send you a new estimate by Friday.",
+ "total_ms": 186.22414,
+ "first_token_ms": 49.137123,
+ "attempts": 1,
+ "model_file": "Hy-MT2-1.8B-Q8_0.gguf",
+ "git_head": "752302000d9778478f8765848a93f82e0c105e10",
+ "git_dirty": false
+}

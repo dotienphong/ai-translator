@@ -1,0 +1,1939 @@
+{
+ "args": {
+  "asr_model": "ggml-large-v3-turbo-q5_0.bin",
+  "asr_worker": "asr-worker-aarch64-apple-darwin",
+  "end_silence_ms": "50",
+  "languages": "en,zh,ja,ko,vi",
+  "llama_server": "llama-server-aarch64-apple-darwin",
+  "mt_model": "Hy-MT2-1.8B-Q8_0.gguf",
+  "streaming": "true",
+  "streaming_end_silence_ms": "50",
+  "target": "ko",
+  "tgt_agree": "mặc định",
+  "truth": "truth.vi.json",
+  "vad_model": "models/silero_vad_v6.2.3.onnx",
+  "wav": "voice16.vi.wav"
+ },
+ "machine": {
+  "asr_backend": "metal",
+  "asr_worker": "asr-worker: backend=metal flash_attn=off decode_mode=shared",
+  "cpu": "Apple M4 Pro",
+  "logical_cores": "12",
+  "os": "macOS 26.6.2 Tahoe",
+  "physical_cores": "12",
+  "ram_gb": "24.0"
+ },
+ "run": {
+  "session_ms": 17348.7,
+  "feed_lag_max_ms": 14.6,
+  "sidecar_restarts": 0
+ },
+ "summary": {
+  "a2_p50_ms": 602.2,
+  "a2_p90_ms": 605.8,
+  "a2_first_p50_ms": 370.3,
+  "first_from_start_p50_ms": 1322.3,
+  "first_from_start_p90_ms": 1341.7,
+  "word_lag_tentative_p50_ms": 414.9,
+  "word_lag_tentative_p90_ms": 911.3,
+  "word_lag_stable_p50_ms": 1900.7,
+  "word_lag_stable_p90_ms": 3076.1,
+  "stable_flicker_ratio": 0.0313,
+  "tentative_erasure_ratio": 1.2188,
+  "busy_ratio": 0.4558,
+  "cpu_percent": 7.2,
+  "utterances": 4,
+  "segments": 4,
+  "partials": 13,
+  "cadence_p50_ms": 700,
+  "streaming_auto_off": 0
+ },
+ "events": [
+  {
+   "t_ms": 1901.1,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 1949.2,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1960.6,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1970.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1980.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1991,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2000.6,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2010.6,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감사",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2020.6,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감사드",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2030.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감사드립",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2040,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감사드립니다",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2917.9,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감사드립니다",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 3192.3,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3192.3,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "모든 분들께 감사드립니다",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 3192.3,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3225.4,
+   "kind": "delta",
+   "id": 0,
+   "text": "오"
+  },
+  {
+   "t_ms": 3235.2,
+   "kind": "delta",
+   "id": 0,
+   "text": "늘"
+  },
+  {
+   "t_ms": 3244.8,
+   "kind": "delta",
+   "id": 0,
+   "text": " 함께"
+  },
+  {
+   "t_ms": 3254.4,
+   "kind": "delta",
+   "id": 0,
+   "text": "해"
+  },
+  {
+   "t_ms": 3264.1,
+   "kind": "delta",
+   "id": 0,
+   "text": " 주"
+  },
+  {
+   "t_ms": 3274.2,
+   "kind": "delta",
+   "id": 0,
+   "text": "신"
+  },
+  {
+   "t_ms": 3284,
+   "kind": "delta",
+   "id": 0,
+   "text": " 모든"
+  },
+  {
+   "t_ms": 3293.8,
+   "kind": "delta",
+   "id": 0,
+   "text": " 분"
+  },
+  {
+   "t_ms": 3303.2,
+   "kind": "delta",
+   "id": 0,
+   "text": "들"
+  },
+  {
+   "t_ms": 3312.9,
+   "kind": "delta",
+   "id": 0,
+   "text": "께"
+  },
+  {
+   "t_ms": 3322.8,
+   "kind": "delta",
+   "id": 0,
+   "text": " 감"
+  },
+  {
+   "t_ms": 3332.6,
+   "kind": "delta",
+   "id": 0,
+   "text": "사"
+  },
+  {
+   "t_ms": 3342.3,
+   "kind": "delta",
+   "id": 0,
+   "text": "드"
+  },
+  {
+   "t_ms": 3351.9,
+   "kind": "delta",
+   "id": 0,
+   "text": "립"
+  },
+  {
+   "t_ms": 3362.3,
+   "kind": "delta",
+   "id": 0,
+   "text": "니다"
+  },
+  {
+   "t_ms": 3371.5,
+   "kind": "delta",
+   "id": 0,
+   "text": "."
+  },
+  {
+   "t_ms": 3381.5,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "오늘 함께해 주신 모든 분들께 감사드립니다.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3381.5,
+   "kind": "live_end",
+   "id": 0
+  },
+  {
+   "t_ms": 4748.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 4799.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4808.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4818.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4837.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를 밀",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4846.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를 밀어",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4856.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를 밀어내",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4866.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를 밀어내야",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4875.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를 밀어내야 합니다",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5799.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "잔디를 밀어내야 합니다",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5970.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 2일 후로",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5980.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 2일 후로 연",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5990.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 2일 후로 연기",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6000,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 2일 후로 연기해야",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6009.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 2일 후로 연기해야 합니다",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6495,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 2일 후로 연기해야 합니다",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6686,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 11월 둘째 주로 연기해야",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 6695.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "출시 날짜를 11월 둘째 주로 연기해야 합니다",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 6715.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "출시",
+   "tgt_tail": " 날짜를 11월 둘째 주로 연기해야 합니다",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 7111.3,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7111.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "출시",
+   "tgt_tail": " 날짜를 11월 둘째 주로 연기해야 합니다",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 7111.3,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7127.4,
+   "kind": "delta",
+   "id": 1,
+   "text": "출"
+  },
+  {
+   "t_ms": 7138.1,
+   "kind": "delta",
+   "id": 1,
+   "text": "시"
+  },
+  {
+   "t_ms": 7148.4,
+   "kind": "delta",
+   "id": 1,
+   "text": " 날"
+  },
+  {
+   "t_ms": 7168,
+   "kind": "delta",
+   "id": 1,
+   "text": "짜"
+  },
+  {
+   "t_ms": 7177.9,
+   "kind": "delta",
+   "id": 1,
+   "text": "를"
+  },
+  {
+   "t_ms": 7198.2,
+   "kind": "delta",
+   "id": 1,
+   "text": " 11"
+  },
+  {
+   "t_ms": 7207.9,
+   "kind": "delta",
+   "id": 1,
+   "text": "월"
+  },
+  {
+   "t_ms": 7227.5,
+   "kind": "delta",
+   "id": 1,
+   "text": " 둘"
+  },
+  {
+   "t_ms": 7237.3,
+   "kind": "delta",
+   "id": 1,
+   "text": "째"
+  },
+  {
+   "t_ms": 7247.3,
+   "kind": "delta",
+   "id": 1,
+   "text": " 주"
+  },
+  {
+   "t_ms": 7257.3,
+   "kind": "delta",
+   "id": 1,
+   "text": "로"
+  },
+  {
+   "t_ms": 7266.9,
+   "kind": "delta",
+   "id": 1,
+   "text": " 연"
+  },
+  {
+   "t_ms": 7276.5,
+   "kind": "delta",
+   "id": 1,
+   "text": "기"
+  },
+  {
+   "t_ms": 7286.6,
+   "kind": "delta",
+   "id": 1,
+   "text": "해야"
+  },
+  {
+   "t_ms": 7296.2,
+   "kind": "delta",
+   "id": 1,
+   "text": " 합니다"
+  },
+  {
+   "t_ms": 7306,
+   "kind": "delta",
+   "id": 1,
+   "text": "."
+  },
+  {
+   "t_ms": 7315.8,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "출시 날짜를 11월 둘째 주로 연기해야 합니다.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7315.8,
+   "kind": "live_end",
+   "id": 1
+  },
+  {
+   "t_ms": 8842.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 8893.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8905.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8915.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8925.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8936.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8946.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8955.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8965.8,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀입니다",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9522.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀입니다",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9641.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9651.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9676.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9686.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9696.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디어",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9706.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디어를",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9716.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디어를 찾",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9726,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디어를 찾아",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9745.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디어를 찾아냈",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9755.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "우리의 디자인 팀은 몇 가지 아이디어를 찾아냈습니다",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9774.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "우리의",
+   "tgt_tail": " 디자인 팀은 몇 가지 아이디어를 찾아냈습니다",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 10255.3,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "우리의",
+   "tgt_tail": " 디자인 팀은 몇 가지 아이디어를 찾아냈습니다",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 10451.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 발견했습니다",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 10949.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 발견했습니다",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 11194.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11236.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로세",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11265.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로세스",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11278.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로세스에서",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11291.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로세스에서 발",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11303.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로세스에서 발견",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11306.8,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11306.8,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "우리의 디자인 팀은 몇",
+   "tgt_tail": " 가지 문제를 체크아웃 프로세스에서 발견",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11306.8,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11343.4,
+   "kind": "delta",
+   "id": 2,
+   "text": "우"
+  },
+  {
+   "t_ms": 11353.1,
+   "kind": "delta",
+   "id": 2,
+   "text": "리"
+  },
+  {
+   "t_ms": 11362.6,
+   "kind": "delta",
+   "id": 2,
+   "text": "의"
+  },
+  {
+   "t_ms": 11372.2,
+   "kind": "delta",
+   "id": 2,
+   "text": " 디"
+  },
+  {
+   "t_ms": 11382.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "자"
+  },
+  {
+   "t_ms": 11391.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "인"
+  },
+  {
+   "t_ms": 11401.5,
+   "kind": "delta",
+   "id": 2,
+   "text": " 팀"
+  },
+  {
+   "t_ms": 11411.1,
+   "kind": "delta",
+   "id": 2,
+   "text": "은"
+  },
+  {
+   "t_ms": 11420.9,
+   "kind": "delta",
+   "id": 2,
+   "text": " 결"
+  },
+  {
+   "t_ms": 11430.6,
+   "kind": "delta",
+   "id": 2,
+   "text": "제"
+  },
+  {
+   "t_ms": 11440.1,
+   "kind": "delta",
+   "id": 2,
+   "text": " 프로"
+  },
+  {
+   "t_ms": 11449.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "세"
+  },
+  {
+   "t_ms": 11459.5,
+   "kind": "delta",
+   "id": 2,
+   "text": "스"
+  },
+  {
+   "t_ms": 11469.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "에서"
+  },
+  {
+   "t_ms": 11489.2,
+   "kind": "delta",
+   "id": 2,
+   "text": " 몇"
+  },
+  {
+   "t_ms": 11498.7,
+   "kind": "delta",
+   "id": 2,
+   "text": " 가지"
+  },
+  {
+   "t_ms": 11508.3,
+   "kind": "delta",
+   "id": 2,
+   "text": " 문제"
+  },
+  {
+   "t_ms": 11517.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "를"
+  },
+  {
+   "t_ms": 11527.6,
+   "kind": "delta",
+   "id": 2,
+   "text": " 발"
+  },
+  {
+   "t_ms": 11537.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "견"
+  },
+  {
+   "t_ms": 11547,
+   "kind": "delta",
+   "id": 2,
+   "text": "했습니다"
+  },
+  {
+   "t_ms": 11556.5,
+   "kind": "delta",
+   "id": 2,
+   "text": "."
+  },
+  {
+   "t_ms": 11566.2,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "우리의 디자인 팀은 결제 프로세스에서 몇 가지 문제를 발견했습니다.",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11566.2,
+   "kind": "live_end",
+   "id": 2
+  },
+  {
+   "t_ms": 13045.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 13082.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13093.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13103.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13113,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13122.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13132.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13142,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13152.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13161.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13171.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13181.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13191.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13200.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13210.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13220.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주실",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13229.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주실 수",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13239.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주실 수 있",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13249.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주실 수 있나",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13258.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주실 수 있나요",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13721.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "사용자 가이드나 설명서를 보내주실 수 있나요",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13913.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "새로운 견적을 보내주실 수 있나요",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 14450.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "새로운 견적을 보내주실 수 있나요",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 14608.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14618.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14629.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14639.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주실",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14648.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주실 수",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14658.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주실 수 있",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14668.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주실 수 있나",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14677.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주실 수 있나요",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 15151.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "추가 작업에 대한 새로운 견적을 보내주실 수 있나요",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 15362.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15372.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15382.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15392.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실 수",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15403.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실 수 있",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15413.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실 수 있나",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15423.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실 수 있나요",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15649.5,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15649.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실 수 있나요",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15649.5,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15662.1,
+   "kind": "delta",
+   "id": 3,
+   "text": "금"
+  },
+  {
+   "t_ms": 15671.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "요"
+  },
+  {
+   "t_ms": 15681.2,
+   "kind": "delta",
+   "id": 3,
+   "text": "일"
+  },
+  {
+   "t_ms": 15690.7,
+   "kind": "delta",
+   "id": 3,
+   "text": " 전"
+  },
+  {
+   "t_ms": 15700.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "까지"
+  },
+  {
+   "t_ms": 15710,
+   "kind": "delta",
+   "id": 3,
+   "text": " 추가"
+  },
+  {
+   "t_ms": 15720,
+   "kind": "delta",
+   "id": 3,
+   "text": " 작"
+  },
+  {
+   "t_ms": 15729.8,
+   "kind": "delta",
+   "id": 3,
+   "text": "업"
+  },
+  {
+   "t_ms": 15739.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "에"
+  },
+  {
+   "t_ms": 15749.1,
+   "kind": "delta",
+   "id": 3,
+   "text": " 대한"
+  },
+  {
+   "t_ms": 15758.9,
+   "kind": "delta",
+   "id": 3,
+   "text": " 새로운"
+  },
+  {
+   "t_ms": 15778.6,
+   "kind": "delta",
+   "id": 3,
+   "text": " 견"
+  },
+  {
+   "t_ms": 15788.1,
+   "kind": "delta",
+   "id": 3,
+   "text": "적"
+  },
+  {
+   "t_ms": 15797.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "을"
+  },
+  {
+   "t_ms": 15807.6,
+   "kind": "delta",
+   "id": 3,
+   "text": " 보"
+  },
+  {
+   "t_ms": 15823.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "내"
+  },
+  {
+   "t_ms": 15834,
+   "kind": "delta",
+   "id": 3,
+   "text": "주"
+  },
+  {
+   "t_ms": 15843.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "실"
+  },
+  {
+   "t_ms": 15854.3,
+   "kind": "delta",
+   "id": 3,
+   "text": " 수"
+  },
+  {
+   "t_ms": 15864.3,
+   "kind": "delta",
+   "id": 3,
+   "text": " 있"
+  },
+  {
+   "t_ms": 15873.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "나"
+  },
+  {
+   "t_ms": 15883.5,
+   "kind": "delta",
+   "id": 3,
+   "text": "요"
+  },
+  {
+   "t_ms": 15893.5,
+   "kind": "delta",
+   "id": 3,
+   "text": "?"
+  },
+  {
+   "t_ms": 15903.1,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "금요일 전까지 추가 작업에 대한 새로운 견적을 보내주실 수 있나요?",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15903.1,
+   "kind": "live_end",
+   "id": 3
+  }
+ ]
+}

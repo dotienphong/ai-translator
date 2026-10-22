@@ -1,0 +1,1951 @@
+{
+ "args": {
+  "asr_model": "ggml-large-v3-turbo-q5_0.bin",
+  "asr_worker": "asr-worker-aarch64-apple-darwin",
+  "end_silence_ms": "50",
+  "languages": "en,zh,ja,ko,vi",
+  "llama_server": "llama-server-aarch64-apple-darwin",
+  "mt_model": "Hy-MT2-1.8B-Q8_0.gguf",
+  "streaming": "true",
+  "streaming_end_silence_ms": "50",
+  "target": "ja",
+  "tgt_agree": "mặc định",
+  "truth": "truth.vi.json",
+  "vad_model": "models/silero_vad_v6.2.3.onnx",
+  "wav": "voice16.vi.wav"
+ },
+ "machine": {
+  "asr_backend": "metal",
+  "asr_worker": "asr-worker: backend=metal flash_attn=off decode_mode=shared",
+  "cpu": "Apple M4 Pro",
+  "logical_cores": "12",
+  "os": "macOS 26.6.2 Tahoe",
+  "physical_cores": "12",
+  "ram_gb": "24.0"
+ },
+ "run": {
+  "session_ms": 17347,
+  "feed_lag_max_ms": 16.6,
+  "sidecar_restarts": 0
+ },
+ "summary": {
+  "a2_p50_ms": 637.3,
+  "a2_p90_ms": 693.4,
+  "a2_first_p50_ms": 406.1,
+  "first_from_start_p50_ms": 1341.1,
+  "first_from_start_p90_ms": 1346.7,
+  "word_lag_tentative_p50_ms": 404.7,
+  "word_lag_tentative_p90_ms": 904.3,
+  "word_lag_stable_p50_ms": 1922.2,
+  "word_lag_stable_p90_ms": 3320.1,
+  "stable_flicker_ratio": 0.0367,
+  "tentative_erasure_ratio": 1.3486,
+  "busy_ratio": 0.4782,
+  "cpu_percent": 7.4,
+  "utterances": 4,
+  "segments": 4,
+  "partials": 13,
+  "cadence_p50_ms": 700,
+  "streaming_auto_off": 0
+ },
+ "events": [
+  {
+   "t_ms": 1902.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 1940.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "み",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1952.8,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みな",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1962.6,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1972.5,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1982.1,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、あり",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1991.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありが",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2002,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがと",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2012,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがとう",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2021.5,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがとうご",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2040.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがとうござ",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2050.4,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがとうございます",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2940,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがとうございます",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 3192.7,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3192.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "みなさん、ありがとうございます",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 3192.7,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3228.1,
+   "kind": "delta",
+   "id": 0,
+   "text": "今日"
+  },
+  {
+   "t_ms": 3237.8,
+   "kind": "delta",
+   "id": 0,
+   "text": "、"
+  },
+  {
+   "t_ms": 3247.8,
+   "kind": "delta",
+   "id": 0,
+   "text": "ご"
+  },
+  {
+   "t_ms": 3257.5,
+   "kind": "delta",
+   "id": 0,
+   "text": "参加"
+  },
+  {
+   "t_ms": 3267.8,
+   "kind": "delta",
+   "id": 0,
+   "text": "いた"
+  },
+  {
+   "t_ms": 3277.5,
+   "kind": "delta",
+   "id": 0,
+   "text": "だ"
+  },
+  {
+   "t_ms": 3287.9,
+   "kind": "delta",
+   "id": 0,
+   "text": "き"
+  },
+  {
+   "t_ms": 3298.2,
+   "kind": "delta",
+   "id": 0,
+   "text": "あり"
+  },
+  {
+   "t_ms": 3308,
+   "kind": "delta",
+   "id": 0,
+   "text": "が"
+  },
+  {
+   "t_ms": 3318.1,
+   "kind": "delta",
+   "id": 0,
+   "text": "と"
+  },
+  {
+   "t_ms": 3328,
+   "kind": "delta",
+   "id": 0,
+   "text": "う"
+  },
+  {
+   "t_ms": 3337.9,
+   "kind": "delta",
+   "id": 0,
+   "text": "ご"
+  },
+  {
+   "t_ms": 3357.2,
+   "kind": "delta",
+   "id": 0,
+   "text": "ざ"
+  },
+  {
+   "t_ms": 3366.9,
+   "kind": "delta",
+   "id": 0,
+   "text": "います"
+  },
+  {
+   "t_ms": 3376.7,
+   "kind": "delta",
+   "id": 0,
+   "text": "。"
+  },
+  {
+   "t_ms": 3386.5,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "今日、ご参加いただきありがとうございます。",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3386.5,
+   "kind": "live_end",
+   "id": 0
+  },
+  {
+   "t_ms": 4741.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 4782.3,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4795,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4804.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4814.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4824.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4834.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し進",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4844.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し進める",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4854.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し進める必要",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4864.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し進める必要があり",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4874.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し進める必要があります",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5783.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "芝生を押し進める必要があります",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5977.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "リリース日を2日後に延期する必要",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5988.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "リリース日を2日後に延期する必要があり",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5998.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "リリース日を2日後に延期する必要があります",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6475.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "リリース日を2日後に延期する必要があります",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6640.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "発売日を11月の第二週に延期する必要があり",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 6650.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "発売日を11月の第二週に延期する必要があります",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 7127.1,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7127.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "",
+   "tgt_tail": "発売日を11月の第二週に延期する必要があります",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 7127.1,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7159.6,
+   "kind": "delta",
+   "id": 1,
+   "text": "発"
+  },
+  {
+   "t_ms": 7169.3,
+   "kind": "delta",
+   "id": 1,
+   "text": "売"
+  },
+  {
+   "t_ms": 7184.3,
+   "kind": "delta",
+   "id": 1,
+   "text": "日"
+  },
+  {
+   "t_ms": 7193.3,
+   "kind": "delta",
+   "id": 1,
+   "text": "を"
+  },
+  {
+   "t_ms": 7203.1,
+   "kind": "delta",
+   "id": 1,
+   "text": "11"
+  },
+  {
+   "t_ms": 7213.5,
+   "kind": "delta",
+   "id": 1,
+   "text": "月"
+  },
+  {
+   "t_ms": 7223.5,
+   "kind": "delta",
+   "id": 1,
+   "text": "の"
+  },
+  {
+   "t_ms": 7233.6,
+   "kind": "delta",
+   "id": 1,
+   "text": "第二"
+  },
+  {
+   "t_ms": 7244,
+   "kind": "delta",
+   "id": 1,
+   "text": "週"
+  },
+  {
+   "t_ms": 7254,
+   "kind": "delta",
+   "id": 1,
+   "text": "に"
+  },
+  {
+   "t_ms": 7263.8,
+   "kind": "delta",
+   "id": 1,
+   "text": "延期"
+  },
+  {
+   "t_ms": 7274,
+   "kind": "delta",
+   "id": 1,
+   "text": "する"
+  },
+  {
+   "t_ms": 7285.9,
+   "kind": "delta",
+   "id": 1,
+   "text": "必要"
+  },
+  {
+   "t_ms": 7296.4,
+   "kind": "delta",
+   "id": 1,
+   "text": "があり"
+  },
+  {
+   "t_ms": 7306.3,
+   "kind": "delta",
+   "id": 1,
+   "text": "ます"
+  },
+  {
+   "t_ms": 7316.4,
+   "kind": "delta",
+   "id": 1,
+   "text": "。"
+  },
+  {
+   "t_ms": 7326,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "発売日を11月の第二週に延期する必要があります。",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7326,
+   "kind": "live_end",
+   "id": 1
+  },
+  {
+   "t_ms": 8865.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 8918.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8939.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たち",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8949.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちの",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8959.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデ",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8969.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザ",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8980.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザイ",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9001.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチ",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9011.8,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチーム",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9021.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームです",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9542,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームです",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9701.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9711.8,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いく",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9722,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつ",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9731.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつか",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9742.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつかの",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9752.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつかの案",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9762.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつかの案を見",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9772.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつかの案を見つ",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9782.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつかの案を見つけ",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9793,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "私たちのデザインチームは、いくつかの案を見つけました",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9812.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "私たちのデザインチー",
+   "tgt_tail": "ムは、いくつかの案を見つけました",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 10253,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "私たちのデザインチー",
+   "tgt_tail": "ムは、いくつかの案を見つけました",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 10421.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "私たちのデザインチー",
+   "tgt_tail": "ムは、いくつかの問題を発見しました",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 10441.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題を発見しました",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 10964.8,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題を発見しました",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 11194.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウ",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11248.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウト",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11273,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウトプロ",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11285.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウトプロセ",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11297.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウトプロセス",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11327.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウトプロセスで",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11335.6,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11335.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "私たちのデザインチームは、いくつか",
+   "tgt_tail": "の問題をチェックアウトプロセスで",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11335.6,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11366.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "私"
+  },
+  {
+   "t_ms": 11376.8,
+   "kind": "delta",
+   "id": 2,
+   "text": "たち"
+  },
+  {
+   "t_ms": 11386.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "の"
+  },
+  {
+   "t_ms": 11395.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "デ"
+  },
+  {
+   "t_ms": 11405.5,
+   "kind": "delta",
+   "id": 2,
+   "text": "ザ"
+  },
+  {
+   "t_ms": 11415.1,
+   "kind": "delta",
+   "id": 2,
+   "text": "イ"
+  },
+  {
+   "t_ms": 11434.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "ンチ"
+  },
+  {
+   "t_ms": 11444,
+   "kind": "delta",
+   "id": 2,
+   "text": "ーム"
+  },
+  {
+   "t_ms": 11453.7,
+   "kind": "delta",
+   "id": 2,
+   "text": "は"
+  },
+  {
+   "t_ms": 11463.4,
+   "kind": "delta",
+   "id": 2,
+   "text": "、"
+  },
+  {
+   "t_ms": 11473.2,
+   "kind": "delta",
+   "id": 2,
+   "text": "チ"
+  },
+  {
+   "t_ms": 11482.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "ェ"
+  },
+  {
+   "t_ms": 11493,
+   "kind": "delta",
+   "id": 2,
+   "text": "ック"
+  },
+  {
+   "t_ms": 11502.7,
+   "kind": "delta",
+   "id": 2,
+   "text": "ア"
+  },
+  {
+   "t_ms": 11512.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "ウ"
+  },
+  {
+   "t_ms": 11521.8,
+   "kind": "delta",
+   "id": 2,
+   "text": "ト"
+  },
+  {
+   "t_ms": 11531.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "プロ"
+  },
+  {
+   "t_ms": 11540.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "セ"
+  },
+  {
+   "t_ms": 11551.1,
+   "kind": "delta",
+   "id": 2,
+   "text": "ス"
+  },
+  {
+   "t_ms": 11560.7,
+   "kind": "delta",
+   "id": 2,
+   "text": "に"
+  },
+  {
+   "t_ms": 11570.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "いく"
+  },
+  {
+   "t_ms": 11579.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "つ"
+  },
+  {
+   "t_ms": 11589.8,
+   "kind": "delta",
+   "id": 2,
+   "text": "か"
+  },
+  {
+   "t_ms": 11599.7,
+   "kind": "delta",
+   "id": 2,
+   "text": "問題"
+  },
+  {
+   "t_ms": 11609.4,
+   "kind": "delta",
+   "id": 2,
+   "text": "を"
+  },
+  {
+   "t_ms": 11619.1,
+   "kind": "delta",
+   "id": 2,
+   "text": "発"
+  },
+  {
+   "t_ms": 11629.2,
+   "kind": "delta",
+   "id": 2,
+   "text": "見"
+  },
+  {
+   "t_ms": 11638.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "し"
+  },
+  {
+   "t_ms": 11648.5,
+   "kind": "delta",
+   "id": 2,
+   "text": "ました"
+  },
+  {
+   "t_ms": 11658.8,
+   "kind": "delta",
+   "id": 2,
+   "text": "。"
+  },
+  {
+   "t_ms": 11668.4,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "私たちのデザインチームは、チェックアウトプロセスにいくつか問題を発見しました。",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11668.4,
+   "kind": "live_end",
+   "id": 2
+  },
+  {
+   "t_ms": 13054.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 13110.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13125.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13135.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13145.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向け",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13154.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13164.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13174.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13184.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13194.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送って",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13204,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送っても",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13213.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送ってもら",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13223.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送ってもらえ",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13233.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送ってもらえます",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13242.9,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送ってもらえますか",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13734.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "初心者向けの情報を送ってもらえますか",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13939.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "新しい見積もりを送ってもらえますか",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 14451.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "新しい見積もりを送ってもらえますか",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 14604.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もり",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14614.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14623.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14633.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送って",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14643.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送っても",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14652.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送ってもら",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14662.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送ってもらえ",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14671.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送ってもらえます",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14681.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送ってもらえますか",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 15167,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "追加の作業について、新しい見積もりを送ってもらえますか",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 15421.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "金曜日までに、追加作業に関する新しい見積もりを送っても",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15431.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "金曜日までに、追加作業に関する新しい見積もりを送ってもら",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15468,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "金曜日までに、追加作業に関する新しい見積もりを送ってもらえ",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15508.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "金曜日までに、追加作業に関する新しい見積もりを送ってもらえます",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15549.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "金曜日までに、追加作業に関する新しい見積もりを送ってもらえますか",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15686.7,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15686.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "",
+   "tgt_tail": "金曜日までに、追加作業に関する新しい見積もりを送ってもらえますか",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15686.7,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15710.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "金"
+  },
+  {
+   "t_ms": 15720.5,
+   "kind": "delta",
+   "id": 3,
+   "text": "曜"
+  },
+  {
+   "t_ms": 15730.2,
+   "kind": "delta",
+   "id": 3,
+   "text": "日"
+  },
+  {
+   "t_ms": 15740.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "まで"
+  },
+  {
+   "t_ms": 15750.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "に"
+  },
+  {
+   "t_ms": 15760.8,
+   "kind": "delta",
+   "id": 3,
+   "text": "、"
+  },
+  {
+   "t_ms": 15771.2,
+   "kind": "delta",
+   "id": 3,
+   "text": "追加"
+  },
+  {
+   "t_ms": 15780.6,
+   "kind": "delta",
+   "id": 3,
+   "text": "作"
+  },
+  {
+   "t_ms": 15790.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "業"
+  },
+  {
+   "t_ms": 15799.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "に関"
+  },
+  {
+   "t_ms": 15809.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "する"
+  },
+  {
+   "t_ms": 15819.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "新"
+  },
+  {
+   "t_ms": 15829.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "しい"
+  },
+  {
+   "t_ms": 15839.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "見"
+  },
+  {
+   "t_ms": 15848.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "積"
+  },
+  {
+   "t_ms": 15858.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "も"
+  },
+  {
+   "t_ms": 15868.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "り"
+  },
+  {
+   "t_ms": 15878.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "を"
+  },
+  {
+   "t_ms": 15888.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "送"
+  },
+  {
+   "t_ms": 15897.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "って"
+  },
+  {
+   "t_ms": 15907.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "も"
+  },
+  {
+   "t_ms": 15917.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "ら"
+  },
+  {
+   "t_ms": 15927,
+   "kind": "delta",
+   "id": 3,
+   "text": "え"
+  },
+  {
+   "t_ms": 15936.6,
+   "kind": "delta",
+   "id": 3,
+   "text": "ます"
+  },
+  {
+   "t_ms": 15946.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "か"
+  },
+  {
+   "t_ms": 15955.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "？"
+  },
+  {
+   "t_ms": 15966,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "金曜日までに、追加作業に関する新しい見積もりを送ってもらえますか？",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15966,
+   "kind": "live_end",
+   "id": 3
+  }
+ ]
+}

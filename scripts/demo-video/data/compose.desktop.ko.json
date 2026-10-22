@@ -1,0 +1,10 @@
+{
+ "src": "네, 금요일 전까지 새 견적서를 보내드리겠습니다.",
+ "hyp": "Yes, we will send you a new quote by Friday.",
+ "total_ms": 169.99475,
+ "first_token_ms": 47.57234,
+ "attempts": 1,
+ "model_file": "Hy-MT2-1.8B-Q8_0.gguf",
+ "git_head": "752302000d9778478f8765848a93f82e0c105e10",
+ "git_dirty": false
+}

@@ -1,0 +1,10 @@
+{
+ "src": "好的，我会在周五之前把新的报价发给您。",
+ "hyp": "Okay, I will send you the new quote by Friday.",
+ "total_ms": 155.12975,
+ "first_token_ms": 32.257416,
+ "attempts": 1,
+ "model_file": "Hy-MT2-1.8B-Q8_0.gguf",
+ "git_head": "752302000d9778478f8765848a93f82e0c105e10",
+ "git_dirty": false
+}

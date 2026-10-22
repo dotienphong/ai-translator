@@ -1,0 +1,1273 @@
+{
+ "args": {
+  "asr_model": "ggml-large-v3-turbo-q5_0.bin",
+  "asr_worker": "asr-worker-aarch64-apple-darwin",
+  "end_silence_ms": "50",
+  "languages": "en,zh,ja,ko,vi",
+  "llama_server": "llama-server-aarch64-apple-darwin",
+  "mt_model": "Hy-MT2-1.8B-Q8_0.gguf",
+  "streaming": "true",
+  "streaming_end_silence_ms": "50",
+  "target": "zh",
+  "tgt_agree": "mặc định",
+  "truth": "truth.vi.json",
+  "vad_model": "models/silero_vad_v6.2.3.onnx",
+  "wav": "voice16.vi.wav"
+ },
+ "machine": {
+  "asr_backend": "metal",
+  "asr_worker": "asr-worker: backend=metal flash_attn=off decode_mode=shared",
+  "cpu": "Apple M4 Pro",
+  "logical_cores": "12",
+  "os": "macOS 26.6.2 Tahoe",
+  "physical_cores": "12",
+  "ram_gb": "24.0"
+ },
+ "run": {
+  "session_ms": 17346.7,
+  "feed_lag_max_ms": 14.2,
+  "sidecar_restarts": 0
+ },
+ "summary": {
+  "a2_p50_ms": 497,
+  "a2_p90_ms": 500.9,
+  "a2_first_p50_ms": 370.2,
+  "first_from_start_p50_ms": 1329.6,
+  "first_from_start_p90_ms": 1346.9,
+  "word_lag_tentative_p50_ms": 342.6,
+  "word_lag_tentative_p90_ms": 905.8,
+  "word_lag_stable_p50_ms": 1696.9,
+  "word_lag_stable_p90_ms": 2393.9,
+  "stable_flicker_ratio": 0.1096,
+  "tentative_erasure_ratio": 1.4932,
+  "busy_ratio": 0.3626,
+  "cpu_percent": 4.3,
+  "utterances": 4,
+  "segments": 4,
+  "partials": 13,
+  "cadence_p50_ms": 700,
+  "streaming_auto_off": 0
+ },
+ "events": [
+  {
+   "t_ms": 1908.8,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 1951.1,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 1966,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Thanks everyone.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢大家",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 2925.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢大家",
+   "tgt_src_units": 2
+  },
+  {
+   "t_ms": 3069.1,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢今天",
+   "tgt_src_units": 5
+  },
+  {
+   "t_ms": 3123.3,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢今天所有",
+   "tgt_src_units": 5
+  },
+  {
+   "t_ms": 3167.9,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢今天所有参与",
+   "tgt_src_units": 5
+  },
+  {
+   "t_ms": 3183,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢今天所有参与的人",
+   "tgt_src_units": 5
+  },
+  {
+   "t_ms": 3193.7,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3193.7,
+   "kind": "live",
+   "id": 0,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Thanks",
+   "src_tail": " everyone for joining today.",
+   "tgt_stable": "",
+   "tgt_tail": "感谢今天所有参与的人",
+   "tgt_src_units": 5
+  },
+  {
+   "t_ms": 3193.7,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3216.2,
+   "kind": "delta",
+   "id": 0,
+   "text": "感谢"
+  },
+  {
+   "t_ms": 3226,
+   "kind": "delta",
+   "id": 0,
+   "text": "今天"
+  },
+  {
+   "t_ms": 3236,
+   "kind": "delta",
+   "id": 0,
+   "text": "所有"
+  },
+  {
+   "t_ms": 3246.1,
+   "kind": "delta",
+   "id": 0,
+   "text": "参与"
+  },
+  {
+   "t_ms": 3256,
+   "kind": "delta",
+   "id": 0,
+   "text": "的人"
+  },
+  {
+   "t_ms": 3265.7,
+   "kind": "delta",
+   "id": 0,
+   "text": "。"
+  },
+  {
+   "t_ms": 3275.9,
+   "kind": "subtitle",
+   "id": 0,
+   "start_ms": 640,
+   "end_ms": 2816,
+   "src_lang": "en",
+   "src_text": "Thanks everyone for joining today.",
+   "tgt_text": "感谢今天所有参与的人。",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 3275.9,
+   "kind": "live_end",
+   "id": 0
+  },
+  {
+   "t_ms": 4752.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 4795.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4807.6,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要推动",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 4817.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "We need to push the lawn.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要推动草坪",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5802.5,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要推动草坪",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 5887.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要把发布时间",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5897.2,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要把发布时间推迟",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5906.9,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要把发布时间推迟到",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5917.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "",
+   "tgt_tail": "我们需要把发布时间推迟到第二天",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 5936.4,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push",
+   "src_tail": " the launch back to the second.",
+   "tgt_stable": "我们需",
+   "tgt_tail": "要把发布时间推迟到第二天",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6493.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "我们需",
+   "tgt_tail": "要把发布时间推迟到第二天",
+   "tgt_src_units": 10
+  },
+  {
+   "t_ms": 6612.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "我们需",
+   "tgt_tail": "将发布时间推迟到11月的",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 6622.8,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "我们需",
+   "tgt_tail": "将发布时间推迟到11月的第二",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 6632.7,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "我们需",
+   "tgt_tail": "将发布时间推迟到11月的第二周",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 7132.1,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7132.1,
+   "kind": "live",
+   "id": 1,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "We need to push the launch back to the",
+   "src_tail": " second week of November.",
+   "tgt_stable": "我们需",
+   "tgt_tail": "将发布时间推迟到11月的第二周",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 7132.1,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7158.6,
+   "kind": "delta",
+   "id": 1,
+   "text": "我们需要将"
+  },
+  {
+   "t_ms": 7171.4,
+   "kind": "delta",
+   "id": 1,
+   "text": "发布"
+  },
+  {
+   "t_ms": 7181.4,
+   "kind": "delta",
+   "id": 1,
+   "text": "时间"
+  },
+  {
+   "t_ms": 7193.5,
+   "kind": "delta",
+   "id": 1,
+   "text": "推迟"
+  },
+  {
+   "t_ms": 7203.9,
+   "kind": "delta",
+   "id": 1,
+   "text": "到"
+  },
+  {
+   "t_ms": 7214.9,
+   "kind": "delta",
+   "id": 1,
+   "text": "11"
+  },
+  {
+   "t_ms": 7225.6,
+   "kind": "delta",
+   "id": 1,
+   "text": "月的"
+  },
+  {
+   "t_ms": 7235.8,
+   "kind": "delta",
+   "id": 1,
+   "text": "第二"
+  },
+  {
+   "t_ms": 7246.9,
+   "kind": "delta",
+   "id": 1,
+   "text": "周"
+  },
+  {
+   "t_ms": 7259.1,
+   "kind": "delta",
+   "id": 1,
+   "text": "。"
+  },
+  {
+   "t_ms": 7270,
+   "kind": "subtitle",
+   "id": 1,
+   "start_ms": 3488,
+   "end_ms": 6816,
+   "src_lang": "en",
+   "src_text": "We need to push the launch back to the second week of November.",
+   "tgt_text": "我们需要将发布时间推迟到11月的第二周。",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 7270,
+   "kind": "live_end",
+   "id": 1
+  },
+  {
+   "t_ms": 8845,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 8899.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8910.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 8920.7,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Our design team.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计团队",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9533.2,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计团队",
+   "tgt_src_units": 3
+  },
+  {
+   "t_ms": 9607.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计团队",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9616.9,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计团队找到了",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9626.6,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计团队找到了几个",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9636.3,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "",
+   "tgt_tail": "我们的设计团队找到了几个方案",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 9656,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design",
+   "src_tail": " team found a few.",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "队找到了几个方案",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 10243.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "队找到了几个方案",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 10333.8,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a",
+   "src_tail": " few issues in the",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "发现了一些问题",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 10948.4,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "发现了一些问题",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 11030.1,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "在结账流程中发现了",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11040,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "在结账流程中发现了一些问题",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11262.5,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11262.5,
+   "kind": "live",
+   "id": 2,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Our design team found a few issues in",
+   "src_tail": " the checkout flow.",
+   "tgt_stable": "我们的设计团",
+   "tgt_tail": "在结账流程中发现了一些问题",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 11262.5,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11275.8,
+   "kind": "delta",
+   "id": 2,
+   "text": "我们的"
+  },
+  {
+   "t_ms": 11285.5,
+   "kind": "delta",
+   "id": 2,
+   "text": "设计"
+  },
+  {
+   "t_ms": 11295.3,
+   "kind": "delta",
+   "id": 2,
+   "text": "团队"
+  },
+  {
+   "t_ms": 11304.9,
+   "kind": "delta",
+   "id": 2,
+   "text": "在"
+  },
+  {
+   "t_ms": 11314.6,
+   "kind": "delta",
+   "id": 2,
+   "text": "结账"
+  },
+  {
+   "t_ms": 11324.4,
+   "kind": "delta",
+   "id": 2,
+   "text": "流程"
+  },
+  {
+   "t_ms": 11334.2,
+   "kind": "delta",
+   "id": 2,
+   "text": "中"
+  },
+  {
+   "t_ms": 11344,
+   "kind": "delta",
+   "id": 2,
+   "text": "发现了"
+  },
+  {
+   "t_ms": 11354,
+   "kind": "delta",
+   "id": 2,
+   "text": "一些问题"
+  },
+  {
+   "t_ms": 11363.6,
+   "kind": "delta",
+   "id": 2,
+   "text": "。"
+  },
+  {
+   "t_ms": 11374.2,
+   "kind": "subtitle",
+   "id": 2,
+   "start_ms": 7584,
+   "end_ms": 10976,
+   "src_lang": "en",
+   "src_text": "Our design team found a few issues in the checkout flow.",
+   "tgt_text": "我们的设计团队在结账流程中发现了一些问题。",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 11374.2,
+   "kind": "live_end",
+   "id": 2
+  },
+  {
+   "t_ms": 13038.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "",
+   "tgt_src_units": 0
+  },
+  {
+   "t_ms": 13099,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13117.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13127.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13137.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发一个",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13147.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发一个新手",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13157,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发一个新手指南",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13166.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "",
+   "src_tail": "Can you send us a noob?",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发一个新手指南吗",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13737.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发一个新手指南吗",
+   "tgt_src_units": 6
+  },
+  {
+   "t_ms": 13838.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发送一份新的报价",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 13848.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "",
+   "tgt_tail": "你能给我们发送一份新的报价吗",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 13867.6,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us",
+   "src_tail": " a new quote for the",
+   "tgt_stable": "你能给我们",
+   "tgt_tail": "发送一份新的报价吗",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 14446.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "你能给我们",
+   "tgt_tail": "发送一份新的报价吗",
+   "tgt_src_units": 9
+  },
+  {
+   "t_ms": 14552.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "你能给我们",
+   "tgt_tail": "发送一份关于额外工作的",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14562.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "你能给我们",
+   "tgt_tail": "发送一份关于额外工作的新",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14572.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "你能给我们",
+   "tgt_tail": "发送一份关于额外工作的新报价",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14582.4,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "你能给我们",
+   "tgt_tail": "发送一份关于额外工作的新报价吗",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 14602.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for",
+   "src_tail": " the extra work?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于额外工作的新报价吗",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 15178.1,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于额外工作的新报价吗",
+   "tgt_src_units": 11
+  },
+  {
+   "t_ms": 15296.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于这项额外工作的新报价",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15306.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于这项额外工作的新报价吗",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15326.7,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于这项额外工作的新报价吗？请在",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15336.5,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于这项额外工作的新报价吗？请在周五",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15346.2,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于这项额外工作的新报价吗？请在周五之前",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15355.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一",
+   "tgt_tail": "份关于这项额外工作的新报价吗？请在周五之前发送",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15375.3,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一份关",
+   "tgt_tail": "于这项额外工作的新报价吗？请在周五之前发送",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15647.8,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "",
+   "status": "asr_done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15647.8,
+   "kind": "live",
+   "id": 3,
+   "extends": null,
+   "src_lang": "en",
+   "src_stable": "Can you send us a new quote for the extra",
+   "src_tail": " work before Friday?",
+   "tgt_stable": "你能给我们发送一份关",
+   "tgt_tail": "于这项额外工作的新报价吗？请在周五之前发送",
+   "tgt_src_units": 13
+  },
+  {
+   "t_ms": 15647.8,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "",
+   "status": "translating",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15661.8,
+   "kind": "delta",
+   "id": 3,
+   "text": "你"
+  },
+  {
+   "t_ms": 15671.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "能在"
+  },
+  {
+   "t_ms": 15681,
+   "kind": "delta",
+   "id": 3,
+   "text": "周五"
+  },
+  {
+   "t_ms": 15690.5,
+   "kind": "delta",
+   "id": 3,
+   "text": "之前"
+  },
+  {
+   "t_ms": 15700.1,
+   "kind": "delta",
+   "id": 3,
+   "text": "给我们"
+  },
+  {
+   "t_ms": 15709.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "发送"
+  },
+  {
+   "t_ms": 15719.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "一份"
+  },
+  {
+   "t_ms": 15728.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "关于"
+  },
+  {
+   "t_ms": 15738.7,
+   "kind": "delta",
+   "id": 3,
+   "text": "额外"
+  },
+  {
+   "t_ms": 15748.9,
+   "kind": "delta",
+   "id": 3,
+   "text": "工作的"
+  },
+  {
+   "t_ms": 15758.5,
+   "kind": "delta",
+   "id": 3,
+   "text": "新"
+  },
+  {
+   "t_ms": 15768.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "报价"
+  },
+  {
+   "t_ms": 15778.4,
+   "kind": "delta",
+   "id": 3,
+   "text": "吗"
+  },
+  {
+   "t_ms": 15788.3,
+   "kind": "delta",
+   "id": 3,
+   "text": "？"
+  },
+  {
+   "t_ms": 15803.9,
+   "kind": "subtitle",
+   "id": 3,
+   "start_ms": 11776,
+   "end_ms": 15360,
+   "src_lang": "en",
+   "src_text": "Can you send us a new quote for the extra work before Friday?",
+   "tgt_text": "你能在周五之前给我们发送一份关于额外工作的新报价吗？",
+   "status": "done",
+   "provisional": false,
+   "replaces": []
+  },
+  {
+   "t_ms": 15803.9,
+   "kind": "live_end",
+   "id": 3
+  }
+ ]
+}
