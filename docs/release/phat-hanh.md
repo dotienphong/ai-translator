@@ -1100,7 +1100,7 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
 
 ## 11. Đợt thêm chat hỗ trợ (migration D1 0005)
 
-Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.io.vn`.
+Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.io.vn`, `PADMIN=https://admin.aitranslator.io.vn`.
 
 Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn index), không đổi bảng nào đã có, nên Worker cũ chạy đúng trên schema mới; Worker mới cần bốn bảng và ba secret Zalo (thiếu secret thì `wrangler deploy` từ chối); `setWebhook` cần route đã có (Zalo thử URL ngay khi lưu); chat mặc định **tắt** (`support_settings.enabled = '0'`), nên trong lúc chờ app và website, không ai gửi được tin; app và website chỉ nói điều đã thật nên đi sau; bật chat là bước cuối, bằng lệnh `/bat` gửi cho bot.
 
@@ -1173,6 +1173,15 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
    ```
 
    Expected: như mục 4 bước 9 (`Uploaded mt-license`, `schedule: */5 * * * *`, binding `SUPPORT_POLL_LIMITER`); `{"ok":true}`; `{"enabled":false}`; `403` (route có, từ chối vì thiếu header secret). **Kiểm cron chạy thật**: `pnpm exec wrangler tail mt-license --format pretty` qua một mốc 5 phút; Expected: có `{"event":"reconcile",…}` và **không có** `reconcile_step_failed` với `"step":"support_forward"`, `"support_emails"` hay `"support_prune"`. Không thấy cron thì `pnpm exec wrangler triggers deploy` rồi kiểm lại (sự cố 2026-10-07).
+
+   **Ngay sau đó deploy Worker admin** (đợt này sửa `/admin/erase` để xóa cả cuộc chat có email đó; Worker admin đọc ghi chung D1 nên **không bao giờ deploy nó trước migration 0005**: thiếu bảng `support_*` thì cả thao tác ẩn danh theo email, kể cả phần license, đều lỗi):
+
+   ```bash
+   pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
+   curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/admin/whoami"
+   ```
+
+   Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`). Đăng nhập Web Admin, mở Công cụ: trang tải bình thường.
 
 8. **Đặt webhook.** Trước tiên `dig @8.8.8.8 api.aitranslator.io.vn +short` phải in địa chỉ IP (sự cố DNSSEC của `io.vn` ngày 2026-10-22: `SERVFAIL` thì Zalo cũng không gọi được webhook; đợi rồi làm lại).
 
@@ -1271,5 +1280,6 @@ PROD=https://api.aitranslator.io.vn
 
 - **Tắt chat ngay, không deploy:** nhắn `/tat` cho bot. Website và app thay ô nhập bằng email support@; tin cũ vẫn hiện; app 0.2.4 không cần rút. Bot không nhận lệnh (Zalo lỗi, webhook hỏng) thì đặt thẳng trong D1. Bảng `support_settings` có hai cột `key` và `value` (`server/migrations/0005_support_chat.sql`): `pnpm exec wrangler d1 execute mt-license-production --remote --command "UPDATE support_settings SET value = '0' WHERE key = 'enabled'"`, rồi `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT key, value FROM support_settings ORDER BY key"` thấy `enabled` là `0` (và `curl -s "$PROD/v1/support/status"` in `{"enabled":false}`).
 - **Worker lỗi:** `pnpm exec wrangler rollback` về bản trước đợt này: các đường `/v1/support/*` và `/v1/webhooks/zalo` biến mất, khung chat báo không gửi được, trang Liên hệ và chính sách vẫn nêu email. Kiểm cron còn chạy như mục 4 bước 9 (không thấy cron thì `pnpm exec wrangler triggers deploy`; sự cố 2026-10-07).
+- **Worker admin lỗi:** `pnpm exec wrangler rollback -c wrangler.admin.jsonc` về bản trước đợt này; khi đó "Ẩn danh dữ liệu theo email" **không** xóa cuộc chat nữa, nên xóa cuộc chat theo yêu cầu bằng các lệnh D1 ở trên.
 - **Dữ liệu:** migration 0005 chỉ **thêm** bảng, không đổi bảng cũ, nên Worker cũ chạy đúng trên schema mới; không cần lùi migration hay Time Travel. Xóa toàn bộ dữ liệu chat nếu cần: `DELETE FROM support_messages` rồi `DELETE FROM support_conversations` (hai lệnh `wrangler d1 execute --remote --command`, bảng tin trước).
 - **Nội dung website:** nếu chat bị bỏ lâu dài thì phải sửa lại trang Liên hệ, Dữ liệu và bảo mật, Trang chủ, Hỏi đáp và chính sách (bản mới, ngày hiệu lực mới); `/tat` không đổi chữ trên website.
