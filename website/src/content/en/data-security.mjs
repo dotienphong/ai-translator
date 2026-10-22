@@ -137,7 +137,7 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 ${steps(
   [
     { title: "Delete data on your computer", text: "Go to <strong>Settings › Privacy</strong>. <em>Delete all data</em> removes history and glossary; <em>Delete models and data</em> also removes downloaded models (on macOS, do this before you drag the app to the Trash). Your license, quota and settings are kept." },
-    { title: "Ask us to delete server data", text: `Email ${MAIL} <strong>from the same email you used to buy</strong>, so we can confirm it is you. Our Privacy policy also gives you the right to know what is stored, to withdraw consent and to complain, as set out in Vietnam's personal data protection law. We handle requests within the time the law sets.` },
+    { title: "Ask us to delete server data", text: `Email ${MAIL} <strong>from the same email you used to buy, or the email you left in the support chat</strong>, so we can confirm it is you. Our Privacy policy also gives you the right to know what is stored, to withdraw consent and to complain, as set out in Vietnam's personal data protection law. We handle requests within the time the law sets.` },
     { title: "What we do", text: "We remove your email and device name, delete the error reports of the machines that ever activated a key for that email, and delete the support chats in which you left that email (including the copy that reached the person who replies). Your license still works, but can no longer be recovered by email." },
   ],
   true,

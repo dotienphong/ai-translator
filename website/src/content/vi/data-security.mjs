@@ -137,7 +137,7 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 ${steps(
   [
     { title: "Xóa dữ liệu trên máy", text: "Vào <strong>Cài đặt › Quyền riêng tư</strong>. <em>Xóa toàn bộ dữ liệu</em> xóa lịch sử và từ điển; <em>Xóa model và dữ liệu</em> xóa thêm model đã tải (trên macOS, bấm nút này trước khi kéo app vào Thùng rác). Bản quyền, hạn mức và cài đặt được giữ." },
-    { title: "Yêu cầu xóa trên máy chủ", text: `Gửi email tới ${MAIL} <strong>từ chính email đã dùng khi mua</strong> để chúng tôi xác nhận là bạn. Chính sách quyền riêng tư cũng cho bạn quyền biết dữ liệu nào đang được lưu, rút lại sự đồng ý và khiếu nại theo quy định của Luật Bảo vệ dữ liệu cá nhân của Việt Nam. Chúng tôi xử lý trong thời hạn pháp luật quy định.` },
+    { title: "Yêu cầu xóa trên máy chủ", text: `Gửi email tới ${MAIL} <strong>từ chính email đã dùng khi mua, hay email bạn đã để lại trong chat hỗ trợ</strong> để chúng tôi xác nhận là bạn. Chính sách quyền riêng tư cũng cho bạn quyền biết dữ liệu nào đang được lưu, rút lại sự đồng ý và khiếu nại theo quy định của Luật Bảo vệ dữ liệu cá nhân của Việt Nam. Chúng tôi xử lý trong thời hạn pháp luật quy định.` },
     { title: "Điều chúng tôi làm", text: "Bỏ email và tên máy của bạn, xóa báo cáo lỗi của các máy từng kích hoạt key của email đó, và xóa các cuộc chat hỗ trợ mà bạn đã để lại email đó (kể cả bản đã tới người trả lời). License vẫn dùng được, nhưng không khôi phục qua email được nữa." },
   ],
   true,
