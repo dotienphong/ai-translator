@@ -143,7 +143,7 @@ function footer(page) {
 ${f.map(col).join("")}
 </div>
 <div class="footer-bottom">
-<span>© ${SITE.year} ${SITE.name} · ${esc(t.provider)}: ${esc(SITE.owner)} · ${esc(t.updated)} <time datetime="${iso}">${shown}</time></span>
+<span>© ${SITE.year} ${SITE.name} · ${esc(t.provider)}${t.colon ?? ": "}${esc(SITE.owner)} · ${esc(t.updated)} <time datetime="${iso}">${shown}</time></span>
 <span>${esc(t.trademark)}</span>
 </div>
 </div>

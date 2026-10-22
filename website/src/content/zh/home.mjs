@@ -65,7 +65,7 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple 芯片）· Windows 10/11 · 免费试用 10 天</p>
-<h1 class="reveal">为<em>每一场会议</em>提供 AI 翻译字幕，在你的电脑上运行</h1>
+<h1 class="reveal">为<em>每一场会议</em><span class="nowrap">提供</span> AI 翻译字幕，在你的电脑上运行</h1>
 <p class="lead reveal">AI Translator 使用在你自己电脑上运行的 AI，把电脑上播放的音频变成屏幕上的翻译字幕，延迟很低。你的音频和会议内容不会被发送到云端，也不会经过任何云端 AI 服务。可用于 Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会和视频：无需机器人，无需账号。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/zh/download/">下载 ${icon("arrow-right")}</a>
