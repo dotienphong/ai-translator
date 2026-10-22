@@ -76,8 +76,8 @@ test("mỗi trang ja/zh/ko cùng khung với bản en: kiểu trang, số h2/h3,
   assert.deepEqual(errors, []);
 });
 
-// Tên riêng nhiều chữ Latin được phép đứng liền nhau trong bản ja/zh/ko.
-const NAMES = /AI Translator|Microsoft Teams|Google Meet|Zalo PC|Apple Silicon|Windows 10\/11|Smart App Control|Type & Translate/g;
+// Tên riêng nhiều chữ Latin được phép đứng liền nhau trong bản ja/zh/ko, và tên phím (danh sách "T, H, L, PageUp, PageDown").
+const NAMES = /AI Translator|Microsoft Teams|Google Meet|Zalo PC|Apple Silicon|Windows 10\/11|Smart App Control|Type & Translate|\b(?:Ctrl|Alt|Shift|Cmd|Win|Esc|Enter|Tab|Space|PageUp|PageDown|[A-Z])\b/g;
 
 test("bản ja/zh/ko không sót câu tiếng Anh (từ năm từ Latin liền nhau, ngoài code, kbd, khối minh họa và phần lang=\"en\")", () => {
   const errors = [];
