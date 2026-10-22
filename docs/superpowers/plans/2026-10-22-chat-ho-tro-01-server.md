@@ -57,10 +57,12 @@
 | Task 6 | 1551 | 44 |
 | Task 7 | 1558 | 44 |
 | Task 8 | 1567 | 44 |
-| Task 9 | 1579 | 44 |
-| Task 10 | 1585 | 44 |
-| Task 11 | 1595 | 44 |
-| Task 12 | 1601 | 44 |
+| Sửa nhỏ `owner.ts` (＃ toàn khổ, ký tự vô hình; sau Task 8) | 1568 | 44 |
+| Task 9 | 1580 | 44 |
+| Task 10 | 1586 | 44 |
+| Rà đợt 3 (6 test thêm vào `support-routes.test.ts`; sửa `owner.ts` không thêm test) | 1592 | 44 |
+| Task 11 | 1602 | 44 |
+| Task 12 | 1608 | 44 |
 
 ---
 
@@ -2451,13 +2453,16 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1579 passed (1579)`.
+Expected: `tsc` không lỗi; `Tests  1580 passed (1580)`.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && git branch --show-current && git add server/src/support/routes.ts server/src/http.ts server/src/ratelimit.ts server/src/alerts.ts server/src/app.ts server/test/support-helpers.ts server/test/support-routes.test.ts && git commit -m "feat(server): endpoint gửi tin và trạng thái của chat hỗ trợ, CORS cho website" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+
+**Sau khi rà (2026-10-22):** (1) `authed` chỉ tính thất bại của IP (`noteFailure`) khi token đúng dạng 43 ký tự base64url mà không khớp cuộc chat nào; thiếu header `Authorization` hay token sai dạng thì 401 `invalid_token` mà không đếm, vì `GET /v1/support/messages` là simple request: trang lạ nhúng `<img>` nhiều lần sẽ làm IP người xem bị chặn `failure_ip` (chặn cả kích hoạt license, checkout), còn trình duyệt không gửi được `Authorization` tới origin khác nếu không qua preflight. (2) Thông báo Zalo của PUT email và DELETE (`notifyOwner`, Task 10) chỉ gửi khi chat đang bật và còn trong trần `support_global` (mỗi thông báo tính một lần); quá trần thì bỏ thông báo, email vẫn lưu, cuộc chat vẫn xóa, trả 200; lỗi D1 hay Zalo không làm request lỗi. (3) `owner.ts` bỏ ở đầu tin mọi ký tự `\p{Cf}` và khoảng trắng. Test của (1), (2) và các ca CORS 415/429, GET không ghi D1 khi đã nhận tin cuối nằm ở cuối `support-routes.test.ts` (6 test).
 
 ---
 
@@ -2709,7 +2714,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1585 passed (1585)`.
+Expected: `tsc` không lỗi; `Tests  1586 passed (1586)` (sau rà đợt 3: 1592).
 
 - [ ] **Step 5: Commit**
 
@@ -3059,7 +3064,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1595 passed (1595)`.
+Expected: `tsc` không lỗi; `Tests  1602 passed (1602)`.
 
 - [ ] **Step 6: Commit**
 
@@ -3418,7 +3423,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1601 passed (1601)`.
+Expected: `tsc` không lỗi; `Tests  1608 passed (1608)`.
 
 - [ ] **Step 7: Commit**
 
@@ -3545,7 +3550,7 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server check 2>&1 | tail -12
 ```
-Expected: `typecheck`, `vectors:check`, `test` (`Tests  1601 passed (1601)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
+Expected: `typecheck`, `vectors:check`, `test` (`Tests  1608 passed (1608)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
 
 - [ ] **Step 3: Kiểm không lộ token và không còn chỗ giữ chỗ lạ**
 

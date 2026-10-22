@@ -115,7 +115,7 @@ Luật nội dung (server kiểm, khách kiểm trước để báo sớm):
 
 | Bộ test | Lệnh | Mốc | Sau kế hoạch |
 |---|---|---|---|
-| Server (vitest) | `pnpm -C server test` | 1523 | 1601 (01) |
+| Server (vitest) | `pnpm -C server test` | 1523 | 1608 (01) |
 | Server (script Node) | `pnpm -C server test:scripts` | 43 (42 đạt, 1 bỏ qua) | 44 (01) |
 | Website | `cd website && pnpm test` | 152 (150 đạt, 2 bỏ qua) | 191 (02), rồi +7 (04) |
 | Giao diện app | `pnpm test` | 331 (26 file) | 359 (28 file) (03) |
