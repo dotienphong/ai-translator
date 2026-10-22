@@ -43,3 +43,9 @@ Dạng một sự kiện (đã che id và tên):
     }
 
 **Kết luận cổng:** qua (điều 1, 3, 4 đạt). Điều 2 phải đạt trước khi bật chat (`docs/release/phat-hanh.md` mục 11, bước 13). Thân webhook thật (dạng gửi tới `/v1/webhooks/zalo`) đối chiếu ở runbook mục 11 bước 9.
+
+## Đặt webhook trên production (2026-10-22, runbook mục 11 bước 8)
+
+- Lần đầu `setWebhook`: URL được lưu nhưng `verification` báo `webhook.http.403`. Log của Worker không có request nào: Cloudflare chặn ở rìa. Security › Events: **Service = Browser integrity check, Action = Block** (Zalo gọi từ máy chủ với User-Agent `Java/1.8.0_192`).
+- Sửa ở zone `aitranslator.io.vn`: Configuration Rule `zalo-webhook-no-bic` (`http.host eq "api.aitranslator.io.vn" and http.request.uri.path eq "/v1/webhooks/zalo"`) đặt Browser Integrity Check = Off; luật rate limit `webhook-rate-limit` đổi thành `(starts_with(http.request.uri.path, "/v1/webhooks/") and not http.request.uri.path eq "/v1/webhooks/zalo")`.
+- Lần hai `setWebhook`: `"verification":{"ok":true,"outcome":"webhook.ok"}`. Request thử tới Worker, **có** header `X-Bot-Api-Secret-Token`; thân **không bọc** trong `result` và **không có** `chat`/`from`: `{"event_name": string, "message": {"date": number, "message_id": string, "text": string}}`, nên Worker ghi `zalo_webhook_unreadable` và trả 200 (đúng: không có người gửi để kiểm).
