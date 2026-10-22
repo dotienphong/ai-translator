@@ -2232,3 +2232,17 @@ test("chat hỗ trợ: HTML không tải sẵn file nào của chat (chỉ tải
     assert.ok(!/<(?:script|link)\b[^>]*\s(?:src|href)="\/assets\/bundle\/chat/.test(html), `${p.path}: tải sẵn file chat`);
   }
 });
+
+test("chat hỗ trợ: data-chat-ui, data-chat-css trỏ tới file có thật; chat.js đã băm chỉ nhập lõi và chữ đã băm", async () => {
+  const tag = /<script src="\/assets\/bundle\/site\.[0-9a-f]{10}\.js" defer([^>]*)><\/script>/.exec(htmlByPath.get("/"))[1];
+  const attr = (n) => new RegExp(`\\sdata-chat-${n}="([^"]*)"`).exec(tag)?.[1] ?? "";
+  assert.match(attr("ui"), /^\/assets\/bundle\/chat\.[0-9a-f]{10}\.js$/);
+  assert.match(attr("css"), /^\/assets\/bundle\/chat\.[0-9a-f]{10}\.css$/);
+  for (const n of ["ui", "css"]) assert.ok(await exists(path.join(DIST, attr(n))), `thiếu ${attr(n)}`);
+  const ui = await readFile(path.join(DIST, attr("ui")), "utf8");
+  const imports = [...ui.matchAll(/from "\.\/([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(imports.length, 2, imports.join(", "));
+  assert.equal(imports[0], path.basename(attr("core")), "chat.js phải nhập đúng lõi mà site.js dùng");
+  assert.match(imports[1], /^chat-strings\.[0-9a-f]{10}\.js$/);
+  for (const f of imports) assert.ok(await exists(path.join(DIST, "assets", "bundle", f)), `thiếu ${f}`);
+});

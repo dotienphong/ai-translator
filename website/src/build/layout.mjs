@@ -188,7 +188,7 @@ function chatAttrs(page, ctx) {
   const c = ctx.assets.chat;
   if (!c) return "";
   const t = CHAT[page.lang];
-  return ` data-chat-core="${c.core}" data-chat-lang="${page.lang}" data-chat-label="${esc(t.open)}" data-chat-unread="${esc(t.unread)}"`;
+  return ` data-chat-core="${c.core}" data-chat-ui="${c.ui}" data-chat-css="${c.css}" data-chat-lang="${page.lang}" data-chat-label="${esc(t.open)}" data-chat-unread="${esc(t.unread)}"`;
 }
 
 export function renderPage(page, ctx) {

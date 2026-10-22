@@ -228,12 +228,28 @@ function headers() {
 `;
 }
 
-/** Lõi chat hỗ trợ (spec chat hỗ trợ 2026-10-22, mục 3): ES module tên có mã băm, site.js chỉ tải khi khách đang chờ trả lời.
- *  site.js đọc đường dẫn qua thuộc tính data-chat-* của thẻ script (layout.mjs), nên không cần script nội tuyến mới. */
+/** Chat hỗ trợ (spec chat hỗ trợ 2026-10-22, mục 3): các ES module và CSS tên có mã băm. site.js tải chat-core.js khi khách đang
+ *  chờ trả lời, chat.js và chat.css khi khách bấm bong bóng; đường dẫn đi qua thuộc tính data-chat-* của thẻ script (layout.mjs),
+ *  nên không cần script nội tuyến mới. chat.js nhập "./chat-core.js" và "./chat-strings.js": hai dòng đó được đổi thành tên đã
+ *  băm trước khi băm chính chat.js, nên sửa một file con thì tên chat.js cũng đổi (cache immutable không giữ bản cũ). */
 async function chatAssets() {
-  const core = await readFile(path.join(SRC, "assets", "chat-core.js"));
-  const out = { core: `/assets/bundle/chat-core.${sha(core)}.js` };
-  await writeOut(out.core.slice(1), core);
+  const out = {};
+  const named = {};
+  for (const [key, name] of [["core", "chat-core"], ["strings", "chat-strings"]]) {
+    const buf = await readFile(path.join(SRC, "assets", `${name}.js`));
+    out[key] = `/assets/bundle/${name}.${sha(buf)}.js`;
+    named[`${name}.js`] = path.posix.basename(out[key]);
+    await writeOut(out[key].slice(1), buf);
+  }
+  const ui = (await readFile(path.join(SRC, "assets", "chat.js"), "utf8")).replace(/from "\.\/([a-z-]+\.js)"/g, (m, f) => {
+    if (!named[f]) throw new Error(`chat.js nhập file không có trong bundle: ${f}`);
+    return `from "./${named[f]}"`;
+  });
+  const css = await readFile(path.join(SRC, "assets", "chat.css"));
+  out.ui = `/assets/bundle/chat.${sha(ui)}.js`;
+  out.css = `/assets/bundle/chat.${sha(css)}.css`;
+  await writeOut(out.ui.slice(1), ui);
+  await writeOut(out.css.slice(1), css);
   return out;
 }
 
