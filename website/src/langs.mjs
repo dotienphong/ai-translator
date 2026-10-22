@@ -10,8 +10,12 @@ export const LANGS = {
   ko: { tag: "ko", prefix: "/ko/", ogLocale: "ko_KR", name: "한국어", short: "KO", intl: "ko-KR", published: false },
 };
 export const LANG_CODES = Object.keys(LANGS);
+// Xem trước ngôn ngữ đang dịch: WEBSITE_PREVIEW_LANGS=ja,zh dựng thêm các ngôn ngữ đó khi dựng cục bộ và chạy test. Lệnh deploy
+// (`build.mjs --deploy`) bỏ qua biến này, nên ngôn ngữ chưa mở không lọt lên mạng.
+const preview = process.argv.includes("--deploy") ? [] : (process.env.WEBSITE_PREVIEW_LANGS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+for (const l of preview) if (!Object.hasOwn(LANGS, l)) throw new Error(`WEBSITE_PREVIEW_LANGS: ngôn ngữ lạ ${l}`);
 /** Ngôn ngữ đang dựng trang, theo thứ tự của LANGS. */
-export const PUBLISHED = LANG_CODES.filter((l) => LANGS[l].published);
+export const PUBLISHED = LANG_CODES.filter((l) => LANGS[l].published || preview.includes(l));
 /** Ngôn ngữ chữ Hán, kana, Hangul: ngưỡng SEO riêng và phông có sẵn của máy (spec §3, §5). */
 export const CJK = new Set(["ja", "zh", "ko"]);
 /** Trang chỉ có bản vi và en: văn bản pháp lý (ja/zh/ko dẫn sang bản tiếng Anh, spec §2). */

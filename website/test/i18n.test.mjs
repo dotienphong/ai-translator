@@ -3,6 +3,7 @@
 //   node --test test/i18n.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { LANGS, LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, fromEn, formatDate } from "../src/langs.mjs";
 import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
@@ -165,4 +166,19 @@ test("videoObject tự lấy thời lượng từ file; demoVideo có nút phát
   assert.match(html, /<video controls preload="none" playsinline width="1920" height="1200" poster="/);
   assert.match(html, /<button class="video-play" type="button" hidden aria-label="Play the demo video \(0:39, with sound\)">/);
   assert.ok(html.includes('<span class="video-play-label" aria-hidden="true">Watch the demo · 0:39 · with sound</span>'));
+});
+
+test("WEBSITE_PREVIEW_LANGS thêm ngôn ngữ đang dịch khi dựng cục bộ; lệnh deploy bỏ qua; mã lạ thì báo lỗi", () => {
+  const run = (env, extra = []) =>
+    execFileSync(process.execPath, ["--input-type=module", "-e", 'const { PUBLISHED } = await import("./src/langs.mjs"); console.log(PUBLISHED.join(","))', "--", ...extra], {
+      cwd: new URL("..", import.meta.url),
+      env: { ...process.env, ...env },
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  const base = run({ WEBSITE_PREVIEW_LANGS: "" });
+  const order = (list) => LANG_CODES.filter((l) => list.includes(l)).join(",");
+  assert.equal(run({ WEBSITE_PREVIEW_LANGS: "ja,ko" }), order([...base.split(","), "ja", "ko"]));
+  assert.equal(run({ WEBSITE_PREVIEW_LANGS: "ja" }, ["--deploy"]), base);
+  assert.throws(() => run({ WEBSITE_PREVIEW_LANGS: "fr" }), /ngôn ngữ lạ fr/);
 });
