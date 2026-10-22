@@ -24,8 +24,8 @@ const COMMANDS: Record<string, "list" | "block" | "unblock" | "off" | "on"> = {
   "/bật": "on",
 };
 
-/** Ký tự rộng 0 và khoảng trắng ở đầu tin (bàn phím, ứng dụng chat hay chèn): bỏ trước khi nhận dạng. */
-const LEADING_INVISIBLE = /^[\u200B\u200C\u200D\u2060\uFEFF\s]+/;
+/** Ký tự định dạng (Unicode Cf: rộng 0, đánh dấu chiều chữ, gạch nối mềm…) và khoảng trắng ở đầu tin: bàn phím và ứng dụng chat hay chèn, bỏ trước khi nhận dạng. */
+const LEADING_INVISIBLE = /^[\p{Cf}\s]+/u;
 
 /** Phần của `original` còn lại sau khi đã dùng hết `consumed` ký tự của dạng NFKC (đi từng ký tự gốc, để không NFKC nội dung). */
 function afterNormalizedPrefix(original: string, consumed: number): string {

@@ -50,6 +50,10 @@ describe("đọc tin chủ dự án gõ cho bot (spec 2026-10-22 §2.4, §2.5)",
     expect(parseOwnerText("\u200C＃K7QX x")).toEqual({ kind: "badCode" });
     // NFKC chỉ để nhận dạng: chữ của chủ dự án gửi cho khách không bị đổi.
     expect(parseOwnerText("＃K7Q Ｘin chào ①")).toEqual({ kind: "reply", code: "K7Q", text: "Ｘin chào ①" });
+    for (const invisible of ["\u200E", "\u202E", "\u00AD", "\u200F\u202A", "\u061C"]) {
+      expect(parseOwnerText(`${invisible}#K7Q chào`)).toEqual({ kind: "reply", code: "K7Q", text: "chào" });
+      expect(parseOwnerText(`${invisible}/tat`)).toEqual({ kind: "off" });
+    }
     expect(parseOwnerText("\u200BXin chào")).toEqual({ kind: "reply", code: null, text: "Xin chào" });
   });
 });
