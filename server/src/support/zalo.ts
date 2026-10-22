@@ -54,8 +54,12 @@ export class HttpZaloBot implements OwnerBot {
     } catch {
       // Thân không phải JSON: coi như lỗi ở dưới.
     }
-    const ok = res.ok && typeof body === "object" && body !== null && (body as { ok?: unknown }).ok === true;
-    if (!ok) throw new ZaloBotError(`Zalo Bot từ chối tin (HTTP ${res.status})`, res.status);
+    const parsed = typeof body === "object" && body !== null ? (body as { ok?: unknown; error_code?: unknown }) : null;
+    if (res.ok && parsed?.ok === true) return;
+    // Zalo Bot báo lỗi bằng HTTP 200 kèm `error_code` trong thân (đo thật 2026-10-22, bench/2026-10-22-chat-ho-tro/spike.md:
+    // 400 tin quá dài, 401 token sai): lấy mã trong thân, để isContentRejection (forward.ts) phân loại đúng. Không có thì lấy mã HTTP.
+    const code = typeof parsed?.error_code === "number" && parsed.error_code !== 0 ? parsed.error_code : res.status;
+    throw new ZaloBotError(`Zalo Bot từ chối tin (mã ${code})`, code);
   }
 }
 

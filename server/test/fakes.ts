@@ -630,7 +630,7 @@ export const TEST_ZALO_OWNER = "owner-chat-id";
 
 /**
  * Zalo Bot giả ở mức HTTP (`sendMessage`): route chạy đúng code HttpZaloBot, chỉ thay hàm fetch. `down`: lỗi mạng, thông điệp
- * có cả URL (fetch thật có thể làm vậy, và URL chứa token); `failStatus`: Zalo trả mã lỗi HTTP; `okFalseWith200`: HTTP 200 mà
+ * có cả URL (fetch thật có thể làm vậy, và URL chứa token); `failStatus`: Zalo trả lỗi với mã này (HTTP 200, mã trong `error_code` như Zalo thật); `okFalseWith200`: HTTP 200 mà
  * thân `ok: false`.
  */
 export class FakeZalo {
@@ -642,19 +642,20 @@ export class FakeZalo {
   okFalseWith200 = false;
   /** HTTP 200 nhưng thân là HTML, không phải JSON (trang lỗi của proxy). */
   htmlWith200 = false;
-  /** Từ chối (HTTP 400) tin có nội dung chứa chuỗi này, như Zalo từ chối một nội dung cụ thể; các tin khác vẫn đi. */
+  /** Từ chối (`error_code` 400) tin có nội dung chứa chuỗi này, như Zalo từ chối một nội dung cụ thể; các tin khác vẫn đi. */
   failWhenTextIncludes: string | null = null;
 
   readonly fetch = async (url: string, init: RequestInit = {}): Promise<Response> => {
     this.urls.push(url);
     if (this.down) throw new TypeError(`fetch failed: ${url}`);
-    if (this.failStatus !== null) return json({ ok: false, error_code: this.failStatus, description: "lỗi giả" }, this.failStatus);
+    // Zalo thật báo lỗi bằng HTTP 200, mã lỗi nằm trong `error_code` của thân (đo 2026-10-22); Zalo giả làm giống vậy.
+    if (this.failStatus !== null) return json({ ok: false, error_code: this.failStatus, description: "lỗi giả" });
     if (this.htmlWith200) return new Response("<html>Bad gateway</html>", { status: 200, headers: { "content-type": "text/html" } });
     if (this.okFalseWith200) return json({ ok: false, error_code: 404, description: "lỗi giả" });
     this.contentTypes.push((init.headers as Record<string, string>)["content-type"]);
     const body = JSON.parse(init.body as string) as { chat_id: string; text: string };
     if (this.failWhenTextIncludes !== null && body.text.includes(this.failWhenTextIncludes)) {
-      return json({ ok: false, error_code: 400, description: "nội dung bị từ chối" }, 400);
+      return json({ ok: false, error_code: 400, description: "nội dung bị từ chối" });
     }
     this.sent.push({ chatId: body.chat_id, text: body.text });
     return json({ ok: true, result: { message_id: crypto.randomUUID(), date: 1_790_812_800_000 } });

@@ -13,7 +13,7 @@ describe("HttpZaloBot: gửi tin tới Zalo của chủ dự án (spec 2026-10-2
     expect(zalo.contentTypes).toEqual(["application/json"]);
   });
 
-  it("Zalo trả mã lỗi HTTP: ZaloBotError có mã, thông điệp không chứa token", async () => {
+  it("Zalo trả lỗi kèm mã: ZaloBotError có mã, thông điệp không chứa token", async () => {
     const zalo = new FakeZalo();
     zalo.failStatus = 401;
     const err = await bot(zalo)
@@ -54,6 +54,20 @@ describe("HttpZaloBot: gửi tin tới Zalo của chủ dự án (spec 2026-10-2
     expect((err as ZaloBotError).status).toBeUndefined();
     expect(String(err)).not.toContain(TEST_ZALO_TOKEN);
     expect(String(err)).not.toContain("zaloplatforms");
+  });
+
+  it("Zalo báo lỗi bằng HTTP 200 kèm error_code trong thân (đo thật 2026-10-22): ZaloBotError mang mã trong thân", async () => {
+    const reply = (body: unknown, status = 200) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    const tooLong = new HttpZaloBot(
+      TEST_ZALO_TOKEN,
+      TEST_ZALO_OWNER,
+      reply({ ok: false, description: "Bad request: The text must not exceed 2000 characters", error_code: 400 }),
+    );
+    expect(await tooLong.send("x").catch((e: unknown) => (e as ZaloBotError).status)).toBe(400);
+    const badToken = new HttpZaloBot(TEST_ZALO_TOKEN, TEST_ZALO_OWNER, reply({ ok: false, description: "Unauthorized", error_code: 401 }));
+    expect(await badToken.send("x").catch((e: unknown) => (e as ZaloBotError).status)).toBe(401);
+    const gateway = new HttpZaloBot(TEST_ZALO_TOKEN, TEST_ZALO_OWNER, async () => new Response("<html>Bad gateway</html>", { status: 502 }));
+    expect(await gateway.send("x").catch((e: unknown) => (e as ZaloBotError).status)).toBe(502);
   });
 
   it("zaloFromEnv: thiếu token hay chat_id thì không có bot", () => {
