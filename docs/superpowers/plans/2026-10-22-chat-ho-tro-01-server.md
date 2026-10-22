@@ -4,7 +4,7 @@
 
 **Goal:** Worker `mt-license` nhận tin chat của khách (`/v1/support/*`), lưu D1, chuyển sang Zalo của chủ dự án qua Zalo Bot, nhận câu trả lời và lệnh qua webhook `POST /v1/webhooks/zalo`, gửi lại khi Zalo lỗi, gửi email câu trả lời cho khách đã rời đi, xóa cuộc chat sau 90 ngày.
 
-**Architecture:** Module mới `server/src/support/` gồm các file nhỏ một việc: `text.ts` (kiểm input), `zalo.ts` (client HTTP của Zalo Bot), `store.ts` (D1), `format.ts` (chữ gửi Zalo), `owner.ts` (đọc lệnh của chủ dự án), `forward.ts` (chuyển tin), `routes.ts` (endpoint của khách và CORS), `webhook.ts` (webhook Zalo), `cron.ts` (việc định kỳ). Migration `0005_support_chat.sql` thêm ba bảng. `Deps` có thêm `zalo` để test thay Zalo bằng bản giả ở mức HTTP (như PayOS, Resend).
+**Architecture:** Module mới `server/src/support/` gồm các file nhỏ một việc: `text.ts` (kiểm input), `zalo.ts` (client HTTP của Zalo Bot), `store.ts` (D1), `format.ts` (chữ gửi Zalo), `owner.ts` (đọc lệnh của chủ dự án), `forward.ts` (chuyển tin), `routes.ts` (endpoint của khách và CORS), `webhook.ts` (webhook Zalo), `cron.ts` (việc định kỳ). Migration `0005_support_chat.sql` thêm bốn bảng. `Deps` có thêm `zalo` để test thay Zalo bằng bản giả ở mức HTTP (như PayOS, Resend).
 
 **Tech Stack:** TypeScript 7 strict, Hono 4.13 (`hono/cors`), Cloudflare Workers + D1 + binding Rate Limiting, vitest 4 với `@cloudflare/vitest-plugin`, pnpm.
 
@@ -19,7 +19,7 @@
 | File | Việc |
 |---|---|
 | Create `bench/2026-10-22-chat-ho-tro/spike.md` | Kết quả bước 0 (thử Zalo Bot) |
-| Create `server/migrations/0005_support_chat.sql` | Ba bảng `support_conversations`, `support_messages`, `support_settings`, bốn index, hai dòng cài đặt mặc định |
+| Create `server/migrations/0005_support_chat.sql` | Bốn bảng `support_conversations`, `support_messages`, `support_settings`, `support_zalo_updates`, bốn index, hai dòng cài đặt mặc định |
 | Create `server/src/support/text.ts` | Kiểu `Lang`, `Source`; `parseText`, `parseLang`, `parseSource`, `parsePage`, `parseContext`, `truncate`, `newToken`, `isTokenShape`, `newCode` |
 | Create `server/src/support/zalo.ts` | `OwnerBot`, `HttpZaloBot`, `ZaloBotError`, `zaloFromEnv` |
 | Create `server/src/support/store.ts` | Đọc ghi D1 của chat |
@@ -63,6 +63,7 @@
 | Rà đợt 3 (6 test thêm vào `support-routes.test.ts`; sửa `owner.ts` không thêm test) | 1592 | 44 |
 | Task 11 | 1602 | 44 |
 | Task 12 | 1608 | 44 |
+| Rà đợt 4 (webhook: +4 test; cron: +9 test; xem "Sau khi rà" ở Task 11 và 12) | 1621 | 44 |
 
 ---
 
@@ -3047,16 +3048,15 @@ import { registerZaloWebhook } from "./support/webhook";
 Tìm:
 
 ```ts
-  registerSupport(app);
-  app.notFound((c) => fail(c, 404, "not_found"));
+  registerCheckout(app);
 ```
 
 thay bằng:
 
 ```ts
-  registerSupport(app);
+  // Trước registerOrders: route `/v1/webhooks/:provider` của cổng thanh toán bắt cả `/v1/webhooks/zalo` và trả 404 (Hono chọn route khớp đầu tiên).
   registerZaloWebhook(app);
-  app.notFound((c) => fail(c, 404, "not_found"));
+  registerCheckout(app);
 ```
 
 - [ ] **Step 5: Chạy, thấy qua**
@@ -3071,6 +3071,8 @@ Expected: `tsc` không lỗi; `Tests  1602 passed (1602)`.
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && git branch --show-current && git add server/src/support/webhook.ts server/src/app.ts server/test/support-webhook.test.ts && git commit -m "feat(server): webhook Zalo cho câu trả lời và lệnh của chat hỗ trợ" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+**Sau khi rà (2026-10-22):** (1) `registerZaloWebhook` đứng trước `registerCheckout` (xem Step 4). (2) Chống xử lý lại mọi sự kiện Zalo: migration 0005 có thêm bảng thứ tư `support_zalo_updates (message_id TEXT PRIMARY KEY, received_at INTEGER NOT NULL)`; sau khi qua secret và đúng chủ dự án, `message_id` đã có trong bảng thì trả 200 ngay; xử lý xong mới `INSERT … ON CONFLICT DO NOTHING` (D1 lỗi giữa chừng thì Zalo gửi lại vẫn được xử lý; câu trả lời còn có `zalo_message_id` UNIQUE). Áp cho mọi loại sự kiện, kể cả sticker và ảnh. `resetDb`, test schema và test migration 0005 theo bảng mới. (3) `handleOwnerUpdate` không gọi Zalo: trả mảng câu bot cần gửi (`string[]`, đã cắt 2000 ký tự); route gửi chúng lần lượt trong `c.executionCtx.waitUntil` sau khi trả 200, lỗi chỉ ghi log; mọi việc D1 vẫn xong trước khi trả 200. Test thêm 4: secret server rỗng, gửi lại `/tat`, `/ds` và sticker, D1 lỗi giữa chừng thì không đánh dấu, Zalo lỗi khi bot trả lời vẫn 200.
 
 ---
 
@@ -3431,6 +3433,8 @@ Expected: `tsc` không lỗi; `Tests  1608 passed (1608)`.
 cd /Users/dtphong/Desktop/software_business/ai-translator && git branch --show-current && git add server/src/support/cron.ts server/src/email/templates.ts server/src/reconcile.ts server/test/support-cron.test.ts && git commit -m "feat(server): việc định kỳ của chat hỗ trợ (gửi lại, email, xóa sau 90 ngày)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+**Sau khi rà (2026-10-22):** `forwardPendingSupport` thật khác khối mã ở trên. (1) Chỉ lấy cuộc chat `status = 'open'` (JOIN) và tin có `forward_attempts < MAX_ATTEMPTS` (`MAX_ATTEMPTS = 5` export từ `forward.ts`: tin bị Zalo từ chối 5 lần, thường vì nội dung, thì thôi, không chặn tin sau; tin vẫn còn trong cuộc chat của khách). (2) Lỗi ở một cuộc chat thì đi tiếp cuộc chat khác; đủ 3 lần gửi lỗi trong một lần chạy thì dừng (Zalo lỗi chung). (3) Trần tổng `MAX_PER_RUN = 100` tin mỗi lần chạy, qua `forwardBatch(…, limit)` (mới trong `forward.ts`; `forwardConversation` gọi nó với `MAX_PER_CALL`, hành vi của request không đổi). (4) Chuỗi lỗi về 0 khi gửi được ít nhất một tin hay không còn tin chờ; tăng khi lần chạy có lỗi mà không gửi được tin nào. (5) `pruneSupport` xóa thêm `support_zalo_updates` quá 2 ngày trong cùng batch. `FakeZalo` có thêm `failWhenTextIncludes`, `FakeResend` có thêm `attemptKeys`. Test thêm 9 (tin độc, A lỗi không chặn B, dừng sau 3 lỗi, trần 100, chuỗi về 0, cuộc chat chặn không gửi lại, không email cho cuộc chat chặn, `Idempotency-Key` giữ nguyên khi gửi lại, dọn `support_zalo_updates`). Tổng sau Task 12: 1621.
+
 ---
 
 ### Task 13: Runbook mục 11 (phần server) và kiểm toàn bộ
@@ -3550,7 +3554,7 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server check 2>&1 | tail -12
 ```
-Expected: `typecheck`, `vectors:check`, `test` (`Tests  1608 passed (1608)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
+Expected: `typecheck`, `vectors:check`, `test` (`Tests  1621 passed (1621)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
 
 - [ ] **Step 3: Kiểm không lộ token và không còn chỗ giữ chỗ lạ**
 
