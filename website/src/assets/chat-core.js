@@ -17,12 +17,22 @@ export const WATCH = 60_000;
 /** Nhận 429: chờ Retry-After nhưng không dưới 15 giây. Lỗi mạng: giãn dần 3 → 15 → 60 giây. */
 export const MIN_RETRY = 15_000;
 export const NET_BACKOFF = [3_000, 15_000, 60_000];
+/** Một request quá 15 giây thì hủy và coi như lỗi mạng (không để request treo giữ vòng hỏi đứng mãi). */
+export const REQUEST_TIMEOUT = 15_000;
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
-/** Chữ khách gõ theo luật của server: \r\n và \r thành \n, tab thành dấu cách, bỏ ký tự điều khiển khác, bỏ khoảng trắng hai đầu. */
+/**
+ * Chữ khách gõ theo luật của server (`parseText`): \r\n, \r, U+2028, U+2029 thành \n; bỏ ký tự điều khiển hướng chữ (U+202A–202E,
+ * U+2066–2069; không đụng U+200D nối emoji ghép); tab thành dấu cách; bỏ ký tự điều khiển khác; bỏ khoảng trắng hai đầu.
+ */
 export function normalizeText(s) {
-  return String(s).replace(/\r\n?/g, "\n").replace(/\t/g, " ").replace(/[^\P{Cc}\n]/gu, "").trim();
+  return String(s)
+    .replace(/\r\n?|[\u2028\u2029]/g, "\n")
+    .replace(/[\u202a-\u202e\u2066-\u2069]/g, "")
+    .replace(/\t/g, " ")
+    .replace(/[^\P{Cc}\n]/gu, "")
+    .trim();
 }
 
 /** Số ký tự theo code point (emoji tính 1), như server đếm. */
@@ -108,28 +118,53 @@ export function createStore(getStorage) {
 /**
  * Gọi API chat (`fetchFn` là `fetch` của trình duyệt, hay bản giả trong test). Không bao giờ ném: thành công ra
  * `{ ok: true, status, data }`; lỗi ra `{ ok: false, status, error, retryAfter }` (`status` 0 và `error: "network"` khi không tới
- * được máy chủ; `retryAfter` là số giây của header Retry-After hay null).
+ * được máy chủ hay quá REQUEST_TIMEOUT; `retryAfter` là số giây của header Retry-After hay null). GET không dùng bộ nhớ đệm
+ * của trình duyệt. `timers` (`setTimer`, `clearTimer`) để test thay đồng hồ.
  */
-export function createApi(fetchFn) {
+export function createApi(fetchFn, timers = {}) {
+  const setTimer = timers.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
+  const clearTimer = timers.clearTimer ?? ((id) => clearTimeout(id));
   async function call(method, path, { token = null, body } = {}) {
     const headers = {};
     if (token) headers.Authorization = `Bearer ${token}`;
     const init = { method, headers, credentials: "omit" };
-    if (method !== "GET") {
+    if (method === "GET") init.cache = "no-store";
+    else {
       headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(body ?? {});
     }
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    if (ctl) init.signal = ctl.signal;
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimer(() => {
+        try {
+          ctl?.abort();
+        } catch {
+          /* trình duyệt cũ */
+        }
+        reject(new Error("timeout"));
+      }, REQUEST_TIMEOUT);
+    });
     let res;
-    try {
-      res = await fetchFn(API + path, init);
-    } catch {
-      return { ok: false, status: 0, error: "network", retryAfter: null };
-    }
     let data = null;
     try {
-      data = await res.json();
+      // Hạn 15 giây tính cả lúc đọc thân phản hồi.
+      await Promise.race([
+        timeout,
+        (async () => {
+          res = await fetchFn(API + path, init);
+          try {
+            data = await res.json();
+          } catch {
+            /* thân không phải JSON (trang lỗi của cổng mạng) */
+          }
+        })(),
+      ]);
     } catch {
-      /* thân không phải JSON (trang lỗi của cổng mạng) */
+      return { ok: false, status: 0, error: "network", retryAfter: null };
+    } finally {
+      clearTimer(timer);
     }
     if (res.ok) return { ok: true, status: res.status, data };
     const ra = Number(res.headers.get("Retry-After"));
@@ -287,6 +322,8 @@ export function watchReply({ immediate = true, onReply, env = browserEnv() }) {
         poller.stop();
         onReply();
       }
+      // Chat tắt hay cuộc chat đã đóng: không còn gì để chờ, thôi hỏi nền.
+      if (result.data?.status === "closed" || result.data?.enabled === false) poller.stop();
       return { result, fresh };
     },
   });

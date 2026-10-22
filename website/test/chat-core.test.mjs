@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   API, STORE_KEY, MAX_CHARS, WAIT_WINDOW, normalizeText, charCount, validText, parseState, isWaiting, createStore,
-  createApi, outcome, createPoller, watchReply,
+  createApi, outcome, createPoller, watchReply, REQUEST_TIMEOUT,
 } from "../src/assets/chat-core.js";
 
 const TOKEN = "A".repeat(40) + "b-_";
@@ -20,6 +20,14 @@ test("luật chữ như server: \\r\\n thành \\n, tab thành dấu cách, bỏ 
   assert.equal(validText(" hi "), "hi");
   assert.equal(validText("😀".repeat(MAX_CHARS)), "😀".repeat(MAX_CHARS), "1000 emoji là 1000 ký tự");
   assert.equal(validText("a".repeat(MAX_CHARS + 1)), null);
+});
+
+test("luật chữ như parseText của server: U+2028/U+2029 thành \\n, bỏ ký tự điều khiển hướng chữ (U+202A–202E, U+2066–2069), giữ ZWJ của emoji ghép", () => {
+  assert.equal(normalizeText("a\u2028b\u2029c"), "a\nb\nc");
+  assert.equal(normalizeText("\u202eabc\u202a\u202b\u202c\u202d\u2066\u2067\u2068\u2069"), "abc");
+  assert.equal(normalizeText("👩\u200d👩"), "👩\u200d👩");
+  assert.equal(validText("\u202e\u2066\u2069 \u202c"), null, "chỉ có ký tự hướng chữ thì báo sớm, không để server trả 400");
+  assert.equal(validText("\u2028\u2029"), null, "chỉ có dấu xuống dòng thì rỗng sau khi bỏ khoảng trắng hai đầu");
 });
 
 test("parseState: chỉ nhận { token 43 ký tự base64url, lastId ≥ 0, waitingSince số dương hay null }", () => {
@@ -135,6 +143,74 @@ test("createApi: đúng đường dẫn, phương thức, header và thân của
     { url: `${API}/v1/support/conversation`, method: "DELETE", headers: { ...auth, ...json }, body: {}, credentials: "omit" },
   ]);
   assert.equal(API, "https://api.aitranslator.io.vn");
+});
+
+test("createApi: GET không dùng bộ nhớ đệm của trình duyệt (cache: no-store); mọi request có signal để hủy khi quá giờ", async () => {
+  const seen = [];
+  const fn = async (url, init) => {
+    seen.push({ method: init.method, cache: init.cache, hasSignal: init.signal instanceof AbortSignal });
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}) };
+  };
+  const api = createApi(fn);
+  await api.status();
+  await api.messages(TOKEN, 0);
+  await api.send(TOKEN, "x");
+  await api.setEmail(TOKEN, null);
+  await api.remove(TOKEN);
+  assert.deepEqual(seen, [
+    { method: "GET", cache: "no-store", hasSignal: true },
+    { method: "GET", cache: "no-store", hasSignal: true },
+    { method: "POST", cache: undefined, hasSignal: true },
+    { method: "PUT", cache: undefined, hasSignal: true },
+    { method: "DELETE", cache: undefined, hasSignal: true },
+  ]);
+});
+
+test("createApi: request treo quá 15 giây thì hủy và coi như lỗi mạng (status 0)", async () => {
+  const env = fakeEnv();
+  let aborted = false;
+  const hung = (url, init) => new Promise(() => init.signal.addEventListener("abort", () => (aborted = true)));
+  const api = createApi(hung, env);
+  const p = api.messages(TOKEN, 0);
+  assert.equal(env.next(), REQUEST_TIMEOUT);
+  assert.equal(REQUEST_TIMEOUT, 15_000);
+  await env.fire();
+  assert.deepEqual(await p, { ok: false, status: 0, error: "network", retryAfter: null });
+  assert.equal(aborted, true, "đã hủy request");
+  assert.equal(env.next(), null, "xong thì không còn hẹn giờ");
+  // Thân phản hồi treo sau khi đã có header cũng bị cắt.
+  const slowBody = async () => ({ ok: true, status: 200, headers: { get: () => null }, json: () => new Promise(() => {}) });
+  const p2 = createApi(slowBody, env).status();
+  await env.fire();
+  assert.equal((await p2).status, 0);
+  // Trả lời kịp thì hủy hẹn giờ.
+  const fine = async () => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ enabled: true }) });
+  assert.equal((await createApi(fine, env).status()).ok, true);
+  assert.equal(env.next(), null);
+});
+
+test("poller + createApi: request treo không làm vòng hỏi đứng; sau 15 giây là lỗi mạng và hẹn hỏi lại theo luật lỗi mạng", async () => {
+  const env = fakeEnv();
+  let calls = 0;
+  const api = createApi(() => { calls++; return new Promise(() => {}); }, env);
+  const poller = createPoller({ mode: "open", env, tick: async () => ({ result: await api.messages(TOKEN, 0), fresh: 0 }) });
+  poller.start();
+  let x = env.timers.shift(); // hẹn giờ hỏi ngay của poller (không await: lần hỏi đang treo)
+  env.t = x.at;
+  x.fn();
+  assert.equal(calls, 1);
+  assert.equal(env.next(), REQUEST_TIMEOUT, "chỉ còn hẹn giờ hủy request");
+  await env.fire();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(env.next(), 0, "lỗi mạng lần 1: nhịp 3 giây đã qua trong 15 giây chờ, hỏi lại ngay");
+  x = env.timers.shift();
+  env.t = x.at;
+  x.fn();
+  assert.equal(calls, 2, "vòng hỏi vẫn chạy");
+  await env.fire();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(env.next(), 0, "lần 2: giãn 15 giây nhưng đã chờ 15 giây của lần treo");
+  poller.stop();
 });
 
 test("createApi: lỗi không ném; đọc mã lỗi, Retry-After; mất mạng là status 0; thân không phải JSON vẫn có mã", async () => {
@@ -354,4 +430,24 @@ test("watchReply: 401 thì xóa bản lưu và dừng", async () => {
   assert.equal(poller.running, false);
   assert.equal(env.store.load(), null);
   assert.equal(env.storage.map.has(STORE_KEY), false);
+});
+
+test("watchReply: thân status closed hay enabled false thì dừng hỏi nền (không hẹn lần sau)", async () => {
+  const nowSec = 1_800_000_000;
+  for (const body of [{ enabled: true, status: "closed", messages: [] }, { enabled: false, status: "open", messages: [] }]) {
+    const env = watchEnv({ token: TOKEN, lastId: 0, waitingSince: nowSec - 30 }, [{ status: 200, body }]);
+    let replied = 0;
+    const poller = watchReply({ onReply: () => replied++, env });
+    await env.fire();
+    assert.equal(poller.running, false, JSON.stringify(body));
+    assert.equal(env.next(), null, "không hẹn lần sau");
+    assert.equal(replied, 0);
+  }
+  // Có câu trả lời cuối cùng trước khi đóng: vẫn báo một lần.
+  const env = watchEnv({ token: TOKEN, lastId: 0, waitingSince: nowSec - 30 }, [{ status: 200, body: { enabled: true, status: "closed", messages: [{ id: 3, sender: "owner", text: "Xong", created_at: nowSec }] } }]);
+  let replied = 0;
+  watchReply({ onReply: () => replied++, env });
+  await env.fire();
+  assert.equal(replied, 1);
+  assert.equal(env.next(), null);
 });
