@@ -57,7 +57,7 @@ App (Rust reqwest, qua IPC) ───┘   /v1/support/*  (D1)      └─← we
 | `emailed_owner_id` | id lớn nhất của tin chủ dự án đã gửi qua email (thư sau chỉ gồm tin mới hơn) |
 | `emailed_at` | lần cuối gửi email câu trả lời |
 
-`support_messages`: `id` (tự tăng, làm con trỏ `after`), `conversation_id` (xóa theo cuộc chat), `sender` (`customer`, `owner`), `text`, `created_at`, `forwarded_at` (tin khách: lúc Zalo nhận), `forward_attempts`, `zalo_message_id` (tin chủ dự án, duy nhất, để chống trùng khi Zalo gửi lại webhook).
+`support_messages`: `id` (tự tăng, làm con trỏ `after`), `conversation_id` (xóa theo cuộc chat), `sender` (`customer`, `owner`), `text`, `created_at`, `forwarded_at` (tin khách: lúc Zalo nhận), `claimed_at` (tin khách: lúc một request hay cron bắt đầu gửi; hết hạn sau 60 giây), `forward_attempts`, `zalo_message_id` (tin chủ dự án, duy nhất, để chống trùng khi Zalo gửi lại webhook).
 
 `support_settings` (khóa, giá trị): `enabled` (mặc định `0`: chat **tắt** cho tới khi chủ dự án nhắn `/bat`), `zalo_fail_streak` (số lần cron liền chuyển tin sang Zalo thất bại).
 
@@ -101,7 +101,7 @@ Phụ đề không hiện khi họp Teams
 
 - Dòng `🆕` chỉ ở tin đầu tiên của mỗi cuộc chat. `source` là `app-debug` thì ghi `app (debug)`.
 - **Dữ liệu tới Zalo chỉ gồm:** nội dung tin, mã cuộc chat, nguồn, ngôn ngữ, trang (web), thông tin máy (app, khi khách để tích). **Email của khách không bao giờ gửi qua Zalo** (có test chặn).
-- Server thử chuyển ngay trong request (`ctx.waitUntil`). Để giữ thứ tự, tin chỉ được chuyển ngay khi cuộc chat không còn tin nào trước nó đang chờ; ngược lại để cron chuyển theo thứ tự `id`.
+- Server thử chuyển ngay trong request (`ctx.waitUntil`). Mỗi tin được giữ chỗ (`claimed_at`) trước khi gửi; bên nào thấy tin chờ cũ nhất của cuộc chat đang được bên khác giữ (chưa quá 60 giây) thì dừng, bên đang giữ gửi tiếp các tin sau theo thứ tự `id`. Giữ chỗ quá 60 giây (Worker bị dừng giữa chừng) thì cron giữ chỗ lại. Gửi ít nhất một lần: Zalo đã nhận mà hết thời gian chờ thì tin có thể tới hai lần. Dòng `🆕` đi kèm tin đầu tiên **tới được** Zalo của cuộc chat.
 - Thất bại (mạng, `5xx`, token sai) thì tin vẫn được lưu và khách vẫn thấy "Đã gửi". Cron gửi lại (mục 2.6).
 
 ### 2.4 Webhook `POST /v1/webhooks/zalo`
@@ -116,7 +116,8 @@ Phụ đề không hiện khi họp Teams
 6. Tin chữ: lệnh (mục 2.5) hay câu trả lời (dưới).
 
 **Định tuyến câu trả lời:**
-- Mở đầu bằng `#` và mã 3 ký tự (không phân biệt hoa thường), rồi nội dung: gửi tới cuộc chat đó. Không trả lời gì thêm.
+- Mở đầu bằng `#` và mã 3 ký tự (không phân biệt hoa thường), sau mã là khoảng trắng hay dấu `:` `,` `.` `-`, rồi nội dung: gửi tới cuộc chat đó. Không trả lời gì thêm.
+- Mở đầu bằng `#` mà không đọc được mã (`#K7QX …`, `# K7Q …`, `#1 …`): **không gửi đi đâu**, bot báo "Không đọc được mã…" (gõ lệch mã không bao giờ thành câu trả lời không mã, để không tới nhầm khách).
   - Mã không có, hay cuộc chat bị chặn: bot báo "Không có cuộc chat #XXX." hay "#XXX đang bị chặn (gõ /mo #XXX để mở)."
   - Thiếu nội dung: bot báo "Thiếu nội dung sau mã."
 - Không có mã: xét các cuộc chat `open` có tin khách trong 30 phút qua.
