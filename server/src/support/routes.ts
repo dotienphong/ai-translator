@@ -20,7 +20,7 @@ import {
   type NewConversation,
   setEmail,
 } from "./store";
-import { newToken, parseContext, parseLang, parsePage, parseSource, parseText } from "./text";
+import { isTokenShape, newToken, parseContext, parseLang, parsePage, parseSource, parseText } from "./text";
 
 /** Origin duy nhất được gọi từ trình duyệt. App gọi qua Rust, không có header Origin. */
 export const SUPPORT_ORIGIN = "https://aitranslator.io.vn";
@@ -41,10 +41,17 @@ export function bearer(c: SupportContext): string | null {
   return m?.[1] ?? null;
 }
 
-/** Cuộc chat của token trong header. Sai thì trả response lỗi; token sai tính là một lần thất bại của IP (như key sai). */
+/**
+ * Cuộc chat của token trong header. Sai thì trả response lỗi. Chỉ token đúng dạng (43 ký tự base64url) mà không khớp cuộc chat nào
+ * mới tính là một lần thất bại của IP (như key sai). Thiếu header hay sai dạng thì 401 và không đếm: `GET /v1/support/messages` là
+ * simple request, một trang lạ nhúng `<img src=…>` 60 lần sẽ làm IP người xem bị chặn `failure_ip` (chặn cả kích hoạt license,
+ * checkout). Trình duyệt không gửi được `Authorization` tới origin khác nếu không qua preflight CORS (bị chặn), nên token đúng dạng
+ * chỉ đến từ client không phải trình duyệt.
+ */
 export async function authed(c: SupportContext): Promise<Conversation | Response> {
   const token = bearer(c);
-  const conv = token === null ? null : await conversationByToken(c.env.DB, token);
+  if (token === null || !isTokenShape(token)) return fail(c, 401, "invalid_token");
+  const conv = await conversationByToken(c.env.DB, token);
   if (conv) return conv;
   const now = c.get("deps").now();
   const ip = clientIp(c);
@@ -56,12 +63,25 @@ export async function authed(c: SupportContext): Promise<Conversation | Response
 /** Số giây khách phải chờ khi hỏi tin mới quá nhanh (cửa sổ 60 giây của binding Rate Limiting). */
 const POLL_RETRY_AFTER = 60;
 
-/** Báo Zalo một việc của khách (đã để lại email, đã xóa cuộc chat). Không lưu, không gửi lại: lỗi thì chỉ ghi log. */
+/**
+ * Báo Zalo một việc của khách (đã để lại email, đã xóa cuộc chat). Chỉ báo khi chat đang bật và còn trong trần `support_global`
+ * (mỗi thông báo tính một lần, để khách không dùng hai endpoint này gửi tràn Zalo của chủ dự án); quá trần thì bỏ thông báo
+ * (email vẫn lưu, cuộc chat vẫn xóa). Không lưu, không gửi lại; lỗi D1 hay Zalo chỉ ghi log, không làm request lỗi.
+ */
 function notifyOwner(c: SupportContext, text: string): void {
-  const zalo = c.get("deps").zalo;
+  const { zalo, now } = c.get("deps");
   if (!zalo) return;
+  const at = now();
   c.executionCtx.waitUntil(
-    zalo.send(text).catch((err: unknown) => console.warn(JSON.stringify({ event: "support_notify_failed", error: String(err) }))),
+    (async () => {
+      try {
+        if (!(await isEnabled(c.env.DB))) return;
+        if (!(await hit(c.env, "support_global", "all", at)).allowed) return;
+        await zalo.send(text);
+      } catch (err) {
+        console.warn(JSON.stringify({ event: "support_notify_failed", error: String(err) }));
+      }
+    })(),
   );
 }
 

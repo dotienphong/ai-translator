@@ -263,3 +263,100 @@ describe("GET /v1/support/messages, PUT /v1/support/email, DELETE /v1/support/co
     expect((await get(w, chat.token)).body).toEqual({ error: "invalid_token" });
   });
 });
+
+describe("rà đợt 3: token không đúng dạng, thông báo Zalo có trần, CORS và ghi D1 (spec 2026-10-22 §2.2, §2.7)", () => {
+  const failureRows = async () =>
+    (await env.DB.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket LIKE 'failure_ip:%'").first<{ n: number }>())?.n;
+  /** Đặt bộ đếm toàn hệ thống của giờ hiện tại đúng bằng trần (request kế tiếp bị từ chối). */
+  const fillGlobal = async () => {
+    const bucket = `support_global:${await hmacSha256Hex("test-pepper", "all")}`;
+    await env.DB.prepare(
+      "INSERT INTO rate_limits (bucket, window_start, count) VALUES (?1, ?2, ?3) ON CONFLICT (bucket, window_start) DO UPDATE SET count = excluded.count",
+    )
+      .bind(bucket, T0 - (T0 % 3600), LIMITS.support_global)
+      .run();
+  };
+
+  it("GET không header hay token sai dạng: 401, không tính thất bại của IP (GET là simple request, trang lạ nhúng <img> được); token đúng dạng mà không khớp thì vẫn tính", async () => {
+    const w = makeWorld();
+    await enableChat();
+    for (let i = 0; i < LIMITS.failure_ip + 5; i++) {
+      expect(await w.call("GET", "/v1/support/messages")).toMatchObject({ status: 401, body: { error: "invalid_token" } });
+      expect(await w.call("GET", "/v1/support/messages", undefined, { authorization: "Bearer abc" })).toMatchObject({ status: 401 });
+      expect(await w.call("GET", "/v1/support/messages", undefined, { authorization: `Basic ${"A".repeat(43)}` })).toMatchObject({ status: 401 });
+    }
+    expect(await failureRows()).toBe(0);
+    expect(await post(w, { text: "x" }, { authorization: "Bearer abc" })).toMatchObject({ status: 401, body: { error: "invalid_token" } });
+    expect(await failureRows()).toBe(0);
+    expect(await w.call("GET", "/v1/support/messages", undefined, { authorization: `Bearer ${"A".repeat(43)}` })).toMatchObject({ status: 401 });
+    expect(await failureRows()).toBe(1);
+  });
+
+  it("chat tắt: PUT email và DELETE vẫn làm việc nhưng không báo Zalo", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    await setSetting(env.DB, "enabled", "0");
+    expect(await w.call("PUT", "/v1/support/email", { email: "a@example.com" }, auth(chat.token))).toMatchObject({ status: 200 });
+    expect(await conversation(chat.id)).toMatchObject({ email: "a@example.com" });
+    expect(await w.call("DELETE", "/v1/support/conversation", {}, auth(chat.token))).toMatchObject({ status: 200 });
+    expect(await conversation(chat.id)).toBeNull();
+    expect(w.zalo.sent).toHaveLength(1);
+  });
+
+  it("trần support_global đầy: PUT email và DELETE vẫn 200 (lưu, xóa) nhưng bỏ thông báo Zalo, không gửi tràn", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    await fillGlobal();
+    expect(await w.call("PUT", "/v1/support/email", { email: "a@example.com" }, auth(chat.token))).toMatchObject({ status: 200, body: { ok: true } });
+    expect(await conversation(chat.id)).toMatchObject({ email: "a@example.com" });
+    expect(await w.call("DELETE", "/v1/support/conversation", {}, auth(chat.token))).toMatchObject({ status: 200, body: { ok: true } });
+    expect(await conversation(chat.id)).toBeNull();
+    expect(w.zalo.sent).toHaveLength(1);
+  });
+
+  it("Zalo lỗi 500: PUT email và DELETE vẫn trả 200", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    w.zalo.failStatus = 500;
+    expect(await w.call("PUT", "/v1/support/email", { email: "a@example.com" }, auth(chat.token))).toMatchObject({ status: 200 });
+    expect(await conversation(chat.id)).toMatchObject({ email: "a@example.com" });
+    expect(await w.call("DELETE", "/v1/support/conversation", {}, auth(chat.token))).toMatchObject({ status: 200 });
+    expect(await conversation(chat.id)).toBeNull();
+  });
+
+  it("CORS có trên phản hồi 415 và 429 cho origin của website", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const origin = { origin: "https://aitranslator.io.vn" };
+    const unsupported = await w.call("POST", "/v1/support/messages", JSON.stringify(firstMessage()), { ...origin, "content-type": "text/plain" });
+    expect(unsupported.status).toBe(415);
+    expect(unsupported.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    const chat = await startChat(w);
+    const limited = makeWorld({ SUPPORT_POLL_LIMITER: { limit: async () => ({ success: false }) } });
+    const r = await limited.call("GET", "/v1/support/messages", undefined, { ...auth(chat.token), ...origin });
+    expect(r.status).toBe(429);
+    expect(r.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(r.headers.get("access-control-expose-headers")).toBe("Retry-After");
+    expect(r.headers.get("retry-after")).toBe("60");
+  });
+
+  it("GET ?after=0 khi khách đã nhận tin chủ dự án cuối: không ghi D1", async () => {
+    const w0 = makeWorld();
+    await enableChat();
+    const chat = await startChat(w0);
+    await env.DB.prepare("INSERT INTO support_messages (conversation_id, sender, text, created_at, zalo_message_id) VALUES (?, 'owner', 'Chào bạn', ?, 'zm-1')")
+      .bind(chat.id, T0 + 5)
+      .run();
+    expect((await w0.call("GET", "/v1/support/messages?after=0", undefined, auth(chat.token))).body.messages).toHaveLength(2);
+    const { db, sql } = wrapDb(env.DB);
+    const w = makeWorld({ DB: db });
+    const again = await w.call("GET", "/v1/support/messages?after=0", undefined, auth(chat.token));
+    expect(again.status).toBe(200);
+    expect(again.body.messages).toHaveLength(2);
+    expect(sql.filter((q) => /^\s*(INSERT|UPDATE|DELETE)/i.test(q))).toEqual([]);
+  });
+});
