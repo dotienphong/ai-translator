@@ -73,15 +73,17 @@ fn invalid(field: &str) -> ApiError {
     }
 }
 
-/// Chữ của một tin theo luật của hợp đồng: `\r\n`, `\r` thành `\n`; bỏ ký tự điều khiển trừ `\n` (tab thành dấu cách); bỏ khoảng
-/// trắng hai đầu; còn 1–1000 ký tự.
+/// Chữ của một tin theo luật của hợp đồng (khớp `parseText` ở `server/src/support/text.ts`): `\r\n`, `\r`, U+2028 và U+2029 thành
+/// `\n`; bỏ ký tự điều khiển hướng chữ (U+202A–U+202E, U+2066–U+2069; giữ U+200D nối emoji ghép) và ký tự điều khiển khác trừ `\n`
+/// (tab thành dấu cách); bỏ khoảng trắng hai đầu; còn 1–1000 ký tự.
 pub fn clean_text(text: &str) -> Result<String, ApiError> {
     let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
     let kept: String = normalized
         .chars()
         .filter_map(|c| match c {
-            '\n' => Some('\n'),
+            '\n' | '\u{2028}' | '\u{2029}' => Some('\n'),
             '\t' => Some(' '),
+            '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' => None,
             c if c.is_control() => None,
             c => Some(c),
         })
@@ -741,6 +743,10 @@ mod tests {
         assert!(r.api.calls().is_empty());
         assert_eq!(clean_text(&"ế".repeat(1000)).map(|t| t.chars().count()), Ok(1000));
         assert_eq!(clean_text("a\u{7}b\u{0}c"), Ok("abc".into()));
+        // Khớp `parseText` của server: U+2028/U+2029 thành xuống dòng, bỏ ký tự điều khiển hướng chữ, giữ U+200D (nối emoji ghép).
+        assert_eq!(clean_text("a\u{2028}b\u{2029}c"), Ok("a\nb\nc".into()));
+        assert_eq!(clean_text("a\u{202a}b\u{202e}c\u{2066}d\u{2069}e"), Ok("abcde".into()));
+        assert_eq!(clean_text("👨\u{200d}👩"), Ok("👨\u{200d}👩".into()));
         r.chat.send("Chào", &first(None)).unwrap();
         assert_eq!(r.chat.set_email(Some("không phải email")), Err(invalid("email")));
         assert_eq!(clean_email(" Khach@Example.COM "), Ok("khach@example.com".into()));
