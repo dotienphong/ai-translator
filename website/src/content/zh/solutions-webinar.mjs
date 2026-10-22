@@ -46,7 +46,7 @@ ${feature({ icon: "play", title: "视频观众", text: "技术视频、演讲和
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "无需额外安装", title: "不依赖播放器或平台" })}
 <p>因为 AI Translator 采集的是电脑上正在播放的声音，所以它不依赖你正在观看的网站或平台。按下<strong>开始</strong>，然后播放视频；翻译字幕会显示在播放器窗口上方的悬浮字幕条上。我们用浏览器中的视频测试过，但没有逐一测试每个课程或网络研讨会平台。</p>
-<p>在 macOS 上，你只需授予一次<em>系统录音</em>权限；不使用麦克风。请参阅<a href="/zh/guide/macos-audio-permission/">如何授予权限</a>。</p>
+<p>在 macOS 上，你只需授予一次<em>系统音频录制</em>权限；不使用麦克风。请参阅<a href="/zh/guide/macos-audio-permission/">如何授予权限</a>。</p>
 </div></section>
 
 <section class="section"><div class="container">

@@ -46,7 +46,7 @@ ${feature({ icon: "play", title: "動画を見る人", text: "技術的な動画
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "追加のインストールは不要", title: "プレーヤーやプラットフォームに左右されません" })}
 <p>AI Translator はパソコンで再生されている音を取り込むので、見ているウェブサイトやプラットフォームに左右されません。<strong>開始</strong>を押してから動画を再生すると、プレーヤーのウィンドウの上にあるフローティングバーに翻訳字幕が表示されます。ブラウザーの動画では試しましたが、講座やウェビナーのプラットフォームを 1 つずつ試したわけではありません。</p>
-<p>macOS では、<em>システムオーディオ録音</em>の許可を一度与えるだけで、マイクは使いません。<a href="/ja/guide/macos-audio-permission/">許可の与え方</a>をご覧ください。</p>
+<p>macOS では、<em>システムオーディオの録音</em>の許可を一度与えるだけで、マイクは使いません。<a href="/ja/guide/macos-audio-permission/">許可の与え方</a>をご覧ください。</p>
 </div></section>
 
 <section class="section"><div class="container">
