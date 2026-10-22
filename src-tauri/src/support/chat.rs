@@ -24,6 +24,7 @@ pub const MAX_EMAIL_CHARS: usize = 254;
 const MAX_MESSAGES: usize = 200;
 /// Sau `429` khi hỏi tin, chờ tối đa chừng này giây dù server bảo lâu hơn (lệnh của giao diện vẫn đánh thức sớm được).
 const MAX_POLL_WAIT_SECS: u64 = 3600;
+const MAX_POLL_WAIT_SECS_I64: i64 = 3600;
 
 /// Những gì lõi cần biết về app, đọc mỗi lần dùng.
 pub trait Host: Send + Sync {
@@ -215,6 +216,8 @@ pub struct Chat {
     store: Store,
     inner: Mutex<Inner>,
     wake: Condvar,
+    /// Giữ suốt một lần gửi tin (khác `inner`, vốn không bao giờ giữ lúc gọi mạng): hai tin đầu bấm liên tiếp không tạo hai cuộc chat.
+    sending: Mutex<()>,
 }
 
 impl Chat {
@@ -240,6 +243,7 @@ impl Chat {
                 wakes: 0,
             }),
             wake: Condvar::new(),
+            sending: Mutex::new(()),
         }
     }
 
@@ -268,15 +272,28 @@ impl Chat {
         self.wake.notify_all();
     }
 
-    /// Ngủ tới hết `timeout` (`None`: tới khi bị đánh thức) hay tới khi có lệnh đánh thức.
-    pub fn wait(&self, timeout: Option<Duration>) {
+    /// Số lệnh đánh thức tới giờ. Luồng hỏi chụp con số này **trước** khi `tick` quyết định, rồi đưa cho [`Chat::wait`]: lệnh nào
+    /// tới sau lúc chụp (kể cả trong khe giữa `tick` và `wait`) làm `wait` trả về ngay, không bao giờ bị mất.
+    fn seen(&self) -> u64 {
+        self.lock().wakes
+    }
+
+    /// Ngủ tới hết `timeout` (`None`: tới khi bị đánh thức), hay tới khi có lệnh đánh thức sau lúc chụp `seen` ([`Chat::seen`]).
+    pub fn wait(&self, seen: u64, timeout: Option<Duration>) {
         let inner = self.lock();
-        let seen = inner.wakes;
         if let Some(timeout) = timeout {
             let _woken = self.wake.wait_timeout_while(inner, timeout, |i| i.wakes == seen);
         } else {
             let _woken = self.wake.wait_while(inner, |i| i.wakes == seen);
         }
+    }
+
+    /// Một vòng của luồng hỏi: chụp con trỏ đánh thức, hỏi server nếu tới hạn ([`Chat::tick`]), rồi ngủ tới nhịp sau hay tới khi
+    /// có lệnh đánh thức. Chụp trước `tick` nên không có khe nào để mất lệnh.
+    pub fn step(&self) {
+        let seen = self.seen();
+        let sleep = self.tick();
+        self.wait(seen, sleep);
     }
 
     /// Màn hình Hỗ trợ mở hay đóng. Mở thì bỏ chấm đỏ và về nhịp 3 giây. Không gọi mạng, kể cả khi chưa có cuộc chat.
@@ -287,7 +304,10 @@ impl Chat {
             inner.screen_open = open;
             if open {
                 inner.active_at = now;
-                if inner.saved.token.is_none() {
+                if inner.saved.token.is_some() {
+                    // Giao diện sắp gọi `fetch` (after=0): luồng nền không hỏi song song thêm một lần.
+                    inner.polled_at = now;
+                } else {
                     // Chưa có cuộc chat: không hỏi server chat có bật không (chưa nhắn thì không kết nối), coi như chưa biết và
                     // hiện ô nhập. Tin đầu bị `503` lần trước thì lần mở này cho gửi lại.
                     inner.enabled = true;
@@ -348,6 +368,7 @@ impl Chat {
     /// chỉ gửi chữ. Trả trạng thái mới, đã có tin vừa gửi.
     pub fn send(&self, text: &str, first: &NewConversation) -> Result<SupportView, ApiError> {
         let text = clean_text(text)?;
+        let _sending = self.sending.lock().unwrap_or_else(|e| e.into_inner());
         let token = self.lock().saved.token.clone();
         let now = self.host.now();
         let result = match &token {
@@ -472,6 +493,11 @@ impl Chat {
                 active_at: inner.active_at,
                 now,
             });
+            // Đồng hồ lùi (đồng bộ lại giờ, người dùng chỉnh giờ) không được làm luồng im lặng hàng giờ: mốc lần hỏi không thể ở
+            // sau hiện tại (kẹp và ghi lại, để các nhịp sau không đẩy mốc theo), và thời gian chờ sau `429` không quá trần của
+            // chính nó.
+            inner.polled_at = inner.polled_at.min(now);
+            inner.not_before = inner.not_before.min(now + MAX_POLL_WAIT_SECS_I64);
             let due = match next {
                 Next::Poll(every) => (inner.polled_at + every).max(inner.not_before),
                 Next::Recheck(_) | Next::Idle => now,
@@ -566,9 +592,11 @@ impl Chat {
 mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
+    use std::sync::OnceLock;
     use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 
     use super::*;
+    use crate::support::api::{Batch, Started};
     use crate::test_support::FakeSupportApi;
 
     const T: i64 = 1_800_000_000;
@@ -939,5 +967,237 @@ mod tests {
         let b = r.chat.send("Chào", &first(None)).unwrap().rev;
         let c = r.chat.screen(false).rev;
         assert!(a < b && b < c, "{a} {b} {c}");
+    }
+
+    // ---- Sau rà (2026-10-22) ----
+
+    /// Server giả chậm ở `start` để hai lần gửi tin đầu chồng lên nhau thật.
+    struct SlowStart(FakeSupportApi);
+
+    impl SupportApi for SlowStart {
+        fn start(&self, opening: &Opening) -> Result<Started, ApiError> {
+            std::thread::sleep(Duration::from_millis(150));
+            self.0.start(opening)
+        }
+        fn send(&self, token: &str, text: &str) -> Result<SupportMessage, ApiError> {
+            self.0.send(token, text)
+        }
+        fn messages(&self, token: &str, after: i64) -> Result<Batch, ApiError> {
+            self.0.messages(token, after)
+        }
+        fn set_email(&self, token: &str, email: Option<&str>) -> Result<(), ApiError> {
+            self.0.set_email(token, email)
+        }
+        fn delete(&self, token: &str) -> Result<(), ApiError> {
+            self.0.delete(token)
+        }
+    }
+
+    /// Server giả xóa cuộc chat ngay sau khi trả lời một lần hỏi tin (người dùng bấm xóa giữa lúc đang hỏi).
+    struct DeleteMidway {
+        api: FakeSupportApi,
+        chat: Arc<OnceLock<Arc<Chat>>>,
+        armed: Arc<AtomicBool>,
+    }
+
+    impl SupportApi for DeleteMidway {
+        fn start(&self, opening: &Opening) -> Result<Started, ApiError> {
+            self.api.start(opening)
+        }
+        fn send(&self, token: &str, text: &str) -> Result<SupportMessage, ApiError> {
+            self.api.send(token, text)
+        }
+        fn messages(&self, token: &str, after: i64) -> Result<Batch, ApiError> {
+            let batch = self.api.messages(token, after);
+            if self.armed.swap(false, Ordering::SeqCst)
+                && let Some(chat) = self.chat.get()
+            {
+                chat.delete().unwrap();
+            }
+            batch
+        }
+        fn set_email(&self, token: &str, email: Option<&str>) -> Result<(), ApiError> {
+            self.api.set_email(token, email)
+        }
+        fn delete(&self, token: &str) -> Result<(), ApiError> {
+            self.api.delete(token)
+        }
+    }
+
+    /// Lệnh đánh thức tới đúng khe giữa lúc `tick` quyết định và lúc luồng ngủ không được mất: `wait` nhận con trỏ chụp từ trước
+    /// `tick`, thấy đã có lệnh thì trả về ngay (kể cả khi `tick` vừa trả `None`, ngủ vô hạn).
+    #[test]
+    fn a_wake_between_the_decision_and_the_sleep_is_not_lost() {
+        let r = rig("wake-gap");
+        let chat = Arc::new(Chat::new(
+            Box::new(r.host.clone()),
+            Box::new(r.api.clone()),
+            Store::new(r.path.clone()),
+        ));
+        let seen = chat.seen();
+        assert_eq!(chat.tick(), None, "chưa có cuộc chat: ngủ vô hạn");
+        chat.wake();
+        let (done, finished) = std::sync::mpsc::channel();
+        let sleeper = {
+            let chat = Arc::clone(&chat);
+            std::thread::spawn(move || {
+                chat.wait(seen, None);
+                let _ = done.send(());
+            })
+        };
+        let returned = finished.recv_timeout(Duration::from_secs(5)).is_ok();
+        chat.wake(); // nếu hỏng thì thả luồng ra để test không treo
+        sleeper.join().unwrap();
+        assert!(returned, "wait phải trả về ngay vì đã có lệnh sau khi chụp con trỏ");
+    }
+
+    #[test]
+    fn a_wake_after_the_sleep_started_ends_it() {
+        let r = rig("wake-after");
+        let chat = Arc::new(Chat::new(
+            Box::new(r.host.clone()),
+            Box::new(r.api.clone()),
+            Store::new(r.path.clone()),
+        ));
+        let seen = chat.seen();
+        let (done, finished) = std::sync::mpsc::channel();
+        let sleeper = {
+            let chat = Arc::clone(&chat);
+            std::thread::spawn(move || {
+                chat.wait(seen, None);
+                let _ = done.send(());
+            })
+        };
+        assert!(
+            finished.recv_timeout(Duration::from_millis(100)).is_err(),
+            "chưa có lệnh: vẫn ngủ"
+        );
+        chat.wake();
+        let returned = finished.recv_timeout(Duration::from_secs(5)).is_ok();
+        chat.wake();
+        sleeper.join().unwrap();
+        assert!(returned);
+    }
+
+    /// Mở màn hình khi đã có cuộc chat: giao diện gọi `fetch` (after=0); luồng nền không được hỏi thêm một lần song song.
+    #[test]
+    fn opening_the_screen_with_a_conversation_makes_exactly_one_request() {
+        let r = rig("one-get");
+        r.chat.send("Chào", &first(None)).unwrap();
+        r.at(T + 100);
+        r.chat.screen(true);
+        assert_eq!(
+            r.chat.tick(),
+            Some(Duration::from_secs(3)),
+            "luồng nền chờ, không hỏi ngay"
+        );
+        r.chat.fetch().unwrap();
+        assert_eq!(r.polls(), 1, "{:?}", r.api.calls());
+        assert_eq!(r.api.calls().last().map(String::as_str), Some("messages 0"));
+    }
+
+    /// Đồng hồ hệ thống lùi (đồng bộ lại giờ, người dùng chỉnh giờ): vẫn hỏi theo nhịp, không im một giờ.
+    #[test]
+    fn a_clock_that_goes_back_does_not_silence_the_polling() {
+        let r = rig("clock-back");
+        r.chat.send("Chào", &first(None)).unwrap();
+        r.chat.screen(true);
+        assert_eq!(run_until(&r, T + 10), [3, 6, 9]);
+        r.at(T - 3600);
+        assert_eq!(run_until(&r, T - 3600 + 10), [-3597, -3594, -3591]);
+    }
+
+    /// Hai tin đầu bấm liên tiếp không tạo hai cuộc chat: tin thứ hai đợi tin đầu xong rồi đi theo token.
+    #[test]
+    fn two_first_messages_at_once_open_one_conversation() {
+        let r = rig("concurrent");
+        let fake = FakeSupportApi::default();
+        let chat = Arc::new(Chat::new(
+            Box::new(r.host.clone()),
+            Box::new(SlowStart(fake.clone())),
+            Store::new(r.path.clone()),
+        ));
+        let senders: Vec<_> = ["một", "hai"]
+            .into_iter()
+            .map(|text| {
+                let chat = Arc::clone(&chat);
+                std::thread::spawn(move || chat.send(text, &first(None)).unwrap())
+            })
+            .collect();
+        for sender in senders {
+            sender.join().unwrap();
+        }
+        assert_eq!(fake.calls(), ["start", "send"]);
+        assert_eq!(fake.openings().len(), 1);
+        assert_eq!(chat.view().messages.len(), 2);
+    }
+
+    /// Cuộc chat bị xóa giữa lúc đang hỏi tin: kết quả của lần hỏi bị bỏ, không ghi lại `support.json`, không báo giao diện.
+    #[test]
+    fn a_poll_that_finds_the_conversation_deleted_meanwhile_is_dropped() {
+        let r = rig("poll-deleted");
+        let slot = Arc::new(OnceLock::new());
+        let armed = Arc::new(AtomicBool::new(false));
+        let chat = Arc::new(Chat::new(
+            Box::new(r.host.clone()),
+            Box::new(DeleteMidway {
+                api: r.api.clone(),
+                chat: Arc::clone(&slot),
+                armed: Arc::clone(&armed),
+            }),
+            Store::new(r.path.clone()),
+        ));
+        slot.set(Arc::clone(&chat)).ok();
+        chat.send("Chào", &first(None)).unwrap();
+        r.api.owner_reply("Chào bạn", T + 1);
+        chat.screen(true);
+        let changes = r.host.changes.lock().unwrap().len();
+        armed.store(true, Ordering::SeqCst);
+        r.at(T + 3);
+        chat.tick();
+        let view = chat.view();
+        assert!(!view.has_conversation && view.messages.is_empty(), "{view:?}");
+        assert!(!r.path.exists(), "không ghi lại support.json của cuộc chat đã xóa");
+        assert_eq!(
+            r.host.changes.lock().unwrap().len(),
+            changes,
+            "lần hỏi bị bỏ không báo gì"
+        );
+        // Cùng tình huống với `fetch` lúc mở màn hình.
+        chat.send("Chào lại", &first(None)).unwrap();
+        armed.store(true, Ordering::SeqCst);
+        let view = chat.fetch().unwrap();
+        assert!(!view.has_conversation && view.messages.is_empty(), "{view:?}");
+        assert!(!r.path.exists());
+    }
+
+    /// Nhánh phòng thủ của `tick`: màn hình đang mở, cửa sổ hiện mà vẫn còn chấm đỏ thì bỏ chấm đỏ và báo giao diện.
+    #[test]
+    fn a_tick_with_the_screen_open_and_the_window_visible_clears_a_stale_red_dot() {
+        let r = rig("cleared");
+        r.chat.send("Chào", &first(None)).unwrap();
+        r.chat.screen(true);
+        {
+            let mut inner = r.chat.lock();
+            inner.saved.unread = true;
+        }
+        r.chat.tick();
+        assert!(!r.chat.view().unread);
+        assert!(!r.saved().unread);
+        assert!(
+            !r.host.changes.lock().unwrap().last().unwrap().unread,
+            "báo giao diện bỏ chấm đỏ"
+        );
+    }
+
+    /// `429` khi mở màn hình (`fetch`): trả lỗi, và luồng nền chờ đúng `Retry-After` rồi mới hỏi lại.
+    #[test]
+    fn a_rate_limited_fetch_makes_the_poller_wait() {
+        let r = rig("fetch-429");
+        r.chat.send("Chào", &first(None)).unwrap();
+        r.chat.screen(true);
+        r.api.fail_next(ApiError::RateLimited(30));
+        assert_eq!(r.chat.fetch(), Err(ApiError::RateLimited(30)));
+        assert_eq!(run_until(&r, T + 35), [30, 33]);
     }
 }

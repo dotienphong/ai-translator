@@ -94,14 +94,18 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Luồng hỏi tin: mỗi nhịp hỏi server nếu tới hạn (`Chat::tick`), rồi ngủ tới nhịp sau hay tới khi một lệnh đánh thức.
+/// Luồng hỏi tin: mỗi vòng hỏi server nếu tới hạn rồi ngủ tới nhịp sau hay tới khi một lệnh đánh thức (`Chat::step`). Có tên để
+/// nhận ra trong báo cáo sự cố. Không bọc `catch_unwind`: bản phát hành build `panic = "abort"` (`Cargo.toml`), panic ở đâu cũng
+/// dừng cả app, nên bọc chỉ che lỗi ở bản debug mà không có tác dụng ở bản phát hành.
 fn spawn_poller(chat: Arc<Chat>) {
-    std::thread::spawn(move || {
+    let spawned = std::thread::Builder::new().name("support-chat".into()).spawn(move || {
         loop {
-            let wait = chat.tick();
-            chat.wait(wait);
+            chat.step();
         }
     });
+    if let Err(e) = spawned {
+        log::error!("không mở được luồng hỏi tin hỗ trợ: {e}");
+    }
 }
 
 fn chat_of<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Chat>, CommandError> {

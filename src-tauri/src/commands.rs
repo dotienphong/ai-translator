@@ -394,7 +394,8 @@ pub async fn send_log_report<R: Runtime>(app: AppHandle<R>) -> Result<crate::dia
 }
 
 // ---- Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): chỉ cửa sổ `main`. Lệnh gọi server chờ mạng tới 15 giây nên là `async`,
-// chạy việc trên luồng của `spawn_blocking`; `support_screen` chỉ đọc bộ nhớ. Không lệnh nào trả token của cuộc chat. ----
+// chạy việc trên luồng của `spawn_blocking`; `support_screen` không gọi mạng nhưng có thể ghi `support.json` (bỏ chấm đỏ) và chạy
+// ngay trên luồng chính. Không lệnh nào trả token của cuộc chat. ----
 
 /// Màn hình Hỗ trợ mở (`open: true`) hay đóng. Cửa sổ chính gọi với `false` lúc mở để có trạng thái ban đầu (chấm đỏ). Không gọi
 /// mạng, kể cả khi chưa có cuộc chat.
