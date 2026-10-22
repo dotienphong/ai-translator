@@ -9,6 +9,7 @@ import { MAX_BODY_BYTES } from "./error-reports";
 import { fail, isJsonContentType } from "./http";
 import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
+import { registerSupport, supportCors } from "./support/routes";
 import { registerTrial } from "./trial";
 
 export type AppEnv = { Bindings: ApiEnv; Variables: { deps: Deps } };
@@ -21,6 +22,8 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
     c.set("deps", makeDeps(c.env));
     await next();
   });
+  // CORS của khung chat trên website (spec 2026-10-22 §1): trước mọi middleware có thể trả lỗi (413, 415), để trình duyệt đọc được thân lỗi.
+  app.use("/v1/support/*", supportCors);
   const smallBody = bodyLimit({
     maxSize: 16 * 1024,
     onError: (c) => {
@@ -46,6 +49,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   registerLicenses(app);
   registerTrial(app);
   registerDiagnostics(app);
+  registerSupport(app);
   app.notFound((c) => fail(c, 404, "not_found"));
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: "unhandled", name: err.name, message: err.message }));

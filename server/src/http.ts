@@ -27,6 +27,10 @@ export type ErrorCode =
   | "forbidden"
   | "not_found"
   | "rejected_sensitive"
+  | "invalid_token"
+  | "conversation_closed"
+  | "support_busy"
+  | "support_disabled"
   | "internal";
 
 export function fail(c: Context, status: ContentfulStatusCode, error: ErrorCode, extra: Record<string, unknown> = {}) {

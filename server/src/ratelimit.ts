@@ -24,6 +24,13 @@ export const LIMITS = {
   diag_ip: 30,
   diag_device: 3,
   diag_global: 120,
+  // Chat hỗ trợ (spec 2026-10-22 §2.7). Việc hỏi tin mới không đếm ở đây (mỗi lần đếm là một lần ghi D1): xem binding
+  // SUPPORT_POLL_LIMITER ở wrangler.jsonc. support_global chạm ngưỡng thì có cảnh báo support_flood.
+  support_msg_ip: 30,
+  support_new_ip: 5,
+  support_msg_conv: 20,
+  support_email_conv: 5,
+  support_global: 200,
 } as const;
 export type LimitName = keyof typeof LIMITS;
 export const WINDOW_SECONDS = 3600;

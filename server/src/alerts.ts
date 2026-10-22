@@ -19,7 +19,9 @@ export type AlertKind =
   | "creem_auth_failed"
   | "order_check_failed"
   | "error_report_new"
-  | "diagnostics_flood";
+  | "diagnostics_flood"
+  | "support_zalo_failed"
+  | "support_flood";
 
 /** Loại cảnh báo khi cổng (`orders.provider`) từ chối khóa API: mỗi cổng một loại, để thư chỉ đúng khóa cần thay. */
 const AUTH_FAILED_ALERT = { payos: "payos_auth_failed", creem: "creem_auth_failed" } as const satisfies Record<string, AlertKind>;
@@ -86,6 +88,14 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   diagnostics_flood:
     "Endpoint báo cáo lỗi chạm trần toàn hệ thống (120 báo cáo mỗi giờ): có thể đang bị gửi tràn. Báo cáo bị từ chối (429) tới hết giờ. " +
     "Mở Web Admin, trang Báo cáo lỗi để xem nguồn, xóa báo cáo rác nếu cần.",
+  support_zalo_failed:
+    "Chat hỗ trợ: 3 lần cron liền không chuyển được tin của khách sang Zalo (token Zalo Bot sai hay bị thu hồi, bot bị khóa, hay Zalo lỗi). " +
+    'Tin vẫn được lưu và được thử lại trong 24 giờ; khách thấy "Đã gửi" nhưng bạn chưa nhận. Kiểm bot ở Zalo Bot Manager, đặt lại ' +
+    "ZALO_BOT_TOKEN nếu cần (docs/release/phat-hanh.md mục 11). Muốn khung chat hiện email support@ trong lúc chờ: nhắn /tat cho bot, " +
+    "hay chạy `wrangler d1 execute mt-license-production --remote --command \"UPDATE support_settings SET value = '0' WHERE key = 'enabled'\"`.",
+  support_flood:
+    'Chat hỗ trợ chạm trần toàn hệ thống (200 tin của khách mỗi giờ): có thể đang bị spam. Khách nhận "đang bận, hãy gửi email" tới hết giờ. ' +
+    "Nhắn /ds cho bot để xem các cuộc chat, /chan #MÃ để chặn cuộc chat spam, hay /tat để tắt chat.",
 };
 const HOUR = 3600;
 
