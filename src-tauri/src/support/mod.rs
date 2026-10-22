@@ -11,4 +11,5 @@
 
 pub mod api;
 pub mod cadence;
+pub mod context;
 pub mod store;
