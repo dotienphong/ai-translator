@@ -1622,16 +1622,106 @@ fieldset {
   opacity: 1;
 }
 
-/* Ghi chú dưới bảng giá: cách trả, và câu bên bán lại (merchant of record) của đơn thẻ. */
-.plan-notes {
-  margin: 0.6rem 0 1rem;
+/* Ba bước của màn hình Nâng cấp (spec 2026-10-22 §2): tiêu đề có số thứ tự trong vòng tròn màu nhấn; thân bước thụt vào cho
+   thẳng với chữ của tiêu đề (rộng vòng tròn + khoảng cách). */
+.upgrade-step + .upgrade-step {
+  margin-top: 1.5rem;
 }
 
-.plan-notes .hint {
+.step-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.7rem;
+  font-size: 1.07rem;
+  font-weight: 650;
+}
+
+.step-no {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-body {
+  margin-left: 2.2rem;
+}
+
+/* Cách trả: nút viên thuốc. Ô radio gốc ẩn nhưng vẫn nhận bàn phím (phím mũi tên), như .swatch; nút đang chọn tô kín màu
+   nhấn để khác hẳn thẻ gói (chỉ có viền). */
+.pay-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.pay-method {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+
+.pay-method input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pay-method:has(input:not(:checked):not(:disabled)):hover {
+  border-color: var(--faint);
+  color: var(--text);
+}
+
+.pay-method:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.pay-method:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Bị khóa (đơn đang chờ, đang tạo đơn): cách trả của đơn vẫn rõ như lúc chọn được; ô còn lại mờ như thẻ gói. */
+.pay-method:has(input:disabled) {
+  cursor: default;
+}
+
+.pay-method:has(input:disabled:not(:checked)) {
+  opacity: 0.6;
+}
+
+/* Ghi chú của cách trả đang chọn (ở bước 1), và câu bên bán lại (merchant of record) của đơn thẻ. */
+.method-notes {
+  margin: 0.6rem 0 0;
+}
+
+.method-notes .hint {
   margin: 0 0 0.35rem;
 }
 
-.plan-notes .hint:last-child {
+.method-notes .hint:last-child {
   margin-bottom: 0;
 }
 

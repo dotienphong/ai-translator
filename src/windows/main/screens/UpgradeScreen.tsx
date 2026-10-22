@@ -4,10 +4,10 @@ import { fallbackLanguage, useApp } from "../appStore";
 import { useLicense } from "../licenseStore";
 import { UpgradeView } from "./UpgradeView";
 
-// Màn hình Nâng cấp (§4.3; spec 2026-10-07 §1, 2026-10-13, 2026-10-14): đủ 4 gói, Free dùng thử 10 ngày, Monthly 30 ngày, 6
-// Months 180 ngày, Yearly 365 ngày (giá và số ngày mỗi đơn lấy từ license server, không có mạng thì báo cần mạng), đánh dấu
-// gói đang dùng. Hai cách trả (chỉ hiện khi server bán cả hai): VietQR bằng VND, hay thẻ quốc tế bằng USD; mặc định theo
-// gợi ý của server (nước của máy), đổi được. Chọn gói, nhập email, tick ô đồng ý xử lý email (§10.1). VietQR: quét mã vẽ
+// Màn hình Nâng cấp (§4.3; spec 2026-10-07 §1, 2026-10-13, 2026-10-14, 2026-10-22): đủ 4 gói, Free dùng thử 10 ngày, Monthly
+// 30 ngày, 6 Months 180 ngày, Yearly 365 ngày (giá và số ngày mỗi đơn lấy từ license server, không có mạng thì báo cần mạng),
+// đánh dấu gói đang dùng. Ba bước: cách trả (VietQR bằng VND, hay thẻ quốc tế bằng USD khi server bán; chọn sẵn theo ngôn ngữ
+// giao diện, đổi được), gói, rồi thanh toán. Chọn gói, nhập email, tick ô đồng ý xử lý email (§10.1). VietQR: quét mã vẽ
 // ngay trong app (phía Rust vẽ SVG từ chuỗi `qr_code`), kèm nút mở trang thanh toán của PayOS. Thẻ: không có mã QR, app tự
 // mở trang thanh toán trong trình duyệt và hỏi trạng thái tới khi trả xong (tới 24 giờ sau giờ hẹn trả); giá USD chưa gồm
 // thuế; Creem là bên bán lại. Đang có key thì đơn là gia hạn hay đổi gói; đổi gói thì hiện trước số ngày quy đổi và ngày hết
