@@ -1187,7 +1187,7 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
    T=$(printf '%s' "$R" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
    ```
 
-   Expected: JSON có `token` và `message`; Zalo của bạn nhận `🆕 #<MÃ> · app (debug) · vi · kiểm tra runbook mục 11` rồi dòng `Tin thử sau triển khai`. Trả lời bot `#<MÃ> Đã nhận` (bot đáp `✓ đã gửi tới #<MÃ>`), rồi:
+   Expected: JSON có `token` và `message`; Zalo của bạn nhận `🆕 #<MÃ> · app (debug) · vi · kiểm tra runbook mục 11` rồi dòng `Tin thử sau triển khai`. Trả lời bot `#<MÃ> Đã nhận` (có ghi mã thì bot không báo lại; trả lời không ghi mã thì bot đáp `✓ đã gửi tới #<MÃ>`), rồi:
 
    ```bash
    curl -s -H "authorization: Bearer $T" "$PROD/v1/support/messages?after=0"; echo
