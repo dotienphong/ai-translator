@@ -127,6 +127,23 @@ pub const COMPOSE_UNAVAILABLE: &str = "composeUnavailable";
 /// Không ghi được bản dịch vào clipboard. Cùng mã với lỗi sao chép của giao diện (`error.copyFailed`).
 pub const COPY_FAILED: &str = "copyFailed";
 
+// Mã lỗi của chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo-design.md §4). Màn hình Hỗ trợ hiện câu báo lỗi; không mã nào gửi
+// báo cáo lỗi.
+/// Không gọi được server: mạng hỏng, server lỗi tạm.
+pub const SUPPORT_OFFLINE: &str = "supportOffline";
+/// Server bảo gửi chậm lại (`429 rate_limited`).
+pub const SUPPORT_RATE_LIMITED: &str = "supportRateLimited";
+/// Chạm trần tin của toàn hệ thống (`429 support_busy`): gửi email thay.
+pub const SUPPORT_BUSY: &str = "supportBusy";
+/// Chủ dự án đã tắt chat (`503 support_disabled`). Cùng câu với dòng thay ô nhập khi chat tắt.
+pub const SUPPORT_DISABLED: &str = "supportDisabled";
+/// Cuộc chat bị chủ dự án chặn (`403 conversation_closed`). Cùng câu với dòng thay ô nhập khi cuộc chat đóng.
+pub const SUPPORT_CLOSED: &str = "supportClosed";
+/// Cuộc chat không còn trên server (`401`: khách đã xóa, hay hết 90 ngày): gửi lại để bắt đầu cuộc mới.
+pub const SUPPORT_EXPIRED: &str = "supportExpired";
+/// Tin rỗng hay dài quá 1000 ký tự, email sai dạng (`field`), hay server từ chối thân request.
+pub const SUPPORT_INVALID: &str = "supportInvalid";
+
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
         Self {
@@ -260,6 +277,13 @@ mod tests {
                 COMPOSE_FAILED,
                 COMPOSE_UNAVAILABLE,
                 COPY_FAILED,
+                SUPPORT_OFFLINE,
+                SUPPORT_RATE_LIMITED,
+                SUPPORT_BUSY,
+                SUPPORT_DISABLED,
+                SUPPORT_CLOSED,
+                SUPPORT_EXPIRED,
+                SUPPORT_INVALID,
             ]
             .map(String::from),
         );

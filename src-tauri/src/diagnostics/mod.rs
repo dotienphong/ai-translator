@@ -135,6 +135,14 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::COMPOSE_FAILED,
     errors::COMPOSE_UNAVAILABLE,
     errors::COPY_FAILED,
+    // Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): lỗi mạng hay lỗi của server, màn hình Hỗ trợ tự báo.
+    errors::SUPPORT_OFFLINE,
+    errors::SUPPORT_RATE_LIMITED,
+    errors::SUPPORT_BUSY,
+    errors::SUPPORT_DISABLED,
+    errors::SUPPORT_CLOSED,
+    errors::SUPPORT_EXPIRED,
+    errors::SUPPORT_INVALID,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.
