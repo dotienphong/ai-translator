@@ -12,6 +12,8 @@ import * as legal from "../src/content/legal.mjs";
 import { glue } from "../src/build/layout.mjs";
 import { SITE } from "../src/site.mjs";
 import { PLANS, usd, vnd } from "../src/plans.mjs";
+import { LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome } from "../src/langs.mjs";
+import { videoMeta } from "../src/build/mp4.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
@@ -49,8 +51,10 @@ test("mỗi trang có title, description, canonical, h1 duy nhất, lang đúng"
     const html = htmlByPath.get(p.path);
     const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
     const desc = decode(/<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "");
-    if (title.length < 15 || title.length > 70) errors.push(`${p.path}: title ${title.length} ký tự: ${title}`);
-    if (desc.length < 90 || desc.length > 165) errors.push(`${p.path}: description ${desc.length} ký tự`);
+    // Chữ CJK rộng gần gấp đôi chữ Latin trên kết quả tìm kiếm (spec 2026-10-22-website-ja-zh-ko §5).
+    const [tMin, tMax, dMin, dMax] = CJK.has(p.lang) ? [10, 40, 50, 120] : [15, 70, 90, 165];
+    if (title.length < tMin || title.length > tMax) errors.push(`${p.path}: title ${title.length} ký tự: ${title}`);
+    if (desc.length < dMin || desc.length > dMax) errors.push(`${p.path}: description ${desc.length} ký tự`);
     if (titles.has(title)) errors.push(`${p.path}: trùng title với ${titles.get(title)}`);
     if (descs.has(desc)) errors.push(`${p.path}: trùng description với ${descs.get(desc)}`);
     titles.set(title, p.path);
@@ -58,7 +62,7 @@ test("mỗi trang có title, description, canonical, h1 duy nhất, lang đúng"
     const h1 = (html.match(/<h1[ >]/g) ?? []).length;
     if (h1 !== 1) errors.push(`${p.path}: ${h1} thẻ h1 (cần đúng 1)`);
     if (!html.includes(`<link rel="canonical" href="${SITE.origin}${p.path}">`)) errors.push(`${p.path}: canonical`);
-    if (!html.startsWith(`<!doctype html>\n<html lang="${p.lang}">`)) errors.push(`${p.path}: lang`);
+    if (!html.startsWith(`<!doctype html>\n<html lang="${tagOf(p.lang)}">`)) errors.push(`${p.path}: lang`);
   }
   assert.deepEqual(errors, []);
 });
@@ -77,15 +81,16 @@ test("thứ bậc heading không nhảy cấp (h1 → h2 → h3...)", () => {
   assert.deepEqual(errors, []);
 });
 
-test("hreflang đối xứng: A trỏ tới B thì B trỏ lại A, và có x-default", () => {
+test("hreflang đối xứng: A trỏ tới B thì B trỏ lại A, và có x-default; mỗi trang có đủ bản của các ngôn ngữ đã mở (pháp lý chỉ vi, en)", () => {
   const byId = new Map();
   for (const p of pages) byId.set(p.id, [...(byId.get(p.id) ?? []), p]);
   for (const [id, group] of byId) {
-    if (process.env.ALLOW_PARTIAL === "1" && group.length < 2) continue;
-    assert.ok(group.length === 2 && new Set(group.map((g) => g.lang)).size === 2, `${id}: mỗi trang cần đúng một bản vi và một bản en`);
+    const want = PUBLISHED.filter((l) => !(VI_EN_ONLY.has(id) && CJK.has(l)));
+    if (process.env.ALLOW_PARTIAL === "1" && group.length < want.length) continue;
+    assert.deepEqual(group.map((g) => g.lang).sort(), [...want].sort(), `${id}: cần đúng một bản cho mỗi ngôn ngữ ${want.join(", ")}`);
     for (const p of group) {
       const html = htmlByPath.get(p.path);
-      for (const q of group) assert.ok(html.includes(`hreflang="${q.lang}" href="${SITE.origin}${q.path}"`), `${p.path} thiếu hreflang ${q.lang}`);
+      for (const q of group) assert.ok(html.includes(`hreflang="${tagOf(q.lang)}" href="${SITE.origin}${q.path}"`), `${p.path} thiếu hreflang ${q.lang}`);
       assert.ok(html.includes('hreflang="x-default"'), `${p.path}: x-default`);
     }
   }
@@ -139,7 +144,7 @@ test("JSON-LD hợp lệ, có Organization/WebSite/WebPage và BreadcrumbList ch
     const data = JSON.parse(m[1]);
     const types = data["@graph"].map((n) => n["@type"]);
     for (const t of ["Organization", "WebSite"]) assert.ok(types.includes(t), `${p.path}: thiếu ${t}`);
-    if (p.path !== "/" && p.path !== "/en/") assert.ok(types.includes("BreadcrumbList"), `${p.path}: thiếu BreadcrumbList`);
+    if (!isHome(p.path)) assert.ok(types.includes("BreadcrumbList"), `${p.path}: thiếu BreadcrumbList`);
     const ids = data["@graph"].map((n) => n["@id"]).filter(Boolean);
     assert.equal(new Set(ids).size, ids.length, `${p.path}: @id trùng`);
   }
@@ -253,9 +258,9 @@ test("_redirects: mỗi trang có quy tắc 301 cho URL thiếu dấu / cuối, 
     assert.equal(code, "301", l);
     assert.ok(!from.has(src), `trùng nguồn: ${src}`);
     from.add(src);
-    assert.ok(dst === "/en/" || targets.has(dst), `đích không tồn tại: ${dst}`);
+    assert.ok(isHome(dst) || targets.has(dst), `đích không tồn tại: ${dst}`);
   }
-  for (const p of pages.filter((x) => x.path.endsWith("/") && x.path !== "/" && x.path !== "/en/")) assert.ok(from.has(p.path.slice(0, -1)), `thiếu quy tắc cho ${p.path}`);
+  for (const p of pages.filter((x) => x.path.endsWith("/") && !isHome(x.path))) assert.ok(from.has(p.path.slice(0, -1)), `thiếu quy tắc cho ${p.path}`);
   assert.ok(lines.length <= 1000, "quá giới hạn quy tắc tĩnh của Workers");
 });
 
@@ -301,7 +306,7 @@ test("JSON-LD: câu trả lời FAQ không dính câu, tham chiếu @id đều c
 
 
 // Công nghệ lõi không được công bố: tên model, engine/thư viện chạy model, định dạng, khung app, kiến trúc nội bộ.
-const CORE_TECH = /whisper|hy-?mt|tencent|openai|madlad|nllb|llama|ggml|gguf|silero|tauri|\brust\b|cargo|\bmetal\b|vulkan|sqlcipher|sqlite|opencc|wasapi|core audio|process tap|\bengines?\b|quantiz|q8_0|q4_k|large-v3|\bWMT/i;
+const CORE_TECH = /whisper|hy-?mt|tencent|openai|madlad|nllb|llama|ggml|gguf|silero|tauri|\brust\b|cargo|\bmetal\b|vulkan|sqlcipher|sqlite|opencc|wasapi|core audio|process tap|\bengines?\b|quantiz|q8_0|q4_k|large-v3|\bWMT|ウィスパー|위스퍼|混元|テンセント|腾讯|騰訊|텐센트/i;
 
 /** Các chỗ trong `sources` (Map nơi → chữ) nêu công nghệ lõi, dạng "nơi: “từ” …ngữ cảnh…". Hàm thuần: test âm cố định ở test bên dưới. */
 const coreTechHits = (sources) =>
@@ -493,7 +498,7 @@ test("Về chúng tôi, Giải pháp, Tải xuống, Tính năng, Liên hệ và
 /** Ba file llms của dist. Phải có đủ ba, và mọi file llms*.txt của dist phải nằm trong danh sách này (thêm file mới mà quên đây thì test báo). */
 const LLMS_FILES = ["llms.txt", "llms-full.txt", "llms-full.vi.txt"];
 /** Cụm nói giá USD chưa gồm thuế. */
-const TAX_PHRASE = /chưa gồm thuế|excl\. tax|excluding tax|excludes? tax/i;
+const TAX_PHRASE = /chưa gồm thuế|excl\. tax|excluding tax|excludes? tax|税抜|不含税|세금 별도/i;
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 /** Giải mã thực thể HTML của giá trị thuộc tính (tên, kể cả &nbsp;, và số) trong MỘT lượt (&amp;lt; thành &lt;, không thành <). */
@@ -2126,13 +2131,11 @@ test("hướng dẫn mua gói, mục gia hạn và đổi gói: công thức dù
   assert.deepEqual(errors, []);
 });
 
-test("trang chủ có video demo đúng ngôn ngữ: chỉ tải khi bấm phát, có kích thước và ảnh bìa, file có trong dist và dưới 25 MiB, có VideoObject", async () => {
+test("trang chủ mọi ngôn ngữ đã mở có video demo đúng ngôn ngữ: chỉ tải khi bấm phát, nút phát có thời lượng thật, có kích thước và ảnh bìa, file có trong dist và dưới 25 MiB, có VideoObject", async () => {
   // Workers Static Assets không phục vụ file lớn hơn 25 MiB.
   const LIMIT = 25 * 1024 * 1024;
-  for (const [urlPath, lang, other] of [
-    ["/", "vi", "en"],
-    ["/en/", "en", "vi"],
-  ]) {
+  for (const lang of PUBLISHED) {
+    const urlPath = homeOf(lang);
     const html = htmlByPath.get(urlPath);
     const videos = html.match(/<video\b[^>]*>/g) ?? [];
     assert.equal(videos.length, 1, `${urlPath}: cần đúng một <video>`);
@@ -2144,7 +2147,10 @@ test("trang chủ có video demo đúng ngôn ngữ: chỉ tải khi bấm phát
     const src = /<source src="([^"]+)" type="video\/mp4">/.exec(html)?.[1] ?? "";
     assert.match(poster, new RegExp(`^/assets/video/ai-translator-demo\\.${lang}\\.webp\\?v=[0-9a-f]{10}$`), `${urlPath}: ảnh bìa`);
     assert.match(src, new RegExp(`^/assets/video/ai-translator-demo\\.${lang}\\.mp4\\?v=[0-9a-f]{10}$`), `${urlPath}: file MP4`);
-    assert.ok(!html.includes(`ai-translator-demo.${other}.`), `${urlPath}: lẫn video của ngôn ngữ ${other}`);
+    for (const other of LANG_CODES.filter((l) => l !== lang)) assert.ok(!html.includes(`ai-translator-demo.${other}.`), `${urlPath}: lẫn video của ngôn ngữ ${other}`);
+    const meta = videoMeta(lang);
+    assert.ok(html.includes(`<button class="video-play" type="button" hidden aria-label="`), `${urlPath}: thiếu nút phát`);
+    assert.ok(html.includes(` · ${meta.clock} · `), `${urlPath}: nhãn nút thiếu thời lượng ${meta.clock}`);
     for (const url of [poster, src]) {
       const file = path.join(DIST, url.replace(/\?.*/, ""));
       assert.ok(await exists(file), `${urlPath}: thiếu ${file}`);
@@ -2155,7 +2161,7 @@ test("trang chủ có video demo đúng ngôn ngữ: chỉ tải khi bấm phát
     assert.ok(video, `${urlPath}: JSON-LD thiếu VideoObject`);
     assert.equal(video.contentUrl, `${SITE.origin}/assets/video/ai-translator-demo.${lang}.mp4`);
     assert.equal(video.thumbnailUrl, `${SITE.origin}/assets/video/ai-translator-demo.${lang}.webp`);
-    assert.equal(video.inLanguage, lang);
-    assert.match(video.duration, /^PT\d+S$/);
+    assert.equal(video.inLanguage, tagOf(lang));
+    assert.equal(video.duration, meta.iso);
   }
 });
