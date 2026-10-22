@@ -132,7 +132,7 @@ function wire() {
   });
   els.emailSave.addEventListener("click", saveEmail);
   els.emailInput.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" || e.isComposing) return;
+    if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
     e.preventDefault();
     saveEmail();
   });
