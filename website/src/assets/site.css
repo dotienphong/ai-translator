@@ -45,6 +45,7 @@
   --warn: #8a5a00;
   --warn-soft: #fff4d9;
   --ok: #0c7a4b;
+  --danger: #c4312b;
   --on-brand: #ffffff;
   --shadow-sm: 0 1px 2px rgba(11, 19, 34, .06), 0 1px 1px rgba(11, 19, 34, .04);
   --shadow-md: 0 8px 24px -8px rgba(11, 19, 34, .14), 0 2px 6px rgba(11, 19, 34, .05);
@@ -60,7 +61,7 @@
   --bg: #080d18; --bg-alt: #0c1322; --surface: #111a2d; --surface-2: #152036;
   --ink: #eef3fb; --ink-2: #c3cde0; --ink-3: #98a5bf; --line: #1f2c47; --line-strong: #2b3b5c;
   --brand: #4d9bff; --brand-hover: #74b0ff; --brand-ink: #8fc0ff; --brand-soft: #12274a; --brand-glow: rgba(77, 155, 255, .20);
-  --accent: #2fd0c0; --accent-soft: #0e2b2b; --warn: #f2c15a; --warn-soft: #2a2110; --ok: #4fd69b; --on-brand: #04122b;
+  --accent: #2fd0c0; --accent-soft: #0e2b2b; --warn: #f2c15a; --warn-soft: #2a2110; --ok: #4fd69b; --on-brand: #04122b; --danger: #ff7b72;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, .6);
   --shadow-lg: 0 30px 80px -24px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04);
 }
@@ -69,7 +70,7 @@
     --bg: #080d18; --bg-alt: #0c1322; --surface: #111a2d; --surface-2: #152036;
     --ink: #eef3fb; --ink-2: #c3cde0; --ink-3: #98a5bf; --line: #1f2c47; --line-strong: #2b3b5c;
     --brand: #4d9bff; --brand-hover: #74b0ff; --brand-ink: #8fc0ff; --brand-soft: #12274a; --brand-glow: rgba(77, 155, 255, .20);
-    --accent: #2fd0c0; --accent-soft: #0e2b2b; --warn: #f2c15a; --warn-soft: #2a2110; --ok: #4fd69b; --on-brand: #04122b;
+    --accent: #2fd0c0; --accent-soft: #0e2b2b; --warn: #f2c15a; --warn-soft: #2a2110; --ok: #4fd69b; --on-brand: #04122b; --danger: #ff7b72;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, .6);
     --shadow-lg: 0 30px 80px -24px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04);
   }
@@ -598,3 +599,13 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 
 /* Mục tiêu chạm đủ lớn trên điện thoại (WCAG 2.2 AA, khuyến nghị 44px) */
 .footer-grid a { display: inline-block; padding-block: .5rem; }
+
+/* ---------- Chat hỗ trợ: bong bóng (spec chat hỗ trợ 2026-10-22, mục 3) ----------
+   site.js chèn `.chat-root` vào cuối <body> (tắt JS thì không có). Khung chat ở chat.css, chỉ tải khi bấm bong bóng. */
+.chat-root { position: fixed; right: 16px; bottom: 16px; z-index: 70; }
+.chat-bubble { position: relative; display: grid; place-items: center; width: 56px; height: 56px; padding: 0; border: 0; border-radius: 50%; background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-md); cursor: pointer; transition: transform .15s var(--ease), background .15s; }
+.chat-bubble:hover { background: var(--brand-hover); transform: translateY(-1px); }
+.chat-bubble .icon { width: 26px; height: 26px; }
+.chat-dot { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); }
+body:has(.mnav[open]) .chat-root { display: none; }
+@media print { .chat-root { display: none; } }

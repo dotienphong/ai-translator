@@ -185,6 +185,61 @@
     io.observe(fig);
   });
 
+  // Chat hỗ trợ (spec chat hỗ trợ 2026-10-22, mục 3): bong bóng góc dưới phải ở mọi trang (tắt JS thì không có; trang Liên hệ
+  // vẫn có email). Đường dẫn đã băm của chat nằm ở thuộc tính data-chat-* của thẻ script này (layout.mjs). Khung chat (chat.js,
+  // chat.css) chỉ tải khi bấm. Lõi (chat-core.js) chỉ tải khi khách đang chờ trả lời: hỏi tin mới lúc tải trang rồi mỗi 60 giây
+  // khi tab đang hiện; có trả lời thì bong bóng hiện chấm đỏ.
+  const chatCfg = document.querySelector("script[data-chat-core]")?.dataset;
+  if (chatCfg) {
+    const wrap = document.createElement("div");
+    wrap.className = "chat-root";
+    wrap.innerHTML = '<button class="chat-bubble" type="button" aria-expanded="false" aria-controls="chat-panel"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-message"/></svg><span class="chat-dot" hidden></span></button>';
+    document.body.appendChild(wrap);
+    const bubble = wrap.firstElementChild;
+    const dot = bubble.querySelector(".chat-dot");
+    const markUnread = (on) => {
+      dot.hidden = !on;
+      bubble.setAttribute("aria-label", on ? `${chatCfg.chatLabel} (${chatCfg.chatUnread})` : chatCfg.chatLabel);
+    };
+    markUnread(false);
+    let ui = null;
+    let loading = null;
+    let watcher = null;
+    // Cùng điều kiện với isWaiting của chat-core.js, đọc thẳng ở đây để khỏi tải lõi khi không chờ: có token, tin cuối là của
+    // khách, gửi trong 24 giờ qua.
+    const waiting = () => {
+      let s = null;
+      try { s = JSON.parse(store.get("support.v1")); } catch { /* bản lưu hỏng */ }
+      return Boolean(s && typeof s.token === "string" && Number.isInteger(s.waitingSince) && Date.now() / 1000 - s.waitingSince < 86400);
+    };
+    const watch = (immediate) => {
+      watcher?.stop();
+      watcher = null;
+      if (!waiting()) return;
+      import(chatCfg.chatCore)
+        .then((core) => { if (!ui?.isOpen()) watcher = core.watchReply({ immediate, onReply: () => markUnread(true) }); })
+        .catch(() => { /* tải lỗi (mạng): lần tải trang sau thử lại */ });
+    };
+    const loadCss = (href) => new Promise((resolve, reject) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.onload = resolve;
+      link.onerror = reject;
+      document.head.appendChild(link);
+    });
+    const open = async () => {
+      loading ??= Promise.all([loadCss(chatCfg.chatCss), import(chatCfg.chatUi)]).then(([, mod]) => (ui = mod));
+      try { await loading; } catch { loading = null; return; } // tải lỗi (mạng): bấm lại để thử
+      watcher?.stop();
+      watcher = null;
+      markUnread(false);
+      ui.openChat({ root: wrap, bubble, lang: chatCfg.chatLang, onClose: () => watch(false) });
+    };
+    bubble.addEventListener("click", () => (ui?.isOpen() ? ui.closeChat() : open()));
+    watch(true);
+  }
+
   // Hiện dần khi cuộn tới
   const items = document.querySelectorAll(".reveal");
   if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {
