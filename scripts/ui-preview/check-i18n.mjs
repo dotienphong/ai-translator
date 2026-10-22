@@ -2,7 +2,8 @@
 // (vite.config.ts, IPC giả): DOM thật trong Chrome không đầu (qua website/tools/browser/cdp.mjs, không thêm thư viện), ở
 // cỡ cửa sổ mặc định (960×640) và nhỏ nhất (720×480). Với mỗi màn hình: thuộc tính <html lang> đúng; trang không cuộn ngang;
 // chữ của nút, nhãn, tiêu đề không tràn khỏi ô; ô chọn ngôn ngữ có đủ 5 mục. Màn hình Nâng cấp có thêm điều kiện thanh toán
-// (spec 2026-10-14): hai cách trả (VND, USD) chỉ khi server bán cả hai và chọn sẵn theo gợi ý; đơn đang chờ khóa gói và cách
+// (spec 2026-10-14): ba bước đánh số (spec 2026-10-22); hai cách trả (VND, USD) khi server bán cả hai, chỉ VietQR khi chưa bán
+// thẻ; cách trả chọn sẵn theo ngôn ngữ (vi: VND, còn lại: USD); đơn đang chờ khóa gói và cách
 // trả đúng loại tiền của đơn (kể cả đơn dựng lại `amount 0, currency ""`); đơn thẻ không có ô email, mã QR, đúng hai nút, có
 // câu bên bán lại (merchant of record) và câu quá giờ hẹn trả; bấm thật thì `start_checkout` nhận đúng gói và loại tiền, đổi
 // cách trả thì ô đồng ý bỏ tick. Báo cáo lỗi (spec 2026-10-17 §5): ô tích sẵn ở bước Điều khoản (không bắt buộc, bấm Tiếp lưu đúng lựa
@@ -80,22 +81,68 @@ const planRadios = (checked, locked) => [
   `ba gói, chọn ${checked}, ${locked ? "cả ba bị khóa" : "cả ba bấm được"}`,
 ];
 
-// Không có ô cách trả nào (server chỉ bán VND): không nhóm radio, không nhãn "Cách thanh toán".
-const noMethod = [
-  `${radios("method")}.length === 0 && !document.querySelector("#upgrade-method-label")`,
-  "không có lựa chọn cách trả (server chỉ bán VND)",
+// Server chỉ bán VND: bước 1 vẫn có, đúng một ô VietQR đang chọn (spec 2026-10-22 §2).
+const onlyVnd = [
+  `(() => { const r = ${radios("method")}; return r.length === 1 && r[0].value === "VND" && r[0].checked && !!document.querySelector("#upgrade-method-label"); })()`,
+  "bước 1 chỉ có một ô VietQR, đang chọn (server chỉ bán VND)",
 ];
 
 // Đang có đơn chờ: không còn form tạo đơn (không ô email, không ô đồng ý).
 const noForm = [`!document.querySelector("#upgrade-email") && !document.querySelector("form.card")`, "không có form tạo đơn (ô email)"];
 
-// Các câu ghi chú dưới bảng giá, theo thứ tự hiện.
+// Ghi chú cách trả ở bước 1 (`.method-notes` trong `.upgrade-step` đầu tiên), theo thứ tự hiện.
 const notes = (lang, keys) => [
   inPage(
     lang,
-    `const h = [...document.querySelectorAll(".plan-notes p.hint")].map((p) => p.textContent); return JSON.stringify(h) === JSON.stringify(${JSON.stringify(keys)}.map((k) => t(k)));`,
+    `const s = document.querySelector(".upgrade-step"); const h = [...(s?.querySelectorAll(".method-notes p.hint") ?? [])].map((p) => p.textContent); return JSON.stringify(h) === JSON.stringify(${JSON.stringify(keys)}.map((k) => t(k)));`,
   ),
-  `ghi chú dưới bảng giá đúng ${keys.join(" + ")}`,
+  `ghi chú ở bước 1 đúng ${keys.join(" + ")}`,
+];
+
+// Ba bước đánh số (spec 2026-10-22 §2): đúng ba tiêu đề h2 theo thứ tự, số 1, 2, 3 chỉ để nhìn, chữ đúng ba khóa; bảng gói ở
+// bước 2.
+const steps = (lang) =>
+  inPage(
+    lang,
+    `const h = [...document.querySelectorAll(".upgrade-step > h2.step-title")]; const keys = ["upgrade.method", "upgrade.step.plan", "upgrade.step.pay"]; return h.length === 3 && h.every((x, i) => x.querySelector(".step-no").textContent === String(i + 1) && x.querySelector(".step-no").getAttribute("aria-hidden") === "true" && x.lastElementChild.textContent === t(keys[i])) && !!document.querySelectorAll(".upgrade-step")[1].querySelector("ul.plans");`,
+  );
+
+// Cách trả chọn sẵn theo ngôn ngữ của lượt chạy (spec 2026-10-22 §3): tiếng Việt là VietQR, ngôn ngữ khác là thẻ quốc tế.
+const defaultMethod = (lang) => (lang === "vi" ? "VND" : "USD");
+
+// VietQR đang chọn, chưa có đơn: giá VND, ghi chú VietQR, không nhắc Creem, một mục gập pháp lý.
+const vndChosen = (lang) => [
+  method("VND", false),
+  planRadios("monthly", false),
+  bodyHas("50.000 đ"),
+  bodyHas("269.000 đ"),
+  bodyHas("500.000 đ"),
+  bodyHasNot("$"),
+  notes(lang, ["upgrade.bankOnly"]),
+  noCreemHint,
+  bodyHasNot("merchant of record"),
+  [`document.querySelectorAll("details.legal-details").length === 1`, "chỉ một mục gập pháp lý (chính sách), chưa có EULA của đơn thẻ"],
+];
+
+// Thẻ quốc tế đang chọn, chưa có đơn: giá USD, ghi chú cardNote (có Creem) và câu merchant of record, câu đồng ý của thẻ, nút
+// trả bằng trình duyệt, thêm mục gập EULA.
+const usdChosen = (lang) => [
+  method("USD", false),
+  planRadios("monthly", false),
+  bodyHas("$3.99"),
+  bodyHas("$21.99"),
+  bodyHas("$39.99"),
+  bodyHasNot("50.000 đ"),
+  notes(lang, ["upgrade.cardNote", "upgrade.cardMor"]),
+  bodyHas("merchant of record"),
+  [
+    inPage(
+      lang,
+      `return document.querySelector(".consent").textContent === t("upgrade.consentCard") && document.querySelector('form.card button[type="submit"]').textContent.includes(t("upgrade.payCard"));`,
+    ),
+    "câu đồng ý của thẻ (upgrade.consentCard) và nút upgrade.payCard",
+  ],
+  [`document.querySelectorAll("details.legal-details").length === 2`, "hai mục gập pháp lý (chính sách và EULA)"],
 ];
 
 // Mọi p.hint của trang đều không nhắc Creem (không có đơn thẻ, không bán USD: khách không cần biết tới cổng thẻ).
@@ -126,7 +173,7 @@ const cardOrder = (lang) => [
   [
     inPage(
       lang,
-      `const c = document.querySelector(".checkout.browser"); return c.querySelector("h2.card-title").textContent === t("upgrade.browser.title") && c.querySelector("button").textContent.includes(t("upgrade.reopen"));`,
+      `const c = document.querySelector(".checkout.browser"); return c.querySelector("h3.card-title").textContent === t("upgrade.browser.title") && c.querySelector("button").textContent.includes(t("upgrade.reopen"));`,
     ),
     "đơn thẻ: có tiêu đề upgrade.browser.title và nút upgrade.reopen",
   ],
@@ -140,7 +187,7 @@ const qrOrder = (lang) => [
     `(() => { const c = document.querySelector(".checkout:not(.browser)"); return !!c && !!c.querySelector(".qr svg") && c.querySelectorAll("button").length === 2; })()`,
     "đơn VietQR: có mã QR (svg), không phải thẻ một cột, đúng hai nút",
   ],
-  [inPage(lang, `return document.querySelector(".checkout h2.card-title").textContent === t("upgrade.scan");`), "đơn VietQR: có tiêu đề upgrade.scan"],
+  [inPage(lang, `return document.querySelector(".checkout h3.card-title").textContent === t("upgrade.scan");`), "đơn VietQR: có tiêu đề upgrade.scan"],
   bodyHasNot("merchant of record"),
   noForm,
 ];
@@ -166,19 +213,22 @@ const startedWith = (plan, currency) => [
   `bấm trả tiền gửi đúng start_checkout (gói ${plan}, loại tiền ${currency}, email, đồng ý, không gia hạn)`,
 ];
 
-// Bấm thật: chọn gói 6 Months, tick đồng ý rồi đổi cách trả (ô đồng ý phải tự bỏ tick, cả hai chiều), trả bằng thẻ.
+// Bấm thật: chọn gói 6 Months, sang thẻ (giao diện tiếng Việt chọn sẵn VietQR), tick đồng ý rồi đổi cách trả (ô đồng ý phải tự
+// bỏ tick, cả hai chiều), trả bằng thẻ.
 async function startByCard(page, ck, lang) {
   await page.click('.plan:has(input[value="six_months"]) label');
+  await page.click('.pay-method:has(input[value="USD"])');
+  await ck(...method("USD", false));
   await type(page, "#upgrade-email", EMAIL);
   await page.click(".consent");
   await ck(...consentIs(true));
-  await page.click('.choice:has(input[value="VND"])');
+  await page.click('.pay-method:has(input[value="VND"])');
   await ck(...method("VND", false));
   await ck(...consentIs(false));
   await ck(...payDisabled(true));
   await page.click(".consent");
   await ck(...consentIs(true));
-  await page.click('.choice:has(input[value="USD"])');
+  await page.click('.pay-method:has(input[value="USD"])');
   await ck(...method("USD", false));
   await ck(...consentIs(false));
   await page.click(".consent");
@@ -193,9 +243,9 @@ async function startByCard(page, ck, lang) {
   for (const check of cardOrder(lang)) await ck(...check);
 }
 
-// Bấm thật: khách có gợi ý USD chọn chuyển khoản VietQR (VND), gói mặc định Monthly.
+// Bấm thật: chọn chuyển khoản VietQR (VND; ở tiếng Việt đã chọn sẵn, bấm lại không đổi gì), gói mặc định Monthly.
 async function startByQr(page, ck, lang) {
-  await page.click('.choice:has(input[value="VND"])');
+  await page.click('.pay-method:has(input[value="VND"])');
   await type(page, "#upgrade-email", EMAIL);
   await page.click(".consent");
   await ck(...consentIs(true));
@@ -206,6 +256,14 @@ async function startByQr(page, ck, lang) {
   await ck(...planRadios("monthly", true));
   await ck(`document.querySelector(".order-code").textContent.includes("50.000 đ")`, "đơn VietQR của gói Monthly ghi 50.000 đ");
   for (const check of qrOrder(lang)) await ck(...check);
+}
+
+// Bấm thật sang cách trả không được chọn sẵn: chữ, giá và ghi chú đổi theo cách đó.
+async function pickOtherMethod(page, ck, lang) {
+  const other = defaultMethod(lang) === "VND" ? "USD" : "VND";
+  await page.click(`.pay-method:has(input[value="${other}"])`);
+  await sleep(200);
+  for (const check of other === "VND" ? vndChosen(lang) : usdChosen(lang)) await ck(...check);
 }
 
 // ---------------------------------------------------------------- báo cáo lỗi (spec 2026-10-17 §5)
@@ -329,30 +387,27 @@ const SCREENS = [
   ["settings-compose", "screen=settings&group=compose"],
   ["settings-compose-noax", "screen=settings&group=compose&ax=0"],
   ["settings-compose-windows", "screen=settings&group=compose&platform=windows"],
-  // Nâng cấp (spec 2026-10-14). Khách ở Việt Nam (server gợi ý VND): chọn sẵn VietQR.
+  // Nâng cấp (spec 2026-10-14, 2026-10-22): ba bước; cách trả chọn sẵn theo ngôn ngữ của lượt chạy (vi: VietQR, còn lại: thẻ).
   ["upgrade", "screen=upgrade&plan=free"],
-  // Khách ở nước ngoài (gợi ý USD): chọn sẵn thẻ quốc tế.
-  ["upgrade-intl", "screen=upgrade&plan=free&suggest=usd"],
-  // Server chưa bán USD: không có lựa chọn cách trả, kể cả khi gợi ý là USD (không bán được thì quay về VND).
+  // Bấm sang cách trả còn lại: chữ, giá và ghi chú của cách đó.
+  ["upgrade-other", "screen=upgrade&plan=free", { interact: pickOtherMethod }],
+  // Server chưa bán USD: bước 1 chỉ có một ô VietQR, ở mọi ngôn ngữ.
   ["upgrade-vnd-only", "screen=upgrade&plan=free&usd=0"],
-  ["upgrade-usd-off", "screen=upgrade&plan=free&usd=0&suggest=usd"],
-  // Đơn VietQR đang chờ; khách có gợi ý USD mở lại app vẫn thấy ô VietQR (cách trả của đơn, không theo gợi ý); đơn do bản app
-  // cũ lưu (đọc lại với số tiền 0, loại tiền rỗng) cũng vậy.
+  // Đơn VietQR đang chờ: ô VietQR khóa ở mọi ngôn ngữ (cách trả của đơn, không theo ngôn ngữ); đơn do bản app cũ lưu (đọc lại
+  // với số tiền 0, loại tiền rỗng) cũng vậy.
   ["upgrade-qr", "screen=upgrade&plan=free&checkout=1"],
-  ["upgrade-qr-intl", "screen=upgrade&plan=free&suggest=usd&checkout=1"],
-  ["upgrade-qr-old", "screen=upgrade&plan=free&suggest=usd&checkout=1&pending=old"],
-  // Đơn thẻ đang chờ (không mã QR); khách ở Việt Nam (gợi ý VND) mở lại app vẫn thấy ô thẻ; đơn cũ (số tiền 0, loại tiền
-  // rỗng); đơn quá giờ hẹn trả mà server còn báo chờ.
-  ["upgrade-card", "screen=upgrade&plan=free&suggest=usd&checkout=card"],
-  ["upgrade-card-vn", "screen=upgrade&plan=free&checkout=card"],
+  ["upgrade-qr-old", "screen=upgrade&plan=free&checkout=1&pending=old"],
+  // Đơn thẻ đang chờ (không mã QR): ô thẻ khóa ở mọi ngôn ngữ, kể cả tiếng Việt; đơn cũ (số tiền 0, loại tiền rỗng); đơn quá
+  // giờ hẹn trả mà server còn báo chờ.
+  ["upgrade-card", "screen=upgrade&plan=free&checkout=card"],
   ["upgrade-card-old", "screen=upgrade&plan=free&checkout=card&pending=old"],
-  ["upgrade-card-late", "screen=upgrade&plan=free&suggest=usd&checkout=card&late=1"],
+  ["upgrade-card-late", "screen=upgrade&plan=free&checkout=card&late=1"],
   // Giờ đóng băng (now=): đồng hồ của cả trang khớp, nên đơn thẻ mới (hạn 30 phút sau giờ đó) không bị coi là quá hạn dù giờ thật
   // đã xa hơn nhiều.
   ["upgrade-card-frozen", "screen=upgrade&plan=free&checkout=card&now=2026-01-01T00:00:00Z"],
   // Bấm thật (tên có "start": ảnh chụp là màn hình sau khi tạo đơn).
-  ["upgrade-start-card", "screen=upgrade&plan=free&suggest=usd", { interact: startByCard }],
-  ["upgrade-start-qr", "screen=upgrade&plan=free&suggest=usd", { interact: startByQr }],
+  ["upgrade-start-card", "screen=upgrade&plan=free", { interact: startByCard }],
+  ["upgrade-start-qr", "screen=upgrade&plan=free", { interact: startByQr }],
   ["about", "screen=about"],
   // Nút "Gửi log cho hỗ trợ" (spec 2026-10-17 §5): bấm thật ra mã báo cáo, và ba lỗi của lệnh.
   ["about-report-sent", "screen=about", { interact: sendReport }],
@@ -455,15 +510,10 @@ const EXTRA = {
       "bước 1 có 5 ô chọn và chọn sẵn đúng ngôn ngữ",
     ],
   ],
-  // Có hai cách trả (server bán cả VND lẫn USD), chọn sẵn VietQR theo gợi ý; giá VND; nhãn "Cách thanh toán" nhìn thấy được
-  // (không chỉ aria-label); ghi chú là câu VietQR, không nhắc Creem. Mỗi ngôn ngữ: câu cardNote có "Creem", bankOnly thì không.
+  // Ba bước; chọn sẵn cách trả theo ngôn ngữ; nhãn "Cách thanh toán" nhìn thấy được (không chỉ aria-label). Mỗi ngôn ngữ: câu
+  // cardNote có "Creem", bankOnly thì không.
   upgrade: (lang) => [
-    method("VND", false),
-    planRadios("monthly", false),
-    bodyHas("50.000 đ"),
-    bodyHas("269.000 đ"),
-    bodyHas("500.000 đ"),
-    bodyHasNot("$"),
+    [steps(lang), "ba bước 1 Cách thanh toán, 2 Chọn gói, 3 Thanh toán; bảng gói ở bước 2"],
     [
       inPage(
         lang,
@@ -471,59 +521,29 @@ const EXTRA = {
       ),
       'nhãn "Cách thanh toán" (upgrade.method) có chữ nhìn thấy và gắn với nhóm radio (aria-labelledby)',
     ],
-    notes(lang, ["upgrade.bankOnly"]),
-    noCreemHint,
-    bodyHasNot("merchant of record"),
+    ...(defaultMethod(lang) === "VND" ? vndChosen(lang) : usdChosen(lang)),
     [
       inPage(lang, `return t("upgrade.cardNote").includes("Creem") && !t("upgrade.bankOnly").includes("Creem");`),
       'chữ của ngôn ngữ này: upgrade.cardNote có "Creem", upgrade.bankOnly thì không',
     ],
-    [`document.querySelectorAll("details.legal-details").length === 1`, "chỉ một mục gập pháp lý (chính sách), chưa có EULA của đơn thẻ"],
   ],
-  // Chọn sẵn thẻ theo gợi ý USD: giá USD, câu cardNote (có Creem) và câu merchant of record, câu đồng ý của thẻ, nút trả bằng
-  // trình duyệt, thêm mục gập EULA.
-  "upgrade-intl": (lang) => [
-    method("USD", false),
-    planRadios("monthly", false),
-    bodyHas("$3.99"),
-    bodyHas("$21.99"),
-    bodyHas("$39.99"),
-    bodyHasNot("50.000 đ"),
-    notes(lang, ["upgrade.cardNote", "upgrade.cardMor"]),
-    [`document.querySelector(".plan-notes p.hint").textContent.includes("Creem")`, 'ghi chú cách trả của thẻ nhắc "Creem"'],
-    bodyHas("merchant of record"),
-    [
-      inPage(
-        lang,
-        `return document.querySelector(".consent").textContent === t("upgrade.consentCard") && document.querySelector('form.card button[type="submit"]').textContent.includes(t("upgrade.payCard"));`,
-      ),
-      "câu đồng ý của thẻ (upgrade.consentCard) và nút upgrade.payCard",
-    ],
-    [`document.querySelectorAll("details.legal-details").length === 2`, "hai mục gập pháp lý (chính sách và EULA)"],
-  ],
-  // Server chưa bán USD (bảng giá không có giá USD): không có lựa chọn cách trả, chỉ VND, không nhắc Creem.
+  // Server chưa bán USD (bảng giá không có giá USD): bước 1 chỉ có VietQR, ở mọi ngôn ngữ; chỉ VND, không nhắc Creem; câu đồng
+  // ý của VietQR.
   "upgrade-vnd-only": (lang) => [
-    noMethod,
+    [steps(lang), "vẫn đủ ba bước khi chỉ bán VND"],
+    onlyVnd,
     planRadios("monthly", false),
     bodyHas("50.000 đ"),
     bodyHasNot("$"),
     notes(lang, ["upgrade.bankOnly"]),
     noCreemHint,
     bodyHasNot("merchant of record"),
-    [`!!document.querySelector("#upgrade-email")`, "có form tạo đơn (ô email)"],
-  ],
-  "upgrade-usd-off": (lang) => [
-    noMethod,
-    bodyHas("50.000 đ"),
-    bodyHasNot("$"),
-    notes(lang, ["upgrade.bankOnly"]),
-    noCreemHint,
     [
       inPage(lang, `return document.querySelector(".consent").textContent === t("upgrade.consent");`),
-      "câu đồng ý của VietQR (upgrade.consent), không phải của thẻ: server gợi ý USD nhưng không bán",
+      "câu đồng ý của VietQR (upgrade.consent), không phải của thẻ",
     ],
   ],
-  // Đơn VietQR: ô VND bị khóa dù server gợi ý USD (cả đơn cũ chưa có loại tiền); giá VND; câu VietQR.
+  // Đơn VietQR: ô VND bị khóa ở mọi ngôn ngữ (cả đơn cũ chưa có loại tiền); giá VND; câu VietQR.
   "upgrade-qr": (lang) => [
     method("VND", true),
     planRadios("monthly", true),
@@ -532,7 +552,6 @@ const EXTRA = {
     [`document.querySelector(".order-code").textContent.includes("50.000 đ")`, "đơn ghi số tiền 50.000 đ"],
     notes(lang, ["upgrade.bankOnly"]),
   ],
-  "upgrade-qr-intl": (lang) => [method("VND", true), planRadios("monthly", true), ...qrOrder(lang), bodyHas("50.000 đ"), notes(lang, ["upgrade.bankOnly"])],
   "upgrade-qr-old": (lang) => [
     method("VND", true),
     planRadios("monthly", true),
@@ -556,8 +575,6 @@ const EXTRA = {
     ],
     notes(lang, ["upgrade.cardNote", "upgrade.cardMor"]),
   ],
-  // Khách ở Việt Nam (gợi ý VND) có đơn thẻ: ô được chọn là ô có chữ USD (đọc nhãn), không theo gợi ý.
-  "upgrade-card-vn": (lang) => [method("USD", true), planRadios("monthly", true), ...cardOrder(lang), bodyHas("$3.99")],
   // Đơn thẻ bản app cũ lưu (số tiền 0, loại tiền rỗng): vẫn khóa đúng USD (suy theo không có mã QR).
   "upgrade-card-old": (lang) => [
     method("USD", true),
