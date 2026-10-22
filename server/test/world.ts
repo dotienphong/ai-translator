@@ -8,15 +8,19 @@ import { ResendEmailProvider } from "../src/email/resend";
 import type { ApiEnv } from "../src/env";
 import { CreemProvider } from "../src/payment/creem";
 import { PayOSProvider } from "../src/payment/payos";
+import { HttpZaloBot } from "../src/support/zalo";
 import { importSigningKey } from "../src/token";
 import {
   FakeCreem,
   FakePayOS,
   FakeResend,
+  FakeZalo,
   TEST_CHECKSUM_KEY,
   TEST_CREEM_API_KEY,
   TEST_CREEM_PRODUCTS,
   TEST_CREEM_WEBHOOK_SECRET,
+  TEST_ZALO_OWNER,
+  TEST_ZALO_TOKEN,
 } from "./fakes";
 import { testSigningJwk } from "./keys";
 
@@ -35,6 +39,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
   const payos = new FakePayOS(TEST_CHECKSUM_KEY, () => clock.now);
   const creem = new FakeCreem();
   const resend = new FakeResend();
+  const zalo = new FakeZalo();
   const deps: Deps = {
     now: () => clock.now,
     payments: {
@@ -54,6 +59,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     },
     email: new ResendEmailProvider({ apiKey: "re_test", from: "AI Translator <noreply@mt.test>" }, resend.fetch),
     signingKey: async () => importSigningKey(await testSigningJwk("test-1")),
+    zalo: new HttpZaloBot(TEST_ZALO_TOKEN, TEST_ZALO_OWNER, zalo.fetch),
   };
   const app = createApp(() => deps);
   const testEnv: ApiEnv = { ...env, ...envOverride };
@@ -177,5 +183,5 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     };
   }
 
-  return { clock, payos, creem, resend, deps, app, env: testEnv, call, buy, buyCreem, getOrder, customerB };
+  return { clock, payos, creem, resend, zalo, deps, app, env: testEnv, call, buy, buyCreem, getOrder, customerB };
 }

@@ -7,6 +7,7 @@ import type { ApiEnv } from "./env";
 import { CreemProvider, parseProductIds } from "./payment/creem";
 import { PayOSProvider } from "./payment/payos";
 import type { PaymentProvider } from "./payment/provider";
+import { type OwnerBot, zaloFromEnv } from "./support/zalo";
 import { importSigningKey, type KeyCheck, type SigningKey, signToken } from "./token";
 
 export interface Deps {
@@ -15,6 +16,8 @@ export interface Deps {
   payments: Record<string, PaymentProvider>;
   email: EmailProvider;
   signingKey(): Promise<SigningKey>;
+  /** Zalo Bot gửi tin tới chủ dự án (chat hỗ trợ, spec 2026-10-22); null khi thiếu secret. */
+  zalo: OwnerBot | null;
 }
 
 export type DepsFactory = (env: ApiEnv) => Deps;
@@ -110,6 +113,7 @@ export function realDeps(env: ApiEnv): Deps {
     payments: { payos: payosFromEnv(env), ...(creem ? { creem } : {}) },
     email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
     signingKey: () => (key ??= loadSigningKey(env)),
+    zalo: zaloFromEnv(env),
   };
 }
 

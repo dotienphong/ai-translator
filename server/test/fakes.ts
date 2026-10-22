@@ -619,3 +619,38 @@ export class FakeGateway implements PaymentProvider {
     return { orderCode, status: paid ? "paid" : "pending", amount: 50000, amountPaid: paid ? 50000 : 0, paidAt: null };
   }
 }
+
+/** Secret giả của Zalo Bot; khớp FAKE_SECRETS ở vitest.config.ts. */
+export const TEST_ZALO_TOKEN = "test-zalo-token";
+export const TEST_ZALO_WEBHOOK_SECRET = "test-zalo-webhook-secret";
+export const TEST_ZALO_OWNER = "owner-chat-id";
+
+/**
+ * Zalo Bot giả ở mức HTTP (`sendMessage`): route chạy đúng code HttpZaloBot, chỉ thay hàm fetch. `down`: lỗi mạng, thông điệp
+ * có cả URL (fetch thật có thể làm vậy, và URL chứa token); `failStatus`: Zalo trả mã lỗi HTTP; `okFalseWith200`: HTTP 200 mà
+ * thân `ok: false`.
+ */
+export class FakeZalo {
+  readonly sent: { chatId: string; text: string }[] = [];
+  readonly urls: string[] = [];
+  readonly contentTypes: (string | undefined)[] = [];
+  down = false;
+  failStatus: number | null = null;
+  okFalseWith200 = false;
+
+  readonly fetch = async (url: string, init: RequestInit = {}): Promise<Response> => {
+    this.urls.push(url);
+    if (this.down) throw new TypeError(`fetch failed: ${url}`);
+    if (this.failStatus !== null) return json({ ok: false, error_code: this.failStatus, description: "lỗi giả" }, this.failStatus);
+    if (this.okFalseWith200) return json({ ok: false, error_code: 404, description: "lỗi giả" });
+    this.contentTypes.push((init.headers as Record<string, string>)["content-type"]);
+    const body = JSON.parse(init.body as string) as { chat_id: string; text: string };
+    this.sent.push({ chatId: body.chat_id, text: body.text });
+    return json({ ok: true, result: { message_id: crypto.randomUUID(), date: 1_790_812_800_000 } });
+  };
+
+  /** Văn bản các tin đã gửi thành công, theo thứ tự. */
+  texts(): string[] {
+    return this.sent.map((s) => s.text);
+  }
+}
