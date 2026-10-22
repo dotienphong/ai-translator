@@ -11,7 +11,7 @@ import { vnDate } from "../src/release.mjs";
 import * as legal from "../src/content/legal.mjs";
 import { glue } from "../src/build/layout.mjs";
 import { SITE } from "../src/site.mjs";
-import { PLANS, usd, vnd } from "../src/plans.mjs";
+import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, fromEn } from "../src/langs.mjs";
 import { videoMeta } from "../src/build/mp4.mjs";
 
@@ -1007,8 +1007,9 @@ test("JSON-LD SoftwareApplication của mọi trang có nó: bốn Offer VND (k�
     const app = graph.find((n) => n["@type"] === "SoftwareApplication");
     if (!app) continue;
     checked += 1;
-    const en = page.lang === "en";
-    const pricingUrl = SITE.origin + (en ? "/en/pricing/" : "/bang-gia/");
+    // Bảng giá cùng ngôn ngữ với trang (chưa dịch tới khi ALLOW_PARTIAL=1 thì không kiểm url).
+    const pricing = pages.find((p) => p.id === "pricing" && p.lang === page.lang);
+    const pricingUrl = pricing ? SITE.origin + pricing.path : null;
     const offers = app.offers ?? [];
     const inVnd = offers.filter((o) => o.priceCurrency === "VND");
     const inUsd = offers.filter((o) => o.priceCurrency === "USD");
@@ -1017,12 +1018,12 @@ test("JSON-LD SoftwareApplication của mọi trang có nó: bốn Offer VND (k�
     }
     const check = (o, plan, want) => {
       if (!o) return;
-      const nm = en ? plan.nameEn : plan.nameVi;
-      const summary = en ? plan.summaryEn : plan.summaryVi;
+      const nm = planName(plan, page.lang);
+      const summary = planSummary(plan, page.lang);
       if (o.price !== want.price) errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: price ${o.price}, cần ${want.price}`);
       if (o.eligibleDuration?.value !== plan.days || o.eligibleDuration?.unitCode !== "DAY") errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: eligibleDuration ${JSON.stringify(o.eligibleDuration)}, cần ${plan.days} DAY`);
       if (o.availability !== "https://schema.org/InStock") errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: availability ${o.availability}`);
-      if (o.url !== pricingUrl) errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: url ${o.url}, cần ${pricingUrl}`);
+      if (pricingUrl && o.url !== pricingUrl) errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: url ${o.url}, cần ${pricingUrl}`);
       if (plan.priceVnd > 0 && !o.name?.startsWith(nm)) errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: name "${o.name}" không bắt đầu bằng "${nm}"`);
       if (!o.description?.startsWith(summary)) errors.push(`${page.path}: ${want.tag} ${plan.nameEn}: description không bắt đầu bằng mô tả gói trong plans.mjs`);
     };
@@ -1031,7 +1032,7 @@ test("JSON-LD SoftwareApplication của mọi trang có nó: bốn Offer VND (k�
       check(inUsd[i], plan, { tag: "USD", price: (plan.priceUsdCents / 100).toFixed(2) });
       // Bản tóm tắt cho công cụ tìm kiếm và trợ lý AI chỉ thấy Offer này: giá USD phải tự nói chưa gồm thuế (W2), không dựa vào chú thích trên trang.
       if (inUsd[i] && !TAX_PHRASE.test(inUsd[i].description ?? "")) errors.push(`${page.path}: Offer USD ${plan.nameEn} không nói giá chưa gồm thuế: ${inUsd[i].description}`);
-      if (inUsd[i] && inUsd[i].name !== `${en ? plan.nameEn : plan.nameVi} (USD)`) errors.push(`${page.path}: Offer USD ${plan.nameEn}: name "${inUsd[i].name}"`);
+      if (inUsd[i] && inUsd[i].name !== `${planName(plan, page.lang)} (USD)`) errors.push(`${page.path}: Offer USD ${plan.nameEn}: name "${inUsd[i].name}"`);
     });
     const six = inVnd.find((o) => /6 Months/.test(o.name));
     if (!six || six.price !== "269000" || six.eligibleDuration?.value !== 180) errors.push(`${page.path}: Offer 6 Months sai: ${JSON.stringify(six)}`);

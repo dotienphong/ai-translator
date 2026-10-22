@@ -27,13 +27,15 @@ const plain = (h) => h.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(
 const count = (h, re) => (h.match(re) ?? []).length;
 /** Đường dẫn của bản en đổi sang ngôn ngữ `lang`: /en/… → /<lang>/…, trừ pháp lý (giữ bản tiếng Anh). */
 function mapHref(href, lang) {
+  if (href.startsWith("/assets/")) return href.replace(/\.en\.(mp4|webp)$/, `.${lang}.$1`);
   if (!href.startsWith("/en/")) return href;
   const [p, hash] = href.split("#");
   if ([...VI_EN_ONLY].some((id) => p === `/en/${id}/`)) return href;
   return fromEn(p, lang) + (hash !== undefined ? `#${hash}` : "");
 }
-// mailto: chỉ so địa chỉ (mẫu thư trong tham số đã dịch).
-const hrefs = (h) => [...new Set([...mainOf(h).matchAll(/<a\b[^>]*?\shref="([^"]+)"/g)].map((m) => (m[1].startsWith("mailto:") ? m[1].replace(/\?.*/, "") : m[1])))].sort();
+// mailto: chỉ so địa chỉ (mẫu thư trong tham số đã dịch); tài nguyên /assets/ bỏ mã băm `?v=`.
+const hrefs = (h) =>
+  [...new Set([...mainOf(h).matchAll(/<a\b[^>]*?\shref="([^"]+)"/g)].map((m) => (m[1].startsWith("mailto:") || m[1].startsWith("/assets/") ? m[1].replace(/\?.*/, "") : m[1])))].sort();
 const imgs = (h) => [...new Set([...mainOf(h).matchAll(/<(?:img|source|video)\b[^>]*?\s(?:src|poster)="([^"?]+)/g)].map((m) => m[1]))].sort();
 const ids = (h) => [...new Set([...mainOf(h).matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))].sort();
 const faqCount = (h) =>
