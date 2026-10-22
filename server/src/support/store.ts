@@ -129,8 +129,9 @@ export async function markDelivered(db: D1Database, conversationId: number, owne
     .run();
 }
 
-export async function setEmail(db: D1Database, conversationId: number, email: string | null, now: number): Promise<void> {
-  await db.prepare("UPDATE support_conversations SET email = ?2, last_activity_at = ?3 WHERE id = ?1").bind(conversationId, email, now).run();
+// Không đụng `last_activity_at`: mốc 90 ngày tính từ tin cuối (chính sách mục 11), đặt email không phải là tin.
+export async function setEmail(db: D1Database, conversationId: number, email: string | null): Promise<void> {
+  await db.prepare("UPDATE support_conversations SET email = ?2 WHERE id = ?1").bind(conversationId, email).run();
 }
 
 export async function setStatus(db: D1Database, conversationId: number, status: "open" | "blocked"): Promise<void> {

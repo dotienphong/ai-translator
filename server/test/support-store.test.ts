@@ -95,8 +95,9 @@ describe("D1 của chat hỗ trợ (migration 0005)", () => {
     expect((await conversationByCode(db, "k7q"))?.id).toBe(c.id);
     expect(await conversationByCode(db, "ZZZ")).toBeNull();
     await setStatus(db, c.id, "blocked");
-    await setEmail(db, c.id, "khach@example.com", T0 + 9);
-    expect(await conversationByCode(db, "K7Q")).toMatchObject({ status: "blocked", email: "khach@example.com", last_activity_at: T0 + 9 });
+    await setEmail(db, c.id, "khach@example.com");
+    // Đặt email không làm mới mốc hoạt động (90 ngày tính từ tin cuối).
+    expect(await conversationByCode(db, "K7Q")).toMatchObject({ status: "blocked", email: "khach@example.com", last_activity_at: T0 });
   });
 
   it("deleteConversation xóa cả tin của cuộc chat", async () => {
@@ -131,10 +132,10 @@ describe("D1 của chat hỗ trợ (migration 0005)", () => {
     await addCustomerMessage(db, a.id, "tin cũ", T0 + 1);
     await addOwnerMessage(db, a.id, "trả lời", "zm-a", T0 + 2);
     await addCustomerMessage(db, b.id, "tin b", T0 + 3);
-    await setEmail(db, b.id, "b@example.com", T0 + 4);
+    await setEmail(db, b.id, "b@example.com");
     await setStatus(db, a.id, "blocked");
     expect(await recentConversations(db, T0)).toEqual([
-      { code: "BBB", source: "web", status: "open", has_email: 1, last_activity_at: T0 + 4, last_text: "tin b" },
+      { code: "BBB", source: "web", status: "open", has_email: 1, last_activity_at: T0 + 3, last_text: "tin b" },
       { code: "AAA", source: "web", status: "blocked", has_email: 0, last_activity_at: T0 + 2, last_text: "trả lời" },
     ]);
   });

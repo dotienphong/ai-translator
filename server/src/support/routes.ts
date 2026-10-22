@@ -179,7 +179,7 @@ export function registerSupport(app: Hono<AppEnv>) {
     if (!body || !("email" in body)) return fail(c, 400, "invalid_request", { field: "email" });
     const email = body.email === null ? null : parseEmail(body.email);
     if (body.email !== null && email === null) return fail(c, 400, "invalid_request", { field: "email" });
-    await setEmail(c.env.DB, found.id, email, now);
+    await setEmail(c.env.DB, found.id, email);
     // Chỉ báo là có email; địa chỉ không bao giờ đi qua Zalo (spec 2026-10-22 §2.3).
     if (email !== null && email !== found.email) notifyOwner(c, BOT_TEXT.emailSaved(found.code));
     return c.json({ ok: true });

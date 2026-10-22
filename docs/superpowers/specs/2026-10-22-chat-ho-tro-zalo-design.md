@@ -52,7 +52,7 @@ App (Rust reqwest, qua IPC) ───┘   /v1/support/*  (D1)      └─← we
 | `context` | dòng thông tin máy (tối đa 300 ký tự); chỉ app, chỉ khi khách để tích |
 | `email` | email khách để lại, có thể rỗng |
 | `status` | `open` hay `blocked` |
-| `created_at`, `last_customer_at`, `last_owner_at`, `last_activity_at` | thời điểm (giây) |
+| `created_at`, `last_customer_at`, `last_owner_at`, `last_activity_at` | thời điểm (giây); `last_activity_at` là mốc của tin cuối (tin khách hay tin chủ dự án), mốc của hạn 90 ngày; đặt hay bỏ email không làm mới mốc này |
 | `delivered_owner_id` | id lớn nhất của tin chủ dự án mà khách đã nhận qua polling |
 | `emailed_owner_id` | id lớn nhất của tin chủ dự án đã gửi qua email (thư sau chỉ gồm tin mới hơn) |
 | `emailed_at` | lần cuối gửi email câu trả lời |
