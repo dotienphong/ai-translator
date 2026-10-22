@@ -23,11 +23,11 @@ import { when } from "../LicenseText";
 // Phần hiển thị của màn hình Nâng cấp (kế hoạch hardening 06 C2): chỉ nhận props, không đọc store, để test vẽ được trong
 // Node bằng `react-dom/server` (UpgradeView.test.ts). `UpgradeScreen` nối store vào đây.
 export interface UpgradeViewProps {
-  // Ngôn ngữ giao diện; truyền vào thay vì đọc store để test không phụ thuộc locale của máy chạy test.
+  // Ngôn ngữ giao diện: chọn chữ, và chọn sẵn cách trả (tiếng Việt là VietQR, ngôn ngữ khác là thẻ quốc tế). Truyền vào thay
+  // vì đọc store để test không phụ thuộc locale của máy chạy test.
   lang: UiLanguage;
   view: LicenseView | null;
   plans: PlanOffer[] | null;
-  suggestedCurrency: string | null;
   checkout: CheckoutView | null;
   order: OrderOutcome | null;
   error: UiError | null;
@@ -43,7 +43,6 @@ export function UpgradeView({
   lang,
   view,
   plans,
-  suggestedCurrency,
   checkout,
   order,
   error,
@@ -56,7 +55,7 @@ export function UpgradeView({
   const t = (key: MessageKey, params?: Params) => translate(lang, key, params);
   // Chưa chọn thì theo `defaultPlan(view)` (view nạp bất đồng bộ); đã bấm chọn thì giữ lựa chọn đó.
   const [picked, setPicked] = useState<PlanOffer["code"] | null>(null);
-  // Cách trả: theo gợi ý của server tới khi người dùng chọn; chọn xong mà bảng gói đổi (hết bán USD) thì quay về mặc định.
+  // Cách trả: theo ngôn ngữ giao diện tới khi người dùng chọn; chọn xong mà bảng gói đổi (hết bán USD) thì quay về mặc định.
   const [pickedCurrency, setPickedCurrency] = useState<PayCurrency | null>(null);
   const [email, setEmail] = useState("");
   // Ô đồng ý gắn với loại tiền lúc tick: câu đồng ý của thẻ khác câu của VietQR (email gửi cho Creem), nên đổi cách trả thì
@@ -64,14 +63,14 @@ export function UpgradeView({
   const [consentFor, setConsentFor] = useState<PayCurrency | null>(null);
   const renew = isRenewal(view);
   const current = view?.plan ?? "free";
-  // Đang có đơn chờ trả: gói và cách trả là của đơn đó và bị khóa (không theo lựa chọn cục bộ hay gợi ý của server: đổi màn
+  // Đang có đơn chờ trả: gói và cách trả là của đơn đó và bị khóa (không theo lựa chọn cục bộ hay ngôn ngữ giao diện: đổi màn
   // hình hay mở lại app thì lựa chọn cục bộ mất). Đang tạo đơn (`busy`) cũng khóa, để đơn không tạo theo lựa chọn cũ trong
   // khi nút hiện lựa chọn mới.
   const pending = checkout !== null && !orderFinished(order) ? checkout : null;
   const locked = pending !== null;
   const plan: string = pending?.plan ?? picked ?? defaultPlan(view);
   const currencies = offeredCurrencies(plans);
-  const currency = pending !== null ? lockedCurrency(pending) : chosenCurrency(pickedCurrency, plans, suggestedCurrency);
+  const currency = pending !== null ? lockedCurrency(pending) : chosenCurrency(pickedCurrency, plans, lang);
   const card = currency === "USD";
   const consent = consentFor === currency;
   const browser = checkout !== null && isBrowserOrder(checkout);

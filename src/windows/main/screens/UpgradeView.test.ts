@@ -1,13 +1,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { type MessageKey, type Params, translate } from "../../../i18n";
+import { type MessageKey, type Params, translate, type UiLanguage } from "../../../i18n";
 import type { CheckoutView, OrderOutcome, PlanOffer } from "../../../lib/ipc";
 import { fallbackLanguage } from "../appStore";
 import { UpgradeView, type UpgradeViewProps } from "./UpgradeView";
 
 // Màn hình Nâng cấp vẽ bằng `react-dom/server` trong Node (như LiveLineView.test.ts): loại tiền và gói khóa theo đơn đang
-// chờ, nhãn "Cách thanh toán" nhìn thấy, chữ của đơn thẻ (merchant of record, trễ, không thành) (kế hoạch hardening 06 C2).
+// chờ, cách trả chọn sẵn theo ngôn ngữ giao diện, nhãn "Cách thanh toán" nhìn thấy, chữ của đơn thẻ (merchant of record, trễ,
+// không thành) (kế hoạch hardening 06 C2).
 
 const T = 1_800_000_000;
 
@@ -40,7 +41,6 @@ const props = (patch: Partial<UpgradeViewProps> = {}): UpgradeViewProps => ({
   lang: "vi",
   view: null,
   plans: BOTH,
-  suggestedCurrency: "VND",
   checkout: null,
   order: null,
   error: null,
@@ -57,7 +57,9 @@ const html = (patch: Partial<UpgradeViewProps> = {}) => renderToStaticMarkup(cre
 // Chữ của từ điển như trong HTML (React thoát các ký tự đặc biệt).
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
-const text = (key: MessageKey, params?: Params) => esc(translate("vi", key, params));
+const textIn = (lang: UiLanguage) => (key: MessageKey, params?: Params) => esc(translate(lang, key, params));
+const text = textIn("vi");
+const en = textIn("en");
 
 const inputs = (markup: string, name: string) => markup.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`, "g")) ?? [];
 const input = (markup: string, name: string, value: string) => {
@@ -74,50 +76,50 @@ const summaries = (markup: string) => [...markup.matchAll(/<summary>(.*?)<\/summ
 const legalTitle = (key: "legal.privacy" | "legal.eula") => esc(translate(fallbackLanguage, key));
 
 describe("UpgradeView: cách trả và bảng giá", () => {
-  it("server chưa bán USD: không có nhóm cách trả, giá VND, câu VietQR, không nhắc Creem", () => {
-    const markup = html({ plans: VND_ONLY, suggestedCurrency: "USD" });
+  it("server chưa bán USD: không có nhóm cách trả, giá VND, câu VietQR, không nhắc Creem (cả giao diện tiếng Anh)", () => {
+    const markup = html({ plans: VND_ONLY, lang: "en" });
     expect(inputs(markup, "method")).toHaveLength(0);
     expect(markup).not.toContain("upgrade-method-label");
     expect(markup).toContain("50.000 đ");
-    expect(markup).toContain(text("upgrade.bankOnly"));
+    expect(markup).toContain(en("upgrade.bankOnly"));
     expect(markup).not.toContain("Creem");
     expect(inputs(markup, "plan")).toHaveLength(3);
   });
 
-  it("bán cả hai: nhãn \"Cách thanh toán\" là chữ nhìn thấy và nhóm radio trỏ tới nhãn; chọn sẵn theo gợi ý của server", () => {
-    const markup = html({ suggestedCurrency: "USD" });
+  it("bán cả hai: nhãn \"Cách thanh toán\" là chữ nhìn thấy và nhóm radio trỏ tới nhãn; chọn sẵn theo ngôn ngữ giao diện", () => {
+    const markup = html();
     expect(markup).toContain(`id="upgrade-method-label">${text("upgrade.method")}</p>`);
     expect(markup).toContain('role="radiogroup" aria-labelledby="upgrade-method-label"');
     expect(markup).not.toContain(`aria-label="${text("upgrade.method")}"`);
-    expect(checked(input(markup, "method", "USD"))).toBe(true);
-    expect(checked(input(markup, "method", "VND"))).toBe(false);
-    expect(checked(input(html(), "method", "VND"))).toBe(true);
+    expect(checked(input(markup, "method", "VND"))).toBe(true);
+    expect(checked(input(markup, "method", "USD"))).toBe(false);
+    for (const lang of ["en", "ja", "zh", "ko"] as const) expect(checked(input(html({ lang }), "method", "USD")), lang).toBe(true);
     // Không có đơn chờ, không bận: chọn được.
     for (const tag of [...inputs(markup, "method"), ...inputs(markup, "plan")]) expect(disabled(tag), tag).toBe(false);
   });
 
   it("thẻ được chọn: câu Creem, câu merchant of record, câu đồng ý nêu Creem, thêm mục EULA; nút trả trong trình duyệt", () => {
-    const markup = html({ suggestedCurrency: "USD" });
+    const markup = html({ lang: "en" });
     expect(markup).toContain("$3.99");
-    expect(markup).toContain(text("upgrade.cardNote"));
-    expect(markup).toContain(text("upgrade.cardMor"));
+    expect(markup).toContain(en("upgrade.cardNote"));
+    expect(markup).toContain(en("upgrade.cardMor"));
     expect(markup).toContain("merchant of record");
-    expect(markup).not.toContain(text("upgrade.bankOnly"));
-    expect(markup).toContain(text("upgrade.consentCard"));
-    expect(markup).not.toContain(text("upgrade.consent"));
+    expect(markup).not.toContain(en("upgrade.bankOnly"));
+    expect(markup).toContain(en("upgrade.consentCard"));
+    expect(markup).not.toContain(en("upgrade.consent"));
     expect(count(markup, 'class="legal-details"')).toBe(2);
     // Mục thứ hai là điều khoản bán hàng (EULA), không phải lần nữa chính sách quyền riêng tư.
     expect(summaries(markup)).toEqual([legalTitle("legal.privacy"), legalTitle("legal.eula")]);
     // Câu merchant of record nằm dưới câu cardNote (đặc tả), không đảo thứ tự.
-    const note = markup.indexOf(text("upgrade.cardNote"));
-    const mor = markup.indexOf(text("upgrade.cardMor"));
+    const note = markup.indexOf(en("upgrade.cardNote"));
+    const mor = markup.indexOf(en("upgrade.cardMor"));
     expect(note).toBeGreaterThan(-1);
     expect(mor).toBeGreaterThan(note);
-    expect(markup).toContain(text("upgrade.payCard"));
+    expect(markup).toContain(en("upgrade.payCard"));
   });
 
   it("VietQR được chọn: câu VietQR, câu đồng ý thường, chỉ mục chính sách; không nhắc Creem", () => {
-    const markup = html({ suggestedCurrency: "VND" });
+    const markup = html();
     expect(markup).toContain("50.000 đ");
     expect(markup).toContain(text("upgrade.bankOnly"));
     expect(markup).not.toContain(text("upgrade.cardMor"));
@@ -129,7 +131,7 @@ describe("UpgradeView: cách trả và bảng giá", () => {
   });
 
   it("đang tạo đơn (busy): cả hai nhóm radio khóa, không đổi được giữa chừng", () => {
-    const markup = html({ busy: true, suggestedCurrency: "USD" });
+    const markup = html({ busy: true });
     const all = [...inputs(markup, "method"), ...inputs(markup, "plan")];
     expect(all).toHaveLength(5);
     for (const tag of all) expect(disabled(tag), tag).toBe(true);
@@ -137,8 +139,8 @@ describe("UpgradeView: cách trả và bảng giá", () => {
 });
 
 describe("UpgradeView: có đơn đang chờ", () => {
-  it("đơn thẻ, gợi ý VND (khách VN mở lại app, đơn do bản cũ lưu): ô thẻ được chọn và khóa, giá USD, câu thẻ; gói theo đơn", () => {
-    const markup = html({ checkout: { ...oldCard, plan: "six_months" }, suggestedCurrency: "VND" });
+  it("đơn thẻ, giao diện tiếng Việt (đơn do bản cũ lưu): ô thẻ được chọn và khóa, giá USD, câu thẻ; gói theo đơn", () => {
+    const markup = html({ checkout: { ...oldCard, plan: "six_months" } });
     const usd = input(markup, "method", "USD");
     const vnd = input(markup, "method", "VND");
     expect(checked(usd) && disabled(usd)).toBe(true);
@@ -162,15 +164,15 @@ describe("UpgradeView: có đơn đang chờ", () => {
     expect(html({ checkout: card })).toContain(`${text("upgrade.order", { code: card.orderCode })} · $3.99</p>`);
   });
 
-  it("đơn VietQR, gợi ý USD: ô VietQR được chọn và khóa, giá VND, câu VietQR", () => {
-    const markup = html({ checkout: qr, suggestedCurrency: "USD" });
+  it("đơn VietQR, giao diện tiếng Anh: ô VietQR được chọn và khóa, giá VND, câu VietQR", () => {
+    const markup = html({ checkout: qr, lang: "en" });
     const vnd = input(markup, "method", "VND");
     expect(checked(vnd) && disabled(vnd)).toBe(true);
     expect(checked(input(markup, "method", "USD"))).toBe(false);
     expect(markup).toContain("50.000 đ");
     expect(markup).not.toContain("$3.99");
-    expect(markup).toContain(text("upgrade.bankOnly"));
-    expect(markup).not.toContain(text("upgrade.cardMor"));
+    expect(markup).toContain(en("upgrade.bankOnly"));
+    expect(markup).not.toContain(en("upgrade.cardMor"));
   });
 
   it("đơn VietQR: không có lời dặn của đơn thẻ", () => {

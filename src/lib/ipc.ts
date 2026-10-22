@@ -423,11 +423,9 @@ export interface PlanOffer {
   prices: Record<string, number>;
 }
 
-// Bảng gói kèm loại tiền server gợi ý theo nước của máy (`license::purchase::PlansView`, spec 2026-10-14 D4); `null` khi
-// server không gợi ý. Giá tính theo đơn vị nhỏ nhất của từng loại tiền: đồng (VND), cent (USD).
+// Bảng gói đang bán (`license::purchase::PlansView`). Giá tính theo đơn vị nhỏ nhất của từng loại tiền: đồng (VND), cent (USD).
 export interface PlansView {
   plans: PlanOffer[];
-  suggestedCurrency: string | null;
 }
 
 export interface CheckoutView {

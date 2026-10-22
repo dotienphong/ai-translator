@@ -10,8 +10,8 @@
 //   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
 //     license… cố định giữa các lần chạy (ảnh chụp, ca kiểm); không có thì giờ thật
-//   thanh toán quốc tế (spec 2026-10-14): suggest=usd (server gợi ý trả bằng USD, như khách ở nước ngoài)  usd=0 (server chưa
-//     bán USD: bảng giá không có giá USD, không có lựa chọn cách trả; gợi ý của server vẫn theo suggest=)
+//   thanh toán quốc tế (spec 2026-10-14, 2026-10-22): cách trả chọn sẵn theo lang= (vi: VietQR, ngôn ngữ khác: thẻ quốc tế)
+//     usd=0 (server chưa bán USD: bảng giá không có giá USD, bước Cách thanh toán chỉ có VietQR)
 //     checkout=1 (đơn VietQR đang chờ, có mã QR)  checkout=card (đơn thẻ đang chờ: không có mã QR, trang thanh toán ở trình
 //     duyệt)  pending=old (đơn đang chờ do bản app cũ lưu, đọc lại với số tiền 0 và loại tiền rỗng)  late=1 (đơn đã quá giờ
 //     hẹn trả mà server còn báo chờ). Tạo đơn bằng giao diện thì đơn theo đúng gói và loại tiền đã gửi; hủy thì hết đơn chờ.
@@ -436,9 +436,7 @@ const PRICES: Record<string, readonly [number, number]> = {
   six_months: [269_000, 2_199],
   yearly: [500_000, 3_999],
 };
-// Bảng gói như server trả; `usd=0` giả server chưa bán USD (không gói nào có giá USD). Gợi ý loại tiền theo `suggest=`, độc
-// lập với việc có bán USD hay không: server gợi ý theo nước của máy, không biết giá USD đã bật chưa (không bán được thì app
-// quay về VND). Không có `suggest=usd` thì gợi ý VND, như khách ở Việt Nam.
+// Bảng gói như server trả; `usd=0` giả server chưa bán USD (không gói nào có giá USD).
 const plansView = (): PlansView => ({
   plans: (
     [
@@ -451,7 +449,6 @@ const plansView = (): PlansView => ({
     const prices: Record<string, number> = param("usd") === "0" ? { VND: vnd } : { VND: vnd, USD: usd };
     return { ...p, prices };
   }),
-  suggestedCurrency: param("suggest") === "usd" ? "USD" : "VND",
 });
 
 // Đơn đang chờ theo gói và loại tiền: VietQR (VND; có mã QR vẽ sẵn, hạn 15 phút) hay thẻ quốc tế (USD; không mã QR, khách

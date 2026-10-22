@@ -172,13 +172,14 @@ describe("loại tiền khi mua", () => {
     expect(offeredCurrencies([BOTH[0] as PlanOffer, VND_ONLY[1] as PlanOffer, BOTH[2] as PlanOffer])).toEqual(["VND"]);
   });
 
-  it("loại tiền chọn sẵn theo gợi ý của server, chỉ khi bán được USD; không gợi ý hay gợi ý lạ thì VND", () => {
-    expect(defaultCurrency(BOTH, "USD")).toBe("USD");
-    expect(defaultCurrency(BOTH, "VND")).toBe("VND");
-    expect(defaultCurrency(BOTH, null)).toBe("VND");
-    expect(defaultCurrency(BOTH, "EUR")).toBe("VND");
-    expect(defaultCurrency(VND_ONLY, "USD")).toBe("VND");
-    expect(defaultCurrency(null, "USD")).toBe("VND");
+  it("loại tiền chọn sẵn theo ngôn ngữ giao diện: tiếng Việt là VND, ngôn ngữ khác là USD nếu bán được USD", () => {
+    expect(defaultCurrency(BOTH, "vi")).toBe("VND");
+    for (const lang of ["en", "ja", "zh", "ko"] as const) {
+      expect(defaultCurrency(BOTH, lang), lang).toBe("USD");
+      // Server chưa bán USD, hay chưa có bảng gói: mọi ngôn ngữ đều VND.
+      expect(defaultCurrency(VND_ONLY, lang), lang).toBe("VND");
+      expect(defaultCurrency(null, lang), lang).toBe("VND");
+    }
   });
 
   it("giá theo loại tiền; gói không có giá loại đó thì null", () => {
@@ -204,15 +205,14 @@ describe("loại tiền khi mua", () => {
     expect(formatPrice(399, "")).toBe("399");
   });
 
-  it("loại tiền đang chọn: theo lựa chọn của khách nếu còn bán, không thì theo gợi ý của server", () => {
-    expect(chosenCurrency(null, BOTH, "USD")).toBe("USD");
-    expect(chosenCurrency(null, BOTH, "VND")).toBe("VND");
-    expect(chosenCurrency(null, BOTH, null)).toBe("VND");
-    expect(chosenCurrency("VND", BOTH, "USD")).toBe("VND");
-    expect(chosenCurrency("USD", BOTH, "VND")).toBe("USD");
+  it("loại tiền đang chọn: theo lựa chọn của khách nếu còn bán, không thì theo ngôn ngữ giao diện", () => {
+    expect(chosenCurrency(null, BOTH, "vi")).toBe("VND");
+    expect(chosenCurrency(null, BOTH, "en")).toBe("USD");
+    expect(chosenCurrency("USD", BOTH, "vi")).toBe("USD");
+    expect(chosenCurrency("VND", BOTH, "en")).toBe("VND");
     // Đã chọn thẻ mà bảng gói mới không còn giá USD (tắt bán thẻ): về mặc định.
-    expect(chosenCurrency("USD", VND_ONLY, "USD")).toBe("VND");
-    expect(chosenCurrency("USD", null, "USD")).toBe("VND");
+    expect(chosenCurrency("USD", VND_ONLY, "en")).toBe("VND");
+    expect(chosenCurrency("USD", null, "en")).toBe("VND");
   });
 });
 

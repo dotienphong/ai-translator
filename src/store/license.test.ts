@@ -47,9 +47,8 @@ const checkout: CheckoutView = {
 // Đơn thẻ quốc tế (Creem): không có mã QR, khách trả ở trang mở bằng trình duyệt.
 const cardCheckout: CheckoutView = { ...checkout, orderCode: 8, amount: 399, currency: "USD", provider: "creem", qrSvg: null };
 
-const plansView = (suggestedCurrency: string | null): PlansView => ({
+const plansView = (): PlansView => ({
   plans: [{ code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50_000, USD: 399 } }],
-  suggestedCurrency,
 });
 
 describe("license store", () => {
@@ -140,23 +139,18 @@ describe("license store", () => {
     expect(store.getState().checkout).toBeNull();
   });
 
-  it("bảng gói kèm loại tiền server gợi ý; server cũ không gợi ý thì null", async () => {
-    let view = plansView("USD");
-    const fake = fakeIpc({ get_plans: () => view });
+  it("tải bảng gói: giá theo từng loại tiền", async () => {
+    const fake = fakeIpc({ get_plans: () => plansView() });
     const store = createLicenseStore(fake.ipc);
-    expect(store.getState().suggestedCurrency).toBeNull();
+    expect(store.getState().plans).toBeNull();
     await store.getState().loadPlans();
     expect(store.getState().plans?.[0]?.prices.USD).toBe(399);
-    expect(store.getState().suggestedCurrency).toBe("USD");
-    view = plansView(null);
-    await store.getState().loadPlans();
-    expect(store.getState().suggestedCurrency).toBeNull();
   });
 
   it("tải bảng gói không đặt `busy` (không khóa, không làm mờ ô chọn gói và cách trả); lỗi vẫn hiện, tải hai lần chỉ gửi một lệnh", async () => {
     let release: () => void = () => {};
     const fake = fakeIpc({
-      get_plans: () => new Promise((resolve) => (release = () => resolve(plansView("USD")))),
+      get_plans: () => new Promise((resolve) => (release = () => resolve(plansView()))),
       start_checkout: () => cardCheckout,
     });
     const store = createLicenseStore(fake.ipc);
@@ -178,7 +172,7 @@ describe("license store", () => {
       fakeIpc({
         get_plans: () => {
           if (down) throw { code: "network", field: null, message: "…" };
-          return plansView(null);
+          return plansView();
         },
       }).ipc,
     );

@@ -1,3 +1,4 @@
+import type { UiLanguage } from "../i18n";
 import type { CheckoutView, ConflictView, Device, LicenseView, OrderOutcome, PlanOffer, QuotaView, Standing } from "./ipc";
 
 // Hiển thị bản quyền và hạn mức (kế hoạch 06; spec §4.2 bước 2, §4.3 "Bản quyền", "Nâng cấp"). Chỉ đọc kết quả phía Rust
@@ -91,19 +92,20 @@ export function offeredCurrencies(plans: readonly PlanOffer[] | null): PayCurren
   return usd ? ["VND", "USD"] : ["VND"];
 }
 
-// Loại tiền chọn sẵn: theo gợi ý của server (nước của máy) nếu bán được USD, còn lại là VND. Người dùng đổi được.
-export function defaultCurrency(plans: readonly PlanOffer[] | null, suggested: string | null): PayCurrency {
-  return suggested === "USD" && offeredCurrencies(plans).includes("USD") ? "USD" : "VND";
+// Loại tiền chọn sẵn theo ngôn ngữ giao diện (spec 2026-10-22 §3): tiếng Việt là VND (VietQR), ngôn ngữ khác là USD (thẻ
+// quốc tế) nếu bán được USD, không thì VND. Người dùng đổi được.
+export function defaultCurrency(plans: readonly PlanOffer[] | null, lang: UiLanguage): PayCurrency {
+  return lang !== "vi" && offeredCurrencies(plans).includes("USD") ? "USD" : "VND";
 }
 
 // Loại tiền đang chọn khi chưa có đơn chờ: khách đã bấm chọn và loại đó còn bán thì giữ; chưa chọn, hay bảng gói mới không
-// còn bán loại đã chọn (tắt bán thẻ), thì theo mặc định (gợi ý của server).
+// còn bán loại đã chọn (tắt bán thẻ), thì theo mặc định (ngôn ngữ giao diện).
 export function chosenCurrency(
   picked: PayCurrency | null,
   plans: readonly PlanOffer[] | null,
-  suggested: string | null,
+  lang: UiLanguage,
 ): PayCurrency {
-  return picked !== null && offeredCurrencies(plans).includes(picked) ? picked : defaultCurrency(plans, suggested);
+  return picked !== null && offeredCurrencies(plans).includes(picked) ? picked : defaultCurrency(plans, lang);
 }
 
 // Loại tiền của đơn đang chờ (nhóm cách trả khóa ở đúng loại này, không theo lựa chọn cục bộ hay gợi ý của server): `currency`

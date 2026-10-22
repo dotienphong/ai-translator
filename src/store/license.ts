@@ -11,8 +11,6 @@ export interface LicenseStoreState {
   // Key người dùng vừa gõ đang dùng ở máy khác (`409 key_in_use`): danh sách máy để gỡ máy kia hay "Vẫn kích hoạt".
   devices: Device[] | null;
   plans: PlanOffer[] | null;
-  // Loại tiền server gợi ý theo nước của máy ("VND" hay "USD"); null khi chưa tải bảng gói hay server không gợi ý.
-  suggestedCurrency: string | null;
   checkout: CheckoutView | null;
   order: OrderOutcome | null;
   error: UiError | null;
@@ -57,8 +55,8 @@ export function createLicenseStore(ipc: Ipc) {
 
     async function fetchPlans(): Promise<void> {
       try {
-        const { plans, suggestedCurrency } = await ipc.invoke("get_plans");
-        set({ plans, suggestedCurrency, error: null });
+        const { plans } = await ipc.invoke("get_plans");
+        set({ plans, error: null });
       } catch (e) {
         set({ error: toUiError(e) });
       }
@@ -72,7 +70,6 @@ export function createLicenseStore(ipc: Ipc) {
       view: null,
       devices: null,
       plans: null,
-      suggestedCurrency: null,
       checkout: null,
       order: null,
       error: null,

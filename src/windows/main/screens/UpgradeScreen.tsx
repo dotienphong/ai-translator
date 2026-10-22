@@ -16,7 +16,6 @@ export function UpgradeScreen() {
   const lang = useApp((s) => s.settings?.uiLanguage ?? fallbackLanguage);
   const view = useLicense((s) => s.view);
   const plans = useLicense((s) => s.plans);
-  const suggestedCurrency = useLicense((s) => s.suggestedCurrency);
   const checkout = useLicense((s) => s.checkout);
   const order = useLicense((s) => s.order);
   const error = useLicense((s) => s.error);
@@ -34,7 +33,6 @@ export function UpgradeScreen() {
       lang={lang}
       view={view}
       plans={plans}
-      suggestedCurrency={suggestedCurrency}
       checkout={checkout}
       order={order}
       error={error}
