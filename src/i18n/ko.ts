@@ -73,6 +73,8 @@ export const ko: Record<MessageKey, string> = {
   "upgrade.method": "결제 방법",
   "upgrade.method.vnd": "VietQR 계좌 이체(VND)",
   "upgrade.method.usd": "카드 결제(USD)",
+  "upgrade.step.plan": "플랜 선택",
+  "upgrade.step.pay": "결제",
   "upgrade.renewing": "이 주문은 현재 키의 플랜을 갱신하거나 변경합니다.",
   "upgrade.email": "키를 받을 이메일",
   "upgrade.consent": "AI Translator가 라이선스 키를 보내고 복구하기 위해 이 이메일을 저장하는 데 동의합니다.",

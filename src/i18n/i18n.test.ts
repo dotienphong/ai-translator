@@ -179,6 +179,15 @@ describe("chữ màn hình Nâng cấp: cách trả bằng thẻ", () => {
     }
   });
 
+  it("tiêu đề bước 2 và 3 của màn hình Nâng cấp (spec 2026-10-22 §4); ba tiêu đề bước khác nhau ở mọi ngôn ngữ", () => {
+    expect([t("vi", "upgrade.step.plan"), t("vi", "upgrade.step.pay")]).toEqual(["Chọn gói", "Thanh toán"]);
+    expect([t("en", "upgrade.step.plan"), t("en", "upgrade.step.pay")]).toEqual(["Choose a plan", "Checkout"]);
+    for (const lang of UI_LANGUAGES) {
+      const titles = (["upgrade.method", "upgrade.step.plan", "upgrade.step.pay"] as const).map((k) => t(lang, k));
+      expect(new Set(titles).size, lang).toBe(3);
+    }
+  });
+
   it("upgrade.browser.note nhắc đúng tên nút upgrade.reopen của cùng ngôn ngữ", () => {
     for (const lang of UI_LANGUAGES) expect(t(lang, "upgrade.browser.note"), lang).toContain(t(lang, "upgrade.reopen"));
   });

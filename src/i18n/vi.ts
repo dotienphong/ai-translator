@@ -72,6 +72,8 @@ export const vi: Record<MessageKey, string> = {
   "upgrade.method": "Cách thanh toán",
   "upgrade.method.vnd": "Chuyển khoản VietQR (VND)",
   "upgrade.method.usd": "Thẻ quốc tế (USD)",
+  "upgrade.step.plan": "Chọn gói",
+  "upgrade.step.pay": "Thanh toán",
   "upgrade.renewing": "Đơn này gia hạn hoặc đổi gói của key đang dùng.",
   "upgrade.email": "Email nhận key",
   "upgrade.consent": "Tôi đồng ý để AI Translator lưu email này để gửi và khôi phục license key.",

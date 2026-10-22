@@ -73,6 +73,8 @@ export const zh: Record<MessageKey, string> = {
   "upgrade.method": "付款方式",
   "upgrade.method.vnd": "VietQR 银行转账（VND）",
   "upgrade.method.usd": "国际银行卡（USD）",
+  "upgrade.step.plan": "选择套餐",
+  "upgrade.step.pay": "付款",
   "upgrade.renewing": "此订单将续订或更改当前密钥的套餐。",
   "upgrade.email": "接收密钥的电子邮箱",
   "upgrade.consent": "我同意 AI Translator 保存此邮箱，用于发送和找回我的许可证密钥。",

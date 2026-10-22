@@ -72,6 +72,8 @@ export const en = {
   "upgrade.method": "Payment method",
   "upgrade.method.vnd": "VietQR bank transfer (VND)",
   "upgrade.method.usd": "International card (USD)",
+  "upgrade.step.plan": "Choose a plan",
+  "upgrade.step.pay": "Checkout",
   "upgrade.renewing": "This order renews or changes the plan of your current key.",
   "upgrade.email": "Email to receive your key",
   "upgrade.consent": "I agree that AI Translator stores this email to send and recover my license key.",

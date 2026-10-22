@@ -73,6 +73,8 @@ export const ja: Record<MessageKey, string> = {
   "upgrade.method": "お支払い方法",
   "upgrade.method.vnd": "VietQR 銀行振込（VND）",
   "upgrade.method.usd": "カード（USD）",
+  "upgrade.step.plan": "プランを選ぶ",
+  "upgrade.step.pay": "お支払い",
   "upgrade.renewing": "この注文は、現在のキーのプランを更新または変更します。",
   "upgrade.email": "キーを受け取るメールアドレス",
   "upgrade.consent": "AI Translator がライセンスキーの送付と再送のためにこのメールアドレスを保存することに同意します。",
