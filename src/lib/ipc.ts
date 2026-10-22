@@ -316,7 +316,8 @@ export interface DebugSession {
   stages: DebugStage[];
 }
 
-export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "about";
+// "support": màn hình Hỗ trợ (chat, spec 2026-10-22-chat-ho-tro-zalo §4), giữa Nâng cấp và Giới thiệu.
+export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
 // "compose": nhóm Cài đặt "Gõ dịch" (spec 2026-10-17-go-dich §1.4).
 export type SettingsGroup =
   | "general"

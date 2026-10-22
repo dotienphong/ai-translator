@@ -12,9 +12,11 @@ import { GlossaryScreen } from "./screens/GlossaryScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { UpgradeScreen } from "./screens/UpgradeScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { SupportScreen } from "./screens/SupportScreen";
 import { TranscriptScreen } from "./screens/TranscriptScreen";
+import { useSupport } from "./supportStore";
 
-const SCREENS: readonly Screen[] = ["home", "transcript", "history", "glossary", "settings", "upgrade", "about"];
+const SCREENS: readonly Screen[] = ["home", "transcript", "history", "glossary", "settings", "upgrade", "support", "about"];
 
 const ICONS: Record<Screen, IconName> = {
   home: "home",
@@ -23,6 +25,7 @@ const ICONS: Record<Screen, IconName> = {
   glossary: "glossary",
   settings: "settings",
   upgrade: "upgrade",
+  support: "support",
   about: "about",
 };
 
@@ -33,18 +36,21 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   glossary: GlossaryScreen,
   settings: SettingsScreen,
   upgrade: UpgradeScreen,
+  support: SupportScreen,
   about: About,
 };
 
 // Khung cửa sổ chính: thanh điều hướng tới mọi màn hình ở §4.3. Đổi màn hình (bấm nút, menu khay, thanh báo)
 // thì đưa focus về tiêu đề của màn hình mới, để người dùng bàn phím và trình đọc màn hình biết đã sang chỗ khác.
-// Cửa sổ hẹp thì thanh điều hướng chỉ còn biểu tượng; tên màn hình vẫn là nhãn của nút (`aria-label`, `title`).
+// Cửa sổ hẹp thì thanh điều hướng chỉ còn biểu tượng; tên màn hình vẫn là nhãn của nút (`aria-label`, `title`). Mục Hỗ trợ có chấm
+// đỏ khi có câu trả lời mới chưa xem (spec 2026-10-22-chat-ho-tro-zalo §4); nhãn của nút nói điều đó cho trình đọc màn hình.
 export function Shell() {
   const t = useT();
   const screen = useApp((s) => s.screen);
   const navigate = useApp((s) => s.navigate);
   const version = useApp((s) => s.info?.version);
   const plan = useLicense((s) => s.view?.plan ?? null);
+  const unread = useSupport((s) => s.view?.unread ?? false);
   const Body = BODIES[screen];
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef(screen);
@@ -62,19 +68,24 @@ export function Shell() {
           <img src={logo} alt="" />
           <span>{t("app.name")}</span>
         </div>
-        {SCREENS.map((s) => (
-          <button
-            key={s}
-            className={s === "upgrade" ? "nav-upgrade" : undefined}
-            aria-current={s === screen ? "page" : undefined}
-            aria-label={t(`nav.${s}`)}
-            title={t(`nav.${s}`)}
-            onClick={() => navigate(s)}
-          >
-            <Icon name={ICONS[s]} />
-            <span>{t(`nav.${s}`)}</span>
-          </button>
-        ))}
+        {SCREENS.map((s) => {
+          const dot = s === "support" && unread;
+          const label = dot ? t("support.unread") : t(`nav.${s}`);
+          return (
+            <button
+              key={s}
+              className={s === "upgrade" ? "nav-upgrade" : undefined}
+              aria-current={s === screen ? "page" : undefined}
+              aria-label={label}
+              title={label}
+              onClick={() => navigate(s)}
+            >
+              <Icon name={ICONS[s]} />
+              <span>{t(`nav.${s}`)}</span>
+              {dot && <i className="nav-dot" aria-hidden="true" />}
+            </button>
+          );
+        })}
         <div className="nav-foot">
           {plan && <PlanName plan={plan} />}
           {plan && version && " · "}
