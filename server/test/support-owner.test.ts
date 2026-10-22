@@ -9,10 +9,21 @@ describe("đọc tin chủ dự án gõ cho bot (spec 2026-10-22 §2.4, §2.5)",
     expect(parseOwnerText("Bạn thử lại nhé")).toEqual({ kind: "reply", code: null, text: "Bạn thử lại nhé" });
   });
 
-  it("chỉ là mã khi đúng 3 ký tự chữ hay số và sau đó là khoảng trắng hay hết tin", () => {
-    expect(parseOwnerText("#K7QX nội dung")).toEqual({ kind: "reply", code: null, text: "#K7QX nội dung" });
-    expect(parseOwnerText("#1 ưu tiên")).toEqual({ kind: "reply", code: null, text: "#1 ưu tiên" });
-    expect(parseOwnerText("#K7Q, nội dung")).toEqual({ kind: "reply", code: null, text: "#K7Q, nội dung" });
+  it("mã đúng 3 ký tự chữ hay số, không dính ký tự khác: cho phép dấu : , . - – — và khoảng trắng ngay sau mã", () => {
+    expect(parseOwnerText("#K7Q, nội dung")).toEqual({ kind: "reply", code: "K7Q", text: "nội dung" });
+    expect(parseOwnerText("#K7Q: ok")).toEqual({ kind: "reply", code: "K7Q", text: "ok" });
+    expect(parseOwnerText("#k7q - ok")).toEqual({ kind: "reply", code: "K7Q", text: "ok" });
+    expect(parseOwnerText("#K7Q — ok")).toEqual({ kind: "reply", code: "K7Q", text: "ok" });
+    expect(parseOwnerText("#K7Q.")).toEqual({ kind: "reply", code: "K7Q", text: "" });
+  });
+
+  it("tin bắt đầu bằng # mà mã sai dạng thì badCode, không bao giờ tự định tuyến", () => {
+    expect(parseOwnerText("#K7QX nội dung")).toEqual({ kind: "badCode" });
+    expect(parseOwnerText("# K7Q nội dung")).toEqual({ kind: "badCode" });
+    expect(parseOwnerText("#1 ưu tiên")).toEqual({ kind: "badCode" });
+    expect(parseOwnerText("#")).toEqual({ kind: "badCode" });
+    expect(parseOwnerText("#Z0Z chào")).toEqual({ kind: "reply", code: "Z0Z", text: "chào" });
+    expect(parseOwnerText("Mình thấy #K7Q là spam")).toEqual({ kind: "reply", code: null, text: "Mình thấy #K7Q là spam" });
   });
 
   it("lệnh /ds, /chan, /mo (có hay không dấu #, gõ có dấu tiếng Việt cũng được), /tat, /bat; thiếu mã thì code null; lệnh lạ là trợ giúp", () => {

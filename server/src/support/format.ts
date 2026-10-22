@@ -48,6 +48,7 @@ export const HELP_TEXT = [
 /** Các câu bot trả lời chủ dự án. */
 export const BOT_TEXT = {
   textOnly: "Chỉ gửi được chữ.",
+  badCode: "Không đọc được mã. Ghi # và 3 ký tự của cuộc chat ở đầu tin, ví dụ: #K7Q nội dung (gõ /ds để xem mã). Tin này chưa được gửi.",
   emptyReply: "Thiếu nội dung sau mã.",
   noneRecent: "Không có cuộc chat nào nhắn trong 30 phút qua. Ghi mã ở đầu tin, ví dụ: #K7Q nội dung",
   ambiguous: (codes: string[]) =>
