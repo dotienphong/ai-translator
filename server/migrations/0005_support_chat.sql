@@ -30,7 +30,8 @@ CREATE TABLE support_messages (
   sender TEXT NOT NULL CHECK (sender IN ('customer', 'owner')),
   text TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  forwarded_at INTEGER,                   -- tin khách: lúc Zalo nhận (hay lúc đang giữ chỗ để gửi)
+  forwarded_at INTEGER,                   -- tin khách: lúc Zalo nhận
+  claimed_at INTEGER,                     -- tin khách: lúc một request hay cron bắt đầu gửi; hết hạn sau 60 giây
   forward_attempts INTEGER NOT NULL DEFAULT 0,
   zalo_message_id TEXT UNIQUE             -- tin chủ dự án: message_id của Zalo, chống ghi trùng khi Zalo gửi lại webhook
 );
