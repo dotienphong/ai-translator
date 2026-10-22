@@ -11,7 +11,7 @@ Icon mở chat trên website (hình tròn xanh phẳng 56 px, biểu tượng n�
 ## Thiết kế
 
 **Hình dáng** (mẫu B):
-- Bong bóng thoại có đuôi ở góc dưới phải, khoảng 64×60 px (bản cũ tròn 56 px).
+- Bong bóng thoại có đuôi ở góc dưới phải, 54×48 px (bản cũ tròn 56 px; bản đầu 64×56 px, chủ dự án thấy to nên thu nhỏ). Khung chat (`chat.css` `.chat-panel`) hạ `bottom` từ 84 px xuống 76 px để vẫn cách bong bóng 12 px.
 - Gradient từ `--brand` sang `--accent` (chế độ tối dùng bộ màu tối có sẵn của `site.css`), điểm sáng như kính ở trên (lớp giả), bóng đổ mềm và bóng trong cho khối 3D.
 - Bên trong: ba chấm trắng (gợi "đang gõ"), thay biểu tượng `#i-message`. Lớp CSS của ba chấm đặt tên riêng (không dùng `.chat-dots`, đã có trong `chat.css` cho chỉ báo đang gõ).
 - Vẫn là `<button class="chat-bubble">` do `site.js` chèn: giữ `aria-label`, `aria-expanded`, `aria-controls`, `.chat-dot` (chấm đỏ) và mọi hành vi hiện có.

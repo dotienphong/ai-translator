@@ -610,19 +610,19 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
   --chat-depth: 0 12px 24px -8px color-mix(in srgb, var(--brand) 60%, transparent), inset 0 -5px 10px rgba(0, 30, 60, .35), inset 0 2px 2px rgba(255, 255, 255, .5);
   --chat-glow: color-mix(in srgb, var(--accent) 50%, transparent);
   --chat-glow-soft: color-mix(in srgb, var(--accent) 28%, transparent);
-  position: relative; display: grid; place-items: center; width: 64px; height: 56px; padding: 0; border: 0; border-radius: 22px 22px 10px 22px;
+  position: relative; display: grid; place-items: center; width: 54px; height: 48px; padding: 0; border: 0; border-radius: 18px 18px 8px 18px;
   background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 70%, #fff) 0%, var(--brand) 45%, var(--accent) 100%);
   color: #fff; box-shadow: var(--chat-depth); cursor: pointer; transition: transform .15s var(--ease), filter .15s;
   animation: chat-glow 1.6s ease-in-out 9, chat-glow-soft 4s ease-in-out 14.4s infinite;
 }
-.chat-bubble::before { content: ""; position: absolute; left: 10px; top: 5px; width: 34px; height: 13px; border-radius: 50%; background: linear-gradient(180deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0)); pointer-events: none; }
-.chat-bubble::after { content: ""; position: absolute; right: 6px; bottom: -7px; width: 16px; height: 12px; background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 75%, var(--brand)), var(--accent)); clip-path: polygon(0 0, 100% 100%, 45% 0); pointer-events: none; }
+.chat-bubble::before { content: ""; position: absolute; left: 8px; top: 4px; width: 28px; height: 11px; border-radius: 50%; background: linear-gradient(180deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0)); pointer-events: none; }
+.chat-bubble::after { content: ""; position: absolute; right: 5px; bottom: -6px; width: 13px; height: 10px; background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 75%, var(--brand)), var(--accent)); clip-path: polygon(0 0, 100% 100%, 45% 0); pointer-events: none; }
 .chat-bubble:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .chat-bubble[aria-expanded="true"] { animation: none; }
 .chat-bubble:has(.chat-dot:not([hidden])):not([aria-expanded="true"]) { animation: chat-glow 1.6s ease-in-out infinite; }
-.chat-bubble-dots { position: relative; display: flex; gap: 5px; }
-.chat-bubble-dots i { width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 1px 1px rgba(0, 0, 0, .25); }
-.chat-dot { position: absolute; top: -4px; right: -4px; width: 15px; height: 15px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg), 0 2px 4px rgba(0, 0, 0, .3); }
+.chat-bubble-dots { position: relative; display: flex; gap: 4px; }
+.chat-bubble-dots i { width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 1px 1px rgba(0, 0, 0, .25); }
+.chat-dot { position: absolute; top: -3px; right: -3px; width: 13px; height: 13px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg), 0 2px 4px rgba(0, 0, 0, .3); }
 @keyframes chat-glow { 0%, 100% { box-shadow: var(--chat-depth), 0 0 0 0 transparent; } 50% { box-shadow: var(--chat-depth), 0 0 0 6px var(--chat-glow); } }
 @keyframes chat-glow-soft { 0%, 100% { box-shadow: var(--chat-depth), 0 0 0 0 transparent; } 50% { box-shadow: var(--chat-depth), 0 0 0 4px var(--chat-glow-soft); } }
 @media (prefers-reduced-motion: reduce) {

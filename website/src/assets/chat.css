@@ -1,6 +1,6 @@
 /* Khung chat hỗ trợ (spec chat hỗ trợ 2026-10-22, mục 3). site.js chỉ tải file này khi khách bấm bong bóng. Màu lấy từ token sáng/tối
    của site.css. Điện thoại (≤ 640px): khung chiếm toàn màn hình, phần còn lại của trang ẩn đi (tiêu điểm không lọt ra phía sau). */
-.chat-panel { position: fixed; right: 16px; bottom: 84px; z-index: 71; display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); height: min(600px, calc(100vh - 108px)); height: min(600px, calc(100dvh - 108px)); background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); overflow: hidden; font-size: .95rem; line-height: 1.5; }
+.chat-panel { position: fixed; right: 16px; bottom: 76px; z-index: 71; display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); height: min(600px, calc(100vh - 100px)); height: min(600px, calc(100dvh - 100px)); background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); overflow: hidden; font-size: .95rem; line-height: 1.5; }
 .chat-panel[hidden] { display: none; }
 .chat-head { position: relative; display: flex; align-items: flex-start; gap: 2px; padding: 12px 8px 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .chat-titles { flex: 1; min-width: 0; padding-top: 2px; }
