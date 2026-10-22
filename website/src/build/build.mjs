@@ -1,6 +1,6 @@
 // Sinh website tĩnh vào website/dist. Không phụ thuộc thư viện: Node thuần.
 //   node src/build/build.mjs
-// Đầu ra: HTML từng trang (VI ở gốc, EN ở /en/), CSS/JS có băm nội dung, sitemap.xml (hreflang), robots.txt, llms.txt,
+// Đầu ra: HTML từng trang (VI ở gốc, các ngôn ngữ khác ở /en/, /ja/, /zh/, /ko/; xem langs.mjs), CSS/JS có băm nội dung, sitemap.xml (hreflang), robots.txt, llms.txt,
 // llms-full.txt, _headers (CSP chặt, băm của script nội tuyến), 404.html, manifest, security.txt.
 import { mkdir, rm, writeFile, readFile, cp, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -11,6 +11,7 @@ import { renderPage, THEME_INIT_HASH } from "./layout.mjs";
 import { pages, notFound } from "../content/index.mjs";
 import { htmlToText } from "./text.mjs";
 import { PLANS, usd, vnd } from "../plans.mjs";
+import { LANG_CODES, PUBLISHED, tagOf, homeOf, isHome } from "../langs.mjs";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = path.resolve(SRC, "..");
@@ -40,7 +41,7 @@ function sitemap(list, byId) {
     .filter((p) => !p.noindex)
     .map((p) => {
       const alts = (byId.get(p.id) ?? [])
-        .map((a) => `    <xhtml:link rel="alternate" hreflang="${a.lang}" href="${abs(a.path)}"/>`)
+        .map((a) => `    <xhtml:link rel="alternate" hreflang="${tagOf(a.lang)}" href="${abs(a.path)}"/>`)
         .concat(
           (byId.get(p.id) ?? []).length > 1
             ? [`    <xhtml:link rel="alternate" hreflang="x-default" href="${abs((byId.get(p.id).find((a) => a.lang === SITE.defaultLang) ?? p).path)}"/>`]
@@ -258,7 +259,9 @@ export async function build() {
     if (seen.has(p.path)) throw new Error(`Trùng đường dẫn: ${p.path}`);
     seen.add(p.path);
   }
-  const ctx = { pages: list, byId, assets };
+  // Ngôn ngữ đang có trang (menu ngôn ngữ chỉ liệt kê những ngôn ngữ này).
+  const langs = LANG_CODES.filter((l) => list.some((p) => p.lang === l));
+  const ctx = { pages: list, byId, assets, langs };
   for (const p of list) await writeOut(pageFile(p), renderPage(p, ctx));
   await writeOut("404.html", renderPage(notFound, { ...ctx, byId: new Map([[notFound.id, [notFound]]]) }));
 
@@ -272,10 +275,9 @@ export async function build() {
   // Đường dẫn thiếu dấu "/" cuối: Workers Static Assets tự chuyển bằng 307 (tạm thời); khai báo 301 cho từng trang để backlink
   // viết thiếu dấu "/" được gộp về URL chuẩn. Giữ các quy tắc có sẵn ở public/_redirects.
   const base = await readFile(path.join(SRC, "public", "_redirects"), "utf8").catch(() => "");
-  const rules = list
-    .filter((p) => p.path.endsWith("/") && p.path !== "/" && p.path !== "/en/")
-    .map((p) => `${p.path.slice(0, -1)} ${p.path} 301`);
-  await writeOut("_redirects", `${base.trimEnd()}\n\n# Sinh tự động từ danh mục trang (build.mjs)\n/en /en/ 301\n${rules.join("\n")}\n`);
+  const rules = list.filter((p) => p.path.endsWith("/") && !isHome(p.path)).map((p) => `${p.path.slice(0, -1)} ${p.path} 301`);
+  const homes = PUBLISHED.filter((l) => homeOf(l) !== "/").map((l) => `${homeOf(l).slice(0, -1)} ${homeOf(l)} 301`);
+  await writeOut("_redirects", `${base.trimEnd()}\n\n# Sinh tự động từ danh mục trang (build.mjs)\n${homes.join("\n")}\n${rules.join("\n")}\n`);
   await writeOut(
     ".well-known/security.txt",
     `Contact: mailto:${SITE.email}\nExpires: ${SITE.securityExpires}\nPreferred-Languages: vi, en\nCanonical: ${abs("/.well-known/security.txt")}\n`,

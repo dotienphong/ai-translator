@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { esc } from "./markdown.mjs";
 import { icon } from "./icons.mjs";
-import { PLANS, usd, vnd } from "../plans.mjs";
+import { PLANS, usd, vnd, planName } from "../plans.mjs";
+import { T } from "../site.mjs";
+import { S } from "../strings.mjs";
+import { videoMeta } from "./mp4.mjs";
 
 export { esc, icon };
 
@@ -34,14 +37,19 @@ const appImg = (file) => hashed("img/app", file);
  * Video demo của trang chủ (spec 2026-10-21-website-demo-video): file `ai-translator-demo.<lang>.{mp4,webp}` trong
  * src/assets/video/. `preload="none"`: chỉ tải khi người xem bấm phát; ảnh bìa là khung có phụ đề. `label` là tên đọc cho
  * trình đọc màn hình, `fallback` là chữ của liên kết tải MP4 khi trình duyệt không phát được video.
+ * Nút phát lớn giữa khung (spec 2026-10-22-website-ja-zh-ko §4) mặc định `hidden`: site.js bật nó và tạm bỏ `controls`, nên khi
+ * tắt JS vẫn là `<video controls>` như cũ. Thời lượng trên nhãn đọc từ file MP4.
  */
 export const demoVideo = ({ lang, label, fallback }) => {
   const mp4 = hashed("video", `ai-translator-demo.${lang}.mp4`);
-  return `<figure class="shot video reveal">
+  const { clock } = videoMeta(lang);
+  const v = S[lang].video;
+  return `<figure class="shot video reveal" data-video>
 <video controls preload="none" playsinline width="1920" height="1200" poster="${hashed("video", `ai-translator-demo.${lang}.webp`)}" aria-label="${esc(label)}">
 <source src="${mp4}" type="video/mp4">
 <a href="${mp4}">${esc(fallback)}</a>
 </video>
+<button class="video-play" type="button" hidden aria-label="${esc(`${v.play} (${clock}, ${v.sound})`)}"><span class="video-play-btn" aria-hidden="true">${icon("play")}</span><span class="video-play-label" aria-hidden="true">${esc(`${v.cta} · ${clock} · ${v.sound}`)}</span></button>
 </figure>`;
 };
 
@@ -198,44 +206,25 @@ ${floatB ? `<span class="floaty b">${icon(floatB.icon)} ${esc(floatB.text)}</spa
 </div><!--/llm-skip-->`;
 }
 
-/** Các gói giá (Free và ba gói trả phí). lang: "vi" | "en". Trả HTML của .plans. */
+/** Các gói giá (Free và ba gói trả phí). Chữ theo ngôn ngữ ở strings.mjs (S[lang].plans). Trả HTML của .plans. */
 export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", detail = true } = {}) {
-  const en = lang === "en";
-  const L = {
-    free: { for: en ? "Try it before you decide." : "Dùng thử trước khi quyết định.", per: en ? "10-day trial · once per device" : "Dùng thử 10 ngày · mỗi máy một lần" },
-    monthly: { for: en ? "For regular meetings and short projects." : "Cho người họp thường xuyên, dự án ngắn hạn.", per: en ? "per 30 days · prepaid" : "cho mỗi 30 ngày · trả trước" },
-    six_months: { for: en ? "For a half-year project or steady use." : "Cho dự án nửa năm hoặc dùng đều đặn.", per: en ? "per 180 days · prepaid" : "cho 180 ngày · trả trước" },
-    yearly: { for: en ? "For daily use. Best value." : "Cho người dùng hằng ngày. Tiết kiệm nhất.", per: en ? "per 365 days · prepaid" : "cho 365 ngày · trả trước" },
-  };
-  const feats = {
-    free: en
-      ? ["Live translated subtitles in all 5 languages", "30 minutes per day during the 10-day trial", "Subtitle bar, shortcuts and copying the transcript"]
-      : ["Phụ đề dịch trực tiếp, đủ 5 ngôn ngữ", "30 phút mỗi ngày trong 10 ngày dùng thử", "Thanh phụ đề tùy chỉnh, phím tắt, sao chép bản chép lời"],
-    monthly: en
-      ? ["50 hours of translation per 30-day cycle", "Pro features: glossary, history, TXT/SRT/Markdown export", "Renew when you need it, never charged automatically"]
-      : ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Tính năng Pro: từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown", "Gia hạn khi cần, không tự động trừ tiền"],
-    six_months: en
-      ? ["100 hours of translation per 30-day cycle", "All Pro features", "One payment for half a year, about 44,800 ₫ per month"]
-      : ["100 giờ dịch cho mỗi chu kỳ 30 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho nửa năm, quy ra khoảng 44.800 ₫ mỗi tháng"],
-    yearly: en
-      ? ["Unlimited translation time for 365 days", "All Pro features", "One payment for the whole year, about 41,700 ₫ per month"]
-      : ["Không giới hạn thời lượng dịch trong 365 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho cả năm, quy ra khoảng 41.700 ₫ mỗi tháng"],
-  };
+  const L = S[lang].plans;
   void detail;
   return `<div class="plans">${PLANS.map((p) => {
     const f = p.code === featured;
-    const price = p.priceVnd === 0 ? (en ? "Free" : "Miễn phí") : vnd(p.priceVnd, lang);
+    const card = L.cards[p.code];
+    const price = p.priceVnd === 0 ? L.free : vnd(p.priceVnd, lang);
     // Giá USD khi trả bằng thẻ quốc tế (spec 2026-10-14): chỉ gói trả phí; chưa gồm thuế (nói ở chú thích dưới lưới gói).
-    const usdLine = p.priceUsdCents > 0 ? `<p class="usd">${esc(en ? `or ${usd(p.priceUsdCents, lang)} by international card` : `hoặc ${usd(p.priceUsdCents, lang)} bằng thẻ quốc tế`)}</p>` : "";
+    const usdLine = p.priceUsdCents > 0 ? `<p class="usd">${esc(L.usd(usd(p.priceUsdCents, lang)))}</p>` : "";
     return `<div class="plan${f ? " featured" : ""} reveal">
-${f ? `<span class="tag">${en ? "Best value" : "Tiết kiệm nhất"}</span>` : ""}
-<h3>${esc(en ? p.nameEn : p.nameVi)}</h3>
-<p class="for">${esc(L[p.code].for)}</p>
+${f ? `<span class="tag">${esc(L.best)}</span>` : ""}
+<h3>${esc(planName(p, lang))}</h3>
+<p class="for">${esc(card.for)}</p>
 <div class="price"><b>${esc(price)}</b></div>
 ${usdLine}
-<p class="per">${esc(L[p.code].per)}</p>
-${checkList(feats[p.code].map(esc))}
-<a class="btn ${f ? "btn-primary" : "btn-secondary"} btn-lg" href="${en ? "/en/download/" : "/tai-xuong/"}">${esc(p.priceVnd === 0 ? freeLabel ?? ctaLabel : ctaLabel)}</a>
+<p class="per">${esc(card.per)}</p>
+${checkList(card.feats.map(esc))}
+<a class="btn ${f ? "btn-primary" : "btn-secondary"} btn-lg" href="${T[lang].cta.href}">${esc(p.priceVnd === 0 ? freeLabel ?? ctaLabel : ctaLabel)}</a>
 </div>`;
   }).join("")}</div>`;
 }
@@ -253,24 +242,7 @@ export const docNav = (links, label = "Bài liên quan") => `<nav class="doc-nav
 
 /** Sơ đồ "dữ liệu đi đâu": công cụ dịch qua cloud (đi vòng lên máy chủ) và AI Translator (ở lại trên máy). */
 export function dataFlow(lang) {
-  const en = lang === "en";
-  const L = en
-    ? {
-        cloud: "How many cloud translation tools work",
-        local: "AI Translator",
-        you: "Your computer", audio: "meeting audio", net: "Internet", server: "Provider server", cloudAi: "plus an AI on the cloud",
-        subs: "Subtitles", backTo: "back to you", audioHere: "Audio", onYour: "on your computer", ai: "AI running on your computer", models: "recognition + translation", screen: "Subtitles", onScreen: "on your screen",
-        cloudNote: "The meeting audio leaves your computer and is processed somewhere you do not control.",
-        localNote: "No trip to the cloud: the audio, the transcript and the translation stay on your computer.",
-      }
-    : {
-        cloud: "Cách nhiều công cụ dịch qua cloud hoạt động",
-        local: "AI Translator",
-        you: "Máy bạn", audio: "âm thanh cuộc họp", net: "Internet", server: "Máy chủ nhà cung cấp", cloudAi: "cùng AI trên cloud",
-        subs: "Phụ đề", backTo: "gửi về máy bạn", audioHere: "Âm thanh", onYour: "trên máy bạn", ai: "AI chạy trên máy bạn", models: "nhận dạng + dịch", screen: "Phụ đề", onScreen: "trên màn hình bạn",
-        cloudNote: "Âm thanh cuộc họp rời khỏi máy bạn và được xử lý ở nơi bạn không kiểm soát.",
-        localNote: "Không có chuyến đi nào lên cloud: âm thanh, bản chép lời và bản dịch ở lại trên máy bạn.",
-      };
+  const L = S[lang].dataFlow;
   const sep = '<li class="sep" aria-hidden="true">→</li>';
   return `<div class="dataflow reveal">
 <div class="lane lane-cloud">

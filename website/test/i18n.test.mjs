@@ -7,6 +7,9 @@ import { LANGS, LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, f
 import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
 import { S } from "../src/strings.mjs";
+import { renderPage, glue } from "../src/build/layout.mjs";
+import { plansGrid, dataFlow, demoVideo } from "../src/build/components.mjs";
+import { softwareApplication, videoObject } from "../src/build/schema.mjs";
 
 test("LANGS: năm ngôn ngữ, thẻ BCP 47 (tiếng Trung giản thể là zh-Hans), tiền tố, og:locale, tên bản ngữ", () => {
   assert.deepEqual(LANG_CODES, ["vi", "en", "ja", "zh", "ko"]);
@@ -95,4 +98,71 @@ test("strings.mjs: mỗi ngôn ngữ có đủ khóa như bản en (cùng cấu 
     assert.deepEqual(empty(S[l], l), []);
   }
   assert.equal(S.ja.plans.usd("US$3.99"), "またはカードで US$3.99");
+});
+
+/** ctx tối giản cho renderPage: một nhóm trang "features" đủ năm ngôn ngữ. */
+function fakeCtx() {
+  const group = [
+    { id: "features", lang: "vi", path: "/tinh-nang/" },
+    { id: "features", lang: "en", path: "/en/features/" },
+    { id: "features", lang: "ja", path: "/ja/features/" },
+    { id: "features", lang: "zh", path: "/zh/features/" },
+    { id: "features", lang: "ko", path: "/ko/features/" },
+  ].map((p) => ({ ...p, title: "機能一覧のテストページ", description: "テスト用の説明文です。".repeat(4), body: "<h1>テスト</h1><p>本文</p>" }));
+  const byId = new Map([["features", group]]);
+  return { page: (lang) => group.find((p) => p.lang === lang), ctx: { pages: group, byId, assets: { css: "/a.css", js: "/a.js" }, langs: ["vi", "en", "ja", "zh", "ko"] } };
+}
+
+test("renderPage của trang tiếng Trung: lang zh-Hans, hreflang theo thẻ, og:locale, menu năm ngôn ngữ trỏ đúng trang, trang chủ /zh/", () => {
+  const { page, ctx } = fakeCtx();
+  const html = renderPage(page("zh"), ctx);
+  assert.match(html, /^<!doctype html>\n<html lang="zh-Hans">/);
+  for (const [tag, href] of [["vi", "/tinh-nang/"], ["en", "/en/features/"], ["ja", "/ja/features/"], ["zh-Hans", "/zh/features/"], ["ko", "/ko/features/"]]) {
+    assert.ok(html.includes(`<link rel="alternate" hreflang="${tag}" href="https://aitranslator.io.vn${href}">`), `thiếu hreflang ${tag}`);
+    assert.ok(html.includes(`<a href="${href}" hreflang="${tag}" lang="${tag}"`), `menu thiếu ${tag}`);
+  }
+  assert.ok(html.includes('<meta property="og:locale" content="zh_CN">'));
+  assert.ok(html.includes('<meta property="og:locale:alternate" content="ja_JP">'));
+  assert.ok(html.includes('<a href="/zh/features/" hreflang="zh-Hans" lang="zh-Hans" aria-current="true">中文</a>'));
+  assert.ok(html.includes('<a class="brand" href="/zh/"'), "logo phải về /zh/");
+  assert.ok(html.includes('<summary aria-label="语言: 中文">'));
+  assert.ok(html.includes("<time datetime="), "dòng cập nhật ở chân trang");
+});
+
+test("glue: nhãn bảng theo ngôn ngữ", () => {
+  const html = glue('<div class="table-wrap"><table><tr><th scope="col"></th></tr></table></div>', "ja");
+  assert.ok(html.includes('aria-label="データ表 1"'));
+  assert.ok(html.includes('<span class="sr-only">項目</span>'));
+});
+
+test("plansGrid tiếng Nhật: tên gói tiếng Anh, giá VND, dòng thẻ US$, nút tới /ja/download/", () => {
+  const html = plansGrid("ja", { ctaLabel: "ダウンロード" });
+  assert.deepEqual([...html.matchAll(/<h3>([^<]*)<\/h3>/g)].map((m) => m[1]), ["Free", "Monthly", "6 Months", "Yearly"]);
+  assert.ok(html.includes("<b>無料</b>") && html.includes("<b>50,000 ₫</b>"));
+  assert.ok(html.includes('<p class="usd">またはカードで US$3.99</p>'));
+  assert.equal((html.match(/href="\/ja\/download\/"/g) ?? []).length, 4);
+});
+
+test("dataFlow và softwareApplication đọc chuỗi theo ngôn ngữ; app nêu đủ năm ngôn ngữ giao diện", () => {
+  assert.ok(dataFlow("ko").includes("내 컴퓨터에서 실행되는 AI"));
+  const ctx = { byId: new Map([["pricing", [{ lang: "ja", path: "/ja/pricing/" }]], ["download", [{ lang: "ja", path: "/ja/download/" }]], ["guide", [{ lang: "ja", path: "/ja/guide/" }]]]) };
+  const app = softwareApplication("ja", ctx);
+  assert.equal(app["@id"], "https://aitranslator.io.vn/ja/#software");
+  assert.equal(app.url, "https://aitranslator.io.vn/ja/");
+  assert.equal(app.installUrl, "https://aitranslator.io.vn/ja/download/");
+  assert.deepEqual(app.inLanguage, ["vi", "en", "ja", "zh-Hans", "ko"]);
+  assert.ok(app.offers.some((o) => o.priceCurrency === "USD" && o.description.includes("税抜")));
+  assert.equal(app.screenshot[0].url, "https://aitranslator.io.vn/assets/img/app/overlay-default.ja.webp");
+});
+
+test("videoObject tự lấy thời lượng từ file; demoVideo có nút phát ẩn sẵn kèm nhãn và thời lượng", () => {
+  const v = videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "2026-10-21" });
+  assert.equal(v.duration, "PT40S");
+  assert.equal(v["@id"], "https://aitranslator.io.vn/#demo-video");
+  assert.equal(v.inLanguage, "vi");
+  const html = demoVideo({ lang: "en", label: "Demo", fallback: "Download" });
+  assert.match(html, /<figure class="shot video reveal" data-video>/);
+  assert.match(html, /<video controls preload="none" playsinline width="1920" height="1200" poster="/);
+  assert.match(html, /<button class="video-play" type="button" hidden aria-label="Play the demo video \(0:39, with sound\)">/);
+  assert.ok(html.includes('<span class="video-play-label" aria-hidden="true">Watch the demo · 0:39 · with sound</span>'));
 });

@@ -1,8 +1,9 @@
 import { RELEASE } from "../../site.mjs";
 import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
+import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = "A video meeting where a colleague speaks Vietnamese and English subtitles appear, then Type & Translate turns an English reply into Vietnamese for a chat message. 39-second video with sound.";
+const VIDEO_TEXT = `A video meeting where a colleague speaks Vietnamese and English subtitles appear, then Type & Translate turns an English reply into Vietnamese for a chat message. ${videoMeta("en").seconds}-second video with sound.`;
 
 export const HOME_FAQ = [
   {
@@ -62,7 +63,7 @@ export default {
   llmTitle: "AI Translator: home",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "en", name: "AI Translator demo: translated meeting subtitles and Type & Translate", description: VIDEO_TEXT, duration: "PT39S", uploadDate: "2026-10-21" }),
+    videoObject({ lang: "en", name: "AI Translator demo: translated meeting subtitles and Type & Translate", description: VIDEO_TEXT, uploadDate: "2026-10-21" }),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">

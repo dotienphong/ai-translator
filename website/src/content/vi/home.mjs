@@ -1,8 +1,9 @@
 import { RELEASE } from "../../site.mjs";
 import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, facts, linkCard, appShot, overlayShot, callout, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
+import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = "Một cuộc họp trực tuyến có phụ đề tiếng Việt dịch từ tiếng Anh, rồi Gõ dịch chuyển câu trả lời tiếng Việt thành tiếng Anh để gửi tin nhắn. Video 40 giây, có tiếng.";
+const VIDEO_TEXT = `Một cuộc họp trực tuyến có phụ đề tiếng Việt dịch từ tiếng Anh, rồi Gõ dịch chuyển câu trả lời tiếng Việt thành tiếng Anh để gửi tin nhắn. Video ${videoMeta("vi").seconds} giây, có tiếng.`;
 
 export const HOME_FAQ = [
   {
@@ -60,7 +61,7 @@ export default {
   llmTitle: "AI Translator: trang chủ",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "vi", name: "Video demo AI Translator: phụ đề dịch cuộc họp và Gõ dịch", description: VIDEO_TEXT, duration: "PT40S", uploadDate: "2026-10-21" }),
+    videoObject({ lang: "vi", name: "Video demo AI Translator: phụ đề dịch cuộc họp và Gõ dịch", description: VIDEO_TEXT, uploadDate: "2026-10-21" }),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">

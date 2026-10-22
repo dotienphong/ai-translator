@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { esc } from "./markdown.mjs";
 import { icon, sprite } from "./icons.mjs";
 import { SITE, T, NAV, FOOTER, ogFor } from "../site.mjs";
+import { LANGS, tagOf, homeOf, isHome, formatDate } from "../langs.mjs";
+import { S } from "../strings.mjs";
+
+export { formatDate };
 import { graph } from "./schema.mjs";
 
 /** Script chạy sớm trong <head> để áp giao diện sáng/tối đã lưu trước khi vẽ trang (tránh nháy). Băm SHA-256 vào CSP. */
@@ -13,7 +17,7 @@ const abs = (p) => (p.startsWith("http") ? p : SITE.origin + p);
 
 function alternates(page, ctx) {
   const pair = ctx.byId.get(page.id) ?? [];
-  const links = pair.map((p) => `<link rel="alternate" hreflang="${p.lang}" href="${abs(p.path)}">`);
+  const links = pair.map((p) => `<link rel="alternate" hreflang="${tagOf(p.lang)}" href="${abs(p.path)}">`);
   const vi = pair.find((p) => p.lang === SITE.defaultLang) ?? pair[0];
   if (vi) links.push(`<link rel="alternate" hreflang="x-default" href="${abs(vi.path)}">`);
   return links.join("\n");
@@ -23,7 +27,7 @@ function head(page, ctx) {
   const t = T[page.lang];
   const url = abs(page.path);
   // Không thêm hậu tố thương hiệu khi tiêu đề đã có tên sản phẩm (tránh "AI Translator ... | AI Translator").
-  const fullTitle = page.path === "/" || page.path === "/en/" || page.title.includes(SITE.name) ? page.title : `${page.title} | ${SITE.name}`;
+  const fullTitle = isHome(page.path) || page.title.includes(SITE.name) ? page.title : `${page.title} | ${SITE.name}`;
   const image = abs(ogFor(page));
   const imageAlt = page.ogImageAlt ?? t.ogAlt;
   const robots = page.noindex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
@@ -48,9 +52,9 @@ ${page.noindex ? "" : alternates(page, ctx)}
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="${esc(imageAlt)}">
-<meta property="og:locale" content="${t.ogLocale}">
-${other.map((p) => `<meta property="og:locale:alternate" content="${T[p.lang].ogLocale}">`).join("\n")}
-${page.type === "article" && page.published ? `<meta property="article:published_time" content="${page.published}">\n<meta property="article:modified_time" content="${page.modified ?? page.published}">\n<meta property="article:author" content="${abs(T[page.lang] && page.lang === "en" ? "/en/about/" : "/ve-chung-toi/")}">` : ""}
+<meta property="og:locale" content="${LANGS[page.lang].ogLocale}">
+${other.map((p) => `<meta property="og:locale:alternate" content="${LANGS[p.lang].ogLocale}">`).join("\n")}
+${page.type === "article" && page.published ? `<meta property="article:published_time" content="${page.published}">\n<meta property="article:modified_time" content="${page.modified ?? page.published}">\n<meta property="article:author" content="${abs((ctx.byId.get("about") ?? []).find((p) => p.lang === page.lang)?.path ?? "/ve-chung-toi/")}">` : ""}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(fullTitle)}">
 <meta name="twitter:description" content="${esc(page.description)}">
@@ -93,37 +97,33 @@ function mobileNav(page, t) {
   return `<div class="mobile-nav">${links}<a class="btn btn-primary btn-lg" href="${t.cta.href}">${esc(t.cta.label)}</a></div>`;
 }
 
-function header(page, ctx) {
+/** Menu ngôn ngữ (spec 2026-10-22-website-ja-zh-ko §3): <details> chạy cả khi tắt JS; mỗi mục trỏ bản cùng trang của ngôn ngữ đó,
+ *  trang không có bản ấy (pháp lý) thì trỏ trang chủ của ngôn ngữ ấy. Chỉ liệt kê ngôn ngữ đang có trang (ctx.langs). */
+function langMenu(page, ctx) {
   const t = T[page.lang];
   const pair = ctx.byId.get(page.id) ?? [];
-  const other = pair.find((p) => p.lang !== page.lang);
-  const home = page.lang === "vi" ? "/" : "/en/";
-  const langSwitch = `<nav class="lang-switch" aria-label="${esc(t.language)}">${["vi", "en"]
-    .map((l) => {
-      const target = pair.find((p) => p.lang === l);
-      if (l === page.lang) return `<span aria-current="true" lang="${l}">${l.toUpperCase()}</span>`;
-      return target ? `<a href="${target.path}" hreflang="${l}" lang="${l}" title="${esc(T[l].langName)}">${l.toUpperCase()}</a>` : `<a href="${l === "vi" ? "/" : "/en/"}" hreflang="${l}" lang="${l}" title="${esc(T[l].langName)}">${l.toUpperCase()}</a>`;
-    })
-    .join("")}</nav>`;
-  void other;
+  const cur = LANGS[page.lang];
+  const items = (ctx.langs ?? [page.lang]).map((l) => {
+    const href = pair.find((p) => p.lang === l)?.path ?? homeOf(l);
+    return `<li><a href="${href}" hreflang="${tagOf(l)}" lang="${tagOf(l)}"${l === page.lang ? ' aria-current="true"' : ""}>${esc(LANGS[l].name)}</a></li>`;
+  });
+  return `<nav class="lang-switch" aria-label="${esc(t.language)}"><details class="lang-menu"><summary aria-label="${esc(`${t.language}: ${cur.name}`)}">${icon("globe")}<span class="lang-cur">${esc(cur.name)}</span><span class="lang-short">${cur.short}</span>${icon("chevron-down")}</summary><ul class="lang-pop">${items.join("")}</ul></details></nav>`;
+}
+
+function header(page, ctx) {
+  const t = T[page.lang];
   return `<header class="site-header">
 <div class="container">
-<a class="brand" href="${home}" aria-label="${SITE.name} — ${esc(t.home)}"><img src="/assets/img/logo.svg" width="34" height="34" alt="" decoding="async"><span>${SITE.name}</span></a>
+<a class="brand" href="${homeOf(page.lang)}" aria-label="${SITE.name} — ${esc(t.home)}"><img src="/assets/img/logo.svg" width="34" height="34" alt="" decoding="async"><span>${SITE.name}</span></a>
 <nav class="nav" aria-label="${esc(t.mainNav)}">${NAV[page.lang].map((i) => navItem(i, page)).join("")}</nav>
 <div class="header-tools">
-${langSwitch}
+${langMenu(page, ctx)}
 <button class="icon-btn theme-toggle" type="button" aria-label="${esc(t.theme)}" data-theme-toggle>${icon("moon")}</button>
 <a class="btn btn-primary btn-sm header-cta" href="${t.cta.href}">${esc(t.cta.label)}</a>
 <details class="mnav"><summary class="icon-btn nav-toggle" aria-label="${esc(t.menu)}">${icon("menu")}</summary>${mobileNav(page, t)}</details>
 </div>
 </div>
 </header>`;
-}
-
-/** Ngày hiển thị cho người đọc: vi 09/10/2026, en 9 October 2026. */
-export function formatDate(iso, lang) {
-  const [y, m, d] = iso.split("-");
-  return lang === "vi" ? `${d}/${m}/${y}` : new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
 function footer(page) {
@@ -136,7 +136,7 @@ function footer(page) {
 <div class="container">
 <div class="footer-grid">
 <div class="about">
-<a class="brand" href="${page.lang === "vi" ? "/" : "/en/"}"><img src="/assets/img/logo.svg" width="34" height="34" alt="" loading="lazy" decoding="async"><span>${SITE.name}</span></a>
+<a class="brand" href="${homeOf(page.lang)}"><img src="/assets/img/logo.svg" width="34" height="34" alt="" loading="lazy" decoding="async"><span>${SITE.name}</span></a>
 <p class="muted">${esc(t.footerAbout)}</p>
 <p><a href="mailto:${SITE.email}">${SITE.email}</a></p>
 </div>
@@ -154,7 +154,7 @@ ${f.map(col).join("")}
 export function glue(html, lang = "vi") {
   const NB = "&nbsp;";
   let tableNo = 0;
-  const L = lang === "vi" ? { col: "Tiêu chí", table: "Bảng dữ liệu" } : { col: "Criteria", table: "Data table" };
+  const L = { col: S[lang].table.col, table: S[lang].table.name };
   html = html
     .replace(/<th scope="col"><\/th>/g, `<th scope="col"><span class="sr-only">${L.col}</span></th>`)
     // Nhãn khác nhau cho từng bảng (axe landmark-unique): "Bảng dữ liệu 1", "Bảng dữ liệu 2"...
@@ -185,7 +185,7 @@ export function renderPage(page, ctx) {
   const body = glue(typeof page.body === "function" ? page.body(ctx) : page.body, page.lang).replaceAll("{{updated}}", formatDate(page.modified ?? SITE.updated, page.lang));
   const t = T[page.lang];
   return `<!doctype html>
-<html lang="${page.lang}">
+<html lang="${tagOf(page.lang)}">
 <head>
 ${head(page, ctx)}
 </head>

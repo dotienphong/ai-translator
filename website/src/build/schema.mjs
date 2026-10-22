@@ -1,14 +1,19 @@
 // Dữ liệu có cấu trúc JSON-LD (schema.org) cho mỗi trang, gộp thành một @graph. Chỉ dùng những gì có thật: không có
 // aggregateRating, review hay giá giả; giá lấy từ plans.mjs (có test đối chiếu với server/wrangler.jsonc).
 import { SITE, ogFor } from "../site.mjs";
-import { PLANS } from "../plans.mjs";
+import { PLANS, planName, planSummary } from "../plans.mjs";
+import { LANGS, LANG_CODES, tagOf } from "../langs.mjs";
+import { S } from "../strings.mjs";
+import { videoMeta } from "./mp4.mjs";
 
 const abs = (p) => (p.startsWith("http") ? p : SITE.origin + p);
 const ORG_ID = `${SITE.origin}/#organization`;
 const PERSON_ID = `${SITE.origin}/ve-chung-toi/#person`;
 // Mỗi ngôn ngữ một WebSite và một SoftwareApplication (cùng @id thì giá trị inLanguage/url/description lệch nhau).
-const siteId = (lang) => `${SITE.origin}${lang === "en" ? "/en" : ""}/#website`;
-const appId = (lang) => `${SITE.origin}${lang === "en" ? "/en" : ""}/#software`;
+// Gốc của từng ngôn ngữ: "https://aitranslator.io.vn/" (vi), "…/en/", "…/ja/"…
+const base = (lang) => SITE.origin + LANGS[lang].prefix;
+const siteId = (lang) => `${base(lang)}#website`;
+const appId = (lang) => `${base(lang)}#software`;
 const ENT = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&nbsp;": " " };
 const decode = (t) => String(t).replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (m) => ENT[m]);
 // HTML -> chữ thuần cho văn bản câu trả lời FAQ: đóng một khối (p, li, ...) thì chèn khoảng trắng để hai đoạn không dính nhau.
@@ -56,68 +61,64 @@ const person = () => ({
 const website = (lang) => ({
   "@type": "WebSite",
   "@id": siteId(lang),
-  url: SITE.origin + (lang === "en" ? "/en/" : "/"),
+  url: base(lang),
   name: SITE.name,
   alternateName: ["aitranslator.io.vn"],
-  inLanguage: lang,
+  inLanguage: tagOf(lang),
   publisher: { "@id": ORG_ID },
 });
 
-/** Ứng dụng: dùng cho trang chủ, tính năng, giá, tải xuống. Chỉ khai những gì có thật (không đánh giá, không giá giả). */
-export function softwareApplication(lang) {
-  const en = lang === "en";
+/** Ứng dụng: dùng cho trang chủ, tính năng, giá, tải xuống. Chỉ khai những gì có thật (không đánh giá, không giá giả). Chữ theo
+ *  ngôn ngữ ở strings.mjs (S[lang].app); đường dẫn Bảng giá, Tải xuống, Hướng dẫn lấy từ danh mục trang (ctx). */
+export function softwareApplication(lang, ctx) {
+  const a = S[lang].app;
+  const href = (id) => abs((ctx?.byId.get(id) ?? []).find((p) => p.lang === lang)?.path ?? LANGS[lang].prefix);
   const offers = PLANS.map((p) => ({
     "@type": "Offer",
-    name: p.priceVnd === 0 ? (en ? "Free trial (10 days)" : "Free (dùng thử 10 ngày)") : en ? p.nameEn : p.nameVi,
+    name: p.priceVnd === 0 ? a.freeOffer : planName(p, lang),
     price: String(p.priceVnd),
     priceCurrency: "VND",
     availability: "https://schema.org/InStock",
     eligibleDuration: { "@type": "QuantitativeValue", value: p.days, unitCode: "DAY" },
-    description: en ? p.summaryEn : p.summaryVi,
-    url: abs(en ? "/en/pricing/" : "/bang-gia/"),
+    description: planSummary(p, lang),
+    url: href("pricing"),
   }));
   // Giá USD khi trả bằng thẻ quốc tế (spec 2026-10-14): mỗi gói trả phí thêm một Offer riêng loại tiền, chưa gồm thuế.
   const usdOffers = PLANS.filter((p) => p.priceUsdCents > 0).map((p) => ({
     "@type": "Offer",
-    name: `${en ? p.nameEn : p.nameVi} (USD)`,
+    name: `${planName(p, lang)} (USD)`,
     price: (p.priceUsdCents / 100).toFixed(2),
     priceCurrency: "USD",
     availability: "https://schema.org/InStock",
     eligibleDuration: { "@type": "QuantitativeValue", value: p.days, unitCode: "DAY" },
-    description: `${en ? p.summaryEn : p.summaryVi} ${en ? "Paid by international card; price excludes tax." : "Trả bằng thẻ quốc tế; giá chưa gồm thuế."}`,
-    url: abs(en ? "/en/pricing/" : "/bang-gia/"),
+    description: `${planSummary(p, lang)} ${a.cardNote}`,
+    url: href("pricing"),
   }));
-  const shot = (name, vi, en_) => ({ "@type": "ImageObject", url: abs(`/assets/img/app/${name}.${lang}.webp`), caption: en ? en_ : vi });
+  const shot = (name, caption) => ({ "@type": "ImageObject", url: abs(`/assets/img/app/${name}.${lang}.webp`), caption });
   return {
     "@type": "SoftwareApplication",
     "@id": appId(lang),
     name: SITE.name,
     applicationCategory: "BusinessApplication",
-    applicationSubCategory: en ? "Real-time meeting translation and live captions" : "Dịch phụ đề cuộc họp trực tiếp",
+    applicationSubCategory: a.subCategory,
     operatingSystem: ["macOS 14.2+", "Windows 10", "Windows 11"],
-    processorRequirements: en ? "Apple Silicon (M1 or later) on macOS; 64-bit x64 CPU with AVX2 on Windows" : "Apple Silicon (M1 trở lên) trên macOS; CPU x64 64-bit có AVX2 trên Windows",
-    memoryRequirements: en ? "8 GB RAM minimum, 16 GB recommended" : "RAM tối thiểu 8 GB, khuyến nghị 16 GB",
-    storageRequirements: en ? "1.3 GB (Lite pack) or 2.5 GB (Standard pack) for models, plus 1 GB free while downloading" : "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn) cho model, cộng 1 GB trống khi tải",
+    processorRequirements: a.processor,
+    memoryRequirements: a.memory,
+    storageRequirements: a.storage,
     softwareVersion: SITE.version,
     datePublished: SITE.releaseDate,
-    description: en
-      ? "Desktop app that shows live translated subtitles for any meeting or video audio on your computer; speech recognition and translation run on-device, so audio never leaves your machine."
-      : "App desktop hiện phụ đề dịch trực tiếp cho mọi âm thanh cuộc họp hoặc video trên máy tính; nhận dạng giọng nói và dịch chạy trên máy nên âm thanh không rời khỏi máy.",
-    disambiguatingDescription: en
-      ? "AI Translator (aitranslator.io.vn), an on-device meeting subtitle translator by Đỗ Tiến Phong; not related to other products with similar names."
-      : "AI Translator (aitranslator.io.vn), app phụ đề dịch cuộc họp chạy trên máy của Đỗ Tiến Phong; không liên quan tới các sản phẩm khác có tên tương tự.",
-    url: SITE.origin + (en ? "/en/" : "/"),
-    installUrl: abs(en ? "/en/download/" : "/tai-xuong/"),
-    softwareHelp: abs(en ? "/en/guide/" : "/huong-dan/"),
-    inLanguage: ["vi", "en"],
-    screenshot: [
-      shot("overlay-default", "Thanh phụ đề của AI Translator hiện câu gốc và bản dịch", "The AI Translator subtitle bar showing the original sentence and its translation"),
-      shot("app-home-running", "Màn hình chính của AI Translator khi đang dịch", "The AI Translator Home screen while translating"),
-    ],
+    description: a.description,
+    disambiguatingDescription: a.disambiguating,
+    url: base(lang),
+    installUrl: href("download"),
+    softwareHelp: href("guide"),
+    // Ngôn ngữ giao diện của app (năm ngôn ngữ từ 0.1.8), không phải ngôn ngữ của website.
+    inLanguage: LANG_CODES.map(tagOf),
+    screenshot: [shot("overlay-default", a.shots[0]), shot("app-home-running", a.shots[1])],
     publisher: { "@id": ORG_ID },
     author: { "@id": PERSON_ID },
     offers: [...offers, ...usdOffers],
-    featureList: en ? SITE.featureListEn : SITE.featureListVi,
+    featureList: a.featureList,
   };
 }
 
@@ -137,19 +138,19 @@ export function faqPage(items, id) {
   };
 }
 
-/** Video demo của trang chủ (spec 2026-10-21-website-demo-video): `duration` dạng ISO 8601 (`PT40S`), `uploadDate` dạng ngày. */
-export function videoObject({ lang, name, description, duration, uploadDate }) {
-  const base = `/assets/video/ai-translator-demo.${lang}`;
+/** Video demo của trang chủ (spec 2026-10-21-website-demo-video; thời lượng đọc từ file MP4, spec 2026-10-22 §4). `uploadDate` dạng ngày. */
+export function videoObject({ lang, name, description, uploadDate }) {
+  const file = `/assets/video/ai-translator-demo.${lang}`;
   return {
     "@type": "VideoObject",
-    "@id": `${SITE.origin}${lang === "en" ? "/en" : ""}/#demo-video`,
+    "@id": `${base(lang)}#demo-video`,
     name,
     description,
-    thumbnailUrl: abs(`${base}.webp`),
-    contentUrl: abs(`${base}.mp4`),
-    duration,
+    thumbnailUrl: abs(`${file}.webp`),
+    contentUrl: abs(`${file}.mp4`),
+    duration: videoMeta(lang).iso,
     uploadDate,
-    inLanguage: lang,
+    inLanguage: tagOf(lang),
     publisher: { "@id": ORG_ID },
   };
 }
@@ -176,7 +177,7 @@ export function graph(page, ctx) {
     url,
     name: page.title,
     description: page.description,
-    inLanguage: page.lang,
+    inLanguage: tagOf(page.lang),
     isPartOf: { "@id": siteId(page.lang) },
     about: { "@id": page.software ? appId(page.lang) : ORG_ID },
     ...(page.modified ? { dateModified: page.modified } : {}),
@@ -195,7 +196,7 @@ export function graph(page, ctx) {
       headline: page.title,
       description: page.description,
       image: [image],
-      inLanguage: page.lang,
+      inLanguage: tagOf(page.lang),
       ...(page.published ? { datePublished: page.published } : {}),
       ...(page.modified ? { dateModified: page.modified } : {}),
       author: { "@id": PERSON_ID },
@@ -207,7 +208,7 @@ export function graph(page, ctx) {
     web.breadcrumb = { "@id": url + "#breadcrumb" };
     nodes.push(breadcrumb(page.breadcrumbs, url + "#breadcrumb"));
   }
-  if (page.software) nodes.push(softwareApplication(page.lang));
+  if (page.software) nodes.push(softwareApplication(page.lang, ctx));
   let faqIds = 0;
   for (const extra of page.schema ?? []) {
     const node = typeof extra === "function" ? extra(ctx) : extra;
