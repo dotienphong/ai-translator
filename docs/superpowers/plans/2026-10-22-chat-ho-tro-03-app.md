@@ -17,7 +17,7 @@
 - Làm **thẳng trên nhánh `main`** trong `/Users/dtphong/Desktop/software_business/ai-translator`, không worktree. **Mọi lệnh bắt đầu bằng `cd /Users/dtphong/Desktop/software_business/ai-translator &&`** (shell reset thư mục sau mỗi lệnh). Trước mỗi commit chạy `git branch --show-current` (phải ra `main`). Thư mục có thể có phiên khác cùng làm (lúc viết kế hoạch: spec chat hỗ trợ đang sửa dở, các kế hoạch 00, 01, 04 chưa commit): **chỉ `git add` đúng các file của task**, không `git add -A`.
 - **Không push, không deploy, không phát hành, không đặt secret.** Không đụng chính sách quyền riêng tư, spec gốc hay website (kế hoạch 04), không đụng `server/` (kế hoạch 01).
 - **Không gọi server thật trong test.** Client HTTP test bằng server TCP giả trong máy (như `diagnostics/send.rs`); lõi và lệnh test bằng `test_support::FakeSupportApi`. App giả (`mock_app`) không cài chat thật (`support::install` chỉ chạy trong `setup` của app thật).
-- Mã trong kế hoạch **đã chạy thật** trên một bản sao của repo (commit `01c2077a`): `cargo test` 811 test, `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/check-windows.sh`, `tsc`, vitest 359 test, `vite build`, `check-i18n.mjs` đủ năm ngôn ngữ. Chép nguyên văn; đoạn "tìm … thay bằng …" khớp đúng file hiện tại (đã kiểm bằng máy).
+- Mã trong kế hoạch **đã chạy thật** trên một bản sao của repo (commit `01c2077a`): `cargo test` 811 test, `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/check-windows.sh`, `tsc`, vitest 359 test (369 sau rà đợt 10, xem cuối Task 11), `vite build`, `check-i18n.mjs` đủ năm ngôn ngữ. Chép nguyên văn; đoạn "tìm … thay bằng …" khớp đúng file hiện tại (đã kiểm bằng máy).
 - Chú thích trong mã bằng tiếng Việt, theo giọng các file kế bên. Mọi chuỗi giao diện qua `t(...)`, đủ năm từ điển `src/i18n/{en,vi,ja,zh,ko}.ts`.
 - Commit có hai dòng `-m`, dòng thứ hai là `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Kiểm tra cuối mỗi nhóm task (Task 8 cho phần Rust, Task 14 cho cả kế hoạch): `cargo fmt --all -- --check`, `cargo clippy --locked --workspace --all-targets -- -D warnings`, `sh scripts/check-windows.sh --locked`, `pnpm build`, `pnpm test`.
@@ -119,7 +119,7 @@ Expected: `test result: ok. 753 passed; 0 failed; 6 ignored; …`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm test 2>&1 | grep -E "Test Files|Tests "
 ```
-Expected: `Test Files  26 passed (26)` và `Tests  331 passed (331)` (đo ngày 2026-10-22). Task 11 đưa lên **28 file, 359 test**.
+Expected: `Test Files  26 passed (26)` và `Tests  331 passed (331)` (đo ngày 2026-10-22). Task 11 đưa lên **28 file, 359 test**; sau rà đợt 10 (ghi cuối Task 11): **28 file, 369 test**.
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm exec tsc --noEmit
@@ -5265,6 +5265,8 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && git add src/windows
 ```
 Expected: một commit mới; `git status --short` không còn file nào của task này (các file tài liệu chưa commit của phiên khác vẫn ở đó, đừng add).
 
+**Sau khi rà (2026-10-22, đợt 10):** mã thật khác khối mã ở trên ở các chỗ sau (làm bằng TDD, commit `fix(app): …`; giao diện 359 → 369 test). (1) Enter chỉ gửi khi là Enter trơn và bộ gõ không đang soạn: `enterSends` dùng lại `keyAction` của Gõ dịch (`src/lib/compose.ts`), vì WKWebView báo `keyCode` 229 thay cho `isComposing`; Cmd/Ctrl/Alt+Enter không gửi. (2) `support_machine_info` đọc lại mỗi lần mở màn hình (Rust dựng lại dòng này lúc gửi). (3) Xóa cuộc chat: dòng hỏi lại nằm trong vùng `role="status"` luôn có mặt, tiêu điểm vào nút Hủy khi hiện, Hủy trả tiêu điểm về nút ⋯, Xóa đưa vào ô nhập (nút ⋯ biến mất cùng cuộc chat); menu ⋯ bỏ `role="menu"`/`menuitem` (chỉ một mục, không làm Esc và phím mũi tên). (4) `hasConversation` chuyển true sang false thì thẻ email và lỗi của nó đặt lại. (5) `init` lỗi không gỡ listener `support://view`: lỗi vào `error`, hàm gỡ vẫn được trả. (6) Lỗi Đính kèm log và lỗi email có `role="alert"`; bộ đếm có `id` và gắn với ô nhập bằng `aria-describedby`. (7) Danh sách tin là `role="log"` (bỏ `aria-live`), `aria-busy` lúc `loading` (store có thêm `loading`, bật khi lấy cuộc chat đã có lúc mở màn hình). (8) Bộ đếm (`counterLabel`): số ký tự cũng theo `toLocaleString` của ngôn ngữ giao diện, cùng cách với giới hạn nằm sẵn trong câu. `check-i18n` (cảnh `support-delete`) kiểm thêm bộ đếm, `role="log"`, không có `role=menu`, vùng `status`, và chỗ tiêu điểm sau Hủy và Xóa.
+
 ---
 
 ### Task 12: Mục Hỗ trợ trong thanh bên, chấm đỏ, kiểu dáng
@@ -6297,7 +6299,7 @@ Expected: kết thúc không lỗi.
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm test 2>&1 | grep -E "Test Files|Tests "
 ```
-Expected: `Test Files  28 passed (28)`, `Tests  359 passed (359)`.
+Expected: `Test Files  28 passed (28)`, `Tests  369 passed (369)` (359 khi chưa áp phần sau rà đợt 10).
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && git status --short
@@ -6311,7 +6313,7 @@ Expected: 13 commit của Task 1–13 nằm trên cùng, theo thứ tự.
 
 - [ ] **Step 5: Báo cáo cho chủ dự án**
 
-Báo: số test (Rust 753 → 811, giao diện 331 → 359), các commit, ảnh đã xem. **Chưa push, chưa phát hành.** Còn lại sau kế hoạch này (không thuộc kế hoạch 03):
+Báo: số test (Rust 753 → 811, giao diện 331 → 369), các commit, ảnh đã xem. **Chưa push, chưa phát hành.** Còn lại sau kế hoạch này (không thuộc kế hoạch 03):
 - server của kế hoạch 01 phải deploy trước app 0.2.4 (đúng thứ tự spec §7); trước đó các đường `/v1/support/*` trả `404` và màn hình Hỗ trợ báo `error.supportOffline` (client coi `404` như không gọi được);
 - A7 bằng proxy (spec §6): chưa dùng chat thì 0 kết nối mới; dùng chat thì chỉ tới `api.`; đang dịch mà màn hình Hỗ trợ đóng thì không có request chat;
 - thử tay sau deploy (chủ dự án nhắn từ app, trả lời có mã và không mã, `/tat`, `/bat`), thử trên Windows thật (dòng thông tin máy có `GPU …`);
