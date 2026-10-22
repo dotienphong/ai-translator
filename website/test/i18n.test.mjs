@@ -11,6 +11,7 @@ import { S } from "../src/strings.mjs";
 import { renderPage, glue } from "../src/build/layout.mjs";
 import { plansGrid, dataFlow, demoVideo } from "../src/build/components.mjs";
 import { softwareApplication, videoObject } from "../src/build/schema.mjs";
+import { readDict, strongLabels, appLabelsIn } from "../tools/i18n/labels.mjs";
 
 test("LANGS: năm ngôn ngữ, thẻ BCP 47 (tiếng Trung giản thể là zh-Hans), tiền tố, og:locale, tên bản ngữ", () => {
   assert.deepEqual(LANG_CODES, ["vi", "en", "ja", "zh", "ko"]);
@@ -181,4 +182,15 @@ test("WEBSITE_PREVIEW_LANGS thêm ngôn ngữ đang dịch khi dựng cục bộ
   assert.equal(run({ WEBSITE_PREVIEW_LANGS: "ja,ko" }), order([...base.split(","), "ja", "ko"]));
   assert.equal(run({ WEBSITE_PREVIEW_LANGS: "ja" }, ["--deploy"]), base);
   assert.throws(() => run({ WEBSITE_PREVIEW_LANGS: "fr" }), /ngôn ngữ lạ fr/);
+});
+
+test("labels: đọc từ điển của app, nhãn trong <strong> (tách theo ›), chỉ giữ nhãn có trong app", () => {
+  const en = readDict("en");
+  const ja = readDict("ja");
+  assert.equal(en.get("nav.glossary"), "Glossary");
+  assert.equal(ja.get("settings.group.compose"), "入力翻訳");
+  assert.ok(![...en.values()].some((v) => v.includes("{")), "bỏ chuỗi có biến");
+  assert.deepEqual(strongLabels('<main id="main"><p><strong>Settings › Type &amp; Translate</strong> và <strong>X</strong></p></main>'), ["Settings", "Type & Translate", "X"]);
+  const got = appLabelsIn('<main id="main"><strong>Glossary</strong><strong>Monthly</strong><strong>Not an app label</strong></main>', en);
+  assert.deepEqual(got, [{ en: "Glossary", keys: [...en].filter(([, v]) => v === "Glossary").map(([k]) => k) }]);
 });
