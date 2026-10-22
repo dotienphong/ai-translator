@@ -1,0 +1,81 @@
+{
+  "stage": "desktop",
+  "voiceFrom": "vi",
+  "target": "ja",
+  "viewport": { "width": 1536, "height": 960, "dpr": 1.25 },
+  "timing": {
+    "voiceStartMs": 800,
+    "liveHoldMs": 2000,
+    "outroMs": 4000,
+    "meetingLabel": { "from": 800, "to": 3800 },
+    "chatLabel": { "from": 500, "to": 3500 },
+    "chat": {
+      "typing1StartMs": 300,
+      "typing1Ms": 1200,
+      "moveAfterMsgMs": 500,
+      "moveMs": 700,
+      "clickAfterMoveMs": 100,
+      "hotkeyAfterClickMs": 600,
+      "pressMs": 200,
+      "openAfterHotkeyMs": 250,
+      "typingAfterOpenMs": 600,
+      "pace": { "charMs": 150, "spaceMs": 110, "punctuationMs": 260 },
+      "readMs": 1500,
+      "pasteMs": 150,
+      "reviewMs": 1000,
+      "typing2StartMs": 700,
+      "typing2Ms": 1500,
+      "holdMs": 1500
+    }
+  },
+  "labels": {
+    "meeting": { "text": "会議をリアルタイム翻訳 · パソコン上で動作" },
+    "chat": { "text": "入力翻訳 · Ctrl + Alt + G · 日本語で入力、英語で送信" }
+  },
+  "call": {
+    "title": "Weekly sync",
+    "startClock": 727,
+    "people": [
+      { "name": "Sarah Collins", "still": "sarah", "speaker": true },
+      { "name": "David Park", "still": "p1-still" },
+      { "name": "Emma Wilson", "still": "p2-still" },
+      { "name": "あなた", "still": "self-still" }
+    ]
+  },
+  "chat": {
+    "title": "メッセージ",
+    "contact": { "name": "Sarah Collins", "still": "sarah", "status": "オンライン" },
+    "list": [
+      { "name": "Sarah Collins", "still": "sarah", "time": "10:42", "active": true },
+      { "name": "David Park", "still": "p1-still", "last": "Thanks for the update!", "time": "9:15" },
+      { "name": "Emma Wilson", "still": "p2-still", "last": "See you at the sync.", "time": "昨日" },
+      { "name": "チェックアウトチーム", "initials": "CT", "last": "あなた: デザインファイルを送りました", "time": "月" }
+    ],
+    "historyDay": "昨日",
+    "history": [
+      { "from": "them", "text": "Meeting link for tomorrow: weekly sync at 10:00." },
+      { "from": "me", "text": "Got it, thanks!" }
+    ],
+    "todayDay": "今日 10:42",
+    "sarahMessage": "Hi! Following up on the quote we discussed in the meeting.",
+    "sarahReply": "Perfect, thank you!",
+    "reply": "承知しました。金曜日までに新しい見積もりをお送りします。",
+    "replyLang": "ja",
+    "replyTarget": "en",
+    "placeholder": "Aa"
+  },
+  "ui": { "chats": "チャット", "search": "検索", "leave": "退出", "youPrefix": "あなた: " },
+  "taskbar": { "time": "10:42", "date": "2026/10/21" },
+  "outro": { "name": "AI Translator", "url": "aitranslator.io.vn" },
+  "layout": {
+    "workArea": { "width": 1536, "height": 912 },
+    "meeting": { "titleBar": 32, "topBar": 48, "controlBar": 72, "padding": 12, "gap": 10 },
+    "overlay": { "width": 900, "height": 200, "fontSize": 22, "bottomGap": 72 },
+    "chat": { "left": 238, "top": 96, "width": 1060, "height": 720, "listWidth": 300 },
+    "compose": { "width": 560, "topRatio": 0.25 },
+    "cursor": {
+      "rest": { "x": 1290, "y": 560 },
+      "input": { "x": 1150, "y": 788 }
+    }
+  }
+}

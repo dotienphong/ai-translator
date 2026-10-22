@@ -1,0 +1,81 @@
+{
+  "stage": "desktop",
+  "voiceFrom": "vi",
+  "target": "ko",
+  "viewport": { "width": 1536, "height": 960, "dpr": 1.25 },
+  "timing": {
+    "voiceStartMs": 800,
+    "liveHoldMs": 2000,
+    "outroMs": 4000,
+    "meetingLabel": { "from": 800, "to": 3800 },
+    "chatLabel": { "from": 500, "to": 3500 },
+    "chat": {
+      "typing1StartMs": 300,
+      "typing1Ms": 1200,
+      "moveAfterMsgMs": 500,
+      "moveMs": 700,
+      "clickAfterMoveMs": 100,
+      "hotkeyAfterClickMs": 600,
+      "pressMs": 200,
+      "openAfterHotkeyMs": 250,
+      "typingAfterOpenMs": 600,
+      "pace": { "charMs": 170, "spaceMs": 110, "punctuationMs": 260 },
+      "readMs": 1500,
+      "pasteMs": 150,
+      "reviewMs": 1000,
+      "typing2StartMs": 700,
+      "typing2Ms": 1500,
+      "holdMs": 1500
+    }
+  },
+  "labels": {
+    "meeting": { "text": "회의 실시간 번역 · 내 컴퓨터에서 실행" },
+    "chat": { "text": "입력 번역 · Ctrl + Alt + G · 한국어로 입력, 영어로 전송" }
+  },
+  "call": {
+    "title": "Weekly sync",
+    "startClock": 727,
+    "people": [
+      { "name": "Sarah Collins", "still": "sarah", "speaker": true },
+      { "name": "David Park", "still": "p1-still" },
+      { "name": "Emma Wilson", "still": "p2-still" },
+      { "name": "나", "still": "self-still" }
+    ]
+  },
+  "chat": {
+    "title": "메시지",
+    "contact": { "name": "Sarah Collins", "still": "sarah", "status": "활동 중" },
+    "list": [
+      { "name": "Sarah Collins", "still": "sarah", "time": "10:42", "active": true },
+      { "name": "David Park", "still": "p1-still", "last": "Thanks for the update!", "time": "09:15" },
+      { "name": "Emma Wilson", "still": "p2-still", "last": "See you at the sync.", "time": "어제" },
+      { "name": "체크아웃 팀", "initials": "CT", "last": "나: 디자인 파일을 보냈습니다", "time": "월" }
+    ],
+    "historyDay": "어제",
+    "history": [
+      { "from": "them", "text": "Meeting link for tomorrow: weekly sync at 10:00." },
+      { "from": "me", "text": "Got it, thanks!" }
+    ],
+    "todayDay": "오늘 10:42",
+    "sarahMessage": "Hi! Following up on the quote we discussed in the meeting.",
+    "sarahReply": "Perfect, thank you!",
+    "reply": "네, 금요일 전까지 새 견적서를 보내드리겠습니다.",
+    "replyLang": "ko",
+    "replyTarget": "en",
+    "placeholder": "Aa"
+  },
+  "ui": { "chats": "채팅", "search": "검색", "leave": "나가기", "youPrefix": "나: " },
+  "taskbar": { "time": "10:42", "date": "2026-10-21" },
+  "outro": { "name": "AI Translator", "url": "aitranslator.io.vn" },
+  "layout": {
+    "workArea": { "width": 1536, "height": 912 },
+    "meeting": { "titleBar": 32, "topBar": 48, "controlBar": 72, "padding": 12, "gap": 10 },
+    "overlay": { "width": 900, "height": 200, "fontSize": 22, "bottomGap": 72 },
+    "chat": { "left": 238, "top": 96, "width": 1060, "height": 720, "listWidth": 300 },
+    "compose": { "width": 560, "topRatio": 0.25 },
+    "cursor": {
+      "rest": { "x": 1290, "y": 560 },
+      "input": { "x": 1150, "y": 788 }
+    }
+  }
+}
