@@ -188,7 +188,8 @@ test("CSP trong _headers băm đúng script nội tuyến và không cho phép u
 
 test("sản phẩm đã phát hành chính thức: không trang nào còn nói 'bản beta' hay 'đang beta' (chỉ còn tên kênh cập nhật Beta và cờ --beta)", () => {
   // Cho phép: tên kênh cập nhật có thật trong app, lệnh có --beta/-Beta.
-  const ALLOWED = /(kênh|channel|channels|Ổn định hoặc|Ổn định và|Stable or|Stable and|--|-)\s*beta\b|\bbeta\s*(channel|channels)\b|<em>beta<\/em>/gi;
+  // Tên kênh trong ba ngôn ngữ ja/zh/ko: "Beta チャンネル", "Beta 通道", "Beta 채널", "安定版と Beta", "稳定版和 Beta", "안정 버전과 Beta".
+  const ALLOWED = /(kênh|channel|channels|Ổn định hoặc|Ổn định và|Stable or|Stable and|安定版と|稳定版和|안정 버전과|--|-)\s*beta\b|\bbeta\s*(channel|channels|チャンネル|通道|채널)|<em>beta<\/em>/gi;
   for (const p of pages) {
     const text = textOf(htmlByPath.get(p.path)) + " " + `${p.title} ${p.description} ${p.llm ?? ""}`;
     const left = text.replace(ALLOWED, " ");
