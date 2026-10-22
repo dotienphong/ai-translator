@@ -9,4 +9,5 @@
 //! - file này: phần ghép với app (trạng thái quản lý bằng `app.manage`, luồng hỏi nền, sự kiện `support://view`, việc của các
 //!   lệnh `support_*`).
 
+pub mod cadence;
 pub mod store;
