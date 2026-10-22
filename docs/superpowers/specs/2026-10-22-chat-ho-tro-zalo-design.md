@@ -196,7 +196,7 @@ Phụ đề không hiện khi họp Teams
   | Lúc nào | Nhịp |
   |---|---|
   | Màn hình Hỗ trợ đang mở và cửa sổ đang hiện | 3 giây; sau 2 phút không có tin mới thì 15 giây |
-  | Đang chờ trả lời (tin cuối là của khách, trong 24 giờ qua), **và không đang dịch** | 60 giây; có trả lời thì mục Hỗ trợ hiện chấm đỏ |
+  | Đang chờ trả lời (tin cuối là của khách, trong 24 giờ qua), **cửa sổ chính đang hiện và không đang dịch** | 60 giây; có trả lời thì mục Hỗ trợ hiện chấm đỏ. App ẩn dưới khay thì không hỏi: câu trả lời đi qua email (nếu khách để lại), và hiện chấm đỏ khi cửa sổ mở lại |
   | Còn lại, kể cả khi chưa từng dùng chat | **Không kết nối** |
 
 - **"Đã dùng chat" nghĩa là đã gửi ít nhất một tin** (có token). Chưa có cuộc chat thì mở màn hình Hỗ trợ **không gọi mạng**, kể cả `GET /v1/support/status`: chat đang tắt thì người dùng biết ở lần gửi đầu (`503 support_disabled`). Nhờ vậy câu "chưa từng nhắn thì app không kết nối gì cho chat" của chính sách và trang Dữ liệu và bảo mật đúng tuyệt đối. Website thì gọi `status` khi khách mở bong bóng (khách đã chủ động mở khung chat).
