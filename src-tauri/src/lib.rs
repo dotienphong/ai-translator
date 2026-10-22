@@ -34,6 +34,7 @@ pub mod session;
 pub mod settings;
 pub mod sidecar;
 pub mod state;
+pub mod support;
 pub mod system;
 pub mod transcript;
 pub mod tray;
