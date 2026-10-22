@@ -56,11 +56,11 @@
 | Task 5 | 1542 | 44 |
 | Task 6 | 1551 | 44 |
 | Task 7 | 1558 | 44 |
-| Task 8 | 1563 | 44 |
-| Task 9 | 1575 | 44 |
-| Task 10 | 1581 | 44 |
-| Task 11 | 1591 | 44 |
-| Task 12 | 1597 | 44 |
+| Task 8 | 1567 | 44 |
+| Task 9 | 1579 | 44 |
+| Task 10 | 1585 | 44 |
+| Task 11 | 1595 | 44 |
+| Task 12 | 1601 | 44 |
 
 ---
 
@@ -409,6 +409,8 @@ INSERT INTO support_settings (key, value) VALUES ('enabled', '0'), ('zalo_fail_s
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server test 2>&1 | tail -4
 ```
 Expected: `Tests  1525 passed (1525)`.
+
+**Sau khi rà (2026-10-22):** bảng `support_messages` có thêm cột `claimed_at INTEGER` (ngay sau `forwarded_at`; tin khách: lúc một request hay cron bắt đầu gửi, hết hạn sau 60 giây), và `forwarded_at` chỉ còn nghĩa "lúc Zalo nhận". File migration thật khác khối SQL ở trên đúng chỗ này; test chạy trên file thật.
 
 - [ ] **Step 5: Ghi cột mới vào spec**
 
@@ -1756,6 +1758,8 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server type
 ```
 Expected: `tsc` không lỗi; `Tests  1558 passed (1558)`.
 
+**Sau khi rà (2026-10-22):** `parseOwnerText` thật khác khối mã ở trên. Tin bắt đầu bằng `#` đọc theo luật chặt hơn: mã là `#` + đúng 3 chữ hay số không dính chữ hay số khác (`^#([A-Za-z0-9]{3})(?![A-Za-z0-9])`), rồi bỏ các dấu `: , . - – —` và khoảng trắng ngay sau mã (`#K7Q, nội dung` và `#K7Q: ok` là câu trả lời cho K7Q). Mọi tin bắt đầu bằng `#` còn lại (`#K7QX nội dung`, `# K7Q nội dung`, `#1 ưu tiên`, `#`) trả `{ kind: "badCode" }`: không tự định tuyến, tránh gửi nhầm khách. `OwnerAction` có thêm `badCode`, `BOT_TEXT` có thêm `badCode`. Hai test của `support-owner.test.ts` thay cho test "chỉ là mã khi…" (thêm một test, tổng +1).
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -1932,7 +1936,9 @@ export async function forwardConversation(db: D1Database, zalo: OwnerBot | null,
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1563 passed (1563)`.
+Expected: `tsc` không lỗi; `Tests  1567 passed (1567)`.
+
+**Sau khi rà (2026-10-22):** `forwardConversation` thật khác khối mã ở trên (thêm 3 test, tổng +3; mã thật đã commit). Giữ chỗ dùng cột `claimed_at` (Task 2), không còn dùng `forwarded_at` để giữ chỗ: `CLAIM_TTL = 60` giây (export). Bên gọi lấy tin chờ cũ nhất; thấy nó đang được giữ chỗ còn hạn thì dừng (bên đang gửi sẽ gửi tiếp các tin sau, nên thứ tự được giữ); giữ chỗ hết hạn thì giữ lại. Gửi xong: `forwarded_at = now, claimed_at = NULL`; gửi lỗi: `claimed_at = NULL, forward_attempts + 1`, trả `"failed"`. Dòng 🆕 quyết một lần trước vòng lặp (cuộc chat chưa có tin khách nào đã chuyển), nên khi tin đầu bị bỏ vì quá 24 giờ, tin tới Zalo đầu tiên vẫn có dòng 🆕. Gửi ít nhất một lần: Zalo đã nhận mà hết thời gian chờ thì tin có thể tới hai lần.
 
 - [ ] **Step 5: Commit**
 
@@ -2445,7 +2451,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1575 passed (1575)`.
+Expected: `tsc` không lỗi; `Tests  1579 passed (1579)`.
 
 - [ ] **Step 8: Commit**
 
@@ -2703,7 +2709,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1581 passed (1581)`.
+Expected: `tsc` không lỗi; `Tests  1585 passed (1585)`.
 
 - [ ] **Step 5: Commit**
 
@@ -2779,11 +2785,13 @@ describe("webhook Zalo POST /v1/webhooks/zalo (spec 2026-10-22 §2.4, §2.5)", (
     await enableChat();
     const chat = await startChat(w);
     await webhook(w, ownerSays("#Z0Z chào"));
+    await webhook(w, ownerSays("#Z0ZX chào"));
     await webhook(w, ownerSays(`#${chat.code}`));
     await env.DB.prepare("UPDATE support_conversations SET status = 'blocked'").run();
     await webhook(w, ownerSays(`#${chat.code} chào`));
     expect(w.zalo.texts().slice(1)).toEqual([
       "Không có cuộc chat #Z0Z.",
+      "Không đọc được mã. Ghi # và 3 ký tự của cuộc chat ở đầu tin, ví dụ: #K7Q nội dung (gõ /ds để xem mã). Tin này chưa được gửi.",
       "Thiếu nội dung sau mã.",
       `#${chat.code} đang bị chặn (gõ /mo #${chat.code} để mở).`,
     ]);
@@ -2985,6 +2993,8 @@ export async function handleOwnerUpdate(db: D1Database, deps: Deps, update: Zalo
       await setStatus(db, conv.id, block ? "blocked" : "open");
       return tell(deps, block ? BOT_TEXT.blockedOk(conv.code) : BOT_TEXT.unblockedOk(conv.code));
     }
+    case "badCode":
+      return tell(deps, BOT_TEXT.badCode);
     case "reply":
       return reply(db, deps, action.code, action.text, update.messageId, now);
   }
@@ -3049,7 +3059,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1591 passed (1591)`.
+Expected: `tsc` không lỗi; `Tests  1595 passed (1595)`.
 
 - [ ] **Step 6: Commit**
 
@@ -3408,7 +3418,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1597 passed (1597)`.
+Expected: `tsc` không lỗi; `Tests  1601 passed (1601)`.
 
 - [ ] **Step 7: Commit**
 
@@ -3535,7 +3545,7 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server check 2>&1 | tail -12
 ```
-Expected: `typecheck`, `vectors:check`, `test` (`Tests  1597 passed (1597)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
+Expected: `typecheck`, `vectors:check`, `test` (`Tests  1601 passed (1601)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
 
 - [ ] **Step 3: Kiểm không lộ token và không còn chỗ giữ chỗ lạ**
 
