@@ -24,8 +24,8 @@
   });
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", paint);
 
-  // Menu thả xuống: đóng khi bấm ra ngoài hoặc nhấn Esc
-  const menus = [...document.querySelectorAll(".nav details")];
+  // Menu thả xuống (điều hướng, ngôn ngữ): đóng khi bấm ra ngoài hoặc nhấn Esc
+  const menus = [...document.querySelectorAll(".nav details, .lang-menu")];
   document.addEventListener("click", (e) => menus.forEach((d) => { if (!d.contains(e.target)) d.open = false; }));
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
@@ -155,6 +155,34 @@
       detectChip.hidden = false;
     }
     if (copyLink) wireCopy(copyLink, () => location.origin + location.pathname);
+  });
+
+  // Video demo (spec 2026-10-22-website-ja-zh-ko §4): nút phát lớn giữa khung thay thanh điều khiển gốc cho tới khi bấm. Trên máy
+  // tính (chuột, rộng từ 900 px, không giảm chuyển động), lần đầu hơn nửa khung vào màn hình thì nút đập nhịp mời xem, một lần.
+  document.querySelectorAll("[data-video]").forEach((fig) => {
+    const video = fig.querySelector("video");
+    const btn = fig.querySelector(".video-play");
+    if (!video || !btn) return;
+    video.controls = false;
+    btn.hidden = false;
+    fig.classList.add("is-facade");
+    btn.addEventListener("click", () => {
+      fig.classList.remove("is-facade", "is-inviting");
+      btn.hidden = true;
+      video.controls = true;
+      video.focus({ preventScroll: true });
+      // Phát lỗi (mạng, trình duyệt chặn): thanh điều khiển gốc đã hiện, người xem bấm lại ở đó.
+      video.play()?.catch(() => {});
+    });
+    const desktop = matchMedia("(hover: hover) and (pointer: fine) and (min-width: 900px)").matches;
+    if (!desktop || matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+    fig.classList.add("can-invite");
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      fig.classList.add("is-inviting");
+      io.disconnect();
+    }, { threshold: 0.5 });
+    io.observe(fig);
   });
 
   // Hiện dần khi cuộn tới
