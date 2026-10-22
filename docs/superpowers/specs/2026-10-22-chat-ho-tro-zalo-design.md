@@ -59,6 +59,8 @@ App (Rust reqwest, qua IPC) ───┘   /v1/support/*  (D1)      └─← we
 
 `support_messages`: `id` (tự tăng, làm con trỏ `after`), `conversation_id` (xóa theo cuộc chat), `sender` (`customer`, `owner`), `text`, `created_at`, `forwarded_at` (tin khách: lúc Zalo nhận), `claimed_at` (tin khách: lúc một request hay cron bắt đầu gửi; hết hạn sau 60 giây), `forward_attempts`, `zalo_message_id` (tin chủ dự án, duy nhất, để chống trùng khi Zalo gửi lại webhook).
 
+`support_zalo_updates` (`message_id`, `received_at`): sự kiện Zalo của chủ dự án đã xử lý xong; Zalo gửi lại thì bỏ qua; dọn sau 2 ngày.
+
 `support_settings` (khóa, giá trị): `enabled` (mặc định `0`: chat **tắt** cho tới khi chủ dự án nhắn `/bat`), `zalo_fail_streak` (số lần cron liền chuyển tin sang Zalo thất bại).
 
 Giới hạn tần suất dùng bảng `rate_limits` có sẵn (HMAC với `RATE_LIMIT_PEPPER`).
@@ -111,7 +113,7 @@ Phụ đề không hiện khi họp Teams
 1. Header `X-Bot-Api-Secret-Token` khác `ZALO_WEBHOOK_SECRET` (so sánh thời gian hằng): `403`.
 2. Thân không đọc được: `200`, ghi log (không trả lỗi để Zalo không gửi lại liên tục).
 3. `result.message.chat.id` khác `ZALO_OWNER_CHAT_ID`: `200`, bỏ qua, không trả lời. Bot có thể bị người lạ tìm thấy và nhắn vào.
-4. `message_id` đã có trong `support_messages.zalo_message_id`: `200`, bỏ qua (Zalo gửi lại).
+4. `message_id` đã có trong `support_zalo_updates`: `200`, bỏ qua (Zalo gửi lại; áp cho mọi sự kiện, kể cả lệnh, để một `/tat` gửi lại muộn không đè `/bat` mới hơn). Dòng này được ghi **sau** khi xử lý xong, nên lỗi D1 giữa chừng thì lần gửi lại vẫn được xử lý; câu trả lời còn được chặn ghi trùng bằng `zalo_message_id` UNIQUE. Mọi việc D1 làm trước khi trả `200`; câu bot trả lời chủ dự án gửi sau, trong `waitUntil`, để Zalo không phải chờ.
 5. Sự kiện không phải `message.text.received` (ảnh, sticker, voice): bot trả lời "Chỉ gửi được chữ."
 6. Tin chữ: lệnh (mục 2.5) hay câu trả lời (dưới).
 
@@ -138,9 +140,9 @@ Phụ đề không hiện khi họp Teams
 
 ### 2.6 Cron (`*/5` có sẵn)
 
-1. **Chuyển lại tin chờ:** tin khách có `forwarded_at` rỗng, tạo trong 24 giờ qua, theo thứ tự `id`. Thành công thì đặt `zalo_fail_streak = 0`. Cả lần chạy thất bại thì tăng `zalo_fail_streak`; đạt 3 thì cảnh báo `support_zalo_failed`. Tin quá 24 giờ không chuyển nữa, vẫn còn trong cuộc chat của khách.
+1. **Chuyển lại tin chờ:** tin khách có `forwarded_at` rỗng, tạo trong 24 giờ qua, của cuộc chat đang mở, theo thứ tự `id`; tối đa 100 tin mỗi lần chạy. Lỗi ở một cuộc chat thì đi tiếp cuộc chat khác; 3 lần lỗi trong một lần chạy thì dừng (Zalo đang lỗi chung). Tin bị Zalo từ chối 5 lần (thường do nội dung) thì thôi, không chặn tin sau. Gửi được tin nào hay không còn tin chờ thì đặt `zalo_fail_streak = 0`; lần chạy có lỗi mà không gửi được tin nào thì tăng; đạt 3 thì cảnh báo `support_zalo_failed`. Tin quá 24 giờ không chuyển nữa, vẫn còn trong cuộc chat của khách.
 2. **Gửi email câu trả lời:** cuộc chat có `email`, có tin chủ dự án `id > delivered_owner_id` tạo từ 2 phút trước, và `emailed_at` rỗng hay cách đây hơn 1 giờ. Gộp mọi tin chủ dự án chưa nhận vào một thư, đặt `emailed_at`. Thư song ngữ vi/en theo mẫu thư hiện có (`server/src/email/templates.ts`), văn bản thuần, `Reply-To: support@aitranslator.io.vn`; nói khách có thể trả lời thư này hay mở lại khung chat trên website hay trong app. Lỗi gửi thì thử lại ở lần cron sau.
-3. **Xóa hết hạn:** xóa cuộc chat có `last_activity_at` cũ hơn 90 ngày (tin xóa theo).
+3. **Xóa hết hạn:** xóa cuộc chat có `last_activity_at` cũ hơn 90 ngày (tin xóa theo), và dòng `support_zalo_updates` cũ hơn 2 ngày.
 
 ### 2.7 Chống spam và giới hạn
 
