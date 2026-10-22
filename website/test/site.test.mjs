@@ -12,7 +12,7 @@ import * as legal from "../src/content/legal.mjs";
 import { glue } from "../src/build/layout.mjs";
 import { SITE } from "../src/site.mjs";
 import { PLANS, usd, vnd } from "../src/plans.mjs";
-import { LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome } from "../src/langs.mjs";
+import { LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, fromEn } from "../src/langs.mjs";
 import { videoMeta } from "../src/build/mp4.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -119,6 +119,16 @@ test("HTML cân bằng thẻ, không style nội tuyến, không trình xử lý
 
 test("liên kết nội bộ và neo (#) đều tồn tại", async () => {
   const ids = new Map();
+  // Đang dịch dở (ALLOW_PARTIAL=1): bỏ qua liên kết tới trang ja/zh/ko chưa dịch (module còn thiếu); mọi liên kết khác vẫn kiểm.
+  const pending = new Set(
+    process.env.ALLOW_PARTIAL === "1"
+      ? missing.map((m) => {
+          const [lang, file] = m.split("/");
+          const en = pages.find((p) => p.lang === "en" && p.id === file.replace(/\.mjs$/, ""));
+          return en && lang !== "vi" && lang !== "en" ? fromEn(en.path, lang) : null;
+        }).filter(Boolean)
+      : [],
+  );
   for (const [p, html] of htmlByPath) ids.set(p, new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])));
   for (const p of pages) {
     const html = strip(htmlByPath.get(p.path));
@@ -129,6 +139,7 @@ test("liên kết nội bộ và neo (#) đều tồn tại", async () => {
       const [target, hash] = url.replace(/\?[^#]*/, "").split("#");
       const t = target === "" ? p.path : target;
       if (t.startsWith("#")) continue;
+      if (pending.has(t)) continue;
       const known = htmlByPath.has(t) || (await exists(path.join(DIST, t.endsWith("/") ? t + "index.html" : t)));
       assert.ok(known, `${p.path}: liên kết hỏng → ${url}`);
       if (hash && htmlByPath.has(t)) assert.ok(ids.get(t).has(hash), `${p.path}: neo không có → ${url}`);
