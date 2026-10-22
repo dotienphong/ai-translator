@@ -4,8 +4,11 @@
 //! | Lúc nào | Nhịp |
 //! |---|---|
 //! | Màn hình Hỗ trợ đang mở và cửa sổ chính đang hiện | 3 giây; 2 phút liền không có tin mới thì 15 giây |
-//! | Đang chờ trả lời (tin cuối của khách, trong 24 giờ qua) và không đang dịch | 60 giây |
-//! | Còn lại, kể cả khi chưa từng dùng chat | không gọi mạng |
+//! | Đang chờ trả lời (tin cuối của khách, trong 24 giờ qua), cửa sổ chính đang hiện và không đang dịch | 60 giây |
+//! | Còn lại, kể cả khi chưa từng dùng chat hay khi cửa sổ ẩn xuống khay | không gọi mạng |
+//!
+//! Cửa sổ ẩn thì không hỏi nền: app hay chạy ẩn dưới khay, mà lần hỏi nền trả về câu trả lời làm server coi khách đã nhận (nên
+//! không gửi email cho câu đó), trong khi khách không thấy chấm đỏ vì không nhìn thấy cửa sổ.
 
 /// Nhịp khi màn hình Hỗ trợ đang mở.
 pub const FAST_SECS: i64 = 3;
@@ -51,7 +54,8 @@ pub enum Next {
 
 /// Đang chờ trả lời: tin cuối của khách chưa có trả lời và gửi trong 24 giờ qua.
 pub fn waiting(waiting_since: Option<i64>, now: i64) -> bool {
-    waiting_since.is_some_and(|since| now - since < WAITING_FOR_SECS)
+    // `abs_diff` không tràn số dù `support.json` bị sửa tay thành giá trị lạ; lệch quá 24 giờ (cả hai phía) thì thôi chờ.
+    waiting_since.is_some_and(|since| now.abs_diff(since) < WAITING_FOR_SECS.unsigned_abs())
 }
 
 pub fn next(i: &Inputs) -> Next {
@@ -63,7 +67,7 @@ pub fn next(i: &Inputs) -> Next {
         let quiet = i.now - i.active_at >= QUIET_AFTER_SECS;
         return Next::Poll(if quiet { SLOW_SECS } else { FAST_SECS });
     }
-    if waiting && !i.translating {
+    if waiting && !i.translating && i.window_visible {
         return Next::Poll(WAITING_SECS);
     }
     if i.screen_open {
@@ -175,8 +179,8 @@ mod tests {
                 waiting_since: Some(T),
                 ..hidden
             }),
-            Next::Poll(60),
-            "cửa sổ ẩn mà đang chờ trả lời: như màn hình đóng"
+            Next::Recheck(3),
+            "cửa sổ ẩn mà đang chờ trả lời: không hỏi nền (khách không thấy chấm đỏ, server lại coi là đã nhận)"
         );
         assert_eq!(
             next(&Inputs {
@@ -186,6 +190,48 @@ mod tests {
             }),
             Next::Recheck(3)
         );
+    }
+
+    #[test]
+    fn a_window_hidden_in_the_tray_never_polls_and_polling_resumes_when_it_shows() {
+        let waiting_hidden = Inputs {
+            waiting_since: Some(T - 3600),
+            window_visible: false,
+            ..base()
+        };
+        assert_eq!(
+            next(&waiting_hidden),
+            Next::Recheck(SLOW_SECS),
+            "màn hình đóng, cửa sổ ẩn, đang chờ: xét lại, không gọi mạng"
+        );
+        assert_eq!(
+            next(&Inputs {
+                window_visible: true,
+                ..waiting_hidden
+            }),
+            Next::Poll(60),
+            "cửa sổ hiện lại: hỏi nền như thường"
+        );
+        assert_eq!(
+            next(&Inputs {
+                window_visible: false,
+                has_conversation: true,
+                waiting_since: None,
+                ..base()
+            }),
+            Next::Idle,
+            "không chờ, cửa sổ ẩn: không cần xét lại"
+        );
+    }
+
+    #[test]
+    fn a_hand_edited_waiting_time_cannot_overflow() {
+        assert!(!waiting(Some(i64::MIN), T), "không tràn số, quá xa nên thôi chờ");
+        assert!(!waiting(Some(i64::MAX), T));
+        assert!(waiting(Some(T - 60), T));
+        assert!(waiting(Some(T + 60), T), "đồng hồ lệch vài phút vẫn là đang chờ");
+        assert!(!waiting(Some(T - WAITING_FOR_SECS), T));
+        assert!(!waiting(None, T));
     }
 
     #[test]

@@ -545,7 +545,7 @@ export const ja: Record<MessageKey, string> = {
   "error.composeUnavailable": "翻訳エンジンが停止しました。AI Translator を再起動してください。それでも改善しない場合は、ログをサポートに送ってください。",
   "error.supportOffline": "サポートに接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
   "error.supportRateLimited": "メッセージの送信が速すぎます。数分後にもう一度お試しください。",
-  "error.supportBusy": "サポートは現在たいへん混み合っています。support@aitranslator.io.vn までメールでお問い合わせください。",
+  "error.supportBusy": "サポートは現在たいへん混み合っています。support@aitranslator.io.vn までメールでお問い合わせください",
   "error.supportDisabled": "チャットは一時的に停止しています。support@aitranslator.io.vn までメールでお問い合わせください",
   "error.supportClosed": "この会話は終了しました。support@aitranslator.io.vn までメールでお問い合わせください",
   "error.supportExpired": "以前の会話はもうありません（削除されたか期限切れです）。もう一度送信すると新しい会話が始まります。",

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// Nội dung của `support.json`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Saved {
     /// Token của cuộc chat (43 ký tự base64url); `None` là chưa có cuộc chat.
@@ -22,6 +22,18 @@ pub struct Saved {
     /// Có câu trả lời mới chưa xem (chấm đỏ ở mục Hỗ trợ).
     #[serde(default)]
     pub unread: bool,
+}
+
+// Token mở được cả cuộc chat: `Debug` (log, `assert!`) không bao giờ in nó.
+impl std::fmt::Debug for Saved {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Saved")
+            .field("token", &self.token.as_ref().map(|_| "<ẩn>"))
+            .field("last_id", &self.last_id)
+            .field("waiting_since", &self.waiting_since)
+            .field("unread", &self.unread)
+            .finish()
+    }
 }
 
 /// Token đúng dạng của hợp đồng: 43 ký tự base64url (32 byte ngẫu nhiên).
@@ -87,6 +99,11 @@ mod tests {
         dir.join("support.json")
     }
 
+    /// Dọn thư mục tạm của test.
+    fn done(path: &std::path::Path) {
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
     #[test]
     fn a_conversation_survives_a_restart_with_the_contract_keys() {
         let path = temp("roundtrip");
@@ -105,6 +122,23 @@ mod tests {
             serde_json::json!({ "token": TOKEN, "lastId": 42, "waitingSince": 1_800_000_000, "unread": true })
         );
         assert!(!path.with_extension("json.tmp").exists(), "không còn file tạm");
+        done(&path);
+    }
+
+    #[test]
+    fn debug_output_never_shows_the_token() {
+        let saved = Saved {
+            token: Some(TOKEN.into()),
+            last_id: 3,
+            ..Saved::default()
+        };
+        let shown = format!("{saved:?}");
+        assert!(!shown.contains(TOKEN) && !shown.contains("abcdefgh"), "{shown}");
+        assert!(shown.contains("last_id: 3"), "{shown}");
+        assert!(
+            !format!("{:?}", Saved::default()).contains("ẩn"),
+            "không token thì không có gì để che"
+        );
     }
 
     #[test]
@@ -123,6 +157,7 @@ mod tests {
         assert!(path.exists());
         store.save(&Saved::default()).unwrap();
         assert!(!path.exists(), "xóa cuộc chat thì xóa file");
+        done(&path);
     }
 
     #[test]
@@ -135,13 +170,14 @@ mod tests {
         assert_eq!(Store::new(path.clone()).load(), Saved::default());
         std::fs::write(&path, format!(r#"{{"token":"{TOKEN}","lastId":-5}}"#)).unwrap();
         assert_eq!(
-            Store::new(path).load(),
+            Store::new(path.clone()).load(),
             Saved {
                 token: Some(TOKEN.into()),
                 ..Saved::default()
             },
             "thiếu khóa thì lấy mặc định, con trỏ âm thành 0"
         );
+        done(&path);
     }
 
     #[test]

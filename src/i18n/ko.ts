@@ -545,7 +545,7 @@ export const ko: Record<MessageKey, string> = {
   "error.composeUnavailable": "번역기가 작동을 멈췄습니다. AI Translator를 다시 시작하세요. 계속 실패하면 로그를 지원팀에 보내 주세요.",
   "error.supportOffline": "지원팀에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.",
   "error.supportRateLimited": "메시지를 너무 빨리 보내고 있습니다. 몇 분 후에 다시 시도하세요.",
-  "error.supportBusy": "지금은 지원팀이 매우 바쁩니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요.",
+  "error.supportBusy": "지금은 지원팀이 매우 바쁩니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
   "error.supportDisabled": "채팅이 잠시 꺼져 있습니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
   "error.supportClosed": "이 대화는 종료되었습니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
   "error.supportExpired": "이전 대화가 더 이상 없습니다(삭제되었거나 만료됨). 다시 보내면 새 대화가 시작됩니다.",

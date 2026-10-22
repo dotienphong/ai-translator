@@ -544,7 +544,7 @@ export const en = {
   "error.composeUnavailable": "The translator stopped working. Restart AI Translator; if it keeps failing, send the logs to support.",
   "error.supportOffline": "Could not reach support. Check your internet connection and try again.",
   "error.supportRateLimited": "You are sending messages too quickly. Please try again in a few minutes.",
-  "error.supportBusy": "Support is very busy right now. Please email support@aitranslator.io.vn.",
+  "error.supportBusy": "Support is very busy right now. Please email support@aitranslator.io.vn",
   "error.supportDisabled": "Chat is temporarily off. Please email support@aitranslator.io.vn",
   "error.supportClosed": "This conversation has been closed. Please email support@aitranslator.io.vn",
   "error.supportExpired": "The earlier conversation is gone (deleted or expired). Send again to start a new one.",

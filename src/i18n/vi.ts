@@ -544,7 +544,7 @@ export const vi: Record<MessageKey, string> = {
   "error.composeUnavailable": "Bộ dịch ngừng chạy. Hãy khởi động lại AI Translator; nếu vẫn lỗi, hãy gửi log cho bộ phận hỗ trợ.",
   "error.supportOffline": "Không kết nối được bộ phận hỗ trợ. Kiểm tra kết nối mạng rồi thử lại.",
   "error.supportRateLimited": "Bạn gửi tin quá nhanh. Vui lòng thử lại sau ít phút.",
-  "error.supportBusy": "Bộ phận hỗ trợ đang quá tải. Hãy gửi email tới support@aitranslator.io.vn.",
+  "error.supportBusy": "Bộ phận hỗ trợ đang quá tải. Hãy gửi email tới support@aitranslator.io.vn",
   "error.supportDisabled": "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn",
   "error.supportClosed": "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.io.vn",
   "error.supportExpired": "Cuộc trò chuyện cũ không còn (đã xóa hay hết hạn). Gửi lại để bắt đầu cuộc mới.",

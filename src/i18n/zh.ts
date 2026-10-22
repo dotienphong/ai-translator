@@ -545,7 +545,7 @@ export const zh: Record<MessageKey, string> = {
   "error.composeUnavailable": "翻译引擎已停止工作。请重新启动 AI Translator；如果仍然失败，请把日志发给客服。",
   "error.supportOffline": "无法连接客服。请检查网络连接后重试。",
   "error.supportRateLimited": "发送消息过于频繁。请几分钟后重试。",
-  "error.supportBusy": "客服当前非常繁忙。请发送邮件至 support@aitranslator.io.vn。",
+  "error.supportBusy": "客服当前非常繁忙。请发送邮件至 support@aitranslator.io.vn",
   "error.supportDisabled": "聊天暂时关闭。请发送邮件至 support@aitranslator.io.vn",
   "error.supportClosed": "此对话已关闭。请发送邮件至 support@aitranslator.io.vn",
   "error.supportExpired": "之前的对话已不存在（已删除或已过期）。重新发送即可开始新的对话。",

@@ -63,10 +63,20 @@ pub struct Opening {
 }
 
 /// Cuộc chat vừa tạo: token (chỉ app giữ) và tin đầu tiên server đã lưu.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Deserialize)]
 pub struct Started {
     pub token: String,
     pub message: SupportMessage,
+}
+
+// Token mở được cả cuộc chat: `Debug` (log, `assert!`) không bao giờ in nó.
+impl std::fmt::Debug for Started {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Started")
+            .field("token", &"<ẩn>")
+            .field("message_id", &self.message.id)
+            .finish()
+    }
 }
 
 /// Lỗi của một lần gọi, đã phân loại theo hợp đồng.
@@ -172,7 +182,15 @@ impl HttpSupportApi {
             .bytes()
             .map_err(|e| ApiError::Network(e.without_url().to_string()))?;
         if (200..300).contains(&status) {
-            return serde_json::from_slice(&bytes).map_err(|e| ApiError::Network(format!("response sai dạng: {e}")));
+            // Chỉ giữ loại và vị trí lỗi: thông điệp gốc của `serde_json` có thể chép giá trị trong response.
+            return serde_json::from_slice(&bytes).map_err(|e| {
+                ApiError::Network(format!(
+                    "response sai dạng ({:?}, dòng {} cột {})",
+                    e.classify(),
+                    e.line(),
+                    e.column()
+                ))
+            });
         }
         Err(error_of(status, retry_after, &bytes))
     }
@@ -448,6 +466,18 @@ mod tests {
             (404, vec![], "Not Found"),
             (302, vec![("Location", "https://nơi.khác/")], ""),
             (200, vec![], "không phải json"),
+            (413, vec![], r#"{"error":"invalid_request"}"#),
+            (
+                429,
+                vec![("Retry-After", "3")],
+                "<html><body>Too Many Requests</body></html>",
+            ),
+            (429, vec![("Retry-After", "90")], "<html>Too Many Requests</html>"),
+            (
+                429,
+                vec![("Retry-After", "Wed, 21 Oct 2026 07:28:00 GMT")],
+                r#"{"error":"rate_limited"}"#,
+            ),
         ]);
         let api = HttpSupportApi::new(Some(base));
         assert_eq!(api.send(TOKEN, "a"), Err(ApiError::RateLimited(120)));
@@ -489,6 +519,51 @@ mod tests {
             matches!(api.send(TOKEN, "a"), Err(ApiError::Network(_))),
             "thân sai dạng"
         );
+        assert!(
+            matches!(api.send(TOKEN, "a"), Err(ApiError::Invalid { status: 413, .. })),
+            "thân quá lớn"
+        );
+        assert_eq!(
+            api.send(TOKEN, "a"),
+            Err(ApiError::RateLimited(15)),
+            "429 thân HTML (proxy) vẫn là rate_limited, tối thiểu 15 giây"
+        );
+        assert_eq!(api.send(TOKEN, "a"), Err(ApiError::RateLimited(90)));
+        assert_eq!(
+            api.send(TOKEN, "a"),
+            Err(ApiError::RateLimited(15)),
+            "Retry-After dạng ngày giờ không đọc được: 15 giây"
+        );
+    }
+
+    #[test]
+    fn a_malformed_answer_never_copies_response_text_into_the_error() {
+        let (base, _) = serve(vec![(
+            200,
+            vec![],
+            r#"{"message":{"id":"GIA-TRI-BI-MAT","sender":"owner","text":"x","created_at":1}}"#,
+        )]);
+        let err = HttpSupportApi::new(Some(base)).send(TOKEN, "a").unwrap_err();
+        let ApiError::Network(message) = err else {
+            panic!("{err:?}")
+        };
+        assert!(!message.contains("GIA-TRI-BI-MAT"), "{message}");
+        assert!(message.starts_with("response sai dạng"), "{message}");
+    }
+
+    #[test]
+    fn debug_output_never_shows_the_token() {
+        let started = Started {
+            token: TOKEN.into(),
+            message: SupportMessage {
+                id: 7,
+                sender: Sender::Customer,
+                text: "Chào".into(),
+                created_at: 1,
+            },
+        };
+        let shown = format!("{started:?}");
+        assert!(!shown.contains(TOKEN) && !shown.contains("abcdefgh"), "{shown}");
     }
 
     #[test]
