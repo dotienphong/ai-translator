@@ -6,6 +6,7 @@
 //   pnpm exec vite --config scripts/ui-preview/vite.config.ts   # một cửa sổ Terminal (cổng 1430)
 //   node scripts/ui-preview/shoot.mjs [tên…]                    # cửa sổ khác; không có tên thì chụp hết
 //   node scripts/ui-preview/shoot.mjs --port=1431 [tên…]        # Vite ở cổng khác (hay đặt UI_PREVIEW_PORT=1431)
+//   node scripts/ui-preview/shoot.mjs --lang=ja,zh,ko [tên…]    # chỉ các ngôn ngữ này (mặc định cả năm: vi, en, ja, zh, ko)
 //
 // Chụp lại mỗi khi giao diện đổi (website/README.md). Không chụp màn hình lộ tên thư viện hay model (danh sách giấy phép,
 // Cài đặt › Model): ảnh Giới thiệu chỉ lấy phần trên. Ảnh lặp lại được: múi giờ của Chrome cố định (TIMEZONE), cảnh có giờ
@@ -26,6 +27,10 @@ const args = process.argv.slice(2);
 const PORT = Number(args.find((a) => a.startsWith("--port="))?.slice("--port=".length) ?? process.env.UI_PREVIEW_PORT ?? 1430);
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error(`cổng Vite không hợp lệ: ${PORT}`);
 const BASE = `http://127.0.0.1:${PORT}`;
+// Ngôn ngữ cần chụp: `--lang=ja,zh,ko`; không có thì cả năm ngôn ngữ giao diện của app.
+const ALL_LANGS = ["vi", "en", "ja", "zh", "ko"];
+const LANGS = (args.find((a) => a.startsWith("--lang="))?.slice("--lang=".length).split(",") ?? ALL_LANGS).filter(Boolean);
+for (const l of LANGS) if (!ALL_LANGS.includes(l)) throw new Error(`ngôn ngữ không hợp lệ: ${l} (cần một trong ${ALL_LANGS.join(", ")})`);
 // Múi giờ của Chrome (giờ hạn đơn trên màn hình hiện theo múi giờ cục bộ) và giờ cố định của cảnh có giờ hạn đơn
 // (mock: `now=`, 10:00 giờ Việt Nam): ảnh giống nhau giữa các lần chụp và các máy.
 const TIMEZONE = "Asia/Ho_Chi_Minh";
@@ -33,7 +38,7 @@ const FROZEN = "now=2026-10-16T03:00:00Z";
 
 // [tên ảnh, tham số URL, tùy chọn]. Tên có ".dark" thì chụp giao diện tối. Tùy chọn: `height` cắt ảnh còn bấy nhiêu điểm ảnh
 // (cảnh thấp hơn cửa sổ); `fit` nới cửa sổ cho vừa cả nội dung màn hình (cảnh Nâng cấp dài hơn 640 px, nếu không thì đơn
-// thanh toán và nút bấm bị cắt mép dưới); `langs` chỉ chụp các ngôn ngữ này (không có thì cả vi và en).
+// thanh toán và nút bấm bị cắt mép dưới); `langs` chỉ chụp các ngôn ngữ này (không có thì mọi ngôn ngữ đang chụp).
 const APP = [
   ["app-home-running", "screen=home&session=running"],
   ["app-home-running.dark", "screen=home&session=running&theme=dark"],
@@ -119,7 +124,7 @@ async function shoot(slug, lang, url, { width, height, dpr, dark, transparent, p
 }
 
 try {
-  for (const lang of ["vi", "en"]) {
+  for (const lang of LANGS) {
     for (const [slug, query, opts = {}] of APP.filter(want).filter(([, , o]) => !o?.langs || o.langs.includes(lang))) {
       const dark = slug.includes(".dark");
       // Chọn SRT ở ô xuất file (mô tả ảnh nhắc tới xuất SRT); sự kiện `change` để React nhận.

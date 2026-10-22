@@ -20,6 +20,36 @@
   "description": "The AI Translator Home screen while translating live: a Stop button, Zoom as the audio source, a moving input level meter and the minutes left on a Monthly plan."
  },
  {
+  "file": "app-home-running.ja.webp",
+  "slug": "app-home-running",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 43486,
+  "description": "翻訳中の AI Translator のホーム画面：停止ボタン、音声ソースは Zoom のみ、動いている入力レベル、Monthly プランの今回のサイクルの残り時間。"
+ },
+ {
+  "file": "app-home-running.zh.webp",
+  "slug": "app-home-running",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 41496,
+  "description": "AI Translator 正在实时翻译时的主页：停止按钮、音频来源为仅 Zoom、跳动的输入电平，以及 Monthly 套餐本周期剩余的翻译时间。"
+ },
+ {
+  "file": "app-home-running.ko.webp",
+  "slug": "app-home-running",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 37146,
+  "description": "실시간 번역 중인 AI Translator 홈 화면: 중지 버튼, Zoom만 듣는 오디오 소스, 움직이는 입력 레벨, Monthly 요금제의 이번 주기 남은 번역 시간."
+ },
+ {
   "file": "app-home-running.dark.vi.webp",
   "slug": "app-home-running.dark",
   "lang": "vi",
@@ -38,6 +68,36 @@
   "height": 960,
   "bytes": 40642,
   "description": "The AI Translator Home screen in dark mode while translating live, with Zoom as the audio source and plenty of minutes left on a Monthly plan."
+ },
+ {
+  "file": "app-home-running.dark.ja.webp",
+  "slug": "app-home-running.dark",
+  "lang": "ja",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 38494,
+  "description": "ダークモードで翻訳中のホーム画面。音声ソースは Zoom のみで、Monthly プランの残り時間は十分にあります。"
+ },
+ {
+  "file": "app-home-running.dark.zh.webp",
+  "slug": "app-home-running.dark",
+  "lang": "zh",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 36776,
+  "description": "深色模式下正在翻译的主页，音频来源为仅 Zoom，Monthly 套餐还剩很多翻译时间。"
+ },
+ {
+  "file": "app-home-running.dark.ko.webp",
+  "slug": "app-home-running.dark",
+  "lang": "ko",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 32684,
+  "description": "다크 모드에서 번역 중인 홈 화면. 오디오 소스는 Zoom만이고 Monthly 요금제의 남은 번역 시간이 넉넉합니다."
  },
  {
   "file": "app-home-free.vi.webp",
@@ -60,6 +120,36 @@
   "description": "The AI Translator Home screen in the Ready state on the Free trial: 7 days left, 24 minutes left today, with Start and Upgrade buttons."
  },
  {
+  "file": "app-home-free.ja.webp",
+  "slug": "app-home-free",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 47178,
+  "description": "Free お試し中、待機中の状態のホーム画面：お試しの残り 7 日、本日の残り 24 分、開始ボタンとアップグレードボタン。"
+ },
+ {
+  "file": "app-home-free.zh.webp",
+  "slug": "app-home-free",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 44662,
+  "description": "Free 试用期间处于就绪状态的主页：试用还剩 7 天、今天还剩 24 分钟，并有开始和升级按钮。"
+ },
+ {
+  "file": "app-home-free.ko.webp",
+  "slug": "app-home-free",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 39368,
+  "description": "Free 체험 중 준비됨 상태의 홈 화면: 체험 7일 남음, 오늘 24분 남음, 시작 버튼과 업그레이드 버튼."
+ },
+ {
   "file": "app-transcript.vi.webp",
   "slug": "app-transcript",
   "lang": "vi",
@@ -78,6 +168,36 @@
   "height": 960,
   "bytes": 43264,
   "description": "The transcript of a translation session: each row has a time, the Japanese or Chinese original and the English translation in bold, with a search box, Copy all and SRT export."
+ },
+ {
+  "file": "app-transcript.ja.webp",
+  "slug": "app-transcript",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 54936,
+  "description": "翻訳セッションの文字起こし：各行に時刻、英語または中国語の原文、その下に日本語訳があり、検索欄、すべてコピー、SRT 書き出しがあります。"
+ },
+ {
+  "file": "app-transcript.zh.webp",
+  "slug": "app-transcript",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 44614,
+  "description": "一次翻译会话的转写记录：每行有时间和英语或中文原文，英语句子下方显示中文译文（中文句子与目标语言相同，不再翻译），并有搜索框、全部复制和 SRT 导出。"
+ },
+ {
+  "file": "app-transcript.ko.webp",
+  "slug": "app-transcript",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 47376,
+  "description": "번역 세션의 대본: 각 행에 시간, 영어 또는 중국어 원문, 그 아래 한국어 번역이 있고 검색창, 모두 복사, SRT 내보내기가 있습니다."
  },
  {
   "file": "app-history.vi.webp",
@@ -100,6 +220,36 @@
   "description": "The History screen listing saved sessions, each with its date and time, minutes, sentence count, first sentence and Open and Delete buttons."
  },
  {
+  "file": "app-history.ja.webp",
+  "slug": "app-history",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 36536,
+  "description": "保存したセッションを一覧表示する履歴画面。各セッションに日時、分数、文の数、最初の文、開くボタンと削除ボタンがあります。"
+ },
+ {
+  "file": "app-history.zh.webp",
+  "slug": "app-history",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 31688,
+  "description": "历史记录页面列出已保存的会话，每个会话显示日期和时间、分钟数、句子数、第一句，以及打开和删除按钮。"
+ },
+ {
+  "file": "app-history.ko.webp",
+  "slug": "app-history",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 31518,
+  "description": "저장된 세션 목록을 보여 주는 기록 화면. 각 세션에 날짜와 시간, 분, 문장 수, 첫 문장, 열기 및 삭제 버튼이 있습니다."
+ },
+ {
   "file": "app-glossary.vi.webp",
   "slug": "app-glossary",
   "lang": "vi",
@@ -118,6 +268,36 @@
   "height": 960,
   "bytes": 57624,
   "description": "The Glossary screen with eight term and translation pairs, a form to add terms and Import and Export CSV buttons."
+ },
+ {
+  "file": "app-glossary.ja.webp",
+  "slug": "app-glossary",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 57390,
+  "description": "用語と訳語のペアが 8 件ある用語集画面。用語を追加するフォームと、CSV をインポート／CSV をエクスポートのボタンがあります。"
+ },
+ {
+  "file": "app-glossary.zh.webp",
+  "slug": "app-glossary",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 54908,
+  "description": "术语表页面：8 组术语和译文、添加术语的表单，以及导入 CSV 和导出 CSV 按钮。"
+ },
+ {
+  "file": "app-glossary.ko.webp",
+  "slug": "app-glossary",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 48188,
+  "description": "용어와 번역 8쌍이 있는 용어집 화면. 용어를 추가하는 양식과 CSV 가져오기, CSV 내보내기 버튼이 있습니다."
  },
  {
   "file": "app-settings-subtitles.vi.webp",
@@ -140,6 +320,36 @@
   "description": "Subtitle settings: a sample-sentence preview at the top, font size, text color, background color, background opacity and showing the original text above the translation."
  },
  {
+  "file": "app-settings-subtitles.ja.webp",
+  "slug": "app-settings-subtitles",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 72684,
+  "description": "字幕の設定：上部に例文のプレビュー、文字サイズ、文字色、背景色、背景の不透明度、翻訳の上に原文を表示。"
+ },
+ {
+  "file": "app-settings-subtitles.zh.webp",
+  "slug": "app-settings-subtitles",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 68436,
+  "description": "字幕设置：顶部是例句预览，下面是字号、文字颜色、背景颜色、背景不透明度，以及在译文上方显示原文。"
+ },
+ {
+  "file": "app-settings-subtitles.ko.webp",
+  "slug": "app-settings-subtitles",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 57882,
+  "description": "자막 설정: 위쪽에 예문 미리보기, 글자 크기, 글자 색, 배경 색, 배경 불투명도, 번역 위에 원문 표시."
+ },
+ {
   "file": "app-settings-subtitles.dark.vi.webp",
   "slug": "app-settings-subtitles.dark",
   "lang": "vi",
@@ -158,6 +368,36 @@
   "height": 960,
   "bytes": 72552,
   "description": "Subtitle settings in dark mode: 26 px font, yellow text, navy background and 80% background opacity."
+ },
+ {
+  "file": "app-settings-subtitles.dark.ja.webp",
+  "slug": "app-settings-subtitles.dark",
+  "lang": "ja",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 69162,
+  "description": "ダークモードの字幕設定：文字サイズ 26 px、黄色の文字、紺色の背景、背景の不透明度 80%。"
+ },
+ {
+  "file": "app-settings-subtitles.dark.zh.webp",
+  "slug": "app-settings-subtitles.dark",
+  "lang": "zh",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 64870,
+  "description": "深色模式下的字幕设置：字号 26 px、黄色文字、藏青色背景、背景不透明度 80%。"
+ },
+ {
+  "file": "app-settings-subtitles.dark.ko.webp",
+  "slug": "app-settings-subtitles.dark",
+  "lang": "ko",
+  "theme": "dark",
+  "width": 1440,
+  "height": 960,
+  "bytes": 55408,
+  "description": "다크 모드의 자막 설정: 글자 크기 26px, 노란색 글자, 남색 배경, 배경 불투명도 80%."
  },
  {
   "file": "app-settings-audio.vi.webp",
@@ -180,6 +420,36 @@
   "description": "Audio settings: choosing a single app that is playing sound, such as Zoom, as the source and adjusting the pause that ends a sentence."
  },
  {
+  "file": "app-settings-audio.ja.webp",
+  "slug": "app-settings-audio",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 44692,
+  "description": "音声の設定：音を出しているアプリを 1 つ（例：Zoom）だけ音声ソースに選び、文を区切る間の長さを調整します。"
+ },
+ {
+  "file": "app-settings-audio.zh.webp",
+  "slug": "app-settings-audio",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 38872,
+  "description": "音频设置：选择一个正在播放声音的应用（例如 Zoom）作为音频来源，并调整断句所需的停顿长度。"
+ },
+ {
+  "file": "app-settings-audio.ko.webp",
+  "slug": "app-settings-audio",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 35496,
+  "description": "오디오 설정: 소리를 내고 있는 앱 하나(예: Zoom)만 소스로 고르고, 문장을 끊는 멈춤 길이를 조절합니다."
+ },
+ {
   "file": "app-settings-hotkeys.vi.webp",
   "slug": "app-settings-hotkeys",
   "lang": "vi",
@@ -198,6 +468,36 @@
   "height": 960,
   "bytes": 46498,
   "description": "Shortcut settings on macOS: six global shortcuts, for example ⌃⌥T to start or stop translating and ⌃⌥G to open Type & Translate."
+ },
+ {
+  "file": "app-settings-hotkeys.ja.webp",
+  "slug": "app-settings-hotkeys",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 43758,
+  "description": "macOS のショートカット設定：6 つのグローバルショートカット。たとえば ⌃⌥T で翻訳の開始／停止、⌃⌥G で入力翻訳を開きます。"
+ },
+ {
+  "file": "app-settings-hotkeys.zh.webp",
+  "slug": "app-settings-hotkeys",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 42148,
+  "description": "macOS 上的快捷键设置：6 个全局快捷键，例如 ⌃⌥T 开始或停止翻译，⌃⌥G 打开输入翻译。"
+ },
+ {
+  "file": "app-settings-hotkeys.ko.webp",
+  "slug": "app-settings-hotkeys",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 37404,
+  "description": "macOS의 단축키 설정: 전역 단축키 6개. 예를 들어 ⌃⌥T로 번역을 시작하거나 중지하고, ⌃⌥G로 입력 번역을 엽니다."
  },
  {
   "file": "app-settings-compose.vi.webp",
@@ -220,6 +520,36 @@
   "description": "The Type & Translate settings group on macOS: the Turn on Type & Translate switch, Translate into set to Automatic, the Paste into the chat box automatically switch and the Accessibility permission row showing Granted with an Open Accessibility settings button."
  },
  {
+  "file": "app-settings-compose.ja.webp",
+  "slug": "app-settings-compose",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 55882,
+  "description": "macOS の入力翻訳の設定：入力翻訳をオンにするスイッチ、翻訳先の言語は自動、チャット欄に自動で貼り付けるスイッチ、許可済みと表示されたアクセシビリティの許可の行とアクセシビリティ設定を開くボタン。"
+ },
+ {
+  "file": "app-settings-compose.zh.webp",
+  "slug": "app-settings-compose",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 49630,
+  "description": "macOS 上的输入翻译设置：开启输入翻译开关、目标语言为自动、自动粘贴到聊天框开关，以及显示已授权的辅助功能权限一行和打开辅助功能设置按钮。"
+ },
+ {
+  "file": "app-settings-compose.ko.webp",
+  "slug": "app-settings-compose",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 47138,
+  "description": "macOS의 입력 번역 설정: 입력 번역 켜기 스위치, 번역 언어는 자동, 채팅 입력란에 자동으로 붙여넣기 스위치, 허용됨으로 표시된 손쉬운 사용 권한 행과 손쉬운 사용 설정 열기 버튼."
+ },
+ {
   "file": "app-settings-license.vi.webp",
   "slug": "app-settings-license",
   "lang": "vi",
@@ -238,6 +568,36 @@
   "height": 960,
   "bytes": 51904,
   "description": "License settings: an active Monthly plan with a masked key, minutes left, Renew or change plan, Check now, Deactivate this computer and the Lost your key section."
+ },
+ {
+  "file": "app-settings-license.ja.webp",
+  "slug": "app-settings-license",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 53282,
+  "description": "ライセンスの設定：有効な Monthly プラン、伏せ字のキー、残り時間、更新またはプラン変更、今すぐ確認、このコンピューターを無効化、キーをなくしましたか？の欄。"
+ },
+ {
+  "file": "app-settings-license.zh.webp",
+  "slug": "app-settings-license",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 50284,
+  "description": "许可证设置：有效的 Monthly 套餐、部分隐藏的密钥、剩余时间、续订或更改套餐、立即检查、停用这台电脑，以及丢了密钥？一栏。"
+ },
+ {
+  "file": "app-settings-license.ko.webp",
+  "slug": "app-settings-license",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 44430,
+  "description": "라이선스 설정: 활성 Monthly 요금제, 가려진 키, 남은 시간, 갱신 또는 플랜 변경, 지금 확인, 이 컴퓨터 비활성화, 키를 잃어버렸나요? 항목."
  },
  {
   "file": "app-settings-privacy.vi.webp",
@@ -260,6 +620,36 @@
   "description": "Privacy settings: saving transcript history is off by default and sending error reports automatically is on by default, with buttons to delete all data and to delete models."
  },
  {
+  "file": "app-settings-privacy.ja.webp",
+  "slug": "app-settings-privacy",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 65904,
+  "description": "プライバシーの設定：文字起こしの履歴を保存は初期設定でオフ、エラーレポートを自動送信は初期設定でオン。すべてのデータを削除、モデルとデータを削除のボタンがあります。"
+ },
+ {
+  "file": "app-settings-privacy.zh.webp",
+  "slug": "app-settings-privacy",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 60868,
+  "description": "隐私设置：保存转写历史记录默认关闭，自动发送错误报告默认开启，另有删除所有数据和删除模型和数据按钮。"
+ },
+ {
+  "file": "app-settings-privacy.ko.webp",
+  "slug": "app-settings-privacy",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 51050,
+  "description": "개인정보 설정: 대본 기록 저장은 기본으로 꺼져 있고 오류 보고서 자동 전송은 기본으로 켜져 있으며, 모든 데이터 삭제와 모델 및 데이터 삭제 버튼이 있습니다."
+ },
+ {
   "file": "app-upgrade.vi.webp",
   "slug": "app-upgrade",
   "lang": "vi",
@@ -278,6 +668,36 @@
   "height": 1350,
   "bytes": 75970,
   "description": "The Upgrade screen in English, with International card (USD) preselected, in three numbered steps: step 1 Payment method with two buttons, VietQR bank transfer (VND) and International card (USD), selected, and notes that you pay by card or digital wallet on Creem's payment page in your browser, prices exclude tax and Creem is the merchant of record for card orders; step 2 Choose a plan with four plans (Free with 30 minutes a day for a 10-day trial, Monthly with 50 hours for $3.99, 6 Months with 100 hours for $21.99 and Yearly with unlimited use for $39.99); step 3 Checkout with the Email to receive your key box, the agreement tick box, the folded Privacy Policy and License Agreement (EULA) and the Pay in your browser button."
+ },
+ {
+  "file": "app-upgrade.ja.webp",
+  "slug": "app-upgrade",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 1382,
+  "bytes": 83318,
+  "description": "日本語のアップグレード画面。カード（USD）が選ばれた状態で 3 つの番号付きステップがあります。ステップ 1 お支払い方法：VietQR 銀行振込（VND）とカード（USD）の 2 つのボタン。ブラウザーで開く Creem の支払いページでカードまたはデジタルウォレットで支払うこと、表示価格は税抜であること、カード注文では Creem が販売者（merchant of record）であることの説明。ステップ 2 プランを選ぶ：4 つのプラン（Free は 10 日間のお試しで 1 日 30 分、Monthly は $3.99 で 30 日ごとに 50 時間、6 Months は $21.99 で 30 日ごとに 100 時間、Yearly は $39.99 で無制限）。ステップ 3 お支払い：キーを受け取るメールアドレス欄、同意のチェックボックス、折りたたまれたプライバシーポリシーと使用許諾契約（EULA）、ブラウザーで支払うボタン。"
+ },
+ {
+  "file": "app-upgrade.zh.webp",
+  "slug": "app-upgrade",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 1322,
+  "bytes": 74216,
+  "description": "中文的升级页面，已选好国际银行卡（USD），分为 3 个编号步骤。第 1 步付款方式：VietQR 银行转账（VND）和国际银行卡（USD）两个按钮，并说明在浏览器中打开的 Creem 付款页面上用银行卡或数字钱包付款、价格不含税、银行卡订单由 Creem 作为销售方（merchant of record）。第 2 步选择套餐：4 个套餐（Free 试用 10 天、每天 30 分钟；Monthly $3.99，每 30 天 50 小时；6 Months $21.99，每 30 天 100 小时；Yearly $39.99，不限时长）。第 3 步付款：接收密钥的电子邮箱、同意复选框、折叠的隐私政策和许可协议（EULA），以及在浏览器中付款按钮。"
+ },
+ {
+  "file": "app-upgrade.ko.webp",
+  "slug": "app-upgrade",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 1350,
+  "bytes": 67602,
+  "description": "한국어 업그레이드 화면. 카드 결제(USD)가 선택된 상태로 번호가 붙은 3단계가 있습니다. 1단계 결제 방법: VietQR 계좌 이체(VND)와 카드 결제(USD) 두 버튼, 브라우저에서 여는 Creem 결제 페이지에서 카드나 디지털 지갑으로 결제한다는 안내, 가격은 세금 별도이며 카드 주문은 Creem이 판매자(merchant of record)라는 안내. 2단계 플랜 선택: 플랜 4개(Free는 10일 체험에 하루 30분, Monthly는 $3.99에 30일마다 50시간, 6 Months는 $21.99에 30일마다 100시간, Yearly는 $39.99에 무제한). 3단계 결제: 키를 받을 이메일 입력란, 동의 체크박스, 접힌 개인정보 처리방침과 사용권 계약(EULA), 브라우저에서 결제 버튼."
  },
  {
   "file": "app-upgrade-qr.vi.webp",
@@ -300,6 +720,36 @@
   "description": "The Upgrade screen while a VietQR order is waiting: step 1 Payment method with VietQR selected and locked, step 2 Choose a plan with the Monthly plan selected and the other plans dimmed, step 3 Checkout with an illustrative VietQR code, the order number, the amount 50.000 đ, the code expiry time, a Waiting for your transfer… line, an Open payment page button and a Cancel button."
  },
  {
+  "file": "app-upgrade-qr.ja.webp",
+  "slug": "app-upgrade-qr",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 1202,
+  "bytes": 62002,
+  "description": "VietQR の注文で入金を待っているアップグレード画面：ステップ 1 お支払い方法は VietQR が選ばれ固定、ステップ 2 プランを選ぶでは Monthly が選ばれほかのプランは薄く表示、ステップ 3 お支払いには説明用の VietQR コード、注文番号、金額 50.000 đ、コードの有効期限、お振込みを待っています…の行、支払いページを開くボタンとキャンセルボタン。"
+ },
+ {
+  "file": "app-upgrade-qr.zh.webp",
+  "slug": "app-upgrade-qr",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 1202,
+  "bytes": 57468,
+  "description": "VietQR 订单等待转账时的升级页面：第 1 步付款方式选中并锁定 VietQR，第 2 步选择套餐选中 Monthly、其他套餐变暗，第 3 步付款显示示例 VietQR 码、订单号、金额 50.000 đ、二维码有效期、正在等待你的转账…一行，以及打开付款页面和取消按钮。"
+ },
+ {
+  "file": "app-upgrade-qr.ko.webp",
+  "slug": "app-upgrade-qr",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 1202,
+  "bytes": 53798,
+  "description": "VietQR 주문이 송금을 기다리는 업그레이드 화면: 1단계 결제 방법은 VietQR이 선택되어 고정, 2단계 플랜 선택은 Monthly가 선택되고 다른 플랜은 흐리게 표시, 3단계 결제에는 예시 VietQR 코드, 주문 번호, 금액 50.000 đ, 코드 만료 시각, 송금을 기다리는 중… 줄, 결제 페이지 열기와 취소 버튼."
+ },
+ {
   "file": "app-upgrade-card.vi.webp",
   "slug": "app-upgrade-card",
   "lang": "vi",
@@ -318,6 +768,36 @@
   "height": 1340,
   "bytes": 87860,
   "description": "The Upgrade screen while an international card order is waiting: step 1 Payment method with International card (USD) selected and locked, with notes that you pay by card or digital wallet on Creem's payment page in your browser and that Creem is the merchant of record; step 2 Choose a plan with prices in USD excluding tax; step 3 Checkout with the Finish paying in your browser panel: the order number, the $3.99 amount (excluding tax), the Finish paying before … deadline, a Waiting for payment confirmation… line, Reopen payment page and Cancel buttons and a reminder not to cancel or create a new order if you have already paid."
+ },
+ {
+  "file": "app-upgrade-card.ja.webp",
+  "slug": "app-upgrade-card",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 1340,
+  "bytes": 96796,
+  "description": "カード注文で支払いを待っているアップグレード画面：ステップ 1 お支払い方法はカード（USD）が選ばれ固定、Creem の支払いページで支払うことと Creem が販売者（merchant of record）であることの説明。ステップ 2 プランを選ぶは税抜の USD 価格。ステップ 3 お支払いはブラウザーでお支払いを完了してくださいの欄：注文番号、金額 $3.99（税抜）、支払い期限、お支払いの確認を待っています…の行、支払いページをもう一度開くボタンとキャンセルボタン、すでに支払った場合はキャンセルや新しい注文をしないようにとの注意書き。"
+ },
+ {
+  "file": "app-upgrade-card.zh.webp",
+  "slug": "app-upgrade-card",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 1313,
+  "bytes": 85130,
+  "description": "国际银行卡订单等待付款时的升级页面：第 1 步付款方式选中并锁定国际银行卡（USD），并说明在 Creem 付款页面付款、Creem 是销售方（merchant of record）。第 2 步选择套餐显示不含税的 USD 价格。第 3 步付款为请在浏览器中完成付款一栏：订单号、金额 $3.99（不含税）、付款截止时间、正在等待付款确认…一行、重新打开付款页面和取消按钮，以及已付款就不要取消或新建订单的提醒。"
+ },
+ {
+  "file": "app-upgrade-card.ko.webp",
+  "slug": "app-upgrade-card",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 1340,
+  "bytes": 76446,
+  "description": "카드 주문이 결제를 기다리는 업그레이드 화면: 1단계 결제 방법은 카드 결제(USD)가 선택되어 고정, Creem 결제 페이지에서 결제하며 Creem이 판매자(merchant of record)라는 안내. 2단계 플랜 선택은 세금 별도 USD 가격. 3단계 결제는 브라우저에서 결제를 마치세요 항목: 주문 번호, 금액 $3.99(세금 별도), 결제 기한, 결제 확인을 기다리는 중… 줄, 결제 페이지 다시 열기와 취소 버튼, 이미 결제했다면 취소하거나 새 주문을 만들지 말라는 안내."
  },
  {
   "file": "app-about.vi.webp",
@@ -340,6 +820,36 @@
   "description": "The About screen: the app name, the Version line, the Open log folder and Send log to support buttons, and Terms and privacy."
  },
  {
+  "file": "app-about.ja.webp",
+  "slug": "app-about",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 580,
+  "bytes": 37440,
+  "description": "このアプリについての画面：アプリ名、バージョンの行、ログフォルダーを開くボタンとログをサポートに送信ボタン、利用規約とプライバシー。"
+ },
+ {
+  "file": "app-about.zh.webp",
+  "slug": "app-about",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 580,
+  "bytes": 34666,
+  "description": "关于页面：应用名称、版本一行、打开日志文件夹和向客服发送日志按钮，以及条款与隐私。"
+ },
+ {
+  "file": "app-about.ko.webp",
+  "slug": "app-about",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 580,
+  "bytes": 33332,
+  "description": "정보 화면: 앱 이름, 버전 줄, 로그 폴더 열기와 지원팀에 로그 보내기 버튼, 약관 및 개인정보."
+ },
+ {
   "file": "app-onboarding-1.vi.webp",
   "slug": "app-onboarding-1",
   "lang": "vi",
@@ -358,6 +868,36 @@
   "height": 960,
   "bytes": 17112,
   "description": "Step 1 of 9 on first launch: choosing the interface language among five (Tiếng Việt, English, 日本語, 中文, 한국어)."
+ },
+ {
+  "file": "app-onboarding-1.ja.webp",
+  "slug": "app-onboarding-1",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 15540,
+  "description": "初回起動時のステップ 1/9：5 つの中から表示言語を選択（Tiếng Việt、English、日本語、中文、한국어）。"
+ },
+ {
+  "file": "app-onboarding-1.zh.webp",
+  "slug": "app-onboarding-1",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 15544,
+  "description": "首次启动的第 1/9 步：从 5 种界面语言中选择（Tiếng Việt、English、日本語、中文、한국어）。"
+ },
+ {
+  "file": "app-onboarding-1.ko.webp",
+  "slug": "app-onboarding-1",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 14374,
+  "description": "처음 실행할 때의 1/9단계: 5개 언어 중 표시 언어 선택(Tiếng Việt, English, 日本語, 中文, 한국어)."
  },
  {
   "file": "app-onboarding-2.vi.webp",
@@ -380,6 +920,36 @@
   "description": "Step 2: terms of use, with a checkbox to accept the License Agreement and the Privacy Policy, and a pre-ticked optional checkbox for automatic error reports."
  },
  {
+  "file": "app-onboarding-2.ja.webp",
+  "slug": "app-onboarding-2",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 37554,
+  "description": "ステップ 2：利用条件。使用許諾契約とプライバシーポリシーに同意するチェックボックスと、最初からチェックの入った任意のエラーレポート自動送信のチェックボックス。"
+ },
+ {
+  "file": "app-onboarding-2.zh.webp",
+  "slug": "app-onboarding-2",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 33868,
+  "description": "第 2 步：使用条款，有一个同意许可协议和隐私政策的复选框，以及一个默认勾选、可选的自动发送错误报告复选框。"
+ },
+ {
+  "file": "app-onboarding-2.ko.webp",
+  "slug": "app-onboarding-2",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 34420,
+  "description": "2단계: 이용 약관. 사용권 계약과 개인정보 처리방침에 동의하는 체크박스와, 미리 체크된 선택 항목인 오류 보고서 자동 전송 체크박스."
+ },
+ {
   "file": "app-onboarding-3.vi.webp",
   "slug": "app-onboarding-3",
   "lang": "vi",
@@ -398,6 +968,36 @@
   "height": 960,
   "bytes": 43692,
   "description": "Step 3: checking this computer and choosing a model pack, with the 2.5 GB Standard pack recommended and the 1.3 GB Lite pack."
+ },
+ {
+  "file": "app-onboarding-3.ja.webp",
+  "slug": "app-onboarding-3",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 43388,
+  "description": "ステップ 3：このコンピューターを確認してモデルパックを選択。2.5 GB の Standard パックがおすすめで、1.3 GB の Lite パックもあります。"
+ },
+ {
+  "file": "app-onboarding-3.zh.webp",
+  "slug": "app-onboarding-3",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 40734,
+  "description": "第 3 步：检查这台电脑并选择模型包，推荐 2.5 GB 的 Standard 模型包，另有 1.3 GB 的 Lite 模型包。"
+ },
+ {
+  "file": "app-onboarding-3.ko.webp",
+  "slug": "app-onboarding-3",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 38198,
+  "description": "3단계: 이 컴퓨터를 확인하고 모델 팩 선택. 2.5GB Standard 팩이 추천되며 1.3GB Lite 팩도 있습니다."
  },
  {
   "file": "app-onboarding-4.vi.webp",
@@ -420,6 +1020,36 @@
   "description": "Step 4: downloading the model, the progress bar at 1.1 GB of 2.5 GB, with a Pause button and the option to continue meanwhile."
  },
  {
+  "file": "app-onboarding-4.ja.webp",
+  "slug": "app-onboarding-4",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 20162,
+  "description": "ステップ 4：モデルをダウンロード中。進捗バーは 2.5 GB 中 1.1 GB で、一時停止ボタンがあり、待たずに先へ進めます。"
+ },
+ {
+  "file": "app-onboarding-4.zh.webp",
+  "slug": "app-onboarding-4",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 17602,
+  "description": "第 4 步：正在下载模型，进度条为 2.5 GB 中的 1.1 GB，有暂停按钮，也可以先继续下一步。"
+ },
+ {
+  "file": "app-onboarding-4.ko.webp",
+  "slug": "app-onboarding-4",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 17498,
+  "description": "4단계: 모델 다운로드 중. 진행률 막대는 2.5GB 중 1.1GB이고, 일시 중지 버튼이 있으며 기다리지 않고 계속할 수 있습니다."
+ },
+ {
   "file": "app-onboarding-5.vi.webp",
   "slug": "app-onboarding-5",
   "lang": "vi",
@@ -438,6 +1068,36 @@
   "height": 960,
   "bytes": 29014,
   "description": "Step 5: how to allow system audio recording on macOS, with an Open System Settings button."
+ },
+ {
+  "file": "app-onboarding-5.ja.webp",
+  "slug": "app-onboarding-5",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 31142,
+  "description": "ステップ 5：macOS でシステムオーディオの録音を許可する方法と、システム設定を開くボタン。"
+ },
+ {
+  "file": "app-onboarding-5.zh.webp",
+  "slug": "app-onboarding-5",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 26822,
+  "description": "第 5 步：在 macOS 上允许录制系统音频的方法，以及打开系统设置按钮。"
+ },
+ {
+  "file": "app-onboarding-5.ko.webp",
+  "slug": "app-onboarding-5",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 23640,
+  "description": "5단계: macOS에서 시스템 오디오 녹음을 허용하는 방법과 시스템 설정 열기 버튼."
  },
  {
   "file": "app-onboarding-6.vi.webp",
@@ -460,6 +1120,36 @@
   "description": "Step 6: choosing the language to translate into, the languages spoken in the meeting and the source language."
  },
  {
+  "file": "app-onboarding-6.ja.webp",
+  "slug": "app-onboarding-6",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 24032,
+  "description": "ステップ 6：翻訳先の言語、会議で話される言語、音声の言語を選びます。"
+ },
+ {
+  "file": "app-onboarding-6.zh.webp",
+  "slug": "app-onboarding-6",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 24236,
+  "description": "第 6 步：选择目标语言、会议中使用的语言以及源语言。"
+ },
+ {
+  "file": "app-onboarding-6.ko.webp",
+  "slug": "app-onboarding-6",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 21776,
+  "description": "6단계: 번역할 언어, 회의에서 쓰는 언어, 원본 언어를 고릅니다."
+ },
+ {
   "file": "app-onboarding-7.vi.webp",
   "slug": "app-onboarding-7",
   "lang": "vi",
@@ -478,6 +1168,36 @@
   "height": 960,
   "bytes": 27460,
   "description": "Step 7: trying it out, the app plays an English sample sentence and shows its Vietnamese translation."
+ },
+ {
+  "file": "app-onboarding-7.ja.webp",
+  "slug": "app-onboarding-7",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 29078,
+  "description": "ステップ 7：試してみる。アプリが英語の例文を再生し、その日本語訳を表示します。"
+ },
+ {
+  "file": "app-onboarding-7.zh.webp",
+  "slug": "app-onboarding-7",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 26952,
+  "description": "第 7 步：试一试，应用播放一句英语例句并显示中文译文。"
+ },
+ {
+  "file": "app-onboarding-7.ko.webp",
+  "slug": "app-onboarding-7",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 25316,
+  "description": "7단계: 사용해 보기. 앱이 영어 예문을 재생하고 한국어 번역을 보여 줍니다."
  },
  {
   "file": "app-onboarding-8.vi.webp",
@@ -500,6 +1220,36 @@
   "description": "Step 8: privacy, audio never leaves the computer because speech recognition and translation run on it."
  },
  {
+  "file": "app-onboarding-8.ja.webp",
+  "slug": "app-onboarding-8",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 27482,
+  "description": "ステップ 8：プライバシー。音声認識と翻訳はパソコン上で動くため、音声がパソコンの外に出ることはありません。"
+ },
+ {
+  "file": "app-onboarding-8.zh.webp",
+  "slug": "app-onboarding-8",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 23862,
+  "description": "第 8 步：隐私，语音识别和翻译都在电脑上运行，因此音频不会离开电脑。"
+ },
+ {
+  "file": "app-onboarding-8.ko.webp",
+  "slug": "app-onboarding-8",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 24548,
+  "description": "8단계: 개인정보. 음성 인식과 번역이 컴퓨터에서 실행되므로 음성이 컴퓨터 밖으로 나가지 않습니다."
+ },
+ {
   "file": "app-onboarding-9.vi.webp",
   "slug": "app-onboarding-9",
   "lang": "vi",
@@ -518,6 +1268,36 @@
   "height": 960,
   "bytes": 23520,
   "description": "Step 9: AI Translator keeps running in the menu bar when the window is closed, with the Start using AI Translator button."
+ },
+ {
+  "file": "app-onboarding-9.ja.webp",
+  "slug": "app-onboarding-9",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 27546,
+  "description": "ステップ 9：ウィンドウを閉じても AI Translator はメニューバーで動作し続けます。AI Translator を使い始めるボタン。"
+ },
+ {
+  "file": "app-onboarding-9.zh.webp",
+  "slug": "app-onboarding-9",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 22590,
+  "description": "第 9 步：关闭窗口后 AI Translator 仍在菜单栏中运行，并有开始使用 AI Translator 按钮。"
+ },
+ {
+  "file": "app-onboarding-9.ko.webp",
+  "slug": "app-onboarding-9",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1440,
+  "height": 960,
+  "bytes": 22434,
+  "description": "9단계: 창을 닫아도 AI Translator는 메뉴 막대에서 계속 실행되며, AI Translator 시작하기 버튼이 있습니다."
  },
  {
   "file": "overlay-default.vi.webp",
@@ -540,6 +1320,36 @@
   "description": "The default floating subtitle bar, white text on a translucent black background, showing the Japanese and Chinese original above the English translation."
  },
  {
+  "file": "overlay-default.ja.webp",
+  "slug": "overlay-default",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 128110,
+  "description": "初期設定のフローティング字幕バー。半透明の黒い背景に白い文字で、英語と中国語の原文の下に日本語訳を表示しています。"
+ },
+ {
+  "file": "overlay-default.zh.webp",
+  "slug": "overlay-default",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 94666,
+  "description": "默认的悬浮字幕栏，半透明黑色背景上的白色文字：英语原文下方显示中文译文，中文原文与目标语言相同，直接显示。"
+ },
+ {
+  "file": "overlay-default.ko.webp",
+  "slug": "overlay-default",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 100182,
+  "description": "기본 플로팅 자막 바. 반투명 검은 배경에 흰 글자로, 영어와 중국어 원문 아래에 한국어 번역을 보여 줍니다."
+ },
+ {
   "file": "overlay-custom.vi.webp",
   "slug": "overlay-custom",
   "lang": "vi",
@@ -558,6 +1368,36 @@
   "height": 400,
   "bytes": 103184,
   "description": "A customized subtitle bar: size 26 yellow text on an 80% navy background, with the Chinese and Japanese original above the English translation."
+ },
+ {
+  "file": "overlay-custom.ja.webp",
+  "slug": "overlay-custom",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1800,
+  "height": 400,
+  "bytes": 111644,
+  "description": "カスタマイズした字幕バー：サイズ 26 の黄色の文字、不透明度 80% の紺色の背景で、英語と中国語の原文の下に日本語訳。"
+ },
+ {
+  "file": "overlay-custom.zh.webp",
+  "slug": "overlay-custom",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1800,
+  "height": 400,
+  "bytes": 84296,
+  "description": "自定义的字幕栏：字号 26 的黄色文字、不透明度 80% 的藏青色背景，英语原文下方显示中文译文。"
+ },
+ {
+  "file": "overlay-custom.ko.webp",
+  "slug": "overlay-custom",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1800,
+  "height": 400,
+  "bytes": 87582,
+  "description": "사용자 지정 자막 바: 크기 26의 노란 글자, 불투명도 80%의 남색 배경, 영어와 중국어 원문 아래에 한국어 번역."
  },
  {
   "file": "overlay-locked.vi.webp",
@@ -580,6 +1420,36 @@
   "description": "The subtitle bar in locked, click-through mode: no handle and no buttons, with three meeting sentences translated into English."
  },
  {
+  "file": "overlay-locked.ja.webp",
+  "slug": "overlay-locked",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 127550,
+  "description": "ロック（クリックを通過）状態の字幕バー：つまみもボタンもなく、日本語に翻訳された会議の 3 文を表示しています。"
+ },
+ {
+  "file": "overlay-locked.zh.webp",
+  "slug": "overlay-locked",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 94072,
+  "description": "锁定（点击穿透）状态的字幕栏：没有拖动把手和按钮，显示会议中的三句话，英语句子下方是中文译文。"
+ },
+ {
+  "file": "overlay-locked.ko.webp",
+  "slug": "overlay-locked",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1800,
+  "height": 448,
+  "bytes": 99236,
+  "description": "잠금(클릭 통과) 상태의 자막 바: 손잡이와 버튼 없이 한국어로 번역된 회의 문장 세 개를 보여 줍니다."
+ },
+ {
   "file": "compose-done.vi.webp",
   "slug": "compose-done",
   "lang": "vi",
@@ -598,5 +1468,35 @@
   "height": 464,
   "bytes": 18460,
   "description": "The Type & Translate box once the translation is ready: an English message in the text box, the Vietnamese translation below, and the footer Enter: paste, Shift+Enter: new line, Esc: close."
+ },
+ {
+  "file": "compose-done.ja.webp",
+  "slug": "compose-done",
+  "lang": "ja",
+  "theme": "light",
+  "width": 1120,
+  "height": 464,
+  "bytes": 19524,
+  "description": "翻訳ができた入力翻訳ボックス：入力欄に日本語のメッセージ、その下に英語訳、下部に Enter：貼り付け · Shift+Enter：改行 · Esc：閉じる。"
+ },
+ {
+  "file": "compose-done.zh.webp",
+  "slug": "compose-done",
+  "lang": "zh",
+  "theme": "light",
+  "width": 1120,
+  "height": 464,
+  "bytes": 16886,
+  "description": "翻译完成后的输入翻译框：输入框里是中文消息，下方是英文译文，底部是 Enter：粘贴 · Shift+Enter：换行 · Esc：关闭。"
+ },
+ {
+  "file": "compose-done.ko.webp",
+  "slug": "compose-done",
+  "lang": "ko",
+  "theme": "light",
+  "width": 1120,
+  "height": 464,
+  "bytes": 15788,
+  "description": "번역이 끝난 입력 번역 상자: 입력란에 한국어 메시지, 그 아래 영어 번역, 아래쪽에 Enter: 붙여넣기 · Shift+Enter: 줄 바꿈 · Esc: 닫기."
  }
 ]

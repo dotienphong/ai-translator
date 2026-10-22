@@ -982,7 +982,8 @@ test("manifest ảnh app: mọi ảnh trang dùng đều có mục, mỗi mục 
     }
     const size = (await stat(file)).size;
     if (size !== e.bytes) errors.push(`${e.file}: manifest ghi ${e.bytes} B nhưng file có ${size} B (chạy lại scripts/ui-preview/shoot.mjs)`);
-    if (!e.description || e.description.length < 40) errors.push(`${e.file}: thiếu mô tả`);
+    // Chữ CJK gọn hơn chữ Latin: mô tả đủ ý của ja/zh/ko có thể dưới 40 ký tự.
+    if (!e.description || e.description.length < (CJK.has(e.lang) ? 20 : 40)) errors.push(`${e.file}: thiếu mô tả`);
   }
   assert.deepEqual(errors, []);
 });
