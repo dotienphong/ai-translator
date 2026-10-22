@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LANGS, LANG_CODES, PUBLISHED, CJK, VI_EN_ONLY, tagOf, homeOf, isHome, fromEn, formatDate } from "../src/langs.mjs";
+import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 
 test("LANGS: năm ngôn ngữ, thẻ BCP 47 (tiếng Trung giản thể là zh-Hans), tiền tố, og:locale, tên bản ngữ", () => {
   assert.deepEqual(LANG_CODES, ["vi", "en", "ja", "zh", "ko"]);
@@ -30,4 +31,25 @@ test("formatDate theo ngôn ngữ", () => {
   assert.equal(formatDate("2026-10-09", "ja"), "2026年10月9日");
   assert.equal(formatDate("2026-10-09", "zh"), "2026年10月9日");
   assert.equal(formatDate("2026-10-09", "ko"), "2026년 10월 9일");
+});
+
+test("giá theo ngôn ngữ: VND và USD (ja/zh/ko viết US$ để không nhầm với yên, nhân dân tệ)", () => {
+  assert.equal(vnd(50000, "vi"), "50.000 ₫");
+  assert.equal(vnd(50000, "en"), "50,000 ₫");
+  for (const l of ["ja", "zh", "ko"]) {
+    assert.equal(vnd(269000, l), "269,000 ₫", l);
+    assert.equal(usd(399, l), "US$3.99", l);
+    assert.equal(usd(3999, l), "US$39.99", l);
+  }
+  assert.equal(usd(399, "vi"), "3,99 USD");
+  assert.equal(usd(399, "en"), "$3.99");
+  assert.equal(vnd(0, "ja"), "0 ₫");
+});
+
+test("tên gói: tiếng Việt dùng nameVi, mọi ngôn ngữ khác dùng tên tiếng Anh như app; mô tả gói có đủ năm ngôn ngữ", () => {
+  const monthly = PLANS.find((p) => p.code === "monthly");
+  assert.equal(planName(monthly, "vi"), monthly.nameVi);
+  for (const l of ["en", "ja", "zh", "ko"]) assert.equal(planName(monthly, l), "Monthly");
+  for (const p of PLANS) for (const l of ["vi", "en", "ja", "zh", "ko"]) assert.ok(planSummary(p, l)?.length > 5, `${p.code} ${l}`);
+  assert.equal(planSummary(monthly, "en"), monthly.summaryEn);
 });
