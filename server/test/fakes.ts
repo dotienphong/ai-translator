@@ -176,9 +176,12 @@ export class FakeResend {
   /** Trường `name` trong body lỗi, ví dụ "invalid_idempotent_request" với 409. */
   failName = "error";
   attempts = 0;
+  /** `Idempotency-Key` của mọi lần gọi, kể cả lần lỗi (kiểm: gửi lại sau lỗi tạm thì giữ nguyên khóa). */
+  readonly attemptKeys: (string | null)[] = [];
 
   readonly fetch = async (_url: string, init: RequestInit = {}): Promise<Response> => {
     this.attempts++;
+    this.attemptKeys.push((init.headers as Record<string, string>)["idempotency-key"] ?? null);
     if (this.failStatus !== null) return json({ statusCode: this.failStatus, message: "lỗi giả", name: this.failName }, this.failStatus);
     if (this.down) return json({ statusCode: 500, message: "down", name: "internal_server_error" }, 500);
     const body = JSON.parse(init.body as string) as { to: string[]; subject: string; text: string };
@@ -639,6 +642,8 @@ export class FakeZalo {
   okFalseWith200 = false;
   /** HTTP 200 nhưng thân là HTML, không phải JSON (trang lỗi của proxy). */
   htmlWith200 = false;
+  /** Từ chối (HTTP 400) tin có nội dung chứa chuỗi này, như Zalo từ chối một nội dung cụ thể; các tin khác vẫn đi. */
+  failWhenTextIncludes: string | null = null;
 
   readonly fetch = async (url: string, init: RequestInit = {}): Promise<Response> => {
     this.urls.push(url);
@@ -648,6 +653,9 @@ export class FakeZalo {
     if (this.okFalseWith200) return json({ ok: false, error_code: 404, description: "lỗi giả" });
     this.contentTypes.push((init.headers as Record<string, string>)["content-type"]);
     const body = JSON.parse(init.body as string) as { chat_id: string; text: string };
+    if (this.failWhenTextIncludes !== null && body.text.includes(this.failWhenTextIncludes)) {
+      return json({ ok: false, error_code: 400, description: "nội dung bị từ chối" }, 400);
+    }
     this.sent.push({ chatId: body.chat_id, text: body.text });
     return json({ ok: true, result: { message_id: crypto.randomUUID(), date: 1_790_812_800_000 } });
   };

@@ -22,6 +22,7 @@ it("migration tạo đủ bảng", async () => {
     "support_conversations",
     "support_messages",
     "support_settings",
+    "support_zalo_updates",
     "trials",
   ]);
 });
@@ -48,6 +49,9 @@ it("chat hỗ trợ: nguồn, ngôn ngữ, người gửi, trạng thái chỉ n
   await msg.bind(id, "customer", null).run();
   await msg.bind(id, "customer", null).run();
   expect(await env.DB.prepare("SELECT COUNT(*) AS n, MIN(forward_attempts) AS a FROM support_messages").first()).toEqual({ n: 3, a: 0 });
+  const seen = env.DB.prepare("INSERT INTO support_zalo_updates (message_id, received_at) VALUES (?, 0)");
+  await seen.bind("zm-1").run();
+  await expect(seen.bind("zm-1").run()).rejects.toThrow(/UNIQUE/);
 });
 
 it("mỗi máy chỉ có một dòng activation cho một license, kể cả sau khi gỡ", async () => {

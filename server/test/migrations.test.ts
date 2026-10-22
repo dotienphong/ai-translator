@@ -297,7 +297,7 @@ it("0004 chỉ thêm hai bảng báo cáo lỗi và ba index; bảng cũ và d�
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });
 
-it("0005 chỉ thêm ba bảng chat hỗ trợ và bốn index; chat mặc định tắt; bảng cũ và dữ liệu cũ giữ nguyên", async () => {
+it("0005 chỉ thêm bốn bảng chat hỗ trợ và bốn index; chat mặc định tắt; bảng cũ và dữ liệu cũ giữ nguyên", async () => {
   // D1 đang ở trạng thái sau 0004 (test trên chỉ áp bốn migration đầu).
   const tables = async () =>
     (
@@ -319,7 +319,7 @@ it("0005 chỉ thêm ba bảng chat hỗ trợ và bốn index; chat mặc đị
 
   const after = await tables();
   expect(after.filter((t) => !t.name.startsWith("support_"))).toEqual(before);
-  expect(after.map((t) => t.name).filter((n) => n.startsWith("support_"))).toEqual(["support_conversations", "support_messages", "support_settings"]);
+  expect(after.map((t) => t.name).filter((n) => n.startsWith("support_"))).toEqual(["support_conversations", "support_messages", "support_settings", "support_zalo_updates"]);
   expect(await indexNames()).toEqual(
     [
       ...indexesBefore,

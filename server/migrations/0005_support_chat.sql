@@ -1,5 +1,5 @@
 -- Chat hỗ trợ trên website và app, tin nhắn về Zalo của chủ dự án (spec 2026-10-22-chat-ho-tro-zalo-design.md §2.1).
--- Chỉ THÊM ba bảng và bốn index; không đổi bảng nào đã có, không nối với bảng license.
+-- Chỉ THÊM bốn bảng và bốn index; không đổi bảng nào đã có, không nối với bảng license.
 -- Cuộc chat tự xóa 90 ngày sau lần hoạt động cuối (cron */5: src/support/cron.ts, pruneSupport).
 -- Worker cũ không biết các bảng này nên chạy đúng trên schema mới: áp migration này TRƯỚC khi deploy Worker mới.
 
@@ -44,3 +44,9 @@ CREATE TABLE support_settings (
   value TEXT NOT NULL
 );
 INSERT INTO support_settings (key, value) VALUES ('enabled', '0'), ('zalo_fail_streak', '0');
+
+-- message_id của sự kiện Zalo đã xử lý xong (lệnh, câu trả lời, tin bị từ chối); Zalo gửi lại thì bỏ qua; dọn sau 2 ngày (pruneSupport).
+CREATE TABLE support_zalo_updates (
+  message_id TEXT PRIMARY KEY,
+  received_at INTEGER NOT NULL
+);

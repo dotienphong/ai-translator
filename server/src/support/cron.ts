@@ -4,7 +4,7 @@ import { raiseAlert } from "../alerts";
 import type { Deps } from "../deps";
 import { EmailProviderError, maskEmail } from "../email/provider";
 import { supportReplyEmail } from "../email/templates";
-import { FORWARD_WINDOW, forwardConversation } from "./forward";
+import { FORWARD_WINDOW, forwardBatch, MAX_ATTEMPTS } from "./forward";
 import { getSetting, setSetting } from "./store";
 
 /** Cuộc chat không có hoạt động trong 90 ngày thì bị xóa. */
@@ -15,35 +15,40 @@ const EMAIL_AFTER = 120;
 const EMAIL_EVERY = 3600;
 const FAIL_STREAK_ALERT = 3;
 const BATCH = 50;
+/** Trần tổng số tin gửi lại trong một lần chạy cron. */
+export const MAX_PER_RUN = 100;
+/** Dòng `support_zalo_updates` giữ 2 ngày: Zalo chỉ gửi lại sự kiện trong thời gian ngắn. */
+const ZALO_UPDATES_KEEP = 2 * 86400;
 const EMAIL_BATCH = 20;
 
 /**
- * Gửi lại tin chờ của tối đa 50 cuộc chat. Gửi được ít nhất một tin thì đặt lại chuỗi lỗi; cả lần chạy chỉ có lỗi thì tăng chuỗi,
- * tới 3 thì cảnh báo support_zalo_failed (gộp theo giờ như mọi cảnh báo). Gặp lỗi ở một cuộc chat thì dừng: Zalo đang lỗi.
+ * Gửi lại tin chờ của tối đa 50 cuộc chat đang mở (tin bị Zalo từ chối 5 lần thì bỏ qua), tổng tối đa 100 tin mỗi lần chạy.
+ * Lỗi ở một cuộc chat thì đi tiếp cuộc chat khác (lỗi có thể do nội dung riêng của cuộc chat đó); đủ 3 lần gửi lỗi trong một lần chạy
+ * thì dừng, vì Zalo đang lỗi chung. Chuỗi lỗi: về 0 khi gửi được ít nhất một tin hay không còn tin chờ; tăng khi lần chạy có lỗi mà
+ * không gửi được tin nào, tới 3 thì cảnh báo support_zalo_failed (gộp theo giờ như mọi cảnh báo).
  */
 export async function forwardPendingSupport(db: D1Database, deps: Pick<Deps, "zalo">, now: number): Promise<void> {
   if (!deps.zalo) return;
   const { results } = await db
     .prepare(
-      `SELECT DISTINCT conversation_id AS id FROM support_messages
-       WHERE sender = 'customer' AND forwarded_at IS NULL AND created_at >= ?
-       ORDER BY conversation_id LIMIT ?`,
+      `SELECT DISTINCT m.conversation_id AS id FROM support_messages m
+       JOIN support_conversations c ON c.id = m.conversation_id
+       WHERE c.status = 'open' AND m.sender = 'customer' AND m.forwarded_at IS NULL AND m.created_at >= ? AND m.forward_attempts < ?
+       ORDER BY m.conversation_id LIMIT ?`,
     )
-    .bind(now - FORWARD_WINDOW, BATCH)
+    .bind(now - FORWARD_WINDOW, MAX_ATTEMPTS, BATCH)
     .all<{ id: number }>();
   let sent = 0;
-  let failed = false;
+  let failures = 0;
   for (const { id } of results) {
-    const result = await forwardConversation(db, deps.zalo, id, now);
-    if (result === "sent") sent++;
-    if (result === "failed") {
-      failed = true;
-      break;
-    }
+    if (sent >= MAX_PER_RUN) break;
+    const batch = await forwardBatch(db, deps.zalo, id, now, MAX_PER_RUN - sent);
+    sent += batch.sent;
+    if (batch.result === "failed" && ++failures >= FAIL_STREAK_ALERT) break;
   }
-  if (sent > 0) {
+  if (sent > 0 || results.length === 0) {
     await setSetting(db, "zalo_fail_streak", "0");
-  } else if (failed) {
+  } else if (failures > 0) {
     const streak = Number((await getSetting(db, "zalo_fail_streak")) ?? "0") + 1;
     await setSetting(db, "zalo_fail_streak", String(streak));
     if (streak >= FAIL_STREAK_ALERT) await raiseAlert(db, "support_zalo_failed", now);
@@ -96,5 +101,6 @@ export async function pruneSupport(db: D1Database, now: number): Promise<void> {
   await db.batch([
     db.prepare("DELETE FROM support_messages WHERE conversation_id IN (SELECT id FROM support_conversations WHERE last_activity_at < ?)").bind(cutoff),
     db.prepare("DELETE FROM support_conversations WHERE last_activity_at < ?").bind(cutoff),
+    db.prepare("DELETE FROM support_zalo_updates WHERE received_at < ?").bind(now - ZALO_UPDATES_KEEP),
   ]);
 }

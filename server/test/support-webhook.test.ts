@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isEnabled } from "../src/support/store";
-import { resetDb } from "./db";
+import { resetDb, withFailingInsert } from "./db";
 import { auth, enableChat, ownerSays, startChat, webhook, zaloUpdate } from "./support-helpers";
 import { makeWorld, T0 } from "./world";
 
@@ -24,6 +24,15 @@ describe("webhook Zalo POST /v1/webhooks/zalo (spec 2026-10-22 §2.4, §2.5)", (
     const w = makeWorld();
     expect((await webhook(w, ownerSays("/bat"), "sai-secret")).status).toBe(403);
     expect((await w.call("POST", "/v1/webhooks/zalo", ownerSays("/bat"))).status).toBe(403);
+    expect(await isEnabled(env.DB)).toBe(false);
+    expect(w.zalo.sent).toEqual([]);
+  });
+
+  it("secret của server rỗng (chưa đặt): mọi tin bị từ chối, kể cả không header hay header rỗng", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld({ ZALO_WEBHOOK_SECRET: "" });
+    expect((await w.call("POST", "/v1/webhooks/zalo", ownerSays("/bat"))).status).toBe(403);
+    expect((await w.call("POST", "/v1/webhooks/zalo", ownerSays("/bat"), { "x-bot-api-secret-token": "" })).status).toBe(403);
     expect(await isEnabled(env.DB)).toBe(false);
     expect(w.zalo.sent).toEqual([]);
   });
@@ -96,6 +105,48 @@ describe("webhook Zalo POST /v1/webhooks/zalo (spec 2026-10-22 §2.4, §2.5)", (
     await webhook(w, update);
     expect(await ownerRows()).toBe(1);
     expect(w.zalo.texts().filter((t) => t.startsWith("✓"))).toEqual([`✓ đã gửi tới #${chat.code}`]);
+  });
+
+  it("Zalo gửi lại một lệnh đã xử lý: bỏ qua, không làm lại và bot không báo thêm (mọi loại tin của chủ dự án)", async () => {
+    const w = makeWorld();
+    const tat = ownerSays("/tat", "zm-tat");
+    await webhook(w, ownerSays("/bat"));
+    await webhook(w, tat);
+    await webhook(w, ownerSays("/bat"));
+    expect(await isEnabled(env.DB)).toBe(true);
+    const before = w.zalo.texts().length;
+    expect(await webhook(w, tat)).toMatchObject({ status: 200, body: { ok: true } });
+    expect(await isEnabled(env.DB)).toBe(true);
+    expect(w.zalo.texts()).toHaveLength(before);
+    const ds = ownerSays("/ds", "zm-ds");
+    await webhook(w, ds);
+    await webhook(w, ds);
+    const sticker = zaloUpdate("message.sticker.received", { sticker: "abc", message_id: "zm-st" });
+    await webhook(w, sticker);
+    await webhook(w, sticker);
+    expect(w.zalo.texts().slice(before)).toEqual([expect.stringContaining("Không có cuộc chat nào trong 7 ngày qua"), "Chỉ gửi được chữ."]);
+    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM support_zalo_updates").first<{ n: number }>())?.n).toBe(5);
+  });
+
+  it("sự kiện chưa xử lý xong (D1 lỗi) không bị đánh dấu đã xử lý: Zalo gửi lại thì được xử lý", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const w = makeWorld();
+    const bat = ownerSays("/bat", "zm-bat");
+    await withFailingInsert("support_settings", "1", async () => {
+      await webhook(w, bat);
+    });
+    expect(await isEnabled(env.DB)).toBe(false);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM support_zalo_updates").first()).toEqual({ n: 0 });
+    await webhook(w, bat);
+    expect(await isEnabled(env.DB)).toBe(true);
+  });
+
+  it("Zalo lỗi khi bot trả lời: webhook vẫn trả 200 và việc ghi D1 đã xong", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld();
+    w.zalo.down = true;
+    expect(await webhook(w, ownerSays("/bat"))).toMatchObject({ status: 200, body: { ok: true } });
+    expect(await isEnabled(env.DB)).toBe(true);
   });
 
   it("ảnh, sticker, tin thoại: bot báo chỉ gửi được chữ", async () => {
