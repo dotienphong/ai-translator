@@ -1,13 +1,13 @@
 // Ngôn ngữ của website (spec 2026-10-22-website-ja-zh-ko-design §2). Khóa là mã nội bộ (tên thư mục ở src/content/). Mỗi ngôn ngữ:
 // thẻ BCP 47 cho `lang`, hreflang, inLanguage (tiếng Trung là chữ giản thể: zh-Hans), tiền tố đường dẫn, og:locale, tên bản ngữ
 // (menu ngôn ngữ), mã ngắn (menu trên điện thoại), locale của Intl. `published: false`: chưa dựng trang của ngôn ngữ đó (đang
-// dịch); bật khi đủ trang (kế hoạch 2026-10-22-website-ja-zh-ko-04).
+// dịch); xem trước bằng WEBSITE_PREVIEW_LANGS.
 export const LANGS = {
   vi: { tag: "vi", prefix: "/", ogLocale: "vi_VN", name: "Tiếng Việt", short: "VI", intl: "vi-VN", published: true },
   en: { tag: "en", prefix: "/en/", ogLocale: "en_US", name: "English", short: "EN", intl: "en-GB", published: true },
-  ja: { tag: "ja", prefix: "/ja/", ogLocale: "ja_JP", name: "日本語", short: "JA", intl: "ja-JP", published: false },
-  zh: { tag: "zh-Hans", prefix: "/zh/", ogLocale: "zh_CN", name: "中文", short: "ZH", intl: "zh-CN", published: false },
-  ko: { tag: "ko", prefix: "/ko/", ogLocale: "ko_KR", name: "한국어", short: "KO", intl: "ko-KR", published: false },
+  ja: { tag: "ja", prefix: "/ja/", ogLocale: "ja_JP", name: "日本語", short: "JA", intl: "ja-JP", published: true },
+  zh: { tag: "zh-Hans", prefix: "/zh/", ogLocale: "zh_CN", name: "中文", short: "ZH", intl: "zh-CN", published: true },
+  ko: { tag: "ko", prefix: "/ko/", ogLocale: "ko_KR", name: "한국어", short: "KO", intl: "ko-KR", published: true },
 };
 export const LANG_CODES = Object.keys(LANGS);
 // Xem trước ngôn ngữ đang dịch: WEBSITE_PREVIEW_LANGS=ja,zh dựng thêm các ngôn ngữ đó khi dựng cục bộ và chạy test. Lệnh deploy
