@@ -1909,7 +1909,8 @@ test("bảng so sánh gói: mỗi hàng có đủ số ô như hàng tiêu đề
       if (!/<th scope="col">6 Months<\/th>/.test(table[1])) errors.push(`${p.path}: bảng thiếu cột 6 Months`);
     }
   }
-  assert.equal(tables, 4, "phải có đúng 4 bảng so sánh gói (Bảng giá và Tính năng, mỗi trang hai ngôn ngữ)");
+  const want = pages.filter((p) => p.id === "pricing" || p.id === "features").length;
+  assert.equal(tables, want, `phải có đúng ${want} bảng so sánh gói (mỗi trang Bảng giá và Tính năng của mọi ngôn ngữ một bảng)`);
   assert.deepEqual(errors, []);
 });
 
