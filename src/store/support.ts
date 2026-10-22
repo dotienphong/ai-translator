@@ -39,6 +39,8 @@ export interface SupportStoreState {
   // Lỗi lúc mở màn hình hay lúc xóa cuộc chat.
   error: UiError | null;
   deleting: boolean;
+  // Đang lấy cuộc chat đã có lúc mở màn hình: danh sách tin báo `aria-busy` để trình đọc màn hình không đọc lại cả lịch sử.
+  loading: boolean;
   log: LogAttach;
   // Nghe `support://view` và đọc trạng thái ban đầu (chấm đỏ) lúc mở cửa sổ. Trả hàm gỡ listener.
   init(): Promise<() => void>;
@@ -60,11 +62,13 @@ export function createSupportStore(ipc: Ipc) {
   return createStore<SupportStoreState>()((set, get) => {
     let nextLocalId = 0;
 
-    // Nhận trạng thái mới từ lệnh hay sự kiện: bản có `rev` nhỏ hơn bản đang có là cũ, bỏ.
+    // Nhận trạng thái mới từ lệnh hay sự kiện: bản có `rev` nhỏ hơn bản đang có là cũ, bỏ. Cuộc chat mất (có rồi không còn) thì
+    // thẻ email của cuộc cũ không còn nghĩa: đặt lại, để tin đầu của cuộc mới hỏi lại email.
     function apply(view: SupportView) {
       const current = get().view;
       if (current && view.rev < current.rev) return;
-      set({ view });
+      if (current?.hasConversation && !view.hasConversation) set({ view, emailCard: "hidden", emailError: null });
+      else set({ view });
     }
 
     // Gửi một tin đang chờ; thành công thì bỏ khỏi danh sách chờ (tin đã nằm trong `view`).
@@ -96,6 +100,7 @@ export function createSupportStore(ipc: Ipc) {
       emailError: null,
       error: null,
       deleting: false,
+      loading: false,
       log: { status: "idle" },
 
       async init() {
@@ -103,8 +108,8 @@ export function createSupportStore(ipc: Ipc) {
         try {
           apply(await ipc.invoke("support_screen", { open: false }));
         } catch (e) {
-          off();
-          throw e;
+          // Listener vẫn sống (sự kiện sau vẫn tới); lỗi chỉ hiện thành thông báo khi mở màn hình.
+          set({ error: toUiError(e) });
         }
         return off;
       },
@@ -118,22 +123,24 @@ export function createSupportStore(ipc: Ipc) {
           return;
         }
         apply(view);
-        if (get().machineInfo === null) {
-          // Không đọc được thì ô tích vẫn hiện, chỉ thiếu dòng xem trước.
-          void ipc.invoke("support_machine_info").then(
-            (machineInfo) => set({ machineInfo }),
-            () => {},
-          );
-        }
+        // Đọc lại mỗi lần mở: phía Rust dựng lại dòng này lúc gửi (gói model, GPU có thể đã đổi). Không đọc được thì ô tích vẫn
+        // hiện, chỉ thiếu dòng xem trước.
+        void ipc.invoke("support_machine_info").then(
+          (machineInfo) => set({ machineInfo }),
+          () => {},
+        );
         if (!view.hasConversation) {
           set({ error: null });
           return;
         }
+        set({ loading: true });
         try {
           apply(await ipc.invoke("support_fetch"));
           set({ error: null });
         } catch (e) {
           set({ error: toUiError(e) });
+        } finally {
+          set({ loading: false });
         }
       },
 

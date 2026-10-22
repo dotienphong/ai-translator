@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { type MessageKey, type Params, translate, type UiLanguage } from "../../../i18n";
 import type { SupportView } from "../../../lib/ipc";
-import { SupportChat, type SupportChatProps } from "./SupportChat";
+import { counterLabel, enterSends, SupportChat, type SupportChatProps } from "./SupportChat";
 
 // Màn hình Hỗ trợ vẽ bằng `react-dom/server` trong Node (như UpgradeView.test.ts): lời chào, dòng phụ và chân khung đúng hợp đồng
 // phía khách ở năm ngôn ngữ; ô "Gửi kèm thông tin máy" chỉ trước tin đầu tiên; trạng thái từng tin; thẻ email; chế độ tắt, đóng.
@@ -30,6 +30,7 @@ const props = (patch: Partial<SupportChatProps> = {}): SupportChatProps => ({
   emailError: null,
   error: null,
   deleting: false,
+  loading: false,
   log: { status: "idle" },
   onSend: () => {},
   onRetry: () => {},
@@ -125,7 +126,8 @@ describe("SupportChat: ô thông tin máy, tin nhắn", () => {
     expect(markup).toContain(
       `<div class="msg owner"><span class="sr-only">${text("support.from.owner")}: </span><p class="msg-text">Bạn đang dùng macOS bản nào?</p></div>`,
     );
-    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toContain('role="log"');
+    expect(markup).not.toContain('aria-busy="true"');
   });
 
   it("tin đang gửi và tin gửi lỗi: câu lỗi đúng mã và nút gửi lại", () => {
@@ -188,5 +190,54 @@ describe("SupportChat: thẻ email, chế độ tắt và đóng", () => {
     const markup = html({ view: { ...withConversation, closed: true } });
     expect(markup).not.toContain("<textarea");
     expect(markup).toContain(text("error.supportClosed"));
+  });
+});
+
+describe("SupportChat: bàn phím và trình đọc màn hình", () => {
+  const key = (patch: Partial<Parameters<typeof enterSends>[0]> = {}) => ({
+    key: "Enter",
+    shiftKey: false,
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    isComposing: false,
+    keyCode: 13,
+    ...patch,
+  });
+
+  it("chỉ Enter trơn mới gửi: bộ gõ đang soạn (isComposing hay keyCode 229 của WKWebView) và phím bổ trợ thì không", () => {
+    expect(enterSends(key())).toBe(true);
+    expect(enterSends(key({ isComposing: true }))).toBe(false);
+    expect(enterSends(key({ keyCode: 229 }))).toBe(false);
+    expect(enterSends(key({ shiftKey: true }))).toBe(false);
+    expect(enterSends(key({ metaKey: true }))).toBe(false);
+    expect(enterSends(key({ ctrlKey: true }))).toBe(false);
+    expect(enterSends(key({ altKey: true }))).toBe(false);
+    expect(enterSends(key({ key: "a", keyCode: 65 }))).toBe(false);
+  });
+
+  it("bộ đếm ký tự: hai số cùng cách định dạng theo ngôn ngữ giao diện", () => {
+    expect(counterLabel("en", 1234)).toBe("1,234/1,000 characters");
+    expect(counterLabel("vi", 1234)).toBe("1.234/1.000 ký tự");
+    expect(counterLabel("en", 950)).toBe("950/1,000 characters");
+  });
+
+  it("danh sách tin là role=log, aria-busy lúc tải lần đầu", () => {
+    expect(html({ loading: true })).toContain('role="log" aria-busy="true"');
+    expect(html({ loading: false })).not.toContain("aria-busy");
+  });
+
+  it("menu ⋯ không khai role=menu (không có phím mũi tên và Esc)", () => {
+    expect(html({ view: withConversation })).not.toMatch(/role="menu/);
+  });
+
+  it("vùng hỏi lại trước khi xóa luôn có trong trang với role=status", () => {
+    expect(html({ view: withConversation })).toContain('role="status"');
+  });
+
+  it("lỗi Đính kèm log và lỗi email có role=alert", () => {
+    expect(html({ log: { status: "failed", code: "reportRateLimited" } })).toContain('<p class="note error" role="alert">');
+    const invalid = html({ view: withConversation, emailCard: "asking", emailError: { code: "supportInvalid", field: "email" } });
+    expect(invalid).toContain('<p class="note error" role="alert">');
   });
 });

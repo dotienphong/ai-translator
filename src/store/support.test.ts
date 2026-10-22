@@ -216,6 +216,69 @@ describe("support store", () => {
     expect(sends()).toHaveLength(1);
   });
 
+  it("mỗi lần mở màn hình đọc lại dòng thông tin máy (Rust dựng lại lúc gửi, gói model hay GPU có thể đã đổi)", async () => {
+    const { fake, store } = setup();
+    await store.getState().open();
+    await Promise.resolve();
+    await store.getState().open();
+    await Promise.resolve();
+    expect(fake.calls.filter((c) => c.cmd === "support_machine_info")).toHaveLength(2);
+  });
+
+  it("cuộc chat mất (hasConversation true sang false): thẻ email và lỗi của nó được đặt lại", async () => {
+    const { fake, store, change, failEmail } = setup({ hasConversation: true });
+    await store.getState().init();
+    await store.getState().saveEmail("khach@example.com");
+    expect(store.getState().emailCard).toBe("saved");
+    fake.emit("support://view", change({ hasConversation: false, messages: [] }));
+    expect(store.getState().emailCard).toBe("hidden");
+    fake.emit("support://view", change({ hasConversation: true }));
+    failEmail("supportInvalid", "email");
+    await store.getState().saveEmail("sai");
+    expect(store.getState().emailError).not.toBeNull();
+    fake.emit("support://view", change({ hasConversation: false }));
+    expect(store.getState().emailCard).toBe("hidden");
+    expect(store.getState().emailError).toBeNull();
+  });
+
+  it("init lỗi: listener support://view vẫn sống, lỗi chỉ hiện thành thông báo", async () => {
+    const fake = fakeIpc({
+      support_screen: () => {
+        throw { code: "supportOffline", field: null, message: "…" };
+      },
+    });
+    const store = createSupportStore(fake.ipc);
+    const off = await store.getState().init();
+    expect(fake.listenerCount("support://view")).toBe(1);
+    expect(store.getState().error).toEqual({ code: "supportOffline", field: null });
+    fake.emit("support://view", { enabled: true, closed: false, hasConversation: true, messages: [], unread: true, rev: 5 });
+    expect(store.getState().view?.unread).toBe(true);
+    off();
+  });
+
+  it("lúc lấy cuộc chat đã có: loading bật tới khi xong", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const fetched: SupportView = { enabled: true, closed: false, hasConversation: true, messages: [], unread: false, rev: 3 };
+    const store = createSupportStore(
+      fakeIpc({
+        support_screen: () => ({ ...fetched, rev: 2 }),
+        support_machine_info: () => "",
+        support_fetch: async () => {
+          await gate;
+          return fetched;
+        },
+      }).ipc,
+    );
+    const opening = store.getState().open();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getState().loading).toBe(true);
+    release();
+    await opening;
+    expect(store.getState().loading).toBe(false);
+  });
+
   it("đóng màn hình thì báo phía Rust", async () => {
     const { fake, store } = setup();
     await store.getState().close();

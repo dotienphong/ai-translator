@@ -443,16 +443,26 @@ async function supportSendFails(page, ck, lang) {
 
 // Bấm thật: menu ⋯ › Xóa cuộc trò chuyện hỏi lại; Hủy thì không xóa; đồng ý thì gọi lệnh xóa, về trạng thái mới (ô tích hiện lại).
 async function supportDelete(page, ck, lang) {
+  // Bộ đếm ký tự (từ 900): gắn với ô nhập bằng aria-describedby, số đếm cùng cách định dạng với giới hạn trong câu.
+  await type(page, TEXTAREA, "ế".repeat(950));
+  await ck(
+    `(() => { const c = document.querySelector("#support-counter"); return !!c && document.querySelector(${JSON.stringify(TEXTAREA)}).getAttribute("aria-describedby") === "support-counter" && c.textContent.startsWith("950/"); })()`,
+    "bộ đếm 950/… gắn với ô nhập bằng aria-describedby",
+  );
+  await ck(`document.querySelector(".support-log").getAttribute("role") === "log" && !document.querySelector(".support-log").hasAttribute("aria-busy")`, "danh sách tin role=log, xong tải thì không aria-busy");
   await page.click(".support-menu > button");
-  await ck(inPage(lang, `return document.querySelector(".support-menu-list button")?.textContent === t("support.delete");`), "menu ⋯ có support.delete");
+  await ck(inPage(lang, `return document.querySelector(".support-menu-list button")?.textContent === t("support.delete") && !document.querySelector("[role=menu], [role=menuitem]");`), "menu ⋯ có support.delete, không khai role=menu");
   await page.click(".support-menu-list button");
-  await ck(inPage(lang, `return document.querySelector(".support-chat .confirm span")?.textContent === t("support.delete.confirm");`), "hỏi lại trước khi xóa");
+  await ck(inPage(lang, `return document.querySelector(".support-chat .confirm span")?.textContent === t("support.delete.confirm") && document.querySelector(".support-chat .confirm").parentElement.getAttribute("role") === "status";`), "hỏi lại trước khi xóa, trong vùng role=status");
+  await ck(`document.activeElement === document.querySelector(".support-chat .confirm button:not(.danger)")`, "hỏi lại hiện thì tiêu điểm vào nút Hủy");
   await page.click(".support-chat .confirm button:not(.danger)");
   await ck(`!document.querySelector(".support-chat .confirm") && ${callsOf("support_delete")}.length === 0`, "Hủy thì không xóa");
+  await ck(`document.activeElement === document.querySelector(".support-menu > button")`, "Hủy thì tiêu điểm về nút ⋯");
   await page.click(".support-menu > button");
   await page.click(".support-menu-list button");
   await page.click(".support-chat .confirm button.danger");
   await sleep(300);
+  await ck(`document.activeElement === document.querySelector(${JSON.stringify(TEXTAREA)})`, "xóa xong thì tiêu điểm không rơi về body: vào ô nhập");
   await ck(`${callsOf("support_delete")}.length === 1`, "đồng ý thì gọi đúng một lệnh support_delete");
   await ck(`document.querySelectorAll(".support-log .msg").length === 1 && !!document.querySelector(".support-machine")`, "về trạng thái mới: chỉ còn lời chào, ô tích hiện lại");
 }

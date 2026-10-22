@@ -17,6 +17,7 @@ export function SupportScreen() {
   const emailError = useSupport((s) => s.emailError);
   const error = useSupport((s) => s.error);
   const deleting = useSupport((s) => s.deleting);
+  const loading = useSupport((s) => s.loading);
   const log = useSupport((s) => s.log);
   const open = useSupport((s) => s.open);
   const close = useSupport((s) => s.close);
@@ -44,6 +45,7 @@ export function SupportScreen() {
       emailError={emailError}
       error={error}
       deleting={deleting}
+      loading={loading}
       log={log}
       onSend={(text) => void send(text)}
       onRetry={(localId) => void retry(localId)}

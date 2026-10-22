@@ -1,6 +1,7 @@
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Icon } from "../../../components/Icon";
 import { errorKey, type MessageKey, type Params, translate, type UiLanguage } from "../../../i18n";
+import { type ComposeKey, keyAction } from "../../../lib/compose";
 import type { SupportView } from "../../../lib/ipc";
 import type { UiError } from "../../../store/app";
 import { charCount, type EmailCard, type LogAttach, MAX_CHARS, type PendingMessage } from "../../../store/support";
@@ -8,6 +9,17 @@ import { LegalDocument } from "../LegalDocument";
 
 // Đếm ký tự hiện khi tin dài từ chừng này ký tự (gần giới hạn 1000).
 export const COUNTER_FROM = 900;
+
+// Enter trơn (không Shift, Alt, Ctrl, Cmd) gửi tin. Bộ gõ đang soạn chữ (tiếng Nhật, Trung, Hàn, Telex) thì Enter là của bộ gõ:
+// WKWebView trên macOS báo `keyCode` 229 thay cho `isComposing`, nên dùng chung luật với ô Gõ dịch (`keyAction`).
+export function enterSends(e: ComposeKey): boolean {
+  return keyAction(e) === "enter";
+}
+
+// Chữ bộ đếm: cả số ký tự lẫn giới hạn (nằm sẵn trong câu) cùng cách định dạng theo ngôn ngữ giao diện.
+export function counterLabel(lang: UiLanguage, length: number): string {
+  return translate(lang, "support.counter", { count: length.toLocaleString(lang) });
+}
 
 export interface SupportChatProps {
   lang: UiLanguage;
@@ -19,6 +31,7 @@ export interface SupportChatProps {
   emailError: UiError | null;
   error: UiError | null;
   deleting: boolean;
+  loading: boolean;
   log: LogAttach;
   onSend(text: string): void;
   onRetry(localId: number): void;
@@ -42,12 +55,19 @@ export function SupportChat(p: SupportChatProps) {
   const [privacy, setPrivacy] = useState(false);
   const [email, setEmail] = useState("");
   const log = useRef<HTMLDivElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  const textarea = useRef<HTMLTextAreaElement>(null);
   const messages = p.view?.messages ?? [];
   const count = messages.length + p.pending.length;
   // Có tin mới (của ai cũng vậy) thì cuộn xuống cuối.
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
   }, [count]);
+  // Hỏi lại trước khi xóa hiện ra thì tiêu điểm vào nút Hủy (nút ⋯ và mục menu đã biến mất, tiêu điểm không được rơi về body).
+  useEffect(() => {
+    if (confirming) cancelButton.current?.focus();
+  }, [confirming]);
   const hasConversation = p.view?.hasConversation ?? false;
   // Chat tắt (`enabled = false`) hay cuộc chat bị chặn: thay ô nhập bằng câu email support@.
   const blocked = p.view?.closed ? "supportClosed" : p.view && !p.view.enabled ? "supportDisabled" : null;
@@ -62,8 +82,18 @@ export function SupportChat(p: SupportChatProps) {
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    // Enter gửi, Shift+Enter xuống dòng; đang gõ bằng bộ gõ (tiếng Nhật, Trung, Hàn, Telex) thì Enter là của bộ gõ.
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // Enter gửi, Shift+Enter xuống dòng; đang gõ bằng bộ gõ thì Enter là của bộ gõ.
+    if (
+      enterSends({
+        key: e.key,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        isComposing: e.nativeEvent.isComposing,
+        keyCode: e.nativeEvent.keyCode,
+      })
+    ) {
       e.preventDefault();
       submit();
     }
@@ -77,6 +107,7 @@ export function SupportChat(p: SupportChatProps) {
           {hasConversation && (
             <div className="support-menu">
               <button
+                ref={menuButton}
                 className="ghost"
                 aria-label={t("support.menu")}
                 title={t("support.menu")}
@@ -86,9 +117,8 @@ export function SupportChat(p: SupportChatProps) {
                 <Icon name="more" />
               </button>
               {menu && (
-                <div className="support-menu-list" role="menu">
+                <div className="support-menu-list">
                   <button
-                    role="menuitem"
                     className="ghost danger-text"
                     onClick={() => {
                       setMenu(false);
@@ -103,29 +133,41 @@ export function SupportChat(p: SupportChatProps) {
             </div>
           )}
         </div>
-        {confirming && (
-          <div className="confirm">
-            <span>{t("support.delete.confirm")}</span>
-            <button
-              className="danger"
-              disabled={p.deleting}
-              onClick={() => {
-                setConfirming(false);
-                p.onDelete();
-              }}
-            >
-              {t("support.delete.yes")}
-            </button>
-            <button onClick={() => setConfirming(false)}>{t("common.cancel")}</button>
-          </div>
-        )}
+        <div role="status">
+          {confirming && (
+            <div className="confirm">
+              <span>{t("support.delete.confirm")}</span>
+              <button
+                className="danger"
+                disabled={p.deleting}
+                onClick={() => {
+                  setConfirming(false);
+                  p.onDelete();
+                  // Xóa xong thì nút ⋯ biến mất (không còn cuộc chat): đưa tiêu điểm vào ô nhập nếu còn, không thì về nút ⋯.
+                  (textarea.current ?? menuButton.current)?.focus();
+                }}
+              >
+                {t("support.delete.yes")}
+              </button>
+              <button
+                ref={cancelButton}
+                onClick={() => {
+                  setConfirming(false);
+                  menuButton.current?.focus();
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          )}
+        </div>
         {p.error && (
           <p className="note error" role="alert">
             <Icon name="alert" size={16} />
             <span>{t(errorKey(p.error.code))}</span>
           </p>
         )}
-        <div className="support-log" ref={log} aria-live="polite">
+        <div className="support-log" ref={log} role="log" aria-busy={p.loading ? true : undefined}>
           <div className="msg owner">
             <span className="sr-only">{t("support.from.owner")}: </span>
             <p className="msg-text">{t("support.greeting")}</p>
@@ -180,6 +222,8 @@ export function SupportChat(p: SupportChatProps) {
               </div>
             )}
             <textarea
+              ref={textarea}
+              aria-describedby={length >= COUNTER_FROM ? "support-counter" : undefined}
               aria-label={t("support.inputLabel")}
               placeholder={t("support.placeholder")}
               rows={3}
@@ -198,8 +242,8 @@ export function SupportChat(p: SupportChatProps) {
                 {t(p.log.status === "sending" ? "support.attachLog.sending" : "support.attachLog")}
               </button>
               {length >= COUNTER_FROM && (
-                <span className={length > MAX_CHARS ? "support-counter error-text" : "support-counter hint"}>
-                  {t("support.counter", { count: length })}
+                <span id="support-counter" className={length > MAX_CHARS ? "support-counter error-text" : "support-counter hint"}>
+                  {counterLabel(p.lang, length)}
                 </span>
               )}
               <button type="submit" className="primary" disabled={!canSend}>
@@ -208,7 +252,7 @@ export function SupportChat(p: SupportChatProps) {
               </button>
             </div>
             {p.log.status === "failed" && (
-              <p className="note error">
+              <p className="note error" role="alert">
                 <Icon name="alert" size={16} />
                 <span>{t(errorKey(p.log.code))}</span>
               </p>
@@ -246,7 +290,7 @@ export function SupportChat(p: SupportChatProps) {
                   </button>
                 </div>
                 {p.emailError && (
-                  <p className="note error">
+                  <p className="note error" role="alert">
                     <Icon name="alert" size={16} />
                     <span>
                       {t(p.emailError.field === "email" ? "support.email.invalid" : errorKey(p.emailError.code))}
