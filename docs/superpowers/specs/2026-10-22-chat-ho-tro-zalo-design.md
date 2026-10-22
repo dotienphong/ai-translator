@@ -54,6 +54,7 @@ App (Rust reqwest, qua IPC) ───┘   /v1/support/*  (D1)      └─← we
 | `status` | `open` hay `blocked` |
 | `created_at`, `last_customer_at`, `last_owner_at`, `last_activity_at` | thời điểm (giây) |
 | `delivered_owner_id` | id lớn nhất của tin chủ dự án mà khách đã nhận qua polling |
+| `emailed_owner_id` | id lớn nhất của tin chủ dự án đã gửi qua email (thư sau chỉ gồm tin mới hơn) |
 | `emailed_at` | lần cuối gửi email câu trả lời |
 
 `support_messages`: `id` (tự tăng, làm con trỏ `after`), `conversation_id` (xóa theo cuộc chat), `sender` (`customer`, `owner`), `text`, `created_at`, `forwarded_at` (tin khách: lúc Zalo nhận), `forward_attempts`, `zalo_message_id` (tin chủ dự án, duy nhất, để chống trùng khi Zalo gửi lại webhook).

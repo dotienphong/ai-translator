@@ -7,12 +7,13 @@ import { expect, it } from "vitest";
 const db = env.MIGRATION_DB;
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 
-it("có đúng bốn migration theo thứ tự", () => {
+it("có đúng năm migration theo thứ tự", () => {
   expect(names).toEqual([
     "0001_init.sql",
     "0002_three_plans_trials.sql",
     "0003_six_months_plan.sql",
     "0004_error_reports.sql",
+    "0005_support_chat.sql",
   ]);
 });
 
@@ -270,7 +271,8 @@ it("0004 chỉ thêm hai bảng báo cáo lỗi và ba index; bảng cũ và d�
   const indexesBefore = await indexNames();
   const licensesBefore = (await db.prepare("SELECT * FROM licenses ORDER BY id").all()).results;
 
-  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+  // Chỉ áp tới 0004: 0005 có test riêng ở cuối file.
+  await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 4));
 
   const after = await tables();
   expect(after.filter((t) => !t.name.startsWith("error_report"))).toEqual(before);
@@ -292,5 +294,45 @@ it("0004 chỉ thêm hai bảng báo cáo lỗi và ba index; bảng cũ và d�
   await expect(report("R-AAAA-BBBB", "khac").run()).rejects.toThrow(/CHECK/);
   await report("R-AAAA-BBBB", "crash").run();
   await db.prepare("INSERT INTO error_report_logs (id, app_log, asr_log, llama_log) VALUES ('R-AAAA-BBBB', 'a', 'b', 'c')").run();
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("0005 chỉ thêm ba bảng chat hỗ trợ và bốn index; chat mặc định tắt; bảng cũ và dữ liệu cũ giữ nguyên", async () => {
+  // D1 đang ở trạng thái sau 0004 (test trên chỉ áp bốn migration đầu).
+  const tables = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name",
+        )
+        .all<{ name: string; sql: string }>()
+    ).results;
+  const indexNames = async () =>
+    (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results.map(
+      (r) => r.name,
+    );
+  const before = await tables();
+  const indexesBefore = await indexNames();
+  const licensesBefore = (await db.prepare("SELECT * FROM licenses ORDER BY id").all()).results;
+
+  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+
+  const after = await tables();
+  expect(after.filter((t) => !t.name.startsWith("support_"))).toEqual(before);
+  expect(after.map((t) => t.name).filter((n) => n.startsWith("support_"))).toEqual(["support_conversations", "support_messages", "support_settings"]);
+  expect(await indexNames()).toEqual(
+    [
+      ...indexesBefore,
+      "support_conversations_activity",
+      "support_conversations_customer",
+      "support_messages_conversation",
+      "support_messages_pending",
+    ].sort(),
+  );
+  expect((await db.prepare("SELECT * FROM licenses ORDER BY id").all()).results).toEqual(licensesBefore);
+  expect((await db.prepare("SELECT key, value FROM support_settings ORDER BY key").all()).results).toEqual([
+    { key: "enabled", value: "0" },
+    { key: "zalo_fail_streak", value: "0" },
+  ]);
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });

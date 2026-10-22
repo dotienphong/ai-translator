@@ -14,6 +14,9 @@ export async function withFailingInsert<T>(table: string, when: string, run: () 
 export async function resetDb(): Promise<void> {
   await env.DB.batch(
     [
+      "support_messages",
+      "support_conversations",
+      "support_settings",
       "error_report_logs",
       "error_reports",
       "audit_log",
