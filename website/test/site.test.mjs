@@ -2198,3 +2198,37 @@ test("manifest ảnh app: mỗi slug có đủ năm ngôn ngữ", async () => {
   for (const e of manifest) bySlug.set(e.slug, [...(bySlug.get(e.slug) ?? []), e.lang]);
   for (const [slug, langs] of bySlug) assert.deepEqual(langs.sort(), [...LANG_CODES].sort(), slug);
 });
+
+test("CSP: connect-src chỉ thêm API của chat hỗ trợ; script-src, style-src, font-src, img-src giữ nguyên", async () => {
+  const h = await readFile(path.join(DIST, "_headers"), "utf8");
+  const csp = /Content-Security-Policy: (.+)/.exec(h)?.[1] ?? "";
+  const dir = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1).join(" ")]));
+  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.io.vn");
+  assert.match(dir["script-src"], /^'self' 'sha256-[A-Za-z0-9+/=]+'$/);
+  assert.equal(dir["style-src"], "'self'");
+  assert.equal(dir["font-src"], "'self'");
+  assert.equal(dir["img-src"], "'self' data:");
+  assert.equal(dir["default-src"], "'self'");
+});
+
+test("chat hỗ trợ: mọi trang (và 404) truyền đường dẫn đã băm của lõi chat, ngôn ngữ và nhãn bong bóng cho site.js; file có trong dist", async () => {
+  const { CHAT } = await import("../src/assets/chat-strings.js");
+  const all = [...pages.map((p) => [p, htmlByPath.get(p.path)]), [{ path: "/404.html", lang: "vi" }, await readFile(path.join(DIST, "404.html"), "utf8")]];
+  for (const [p, html] of all) {
+    const tag = /<script src="\/assets\/bundle\/site\.[0-9a-f]{10}\.js" defer([^>]*)><\/script>/.exec(html)?.[1];
+    assert.ok(tag, `${p.path}: thiếu thẻ script site.js`);
+    const attr = (n) => new RegExp(`\\sdata-chat-${n}="([^"]*)"`).exec(tag)?.[1];
+    assert.match(attr("core") ?? "", /^\/assets\/bundle\/chat-core\.[0-9a-f]{10}\.js$/, `${p.path}: data-chat-core`);
+    assert.ok(await exists(path.join(DIST, attr("core"))), `${p.path}: thiếu ${attr("core")}`);
+    assert.equal(attr("lang"), p.lang, `${p.path}: data-chat-lang`);
+    assert.equal(decode(attr("label") ?? ""), CHAT[p.lang].open, `${p.path}: data-chat-label`);
+    assert.equal(decode(attr("unread") ?? ""), CHAT[p.lang].unread, `${p.path}: data-chat-unread`);
+  }
+});
+
+test("chat hỗ trợ: HTML không tải sẵn file nào của chat (chỉ tải khi cần)", () => {
+  for (const p of pages) {
+    const html = htmlByPath.get(p.path);
+    assert.ok(!/<(?:script|link)\b[^>]*\s(?:src|href)="\/assets\/bundle\/chat/.test(html), `${p.path}: tải sẵn file chat`);
+  }
+});

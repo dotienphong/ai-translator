@@ -12,6 +12,7 @@ import { pages, notFound } from "../content/index.mjs";
 import { htmlToText } from "./text.mjs";
 import { PLANS, usd, vnd } from "../plans.mjs";
 import { LANG_CODES, PUBLISHED, tagOf, homeOf, isHome } from "../langs.mjs";
+import { API as CHAT_API } from "../assets/chat-core.js";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = path.resolve(SRC, "..");
@@ -138,7 +139,8 @@ function headers() {
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self'",
+    // Chat hỗ trợ gọi API của license server (spec chat hỗ trợ 2026-10-22, mục 3); không thêm nguồn nào khác.
+    `connect-src 'self' ${CHAT_API}`,
     "base-uri 'self'",
     "form-action 'none'",
     "frame-ancestors 'none'",
@@ -226,6 +228,15 @@ function headers() {
 `;
 }
 
+/** Lõi chat hỗ trợ (spec chat hỗ trợ 2026-10-22, mục 3): ES module tên có mã băm, site.js chỉ tải khi khách đang chờ trả lời.
+ *  site.js đọc đường dẫn qua thuộc tính data-chat-* của thẻ script (layout.mjs), nên không cần script nội tuyến mới. */
+async function chatAssets() {
+  const core = await readFile(path.join(SRC, "assets", "chat-core.js"));
+  const out = { core: `/assets/bundle/chat-core.${sha(core)}.js` };
+  await writeOut(out.core.slice(1), core);
+  return out;
+}
+
 export async function build() {
   await rm(DIST, { recursive: true, force: true });
   await mkdir(DIST, { recursive: true });
@@ -246,7 +257,7 @@ export async function build() {
   }
   const css = await readFile(path.join(SRC, "assets", "site.css"));
   const js = await readFile(path.join(SRC, "assets", "site.js"));
-  const assets = { css: `/assets/bundle/site.${sha(css)}.css`, js: `/assets/bundle/site.${sha(js)}.js` };
+  const assets = { css: `/assets/bundle/site.${sha(css)}.css`, js: `/assets/bundle/site.${sha(js)}.js`, chat: await chatAssets() };
   await writeOut(assets.css.slice(1), css);
   await writeOut(assets.js.slice(1), js);
 

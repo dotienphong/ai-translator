@@ -5,6 +5,7 @@ import { icon, sprite } from "./icons.mjs";
 import { SITE, T, NAV, FOOTER, ogFor } from "../site.mjs";
 import { LANGS, tagOf, homeOf, isHome, formatDate } from "../langs.mjs";
 import { S } from "../strings.mjs";
+import { CHAT } from "../assets/chat-strings.js";
 
 export { formatDate };
 import { graph } from "./schema.mjs";
@@ -180,6 +181,16 @@ export function glue(html, lang = "vi") {
     .join("");
 }
 
+/** Thuộc tính data-chat-* của thẻ script site.js: đường dẫn đã băm của chat hỗ trợ, ngôn ngữ và nhãn bong bóng (spec chat hỗ
+ *  trợ 2026-10-22, mục 3). Truyền qua thuộc tính để CSP giữ nguyên (không thêm script nội tuyến). ctx không có assets.chat
+ *  (test dựng một trang giả) thì không có bong bóng. */
+function chatAttrs(page, ctx) {
+  const c = ctx.assets.chat;
+  if (!c) return "";
+  const t = CHAT[page.lang];
+  return ` data-chat-core="${c.core}" data-chat-lang="${page.lang}" data-chat-label="${esc(t.open)}" data-chat-unread="${esc(t.unread)}"`;
+}
+
 export function renderPage(page, ctx) {
   // `{{updated}}` trong nội dung trang = ngày sửa lần cuối của chính trang đó (từ git), để dòng "Cập nhật" không lỗi thời.
   const body = glue(typeof page.body === "function" ? page.body(ctx) : page.body, page.lang).replaceAll("{{updated}}", formatDate(page.modified ?? SITE.updated, page.lang));
@@ -197,7 +208,7 @@ ${header(page, ctx)}
 ${body}
 </main>
 ${footer(page)}
-<script src="${ctx.assets.js}" defer></script>
+<script src="${ctx.assets.js}" defer${chatAttrs(page, ctx)}></script>
 </body>
 </html>
 `;
