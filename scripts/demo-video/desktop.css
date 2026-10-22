@@ -4,6 +4,10 @@
   --font: "Demo UI", sans-serif;
   --accent: #2f6bff;
 }
+/* Bản ja/zh/ko (spec 2026-10-22-website-ja-zh-ko §7): chữ CJK dùng phông có sẵn của macOS sau Noto Sans; khớp fontStack() của names.mjs. */
+:root:lang(ja) { --font: "Demo UI", "Hiragino Sans", sans-serif; }
+:root:lang(zh-Hans) { --font: "Demo UI", "PingFang SC", sans-serif; }
+:root:lang(ko) { --font: "Demo UI", "Apple SD Gothic Neo", sans-serif; }
 
 html,
 body {

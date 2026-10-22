@@ -11,6 +11,7 @@ import { composeBox, overlayBox, pingPong } from "./desktop-layout.mjs";
 import { buildMeeting } from "./desktop-meeting.mjs";
 import { buildShell } from "./desktop-shell.mjs";
 import { SLIDE_MS, buildDesktopTimeline, ease } from "./desktop-timeline.mjs";
+import { dataName, fontStack, htmlLang, voiceName } from "./names.mjs";
 
 const q = new URLSearchParams(location.search);
 const name = q.get("script") ?? "desktop.vi";
@@ -21,10 +22,11 @@ const load = async (url) => {
 };
 const here = (file) => new URL(file, import.meta.url).href;
 const script = await load(here(`./script.${name}.json`));
-// Bộ dữ liệu chữ thật: kịch bản tự khai (`data`), không thì trùng tên kịch bản.
-const d = script.data ?? name;
+// Bộ chữ thật và bản thu: xem names.mjs (bản ja/zh/ko dùng lại bản thu tiếng Anh của bản vi).
+const d = dataName(script, name);
+const v = voiceName(script, name);
 const [voice, live, compose, frameIndex] = await Promise.all([
-  load(here(`./data/voice.${d}.json`)),
+  load(here(`./data/voice.${v}.json`)),
   load(here(`./data/live.${d}.json`)),
   load(here(`./data/compose.${d}.json`)),
   load("/target/demo-video/frames/index.json"),
@@ -32,11 +34,12 @@ const [voice, live, compose, frameIndex] = await Promise.all([
 const tl = buildDesktopTimeline(script, voice, live, compose);
 const L = script.layout;
 const ui = script.target;
+// Chrome chọn phông dự phòng cho chữ Hán theo `lang` của trang (kanji kiểu Nhật ở bản ja); desktop.css đổi --font theo nó.
+document.documentElement.lang = htmlLang(ui);
 // Phần cài đặt mà phía Rust gửi kèm `compose://open` (ComposeView của src/lib/ipc.ts): app chạy trên Windows.
 const COMPOSE_VIEW = { uiLanguage: ui, theme: "light", target: script.chat.replyTarget, autoPaste: true, blocked: null, platform: "windows" };
 // Trong hai iframe: font "Demo UI" như app trên Windows (Segoe UI), tắt transition/animation và con trỏ nhấp nháy (chạy theo giờ thật).
-const IFRAME_CSS =
-  '*,*::before,*::after{transition:none!important;animation:none!important;font-family:"Demo UI",sans-serif!important}textarea{caret-color:transparent!important}';
+const IFRAME_CSS = `*,*::before,*::after{transition:none!important;animation:none!important;font-family:${fontStack(ui)}!important}textarea{caret-color:transparent!important}`;
 
 const assets = {
   frame: (clip, i) => {
@@ -136,7 +139,7 @@ if (typeof window.__vclock === "object") {
   const play = el("button", "play", document.body, "▶ Phát");
   play.addEventListener("click", () => {
     play.remove();
-    const audio = new Audio(`/target/demo-video/voice48.${d}.wav`);
+    const audio = new Audio(`/target/demo-video/voice48.${v}.wav`);
     const t0 = performance.now();
     start(t0);
     setTimeout(() => void audio.play(), tl.voiceStartMs);

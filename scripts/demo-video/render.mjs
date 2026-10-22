@@ -8,7 +8,7 @@
 // - video dài 30–60 giây.
 // Kết quả kiểm ghi ở target/demo-video/checks.<kịch bản>.json. Cần trang xem trước ở cổng 1432 và ffmpeg:
 //   node_modules/.bin/vite --config scripts/ui-preview/vite.config.ts --port 1432 &
-//   node scripts/demo-video/render.mjs [--script vi|desktop.vi]                 # → target/demo-video/ai-translator-demo.<kịch bản>.mp4
+//   node scripts/demo-video/render.mjs [--script vi|desktop.vi|desktop.en|desktop.ja|desktop.zh|desktop.ko]                 # → target/demo-video/ai-translator-demo.<kịch bản>.mp4
 //   node scripts/demo-video/render.mjs --png-dir <thư mục> --from 120 --to 240    # chỉ ghi PNG các khung [from, to), không ffmpeg
 //     thêm --guides để tô đỏ phần ngoài vùng an toàn (bản dọc, chỉ khi ghi PNG)
 import { spawn } from "node:child_process";
@@ -22,6 +22,7 @@ import { AUDIO_RATE, mixAudio } from "./audio.mjs";
 import { buildDesktopTimeline } from "./desktop-timeline.mjs";
 import { FPS, FRAME_MS, buildTimeline } from "./timeline.mjs";
 import { readWav, writeWav } from "./wav.mjs";
+import { dataName, voiceName } from "./names.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = path.resolve(here, "../../target/demo-video");
@@ -40,12 +41,14 @@ const { values: opts } = parseArgs({
 const name = opts.script;
 const json = (file) => JSON.parse(readFileSync(path.join(here, file), "utf8"));
 const script = json(`script.${name}.json`);
-// Bộ dữ liệu chữ thật (voice/live/compose): kịch bản 16:10 dùng lại bộ của bản dọc.
-const data = script.data ?? name;
+// Bộ chữ thật (live/compose) và bản thu (voice): kịch bản 16:10 tiếng Việt dùng lại bộ của bản dọc; bản ja/zh/ko dùng lại bản thu
+// của bản dọc (`voiceFrom`) nhưng có chữ riêng (names.mjs).
+const data = dataName(script, name);
+const voiceData = voiceName(script, name);
 const desktop = script.stage === "desktop";
 const page = desktop ? "desktop.html" : "stage.html";
 const viewport = script.viewport ?? { width: 540, height: 960, dpr: 2 };
-const voice = json(`data/voice.${data}.json`);
+const voice = json(`data/voice.${voiceData}.json`);
 const build = desktop ? buildDesktopTimeline : buildTimeline;
 const tl = build(script, voice, json(`data/live.${data}.json`), json(`data/compose.${data}.json`));
 if (tl.totalMs < 30_000 || tl.totalMs > 60_000) {
@@ -73,10 +76,10 @@ let ffmpegDone = null;
 let mp4 = null;
 let partial = null;
 if (full) {
-  const voiceFile = path.join(out, `voice48.${data}.wav`);
+  const voiceFile = path.join(out, `voice48.${voiceData}.wav`);
   const bytes = readFileSync(voiceFile);
   if (createHash("sha256").update(bytes).digest("hex") !== voice.sha256) {
-    console.error(`${voiceFile} khác file đã dùng để lấy chữ (data/voice.${data}.json): chạy lại voice.mjs rồi data.mjs.`);
+    console.error(`${voiceFile} khác file đã dùng để lấy chữ (data/voice.${voiceData}.json): chạy lại voice.mjs rồi data.mjs.`);
     process.exit(1);
   }
   const audioFile = path.join(out, `audio.${name}.wav`);

@@ -4,11 +4,12 @@
 // - `latency-bench mt-eval` biến thể `plain`: hàm dịch mà Gõ dịch dùng (`pipeline::translate`, không ngữ cảnh), cho câu trả lời.
 // Ghi scripts/demo-video/data/live.<ngôn ngữ>.json và compose.<…>.json (commit). Không sửa tay hai file này (spec §4).
 //   cargo build --release -p latency-bench && scripts/copy-sidecars.sh    # khi code engine hay sidecar đổi
-//   node scripts/demo-video/data.mjs [vi]
+//   node scripts/demo-video/data.mjs [vi|desktop.en|desktop.ja|desktop.zh|desktop.ko]
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { voiceName } from "./names.mjs";
 
 // Sự kiện engine gửi giao diện mà video dùng; `indicators` giữ để kiểm chế độ dịch trong lúc nói còn bật.
 const KEEP = new Set(["subtitle", "delta", "live", "live_end", "indicators"]);
@@ -63,6 +64,9 @@ function main(lang) {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const root = path.resolve(here, "../..");
   const out = path.join(root, "target/demo-video");
+  const script = JSON.parse(readFileSync(path.join(here, `script.${lang}.json`), "utf8"));
+  // Bản ja/zh/ko dùng lại giọng đọc của kịch bản khác (`voiceFrom`), chữ phụ đề thì ghi riêng theo tên kịch bản.
+  const voice = voiceName(script, lang);
   const bin = path.join(root, "src-tauri/binaries");
   const paths = {
     bench: path.join(root, "target/release/latency-bench"),
@@ -70,15 +74,14 @@ function main(lang) {
     llamaServer: path.join(bin, "llama-server-aarch64-apple-darwin"),
     asrModel: path.join(root, "models/ggml-large-v3-turbo-q5_0.bin"),
     mtModel: path.join(root, "models/Hy-MT2-1.8B-Q8_0.gguf"),
-    wav: path.join(out, `voice16.${lang}.wav`),
-    truth: path.join(out, `truth.${lang}.json`),
+    wav: path.join(out, `voice16.${voice}.wav`),
+    truth: path.join(out, `truth.${voice}.json`),
   };
   const missing = Object.values(paths).filter((p) => !existsSync(p));
   if (missing.length > 0) {
     console.error(`Thiếu: ${missing.join(", ")} (chưa chạy voice.mjs, chưa build latency-bench hay chưa chép sidecar)`);
     process.exit(1);
   }
-  const script = JSON.parse(readFileSync(path.join(here, `script.${lang}.json`), "utf8"));
   mkdirSync(path.join(here, "data"), { recursive: true });
 
   // Dịch live: mọi tiếng nguồn và ngưỡng im lặng 50 ms như cài đặt mặc định của app; bật dịch trong lúc nói.
