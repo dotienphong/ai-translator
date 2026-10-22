@@ -1,0 +1,182 @@
+import { pageHero, callout, docLayout, docNav, steps, facts, ctaBand } from "../../build/components.mjs";
+import { SITE } from "../../site.mjs";
+import { legalVersionLine } from "../legal.mjs";
+
+const crumbs = [
+  { name: "홈", path: "/ko/" },
+  { name: "데이터와 보안", path: "/ko/data-security/" },
+];
+
+const TOC = [
+  { level: 2, id: "on-device", text: "컴퓨터에 남는 데이터는?" },
+  { level: 2, id: "network", text: "앱은 어디에 연결되나요?" },
+  { level: 2, id: "verified", text: "어떻게 확인했나요?" },
+  { level: 2, id: "server", text: "서버에 무엇을 얼마나 오래 저장하나요?" },
+  { level: 2, id: "error-reports", text: "오류 보고서: 앱은 무엇을 보내나요?" },
+  { level: 2, id: "delete-data", text: "데이터는 어떻게 삭제하나요?" },
+  { level: 2, id: "processors", text: "데이터를 처리하는 다른 곳" },
+  { level: 2, id: "protections", text: "그 밖의 보호 장치" },
+  { level: 2, id: "signing", text: "현재의 코드 서명" },
+  { level: 2, id: "limits", text: "약속하지 않는 것" },
+];
+
+const MAIL = `<a href="mailto:${SITE.email}">${SITE.email}</a>`;
+
+export default {
+  id: "data-security",
+  lang: "ko",
+  path: "/ko/data-security/",
+  title: "AI Translator의 데이터와 보안",
+  description:
+    "AI Translator는 오디오를 컴퓨터에서 처리하며 외부로 보내지 않습니다. 기기에 남는 것, 연결하는 곳, 서버에 저장하는 것, 삭제 방법을 확인하세요.",
+  breadcrumbs: crumbs,
+  modified: "2026-10-22",
+  body: () => `
+${pageHero({
+  crumbs,
+  title: "AI Translator를 쓰면 데이터는 어디로 가나요?",
+  lead: "회의 오디오는 모두 컴퓨터에서 처리되며 외부로 보내지지 않습니다. 음성 인식과 번역은 컴퓨터에서 실행되는 AI 모델을 사용하며, 클라우드 AI 서비스는 관여하지 않습니다. 이 페이지에서는 데이터 종류별로 컴퓨터에 남는 것, 네트워크를 거치는 것, 서버에 저장하는 것을 설명하고, 어떻게 확인했는지와 무엇을 확인하지 않았는지도 알려 드립니다.",
+  meta: `<span>업데이트 {{updated}}</span><span>개인정보 처리방침과 일치: <span lang="en">${legalVersionLine("privacy.en.md")}</span></span>`,
+})}
+
+<section class="section-tight"><div class="container">
+${docLayout({
+  toc: TOC,
+  tocTitle: "이 페이지의 내용",
+  body: `
+${facts([
+  ["AI 처리", "음성 인식과 번역은 컴퓨터에서 실행되는 AI 모델을 사용하며, 클라우드 AI는 쓰지 않습니다"],
+  ["대화 데이터", "컴퓨터에만 있으며, 서버에는 없습니다"],
+  ["오디오", "RAM에만 있으며, 디스크에 쓰지 않고 외부로 보내지 않습니다"],
+  ["네트워크", "5곳. 어느 곳도 오디오, 받아쓰기 내용, 입력한 텍스트를 받지 않습니다"],
+  ["서버에 저장", "이메일(구매 시), 주문, 라이선스, 해시 처리한 기기 ID, 오류 보고서"],
+  ["보관 기간", "삭제를 요청할 때까지. 오류 보고서는 30일"],
+  ["확인 방법", "macOS에서 프록시와 nettop"],
+  ["코드 서명", "macOS는 애드혹 서명, 공증 없음. Windows는 서명 없음"],
+])}
+<h2 id="on-device">컴퓨터에 남는 데이터는?</h2>
+<p>오디오, 받아쓰기, 번역, 입력 번역에서 입력한 텍스트는 컴퓨터 밖으로 나가지 않습니다. 앱에는 로그인도, 광고도, 분석 도구도 없습니다. 오류가 생기면 개인정보를 지운 오류 보고서를 보냅니다(<a href="#error-reports">오류 보고서</a> 참고). 이 보고서에는 오디오, 받아쓰기 텍스트, 번역이 들어 있지 않습니다.</p>
+<div class="table-wrap" role="region" aria-label="컴퓨터에 남는 데이터" tabindex="0"><table>
+<thead><tr><th scope="col">데이터</th><th scope="col">처리 방식</th></tr></thead>
+<tbody>
+<tr><th scope="row">캡처 중인 시스템 오디오</th><td>번역하는 동안 RAM에만 있습니다. 디스크에 쓰지 않고, 네트워크로 보내지 않습니다. AI Translator는 회의를 파일로 녹음하지도 않습니다.</td></tr>
+<tr><th scope="row">받아쓰기와 번역</th><td>화면에 표시되고, 세션 동안 메모리에 있습니다. 기록은 기본적으로 꺼져 있으며, 켜면(Pro 기능) 컴퓨터에 암호화되어 저장됩니다.</td></tr>
+<tr><th scope="row">입력 번역에서 입력한 텍스트와 그 번역</th><td>붙여 넣거나 앱을 종료할 때까지 앱의 메모리에만 있습니다. 디스크에 쓰지 않고, 네트워크로 보내지 않으며, 로그나 오류 보고서에도 들어가지 않습니다. 번역은 붙여 넣기 위해 클립보드에 복사되며, 다른 것을 복사할 때까지 남아 있습니다.</td></tr>
+<tr><th scope="row">키, 토큰, 번역 시간 카운터</th><td>기록 암호화 키, 라이선스 토큰, 체험 토큰, 번역 시간 카운터는 키체인(macOS) 또는 자격 증명 관리자(Windows)에 보관됩니다.</td></tr>
+<tr><th scope="row">로그</th><td>컴퓨터에 저장되며, 받아쓰기 내용은 들어 있지 않습니다. 오류와 관련된 로그 부분만 컴퓨터 밖으로 나가며, 개인정보를 지운 오류 보고서에 담깁니다(<a href="#error-reports">오류 보고서</a> 참고).</td></tr>
+<tr><th scope="row">용어집, 설정, 모델</th><td>컴퓨터에 저장됩니다. 모델은 한 번 내려받으면 모두 컴퓨터에서 실행됩니다.</td></tr>
+</tbody></table></div>
+<p>macOS에서 입력 번역이 손쉬운 사용 권한을 요청하는 것은, 입력 중인 채팅 창에 붙여넣기 키 ⌘V를 보내기 위해서일 뿐입니다. 앱은 다른 앱의 텍스트, 내용, 클립보드를 읽지 않습니다. 권한이 없으면 번역만 복사하므로 직접 붙여 넣으면 됩니다(<a href="/ko/guide/type-and-translate/#accessibility">입력 번역</a> 참고).</p>
+
+<h2 id="network">앱은 어디에 연결되나요?</h2>
+<p>정확히 5곳이며, 어느 곳도 오디오, 받아쓰기 내용, 입력한 텍스트를 받지 않습니다. 음성 인식과 번역에는 네트워크가 필요 없습니다. 번역하는 동안 앱이 보낼 수 있는 것은 자체 서버로 보내는 정기 요청(업데이트 확인, 그리고 때가 되었을 때의 라이선스 확인)뿐입니다. <a href="/en/privacy/">개인정보 처리방침(영어)</a> 제4절도 5개의 연결을 나열하지만 목적별로 셉니다(모델 다운로드와 업데이트 확인은 둘 다 releases.aitranslator.io.vn으로 가고, PayOS와 Creem의 결제 페이지는 한 항목). 아래 표는 연결 대상별로 셉니다.</p>
+<div class="table-wrap" role="region" aria-label="앱이 연결하는 곳" tabindex="0"><table>
+<thead><tr><th scope="col">연결 대상</th><th scope="col">용도</th><th scope="col">보내는 것</th></tr></thead>
+<tbody>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만)</td></tr>
+<tr><th scope="row">releases.aitranslator.io.vn</th><td>모델 다운로드, 앱 업데이트 확인과 다운로드</td><td>파일 다운로드 요청뿐</td></tr>
+<tr><th scope="row">PayOS 결제 페이지(pay.payos.vn)</th><td>요금제를 구매할 때 VietQR로 결제</td><td>앱 안이 아니라 브라우저에서 열립니다</td></tr>
+<tr><th scope="row">Creem 결제 페이지(www.creem.io)</th><td>요금제를 구매할 때 해외 카드로 결제</td><td>앱 안이 아니라 브라우저에서 열립니다. 이메일은 앱이 아니라 저희 서버에서 Creem으로 보냅니다(‘데이터를 처리하는 다른 곳’ 참고)</td></tr>
+<tr><th scope="row">aitranslator.io.vn(이 웹사이트)</th><td>외부 링크(정책, 지원, 다운로드 페이지)를 시스템 브라우저에서 엽니다</td><td>앱은 아무것도 보내지 않습니다</td></tr>
+</tbody></table></div>
+
+<h2 id="verified">어떻게 확인했나요?</h2>
+<p>macOS에서 통신을 기록하는 프록시(mitmproxy) 뒤에서 앱을 실행하고, 동시에 <code>nettop</code>으로 측정하면서, 영어 예문을 반복 재생해 세션을 번역했습니다. 빌드는 애드혹 서명된 릴리스 0.1.0, 기기는 macOS 26.6.2의 MacBook Pro M4 Pro, 날짜는 2026년 10월 6일입니다.</p>
+<ul>
+<li><strong>15분 42초 세션</strong>(158개 구간, 오류 0): 외부 요청은 3건이며, 모두 저희 서버 두 곳으로 갔습니다(라이선스 확인과 업데이트 확인). 번역 중의 요청은 예정된 업데이트 확인 1건뿐이었습니다. 이 측정은 자체 도메인으로 옮기기 전에 했으며, 이후 자체 도메인에서 다시 측정한 결과(약 9분 세션, nettop 5분)도 같았습니다.</li>
+<li><strong>nettop</strong>으로 앱의 프로세스 7개(AI 처리 포함)를 지켜봤으며, 외부로 나가는 데이터 흐름은 보이지 않았습니다.</li>
+<li>예문의 <strong>표시 단어</strong>는 앱의 로그에서도, 기록된 요청에서도 발견되지 않았습니다.</li>
+<li><strong>오류 보고서 자동 전송</strong>(2026년 10월 17일, 이 기능이 있는 애드혹 서명 릴리스 빌드로 같은 기기에서 다시 측정): 12분 31초 세션에서 5분 시점에 보조 프로그램을 일부러 종료해 앱이 오류 보고서를 대기열에 넣게 했습니다. 세션의 남은 7분여 동안 보고서를 보내는 요청은 없었고, ‘중지’를 누른 1초 뒤에 서버에 도착했습니다. 보고서 본문은 49.8KB였으며, 계정 이름, 개인 폴더 경로, 이메일 주소, 예문의 표시 단어는 들어 있지 않았습니다.</li>
+</ul>
+${callout({ kind: "warn", title: "이 테스트의 한계", text: "macOS, 기기 1대, 애드혹 서명 빌드 1개에서만 측정했습니다. 오류 보고서 자동 전송은 한 번만 측정했습니다(12분 세션 1회, 보고서 1건). 이는 내부 점검이며 독립적인 감사가 아닙니다. 프록시 모드로는 WebView 요청이나 HTTP가 아닌 통신을 볼 수 없어 nettop으로 보완했습니다." })}
+
+<h2 id="server">서버에 무엇을 얼마나 오래 저장하나요?</h2>
+<p>서버에는 아래 데이터를 저장합니다. Free 체험 행은 체험을 등록한 모든 기기에 해당합니다. 나머지 행은 요금제를 구매하거나 키를 활성화한 경우에만 있습니다. 단, 오류 보고서 행은 앱이 보고서를 보낸 모든 기기에 해당합니다.</p>
+<div class="table-wrap" role="region" aria-label="서버에 저장하는 데이터" tabindex="0"><table>
+<thead><tr><th scope="col">데이터</th><th scope="col">목적</th></tr></thead>
+<tbody>
+<tr><th scope="row">구매 시 이메일, 이메일 처리에 동의한 시각</th><td>키 발송과 다시 받기. 카드 주문에서는 Creem 결제 페이지 미리 채우기. 동의의 증명</td></tr>
+<tr><th scope="row">주문: 주문 번호, 요금제, 금액과 통화, 시각, 상태, 결제 대행사의 세션 ID(PayOS 또는 Creem)</th><td>라이선스 발급과 연장, 대사, 회계</td></tr>
+<tr><th scope="row">라이선스: 키, 요금제, 만료일, 번역 시간 주기</th><td>유료 요금제 부여</td></tr>
+<tr><th scope="row">활성화한 기기: 해시 처리한 기기 ID, 기기 이름, 마지막 확인</th><td>키 하나에 기기 1대, 부정 사용 방지</td></tr>
+<tr><th scope="row">Free 체험: 해시 처리한 기기 ID, 시작과 종료 시각, 앱이 마지막으로 연결한 시각</th><td>기기당 체험 1회. 이메일이나 기기 이름은 없습니다.</td></tr>
+<tr><th scope="row">라이선스 변경 기록</th><td>지원과 장애 조사</td></tr>
+<tr><th scope="row">요청 제한 카운터(해시값만, 약 3시간 뒤 만료)</th><td>키 추측과 스팸 차단</td></tr>
+<tr><th scope="row">오류 보고서: 오류 종류와 코드, 기기 정보, 해시 처리한 기기 ID, 관련된 로그 부분</th><td>버그 발견과 수정. 30일 뒤 자동 삭제(<a href="#error-reports">오류 보고서</a> 참고)</td></tr>
+</tbody></table></div>
+<p><strong>보관 기간:</strong> 삭제를 요청할 때까지입니다. 저희가 스스로 개인정보를 삭제하지는 않습니다(30일 뒤 자동 삭제되는 오류 보고서 제외). 카드 번호나 은행 계좌 번호는 받지 않습니다. VietQR에서는 이메일을 PayOS에 보내지 않습니다. 해외 카드에서는 결제 페이지를 미리 채우고 Creem이 영수증을 이메일로 보낼 수 있도록, 업그레이드 화면에서 입력한 이메일을 Creem에 보냅니다. Free만 쓴다면 서버에는 이메일이나 기기 이름이 없습니다.</p>
+
+<h2 id="error-reports">오류 보고서: 오류가 생기면 앱은 무엇을 보내나요?</h2>
+<p>앱은 오류가 생기면 저희가 문제를 찾아 고칠 수 있도록 오류 보고서를 자동으로 보냅니다. 이 기능은 기본적으로 켜져 있습니다(이전 버전에서 업데이트한 경우 포함). <strong>설정 › 개인정보 보호</strong>에서 끄거나 다시 켤 수 있으며, 앱을 처음 열 때의 이용 약관 단계에서 바로 체크를 해제할 수도 있습니다. <strong>정보</strong> 화면의 <strong>지원팀에 로그 보내기</strong> 버튼은 자동 전송을 꺼 두었더라도 보고서를 즉시 보내고, 지원팀에 보낼 이메일에 적을 <strong>보고서 코드</strong>를 알려 줍니다.</p>
+<div class="table-wrap" role="region" aria-label="앱의 오류 보고서" tabindex="0"><table>
+<thead><tr><th scope="col">항목</th><th scope="col">내용</th></tr></thead>
+<tbody>
+<tr><th scope="row">보내는 때</th><td>이전 실행이 갑자기 끝났을 때. 앱의 오류로 번역 세션이 멈췄을 때(녹음 권한 없음, 번역 시간 소진, 네트워크 없음처럼 사용자나 환경이 원인인 오류는 제외). 앱의 보조 프로그램이 멈췄다가 다시 시작될 때. 앱이 번역하지 않을 때만 보내며, 기기당 하루 최대 5건입니다.</td></tr>
+<tr><th scope="row">보고서에 들어가는 것</th><td>보고서 코드, 오류의 종류와 코드. 앱 버전, 운영체제, 칩 또는 CPU, RAM, GPU 종류, 모델 팩, 라이선스 요금제 이름(키는 절대 넣지 않음), 인터페이스 언어. 해시 처리한 기기 ID. 오류와 관련된 로그 부분(최대 64KB).</td></tr>
+<tr><th scope="row">보고서에 들어가지 않는 것</th><td>오디오, 받아쓰기, 번역, 입력 번역에서 입력한 텍스트, 라이선스 키, 토큰, 이메일 주소, 컴퓨터 이름, 운영체제 사용자 이름, IP 주소. 앱은 보내기 전에 로그에서 개인 폴더 경로, 키, 토큰, 이메일 주소를 지우고, 서버에서 다시 확인해 남은 것이 있으면 보고서를 거부합니다.</td></tr>
+<tr><th scope="row">사용자와의 연결</th><td>보고서의 해시 처리한 기기 ID는 라이선스와 Free 체험을 위해 저장하는 것과 같으므로, 지원 요청을 처리할 때 보고서를 그 기기의 라이선스 및 이메일과 연결할 수 있습니다.</td></tr>
+<tr><th scope="row">보관 기간</th><td>최대 30일이며, 그 후 자동 삭제됩니다(서버에는 최대 3,000건 보관). 이메일로 삭제를 요청하면, 그 이메일의 키를 한 번이라도 활성화한 기기의 보고서도 삭제합니다.</td></tr>
+</tbody></table></div>
+<p>보고서는 버그를 찾고 고치는 데만 쓰며, 광고에는 쓰지 않습니다. 또한 아래 표의 처리자 외에는 누구와도 공유하지 않습니다. 전문은 <a href="/en/privacy/">개인정보 처리방침(영어)</a> 제10절에 있습니다.</p>
+
+<h2 id="delete-data">데이터는 어떻게 삭제하나요?</h2>
+${steps(
+  [
+    { title: "컴퓨터의 데이터 삭제", text: "<strong>설정 › 개인정보 보호</strong>로 갑니다. <em>모든 데이터 삭제</em>는 기록과 용어집을 지우고, <em>모델 및 데이터 삭제</em>는 내려받은 모델도 지웁니다(macOS에서는 앱을 휴지통으로 끌기 전에 하세요). 라이선스, 번역 시간, 설정은 유지됩니다." },
+    { title: "서버 데이터 삭제 요청", text: `본인임을 확인할 수 있도록 <strong>구매에 쓴 것과 같은 이메일로</strong> ${MAIL}에 메일을 보내 주세요. 개인정보 처리방침은 베트남 개인정보 보호법에 따라, 저장된 내용을 알 권리, 동의를 철회할 권리, 이의를 제기할 권리도 보장합니다. 요청은 법이 정한 기간 안에 처리합니다.` },
+    { title: "저희가 하는 일", text: "이메일과 기기 이름을 지우고, 그 이메일의 키를 한 번이라도 활성화한 기기의 오류 보고서를 삭제합니다. 라이선스는 계속 쓸 수 있지만, 이메일로 다시 받을 수는 없게 됩니다." },
+  ],
+  true,
+)}
+<p><strong>삭제 후에도 남는 것:</strong> 해시 처리한 기기 ID(부정 사용 방지에만 사용: 키 하나에 기기 1대, 기기당 Free 체험 1회), 이메일 처리에 동의했던 시각, 회계에 필요한 주문 행(주문 번호, 날짜, 금액과 통화, 결제 대행사의 세션 ID). 스스로 만료되는 기술 로그와 Resend의 메일 로그는 각 업체의 정책을 따르며 저희의 삭제 대상이 아닙니다. Creem 페이지에서 입력한 데이터와 Creem이 보관하는 거래 기록(판매자로서 세무 기록을 보관할 의무가 있음)은 저희에게 보내는 삭제 요청의 대상이 아닙니다. Creem에서 삭제하려면 Creem에 문의하세요. 키를 한 번도 활성화하지 않은 기기의 오류 보고서는 어떤 이메일과도 연결되어 있지 않아 이메일로 찾을 수 없으며, 30일 뒤 자동 삭제됩니다.</p>
+
+<h2 id="processors">데이터를 처리하는 다른 곳</h2>
+<div class="table-wrap" role="region" aria-label="데이터를 처리하는 다른 곳" tabindex="0"><table>
+<thead><tr><th scope="col">처리자</th><th scope="col">역할</th><th scope="col">데이터</th></tr></thead>
+<tbody>
+<tr><th scope="row">PayOS(베트남)</th><td>VietQR 결제 처리</td><td>주문 번호, 금액, 주문 설명. 이메일은 보내지 않습니다.</td></tr>
+<tr><th scope="row">Creem(Armitage Labs OÜ, 에스토니아)</th><td>카드 주문의 판매자(merchant of record, 재판매자): 결제, 세금, 영수증을 처리</td><td>카드 결제를 누르는 순간(그 뒤 결제하지 않더라도), 결제 페이지를 미리 채우고 Creem이 영수증을 이메일로 보낼 수 있도록 주문 번호, 요금제, 금액, 통화, 입력한 이메일을 보냅니다. 결제 페이지에서는 Creem이 직접 카드 번호, 이름, 청구 주소와 국가(세금 계산용), IP 주소(사기 방지용)를 수집하며, 저희는 카드 번호를 받지 않습니다. Creem은 자체 정책(https://www.creem.io/privacy)에 따라 이 데이터를 처리합니다. Creem이 저희 서버로 보내는 결제 알림에는 구매자의 이름과 국가가 들어 있지만, 이 두 가지는 저장하지 않습니다.</td></tr>
+<tr><th scope="row">Cloudflare</th><td>라이선스 서버와 데이터베이스 운영. 모델과 업데이트 저장 및 배포</td><td>위 표의 데이터(오류 보고서 포함). 스스로 만료되는 기술 로그</td></tr>
+<tr><th scope="row">Resend</th><td>키가 담긴 이메일 발송</td><td>이메일 주소와 메시지(키 포함). Resend의 정책에 따른 메일 로그</td></tr>
+</tbody></table></div>
+<p>Cloudflare와 Resend는 베트남 밖에서 서버를 운영하고, Creem은 에스토니아 회사이므로 데이터가 해외에서 처리될 수 있습니다. 데이터를 판매하거나 광고를 위해 공유하지 않습니다.</p>
+
+<h2 id="protections">그 밖의 보호 장치</h2>
+<ul>
+<li><strong>디지털 서명:</strong> 앱 업데이트는 디스크에 쓰기 전에 서명을 확인합니다. 모델 목록은 Ed25519로 서명되고, 각 파일은 SHA-256으로 대조합니다. 라이선스 토큰은 Ed25519로 서명되며 오프라인에서도 검증할 수 있습니다. 앱에는 공개 키만 들어 있습니다.</li>
+<li><strong>AI 처리는 화면과 분리:</strong> 컴퓨터 안의 앱하고만 통신하고, 기기 밖에서 오는 연결은 받지 않으며, 실행할 때마다 무작위 키를 씁니다.</li>
+<li><strong>중요한 키는 앱에 넣지 않음:</strong> 결제 API 키와 서명 키는 저희 서버에만 있으며, 서버와의 연결은 HTTPS를 씁니다.</li>
+<li><strong>변조된 앱 감지:</strong> macOS에서 앱은 애드혹 서명이 온전한지, 번들 ID가 맞는지 확인합니다. 서명이 맞지 않는 빌드는 Free 요금제만 실행됩니다. 이는 무결성 확인이며 Developer ID 서명을 대신하지 않습니다. Windows에서는 현재 빌드가 아직 코드 서명되지 않아 이런 확인이 없으니, 대신 설치 파일의 SHA-256을 확인하세요.</li>
+</ul>
+
+<h2 id="signing">현재의 코드 서명</h2>
+<div class="table-wrap" role="region" aria-label="코드 서명 상태" tabindex="0"><table>
+<thead><tr><th scope="col">플랫폼</th><th scope="col">상태</th><th scope="col">사용자에게 의미하는 것</th></tr></thead>
+<tbody>
+<tr><th scope="row">macOS</th><td>애드혹 서명, <strong>공증 없음</strong>(아직 Apple Developer ID가 없습니다)</td><td>브라우저로 내려받은 .dmg는 처음 실행할 때 macOS가 차단합니다(‘시스템 설정 › 개인정보 보호 및 보안’에서 ‘그래도 열기’를 눌러야 합니다). 터미널 명령으로 설치하면 바로 열립니다. 업데이트할 때마다 macOS가 키체인 대화상자 1개를 띄우고, 녹음 권한을 다시 물을 수 있습니다.</td></tr>
+<tr><th scope="row">Windows</th><td><strong>코드 서명 없음</strong>(아직 Windows 코드 서명 인증서가 없습니다)</td><td>PowerShell 명령으로 설치하면 SmartScreen이 작동하지 않습니다(PowerShell로 내려받은 파일에는 ‘인터넷에서 다운로드함’ 표시가 없기 때문). 브라우저로 내려받은 .exe는 ‘Windows의 PC 보호’가 표시될 수 있으니 ‘추가 정보’를 누른 뒤 ‘실행’을 누르세요. 게시자는 ‘알 수 없는 게시자’로 표시됩니다. 차단 모드의 스마트 앱 컨트롤은 서명 없는 빌드를 차단합니다.</td></tr>
+</tbody></table></div>
+<p>애드혹 서명은 개발자가 누구인지 Apple에 알려 주지 못하므로, <a href="/ko/download/">다운로드 페이지</a>의 명령이나 저희가 보내 드린 파일로만 설치하고 SHA-256 체크섬을 대조하세요. 서명 없는 Windows 빌드도 마찬가지입니다(다운로드 페이지의 명령이나 저희가 보내 드린 파일로 설치). Windows는 파일 게시자를 확인할 수 없으므로, SHA-256을 대조하는 것이 파일이 바뀌지 않았음을 확인하는 방법입니다. 가능해지면 Developer ID와 Windows 코드 서명 인증서로 옮길 계획이지만, 아직 날짜는 정해지지 않았습니다. <a href="/ko/guide/install-macos/">macOS</a>와 <a href="/ko/guide/install-windows/">Windows</a> 설치 가이드를 참고하세요.</p>
+
+<h2 id="limits">약속하지 않는 것</h2>
+<ul>
+<li>절대적으로 안전한 시스템은 없습니다. 개인정보에 영향을 주는 사고가 생기면 법이 정한 대로 알리겠습니다.</li>
+<li>화면을 공유할 때 시청자에게 자막 바가 보이는지는 확인하지 않았습니다. 걱정된다면 공유하기 전에 단축키로 바를 숨기세요.</li>
+<li>법이나 회사 정책상 필요하다면, 번역 도구를 쓰고 있다는 사실을 회의의 다른 참석자에게 알리는 것은 사용자의 책임입니다.</li>
+</ul>
+<p>보안 문제를 발견했나요? <a href="/ko/contact/#security">문의 페이지</a>의 절차를 따라 주세요.</p>
+`,
+})}
+${docNav(
+  [
+    { href: "/en/privacy/", kicker: "전문(영어)", title: "개인정보 처리방침" },
+    { href: "/en/terms/", kicker: "전문(영어)", title: "이용 약관" },
+    { href: "/ko/guide/history-and-export/", kicker: "가이드", title: "기록과 내보내기" },
+  ],
+  "계속 읽기",
+)}
+</div></section>
+
+${ctaBand({ title: "안심하고 직접 써 보세요", text: "컴퓨터에서 바로 번역하며, 오디오는 컴퓨터 밖으로 나가지 않습니다. 10일 Free 체험, 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/contact/", label: "문의하기" } })}
+`,
+};
