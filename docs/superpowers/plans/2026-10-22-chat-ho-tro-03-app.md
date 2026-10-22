@@ -17,7 +17,7 @@
 - Làm **thẳng trên nhánh `main`** trong `/Users/dtphong/Desktop/software_business/ai-translator`, không worktree. **Mọi lệnh bắt đầu bằng `cd /Users/dtphong/Desktop/software_business/ai-translator &&`** (shell reset thư mục sau mỗi lệnh). Trước mỗi commit chạy `git branch --show-current` (phải ra `main`). Thư mục có thể có phiên khác cùng làm (lúc viết kế hoạch: spec chat hỗ trợ đang sửa dở, các kế hoạch 00, 01, 04 chưa commit): **chỉ `git add` đúng các file của task**, không `git add -A`.
 - **Không push, không deploy, không phát hành, không đặt secret.** Không đụng chính sách quyền riêng tư, spec gốc hay website (kế hoạch 04), không đụng `server/` (kế hoạch 01).
 - **Không gọi server thật trong test.** Client HTTP test bằng server TCP giả trong máy (như `diagnostics/send.rs`); lõi và lệnh test bằng `test_support::FakeSupportApi`. App giả (`mock_app`) không cài chat thật (`support::install` chỉ chạy trong `setup` của app thật).
-- Mã trong kế hoạch **đã chạy thật** trên một bản sao của repo (commit `01c2077a`): `cargo test` 798 test, `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/check-windows.sh`, `tsc`, vitest 359 test, `vite build`, `check-i18n.mjs` đủ năm ngôn ngữ. Chép nguyên văn; đoạn "tìm … thay bằng …" khớp đúng file hiện tại (đã kiểm bằng máy).
+- Mã trong kế hoạch **đã chạy thật** trên một bản sao của repo (commit `01c2077a`): `cargo test` 803 test, `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/check-windows.sh`, `tsc`, vitest 359 test, `vite build`, `check-i18n.mjs` đủ năm ngôn ngữ. Chép nguyên văn; đoạn "tìm … thay bằng …" khớp đúng file hiện tại (đã kiểm bằng máy).
 - Chú thích trong mã bằng tiếng Việt, theo giọng các file kế bên. Mọi chuỗi giao diện qua `t(...)`, đủ năm từ điển `src/i18n/{en,vi,ja,zh,ko}.ts`.
 - Commit có hai dòng `-m`, dòng thứ hai là `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Kiểm tra cuối mỗi nhóm task (Task 8 cho phần Rust, Task 14 cho cả kế hoạch): `cargo fmt --all -- --check`, `cargo clippy --locked --workspace --all-targets -- -D warnings`, `sh scripts/check-windows.sh --locked`, `pnpm build`, `pnpm test`.
@@ -48,7 +48,7 @@ Mã lỗi giao diện (`CommandError.code`, câu ở `error.<mã>`): `supportOff
 
 1. **Thiết kế nhịp hỏi.** Luồng nền riêng gọi `Chat::tick()` rồi `Chat::wait(…)`. `tick` đọc trạng thái lúc đó (có cuộc chat, màn hình mở, cửa sổ chính hiện, đang dịch, `waitingSince`, lần cuối có tin mới) và hỏi `cadence::next`, một hàm thuần trả `Poll(giây)`, `Recheck(giây)` (không gọi mạng, chỉ xét lại: cửa sổ có thể hiện lại, phiên dịch có thể dừng) hay `Idle` (ngủ tới khi bị đánh thức). Lệnh `support_screen`, `support_send`, `support_delete` đánh thức luồng (`Condvar`). Nhờ vậy luật nhịp test được bằng đồng hồ giả, từng giây một, không cần chờ thật.
 2. **Sáu lệnh: bỏ `support_status`, thêm `support_screen`.** Spec kể `support_status`, `support_fetch`, `support_send`, `support_set_email`, `support_delete` và lệnh dòng thông tin máy. App không gọi `GET /v1/support/status` (quyết định 5), nên không có lệnh `support_status`. Rust không tự biết màn hình nào đang mở, nên thêm `support_screen`: giao diện báo khi `SupportScreen` mở và đóng (mount/unmount); lệnh này không gọi mạng.
-3. **"Cửa sổ đang hiện" do Rust kiểm:** cửa sổ chính `is_visible() && !is_minimized()` mỗi nhịp, không dựa `visibilitychange` của webview (WKWebView và WebView2 không chắc báo khi cửa sổ ẩn xuống khay). Màn hình mở mà cửa sổ ẩn thì như màn hình đóng; cửa sổ hiện lại đúng màn hình Hỗ trợ thì tự bỏ chấm đỏ.
+3. **"Cửa sổ đang hiện" do Rust kiểm:** cửa sổ chính `is_visible() && !is_minimized()` mỗi nhịp, không dựa `visibilitychange` của webview (WKWebView và WebView2 không chắc báo khi cửa sổ ẩn xuống khay). Cửa sổ ẩn thì **không hỏi nền** (kể cả màn hình đang mở hay đang chờ trả lời): app hay chạy ẩn dưới khay, mà lần hỏi nền trả về câu trả lời làm server coi khách đã nhận (không gửi email cho câu đó) trong khi khách không thấy chấm đỏ vì không nhìn thấy cửa sổ. Cửa sổ hiện lại thì hỏi ngay như thường; hiện lại đúng màn hình Hỗ trợ thì tự bỏ chấm đỏ.
 4. **Lần hỏi đầu của nhịp "đang chờ trả lời"** là 60 giây sau khi mở app (hợp đồng phía app: "60 giây"; chỉ website "hỏi một lần khi tải trang"). Lúc mở app không có kết nối nào.
 5. **Chưa từng nhắn thì không có kết nối nào cho chat, kể cả khi mở màn hình Hỗ trợ** (kế hoạch 04 cam kết "chưa từng nhắn thì app không kết nối gì cho chat"). Chưa có cuộc chat (không có `support.json`): mở màn hình không gọi mạng, `enabled` coi như chưa biết (`true`) nên hiện lời chào và ô nhập. Tin đầu nhận `503 support_disabled` thì tin đó hiện lỗi và màn hình chuyển sang dòng "Chat đang tạm tắt…" (lõi đặt `enabled = false` và báo qua sự kiện); không có token nên không lưu gì. Lần mở màn hình sau lại hiện ô nhập (vẫn không gọi mạng) để gửi lại. Đã có cuộc chat thì `enabled` lấy từ thân `GET messages` như hợp đồng. App không dùng `GET /v1/support/status` (website vẫn dùng). Test khóa: `opening_the_screen_without_a_conversation_makes_no_request` (Task 7), `without_a_conversation_nothing_connects_even_with_the_screen_open` và `a_first_message_into_a_disabled_chat_…` (Task 6), vitest "mở màn hình khi chưa có cuộc chat…" (Task 9), cảnh `support` và `support-send-disabled` của `check-i18n` (Task 13).
 6. **`support.json` thêm khóa `unread`** cạnh `{ token, lastId, waitingSince }` của hợp đồng, để chấm đỏ còn sau khi mở lại app. File chỉ app đọc; không đổi hợp đồng API. Không có cuộc chat thì không có file.
@@ -112,7 +112,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked
 ```
 Expected: `test result: ok. 753 passed; 0 failed; 6 ignored; …`
 
-Đo ngày 2026-10-22 trên `main` (`01c2077a`): **753 passed, 6 ignored**. Mỗi task Rust dưới đây ghi số mới; Task 8 đòi **798**. Có test đỏ trước khi sửa gì thì dừng và báo.
+Đo ngày 2026-10-22 trên `main` (`01c2077a`): **753 passed, 6 ignored**. Mỗi task Rust dưới đây ghi số mới; Task 8 đòi **803** (sau rà 2026-10-22; trước rà là 798). Có test đỏ trước khi sửa gì thì dừng và báo.
 
 - [ ] **Step 3: Mốc test giao diện và kiểu**
 
@@ -186,6 +186,11 @@ mod tests {
         dir.join("support.json")
     }
 
+    /// Dọn thư mục tạm của test.
+    fn done(path: &std::path::Path) {
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
     #[test]
     fn a_conversation_survives_a_restart_with_the_contract_keys() {
         let path = temp("roundtrip");
@@ -204,6 +209,23 @@ mod tests {
             serde_json::json!({ "token": TOKEN, "lastId": 42, "waitingSince": 1_800_000_000, "unread": true })
         );
         assert!(!path.with_extension("json.tmp").exists(), "không còn file tạm");
+        done(&path);
+    }
+
+    #[test]
+    fn debug_output_never_shows_the_token() {
+        let saved = Saved {
+            token: Some(TOKEN.into()),
+            last_id: 3,
+            ..Saved::default()
+        };
+        let shown = format!("{saved:?}");
+        assert!(!shown.contains(TOKEN) && !shown.contains("abcdefgh"), "{shown}");
+        assert!(shown.contains("last_id: 3"), "{shown}");
+        assert!(
+            !format!("{:?}", Saved::default()).contains("ẩn"),
+            "không token thì không có gì để che"
+        );
     }
 
     #[test]
@@ -222,6 +244,7 @@ mod tests {
         assert!(path.exists());
         store.save(&Saved::default()).unwrap();
         assert!(!path.exists(), "xóa cuộc chat thì xóa file");
+        done(&path);
     }
 
     #[test]
@@ -234,13 +257,14 @@ mod tests {
         assert_eq!(Store::new(path.clone()).load(), Saved::default());
         std::fs::write(&path, format!(r#"{{"token":"{TOKEN}","lastId":-5}}"#)).unwrap();
         assert_eq!(
-            Store::new(path).load(),
+            Store::new(path.clone()).load(),
             Saved {
                 token: Some(TOKEN.into()),
                 ..Saved::default()
             },
             "thiếu khóa thì lấy mặc định, con trỏ âm thành 0"
         );
+        done(&path);
     }
 
     #[test]
@@ -286,7 +310,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// Nội dung của `support.json`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Saved {
     /// Token của cuộc chat (43 ký tự base64url); `None` là chưa có cuộc chat.
@@ -300,6 +324,18 @@ pub struct Saved {
     /// Có câu trả lời mới chưa xem (chấm đỏ ở mục Hỗ trợ).
     #[serde(default)]
     pub unread: bool,
+}
+
+// Token mở được cả cuộc chat: `Debug` (log, `assert!`) không bao giờ in nó.
+impl std::fmt::Debug for Saved {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Saved")
+            .field("token", &self.token.as_ref().map(|_| "<ẩn>"))
+            .field("last_id", &self.last_id)
+            .field("waiting_since", &self.waiting_since)
+            .field("unread", &self.unread)
+            .finish()
+    }
 }
 
 /// Token đúng dạng của hợp đồng: 43 ký tự base64url (32 byte ngẫu nhiên).
@@ -360,12 +396,12 @@ impl Store {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib support::store 2>&1 | grep -E "test result|panicked|^error" | head -20
 ```
-Expected: `test result: ok. 4 passed; 0 failed; …`
+Expected: `test result: ok. 5 passed; 0 failed; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 757 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 758 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -392,7 +428,7 @@ Expected: một commit mới; `git status --short` không còn file nào của t
 - Create: `src-tauri/src/support/cadence.rs`
 - Modify: `src-tauri/src/support/mod.rs`
 
-Hàm thuần, đúng bảng của spec §4 và hợp đồng phía khách: màn hình mở và cửa sổ hiện thì 3 giây (2 phút liền không có tin mới thì 15 giây); đang chờ trả lời trong 24 giờ và không đang dịch thì 60 giây; còn lại, kể cả khi chưa có cuộc chat, không gọi mạng. Lỗi mạng giãn 3 → 15 → 60 giây.
+Hàm thuần, đúng bảng của spec §4 và hợp đồng phía khách: màn hình mở và cửa sổ hiện thì 3 giây (2 phút liền không có tin mới thì 15 giây); đang chờ trả lời trong 24 giờ, cửa sổ chính đang hiện và không đang dịch thì 60 giây; còn lại, kể cả khi chưa có cuộc chat hay khi cửa sổ ẩn xuống khay, không gọi mạng (hợp đồng 00: hỏi nền chỉ khi "khung đóng nhưng trang/cửa sổ đang hiện"). Lỗi mạng giãn 3 → 15 → 60 giây.
 
 - [ ] **Step 1: Viết test trước (đỏ)**
 
@@ -418,8 +454,11 @@ Tạo `src-tauri/src/support/cadence.rs` với nội dung:
 //! | Lúc nào | Nhịp |
 //! |---|---|
 //! | Màn hình Hỗ trợ đang mở và cửa sổ chính đang hiện | 3 giây; 2 phút liền không có tin mới thì 15 giây |
-//! | Đang chờ trả lời (tin cuối của khách, trong 24 giờ qua) và không đang dịch | 60 giây |
-//! | Còn lại, kể cả khi chưa từng dùng chat | không gọi mạng |
+//! | Đang chờ trả lời (tin cuối của khách, trong 24 giờ qua), cửa sổ chính đang hiện và không đang dịch | 60 giây |
+//! | Còn lại, kể cả khi chưa từng dùng chat hay khi cửa sổ ẩn xuống khay | không gọi mạng |
+//!
+//! Cửa sổ ẩn thì không hỏi nền: app hay chạy ẩn dưới khay, mà lần hỏi nền trả về câu trả lời làm server coi khách đã nhận (nên
+//! không gửi email cho câu đó), trong khi khách không thấy chấm đỏ vì không nhìn thấy cửa sổ.
 
 #[cfg(test)]
 mod tests {
@@ -515,8 +554,8 @@ mod tests {
                 waiting_since: Some(T),
                 ..hidden
             }),
-            Next::Poll(60),
-            "cửa sổ ẩn mà đang chờ trả lời: như màn hình đóng"
+            Next::Recheck(3),
+            "cửa sổ ẩn mà đang chờ trả lời: không hỏi nền (khách không thấy chấm đỏ, server lại coi là đã nhận)"
         );
         assert_eq!(
             next(&Inputs {
@@ -526,6 +565,48 @@ mod tests {
             }),
             Next::Recheck(3)
         );
+    }
+
+    #[test]
+    fn a_window_hidden_in_the_tray_never_polls_and_polling_resumes_when_it_shows() {
+        let waiting_hidden = Inputs {
+            waiting_since: Some(T - 3600),
+            window_visible: false,
+            ..base()
+        };
+        assert_eq!(
+            next(&waiting_hidden),
+            Next::Recheck(SLOW_SECS),
+            "màn hình đóng, cửa sổ ẩn, đang chờ: xét lại, không gọi mạng"
+        );
+        assert_eq!(
+            next(&Inputs {
+                window_visible: true,
+                ..waiting_hidden
+            }),
+            Next::Poll(60),
+            "cửa sổ hiện lại: hỏi nền như thường"
+        );
+        assert_eq!(
+            next(&Inputs {
+                window_visible: false,
+                has_conversation: true,
+                waiting_since: None,
+                ..base()
+            }),
+            Next::Idle,
+            "không chờ, cửa sổ ẩn: không cần xét lại"
+        );
+    }
+
+    #[test]
+    fn a_hand_edited_waiting_time_cannot_overflow() {
+        assert!(!waiting(Some(i64::MIN), T), "không tràn số, quá xa nên thôi chờ");
+        assert!(!waiting(Some(i64::MAX), T));
+        assert!(waiting(Some(T - 60), T));
+        assert!(waiting(Some(T + 60), T), "đồng hồ lệch vài phút vẫn là đang chờ");
+        assert!(!waiting(Some(T - WAITING_FOR_SECS), T));
+        assert!(!waiting(None, T));
     }
 
     #[test]
@@ -592,7 +673,8 @@ pub enum Next {
 
 /// Đang chờ trả lời: tin cuối của khách chưa có trả lời và gửi trong 24 giờ qua.
 pub fn waiting(waiting_since: Option<i64>, now: i64) -> bool {
-    waiting_since.is_some_and(|since| now - since < WAITING_FOR_SECS)
+    // `abs_diff` không tràn số dù `support.json` bị sửa tay thành giá trị lạ; lệch quá 24 giờ (cả hai phía) thì thôi chờ.
+    waiting_since.is_some_and(|since| now.abs_diff(since) < WAITING_FOR_SECS.unsigned_abs())
 }
 
 pub fn next(i: &Inputs) -> Next {
@@ -604,7 +686,7 @@ pub fn next(i: &Inputs) -> Next {
         let quiet = i.now - i.active_at >= QUIET_AFTER_SECS;
         return Next::Poll(if quiet { SLOW_SECS } else { FAST_SECS });
     }
-    if waiting && !i.translating {
+    if waiting && !i.translating && i.window_visible {
         return Next::Poll(WAITING_SECS);
     }
     if i.screen_open {
@@ -629,12 +711,12 @@ pub fn network_backoff(failures: u32) -> i64 {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib support::cadence 2>&1 | grep -E "test result|panicked|^error" | head -20
 ```
-Expected: `test result: ok. 5 passed; 0 failed; …`
+Expected: `test result: ok. 7 passed; 0 failed; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 762 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 765 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -652,6 +734,8 @@ Expected: `main`. Ra nhánh khác thì dừng lại, đừng commit.
 cd /Users/dtphong/Desktop/software_business/ai-translator && git add src-tauri/src/support/mod.rs src-tauri/src/support/cadence.rs && git commit -m "feat(app): luật nhịp hỏi tin của chat hỗ trợ" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 Expected: một commit mới; `git status --short` không còn file nào của task này (các file tài liệu chưa commit của phiên khác vẫn ở đó, đừng add).
+
+**Sau khi rà (2026-10-22):** `waiting` dùng `abs_diff` (không tràn số khi `support.json` bị sửa tay, lệch quá 24 giờ hai phía thì thôi chờ); nhánh "đang chờ trả lời" của `next` đòi thêm `window_visible` (cửa sổ ẩn xuống khay thì `Recheck(15)`, hay `Recheck(3)` khi màn hình mở: không gọi mạng, vì hỏi nền lúc ẩn làm server coi khách đã nhận mà khách không thấy chấm đỏ). Thêm 2 test (cửa sổ ẩn rồi hiện lại, số tràn); 7 test cadence.
 
 ---
 
@@ -894,6 +978,18 @@ mod tests {
             (404, vec![], "Not Found"),
             (302, vec![("Location", "https://nơi.khác/")], ""),
             (200, vec![], "không phải json"),
+            (413, vec![], r#"{"error":"invalid_request"}"#),
+            (
+                429,
+                vec![("Retry-After", "3")],
+                "<html><body>Too Many Requests</body></html>",
+            ),
+            (429, vec![("Retry-After", "90")], "<html>Too Many Requests</html>"),
+            (
+                429,
+                vec![("Retry-After", "Wed, 21 Oct 2026 07:28:00 GMT")],
+                r#"{"error":"rate_limited"}"#,
+            ),
         ]);
         let api = HttpSupportApi::new(Some(base));
         assert_eq!(api.send(TOKEN, "a"), Err(ApiError::RateLimited(120)));
@@ -935,6 +1031,51 @@ mod tests {
             matches!(api.send(TOKEN, "a"), Err(ApiError::Network(_))),
             "thân sai dạng"
         );
+        assert!(
+            matches!(api.send(TOKEN, "a"), Err(ApiError::Invalid { status: 413, .. })),
+            "thân quá lớn"
+        );
+        assert_eq!(
+            api.send(TOKEN, "a"),
+            Err(ApiError::RateLimited(15)),
+            "429 thân HTML (proxy) vẫn là rate_limited, tối thiểu 15 giây"
+        );
+        assert_eq!(api.send(TOKEN, "a"), Err(ApiError::RateLimited(90)));
+        assert_eq!(
+            api.send(TOKEN, "a"),
+            Err(ApiError::RateLimited(15)),
+            "Retry-After dạng ngày giờ không đọc được: 15 giây"
+        );
+    }
+
+    #[test]
+    fn a_malformed_answer_never_copies_response_text_into_the_error() {
+        let (base, _) = serve(vec![(
+            200,
+            vec![],
+            r#"{"message":{"id":"GIA-TRI-BI-MAT","sender":"owner","text":"x","created_at":1}}"#,
+        )]);
+        let err = HttpSupportApi::new(Some(base)).send(TOKEN, "a").unwrap_err();
+        let ApiError::Network(message) = err else {
+            panic!("{err:?}")
+        };
+        assert!(!message.contains("GIA-TRI-BI-MAT"), "{message}");
+        assert!(message.starts_with("response sai dạng"), "{message}");
+    }
+
+    #[test]
+    fn debug_output_never_shows_the_token() {
+        let started = Started {
+            token: TOKEN.into(),
+            message: SupportMessage {
+                id: 7,
+                sender: Sender::Customer,
+                text: "Chào".into(),
+                created_at: 1,
+            },
+        };
+        let shown = format!("{started:?}");
+        assert!(!shown.contains(TOKEN) && !shown.contains("abcdefgh"), "{shown}");
     }
 
     #[test]
@@ -1043,10 +1184,20 @@ pub struct Opening {
 }
 
 /// Cuộc chat vừa tạo: token (chỉ app giữ) và tin đầu tiên server đã lưu.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Deserialize)]
 pub struct Started {
     pub token: String,
     pub message: SupportMessage,
+}
+
+// Token mở được cả cuộc chat: `Debug` (log, `assert!`) không bao giờ in nó.
+impl std::fmt::Debug for Started {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Started")
+            .field("token", &"<ẩn>")
+            .field("message_id", &self.message.id)
+            .finish()
+    }
 }
 
 /// Lỗi của một lần gọi, đã phân loại theo hợp đồng.
@@ -1152,7 +1303,15 @@ impl HttpSupportApi {
             .bytes()
             .map_err(|e| ApiError::Network(e.without_url().to_string()))?;
         if (200..300).contains(&status) {
-            return serde_json::from_slice(&bytes).map_err(|e| ApiError::Network(format!("response sai dạng: {e}")));
+            // Chỉ giữ loại và vị trí lỗi: thông điệp gốc của `serde_json` có thể chép giá trị trong response.
+            return serde_json::from_slice(&bytes).map_err(|e| {
+                ApiError::Network(format!(
+                    "response sai dạng ({:?}, dòng {} cột {})",
+                    e.classify(),
+                    e.line(),
+                    e.column()
+                ))
+            });
         }
         Err(error_of(status, retry_after, &bytes))
     }
@@ -1232,12 +1391,12 @@ impl SupportApi for HttpSupportApi {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib support::api 2>&1 | grep -E "test result|panicked|^error" | head -20
 ```
-Expected: `test result: ok. 8 passed; 0 failed; …`
+Expected: `test result: ok. 10 passed; 0 failed; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 770 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 775 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -1255,6 +1414,8 @@ Expected: `main`. Ra nhánh khác thì dừng lại, đừng commit.
 cd /Users/dtphong/Desktop/software_business/ai-translator && git add src-tauri/src/support/mod.rs src-tauri/src/support/api.rs && git commit -m "feat(app): client HTTP của chat hỗ trợ" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 Expected: một commit mới; `git status --short` không còn file nào của task này (các file tài liệu chưa commit của phiên khác vẫn ở đó, đừng add).
+
+**Sau khi rà (2026-10-22):** lỗi đọc JSON chỉ giữ loại và vị trí (`classify`, dòng, cột), không giữ thông điệp gốc của `serde_json` (có thể chép giá trị trong response); `Started` và `Saved` (Task 1) có `Debug` che token; bảng test thêm `413`, `429` thân HTML, `Retry-After` dạng ngày giờ. Thêm 2 test cho `api.rs` (10 test), 1 test cho `store.rs` (5 test, dọn thư mục tạm).
 
 ---
 
@@ -1517,7 +1678,7 @@ Expected: `test result: ok. 5 passed; 0 failed; …`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 775 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 780 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -1647,7 +1808,7 @@ và thay bằng:
   "error.composeUnavailable": "The translator stopped working. Restart AI Translator; if it keeps failing, send the logs to support.",
   "error.supportOffline": "Could not reach support. Check your internet connection and try again.",
   "error.supportRateLimited": "You are sending messages too quickly. Please try again in a few minutes.",
-  "error.supportBusy": "Support is very busy right now. Please email support@aitranslator.io.vn.",
+  "error.supportBusy": "Support is very busy right now. Please email support@aitranslator.io.vn",
   "error.supportDisabled": "Chat is temporarily off. Please email support@aitranslator.io.vn",
   "error.supportClosed": "This conversation has been closed. Please email support@aitranslator.io.vn",
   "error.supportExpired": "The earlier conversation is gone (deleted or expired). Send again to start a new one.",
@@ -1666,7 +1827,7 @@ và thay bằng:
   "error.composeUnavailable": "Bộ dịch ngừng chạy. Hãy khởi động lại AI Translator; nếu vẫn lỗi, hãy gửi log cho bộ phận hỗ trợ.",
   "error.supportOffline": "Không kết nối được bộ phận hỗ trợ. Kiểm tra kết nối mạng rồi thử lại.",
   "error.supportRateLimited": "Bạn gửi tin quá nhanh. Vui lòng thử lại sau ít phút.",
-  "error.supportBusy": "Bộ phận hỗ trợ đang quá tải. Hãy gửi email tới support@aitranslator.io.vn.",
+  "error.supportBusy": "Bộ phận hỗ trợ đang quá tải. Hãy gửi email tới support@aitranslator.io.vn",
   "error.supportDisabled": "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn",
   "error.supportClosed": "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.io.vn",
   "error.supportExpired": "Cuộc trò chuyện cũ không còn (đã xóa hay hết hạn). Gửi lại để bắt đầu cuộc mới.",
@@ -1685,7 +1846,7 @@ và thay bằng:
   "error.composeUnavailable": "翻訳エンジンが停止しました。AI Translator を再起動してください。それでも改善しない場合は、ログをサポートに送ってください。",
   "error.supportOffline": "サポートに接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
   "error.supportRateLimited": "メッセージの送信が速すぎます。数分後にもう一度お試しください。",
-  "error.supportBusy": "サポートは現在たいへん混み合っています。support@aitranslator.io.vn までメールでお問い合わせください。",
+  "error.supportBusy": "サポートは現在たいへん混み合っています。support@aitranslator.io.vn までメールでお問い合わせください",
   "error.supportDisabled": "チャットは一時的に停止しています。support@aitranslator.io.vn までメールでお問い合わせください",
   "error.supportClosed": "この会話は終了しました。support@aitranslator.io.vn までメールでお問い合わせください",
   "error.supportExpired": "以前の会話はもうありません（削除されたか期限切れです）。もう一度送信すると新しい会話が始まります。",
@@ -1704,7 +1865,7 @@ và thay bằng:
   "error.composeUnavailable": "翻译引擎已停止工作。请重新启动 AI Translator；如果仍然失败，请把日志发给客服。",
   "error.supportOffline": "无法连接客服。请检查网络连接后重试。",
   "error.supportRateLimited": "发送消息过于频繁。请几分钟后重试。",
-  "error.supportBusy": "客服当前非常繁忙。请发送邮件至 support@aitranslator.io.vn。",
+  "error.supportBusy": "客服当前非常繁忙。请发送邮件至 support@aitranslator.io.vn",
   "error.supportDisabled": "聊天暂时关闭。请发送邮件至 support@aitranslator.io.vn",
   "error.supportClosed": "此对话已关闭。请发送邮件至 support@aitranslator.io.vn",
   "error.supportExpired": "之前的对话已不存在（已删除或已过期）。重新发送即可开始新的对话。",
@@ -1723,7 +1884,7 @@ và thay bằng:
   "error.composeUnavailable": "번역기가 작동을 멈췄습니다. AI Translator를 다시 시작하세요. 계속 실패하면 로그를 지원팀에 보내 주세요.",
   "error.supportOffline": "지원팀에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.",
   "error.supportRateLimited": "메시지를 너무 빨리 보내고 있습니다. 몇 분 후에 다시 시도하세요.",
-  "error.supportBusy": "지금은 지원팀이 매우 바쁩니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요.",
+  "error.supportBusy": "지금은 지원팀이 매우 바쁩니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
   "error.supportDisabled": "채팅이 잠시 꺼져 있습니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
   "error.supportClosed": "이 대화는 종료되었습니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
   "error.supportExpired": "이전 대화가 더 이상 없습니다(삭제되었거나 만료됨). 다시 보내면 새 대화가 시작됩니다.",
@@ -1750,7 +1911,7 @@ Expected: không in gì.
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 775 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 780 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -2184,22 +2345,23 @@ mod tests {
     }
 
     #[test]
-    fn a_hidden_window_does_not_count_as_watching_the_screen() {
+    fn a_hidden_window_makes_no_background_request_even_when_waiting_for_a_reply() {
         let r = rig("hidden");
         r.chat.send("Chào", &first(None)).unwrap();
         r.chat.screen(true);
         r.host.hidden.store(true, Ordering::SeqCst);
-        // Cửa sổ ẩn mà đang chờ trả lời: như màn hình đóng, 60 giây.
-        assert_eq!(run_until(&r, T + 61), [60]);
         r.api.owner_reply("Chào bạn", T + 62);
-        assert_eq!(run_until(&r, T + 120), [120]);
-        assert!(r.chat.view().unread, "cửa sổ ẩn: chưa ai thấy câu trả lời");
+        // Cửa sổ ẩn xuống khay: không hỏi nền. Lần hỏi nền trả về câu trả lời làm server coi khách đã nhận (không gửi email cho
+        // câu đó), mà khách không thấy chấm đỏ vì không nhìn thấy cửa sổ.
+        assert_eq!(run_until(&r, T + 200), Vec::<i64>::new());
+        assert_eq!(r.polls(), 0);
+        assert!(!r.chat.view().unread, "chưa hỏi nên chưa biết có câu trả lời");
         r.host.hidden.store(false, Ordering::SeqCst);
-        r.chat.tick();
-        assert!(
-            !r.chat.view().unread,
-            "cửa sổ hiện lại đúng màn hình Hỗ trợ: bỏ chấm đỏ"
-        );
+        // Cửa sổ hiện lại đúng màn hình Hỗ trợ: hỏi ngay, và vì đang xem nên không có chấm đỏ.
+        assert_eq!(run_until(&r, T + 205), [200]);
+        let view = r.chat.view();
+        assert_eq!(view.messages.last().map(|m| m.sender), Some(Sender::Owner));
+        assert!(!view.unread);
     }
 
     #[test]
@@ -2916,7 +3078,7 @@ Expected: `test result: ok. 16 passed; 0 failed; …`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 791 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 796 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -3367,7 +3529,7 @@ Expected: `test result: ok. 6 passed; 0 failed; …`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 797 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 802 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -3620,7 +3782,7 @@ Expected: `test result: ok. 5 passed; 0 failed; …` (4 test ACL có sẵn và t
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 798 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 803 passed; 0 failed; 6 ignored; …`
 
 - [ ] **Step 5: Kiểm tra nhóm Rust**
 
@@ -6121,7 +6283,7 @@ Expected: chỉ `Finished …`.
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 798 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 803 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm build 2>&1 | tail -3
@@ -6145,7 +6307,7 @@ Expected: 13 commit của Task 1–13 nằm trên cùng, theo thứ tự.
 
 - [ ] **Step 5: Báo cáo cho chủ dự án**
 
-Báo: số test (Rust 753 → 798, giao diện 331 → 359), các commit, ảnh đã xem. **Chưa push, chưa phát hành.** Còn lại sau kế hoạch này (không thuộc kế hoạch 03):
+Báo: số test (Rust 753 → 803, giao diện 331 → 359), các commit, ảnh đã xem. **Chưa push, chưa phát hành.** Còn lại sau kế hoạch này (không thuộc kế hoạch 03):
 - server của kế hoạch 01 phải deploy trước app 0.2.4 (đúng thứ tự spec §7); trước đó các đường `/v1/support/*` trả `404` và màn hình Hỗ trợ báo `error.supportOffline` (client coi `404` như không gọi được);
 - A7 bằng proxy (spec §6): chưa dùng chat thì 0 kết nối mới; dùng chat thì chỉ tới `api.`; đang dịch mà màn hình Hỗ trợ đóng thì không có request chat;
 - thử tay sau deploy (chủ dự án nhắn từ app, trả lời có mã và không mã, `/tat`, `/bat`), thử trên Windows thật (dòng thông tin máy có `GPU …`);
@@ -6165,7 +6327,7 @@ Báo: số test (Rust 753 → 798, giao diện 331 → 359), các commit, ảnh 
 | "Gửi kèm thông tin máy": tích sẵn, bỏ tích được, chỉ trước tin đầu và chỉ kèm tin đầu, hiện nguyên văn; nội dung đủ 8 mục; không bao giờ có key, email license, mã máy, tên máy, tên người dùng | 4 (`context.rs`), 7 (`machine_facts`, test `the_machine_line_never_carries_identity`, `the_first_message_carries_…_only_when_ticked`), 6 (`start` chỉ ở tin đầu), 9, 11, 13 |
 | "Đính kèm log": đúng luồng "Gửi log cho hỗ trợ", thành công thì gửi tin "📎 … R-XXXX-XXXX", lỗi thì lỗi của luồng đó | 9 (`attachLog`, test), 11 (lỗi dưới nút), 13 (`support-log`) |
 | `support.json` trong thư mục dữ liệu, không dùng kho khóa | 1, 7 (`install`: `app_local_data_dir/support.json`) |
-| Nhịp hỏi: 3 s / 15 s sau 2 phút; 60 s khi chờ trả lời và không dịch; không kết nối khi chưa dùng chat; Rust điều khiển, giao diện nhận sự kiện | 2 (luật), 6 (`tick` với đồng hồ giả: `an_open_screen_polls_…`, `waiting_for_a_reply_…`, `without_a_conversation_nothing_connects…`, `a_hidden_window_…`), 7 (`AppHost`, luồng nền, `support://view`) |
+| Nhịp hỏi: 3 s / 15 s sau 2 phút; 60 s khi chờ trả lời, cửa sổ hiện và không dịch; cửa sổ ẩn không hỏi; không kết nối khi chưa dùng chat; Rust điều khiển, giao diện nhận sự kiện | 2 (luật), 6 (`tick` với đồng hồ giả: `an_open_screen_polls_…`, `waiting_for_a_reply_…`, `without_a_conversation_nothing_connects…`, `a_hidden_window_…`), 7 (`AppHost`, luồng nền, `support://view`) |
 | Chấm đỏ khi có trả lời | 6 (`a_reply_while_the_screen_is_closed_lights_the_red_dot…`), 12 (Shell), 13 (`support-unread`) |
 | IPC `support_fetch`, `support_send`, `support_set_email`, `support_delete`, lệnh dòng thông tin máy; ACL và `acl_tests.rs` | 8 (không có `support_status`, thêm `support_screen`: quyết định 2, 5) |
 | Bản debug gửi `source: "app-debug"` | 7 (`source()`, test) |
