@@ -1,7 +1,7 @@
 // Chuyển tin của khách sang Zalo của chủ dự án (spec 2026-10-22 §2.3). Gọi ngay sau khi khách gửi (waitUntil) và từ cron (tin còn chờ).
 import { customerText } from "./format";
 import { conversationById } from "./store";
-import type { OwnerBot } from "./zalo";
+import { type OwnerBot, ZaloBotError } from "./zalo";
 
 /** Tin chờ quá 24 giờ thì thôi chuyển; tin vẫn còn trong cuộc chat của khách. */
 export const FORWARD_WINDOW = 86400;
@@ -12,12 +12,22 @@ const MAX_PER_CALL = 25;
 /** Tin bị Zalo từ chối 5 lần (thường là nội dung) thì thôi; vẫn còn trong cuộc chat của khách. */
 export const MAX_ATTEMPTS = 5;
 
+/**
+ * Zalo từ chối chính nội dung tin (lỗi 4xx khác 401 token, 403 lỗi server của Zalo, 404, 408 hết thời gian, 429 hạn mức) thì thử lại
+ * vô ích. Chỉ lỗi loại này mới tính vào `forward_attempts`: Zalo sập, token sai hay lỗi mạng kéo dài hàng giờ không được làm tin
+ * khách bị bỏ (bỏ rồi thì cron thấy "không còn tin chờ", chuỗi lỗi về 0 và cảnh báo support_zalo_failed im).
+ */
+export function isContentRejection(err: unknown): boolean {
+  if (!(err instanceof ZaloBotError) || err.status === undefined) return false;
+  return err.status >= 400 && err.status < 500 && ![401, 403, 404, 408, 429].includes(err.status);
+}
+
 export type ForwardResult = "sent" | "failed" | "idle";
 
 /**
  * Chuyển các tin khách còn chờ của một cuộc chat theo thứ tự id. Trước khi gửi, mỗi tin được giữ chỗ (đặt `claimed_at`); giữ chỗ hết hạn
  * sau 60 giây (Worker có thể bị dừng giữa chừng, `waitUntil` tối đa 30 giây; cron giữ chỗ lại). Thứ tự được giữ: bên khác thấy tin cũ nhất
- * đang được giữ chỗ còn hạn thì dừng, bên đang gửi sẽ gửi tiếp các tin sau. Tin có `forward_attempts` từ `MAX_ATTEMPTS` trở lên bị bỏ qua (không chặn tin sau). Gửi lỗi thì bỏ giữ chỗ, tăng `forward_attempts` và dừng,
+ * đang được giữ chỗ còn hạn thì dừng, bên đang gửi sẽ gửi tiếp các tin sau. Tin có `forward_attempts` từ `MAX_ATTEMPTS` trở lên bị bỏ qua (không chặn tin sau). Gửi lỗi thì bỏ giữ chỗ, tăng `forward_attempts` chỉ khi Zalo từ chối nội dung (`isContentRejection`), và dừng,
  * để tin sau không đi trước tin lỗi. Gửi **ít nhất một lần**: Zalo đã nhận mà hết thời gian chờ thì tin có thể tới hai lần. Dòng 🆕 đi với
  * tin đầu tiên tới Zalo của cuộc chat (kể cả khi tin đầu của khách đã bị bỏ vì quá 24 giờ).
  */
@@ -62,8 +72,8 @@ export async function forwardBatch(
       await zalo.send(customerText(conv, msg.text, header));
     } catch (err) {
       await db
-        .prepare("UPDATE support_messages SET claimed_at = NULL, forward_attempts = forward_attempts + 1 WHERE id = ?")
-        .bind(msg.id)
+        .prepare("UPDATE support_messages SET claimed_at = NULL, forward_attempts = forward_attempts + ?2 WHERE id = ?1")
+        .bind(msg.id, isContentRejection(err) ? 1 : 0)
         .run();
       console.warn(JSON.stringify({ event: "support_forward_failed", conversation: conv.code, error: String(err) }));
       return { result: "failed", sent };

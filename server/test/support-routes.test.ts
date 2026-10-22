@@ -163,7 +163,8 @@ describe("POST /v1/support/messages và GET /v1/support/status (spec 2026-10-22 
     await enableChat();
     w.zalo.failStatus = 502;
     expect((await post(w, firstMessage())).status).toBe(201);
-    expect(await env.DB.prepare("SELECT forwarded_at, forward_attempts FROM support_messages").first()).toEqual({ forwarded_at: null, forward_attempts: 1 });
+    // 502 không phải do nội dung nên không tính lần thử (forward_attempts chỉ tăng khi Zalo từ chối nội dung).
+    expect(await env.DB.prepare("SELECT forwarded_at, forward_attempts FROM support_messages").first()).toEqual({ forwarded_at: null, forward_attempts: 0 });
   });
 });
 

@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sha256Hex } from "../src/crypto";
-import { CLAIM_TTL, forwardConversation } from "../src/support/forward";
+import { CLAIM_TTL, forwardConversation, isContentRejection } from "../src/support/forward";
 import { addCustomerMessage, createConversation, type NewConversation, setStatus } from "../src/support/store";
 import { newToken } from "../src/support/text";
-import { HttpZaloBot } from "../src/support/zalo";
+import { HttpZaloBot, ZaloBotError } from "../src/support/zalo";
 import { resetDb } from "./db";
 import { FakeZalo, TEST_ZALO_OWNER, TEST_ZALO_TOKEN } from "./fakes";
 import { T0 } from "./world";
@@ -42,12 +42,35 @@ describe("chuyển tin khách sang Zalo (spec 2026-10-22 §2.3)", () => {
     expect(zalo.sent).toHaveLength(2);
   });
 
+  it("lỗi không phải do nội dung (5xx, lỗi mạng, 401, 403, 404, 408, 429): tin trở lại hàng chờ, KHÔNG tính lần thử", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { zalo, bot, conv } = await setup();
+    await addCustomerMessage(db, conv.id, "một", T0);
+    for (const status of [500, 502, 401, 403, 404, 408, 429]) {
+      zalo.failStatus = status;
+      expect(await forwardConversation(db, bot, conv.id, T0 + 2)).toBe("failed");
+    }
+    zalo.failStatus = null;
+    zalo.down = true;
+    expect(await forwardConversation(db, bot, conv.id, T0 + 2)).toBe("failed");
+    expect(await rows()).toEqual([{ text: "một", forwarded_at: null, claimed_at: null, forward_attempts: 0 }]);
+  });
+
+  it("isContentRejection: chỉ lỗi 4xx ngoài 401, 403, 404, 408, 429 là Zalo từ chối nội dung", () => {
+    expect(isContentRejection(new ZaloBotError("x", 400))).toBe(true);
+    expect(isContentRejection(new ZaloBotError("x", 422))).toBe(true);
+    for (const status of [401, 403, 404, 408, 429, 500, 502, 503, 200, 302]) expect(isContentRejection(new ZaloBotError("x", status))).toBe(false);
+    expect(isContentRejection(new ZaloBotError("lỗi mạng"))).toBe(false);
+    expect(isContentRejection(new Error("lạ"))).toBe(false);
+    expect(isContentRejection("400")).toBe(false);
+  });
+
   it("Zalo lỗi: tin trở lại hàng chờ, đếm lần thử, tin sau không được gửi trước; lần sau gửi đúng thứ tự và tin đầu vẫn có dòng 🆕", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const { zalo, bot, conv } = await setup();
     await addCustomerMessage(db, conv.id, "một", T0);
     await addCustomerMessage(db, conv.id, "hai", T0 + 1);
-    zalo.failStatus = 500;
+    zalo.failStatus = 400;
     expect(await forwardConversation(db, bot, conv.id, T0 + 2)).toBe("failed");
     expect(await rows()).toEqual([
       { text: "một", forwarded_at: null, claimed_at: null, forward_attempts: 1 },
@@ -105,7 +128,7 @@ describe("chuyển tin khách sang Zalo (spec 2026-10-22 §2.3)", () => {
     let calls = 0;
     const flaky = new HttpZaloBot(TEST_ZALO_TOKEN, TEST_ZALO_OWNER, (url, init) => {
       calls += 1;
-      if (calls === 2) zalo.failStatus = 500;
+      if (calls === 2) zalo.failStatus = 400;
       return realFetch(url, init);
     });
     expect(await forwardConversation(db, flaky, conv.id, T0 + 2)).toBe("failed");

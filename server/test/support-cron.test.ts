@@ -59,24 +59,50 @@ describe("việc định kỳ của chat hỗ trợ (spec 2026-10-22 §2.6)", ()
     expect(await getSetting(env.DB, "zalo_fail_streak")).toBe("0");
   });
 
-  it("tin bị Zalo từ chối 5 lần không gửi nữa và không chặn tin sau của cuộc chat", async () => {
+  it("tin độc: Zalo từ chối nội dung (400) 5 lần thì không gửi nữa và không chặn tin sau của cuộc chat", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const w = makeWorld();
     await enableChat();
-    w.zalo.failStatus = 500;
-    const chat = await startChat(w);
+    w.zalo.failWhenTextIncludes = "ZZZ";
+    const chat = await startChat(w, { text: "ZZZ nội dung bị từ chối" });
+    for (const n of [1, 2, 3, 4]) {
+      w.clock.now = T0 + 300 * n;
+      await forwardPendingSupport(env.DB, w.deps, w.clock.now);
+    }
+    expect(await env.DB.prepare("SELECT forward_attempts FROM support_messages WHERE id = ?").bind(chat.message.id).first()).toEqual({ forward_attempts: MAX_ATTEMPTS });
     await w.call("POST", "/v1/support/messages", { text: "Tin sau" }, auth(chat.token));
-    await env.DB.prepare("UPDATE support_messages SET forward_attempts = ? WHERE id = ?").bind(MAX_ATTEMPTS, chat.message.id).run();
-    w.zalo.failStatus = null;
-    w.clock.now = T0 + 300;
+    w.zalo.failWhenTextIncludes = null;
+    w.clock.now = T0 + 1800;
     await forwardPendingSupport(env.DB, w.deps, w.clock.now);
     // Chưa tin nào của cuộc chat tới Zalo nên tin sau mang dòng 🆕.
     expect(w.zalo.texts()).toEqual([`🆕 #${chat.code} · web · vi · /bang-gia/\nTin sau`]);
     expect(await env.DB.prepare("SELECT forwarded_at FROM support_messages WHERE id = ?").bind(chat.message.id).first()).toEqual({ forwarded_at: null });
-    w.clock.now = T0 + 600;
+    w.clock.now = T0 + 2100;
     await forwardPendingSupport(env.DB, w.deps, w.clock.now);
     expect(w.zalo.texts()).toHaveLength(1);
   });
+
+  for (const status of [500, 401]) {
+    it(`Zalo lỗi ${status} suốt 10 lần cron: tin vẫn chờ (không bị bỏ), có cảnh báo support_zalo_failed; Zalo hoạt động lại thì tin tới`, async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const w = makeWorld();
+      await enableChat();
+      w.zalo.failStatus = status;
+      const chat = await startChat(w);
+      for (let n = 1; n <= 10; n++) {
+        w.clock.now = T0 + 300 * n;
+        await forwardPendingSupport(env.DB, w.deps, w.clock.now);
+      }
+      expect(await env.DB.prepare("SELECT forwarded_at, forward_attempts FROM support_messages").first()).toEqual({ forwarded_at: null, forward_attempts: 0 });
+      expect(await getSetting(env.DB, "zalo_fail_streak")).toBe("10");
+      expect((await env.DB.prepare("SELECT kind FROM ops_alerts").all()).results).toEqual([{ kind: "support_zalo_failed" }]);
+      w.zalo.failStatus = null;
+      w.clock.now = T0 + 3300;
+      await forwardPendingSupport(env.DB, w.deps, w.clock.now);
+      expect(w.zalo.texts()).toEqual([FIRST(chat.code)]);
+      expect(await getSetting(env.DB, "zalo_fail_streak")).toBe("0");
+    });
+  }
 
   it("cuộc chat bị chặn không được gửi lại tin chờ", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -94,7 +120,7 @@ describe("việc định kỳ của chat hỗ trợ (spec 2026-10-22 §2.6)", ()
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const w = makeWorld();
     await enableChat();
-    w.zalo.failStatus = 500;
+    w.zalo.failStatus = 400;
     const a = await startChat(w, { text: "ZZZ nội dung bị từ chối" });
     const b = await startChat(w, {}, { "cf-connecting-ip": "203.0.113.31" });
     w.zalo.failStatus = null;

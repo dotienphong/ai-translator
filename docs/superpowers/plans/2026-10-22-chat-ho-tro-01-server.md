@@ -64,6 +64,7 @@
 | Task 11 | 1602 | 44 |
 | Task 12 | 1608 | 44 |
 | Rà đợt 4 (webhook: +4 test; cron: +9 test; xem "Sau khi rà" ở Task 11 và 12) | 1621 | 44 |
+| Sửa `forward_attempts` chỉ tính khi Zalo từ chối nội dung (+4 test) | 1625 | 44 |
 
 ---
 
@@ -3433,7 +3434,7 @@ Expected: `tsc` không lỗi; `Tests  1608 passed (1608)`.
 cd /Users/dtphong/Desktop/software_business/ai-translator && git branch --show-current && git add server/src/support/cron.ts server/src/email/templates.ts server/src/reconcile.ts server/test/support-cron.test.ts && git commit -m "feat(server): việc định kỳ của chat hỗ trợ (gửi lại, email, xóa sau 90 ngày)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-**Sau khi rà (2026-10-22):** `forwardPendingSupport` thật khác khối mã ở trên. (1) Chỉ lấy cuộc chat `status = 'open'` (JOIN) và tin có `forward_attempts < MAX_ATTEMPTS` (`MAX_ATTEMPTS = 5` export từ `forward.ts`: tin bị Zalo từ chối 5 lần, thường vì nội dung, thì thôi, không chặn tin sau; tin vẫn còn trong cuộc chat của khách). (2) Lỗi ở một cuộc chat thì đi tiếp cuộc chat khác; đủ 3 lần gửi lỗi trong một lần chạy thì dừng (Zalo lỗi chung). (3) Trần tổng `MAX_PER_RUN = 100` tin mỗi lần chạy, qua `forwardBatch(…, limit)` (mới trong `forward.ts`; `forwardConversation` gọi nó với `MAX_PER_CALL`, hành vi của request không đổi). (4) Chuỗi lỗi về 0 khi gửi được ít nhất một tin hay không còn tin chờ; tăng khi lần chạy có lỗi mà không gửi được tin nào. (5) `pruneSupport` xóa thêm `support_zalo_updates` quá 2 ngày trong cùng batch. `FakeZalo` có thêm `failWhenTextIncludes`, `FakeResend` có thêm `attemptKeys`. Test thêm 9 (tin độc, A lỗi không chặn B, dừng sau 3 lỗi, trần 100, chuỗi về 0, cuộc chat chặn không gửi lại, không email cho cuộc chat chặn, `Idempotency-Key` giữ nguyên khi gửi lại, dọn `support_zalo_updates`). Tổng sau Task 12: 1621.
+**Sau khi rà (2026-10-22):** `forwardPendingSupport` thật khác khối mã ở trên. (1) Chỉ lấy cuộc chat `status = 'open'` (JOIN) và tin có `forward_attempts < MAX_ATTEMPTS` (`MAX_ATTEMPTS = 5` export từ `forward.ts`: tin bị Zalo từ chối 5 lần, thường vì nội dung, thì thôi, không chặn tin sau; tin vẫn còn trong cuộc chat của khách). (2) Lỗi ở một cuộc chat thì đi tiếp cuộc chat khác; đủ 3 lần gửi lỗi trong một lần chạy thì dừng (Zalo lỗi chung). (3) Trần tổng `MAX_PER_RUN = 100` tin mỗi lần chạy, qua `forwardBatch(…, limit)` (mới trong `forward.ts`; `forwardConversation` gọi nó với `MAX_PER_CALL`, hành vi của request không đổi). (4) Chuỗi lỗi về 0 khi gửi được ít nhất một tin hay không còn tin chờ; tăng khi lần chạy có lỗi mà không gửi được tin nào. (5) `pruneSupport` xóa thêm `support_zalo_updates` quá 2 ngày trong cùng batch. `FakeZalo` có thêm `failWhenTextIncludes`, `FakeResend` có thêm `attemptKeys`. Test thêm 9 (tin độc, A lỗi không chặn B, dừng sau 3 lỗi, trần 100, chuỗi về 0, cuộc chat chặn không gửi lại, không email cho cuộc chat chặn, `Idempotency-Key` giữ nguyên khi gửi lại, dọn `support_zalo_updates`). `forward_attempts` chỉ tăng khi Zalo từ chối nội dung (`isContentRejection` trong `forward.ts`: `ZaloBotError` có `status` 4xx ngoài 401, 403, 404, 408, 429); lỗi mạng, 5xx và các mã đó chỉ bỏ giữ chỗ, để Zalo sập hay token sai kéo dài không làm tin bị bỏ và không làm cảnh báo `support_zalo_failed` im (test: 10 lần cron liền với 500 và với 401, tin vẫn chờ rồi tới Zalo khi Zalo hoạt động lại). Tổng sau Task 12: 1625.
 
 ---
 
@@ -3554,7 +3555,7 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server check 2>&1 | tail -12
 ```
-Expected: `typecheck`, `vectors:check`, `test` (`Tests  1621 passed (1621)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
+Expected: `typecheck`, `vectors:check`, `test` (`Tests  1625 passed (1625)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
 
 - [ ] **Step 3: Kiểm không lộ token và không còn chỗ giữ chỗ lạ**
 
