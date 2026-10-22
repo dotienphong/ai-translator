@@ -49,3 +49,23 @@ export function licenseEmail(kind: LicenseEmailKind, entries: LicenseEmailEntry[
   ].join("\n");
   return { subject: SUBJECTS[kind], text };
 }
+
+/**
+ * Thư gửi câu trả lời của hỗ trợ cho khách đã rời khung chat (chat hỗ trợ, spec 2026-10-22 §2.6). Song ngữ vi/en như thư key;
+ * câu trả lời giữ nguyên văn chủ dự án gõ. Khách trả lời thư thì về support@ (Reply-To của Resend).
+ */
+export function supportReplyEmail(replies: string[]): { subject: string; text: string } {
+  return {
+    subject: `Trả lời từ hỗ trợ ${PRODUCT_NAME} / Reply from ${PRODUCT_NAME} support`,
+    text: [
+      `Bộ phận hỗ trợ ${PRODUCT_NAME} đã trả lời tin nhắn của bạn.`,
+      `${PRODUCT_NAME} support has replied to your message.`,
+      "",
+      replies.join("\n\n"),
+      "",
+      "---",
+      "Bạn có thể trả lời thư này, hoặc mở lại khung chat trên aitranslator.io.vn hay mục Hỗ trợ trong app.",
+      "You can reply to this email, or reopen the chat on aitranslator.io.vn or in the app's Support screen.",
+    ].join("\n"),
+  };
+}

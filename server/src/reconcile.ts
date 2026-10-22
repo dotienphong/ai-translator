@@ -1,7 +1,8 @@
 // Việc định kỳ của Cron Trigger (mỗi 5 phút, §9):
 // - hỏi cổng thanh toán các đơn chưa xác nhận, phòng khi webhook đến chậm hoặc mất;
 // - gửi lại email mua hàng chưa gửi được;
-// - gửi cảnh báo cho người vận hành; dọn bộ đếm cũ và báo cáo lỗi quá hạn (spec 2026-10-17 §3).
+// - gửi cảnh báo cho người vận hành; dọn bộ đếm cũ và báo cáo lỗi quá hạn (spec 2026-10-17 §3);
+// - chat hỗ trợ: gửi lại tin chưa tới Zalo, gửi email câu trả lời, xóa cuộc chat quá 90 ngày (spec 2026-10-22 §2.6).
 // Mỗi bước chạy riêng: một bước lỗi thì ghi log, các bước sau vẫn chạy.
 import { type AlertKind, authFailedAlert, raiseAlert, sendAlerts } from "./alerts";
 import type { Deps } from "./deps";
@@ -9,6 +10,7 @@ import { pruneErrorReports } from "./error-reports";
 import { fulfilOrder, retryUnsentEmails } from "./orders";
 import { isProviderAuthFailure, PaymentProviderError } from "./payment/provider";
 import { pruneRateLimits } from "./ratelimit";
+import { forwardPendingSupport, pruneSupport, sendSupportEmails } from "./support/cron";
 
 /** Giờ đầu hỏi mỗi lần chạy (5 phút), sau đó mỗi giờ một lần, tới 24 giờ thì thôi và coi là hết hạn. */
 const RECHECK_FIRST_HOUR = 240;
@@ -131,11 +133,17 @@ export async function reconcile(
   await step("retry_emails", async () => {
     emailsRetried = await retryUnsentEmails(env, deps);
   });
+  // Trước send_alerts, để cảnh báo support_zalo_failed của lần này đi luôn trong lần gửi cảnh báo này.
+  await step("support_forward", () => forwardPendingSupport(env.DB, deps, now));
+  await step("support_emails", async () => {
+    await sendSupportEmails(env.DB, deps, now);
+  });
   let alertsSent = 0;
   await step("send_alerts", async () => {
     alertsSent = await sendAlerts(env, deps.email, now);
   });
   await step("prune", () => pruneRateLimits(env.DB, now));
   await step("prune_error_reports", () => pruneErrorReports(env.DB, now));
+  await step("support_prune", () => pruneSupport(env.DB, now));
   return { checked, granted, errors, emails_retried: emailsRetried, alerts_sent: alertsSent };
 }
