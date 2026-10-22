@@ -17,7 +17,7 @@
 - Làm **thẳng trên nhánh `main`** trong `/Users/dtphong/Desktop/software_business/ai-translator`, không worktree. **Mọi lệnh bắt đầu bằng `cd /Users/dtphong/Desktop/software_business/ai-translator &&`** (shell reset thư mục sau mỗi lệnh). Trước mỗi commit chạy `git branch --show-current` (phải ra `main`). Thư mục có thể có phiên khác cùng làm (lúc viết kế hoạch: spec chat hỗ trợ đang sửa dở, các kế hoạch 00, 01, 04 chưa commit): **chỉ `git add` đúng các file của task**, không `git add -A`.
 - **Không push, không deploy, không phát hành, không đặt secret.** Không đụng chính sách quyền riêng tư, spec gốc hay website (kế hoạch 04), không đụng `server/` (kế hoạch 01).
 - **Không gọi server thật trong test.** Client HTTP test bằng server TCP giả trong máy (như `diagnostics/send.rs`); lõi và lệnh test bằng `test_support::FakeSupportApi`. App giả (`mock_app`) không cài chat thật (`support::install` chỉ chạy trong `setup` của app thật).
-- Mã trong kế hoạch **đã chạy thật** trên một bản sao của repo (commit `01c2077a`): `cargo test` 803 test, `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/check-windows.sh`, `tsc`, vitest 359 test, `vite build`, `check-i18n.mjs` đủ năm ngôn ngữ. Chép nguyên văn; đoạn "tìm … thay bằng …" khớp đúng file hiện tại (đã kiểm bằng máy).
+- Mã trong kế hoạch **đã chạy thật** trên một bản sao của repo (commit `01c2077a`): `cargo test` 811 test, `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/check-windows.sh`, `tsc`, vitest 359 test, `vite build`, `check-i18n.mjs` đủ năm ngôn ngữ. Chép nguyên văn; đoạn "tìm … thay bằng …" khớp đúng file hiện tại (đã kiểm bằng máy).
 - Chú thích trong mã bằng tiếng Việt, theo giọng các file kế bên. Mọi chuỗi giao diện qua `t(...)`, đủ năm từ điển `src/i18n/{en,vi,ja,zh,ko}.ts`.
 - Commit có hai dòng `-m`, dòng thứ hai là `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Kiểm tra cuối mỗi nhóm task (Task 8 cho phần Rust, Task 14 cho cả kế hoạch): `cargo fmt --all -- --check`, `cargo clippy --locked --workspace --all-targets -- -D warnings`, `sh scripts/check-windows.sh --locked`, `pnpm build`, `pnpm test`.
@@ -112,7 +112,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked
 ```
 Expected: `test result: ok. 753 passed; 0 failed; 6 ignored; …`
 
-Đo ngày 2026-10-22 trên `main` (`01c2077a`): **753 passed, 6 ignored**. Mỗi task Rust dưới đây ghi số mới; Task 8 đòi **803** (sau rà 2026-10-22; trước rà là 798). Có test đỏ trước khi sửa gì thì dừng và báo.
+Đo ngày 2026-10-22 trên `main` (`01c2077a`): **753 passed, 6 ignored**. Mỗi task Rust dưới đây ghi số mới; Task 8 đòi **811** (sau hai lần rà 2026-10-22; trước rà là 798, sau lần rà đầu 803). Có test đỏ trước khi sửa gì thì dừng và báo.
 
 - [ ] **Step 3: Mốc test giao diện và kiểu**
 
@@ -3073,12 +3073,12 @@ impl Chat {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib support::chat 2>&1 | grep -E "test result|panicked|^error" | head -20
 ```
-Expected: `test result: ok. 16 passed; 0 failed; …`
+Expected: `test result: ok. 24 passed; 0 failed; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 796 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 804 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -3096,6 +3096,8 @@ Expected: `main`. Ra nhánh khác thì dừng lại, đừng commit.
 cd /Users/dtphong/Desktop/software_business/ai-translator && git add src-tauri/src/support/mod.rs src-tauri/src/support/chat.rs src-tauri/src/test_support.rs && git commit -m "feat(app): lõi chat hỗ trợ và nhịp hỏi tin" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 Expected: một commit mới; `git status --short` không còn file nào của task này (các file tài liệu chưa commit của phiên khác vẫn ở đó, đừng add).
+
+**Sau khi rà (2026-10-22, đợt 9):** mã thật khác khối mã ở trên ở bốn chỗ (làm bằng TDD, commit `fix(app): chat hỗ trợ sau rà đợt 9…`). (1) Không mất lệnh đánh thức: `wait(seen, timeout)` nhận con trỏ `wakes` chụp **trước** `tick` (`Chat::seen`), và `Chat::step()` (chụp, `tick`, `wait`) là một vòng của luồng nền; trước đây `wait` tự chụp sau `tick` nên lệnh rơi vào khe bị mất, và `tick` trả `None` thì ngủ vô hạn. (2) `screen(true)` khi đã có cuộc chat đặt `polled_at = now`: luồng nền không bắn GET song song với `fetch after=0` của giao diện. (3) Đồng hồ lùi: `tick` kẹp và ghi lại `polled_at <= now`, `not_before <= now + 3600` (không kẹp `not_before` về `now`, vì như vậy bỏ mất chính thời gian chờ `429`). (4) Khóa `sending` giữ suốt `send` (khóa `inner` vẫn không giữ lúc gọi mạng): hai tin đầu bấm liên tiếp không tạo hai cuộc chat. Thêm 8 test (24 test chat): khe đánh thức, đánh thức sau khi ngủ, mở màn hình chỉ một GET, đồng hồ lùi, hai tin đầu cùng lúc, lần hỏi gặp cuộc chat đã xóa (cả `fetch`), nhánh `cleared` của `tick`, `429` của `fetch`.
 
 ---
 
@@ -3529,7 +3531,7 @@ Expected: `test result: ok. 6 passed; 0 failed; …`
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 802 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 810 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo fmt --all -- --check
@@ -3547,6 +3549,8 @@ Expected: `main`. Ra nhánh khác thì dừng lại, đừng commit.
 cd /Users/dtphong/Desktop/software_business/ai-translator && git add src-tauri/src/support/mod.rs src-tauri/src/events.rs src-tauri/src/lib.rs src-tauri/src/test_support.rs && git commit -m "feat(app): nối chat hỗ trợ vào app, luồng hỏi tin nền" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 Expected: một commit mới; `git status --short` không còn file nào của task này (các file tài liệu chưa commit của phiên khác vẫn ở đó, đừng add).
+
+**Sau khi rà (2026-10-22, đợt 9):** `spawn_poller` đặt tên luồng `support-chat` (`std::thread::Builder`) và gọi `chat.step()`. Không bọc `catch_unwind`: `Cargo.toml` build bản phát hành với `panic = "abort"`, nên panic ở đâu cũng dừng cả app và `catch_unwind` chỉ che lỗi ở bản debug; quyết định ghi lại để không ai thêm lại. Chú thích `support_screen` ở `commands.rs` (Task 8) sửa lại: lệnh không gọi mạng nhưng có thể ghi `support.json` và chạy trên luồng chính.
 
 ---
 
@@ -3777,12 +3781,12 @@ và thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib acl_tests 2>&1 | grep -E "test result|panicked|^error" | head -20
 ```
-Expected: `test result: ok. 5 passed; 0 failed; …` (4 test ACL có sẵn và test mới).
+Expected: `test result: ok. 6 passed; 0 failed; …` (5 test ACL có sẵn và test mới).
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 803 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 811 passed; 0 failed; 6 ignored; …`
 
 - [ ] **Step 5: Kiểm tra nhóm Rust**
 
@@ -6283,7 +6287,7 @@ Expected: chỉ `Finished …`.
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && cargo test --locked -p meeting-translator --lib 2>&1 | grep "test result"
 ```
-Expected: `test result: ok. 803 passed; 0 failed; 6 ignored; …`
+Expected: `test result: ok. 811 passed; 0 failed; 6 ignored; …`
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm build 2>&1 | tail -3
@@ -6307,7 +6311,7 @@ Expected: 13 commit của Task 1–13 nằm trên cùng, theo thứ tự.
 
 - [ ] **Step 5: Báo cáo cho chủ dự án**
 
-Báo: số test (Rust 753 → 803, giao diện 331 → 359), các commit, ảnh đã xem. **Chưa push, chưa phát hành.** Còn lại sau kế hoạch này (không thuộc kế hoạch 03):
+Báo: số test (Rust 753 → 811, giao diện 331 → 359), các commit, ảnh đã xem. **Chưa push, chưa phát hành.** Còn lại sau kế hoạch này (không thuộc kế hoạch 03):
 - server của kế hoạch 01 phải deploy trước app 0.2.4 (đúng thứ tự spec §7); trước đó các đường `/v1/support/*` trả `404` và màn hình Hỗ trợ báo `error.supportOffline` (client coi `404` như không gọi được);
 - A7 bằng proxy (spec §6): chưa dùng chat thì 0 kết nối mới; dùng chat thì chỉ tới `api.`; đang dịch mà màn hình Hỗ trợ đóng thì không có request chat;
 - thử tay sau deploy (chủ dự án nhắn từ app, trả lời có mã và không mã, `/tat`, `/bat`), thử trên Windows thật (dòng thông tin máy có `GPU …`);
