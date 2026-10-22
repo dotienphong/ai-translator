@@ -2358,7 +2358,7 @@ mod tests {
         assert!(!r.chat.view().unread, "chưa hỏi nên chưa biết có câu trả lời");
         r.host.hidden.store(false, Ordering::SeqCst);
         // Cửa sổ hiện lại đúng màn hình Hỗ trợ: hỏi ngay, và vì đang xem nên không có chấm đỏ.
-        assert_eq!(run_until(&r, T + 205), [200]);
+        assert_eq!(run_until(&r, T + 202), [200]);
         let view = r.chat.view();
         assert_eq!(view.messages.last().map(|m| m.sender), Some(Sender::Owner));
         assert!(!view.unread);
