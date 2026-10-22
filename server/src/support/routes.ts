@@ -4,10 +4,22 @@ import { cors } from "hono/cors";
 import { raiseAlert } from "../alerts";
 import type { AppEnv } from "../app";
 import { sha256Hex } from "../crypto";
-import { clientIp, fail, readJson, tooMany } from "../http";
+import { clientIp, fail, parseEmail, readJson, tooMany } from "../http";
 import { failureBlock, hit, LIMITS, noteFailure } from "../ratelimit";
+import { BOT_TEXT } from "./format";
 import { forwardConversation } from "./forward";
-import { addCustomerMessage, type Conversation, conversationByToken, createConversation, isEnabled, type NewConversation } from "./store";
+import {
+  addCustomerMessage,
+  type Conversation,
+  conversationByToken,
+  createConversation,
+  deleteConversation,
+  isEnabled,
+  markDelivered,
+  messagesAfter,
+  type NewConversation,
+  setEmail,
+} from "./store";
 import { newToken, parseContext, parseLang, parsePage, parseSource, parseText } from "./text";
 
 /** Origin duy nhất được gọi từ trình duyệt. App gọi qua Rust, không có header Origin. */
@@ -39,6 +51,18 @@ export async function authed(c: SupportContext): Promise<Conversation | Response
   await noteFailure(c.env, ip, now, "support_token");
   const wait = await failureBlock(c.env, ip, now);
   return wait > 0 ? tooMany(c, wait) : fail(c, 401, "invalid_token");
+}
+
+/** Số giây khách phải chờ khi hỏi tin mới quá nhanh (cửa sổ 60 giây của binding Rate Limiting). */
+const POLL_RETRY_AFTER = 60;
+
+/** Báo Zalo một việc của khách (đã để lại email, đã xóa cuộc chat). Không lưu, không gửi lại: lỗi thì chỉ ghi log. */
+function notifyOwner(c: SupportContext, text: string): void {
+  const zalo = c.get("deps").zalo;
+  if (!zalo) return;
+  c.executionCtx.waitUntil(
+    zalo.send(text).catch((err: unknown) => console.warn(JSON.stringify({ event: "support_notify_failed", error: String(err) }))),
+  );
 }
 
 function busy(c: SupportContext, retryAfter: number) {
@@ -107,5 +131,45 @@ export function registerSupport(app: Hono<AppEnv>) {
       ),
     );
     return c.json(token === null ? { message } : { token, message }, 201);
+  });
+
+  // Hỏi tin mới: không ghi D1 khi không có câu trả lời mới (spec 2026-10-22 §2.2), không đi qua bảng rate_limits.
+  app.get("/v1/support/messages", async (c) => {
+    const found = await authed(c);
+    if (found instanceof Response) return found;
+    const limiter = c.env.SUPPORT_POLL_LIMITER;
+    if (limiter && !(await limiter.limit({ key: String(found.id) })).success) return tooMany(c, POLL_RETRY_AFTER);
+    const rawAfter = c.req.query("after") ?? "0";
+    if (!/^\d{1,15}$/.test(rawAfter)) return fail(c, 400, "invalid_request", { field: "after" });
+    const db = c.env.DB;
+    const messages = await messagesAfter(db, found.id, Number(rawAfter));
+    const lastOwner = messages.reduce((max, m) => (m.sender === "owner" && m.id > max ? m.id : max), 0);
+    if (lastOwner > found.delivered_owner_id) await markDelivered(db, found.id, lastOwner);
+    return c.json({ enabled: await isEnabled(db), status: found.status === "blocked" ? "closed" : "open", messages });
+  });
+
+  app.put("/v1/support/email", async (c) => {
+    const found = await authed(c);
+    if (found instanceof Response) return found;
+    if (found.status === "blocked") return fail(c, 403, "conversation_closed");
+    const now = c.get("deps").now();
+    const perConv = await hit(c.env, "support_email_conv", String(found.id), now);
+    if (!perConv.allowed) return tooMany(c, perConv.retryAfter);
+    const body = await readJson(c);
+    if (!body || !("email" in body)) return fail(c, 400, "invalid_request", { field: "email" });
+    const email = body.email === null ? null : parseEmail(body.email);
+    if (body.email !== null && email === null) return fail(c, 400, "invalid_request", { field: "email" });
+    await setEmail(c.env.DB, found.id, email, now);
+    // Chỉ báo là có email; địa chỉ không bao giờ đi qua Zalo (spec 2026-10-22 §2.3).
+    if (email !== null && email !== found.email) notifyOwner(c, BOT_TEXT.emailSaved(found.code));
+    return c.json({ ok: true });
+  });
+
+  app.delete("/v1/support/conversation", async (c) => {
+    const found = await authed(c);
+    if (found instanceof Response) return found;
+    await deleteConversation(c.env.DB, found.id);
+    if (found.status === "open") notifyOwner(c, BOT_TEXT.deleted(found.code));
+    return c.json({ ok: true });
   });
 }

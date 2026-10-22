@@ -2,7 +2,8 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hmacSha256Hex, sha256Hex } from "../src/crypto";
 import { LIMITS } from "../src/ratelimit";
-import { resetDb } from "./db";
+import { setSetting } from "../src/support/store";
+import { resetDb, wrapDb } from "./db";
 import { auth, enableChat, firstMessage, startChat } from "./support-helpers";
 import { makeWorld, T0 } from "./world";
 
@@ -163,5 +164,102 @@ describe("POST /v1/support/messages và GET /v1/support/status (spec 2026-10-22 
     w.zalo.failStatus = 502;
     expect((await post(w, firstMessage())).status).toBe(201);
     expect(await env.DB.prepare("SELECT forwarded_at, forward_attempts FROM support_messages").first()).toEqual({ forwarded_at: null, forward_attempts: 1 });
+  });
+});
+
+describe("GET /v1/support/messages, PUT /v1/support/email, DELETE /v1/support/conversation (spec 2026-10-22 §2.2)", () => {
+  const get = (w: World, token: string, after: string | number = 0) =>
+    w.call("GET", `/v1/support/messages?after=${after}`, undefined, auth(token));
+
+  it("GET: tin sau con trỏ theo thứ tự, kèm enabled và status; đánh dấu khách đã nhận câu trả lời", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    await env.DB.prepare("INSERT INTO support_messages (conversation_id, sender, text, created_at, zalo_message_id) VALUES (?, 'owner', 'Chào bạn', ?, 'zm-1')")
+      .bind(chat.id, T0 + 5)
+      .run();
+    const r = await get(w, chat.token);
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({
+      enabled: true,
+      status: "open",
+      messages: [
+        { id: chat.message.id, sender: "customer", text: "Gói Monthly dùng được trên 2 máy không?", created_at: T0 },
+        { id: expect.any(Number), sender: "owner", text: "Chào bạn", created_at: T0 + 5 },
+      ],
+    });
+    const ownerId = (r.body.messages as { id: number }[])[1]?.id;
+    expect(await env.DB.prepare("SELECT delivered_owner_id FROM support_conversations").first()).toEqual({ delivered_owner_id: ownerId });
+    expect((await get(w, chat.token, ownerId ?? 0)).body.messages).toEqual([]);
+  });
+
+  it("GET không có tin mới: không ghi gì vào D1", async () => {
+    const w0 = makeWorld();
+    await enableChat();
+    const chat = await startChat(w0);
+    const { db, sql } = wrapDb(env.DB);
+    const w = makeWorld({ DB: db });
+    expect((await get(w, chat.token, chat.message.id)).status).toBe(200);
+    expect(sql.filter((q) => /^\s*(INSERT|UPDATE|DELETE)/i.test(q))).toEqual([]);
+  });
+
+  it("GET: after sai thì 400; thiếu after là 0; bị chặn thì status closed; chat tắt thì enabled false", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    expect(await get(w, chat.token, "-1")).toMatchObject({ status: 400, body: { field: "after" } });
+    expect(await get(w, chat.token, "abc")).toMatchObject({ status: 400, body: { field: "after" } });
+    const noAfter = await w.call("GET", "/v1/support/messages", undefined, auth(chat.token));
+    expect(noAfter.body.messages).toHaveLength(1);
+    await env.DB.prepare("UPDATE support_conversations SET status = 'blocked'").run();
+    await setSetting(env.DB, "enabled", "0");
+    expect((await get(w, chat.token)).body).toMatchObject({ enabled: false, status: "closed" });
+  });
+
+  it("GET hỏi quá nhanh (binding Rate Limiting từ chối): 429 kèm Retry-After 60", async () => {
+    const w0 = makeWorld();
+    await enableChat();
+    const chat = await startChat(w0);
+    const w = makeWorld({ SUPPORT_POLL_LIMITER: { limit: async () => ({ success: false }) } });
+    const r = await get(w, chat.token);
+    expect(r).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+    expect(r.headers.get("retry-after")).toBe("60");
+  });
+
+  it("PUT email: lưu chữ thường, báo Zalo không kèm địa chỉ, cùng email thì không báo lại; null thì bỏ; sai 400; quá 5 lần mỗi giờ 429; bị chặn 403", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    const put = (email: unknown) => w.call("PUT", "/v1/support/email", { email }, auth(chat.token));
+    expect(await put("Khach@Example.com")).toMatchObject({ status: 200, body: { ok: true } });
+    expect(await conversation(chat.id)).toMatchObject({ email: "khach@example.com" });
+    expect(w.zalo.texts()[1]).toBe(`#${chat.code} ✉️ khách đã để lại email`);
+    expect(w.zalo.texts().join("\n")).not.toContain("khach@example.com");
+    expect(await put("khach@example.com")).toMatchObject({ status: 200 });
+    expect(w.zalo.sent).toHaveLength(2);
+    expect(await put(null)).toMatchObject({ status: 200 });
+    expect(await conversation(chat.id)).toMatchObject({ email: null });
+    expect(await put("không-phải-email")).toMatchObject({ status: 400, body: { field: "email" } });
+    expect(await put(undefined)).toMatchObject({ status: 400, body: { field: "email" } });
+    expect(await put("x@example.com")).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+    const other = await startChat(w);
+    await env.DB.prepare("UPDATE support_conversations SET status = 'blocked' WHERE id = ?").bind(other.id).run();
+    expect(await w.call("PUT", "/v1/support/email", { email: "a@example.com" }, auth(other.token))).toMatchObject({
+      status: 403,
+      body: { error: "conversation_closed" },
+    });
+  });
+
+  it("DELETE: xóa cuộc chat và mọi tin, báo Zalo; token cũ thành 401", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const chat = await startChat(w);
+    expect(await w.call("DELETE", "/v1/support/conversation", {}, auth(chat.token))).toMatchObject({ status: 200, body: { ok: true } });
+    expect(await env.DB.prepare("SELECT (SELECT COUNT(*) FROM support_conversations) AS c, (SELECT COUNT(*) FROM support_messages) AS m").first()).toEqual({
+      c: 0,
+      m: 0,
+    });
+    expect(w.zalo.texts().at(-1)).toBe(`#${chat.code} 🗑 khách đã xóa cuộc chat`);
+    expect((await get(w, chat.token)).body).toEqual({ error: "invalid_token" });
   });
 });
