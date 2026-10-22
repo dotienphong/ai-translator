@@ -47,7 +47,7 @@ export function typingSchedule(text, startMs, pace) {
   let at = startMs;
   chars.forEach((ch, i) => {
     steps.push({ at, text: chars.slice(0, i + 1).join("") });
-    at += /[,.!?]/.test(ch) ? pace.punctuationMs : ch === " " ? pace.spaceMs : pace.charMs;
+    at += /[,.!?。、，！？]/.test(ch) ? pace.punctuationMs : ch === " " ? pace.spaceMs : pace.charMs;
   });
   return steps;
 }

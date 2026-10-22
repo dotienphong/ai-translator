@@ -151,3 +151,8 @@ test("lịch cả video: cảnh live hết sau sự kiện cuối, Gõ dịch đ
   assert.equal(tl.posterMs, liveEnd - 1250);
   assert.equal(tl.compose.text, "Yes.");
 });
+
+test("typingSchedule: dấu câu CJK (。、，！？) nghỉ như dấu câu", () => {
+  const steps = typingSchedule("好的，我。", 0, { charMs: 100, spaceMs: 110, punctuationMs: 300 });
+  assert.deepEqual(steps.map((s) => s.at), [0, 100, 200, 500, 600]);
+});
