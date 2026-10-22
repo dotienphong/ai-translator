@@ -1,7 +1,7 @@
 # Website tiếng Nhật, Trung, Hàn; video và ảnh theo ngôn ngữ; nút phát video — Design
 
 **Ngày:** 2026-10-22
-**Trạng thái:** Chủ dự án duyệt từng phần qua hội thoại ngày 2026-10-22. Làm ở worktree `meeting-translator-work/website-cjk`, nhánh `website-cjk`. Không merge, push hay deploy khi chủ dự án chưa cho phép; website chỉ deploy sau khi chủ dự án duyệt ảnh trang, và chủ dự án tự chạy `pnpm deploy`.
+**Trạng thái:** Chủ dự án duyệt từng phần qua hội thoại ngày 2026-10-22. Làm ở worktree `meeting-translator-work/website-cjk`, nhánh `website-cjk`. Không merge, push hay deploy khi chủ dự án chưa cho phép; website chỉ deploy sau khi chủ dự án duyệt ảnh trang, và chủ dự án tự chạy `pnpm deploy`. Kế hoạch: `docs/superpowers/plans/2026-10-22-website-ja-zh-ko-0{1,2,3,4}-*.md`; thực thi xong 2026-10-22, chờ chủ dự án duyệt ảnh trang.
 **Quan hệ:** website `docs/superpowers/specs/2026-10-08-marketing-website-design.md` và `website/README.md`; giao diện app ja/zh/ko `2026-10-12-ui-ja-zh-ko-design.md`; video `2026-10-21-demo-video-desktop-design.md` và `2026-10-21-website-demo-video-design.md`.
 
 ## 1. Mục tiêu
