@@ -1196,4 +1196,64 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
 
    Expected: lệnh đầu có hai tin, tin thứ hai `"sender":"owner","text":"Đã nhận"`; lệnh sau `{"ok":true}` và Zalo nhận `#<MÃ> 🗑 khách đã xóa cuộc chat`. Nhắn `/ds` (bot trả `Không có cuộc chat nào trong 7 ngày qua.`), rồi `/tat` (bot trả `Đã TẮT chat…`); `curl -s "$PROD/v1/support/status"` in `{"enabled":false}`. Cuối cùng `unset ZALO_TOKEN ZALO_HOOK T R` và đóng terminal. Tin thử không về Zalo: xem `pnpm exec wrangler tail mt-license --format pretty` (sự kiện `support_forward_failed`), kiểm lại token ở bước 3. Câu trả lời không vào cuộc chat: xem sự kiện `zalo_webhook_*` trong tail; `zalo_webhook_unreadable` nghĩa là Zalo gửi dạng khác tài liệu (sửa `parseUpdate` ở `server/src/support/webhook.ts`, kèm test, rồi deploy lại).
 
-<!-- kế hoạch 04: các bước app, website, bật chat và thử tay -->
+10. **Đặt ngày hiệu lực chính sách 1.5** theo kế hoạch `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`, Task 10 (`docs/legal/README.md`, "Đổi ngày hiệu lực"), **vào ngày phát hành, trước khi nâng phiên bản và build app**: app đóng gói chính sách lúc build. Lệnh lấy ngày hôm nay theo giờ Việt Nam; website (bước 12) không được deploy sớm hơn ngày đó.
+
+    ```bash
+    grep -n '^\*\*Phiên bản\|^\*\*Version' ../docs/legal/privacy.vi.md ../docs/legal/privacy.en.md
+    ```
+
+    Expected: hai dòng phiên bản `1.5` cùng một ngày (vi dạng `dd/mm/yyyy`, en dạng `d Month yyyy`).
+
+11. **Phát hành app 0.2.4** theo mục 2 (nâng phiên bản ở đó; mỗi lần một tag). Chat vẫn tắt từ bước 9: màn hình Hỗ trợ của bản mới hiện "Chat đang tạm tắt…" kèm email support@ cho tới bước 13, đó là đúng. Kiểm R2 như mục 2 bước 5 (`latest.json` của kênh stable ra `0.2.4`, SHA-256 khớp). Job đăng R2 đỏ vì không phân giải được `*.io.vn` thì chạy `dig @8.8.8.8 releases.aitranslator.io.vn` trước khi chạy lại (sự cố DNSSEC của vùng io.vn ngày 2026-10-22).
+
+12. **Deploy website** sau khi 0.2.4 đã lên R2. Nếu A7 có chat đã đo (spec mục 6, "A7 bằng proxy") thì trước khi deploy sửa câu "chat hỗ trợ chưa được đo bằng proxy" trong callout "Giới hạn của phép đo" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en,ja,zh,ko}/data-security.mjs`) và đoạn "Chat hỗ trợ, chưa đối chiếu hết" của `docs/legal/README.md` cho khớp số đo (ngày, máy, bản dựng), rồi commit.
+
+    ```bash
+    curl -s https://releases.aitranslator.io.vn/stable/latest.json | grep -o '"version":"[^"]*"'
+    cd ../website && pnpm test 2>&1 | grep -E 'ℹ (pass|fail)' && pnpm deploy
+    curl -sI https://aitranslator.io.vn/ | grep -i '^content-security-policy' | grep -o "connect-src[^;]*"
+    curl -s https://aitranslator.io.vn/chinh-sach-quyen-rieng-tu/ | grep -o 'Phiên bản 1\.5[^<]*' | head -1
+    curl -s https://aitranslator.io.vn/lien-he/ | grep -c 'kênh hỗ trợ duy nhất'
+    ```
+
+    Expected: `"version":"0.2.4"`; `ℹ fail 0` rồi deploy xong (lệnh `pnpm deploy` tự dừng nếu R2 cao hơn repo); `connect-src 'self' https://api.aitranslator.io.vn`; `Phiên bản 1.5, hiệu lực từ <ngày ở bước 10>`; `0`. Mở `https://aitranslator.io.vn/` trong trình duyệt: bong bóng ở góc dưới phải; bấm vào thấy khung chat với dòng "Chat đang tạm tắt…" (chat còn tắt). Các lệnh sau chạy lại trong `server/` (`cd ../server`).
+
+13. **Bật chat.** Chủ dự án nhắn `/bat` cho bot trong Zalo.
+
+    ```bash
+    curl -s "$PROD/v1/support/status"; echo
+    ```
+
+    Expected: bot trả lời xác nhận chat đã bật; lệnh in `{"enabled":true}`.
+
+14. **Thử tay** (spec mục 6, "Thử tay sau deploy"), bằng trình duyệt thường và app 0.2.4 vừa phát hành:
+    a. **Website:** mở bong bóng ở `https://aitranslator.io.vn/lien-he/`, gửi một tin. Zalo nhận dòng `🆕 #XXX · web · vi · /lien-he/` và nội dung tin. Trả lời trong Zalo **không ghi mã** (chỉ một cuộc chat nhắn trong 30 phút): bot báo "✓ đã gửi tới #XXX", câu trả lời hiện trong khung chat trong vài giây. Đóng khung, trả lời thêm một tin: trong khoảng một phút bong bóng hiện chấm đỏ.
+    b. **App:** mục Hỗ trợ, để tích "Gửi kèm thông tin máy", gửi một tin. Zalo nhận dòng `🆕 #YYY · app · …` có phiên bản 0.2.4, hệ điều hành, chip, RAM, gói, gói model; **không có** key, email, mã máy, tên máy. Trả lời **có mã** (`#YYY nội dung`): câu trả lời hiện trong app. Bấm đính kèm log: Zalo nhận `#YYY 📎 Mã báo cáo log: R-…`, và tìm được báo cáo đó ở Web Admin › Báo cáo lỗi.
+    c. **Hai cuộc chat cùng lúc:** nhắn ở cả website và app trong 30 phút, rồi trả lời không ghi mã: bot báo "⚠️ Có 2 cuộc chat vừa nhắn trong 30 phút qua (#…, #…)…" và không gửi cho ai.
+    d. **Email khi rời trang:** ở website, để lại email ở thẻ email, đóng tab. Zalo nhận `#XXX ✉️ khách đã để lại email` **không kèm địa chỉ**. Trả lời trong Zalo; trong khoảng 2–7 phút (tin phải cũ hơn 2 phút, cron 5 phút) thư tới hộp thư đó, song ngữ vi/en, `Reply-To: support@aitranslator.io.vn`.
+    e. **Tắt, bật:** nhắn `/tat`; website và app hiện "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn", lịch sử cũ vẫn hiện; nhắn `/bat` lại.
+    f. **Xóa:** ở website, menu ⋯ › Xóa cuộc trò chuyện. Bot báo "🗑 khách đã xóa cuộc chat"; kiểm D1 (thay `XXX` bằng mã thật):
+
+       ```bash
+       pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT COUNT(*) AS n FROM support_conversations WHERE code = 'XXX'"
+       ```
+
+       Expected: `n` bằng `0`.
+    g. **Dọn:** xóa các cuộc chat thử còn lại bằng nút xóa trong khung chat (website và app); xóa tay các tin thử trong cuộc trò chuyện với bot ở Zalo nếu muốn.
+
+**Xóa cuộc chat theo yêu cầu của khách** (chính sách mục 7 và 11). Khách tự xóa được trong khung chat; khi khách yêu cầu qua email, người vận hành chạy các lệnh dưới (tên bảng và cột theo `server/migrations/0005_support_chat.sql`: `support_conversations` và `support_messages`; xóa tin trước, cuộc chat sau; bảng `support_zalo_updates` chỉ giữ mã sự kiện Zalo của người vận hành, không có dữ liệu khách nên không cần xóa), rồi xóa tay các tin tương ứng (tìm theo mã `#…` của từng cuộc chat) trong cuộc trò chuyện với bot ở Zalo. Cuộc chat không có email thì tìm theo thời điểm và nội dung khách tả (`SELECT id, code, datetime(last_activity_at, 'unixepoch') FROM support_conversations ORDER BY last_activity_at DESC LIMIT 20`), rồi xóa theo `id` bằng hai lệnh `DELETE` tương tự.
+
+```bash
+E='email-cua-khach@example.com'   # email khách đã để lại, viết chữ thường (server lưu email chữ thường)
+pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT id, code, source, datetime(last_activity_at, 'unixepoch') AS last FROM support_conversations WHERE email = '$E'"
+pnpm exec wrangler d1 execute mt-license-production --remote --command "DELETE FROM support_messages WHERE conversation_id IN (SELECT id FROM support_conversations WHERE email = '$E')"
+pnpm exec wrangler d1 execute mt-license-production --remote --command "DELETE FROM support_conversations WHERE email = '$E'"
+```
+
+Expected: câu đầu liệt kê các cuộc chat (ghi lại mã để xóa trong Zalo); hai câu sau báo số dòng đã xóa; chạy lại câu đầu thì không còn dòng nào.
+
+**Đường lui.**
+- **Tắt chat ngay, không deploy:** nhắn `/tat` cho bot. Website và app thay ô nhập bằng email support@; tin cũ vẫn hiện; app 0.2.4 không cần rút. Bot không nhận lệnh (Zalo lỗi, webhook hỏng) thì đặt thẳng trong D1. Bảng `support_settings` có hai cột `key` và `value` (`server/migrations/0005_support_chat.sql`): `pnpm exec wrangler d1 execute mt-license-production --remote --command "UPDATE support_settings SET value = '0' WHERE key = 'enabled'"`, rồi `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT key, value FROM support_settings ORDER BY key"` thấy `enabled` là `0` (và `curl -s "$PROD/v1/support/status"` in `{"enabled":false}`).
+- **Worker lỗi:** `pnpm exec wrangler rollback` về bản trước đợt này: các đường `/v1/support/*` và `/v1/webhooks/zalo` biến mất, khung chat báo không gửi được, trang Liên hệ và chính sách vẫn nêu email. Kiểm cron còn chạy như mục 4 bước 9 (không thấy cron thì `pnpm exec wrangler triggers deploy`; sự cố 2026-10-07).
+- **Dữ liệu:** migration 0005 chỉ **thêm** bảng, không đổi bảng cũ, nên Worker cũ chạy đúng trên schema mới; không cần lùi migration hay Time Travel. Xóa toàn bộ dữ liệu chat nếu cần: `DELETE FROM support_messages` rồi `DELETE FROM support_conversations` (hai lệnh `wrangler d1 execute --remote --command`, bảng tin trước).
+- **Nội dung website:** nếu chat bị bỏ lâu dài thì phải sửa lại trang Liên hệ, Dữ liệu và bảo mật, Trang chủ, Hỏi đáp và chính sách (bản mới, ngày hiệu lực mới); `/tat` không đổi chữ trên website.
