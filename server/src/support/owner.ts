@@ -24,18 +24,38 @@ const COMMANDS: Record<string, "list" | "block" | "unblock" | "off" | "on"> = {
   "/bật": "on",
 };
 
+/** Ký tự rộng 0 và khoảng trắng ở đầu tin (bàn phím, ứng dụng chat hay chèn): bỏ trước khi nhận dạng. */
+const LEADING_INVISIBLE = /^[\u200B\u200C\u200D\u2060\uFEFF\s]+/;
+
+/** Phần của `original` còn lại sau khi đã dùng hết `consumed` ký tự của dạng NFKC (đi từng ký tự gốc, để không NFKC nội dung). */
+function afterNormalizedPrefix(original: string, consumed: number): string {
+  let used = 0;
+  let index = 0;
+  for (const ch of original) {
+    if (used >= consumed) break;
+    used += ch.normalize("NFKC").length;
+    index += ch.length;
+  }
+  return original.slice(index);
+}
+
 export function parseOwnerText(raw: string): OwnerAction {
-  const text = raw.trim();
-  if (text.startsWith("/")) {
-    const [command = "", arg = ""] = text.split(/\s+/);
+  // `text` giữ nguyên văn (chỉ bỏ ký tự vô hình ở đầu); `head` (NFKC: ＃ toàn khổ thành #) chỉ dùng để nhận dạng lệnh và mã.
+  const text = raw.replace(LEADING_INVISIBLE, "").trim();
+  const head = text.normalize("NFKC");
+  if (head.startsWith("/")) {
+    const [command = "", arg = ""] = head.split(/\s+/);
     const name = command.normalize("NFC").toLowerCase();
     const kind = Object.hasOwn(COMMANDS, name) ? COMMANDS[name] : undefined;
     if (kind === "block" || kind === "unblock") return { kind, code: CODE_ARG.exec(arg)?.[1]?.toUpperCase() ?? null };
     return kind === undefined ? { kind: "help" } : { kind };
   }
-  const m = CODE_AT_START.exec(text);
-  if (m) return { kind: "reply", code: (m[1] ?? "").toUpperCase(), text: (m[2] ?? "").trim() };
+  const m = CODE_AT_START.exec(head);
+  if (m) {
+    const body = afterNormalizedPrefix(text, head.length - (m[2] ?? "").length);
+    return { kind: "reply", code: (m[1] ?? "").toUpperCase(), text: body.trim() };
+  }
   // Mọi tin bắt đầu bằng # còn lại là mã gõ sai: không được rơi xuống "cuộc chat duy nhất vừa nhắn".
-  if (text.startsWith("#")) return { kind: "badCode" };
+  if (head.startsWith("#")) return { kind: "badCode" };
   return { kind: "reply", code: null, text };
 }

@@ -41,4 +41,15 @@ describe("đọc tin chủ dự án gõ cho bot (spec 2026-10-22 §2.4, §2.5)",
     expect(parseOwnerText("/help")).toEqual({ kind: "help" });
     expect(parseOwnerText("/")).toEqual({ kind: "help" });
   });
+
+  it("nhận ra mã và lệnh cả khi gõ ＃ toàn khổ hay có ký tự rộng 0 ở đầu; nội dung câu trả lời giữ nguyên văn", () => {
+    expect(parseOwnerText("＃K7Q chào")).toEqual({ kind: "reply", code: "K7Q", text: "chào" });
+    expect(parseOwnerText("\u200B#K7Q chào")).toEqual({ kind: "reply", code: "K7Q", text: "chào" });
+    expect(parseOwnerText("\uFEFF\u2060 ＃k7q: ok")).toEqual({ kind: "reply", code: "K7Q", text: "ok" });
+    expect(parseOwnerText("\u200B/tat")).toEqual({ kind: "off" });
+    expect(parseOwnerText("\u200C＃K7QX x")).toEqual({ kind: "badCode" });
+    // NFKC chỉ để nhận dạng: chữ của chủ dự án gửi cho khách không bị đổi.
+    expect(parseOwnerText("＃K7Q Ｘin chào ①")).toEqual({ kind: "reply", code: "K7Q", text: "Ｘin chào ①" });
+    expect(parseOwnerText("\u200BXin chào")).toEqual({ kind: "reply", code: null, text: "Xin chào" });
+  });
 });
