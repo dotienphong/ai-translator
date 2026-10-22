@@ -2,6 +2,7 @@
 //! manifest của `build.rs`, nhưng không mở cửa sổ thật. Phiên dịch chạy đúng `session.rs` và `pipeline::engine`, với
 //! phần bên ngoài giả (`FakeDeps`): không chạy tiến trình phụ, không thu âm thật.
 
+use std::collections::VecDeque;
 use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -39,6 +40,7 @@ use crate::settings::migrate::FileMeta;
 use crate::settings::persist::{SettingsFile, Writer};
 use crate::settings::{AudioSource, Settings, UiLanguage};
 use crate::state::AppState;
+use crate::support::api::{ApiError, Batch, Opening, Sender, Started, SupportApi, SupportMessage};
 use crate::system::{System, SystemOpener};
 use crate::transcript::store::TranscriptStore;
 
@@ -883,4 +885,120 @@ pub fn enable_error_reports(app: &tauri::App<MockRuntime>) {
     let mut next = state.settings();
     next.send_error_reports = true;
     state.replace_settings(&mut next);
+}
+
+// ---- Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo-design.md §4) ----
+
+/// Trạng thái của server chat giả: một cuộc chat, tin đánh số tăng dần từ 1 trong toàn server (như `id` thật).
+#[derive(Default)]
+struct FakeSupportServer {
+    disabled: bool,
+    closed: bool,
+    next_id: i64,
+    messages: Vec<SupportMessage>,
+    calls: Vec<String>,
+    openings: Vec<Opening>,
+    /// Lỗi trả cho các lần gọi kế tiếp, lần lượt (lần gọi vẫn được ghi lại).
+    errors: VecDeque<ApiError>,
+}
+
+impl FakeSupportServer {
+    /// Ghi lần gọi; còn lỗi đã đặt thì trả lỗi đó.
+    fn call(&mut self, call: String) -> Result<(), ApiError> {
+        self.calls.push(call);
+        self.errors.pop_front().map_or(Ok(()), Err)
+    }
+
+    fn add(&mut self, sender: Sender, text: &str, at: i64) -> SupportMessage {
+        self.next_id += 1;
+        let message = SupportMessage {
+            id: self.next_id,
+            sender,
+            text: text.to_string(),
+            created_at: at,
+        };
+        self.messages.push(message.clone());
+        message
+    }
+}
+
+/// Server chat giả cho test, không ra mạng. Ghi mỗi lần gọi dạng `start`, `send`, `messages <after>`, `email <địa chỉ|null>`,
+/// `delete`.
+#[derive(Clone, Default)]
+pub struct FakeSupportApi(Arc<Mutex<FakeSupportServer>>);
+
+impl FakeSupportApi {
+    /// Token server giả cấp cho mọi cuộc chat mới (43 ký tự base64url).
+    pub const TOKEN: &'static str = "FakeSupportToken0123456789abcdefghijklmnopq";
+
+    fn server(&self) -> std::sync::MutexGuard<'_, FakeSupportServer> {
+        self.0.lock().unwrap()
+    }
+
+    pub fn calls(&self) -> Vec<String> {
+        self.server().calls.clone()
+    }
+
+    /// Tin đầu tiên của từng cuộc chat đã tạo.
+    pub fn openings(&self) -> Vec<Opening> {
+        self.server().openings.clone()
+    }
+
+    /// Lần gọi kế tiếp (chưa dùng lỗi nào đã đặt) trả lỗi này.
+    pub fn fail_next(&self, e: ApiError) {
+        self.server().errors.push_back(e);
+    }
+
+    /// Chủ dự án trả lời lúc `at`.
+    pub fn owner_reply(&self, text: &str, at: i64) {
+        self.server().add(Sender::Owner, text, at);
+    }
+
+    /// Chat bật hay tắt (`/tat`), cuộc chat bị chặn hay không (`/chan`).
+    pub fn set_server(&self, enabled: bool, closed: bool) {
+        let mut server = self.server();
+        server.disabled = !enabled;
+        server.closed = closed;
+    }
+}
+
+impl SupportApi for FakeSupportApi {
+    fn start(&self, opening: &Opening) -> Result<Started, ApiError> {
+        let mut server = self.server();
+        server.openings.push(opening.clone());
+        server.call("start".into())?;
+        server.messages.clear();
+        let message = server.add(Sender::Customer, &opening.text, 0);
+        Ok(Started {
+            token: Self::TOKEN.into(),
+            message,
+        })
+    }
+
+    fn send(&self, _token: &str, text: &str) -> Result<SupportMessage, ApiError> {
+        let mut server = self.server();
+        server.call("send".into())?;
+        Ok(server.add(Sender::Customer, text, 0))
+    }
+
+    fn messages(&self, _token: &str, after: i64) -> Result<Batch, ApiError> {
+        let mut server = self.server();
+        server.call(format!("messages {after}"))?;
+        Ok(Batch {
+            enabled: !server.disabled,
+            status: if server.closed { "closed" } else { "open" }.into(),
+            messages: server.messages.iter().filter(|m| m.id > after).cloned().collect(),
+        })
+    }
+
+    fn set_email(&self, _token: &str, email: Option<&str>) -> Result<(), ApiError> {
+        self.server().call(format!("email {}", email.unwrap_or("null")))
+    }
+
+    fn delete(&self, _token: &str) -> Result<(), ApiError> {
+        let mut server = self.server();
+        server.call("delete".into())?;
+        server.messages.clear();
+        Ok(())
+    }
 }
