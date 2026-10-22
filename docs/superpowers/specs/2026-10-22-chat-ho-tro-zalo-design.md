@@ -20,6 +20,7 @@
 - **Kỹ thuật:** chạy trong **Worker `mt-license` hiện có** (`api.aitranslator.io.vn`), lưu D1, khung chat hỏi tin mới định kỳ (polling). Không dựng Worker riêng: app chỉ nói chuyện với `api.` (danh sách host của A7 không thêm gì), chủ dự án ít việc cài đặt nhất, và báo cáo lỗi đã đi đúng đường này. Không dùng WebSocket hay Durable Object: chậm 3 giây không đáng đổi lấy thêm một công nghệ và một crate WebSocket bên Rust.
 - **Giữ 90 ngày** kể từ tin cuối, rồi tự xóa. Khách tự xóa được bất cứ lúc nào.
 - **Công tắc khẩn cấp là lệnh Zalo `/tat`, `/bat`**, không phải biến môi trường, để tắt chat không cần deploy.
+- **Bản sao trong Zalo xóa tay theo yêu cầu** (chủ dự án chốt 2026-10-22): tự xóa sau 90 ngày và nút xóa của khách chỉ xóa dữ liệu trên máy chủ; khách muốn xóa cả tin đã chuyển sang Zalo thì gửi email, chủ dự án xóa tay trong Zalo.
 
 ## 1. Kiến trúc
 
@@ -63,7 +64,7 @@ Giới hạn tần suất dùng bảng `rate_limits` có sẵn (HMAC với `RATE
 
 ### 2.2 Endpoint của khách
 
-Token đi trong header `Authorization: Bearer <token>`. Mọi thân là JSON, tối đa 4 KB.
+Token đi trong header `Authorization: Bearer <token>`. Mọi thân là JSON, tối đa 16 KiB (trần chung của `/v1` ở `server/src/app.ts`).
 
 | Endpoint | Việc |
 |---|---|
@@ -73,9 +74,11 @@ Token đi trong header `Authorization: Bearer <token>`. Mọi thân là JSON, t�
 | `PUT /v1/support/email` | `{ email }` (định dạng hợp lệ, tối đa 254 ký tự), hay `null` để bỏ. Báo Zalo "✉️ khách đã để lại email" (không kèm địa chỉ) |
 | `DELETE /v1/support/conversation` | Xóa cuộc chat và mọi tin. Báo Zalo "🗑 khách đã xóa cuộc chat" |
 
-Mã lỗi (thân `{ error }`): `support_disabled` (503), `conversation_closed` (403, cuộc chat bị chặn), `invalid_token` (401), `invalid_input` (400), `rate_limited` (429, kèm `Retry-After`), `support_busy` (429, chạm trần toàn hệ thống).
+Mã lỗi (thân `{ error }`): `support_disabled` (503), `conversation_closed` (403, cuộc chat bị chặn), `invalid_token` (401), `invalid_request` (400, kèm `field`), `rate_limited` (429, kèm `Retry-After`), `support_busy` (429, chạm trần toàn hệ thống).
 
-**Polling không ghi D1 khi không có tin mới.** Chỉ cập nhật `delivered_owner_id` khi lần hỏi trả về tin của chủ dự án. Polling không đi qua bảng `rate_limits` (mỗi lần hỏi sẽ là một lần ghi); dùng binding Rate Limiting của Workers (cửa sổ 60 giây, theo mã băm token và theo IP) để chặn lạm dụng. Phải kiểm binding còn ở dạng cấu hình hiện hành của wrangler trước khi dùng (CLAUDE.md, phiên bản thư viện).
+Token sai hay không tồn tại tính là một lần thất bại của IP (`noteFailure`, bộ đếm `failure_ip` có sẵn); IP đã chạm ngưỡng thì nhận `429`. Hợp đồng chi tiết (thân, mã trạng thái, CORS) ở `docs/superpowers/plans/2026-10-22-chat-ho-tro-00-tong-quan.md`.
+
+**Polling không ghi D1 khi không có tin mới.** Chỉ cập nhật `delivered_owner_id` khi lần hỏi trả về tin của chủ dự án. Polling không đi qua bảng `rate_limits` (mỗi lần hỏi sẽ là một lần ghi); dùng binding Rate Limiting của Workers `SUPPORT_POLL_LIMITER` (60 lần mỗi 60 giây, khóa là id cuộc chat; đã kiểm wrangler 4.145 và miniflare hỗ trợ) để chặn lạm dụng. Token sai không tới bước này mà tính vào `failure_ip` như trên.
 
 ### 2.3 Chuyển tin sang Zalo
 
@@ -100,7 +103,9 @@ Phụ đề không hiện khi họp Teams
 - Server thử chuyển ngay trong request (`ctx.waitUntil`). Để giữ thứ tự, tin chỉ được chuyển ngay khi cuộc chat không còn tin nào trước nó đang chờ; ngược lại để cron chuyển theo thứ tự `id`.
 - Thất bại (mạng, `5xx`, token sai) thì tin vẫn được lưu và khách vẫn thấy "Đã gửi". Cron gửi lại (mục 2.6).
 
-### 2.4 Webhook `POST /v1/support/zalo`
+### 2.4 Webhook `POST /v1/webhooks/zalo`
+
+Đặt dưới `/v1/webhooks/` theo quy ước của `server/src/app.ts`: các đường này không bị đòi `Content-Type: application/json` (cổng ngoài đổi header cũng không làm mất tin) và có log `webhook_too_large` khi thân vượt 16 KiB. CORS không áp cho đường này.
 
 1. Header `X-Bot-Api-Secret-Token` khác `ZALO_WEBHOOK_SECRET` (so sánh thời gian hằng): `403`.
 2. Thân không đọc được: `200`, ghi log (không trả lỗi để Zalo không gửi lại liên tục).
@@ -189,7 +194,8 @@ Phụ đề không hiện khi họp Teams
   | Đang chờ trả lời (tin cuối là của khách, trong 24 giờ qua), **và không đang dịch** | 60 giây; có trả lời thì mục Hỗ trợ hiện chấm đỏ |
   | Còn lại, kể cả khi chưa từng dùng chat | **Không kết nối** |
 
-- **IPC mới:** `support_status`, `support_fetch`, `support_send`, `support_set_email`, `support_delete`, cộng lệnh lấy dòng thông tin máy. Thêm vào ACL và `acl_tests.rs` theo cách các lệnh hiện có.
+- **"Đã dùng chat" nghĩa là đã gửi ít nhất một tin** (có token). Chưa có cuộc chat thì mở màn hình Hỗ trợ **không gọi mạng**, kể cả `GET /v1/support/status`: chat đang tắt thì người dùng biết ở lần gửi đầu (`503 support_disabled`). Nhờ vậy câu "chưa từng nhắn thì app không kết nối gì cho chat" của chính sách và trang Dữ liệu và bảo mật đúng tuyệt đối. Website thì gọi `status` khi khách mở bong bóng (khách đã chủ động mở khung chat).
+- **IPC mới (6 lệnh):** `support_screen` (giao diện báo màn hình Hỗ trợ mở hay đóng; Rust điều khiển nhịp hỏi tin), `support_fetch`, `support_send`, `support_set_email`, `support_delete`, `support_machine_info` (dòng thông tin máy, dựng trong Rust). Không có lệnh hỏi `status` (xem dòng trên). Thêm vào ACL và `acl_tests.rs` theo cách các lệnh hiện có. Chi tiết ở kế hoạch 03.
 - Bản debug gửi `source: "app-debug"` (bản dev cũng nối production, CLAUDE.md), để chủ dự án nhận ra tin thử.
 
 ## 5. Dữ liệu, pháp lý, spec gốc, website
@@ -198,8 +204,8 @@ Phụ đề không hiện khi họp Teams
   - mục 2 (tóm tắt): có chat hỗ trợ, nội dung giữ 90 ngày;
   - mục 4 (khi nào app kết nối mạng): chỉ khi người dùng dùng chat, theo nhịp ở mục 4 của spec này;
   - mục 5 (dữ liệu trên máy chủ): nội dung tin, email tự nguyện, nguồn, trang, thông tin máy nếu khách để tích, IP chỉ dạng mã băm cho giới hạn tần suất;
-  - mục 6 (bên xử lý): **Zalo, Công ty Cổ phần VNG, máy chủ ở Việt Nam**, nhận nội dung tin và các thông tin ở mục 2.3 (không nhận email);
-  - mục 7 (thời gian lưu và quyền): tự xóa sau 90 ngày, khách tự xóa bằng nút trong khung chat.
+  - mục 6 (bên xử lý): **Zalo, Công ty Cổ phần VNG, máy chủ ở Việt Nam** (điều khoản Zalo Bot Platform, https://bot.zapps.me/docs/terms/, đọc 2026-10-22: dữ liệu lưu trên máy chủ ở Việt Nam), nhận nội dung tin và các thông tin ở mục 2.3 (không nhận email); **Resend** (đã có trong bảng) thêm việc gửi thư câu trả lời cho khách để lại email;
+  - mục 7 (thời gian lưu và quyền): tự xóa sau 90 ngày, khách tự xóa bằng nút trong khung chat. Hai việc này chỉ xóa dữ liệu trên máy chủ; bản sao các tin đã chuyển sang Zalo nằm trong cuộc trò chuyện Zalo của chủ dự án cho tới khi chủ dự án xóa tay (khi khách yêu cầu qua email).
   - **EULA giữ bản 1.3.** Ngày hiệu lực của 1.5 đặt lúc phát hành bản app có chat. Cập nhật `docs/legal/README.md`.
 - **Spec gốc:** sửa A7 (§3.3) thêm vào danh sách ngoại lệ: "gửi và nhận tin chat hỗ trợ (`/v1/support/*`, chỉ tới `api.aitranslator.io.vn`, chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi; không request nào chứa âm thanh hay nội dung chép lời)".
 - **Website, đủ năm ngôn ngữ** (pháp lý chỉ vi/en):
@@ -242,7 +248,7 @@ Phụ đề không hiện khi họp Teams
    1. Zalo › **Zalo Bot Manager** › Tạo bot (tên bắt đầu bằng "Bot"); token đến qua tin nhắn.
    2. Nhắn một tin cho bot; chạy `getUpdates` (khi chưa đặt webhook) để lấy `chat.id`.
    3. `wrangler secret put` ba secret; chạy migration 0005; `wrangler deploy`; kiểm cron còn chạy (bài học sự cố cron 2026-10-07).
-   4. `setWebhook` tới `https://api.aitranslator.io.vn/v1/support/zalo` kèm `secret_token`; `getWebhookInfo` để kiểm.
+   4. `setWebhook` tới `https://api.aitranslator.io.vn/v1/webhooks/zalo` kèm `secret_token`; `getWebhookInfo` để kiểm.
    5. Nhắn `/ds` cho bot để kiểm hai chiều.
 3. **App 0.2.4** có màn hình Hỗ trợ và chính sách 1.5, theo quy trình phát hành 5 bước.
 4. **Website deploy** sau khi 0.2.4 lên R2, để trang Liên hệ và chính sách khớp app.
