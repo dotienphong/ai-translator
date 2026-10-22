@@ -27,7 +27,7 @@ Dưới tiêu đề màn hình (thẻ `h1` "Nâng cấp Pro" của `Shell`, khô
 
 ### 2.1. Các trạng thái
 
-- **Chưa có bảng gói** (`plans === null`: đang tải, hay không có mạng): không hiện tiêu đề bước nào. Màn hình như hiện nay: ô Free, câu `upgrade.loading` hay ô báo lỗi, và khung đơn nếu đang có đơn chờ. Lý do: chưa biết server bán loại tiền nào thì không vẽ nút cách trả, tránh cảnh vừa hiện VietQR lại nhảy sang thẻ khi bảng gói về.
+- **Chưa có bảng gói** (`plans === null`: đang tải, hay không có mạng): không hiện tiêu đề bước nào. Màn hình gồm ô Free, câu `upgrade.loading` hay ô báo lỗi, và khung đơn nếu đang có đơn chờ. Ghi chú cách trả chỉ hiện khi đang có đơn chờ, vì lúc đó loại tiền biết chắc từ đơn (đơn thẻ vẫn có câu bên bán lại); không có đơn thì không hiện, vì chưa biết sẽ chọn sẵn loại nào. Lý do: chưa biết server bán loại tiền nào thì không vẽ nút cách trả hay ghi chú, tránh cảnh vừa hiện VietQR lại nhảy sang thẻ khi bảng gói về.
 - **Đang có đơn chờ trả**, hay đang tạo đơn (`busy`): bước 1 và bước 2 khóa ở cách trả và gói của đơn, như hiện nay (`lockedCurrency`). Nút viên thuốc và thẻ gói đang chọn vẫn rõ như lúc chọn được; các ô còn lại mờ (`opacity: 0.6`), con trỏ thường.
 - Giao diện tối: chỉ dùng token màu, không đặt màu cứng.
 
@@ -59,7 +59,7 @@ Các khóa khác giữ nguyên chữ. Bản dịch không qua người bản ng�
 
 ## 5. Biểu tượng
 
-Thêm `qr` và `card` vào `src/components/Icon.tsx`, cùng kiểu với các biểu tượng sẵn có (khung 24, nét 2, đầu nét tròn). `qr`: ba ô vuông góc cộng vài chấm. `card`: hình chữ nhật bo góc có một vạch ngang.
+Thêm `qr` và `card` vào `src/components/Icon.tsx`, cùng kiểu với các biểu tượng sẵn có (một đường `path` trên lưới 24 × 24; độ dày nét và đầu nét tròn do component `Icon` đặt chung). `qr`: ba ô vuông góc cộng vài chấm. `card`: hình chữ nhật bo góc có một vạch ngang.
 
 ## 6. Website
 
