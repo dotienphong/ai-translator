@@ -242,6 +242,10 @@ chủ tài khoản Resend: chưa đủ để bán.
 
    Từ đợt chat hỗ trợ (mục 11), `secrets.required` của Worker API còn có `ZALO_BOT_TOKEN`, `ZALO_WEBHOOK_SECRET` và
    `ZALO_OWNER_CHAT_ID`: thiếu thì `wrangler deploy` từ chối. Cách tạo bot, lấy `chat_id` và đặt ba secret ở mục 11, bước 1 đến 3.
+   Nếu phải deploy Worker API trước khi có bot (sửa gấp), đặt **giá trị giữ chỗ ngẫu nhiên** cho cả ba
+   (`openssl rand -hex 32 | pnpm exec wrangler secret put ZALO_BOT_TOKEN`, tương tự `ZALO_WEBHOOK_SECRET` và `ZALO_OWNER_CHAT_ID`),
+   không dùng `x` hay `test`: secret webhook yếu cộng `chat_id` đoán được thì người ngoài giả được chủ dự án. Chat vẫn tắt nên khách
+   không gửi được; mục 11 ghi đè bằng giá trị thật.
 
 6. **Hai khóa ký token** (khóa riêng đi thẳng vào secret, không ra terminal, không ra file; nếu đã có CI thì tạo trong một job
    CI chạy tay thay vì trên máy dev, Q11). `<năm>` và `<tháng>` là hôm nay, ví dụ `prod-2026-10-1`; số thứ tự là số kế tiếp

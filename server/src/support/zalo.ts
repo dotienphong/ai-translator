@@ -2,6 +2,8 @@
 // https://bot.zapps.me/docs/apis/sendMessage/). Chỉ một người nhận: chat_id của chủ dự án (secret ZALO_OWNER_CHAT_ID).
 // Token nằm trong đường dẫn URL nên lỗi không bao giờ kèm URL hay thông điệp gốc của fetch.
 
+import { fitUtf16, ZALO_MAX_TEXT } from "./text";
+
 export const ZALO_API_BASE = "https://bot-api.zaloplatforms.com";
 const TIMEOUT_MS = 10_000;
 
@@ -37,8 +39,10 @@ export class HttpZaloBot implements OwnerBot {
       res = await this.fetchImpl(`${ZALO_API_BASE}/bot${this.token}/sendMessage`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chat_id: this.ownerChatId, text }),
+        body: JSON.stringify({ chat_id: this.ownerChatId, text: fitUtf16(text, ZALO_MAX_TEXT) }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
+        // Không theo chuyển hướng (cùng cách với payment/creem.ts): mọi 3xx thành lỗi HTTP ở dưới.
+        redirect: "manual",
       });
     } catch (err) {
       // Chỉ ghi tên lỗi: thông điệp của fetch có thể chứa URL, mà URL có token.

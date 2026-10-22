@@ -29,13 +29,29 @@ export function truncate(text: string, max: number): string {
 }
 
 /**
+ * Cắt còn tối đa `max` đơn vị UTF-16 (`.length`), theo code point nên không cắt đôi cặp surrogate; bị cắt thì ký tự cuối là `…`.
+ * Dùng cho tin gửi Zalo: chưa biết Zalo đếm 2000 ký tự theo code point hay theo UTF-16, nên giữ an toàn theo cách chặt hơn.
+ */
+export function fitUtf16(text: string, max: number): string {
+  if (text.length <= max) return text;
+  let out = "";
+  for (const ch of text) {
+    if (out.length + ch.length > max - 1) break;
+    out += ch;
+  }
+  return `${out}…`;
+}
+
+/**
  * Nội dung một tin: đổi xuống dòng về `\n`, tab thành dấu cách, bỏ ký tự điều khiển khác, bỏ khoảng trắng hai đầu. Rỗng hay dài
  * hơn `max` ký tự thì null.
  */
 export function parseText(v: unknown, max = MAX_TEXT): string | null {
   if (typeof v !== "string") return null;
   const text = v
-    .replace(/\r\n?/g, "\n")
+    .replace(/\r\n?|[\u2028\u2029]/g, "\n")
+    // Ký tự điều khiển hướng chữ (đổi chiều hiển thị để giả nội dung). Không đụng U+200D: ZWJ nối emoji ghép.
+    .replace(/[\u202a-\u202e\u2066-\u2069]/g, "")
     .replace(/\t/g, " ")
     .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, "")
     .trim();
@@ -51,11 +67,14 @@ export function parseSource(v: unknown): Source | null {
   return typeof v === "string" && SOURCES.includes(v) ? (v as Source) : null;
 }
 
-/** Trang lúc mở chat (chỉ web): phải bắt đầu bằng đúng một `/`; bỏ `?…`, `#…`, khoảng trắng và ký tự điều khiển; tối đa 200 ký tự. */
+/**
+ * Trang lúc mở chat (chỉ web): phải bắt đầu bằng đúng một `/`; bỏ `?…`, `#…`, khoảng trắng và ký tự điều khiển; tối đa 200 ký tự.
+ * Kiểm SAU khi bỏ ký tự: "/\t/x" thành "//x" và "/\\x" (trình duyệt hiểu là `//x`) là URL ngoài, không phải đường dẫn.
+ */
 export function parsePage(v: unknown): string | null {
-  if (typeof v !== "string" || !v.startsWith("/") || v.startsWith("//")) return null;
+  if (typeof v !== "string" || !v.startsWith("/")) return null;
   const path = (v.split(/[?#]/, 1)[0] ?? "").replace(/[\u0000- \u007f-\u009f]/g, "");
-  return path.length > 0 ? clip(path, MAX_PAGE) : null;
+  return /^\/(?![/\\])/.test(path) ? clip(path, MAX_PAGE) : null;
 }
 
 /** Dòng thông tin máy (chỉ app): ký tự điều khiển thành dấu cách, gộp khoảng trắng, tối đa 300 ký tự. Rỗng thì null. */

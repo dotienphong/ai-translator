@@ -637,11 +637,14 @@ export class FakeZalo {
   down = false;
   failStatus: number | null = null;
   okFalseWith200 = false;
+  /** HTTP 200 nhưng thân là HTML, không phải JSON (trang lỗi của proxy). */
+  htmlWith200 = false;
 
   readonly fetch = async (url: string, init: RequestInit = {}): Promise<Response> => {
     this.urls.push(url);
     if (this.down) throw new TypeError(`fetch failed: ${url}`);
     if (this.failStatus !== null) return json({ ok: false, error_code: this.failStatus, description: "lỗi giả" }, this.failStatus);
+    if (this.htmlWith200) return new Response("<html>Bad gateway</html>", { status: 200, headers: { "content-type": "text/html" } });
     if (this.okFalseWith200) return json({ ok: false, error_code: 404, description: "lỗi giả" });
     this.contentTypes.push((init.headers as Record<string, string>)["content-type"]);
     const body = JSON.parse(init.body as string) as { chat_id: string; text: string };

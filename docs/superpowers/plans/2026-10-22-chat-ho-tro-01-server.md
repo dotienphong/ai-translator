@@ -53,14 +53,14 @@
 | Task 2 | 1525 | 43 |
 | Task 3 | 1525 | 44 (43 đạt) |
 | Task 4 | 1533 | 44 |
-| Task 5 | 1538 | 44 |
-| Task 6 | 1547 | 44 |
-| Task 7 | 1554 | 44 |
-| Task 8 | 1559 | 44 |
-| Task 9 | 1571 | 44 |
-| Task 10 | 1577 | 44 |
-| Task 11 | 1587 | 44 |
-| Task 12 | 1593 | 44 |
+| Task 5 | 1542 | 44 |
+| Task 6 | 1551 | 44 |
+| Task 7 | 1558 | 44 |
+| Task 8 | 1563 | 44 |
+| Task 9 | 1575 | 44 |
+| Task 10 | 1581 | 44 |
+| Task 11 | 1591 | 44 |
+| Task 12 | 1597 | 44 |
 
 ---
 
@@ -114,7 +114,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && set -a && . ./.env.
 ```
 Expected: JSON có `"ok": true`; trong `result` (ghi lại là object hay mảng) có `"event_name": "message.text.received"`, `message.chat.id`, `message.from.id`, `message.message_id` (ghi lại kiểu: chuỗi hay số), `message.text` = `xin chào`. Thêm dòng `ZALO_SPIKE_CHAT_ID=<message.chat.id>` vào `.env.zalo-spike` (bằng `printf 'ZALO_SPIKE_CHAT_ID=%s\n' '<id>' >> .env.zalo-spike`). Kết quả rỗng thì nhờ chủ dự án nhắn thêm một tin rồi chạy lại.
 
-- [ ] **Step 4: Gửi ba tin thử và một tin quá dài**
+- [ ] **Step 4: Gửi ba tin thử, một tin quá dài và một tin nhiều emoji**
 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && set -a && . ./.env.zalo-spike && set +a && S=$(mktemp -d) && \
@@ -122,9 +122,10 @@ python3 -c 'import json,os;print(json.dumps({"chat_id":os.environ["ZALO_SPIKE_CH
 python3 -c 'import json,os;print(json.dumps({"chat_id":os.environ["ZALO_SPIKE_CHAT_ID"],"text":"🆕 #K7Q · web · vi · /bang-gia/\nKiểm tra 2: tiếng Việt có dấu, emoji 👋✉️🗑⚠️✓"}))' > "$S/t2.json" && \
 python3 -c 'import json,os;print(json.dumps({"chat_id":os.environ["ZALO_SPIKE_CHAT_ID"],"text":"Đ"*1998+"Hết"}))' > "$S/t3.json" && \
 python3 -c 'import json,os;print(json.dumps({"chat_id":os.environ["ZALO_SPIKE_CHAT_ID"],"text":"x"*2001}))' > "$S/t4.json" && \
-for f in t1 t2 t3 t4; do echo "== $f"; curl -s -w '\nHTTP %{http_code}\n' -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_SPIKE_TOKEN}/sendMessage" -H 'content-type: application/json' --data-binary @"$S/$f.json"; done; rm -rf "$S"
+python3 -c 'import json,os;print(json.dumps({"chat_id":os.environ["ZALO_SPIKE_CHAT_ID"],"text":"\U0001F600"*1000+"x"*1000}))' > "$S/t5.json" && \
+for f in t1 t2 t3 t4 t5; do echo "== $f"; curl -s -w '\nHTTP %{http_code}\n' -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_SPIKE_TOKEN}/sendMessage" -H 'content-type: application/json' --data-binary @"$S/$f.json"; done; rm -rf "$S"
 ```
-Expected: `t1`, `t2`, `t3` đều `"ok":true` kèm `result.message_id`, `HTTP 200`; `t4` (2001 ký tự) bị từ chối: ghi nguyên văn thân lỗi và mã HTTP (để biết dạng `ok:false`). `t3` có đúng 2000 ký tự (1998 + 2). Hỏi chủ dự án: ba tin hiện đủ trong Zalo chưa, `t2` có giữ đúng dấu và xuống dòng không, `t3` có hiện chữ `Hết` ở cuối không.
+Expected: `t1`, `t2`, `t3` đều `"ok":true` kèm `result.message_id`, `HTTP 200`; `t4` (2001 ký tự) bị từ chối: ghi nguyên văn thân lỗi và mã HTTP (để biết dạng `ok:false`). `t3` có đúng 2000 ký tự (1998 + 2). Hỏi chủ dự án: ba tin hiện đủ trong Zalo chưa, `t2` có giữ đúng dấu và xuống dòng không, `t3` có hiện chữ `Hết` ở cuối không. `t5` là 1000 emoji + 1000 chữ `x` (2000 code point, 3000 đơn vị UTF-16): ghi nhận Zalo nhận (`ok:true`) hay từ chối, kèm thân lỗi nguyên văn; nhận nghĩa là Zalo đếm theo code point, từ chối nghĩa là đếm theo UTF-16 (`HttpZaloBot` luôn cắt theo UTF-16 nên an toàn cả hai cách, nhưng ghi lại để biết trần thật). Hỏi thêm chủ dự án `t5` có hiện đủ cuối chuỗi `x` không.
 
 - [ ] **Step 5: Xem dạng lỗi khi token sai**
 
@@ -146,7 +147,7 @@ Kế hoạch `docs/superpowers/plans/2026-10-22-chat-ho-tro-01-server.md`, Task 
 |---|---|---|---|
 | 1 | Bot nhắn chủ động cho chủ dự án | <đạt/không đạt> | `t1`, HTTP <mã> |
 | 2 | Sau ít nhất 3 ngày không ai nhắn bot, bot vẫn nhắn được | <chưa kiểm: hẹn ngày YYYY-MM-DD> | Kiểm lại ở Step 7 |
-| 3 | Dấu tiếng Việt, emoji, xuống dòng; đúng 2000 ký tự | <đạt/không đạt> | `t2`, `t3`; 2001 ký tự: HTTP <mã>, thân `<nguyên văn>` |
+| 3 | Dấu tiếng Việt, emoji, xuống dòng; đúng 2000 ký tự | <đạt/không đạt> | `t2`, `t3`; 2001 ký tự: HTTP <mã>, thân `<nguyên văn>`; `t5` (1000 emoji + 1000 `x`, 3000 đơn vị UTF-16): <nhận: Zalo đếm theo code point / từ chối: đếm theo UTF-16>, HTTP <mã> |
 | 4 | Dạng sự kiện khớp tài liệu | <đạt/không đạt> | `result` là <object/mảng>; `message_id` là <chuỗi/số>; `chat.id` là <chuỗi/số> |
 | 5 | Hạn mức gói miễn phí | <chép từ Zalo Bot Manager> | |
 
@@ -1132,7 +1133,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4 && pnpm -C server test:scripts 2>&1 | grep -E '^ℹ (tests|fail)'
 ```
-Expected: `tsc` không lỗi; `Tests  1538 passed (1538)`; `ℹ tests 44`, `ℹ fail 0` (test tách Worker vẫn xanh: `deps.ts` chỉ nhập thêm `./support/zalo`).
+Expected: `tsc` không lỗi; `Tests  1542 passed (1542)`; `ℹ tests 44`, `ℹ fail 0` (test tách Worker vẫn xanh: `deps.ts` chỉ nhập thêm `./support/zalo`).
 
 - [ ] **Step 8: Commit**
 
@@ -1511,7 +1512,7 @@ export async function isEnabled(db: D1Database): Promise<boolean> {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1547 passed (1547)`.
+Expected: `tsc` không lỗi; `Tests  1551 passed (1551)`.
 
 - [ ] **Step 5: Commit**
 
@@ -1753,7 +1754,7 @@ export function parseOwnerText(raw: string): OwnerAction {
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1554 passed (1554)`.
+Expected: `tsc` không lỗi; `Tests  1558 passed (1558)`.
 
 - [ ] **Step 6: Commit**
 
@@ -1931,7 +1932,7 @@ export async function forwardConversation(db: D1Database, zalo: OwnerBot | null,
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1559 passed (1559)`.
+Expected: `tsc` không lỗi; `Tests  1563 passed (1563)`.
 
 - [ ] **Step 5: Commit**
 
@@ -2444,7 +2445,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1571 passed (1571)`.
+Expected: `tsc` không lỗi; `Tests  1575 passed (1575)`.
 
 - [ ] **Step 8: Commit**
 
@@ -2702,7 +2703,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1577 passed (1577)`.
+Expected: `tsc` không lỗi; `Tests  1581 passed (1581)`.
 
 - [ ] **Step 5: Commit**
 
@@ -3048,7 +3049,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1587 passed (1587)`.
+Expected: `tsc` không lỗi; `Tests  1591 passed (1591)`.
 
 - [ ] **Step 6: Commit**
 
@@ -3407,7 +3408,7 @@ thay bằng:
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server typecheck && pnpm -C server test 2>&1 | tail -4
 ```
-Expected: `tsc` không lỗi; `Tests  1593 passed (1593)`.
+Expected: `tsc` không lỗi; `Tests  1597 passed (1597)`.
 
 - [ ] **Step 7: Commit**
 
@@ -3534,7 +3535,7 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator && pnpm -C server check 2>&1 | tail -12
 ```
-Expected: `typecheck`, `vectors:check`, `test` (`Tests  1593 passed (1593)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
+Expected: `typecheck`, `vectors:check`, `test` (`Tests  1597 passed (1597)`), `test:scripts` (`ℹ fail 0`), `ui:check`, `dry-run` (hai lần `--dry-run: exiting now.`) đều xong không lỗi.
 
 - [ ] **Step 3: Kiểm không lộ token và không còn chỗ giữ chỗ lạ**
 

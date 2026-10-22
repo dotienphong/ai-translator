@@ -30,6 +30,20 @@ describe("HttpZaloBot: gửi tin tới Zalo của chủ dự án (spec 2026-10-2
     await expect(bot(zalo).send("x")).rejects.toThrow(ZaloBotError);
   });
 
+  it("HTTP 200 mà thân là HTML (không phải JSON) thì ZaloBotError", async () => {
+    const zalo = new FakeZalo();
+    zalo.htmlWith200 = true;
+    await expect(bot(zalo).send("x")).rejects.toThrow(ZaloBotError);
+  });
+
+  it("tin dài quá 2000 đơn vị UTF-16 được cắt trước khi gửi (Zalo có thể đếm theo UTF-16)", async () => {
+    const zalo = new FakeZalo();
+    await bot(zalo).send("😀".repeat(1000) + "x".repeat(1500));
+    expect(zalo.sent).toHaveLength(1);
+    expect(zalo.sent[0]?.text.length).toBeLessThanOrEqual(2000);
+    expect(zalo.sent[0]?.text.endsWith("…")).toBe(true);
+  });
+
   it("lỗi mạng: ZaloBotError không có mã, không chứa URL hay token", async () => {
     const zalo = new FakeZalo();
     zalo.down = true;
