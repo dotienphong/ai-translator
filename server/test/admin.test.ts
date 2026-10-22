@@ -1123,6 +1123,7 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
       licenses: 1,
       orders: 1,
       error_reports: 0,
+      support_conversations: 0,
       note: "yêu cầu xóa qua email hỗ trợ ngày 2026-10-01",
     });
     const again = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M" });
@@ -1405,6 +1406,36 @@ describe("hai khách: tra cứu và xóa dữ liệu chỉ đụng đúng email 
     expect((await env.DB.prepare("SELECT id FROM error_reports ORDER BY id").all<{ id: string }>()).results).toEqual([{ id: "R-0000-0003" }]);
     expect((await env.DB.prepare("SELECT id FROM error_report_logs ORDER BY id").all<{ id: string }>()).results).toEqual([{ id: "R-0000-0003" }]);
     expect(JSON.parse(((await lastAudit()) as { detail: string }).detail)).toMatchObject({ error_reports: 2 });
+  });
+
+  it("xóa luôn cuộc chat hỗ trợ có email đó (cả tin nhắn); giữ cuộc chat của email khác và cuộc chat không để email", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy({ email: "erase@example.com" });
+    const chat = async (code: string, email: string | null, messages: number) => {
+      const r = await env.DB.prepare(
+        `INSERT INTO support_conversations (code, token_hash, source, lang, email, created_at, last_activity_at) VALUES (?1, ?2, 'web', 'vi', ?3, ?4, ?4) RETURNING id`,
+      )
+        .bind(code, `hash-${code}`, email, T0)
+        .first<{ id: number }>();
+      for (let i = 0; i < messages; i++) {
+        await env.DB.prepare("INSERT INTO support_messages (conversation_id, sender, text, created_at) VALUES (?, 'customer', ?, ?)")
+          .bind(r?.id ?? 0, `tin ${i}`, T0)
+          .run();
+      }
+    };
+    await chat("AAA", "erase@example.com", 2);
+    await chat("BBB", "erase@example.com", 1);
+    await chat("CCC", "keep@example.com", 1);
+    await chat("DDD", null, 1);
+    const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+    expect(res.body).toEqual({ activations: 0, licenses: 1, orders: 1 });
+    expect((await env.DB.prepare("SELECT code FROM support_conversations ORDER BY code").all<{ code: string }>()).results).toEqual([
+      { code: "CCC" },
+      { code: "DDD" },
+    ]);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM support_messages").first()).toEqual({ n: 2 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM support_messages WHERE conversation_id NOT IN (SELECT id FROM support_conversations)").first()).toEqual({ n: 0 });
+    expect(JSON.parse(((await lastAudit()) as { detail: string }).detail)).toMatchObject({ support_conversations: 2 });
   });
 
   it("xóa dữ liệu của A giữ nguyên device_label và email của B", async () => {

@@ -572,8 +572,12 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
     // Báo cáo lỗi của các máy từng kích hoạt license của email này (spec 2026-10-17 §3). Phải xóa TRƯỚC câu bỏ email của licenses, vì
     // câu tìm máy đi qua licenses.email. Máy chỉ dùng thử (không có activation) không gắn với email nên không bị chạm.
     const reportsOf = "device_id_hash IN (SELECT device_id_hash FROM activations WHERE license_id IN (SELECT id FROM licenses WHERE email = ?3))";
+    // Cuộc chat hỗ trợ khách để lại email này (spec chat hỗ trợ §2.1, chính sách mục 7 và 11); cuộc chat không để email thì không tìm được theo
+    // email (runbook mục 11 có lệnh xóa theo mã). Email trong support_conversations luôn là chữ thường (parseEmail), như `email` ở đây.
+    // Tin nhắn xóa trước cuộc chat (khóa ngoại support_messages.conversation_id).
+    const chatsOf = "SELECT id FROM support_conversations WHERE email = ?3";
     // Nhật ký đứng đầu batch (cùng transaction), đếm đúng các dòng các câu sau sẽ đổi; ghi nhật ký lỗi thì không xóa gì.
-    const [, , , acts, lics, ords] = await db.batch([
+    const [, , , , , acts, lics, ords] = await db.batch([
       db
         .prepare(
           `INSERT INTO audit_log (at, actor, action, detail)
@@ -582,6 +586,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
              'licenses', (SELECT COUNT(*) FROM licenses WHERE email = ?3),
              'orders', (SELECT COUNT(*) FROM orders WHERE email = ?3),
              'error_reports', (SELECT COUNT(*) FROM error_reports WHERE ${reportsOf}),
+             'support_conversations', (SELECT COUNT(*) FROM support_conversations WHERE email = ?3),
              'note', ?4)`,
         )
         .bind(now, c.get("actor"), email, input.note),
@@ -589,6 +594,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
         .prepare(`DELETE FROM error_report_logs WHERE id IN (SELECT id FROM error_reports WHERE ${reportsOf.replaceAll("?3", "?")})`)
         .bind(email),
       db.prepare(`DELETE FROM error_reports WHERE ${reportsOf.replaceAll("?3", "?")}`).bind(email),
+      db.prepare(`DELETE FROM support_messages WHERE conversation_id IN (${chatsOf.replaceAll("?3", "?")})`).bind(email),
+      db.prepare("DELETE FROM support_conversations WHERE email = ?").bind(email),
       db.prepare(`UPDATE activations SET device_label = NULL WHERE ${activationsOf.replaceAll("?3", "?")}`).bind(email),
       db.prepare("UPDATE licenses SET email = NULL WHERE email = ?").bind(email),
       db.prepare("UPDATE orders SET email = NULL WHERE email = ?").bind(email),

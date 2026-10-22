@@ -157,6 +157,45 @@ describe("webhook Zalo POST /v1/webhooks/zalo (spec 2026-10-22 §2.4, §2.5)", (
     expect(await ownerRows()).toBe(0);
   });
 
+  it("sự kiện không phải tin nhận (trạng thái, tin của bot...): bỏ qua im lặng, không báo 'Chỉ gửi được chữ'", async () => {
+    const w = makeWorld();
+    await webhook(w, zaloUpdate("message.delivered", { text: "abc" }));
+    await webhook(w, zaloUpdate("bot.status.changed", { text: "abc" }));
+    await webhook(w, zaloUpdate("message.sent", { text: "abc" }));
+    expect(w.zalo.sent).toEqual([]);
+    expect(await ownerRows()).toBe(0);
+    // Tin nhận thuộc loại khác chữ (ảnh, sticker...) thì vẫn báo.
+    await webhook(w, zaloUpdate("message.video.received", { video: "https://zalo.example/v.mp4" }));
+    expect(w.zalo.texts()).toEqual(["Chỉ gửi được chữ."]);
+  });
+
+  it("thân không đọc được: log nêu dạng của thân (tên khóa, kiểu dữ liệu), không ghi giá trị", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld();
+    const body = { ok: true, result: { event_name: "message.text.received", message: { text: "nội dung bí mật", message_id: 12, chat: "không phải object" } } };
+    expect(await webhook(w, body)).toMatchObject({ status: 200, body: { ok: true } });
+    const line = warn.mock.calls.map((c) => String(c[0])).find((l) => l.includes("zalo_webhook_unreadable"));
+    expect(line).toBeDefined();
+    expect(line).not.toContain("nội dung bí mật");
+    expect(line).not.toContain("không phải object");
+    expect(JSON.parse(line ?? "{}")).toEqual({
+      event: "zalo_webhook_unreadable",
+      shape: {
+        top: { ok: "boolean", result: "object" },
+        result: { event_name: "string", message: "object" },
+        message: { text: "string", message_id: "number", chat: "string" },
+      },
+    });
+  });
+
+  it("thân không phải object JSON: log ghi shape là not_object", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld();
+    await webhook(w, "không phải json");
+    const line = warn.mock.calls.map((c) => String(c[0])).find((l) => l.includes("zalo_webhook_unreadable"));
+    expect(JSON.parse(line ?? "{}")).toEqual({ event: "zalo_webhook_unreadable", shape: "not_object" });
+  });
+
   it("lệnh /bat, /chan, /mo, /ds, /tat và lệnh lạ", async () => {
     const w = makeWorld();
     await webhook(w, ownerSays("/bat"));

@@ -40,6 +40,39 @@ export function parseUpdate(body: Record<string, unknown> | null): ZaloUpdate | 
   return { eventName: event.event_name, chatId, messageId, text };
 }
 
+const KIND_MAX_KEYS = 20;
+const KIND_MAX_KEY_LENGTH = 40;
+
+function kindOf(v: unknown): string {
+  if (v === null) return "null";
+  if (Array.isArray(v)) return "array";
+  return typeof v;
+}
+
+/** Tên khóa và kiểu dữ liệu của một object (không có giá trị): đủ để sửa `parseUpdate` mà không lộ nội dung tin. */
+function keyKinds(o: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(o).slice(0, KIND_MAX_KEYS)) out[key.slice(0, KIND_MAX_KEY_LENGTH)] = kindOf(o[key]);
+  return out;
+}
+
+/** Dạng của thân webhook không đọc được, để ghi log: khóa cấp 1, và của `result`, `message`, `chat` nếu là object. */
+export function bodyShape(body: Record<string, unknown> | null): unknown {
+  if (!body) return "not_object";
+  const event = isRecord(body.result) ? body.result : body;
+  const message = isRecord(event.message) ? event.message : null;
+  const chat = message && isRecord(message.chat) ? message.chat : null;
+  return {
+    top: keyKinds(body),
+    ...(event !== body ? { result: keyKinds(event) } : {}),
+    ...(message ? { message: keyKinds(message) } : {}),
+    ...(chat ? { chat: keyKinds(chat) } : {}),
+  };
+}
+
+/** Sự kiện nhận tin (`message.text.received`, `message.image.received`...): chỉ loại này mới đáng báo "Chỉ gửi được chữ". */
+const RECEIVED_EVENT = /^message\.[^.]+\.received$/;
+
 /** Các câu bot sẽ trả lời chủ dự án. Gửi sau khi đã trả 200 cho Zalo (`sendOutbox`), nên xử lý không gọi Zalo trực tiếp. */
 type Outbox = string[];
 
@@ -71,6 +104,8 @@ export async function handleOwnerUpdate(db: D1Database, deps: Deps, update: Zalo
 
 async function handleAction(db: D1Database, now: number, update: ZaloUpdate, outbox: Outbox): Promise<void> {
   const tell = (text: string) => void outbox.push(text);
+  // Sự kiện không phải tin nhận (báo trạng thái, tin của chính bot...): bỏ qua im lặng.
+  if (!RECEIVED_EVENT.test(update.eventName)) return;
   if (update.eventName !== "message.text.received" || update.text === null) return tell(BOT_TEXT.textOnly);
   const action = parseOwnerText(update.text);
   switch (action.kind) {
@@ -122,10 +157,11 @@ export function registerZaloWebhook(app: Hono<AppEnv>) {
       console.warn(JSON.stringify({ event: "zalo_webhook_bad_secret" }));
       return fail(c, 403, "forbidden");
     }
-    const update = parseUpdate(await readJson(c));
-    // Trả 200 cả khi không đọc được: trả lỗi thì Zalo có thể gửi lại mãi một thân hỏng.
+    const body = await readJson(c);
+    const update = parseUpdate(body);
+    // Trả 200 cả khi không đọc được: trả lỗi thì Zalo có thể gửi lại mãi một thân hỏng. Log nêu dạng của thân (không có giá trị) để sửa `parseUpdate`.
     if (!update) {
-      console.warn(JSON.stringify({ event: "zalo_webhook_unreadable" }));
+      console.warn(JSON.stringify({ event: "zalo_webhook_unreadable", shape: bodyShape(body) }));
       return c.json({ ok: true });
     }
     if (update.chatId !== c.env.ZALO_OWNER_CHAT_ID) {
