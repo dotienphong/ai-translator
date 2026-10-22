@@ -1621,9 +1621,10 @@ fn the_checkout_page_opens_only_for_the_pending_payos_order() {
     assert_eq!(invoke(&main, "get_pending_order", json!({})).unwrap(), Value::Null);
 }
 
-/// Bảng gói trả cho giao diện kèm loại tiền server gợi ý (spec 2026-10-14 D4); tên trường camelCase, giá USD tính bằng cent.
+/// Bảng gói trả cho giao diện (spec 2026-10-22 §3.1): chỉ có `plans`, không còn loại tiền gợi ý; tên trường camelCase, giá USD
+/// tính bằng cent.
 #[test]
-fn get_plans_returns_the_plans_and_the_suggested_currency() {
+fn get_plans_returns_only_the_plans() {
     use crate::license::client::{PlanOffer, PlansReply};
     let app = mock_app();
     let main = window(&app, "main");
@@ -1636,10 +1637,9 @@ fn get_plans_returns_the_plans_and_the_suggested_currency() {
             days_per_order: 30,
             prices: [("VND".to_string(), 50_000), ("USD".to_string(), 399)].into(),
         }],
-        suggested_currency: Some("USD".into()),
     });
     let plans = invoke(&main, "get_plans", json!({})).unwrap();
-    assert_eq!(plans["suggestedCurrency"], "USD");
+    assert!(plans.get("suggestedCurrency").is_none(), "{plans}");
     assert_eq!(
         (
             plans["plans"][0]["code"].as_str(),

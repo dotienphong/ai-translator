@@ -15,7 +15,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::purchase::{CURRENCIES, PLANS};
+use super::purchase::PLANS;
 
 /// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-06). Để `None` thì app
 /// chỉ dùng được token đã lưu và gói Free.
@@ -97,20 +97,11 @@ pub struct PlanOffer {
     pub prices: std::collections::BTreeMap<String, i64>,
 }
 
-/// Bảng gói và loại tiền server gợi ý (`GET /v1/plans`).
+/// Bảng gói (`GET /v1/plans`). Server còn gửi `suggested_currency` (loại tiền gợi ý theo nước, cho app ≤ 0.2.2); app này chọn
+/// sẵn cách trả theo ngôn ngữ giao diện (spec 2026-10-22 §3.1) nên không đọc trường đó (serde bỏ qua trường lạ).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct PlansReply {
     pub plans: Vec<PlanOffer>,
-    /// Loại tiền gợi ý theo nước của máy (spec 2026-10-14 D4): `VND` hay `USD`. Server cũ không có trường này; giá trị khác
-    /// (kể cả sai kiểu) thì bỏ, không làm hỏng cả bảng gói.
-    #[serde(default, deserialize_with = "known_currency")]
-    pub suggested_currency: Option<String>,
-}
-
-/// `suggested_currency` chỉ là gợi ý: nhận đúng một loại tiền app bán được ([`CURRENCIES`]), mọi giá trị khác là `None`.
-fn known_currency<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
-    let value = Value::deserialize(d)?;
-    Ok(value.as_str().filter(|c| CURRENCIES.contains(c)).map(String::from))
 }
 
 /// Chuỗi rỗng là không có (`qr_code: ""` là đơn không có mã QR, không phải mã QR rỗng).
@@ -474,7 +465,6 @@ mod tests {
         let (base, seen) = serve(vec![(200, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
         let reply = api.plans().result.unwrap();
-        assert_eq!(reply.suggested_currency, None, "server cũ không có gợi ý loại tiền");
         let plans = reply.plans;
         assert_eq!(
             plans.iter().map(|p| p.code.as_str()).collect::<Vec<_>>(),
@@ -497,45 +487,26 @@ mod tests {
         );
     }
 
-    /// Giá USD và loại tiền gợi ý (spec 2026-10-14 §3, §4.3): đọc cả giá VND lẫn USD, và `suggested_currency`.
+    /// Giá USD (spec 2026-10-14 §3): đọc cả giá VND lẫn USD. Server còn gửi `suggested_currency` cho app cũ (≤ 0.2.2); app này
+    /// chọn sẵn cách trả theo ngôn ngữ giao diện (spec 2026-10-22 §3.1) nên bỏ qua trường đó mà vẫn đọc đủ bảng gói, với mọi
+    /// kiểu giá trị.
     #[test]
-    fn plans_reads_the_usd_prices_and_the_suggested_currency() {
+    fn plans_reads_the_usd_prices_and_ignores_the_suggested_currency() {
         let body = r#"{"suggested_currency":"USD","plans":[
             {"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000,"USD":399}}]}"#;
         let (base, _) = serve(vec![(200, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
         let reply = api.plans().result.unwrap();
-        assert_eq!(reply.suggested_currency.as_deref(), Some("USD"));
         assert_eq!(
             (reply.plans[0].prices["VND"], reply.plans[0].prices["USD"]),
             (50_000, 399)
         );
-    }
-
-    /// `suggested_currency` chỉ là gợi ý (M4-KH03T3): loại tiền app không bán, sai chữ hoa thường hay sai kiểu thì bỏ (`None`),
-    /// không làm hỏng cả bảng gói (màn hình Nâng cấp vẫn tải).
-    #[test]
-    fn an_odd_suggested_currency_is_dropped_and_the_plans_still_load() {
-        let plans = r#"[{"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000,"USD":399}}]"#;
-        let cases = [
-            ("5", None),
-            (r#""EUR""#, None),
-            (r#""usd""#, None),
-            (r#""""#, None),
-            ("null", None),
-            (r#"{"code":"USD"}"#, None),
-            (r#"["USD"]"#, None),
-            (r#""VND""#, Some("VND")),
-            (r#""USD""#, Some("USD")),
-        ];
-        for (suggested, expect) in cases {
+        let plans = r#"[{"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000}}]"#;
+        for suggested in ["5", r#""EUR""#, r#""VND""#, "null", r#"{"code":"USD"}"#, r#"["USD"]"#] {
             let body = format!(r#"{{"suggested_currency":{suggested},"plans":{plans}}}"#);
             let reply: PlansReply = serde_json::from_str(&body).unwrap_or_else(|e| panic!("{suggested}: {e}"));
-            assert_eq!(reply.suggested_currency.as_deref(), expect, "{suggested}");
             assert_eq!(reply.plans.len(), 1, "{suggested}");
         }
-        let reply: PlansReply = serde_json::from_str(&format!(r#"{{"plans":{plans}}}"#)).unwrap();
-        assert_eq!(reply.suggested_currency, None, "server cũ không có trường này");
     }
 
     /// `qr_code: ""` (server hay cổng trả sai) là đơn không có mã QR, không phải mã QR rỗng (KH03-T1-a); `null` và khóa vắng

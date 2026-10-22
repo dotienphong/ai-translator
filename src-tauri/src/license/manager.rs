@@ -1410,10 +1410,12 @@ pub mod tests {
         fn plans(&self) -> Reply<PlansReply> {
             self.calls.lock().unwrap().push("plans".into());
             Reply {
-                result: Ok(self.plans.lock().unwrap().clone().unwrap_or(PlansReply {
-                    plans: Vec::new(),
-                    suggested_currency: None,
-                })),
+                result: Ok(self
+                    .plans
+                    .lock()
+                    .unwrap()
+                    .clone()
+                    .unwrap_or(PlansReply { plans: Vec::new() })),
                 date: *self.date.lock().unwrap(),
             }
         }

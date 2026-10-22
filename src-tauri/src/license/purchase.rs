@@ -46,13 +46,11 @@ pub const POLL_STALE_CARD_SECS: u64 = 120;
 const KEEP_AFTER_EXPIRY_SECS: i64 = 24 * 3600;
 const MAX_EMAIL_LEN: usize = 254;
 
-/// Bảng gói đang bán và loại tiền server gợi ý, cho màn hình Nâng cấp.
+/// Bảng gói đang bán, cho màn hình Nâng cấp.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlansView {
     pub plans: Vec<PlanOffer>,
-    /// `VND` hay `USD`; `None` khi server không gợi ý.
-    pub suggested_currency: Option<String>,
 }
 
 /// Đơn vừa tạo, cho màn hình Nâng cấp. Không có `order_token` (chỉ phía Rust giữ).
@@ -172,18 +170,12 @@ fn provider_of(provider: Option<&str>, has_qr: bool) -> String {
     }
 }
 
-/// Bảng gói đang bán, kèm loại tiền server gợi ý.
+/// Bảng gói đang bán.
 pub fn plans(license: &License) -> Result<PlansView, LicenseError> {
     let reply = license.api().plans();
     license.observe_reply(&reply);
-    let PlansReply {
-        plans,
-        suggested_currency,
-    } = reply.result.map_err(super::manager::map_api)?;
-    Ok(PlansView {
-        plans,
-        suggested_currency,
-    })
+    let PlansReply { plans } = reply.result.map_err(super::manager::map_api)?;
+    Ok(PlansView { plans })
 }
 
 /// Tạo đơn bằng loại tiền `currency` (`VND` hay `USD`). `renew`: gia hạn hay đổi gói key đang có (cần đã kích hoạt). Thiếu ô
@@ -825,17 +817,13 @@ mod tests {
         assert_eq!(pending(&l).unwrap().provider, "payos");
     }
 
-    /// Bảng gói trả cho giao diện kèm loại tiền gợi ý của server (tên trường camelCase).
+    /// Bảng gói trả cho giao diện chỉ có `plans` (spec 2026-10-22 §3.1: không còn loại tiền gợi ý).
     #[test]
-    fn the_plans_view_carries_the_suggested_currency() {
+    fn the_plans_view_has_only_the_plans() {
         let (api, _, l) = setup();
-        *api.plans.lock().unwrap() = Some(PlansReply {
-            plans: vec![],
-            suggested_currency: Some("USD".into()),
-        });
+        *api.plans.lock().unwrap() = Some(PlansReply { plans: vec![] });
         let view = plans(&l).unwrap();
-        assert_eq!(view.suggested_currency.as_deref(), Some("USD"));
-        assert_eq!(serde_json::to_value(&view).unwrap()["suggestedCurrency"], "USD");
+        assert_eq!(serde_json::to_value(&view).unwrap(), serde_json::json!({ "plans": [] }));
     }
 
     #[test]
