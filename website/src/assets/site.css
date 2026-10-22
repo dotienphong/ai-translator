@@ -608,4 +608,6 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .chat-bubble .icon { width: 26px; height: 26px; }
 .chat-dot { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); }
 body:has(.mnav[open]) .chat-root { display: none; }
+/* Bong bóng cố định ở góc dưới phải: chân trang chừa chỗ để cuộn dòng cuối ra khỏi bong bóng. */
+.site-footer { padding-bottom: 88px; }
 @media print { .chat-root { display: none; } }

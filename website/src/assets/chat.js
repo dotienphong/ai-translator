@@ -29,6 +29,7 @@ export function openChat(o) {
   els.panel.hidden = false;
   opts.bubble.setAttribute("aria-expanded", "true");
   document.documentElement.classList.add("chat-open");
+  document.addEventListener("keydown", onEscape);
   els.log.scrollTop = els.log.scrollHeight;
   start();
   // Máy có chuột: tiêu điểm vào ô nhập ngay. Màn hình cảm ứng: không bật bàn phím ảo che khung, tiêu điểm vào nút đóng.
@@ -41,6 +42,7 @@ export function closeChat() {
   hideMenu();
   els.confirm.hidden = true;
   els.panel.hidden = true;
+  document.removeEventListener("keydown", onEscape);
   document.documentElement.classList.remove("chat-open");
   opts.bubble.setAttribute("aria-expanded", "false");
   opts.bubble.focus();
@@ -59,7 +61,7 @@ function build(l) {
   panel.hidden = true;
   panel.innerHTML = `<div class="chat-head">
 <div class="chat-titles"><h2 class="chat-title" id="chat-title">${esc(t.title)}</h2><p class="chat-sub">${esc(t.sub)}</p></div>
-<button class="chat-icon" type="button" data-menu aria-haspopup="true" aria-expanded="false" aria-controls="chat-menu" aria-label="${esc(t.menu)}">${DOTS}</button>
+<button class="chat-icon" type="button" data-menu aria-expanded="false" aria-controls="chat-menu" aria-label="${esc(t.menu)}">${DOTS}</button>
 <button class="chat-icon" type="button" data-close aria-label="${esc(t.close)}">${use("x")}</button>
 <div class="chat-menu" id="chat-menu" hidden><button type="button" data-delete>${use("trash")}<span>${esc(t.del)}</span></button></div>
 </div>
@@ -78,7 +80,7 @@ function build(l) {
 <textarea id="chat-input" rows="1" placeholder="${esc(t.placeholder)}" aria-describedby="chat-count"></textarea>
 <button class="chat-send" type="button" data-send aria-label="${esc(t.send)}" disabled>${use("arrow-right")}</button>
 </div>
-<p class="chat-off" hidden></p>
+<p class="chat-off" role="status" hidden></p>
 <p class="chat-foot">${esc(t.keep)} · <a href="${t.privacyHref}"${lang === "vi" ? "" : ' hreflang="en"'}>${esc(t.privacy)}</a></p>`;
   opts.root.append(panel);
   const q = (s) => panel.querySelector(s);
@@ -138,21 +140,23 @@ function wire() {
     els.email.hidden = true;
     els.input.focus();
   });
-  // Esc: đóng menu, rồi hộp hỏi xóa, rồi cả khung (tiêu điểm về bong bóng).
-  opts.root.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !isOpen()) return;
-    e.preventDefault();
-    if (!els.menu.hidden) {
-      hideMenu();
-      els.menuBtn.focus();
-    } else if (!els.confirm.hidden) {
-      els.confirm.hidden = true;
-      els.menuBtn.focus();
-    } else closeChat();
-  });
   document.addEventListener("click", (e) => {
     if (!els.menu.hidden && !els.menu.contains(e.target) && !els.menuBtn.contains(e.target)) hideMenu();
   });
+}
+
+/** Esc (nghe ở document khi khung mở, tiêu điểm ở đâu cũng được): đóng menu, rồi hộp hỏi xóa, rồi cả khung (tiêu điểm về
+ *  bong bóng). Esc của bộ gõ (IME đang soạn chữ) chỉ hủy phần soạn, không đóng khung. */
+function onEscape(e) {
+  if (e.key !== "Escape" || e.isComposing || e.keyCode === 229 || !isOpen()) return;
+  e.preventDefault();
+  if (!els.menu.hidden) {
+    hideMenu();
+    els.menuBtn.focus();
+  } else if (!els.confirm.hidden) {
+    els.confirm.hidden = true;
+    els.menuBtn.focus();
+  } else closeChat();
 }
 
 /** Mở khung: có cuộc chat thì hỏi tin mới (lần đầu lấy cả lịch sử); chưa có thì chỉ hỏi chat có đang bật không. */
@@ -242,13 +246,18 @@ function submit() {
   els.input.value = "";
   onInput();
   const row = addMessage("customer", text, { state: "sending" });
-  queue = queue.then(() => deliver(text, row));
+  enqueue(text, row);
+}
+
+/** Gửi lần lượt; một tin ném lỗi (ví dụ thân phản hồi hỏng) thì đánh dấu tin đó lỗi và hàng đợi chạy tiếp. */
+function enqueue(text, row) {
+  queue = queue.then(() => deliver(text, row)).catch(() => setState(row, "failed"));
 }
 
 function retry(row) {
   if (mode !== "ready") return;
   setState(row, "sending");
-  queue = queue.then(() => deliver(row.querySelector(".chat-text").textContent, row));
+  enqueue(row.querySelector(".chat-text").textContent, row);
 }
 
 /** Gửi lần lượt từng tin (tin đầu tạo cuộc chat; tin sau phải đợi có token). */
@@ -256,13 +265,17 @@ async function deliver(text, row) {
   const st = env.store.load();
   const result = await env.api.send(st?.token ?? null, text, { lang, source: "web", page: location.pathname });
   poller.report(result);
-  if (result.ok) {
-    const m = result.data.message;
-    row.dataset.id = String(m.id);
-    seen.add(m.id);
-    setState(row, "sent");
+  const m = result.data?.message;
+  const token = result.data?.token ?? st?.token;
+  if (result.ok && m && token) {
+    if (seen.has(m.id)) row.remove(); // lượt hỏi tin về trước phản hồi POST: tin đã hiện (từ máy chủ), bỏ dòng tạm
+    else {
+      row.dataset.id = String(m.id);
+      seen.add(m.id);
+      setState(row, "sent");
+    }
     note("");
-    env.store.save({ token: result.data.token ?? st.token, lastId, waitingSince: m.created_at });
+    env.store.save({ token, lastId, waitingSince: m.created_at });
     if (!st) {
       // Tin đầu của cuộc chat mới: hiện menu ⋯ và thẻ email.
       loaded = true;
@@ -276,7 +289,7 @@ async function deliver(text, row) {
     return;
   }
   setState(row, "failed");
-  const o = outcome(result);
+  const o = result.ok ? "network" : outcome(result); // 2xx mà thân không dùng được: như lỗi mạng
   if (o === "reset") {
     resetConversation();
     els.log.append(row); // tin chưa gửi vẫn ở đó: bấm "thử lại" thì mở cuộc chat mới
@@ -303,6 +316,8 @@ function resetConversation() {
 /** Chat tắt hay cuộc chat bị chặn: thay ô nhập bằng dòng email support@ (lịch sử vẫn hiện). */
 function setMode(m) {
   mode = m;
+  // Ô nhập đang có tiêu điểm mà bị ẩn thì tiêu điểm rơi ra ngoài: chuyển sang nút Đóng.
+  if (m !== "ready" && els.compose.contains(document.activeElement)) els.close.focus();
   els.compose.hidden = m !== "ready";
   els.off.hidden = m === "ready";
   if (m !== "ready") {
@@ -353,8 +368,10 @@ async function saveEmail() {
   els.emailSave.disabled = false;
   poller.report(result);
   if (result.ok) {
+    const lost = els.emailRow.contains(document.activeElement) || document.activeElement === document.body;
     els.emailRow.hidden = true;
     els.emailMsg.textContent = t.emailSaved;
+    if (lost) els.close.focus();
     return;
   }
   const o = outcome(result);

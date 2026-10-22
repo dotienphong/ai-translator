@@ -229,7 +229,7 @@
       document.head.appendChild(link);
     });
     const open = async () => {
-      loading ??= Promise.all([loadCss(chatCfg.chatCss), import(chatCfg.chatUi)]).then(([, mod]) => (ui = mod));
+      if (!loading) loading = Promise.all([loadCss(chatCfg.chatCss), import(chatCfg.chatUi)]).then(([, mod]) => (ui = mod));
       try { await loading; } catch { loading = null; return; } // tải lỗi (mạng): bấm lại để thử
       watcher?.stop();
       watcher = null;

@@ -54,4 +54,6 @@ button.chat-state { color: var(--danger); text-decoration: underline; text-under
   html.chat-open { overflow: hidden; }
   .chat-open body > :not(.chat-root):not(.sprite) { visibility: hidden; }
   .chat-open .chat-bubble { display: none; }
+  /* iOS phóng to trang khi ô nhập có chữ dưới 16px. */
+  .chat-compose textarea, .chat-email-row input { font-size: 16px; }
 }

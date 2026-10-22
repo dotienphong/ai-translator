@@ -49,6 +49,7 @@ async function fakeApi(page) {
     convs: new Map(),
     requests: [],
     fail: [],
+    postDelay: 0,
     create(first = {}) {
       const token = randomBytes(32).toString("base64url");
       api.convs.set(token, { messages: [], email: null, status: "open", first });
@@ -85,6 +86,7 @@ async function fakeApi(page) {
     api.requests.push({ method: request.method, path: url.pathname + url.search, auth, body, type: request.headers["Content-Type"] ?? null });
     const f = api.fail.shift();
     if (f === "network") return page.s.send("Fetch.failRequest", { requestId, errorReason: "InternetDisconnected" });
+    if (f?.raw !== undefined) return page.s.send("Fetch.fulfillRequest", { requestId, responseCode: f.status, responseHeaders: [...cors, { name: "Content-Type", value: "text/html" }], body: Buffer.from(f.raw).toString("base64") });
     if (f) return reply(requestId, f.status, { error: f.error }, f.retryAfter ? [{ name: "Retry-After", value: String(f.retryAfter) }] : []);
     const key = `${request.method} ${url.pathname}`;
     if (key === "GET /v1/support/status") return reply(requestId, 200, { enabled: api.enabled });
@@ -95,6 +97,7 @@ async function fakeApi(page) {
       if (conv?.status === "closed") return reply(requestId, 403, { error: "conversation_closed" });
       const token = conv ? auth : api.create(body);
       const message = api.add(token, "customer", body.text);
+      if (api.postDelay) await sleep(api.postDelay); // máy chủ đã ghi tin nhưng trả lời chậm: lượt hỏi tin có thể về trước
       return reply(requestId, 201, conv ? { message } : { token, message });
     }
     if (key === "GET /v1/support/messages") {
@@ -527,5 +530,101 @@ test("điện thoại 375 px: khung chiếm toàn màn hình, trang phía sau �
   const d = await p.eval(`(() => { const a = document.querySelector(".chat-panel").getBoundingClientRect(); const b = document.querySelector(".chat-bubble").getBoundingClientRect(); return { right: innerWidth - a.right, gap: Math.round(b.top - a.bottom), width: a.width, main: getComputedStyle(document.querySelector("main")).visibility }; })()`);
   assert.ok(d.gap >= 11 && d.gap <= 12, `khung phải nằm ngay trên bong bóng (cách ${d.gap}px; bong bóng nhích 1px khi chuột đang trỏ)`);
   assert.deepEqual({ ...d, gap: 0 }, { right: 16, gap: 0, width: 380, main: "visible" });
+  await p.close();
+});
+
+test("tin của chủ dự án chứa HTML hiện thành chữ, không tạo phần tử", { skip }, async () => {
+  const p0 = await browser.newPage({ width: 1280, height: 900 });
+  const api = await fakeApi(p0);
+  const token = api.create();
+  const html = '<img src=x onerror="window.pwned=1"> <b>đậm</b>';
+  api.add(token, "owner", html);
+  await p0.goto(base + "/");
+  await p0.eval(`localStorage.clear(); localStorage.setItem("support.v1", ${JSON.stringify(JSON.stringify({ token, lastId: 0, waitingSince: null }))})`);
+  await p0.goto(base + "/");
+  await openChat(p0);
+  await until(p0, `[...document.querySelectorAll(".chat-msg.is-owner .chat-text")].some((e) => e.textContent === ${JSON.stringify(html)})`);
+  assert.equal(await p0.eval(`document.querySelectorAll(".chat-log img, .chat-log b").length`), 0);
+  assert.equal(await p0.eval(`window.pwned === undefined`), true);
+  assert.deepEqual(realErrors(p0), []);
+  await p0.close();
+});
+
+test("chat tắt khi đang gõ (503) và lưu email xong: tiêu điểm chuyển sang nút Đóng; dòng báo tắt có role=status; nút menu không khai aria-haspopup", { skip }, async () => {
+  const { p, api } = await freshPage("/");
+  await openChat(p);
+  assert.equal(await p.eval(`document.querySelector("[data-menu]").hasAttribute("aria-haspopup")`), false);
+  api.enabled = false;
+  await type(p, "#chat-input", "Xin chào");
+  await p.press("Enter");
+  await until(p, `!document.querySelector(".chat-off").hidden`);
+  assert.equal(await p.eval(`document.activeElement === document.querySelector("[data-close]")`), true, "ô nhập bị ẩn mà tiêu điểm không sang nút Đóng");
+  assert.equal(await p.eval(`document.querySelector(".chat-off").getAttribute("role")`), "status");
+  await p.close();
+
+  const { p: p2 } = await freshPage("/en/");
+  await openChat(p2);
+  await type(p2, "#chat-input", "Hello");
+  await p2.press("Enter");
+  await until(p2, `!document.querySelector(".chat-email").hidden`);
+  await type(p2, ".chat-email input", "khach@vi-du.vn");
+  await p2.click("[data-email-save]");
+  await until(p2, `document.querySelector(".chat-email-row").hidden`);
+  assert.equal(await p2.eval(`document.activeElement === document.querySelector("[data-close]")`), true, "lưu email xong mà tiêu điểm không sang nút Đóng");
+  assert.deepEqual(realErrors(p2), []);
+  await p2.close();
+});
+
+test("Esc: đóng khung dù tiêu điểm ở ngoài khung; bỏ qua Esc của bộ gõ (isComposing)", { skip }, async () => {
+  const { p } = await freshPage("/");
+  await openChat(p);
+  await type(p, "#chat-input", "abc");
+  await p.eval(`document.querySelector("#chat-input").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true, cancelable: true }))`);
+  assert.equal(await p.eval(`document.querySelector(".chat-panel").hidden`), false, "Esc của bộ gõ không được đóng khung");
+  await p.eval(`document.activeElement.blur(); document.body.focus()`);
+  await p.press("Escape");
+  assert.equal(await p.eval(`document.querySelector(".chat-panel").hidden`), true, "Esc ngoài khung phải đóng khung");
+  assert.equal(await p.eval(`document.querySelector(".chat-bubble").getAttribute("aria-expanded")`), "false");
+  assert.deepEqual(realErrors(p), []);
+  await p.close();
+});
+
+test("hàng đợi gửi: 201 mà thân không phải JSON thì tin đó báo lỗi và tin sau vẫn gửi được; tin về trước phản hồi POST thì không hiện hai lần", { skip }, async () => {
+  const { p, api } = await freshPage("/");
+  await openChat(p);
+  api.fail.push({ status: 201, raw: "<html>cổng mạng</html>" });
+  await type(p, "#chat-input", "Tin một");
+  await p.press("Enter");
+  await until(p, `document.querySelector('.chat-msg.is-customer')?.dataset.state === "failed"`);
+  await type(p, "#chat-input", "Tin hai");
+  await p.press("Enter");
+  await until(p, `[...document.querySelectorAll('.chat-msg.is-customer')].at(-1).dataset.state === "sent"`);
+  assert.deepEqual((await msgs(p)).slice(1).map((m) => [m[1], m[2]]), [["Tin một", "failed"], ["Tin hai", "sent"]]);
+  // Cuộc chat đã có: lượt hỏi (3 giây) về trước phản hồi POST (chậm 5 giây).
+  api.postDelay = 5000;
+  await type(p, "#chat-input", "Tin ba");
+  await p.press("Enter");
+  await until(p, `[...document.querySelectorAll('.chat-msg.is-customer')].at(-1).dataset.state === "sent" && ![...document.querySelectorAll('.chat-msg.is-customer')].some((m) => m.dataset.state === "sending")`, 12000);
+  const texts = (await msgs(p)).filter((m) => m[1] === "Tin ba");
+  assert.equal(texts.length, 1, "tin ba hiện " + texts.length + " lần");
+  assert.deepEqual(realErrors(p), []);
+  await p.close();
+});
+
+test("điện thoại 375 px: ô nhập có chữ 16px (iOS không phóng to); bong bóng không che dòng cuối chân trang", { skip }, async () => {
+  const { p } = await freshPage("/", { width: 375, height: 740, mobile: true });
+  await openChat(p);
+  const fs = await p.eval(`[document.querySelector("#chat-input"), document.querySelector(".chat-email input")].map((e) => getComputedStyle(e).fontSize)`);
+  assert.deepEqual(fs, ["16px", "16px"]);
+  await p.click("[data-close]");
+  for (const [w, h] of [[375, 740], [1280, 800]]) {
+    const q = await browser.newPage({ width: w, height: h, mobile: w < 600 });
+    await q.goto(base + "/");
+    await q.eval(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+    await sleep(200);
+    const gap = await q.eval(`(() => { const last = [...document.querySelectorAll(".footer-bottom > *")].at(-1).getBoundingClientRect(); const b = document.querySelector(".chat-bubble").getBoundingClientRect(); return Math.round(b.top - last.bottom); })()`);
+    assert.ok(gap >= 0, `${w}px: bong bóng che dòng cuối chân trang (${gap}px)`);
+    await q.close();
+  }
   await p.close();
 });
