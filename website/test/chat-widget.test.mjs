@@ -157,6 +157,29 @@ test("mọi trang năm ngôn ngữ (và 404) có bong bóng đúng nhãn; chưa 
   }
 });
 
+test("bong bóng 3D (spec 2026-10-23): ba chấm thay biểu tượng cũ; viền nhấp nháy khi khung đóng, rõ lại khi có trả lời mới, dừng khi khung mở; giảm chuyển động thì đứng yên", { skip }, async () => {
+  const anim = (p) => p.eval(`getComputedStyle(document.querySelector(".chat-bubble")).animationName`);
+  const { p } = await freshPage("/");
+  assert.deepEqual(
+    await p.eval(`(() => { const b = document.querySelector(".chat-bubble"); return { dots: b.querySelectorAll(".chat-bubble-dots i").length, oldIcon: Boolean(b.querySelector("svg")) }; })()`),
+    { dots: 3, oldIcon: false },
+  );
+  assert.equal(await anim(p), "chat-glow, chat-glow-soft");
+  await p.eval(`document.querySelector(".chat-dot").hidden = false`);
+  assert.equal(await anim(p), "chat-glow");
+  await p.eval(`document.querySelector(".chat-dot").hidden = true`);
+  await p.click(".chat-bubble");
+  await until(p, `document.querySelector(".chat-bubble").getAttribute("aria-expanded") === "true"`);
+  assert.equal(await anim(p), "none");
+  assert.deepEqual(realErrors(p), []);
+  await p.close();
+  const { p: still } = await freshPage("/", { reduceMotion: true });
+  assert.equal(await anim(still), "none");
+  assert.match(await still.eval(`getComputedStyle(document.querySelector(".chat-bubble")).boxShadow`), /3px/);
+  await still.close();
+});
+
+
 test("tắt JavaScript: không có bong bóng", { skip }, async () => {
   const p = await browser.newPage({ width: 1280, height: 900 });
   await p.setJS(false);

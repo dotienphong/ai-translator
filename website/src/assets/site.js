@@ -193,7 +193,7 @@
   if (chatCfg) {
     const wrap = document.createElement("div");
     wrap.className = "chat-root";
-    wrap.innerHTML = '<button class="chat-bubble" type="button" aria-expanded="false" aria-controls="chat-panel"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-message"/></svg><span class="chat-dot" hidden></span></button>';
+    wrap.innerHTML = '<button class="chat-bubble" type="button" aria-expanded="false" aria-controls="chat-panel"><span class="chat-bubble-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="chat-dot" hidden></span></button>';
     document.body.appendChild(wrap);
     const bubble = wrap.firstElementChild;
     const dot = bubble.querySelector(".chat-dot");
