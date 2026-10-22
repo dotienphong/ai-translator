@@ -1002,3 +1002,24 @@ impl SupportApi for FakeSupportApi {
         Ok(())
     }
 }
+
+/// Chat hỗ trợ đã cài vào app giả: server giả của nó.
+pub struct SupportRig {
+    pub api: FakeSupportApi,
+}
+
+/// Cài chat hỗ trợ vào app giả (như `support::install` ở app thật) với server giả và `support.json` trong thư mục tạm riêng; không
+/// có luồng hỏi nền.
+pub fn install_support(app: &tauri::App<MockRuntime>) -> SupportRig {
+    static DIRS: AtomicUsize = AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "{APP_DIR_PREFIX}support-{}-{}",
+        std::process::id(),
+        DIRS.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    let api = FakeSupportApi::default();
+    let chat = crate::support::chat_for_tests(app.handle(), Box::new(api.clone()), dir.join("support.json"));
+    app.manage(chat);
+    SupportRig { api }
+}

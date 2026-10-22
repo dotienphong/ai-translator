@@ -12,6 +12,7 @@ use crate::compose::{self, ComposeView, Delta, Done, Loading};
 use crate::overlay;
 use crate::settings::Settings;
 use crate::state::{AppStatus, OverlayView};
+use crate::support::chat::SupportView;
 use crate::window;
 
 pub const SETTINGS_CHANGED: &str = "settings://changed";
@@ -39,6 +40,9 @@ pub const COMPOSE_OPEN: &str = "compose://open";
 pub const COMPOSE_LOADING: &str = "compose://loading";
 pub const COMPOSE_DELTA: &str = "compose://delta";
 pub const COMPOSE_DONE: &str = "compose://done";
+/// Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4), chỉ gửi cho cửa sổ chính: trạng thái mới sau lần hỏi tin nền
+/// (`support::chat::SupportView`, không có token).
+pub const SUPPORT_VIEW: &str = "support://view";
 
 /// Hướng cuộn của phím tắt cuộn phụ đề. Tên khớp `ScrollDirection` ở `src/lib/overlayScroll.ts`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -110,6 +114,10 @@ pub fn compose_delta<R: Runtime>(app: &AppHandle<R>, delta: &Delta) {
 
 pub fn compose_done<R: Runtime>(app: &AppHandle<R>, done: &Done) {
     emit(app, compose::LABEL, COMPOSE_DONE, done);
+}
+
+pub fn support_view<R: Runtime>(app: &AppHandle<R>, view: &SupportView) {
+    emit(app, window::MAIN, SUPPORT_VIEW, view);
 }
 
 pub fn navigate<R: Runtime>(app: &AppHandle<R>, target: Navigate) {

@@ -170,6 +170,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     session::spawn_ticker(&handle);
     // Báo cáo lỗi gửi về nhà phát triển (spec 2026-10-17): phân loại lần chạy trước, cài panic hook và luồng gửi nền.
     diagnostics::install(&handle)?;
+    // Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): đọc `support.json`, luồng hỏi tin chỉ kết nối khi đã dùng chat.
+    support::install(&handle)?;
 
     #[cfg(target_os = "macos")]
     {
