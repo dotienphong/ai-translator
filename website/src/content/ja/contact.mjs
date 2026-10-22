@@ -38,7 +38,7 @@ export default {
   path: "/ja/contact/",
   title: "お問い合わせとサポート",
   description:
-    "AI Translator へのお問い合わせは support@aitranslator.io.vn まで。インストーラー、技術サポート、キーの紛失、支払い、返金、データ削除、セキュリティ報告。",
+    "AI Translator へのお問い合わせは support@aitranslator.io.vn へのメール、またはサイトとアプリのサポートチャットで。技術サポート、キーの紛失、支払い、返金、データ削除。",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -46,13 +46,14 @@ export default {
 ${pageHero({
   crumbs,
   title: "お問い合わせとサポート",
-  lead: "AI Translator へのご連絡は support@aitranslator.io.vn へのメールでお願いします。これが唯一のサポート窓口で、このウェブサイトにはお問い合わせフォームもサポート用の電話もありません。",
+  lead: "AI Translator へのご連絡は、support@aitranslator.io.vn へのメールか、サポートチャット（このウェブサイトの各ページ右下にあるチャットボタン、またはアプリの「サポート」画面）でお願いします。サポート用の電話はありません。",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["メール", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>サポートは英語またはベトナム語で返信します。メールも英語かベトナム語でお書きいただくと確実です</small>`],
-  ["ほかの窓口", "なし<small>ウェブフォームも電話もありません</small>"],
+  ["チャット", "各ページ右下のチャットボタン、またはアプリの「サポート」画面<small>ボットではなく人が返信します。メールアドレスを残すと（任意）、ページを離れても返信をメールで受け取れます。メッセージは 90 日間保存されます。チャットボタンが表示されない場合（JavaScript がオフのときなど）は、メールをお送りください</small>"],
+  ["ほかの窓口", "なし<small>メールとチャットのほかに、電話などのサポート窓口はありません</small>"],
   ["返信", "返信までの時間はお約束していません<small>一人で運営している製品のため、具体的な返信時間はお約束できません</small>"],
   ["セキュリティの報告", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>または件名を [Security] で始めてメールをお送りください</small>`],
 ])}</div>
@@ -118,7 +119,7 @@ ${btn(M.feedback, "ご意見を送る")}
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "お書きになる前に", title: "すぐに答えが見つかるかもしれません" })}
-${callout({ title: "連絡先について。", text: "AI Translator の提供者は Đỗ Tiến Phong（個人）です。このウェブサイトでは住所、電話番号、税番号を公開していません。ご連絡はすべて上のメールアドレスでお受けしています。" })}
+${callout({ title: "連絡先について。", text: "AI Translator の提供者は Đỗ Tiến Phong（個人）です。このウェブサイトでは住所、電話番号、税番号を公開していません。ご連絡は上のメールアドレスかサポートチャットでお受けしています。" })}
 <div class="grid grid-3">
 ${linkCard({ href: "/ja/faq/", icon: "message", title: "よくある質問", text: "インストール、プライバシー、プラン、お支払いについての短い回答。", more: "よくある質問を読む" })}
 ${linkCard({ href: "/ja/guide/troubleshooting/", icon: "support", title: "トラブルシューティング", text: "よくある問題と、その手順ごとの直し方。", more: "ガイドを見る" })}

@@ -37,23 +37,24 @@ export default {
   path: "/lien-he/",
   title: "Liên hệ và hỗ trợ AI Translator",
   description:
-    "Liên hệ AI Translator qua email support@aitranslator.io.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
+    "Liên hệ AI Translator qua email support@aitranslator.io.vn hoặc chat hỗ trợ trên web và trong app: kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-15",
-  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
+  modified: "2026-10-22",
+  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn hoặc chat hỗ trợ (nút chat ở góc dưới bên phải mỗi trang, mục Hỗ trợ trong app), việc nên gửi (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
   llmTitle: "Liên hệ và hỗ trợ AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Liên hệ và hỗ trợ",
-  lead: "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
+  lead: "Bạn liên hệ AI Translator bằng email tới support@aitranslator.io.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["Email", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>Bạn có thể viết bằng tiếng Việt hoặc English</small>`],
-  ["Kênh khác", "Không có<small>Không có form trên web, không có điện thoại</small>"],
+  ["Chat", "Nút chat ở góc dưới bên phải mỗi trang, hoặc mục Hỗ trợ trong app<small>Người thật trả lời, không phải bot. Để lại email (không bắt buộc) để nhận câu trả lời qua email nếu bạn rời trang. Tin nhắn được lưu 90 ngày. Không thấy nút chat (ví dụ trình duyệt tắt JavaScript) thì hãy gửi email</small>"],
+  ["Kênh khác", "Không có<small>Ngoài email và chat, chúng tôi không có điện thoại hay kênh hỗ trợ nào khác</small>"],
   ["Phản hồi", "Chưa cam kết thời gian trả lời<small>Sản phẩm do một người vận hành nên chúng tôi chưa hứa một thời hạn cụ thể</small>"],
   ["Báo lỗi bảo mật", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>Hoặc gửi email với tiêu đề bắt đầu bằng [Bảo mật]</small>`],
 ])}</div>
@@ -119,7 +120,7 @@ ${btn(M.feedback, "Gửi góp ý")}
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Trước khi gửi", title: "Có thể bạn tìm thấy câu trả lời ngay" })}
-${callout({ title: "Về thông tin liên hệ.", text: "Bên cung cấp AI Translator là Đỗ Tiến Phong (cá nhân). Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email ở trên." })}
+${callout({ title: "Về thông tin liên hệ.", text: "Bên cung cấp AI Translator là Đỗ Tiến Phong (cá nhân). Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email hoặc chat hỗ trợ ở trên." })}
 <div class="grid grid-3">
 ${linkCard({ href: "/cau-hoi-thuong-gap/", icon: "message", title: "Câu hỏi thường gặp", text: "Câu trả lời ngắn về cài đặt, riêng tư, gói và thanh toán.", more: "Xem hỏi đáp" })}
 ${linkCard({ href: "/huong-dan/khac-phuc-su-co/", icon: "support", title: "Khắc phục sự cố", text: "Các lỗi thường gặp và cách xử lý từng bước.", more: "Xem hướng dẫn" })}

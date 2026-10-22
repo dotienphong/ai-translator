@@ -37,7 +37,7 @@ export default {
   path: "/zh/contact/",
   title: "AI Translator 联系与支持",
   description:
-    "通过 support@aitranslator.io.vn 联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
+    "通过 support@aitranslator.io.vn 或网站和应用中的客服聊天联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -45,13 +45,14 @@ export default {
 ${pageHero({
   crumbs,
   title: "联系与支持",
-  lead: "联系 AI Translator 的方式是发邮件到 support@aitranslator.io.vn。这是我们唯一的支持渠道：本网站没有联系表单，我们也没有客服电话。",
+  lead: "你可以发邮件到 support@aitranslator.io.vn 联系 AI Translator，也可以使用客服聊天：本网站每个页面右下角的聊天按钮，或应用中的“客服”页面。我们没有客服电话。",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["邮箱", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>客服用英语或越南语回复；用英语或越南语来信沟通最顺畅</small>`],
-  ["其他渠道", "无<small>没有网页表单，没有电话</small>"],
+  ["聊天", "每个页面右下角的聊天按钮，或应用中的“客服”页面<small>由真人回复，不是机器人。可以留下邮箱（选填），离开页面后也能通过邮件收到回复。消息保存 90 天。看不到聊天按钮（例如浏览器关闭了 JavaScript）时，请发邮件</small>"],
+  ["其他渠道", "无<small>除邮件和聊天外，我们没有电话或其他支持渠道</small>"],
   ["回复", "不承诺回复时间<small>产品由一个人运营，所以我们不承诺具体的回复时间</small>"],
   ["安全报告", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>或发送主题以 [Security] 开头的邮件</small>`],
 ])}</div>
@@ -117,7 +118,7 @@ ${btn(M.feedback, "发送意见")}
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "写信之前", title: "也许你马上就能找到答案" })}
-${callout({ title: "关于我们的联系方式。", text: "AI Translator 的提供方是 Đỗ Tiến Phong（个人）。本网站没有公布地址、电话号码或税号；所有联系都通过上面的邮箱进行。" })}
+${callout({ title: "关于我们的联系方式。", text: "AI Translator 的提供方是 Đỗ Tiến Phong（个人）。本网站没有公布地址、电话号码或税号；所有联系都通过上面的邮箱或客服聊天进行。" })}
 <div class="grid grid-3">
 ${linkCard({ href: "/zh/faq/", icon: "message", title: "常见问题", text: "关于安装、隐私、套餐和付款的简短回答。", more: "阅读常见问题" })}
 ${linkCard({ href: "/zh/guide/troubleshooting/", icon: "support", title: "故障排除", text: "常见问题以及分步解决方法。", more: "查看指南" })}

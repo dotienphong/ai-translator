@@ -2309,3 +2309,83 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
   }
   assert.deepEqual(errors, []);
 });
+
+// Câu cũ đã gỡ khi có chat hỗ trợ: "email là kênh hỗ trợ duy nhất", "website không có form", "mọi liên hệ đi qua email" (năm ngôn ngữ).
+// Văn bản CJK không tách câu theo 。 (sentencesOf chỉ tách theo dấu câu Latin và xuống dòng): luật CJK khớp trong cả đoạn.
+const STALE_SUPPORT = [
+  { id: "vi: kênh hỗ trợ duy nhất", re: /kênh\s+(?:hỗ\s+trợ\s+)?(?:liên\s+hệ\s+)?duy\s+nhất/iu },
+  { id: "vi: không có form", re: /không\s+có\s+(?:form|biểu\s+mẫu)/iu },
+  { id: "vi: mọi liên hệ đi qua email", re: /mọi\s+liên\s+hệ\s+(?:đều\s+)?(?:đi\s+qua|qua)\s+email(?:\s+ở\s+trên)?(?!\s+(?:hoặc|hay))/iu },
+  { id: "en: only support channel", re: /\bonly\s+(?:support\s+|contact\s+)?channel\b/i },
+  { id: "en: no contact or web form", re: /\bno\s+(?:contact|web)\s+form\b/i },
+  { id: "en: all contact goes through the email", re: /\ball\s+contact\s+goes\s+through\s+(?:the\s+)?email\b(?!\s+or\b)/i },
+  { id: "ja: 唯一の窓口", re: /唯一の(?:サポート)?窓口/u },
+  { id: "ja: フォームもありません", re: /(?:お問い合わせ|ウェブ)フォーム(?:も|は)/u },
+  { id: "ja: すべて上のメールアドレスで", re: /すべて上のメールアドレスで/u },
+  { id: "zh: 唯一的渠道", re: /唯一的(?:支持|客服|联系)?渠道/u },
+  { id: "zh: 没有表单", re: /没有(?:联系|网页)表单/u },
+  { id: "zh: 所有联系都通过上面的邮箱进行", re: /所有联系都通过上面的邮箱进行/u },
+  { id: "ko: 유일한 창구", re: /유일한\s*(?:지원\s*)?창구/u },
+  { id: "ko: 문의 양식이 없음, 웹 양식도", re: /(?:문의|웹)\s*양식(?:이|도)/u },
+  { id: "ko: 모든 연락은 위 이메일로", re: /모든\s*연락은\s*위\s*이메일로/u },
+];
+// Câu cũ nguyên văn (trang Liên hệ trước khi có chat) mà luật phải bắt.
+const STALE_SUPPORT_MUST_CATCH = [
+  "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
+  "Không có form trên web, không có điện thoại",
+  "Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email ở trên.",
+  "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
+  "No web form, no phone",
+  "We have not published an address, phone number or tax code on this website; all contact goes through the email above.",
+  "これが唯一のサポート窓口で、このウェブサイトにはお問い合わせフォームもサポート用の電話もありません。",
+  "ウェブフォームも電話もありません",
+  "ご連絡はすべて上のメールアドレスでお受けしています。",
+  "这是我们唯一的支持渠道：本网站没有联系表单，我们也没有客服电话。",
+  "没有网页表单，没有电话",
+  "所有联系都通过上面的邮箱进行。",
+  "이것이 유일한 지원 창구이며, 이 웹사이트에는 문의 양식이 없고 지원 전화도 없습니다.",
+  "웹 양식도 전화도 없습니다",
+  "모든 연락은 위 이메일로 받습니다.",
+];
+// Câu đúng của bản mới (và câu khác đang có trên site) mà luật KHÔNG được bắt.
+const STALE_SUPPORT_MUST_KEEP = [
+  "Bạn liên hệ AI Translator bằng email tới support@aitranslator.io.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
+  "Ngoài email và chat, chúng tôi không có điện thoại hay kênh hỗ trợ nào khác",
+  "Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email hoặc chat hỗ trợ ở trên.",
+  "Apart from email and chat, we have no phone line or other support channel",
+  "We have not published an address, phone number or tax code on this website; all contact goes through the email or the support chat above.",
+  "メールとチャットのほかに、電話などのサポート窓口はありません",
+  "ご連絡は上のメールアドレスかサポートチャットでお受けしています。",
+  "除邮件和聊天外，我们没有电话或其他支持渠道",
+  "所有联系都通过上面的邮箱或客服聊天进行。",
+  "이메일과 채팅 외에 전화 등 다른 지원 창구는 없습니다",
+  "모든 연락은 위 이메일이나 지원 채팅으로 받습니다.",
+  "아래 버튼을 누르면 제목과 양식이 채워진 채로 이메일 앱이 열립니다.",
+];
+
+test("luật câu cũ về kênh hỗ trợ (STALE_SUPPORT) bắt câu 'email là kênh duy nhất, không có form' ở năm ngôn ngữ và không bắt câu mới", () => {
+  const missed = STALE_SUPPORT_MUST_CATCH.filter((s) => staleHits(s, STALE_SUPPORT).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_SUPPORT_MUST_KEEP.filter((s) => staleHits(s, STALE_SUPPORT).length > 0).map((s) => `${s} → ${staleHits(s, STALE_SUPPORT).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site còn câu nói email là kênh hỗ trợ duy nhất hay website không có form", async () => {
+  assert.deepEqual(scanStale(await siteTexts(), STALE_SUPPORT), []);
+});
+
+test("Liên hệ (năm ngôn ngữ): chat hỗ trợ cạnh email, ô Kênh khác chỉ nói không có điện thoại, mô tả trang nêu chat", () => {
+  const need = {
+    "/lien-he/": ["support@aitranslator.io.vn", "chat hỗ trợ", "góc dưới bên phải", "mục Hỗ trợ trong app", "Người thật trả lời, không phải bot", "Tin nhắn được lưu 90 ngày", "Ngoài email và chat", "email hoặc chat hỗ trợ ở trên"],
+    "/en/contact/": ["support@aitranslator.io.vn", "support chat", "bottom right", "Support screen in the app", "A real person replies, not a bot", "Messages are kept for 90 days", "Apart from email and chat", "the email or the support chat above"],
+    "/ja/contact/": ["support@aitranslator.io.vn", "サポートチャット", "右下", "「サポート」画面", "90 日間", "メールとチャットのほかに", "上のメールアドレスかサポートチャット"],
+    "/zh/contact/": ["support@aitranslator.io.vn", "客服聊天", "右下角", "“客服”页面", "90 天", "除邮件和聊天外", "上面的邮箱或客服聊天"],
+    "/ko/contact/": ["support@aitranslator.io.vn", "지원 채팅", "오른쪽 아래", "'지원' 화면", "90일간", "이메일과 채팅 외에", "위 이메일이나 지원 채팅"],
+  };
+  const errors = Object.entries(need).flatMap(([p, needles]) => needsIn(p, textOf(htmlByPath.get(p) ?? ""), needles));
+  for (const [p, word] of [["/lien-he/", "chat hỗ trợ"], ["/en/contact/", "support chat"], ["/ja/contact/", "サポートチャット"], ["/zh/contact/", "客服聊天"], ["/ko/contact/", "지원 채팅"]]) {
+    const meta = pageSources(p, htmlByPath.get(p) ?? "").get(`${p} [meta]`) ?? "";
+    if (!meta.includes(word)) errors.push(`${p}: mô tả (meta) chưa nêu "${word}"`);
+  }
+  assert.deepEqual(errors, []);
+});

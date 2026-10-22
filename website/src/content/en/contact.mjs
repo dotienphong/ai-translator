@@ -37,23 +37,24 @@ export default {
   path: "/en/contact/",
   title: "Contact and support for AI Translator",
   description:
-    "Contact AI Translator at support@aitranslator.io.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
+    "Reach AI Translator at support@aitranslator.io.vn or in the support chat on this site and in the app: technical help, lost keys, payments, refunds, data deletion.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
-  modified: "2026-10-15",
-  llm: "How to reach us and get support: email support@aitranslator.io.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
+  modified: "2026-10-22",
+  llm: "How to reach us and get support: email support@aitranslator.io.vn or the support chat (the chat button at the bottom right of every page, the Support screen in the app), what to send (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
   llmTitle: "Contact and support for AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Contact and support",
-  lead: "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
+  lead: "You can reach AI Translator by email at support@aitranslator.io.vn, or in the support chat: the chat button at the bottom right of every page of this website, or the Support screen in the app. We have no support phone line.",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["Email", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>You can write in Vietnamese or English</small>`],
-  ["Other channels", "None<small>No web form, no phone</small>"],
+  ["Chat", "The chat button at the bottom right of every page, or the Support screen in the app<small>A real person replies, not a bot. Leave your email (optional) to get the reply by email if you leave the page. Messages are kept for 90 days. If you do not see the chat button (for example with JavaScript turned off), email us</small>"],
+  ["Other channels", "None<small>Apart from email and chat, we have no phone line or other support channel</small>"],
   ["Replies", "No promised reply time<small>One person runs the product, so we do not commit to a specific response time</small>"],
   ["Security reports", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>Or email us with a subject starting with [Security]</small>`],
 ])}</div>
@@ -119,7 +120,7 @@ ${btn(M.feedback, "Send feedback")}
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Before you write", title: "You may find the answer right away" })}
-${callout({ title: "About our contact details.", text: "The provider of AI Translator is Đỗ Tiến Phong (individual). We have not published an address, phone number or tax code on this website; all contact goes through the email above." })}
+${callout({ title: "About our contact details.", text: "The provider of AI Translator is Đỗ Tiến Phong (individual). We have not published an address, phone number or tax code on this website; all contact goes through the email or the support chat above." })}
 <div class="grid grid-3">
 ${linkCard({ href: "/en/faq/", icon: "message", title: "FAQ", text: "Short answers about installing, privacy, plans and payment.", more: "Read the FAQ" })}
 ${linkCard({ href: "/en/guide/troubleshooting/", icon: "support", title: "Troubleshooting", text: "Common problems and how to fix them step by step.", more: "See the guide" })}

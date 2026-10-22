@@ -38,7 +38,7 @@ export default {
   path: "/ko/contact/",
   title: "AI Translator 문의 및 지원",
   description:
-    "support@aitranslator.io.vn으로 AI Translator에 문의하세요: 설치 파일, 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
+    "support@aitranslator.io.vn 이메일이나 웹사이트와 앱의 지원 채팅으로 AI Translator에 문의하세요: 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -46,13 +46,14 @@ export default {
 ${pageHero({
   crumbs,
   title: "문의 및 지원",
-  lead: "AI Translator에 연락하는 방법은 support@aitranslator.io.vn으로 이메일을 보내는 것입니다. 이것이 유일한 지원 창구이며, 이 웹사이트에는 문의 양식이 없고 지원 전화도 없습니다.",
+  lead: "AI Translator에는 support@aitranslator.io.vn으로 이메일을 보내거나, 지원 채팅(이 웹사이트 모든 페이지 오른쪽 아래의 채팅 버튼, 또는 앱의 '지원' 화면)으로 연락할 수 있습니다. 지원 전화는 없습니다.",
 })}
 
 <section class="section-tight"><div class="container narrow">
 <div class="reveal">${facts([
   ["이메일", `<a href="mailto:${EMAIL}">${EMAIL}</a><small>지원팀은 영어 또는 베트남어로 답합니다. 영어나 베트남어로 보내 주시면 가장 원활합니다</small>`],
-  ["다른 창구", "없음<small>웹 양식도 전화도 없습니다</small>"],
+  ["채팅", "모든 페이지 오른쪽 아래의 채팅 버튼, 또는 앱의 '지원' 화면<small>봇이 아닌 사람이 답변합니다. 이메일을 남기면(선택) 페이지를 떠나도 답장을 이메일로 받을 수 있습니다. 메시지는 90일간 보관됩니다. 채팅 버튼이 보이지 않으면(예: 브라우저에서 JavaScript를 끈 경우) 이메일을 보내 주세요</small>"],
+  ["다른 창구", "없음<small>이메일과 채팅 외에 전화 등 다른 지원 창구는 없습니다</small>"],
   ["답장", "답장 시간은 약속하지 않습니다<small>한 사람이 운영하는 제품이라 구체적인 답장 시간을 약속하지 않습니다</small>"],
   ["보안 신고", `<a href="/.well-known/security.txt">/.well-known/security.txt</a><small>또는 제목을 [Security]로 시작하는 이메일</small>`],
 ])}</div>
@@ -118,7 +119,7 @@ ${btn(M.feedback, "의견 보내기")}
 
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "보내기 전에", title: "바로 답을 찾으실 수도 있습니다" })}
-${callout({ title: "연락처에 관하여.", text: "AI Translator의 제공자는 Đỗ Tiến Phong(개인)입니다. 이 웹사이트에는 주소, 전화번호, 세금 번호를 공개하지 않았으며, 모든 연락은 위 이메일로 받습니다." })}
+${callout({ title: "연락처에 관하여.", text: "AI Translator의 제공자는 Đỗ Tiến Phong(개인)입니다. 이 웹사이트에는 주소, 전화번호, 세금 번호를 공개하지 않았으며, 모든 연락은 위 이메일이나 지원 채팅으로 받습니다." })}
 <div class="grid grid-3">
 ${linkCard({ href: "/ko/faq/", icon: "message", title: "자주 묻는 질문", text: "설치, 개인정보, 요금제, 결제에 대한 짧은 답.", more: "자주 묻는 질문 읽기" })}
 ${linkCard({ href: "/ko/guide/troubleshooting/", icon: "support", title: "문제 해결", text: "흔한 문제와 단계별 해결 방법.", more: "가이드 보기" })}
