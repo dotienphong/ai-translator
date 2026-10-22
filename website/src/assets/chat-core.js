@@ -170,3 +170,142 @@ export function outcome(r) {
   if (r.status === 403) return "closed";
   return "invalid";
 }
+
+/**
+ * Vòng hỏi tin mới theo nhịp của hợp đồng phía khách.
+ * - `mode: "open"` (khung đang mở): 3 giây; 2 phút liền không có tin mới thì 15 giây; `bump()` (khách gửi tin) về 3 giây.
+ * - `mode: "watch"` (khung đóng, đang chờ trả lời): 60 giây.
+ * - Lỗi: 429 chờ Retry-After (tối thiểu 15 giây); lỗi mạng giãn 3 → 15 → 60 giây; không bao giờ nhanh hơn nhịp nền.
+ * - Chỉ hỏi khi tab đang hiện: tab ẩn thì hủy hẹn giờ; hiện lại thì hỏi khi tới hạn (hạn đã qua thì hỏi ngay).
+ * `tick()` gọi API một lần và trả `{ result, fresh }`: `result` của createApi, `fresh` là số tin mới của chủ dự án.
+ * `env`: `{ now(), setTimer(fn, ms), clearTimer(id), visible(), onVisibility(fn) }` (`onVisibility` trả hàm hủy đăng ký).
+ */
+export function createPoller({ tick, mode, env }) {
+  let timer = null;
+  let running = false;
+  let busy = false;
+  let lastPollAt = 0;
+  let lastNewAt = 0;
+  let netFails = 0;
+  let holdUntil = 0;
+  let unlisten = null;
+
+  const base = () => (mode === "watch" ? WATCH : env.now() - lastNewAt >= IDLE_AFTER ? SLOW : FAST);
+  const due = () => {
+    let d = base();
+    if (netFails > 0) d = Math.max(d, NET_BACKOFF[Math.min(netFails, NET_BACKOFF.length) - 1]);
+    return Math.max(lastPollAt + d, holdUntil);
+  };
+  const arm = () => {
+    if (timer !== null) env.clearTimer(timer);
+    timer = null;
+    if (!running || busy || !env.visible()) return;
+    timer = env.setTimer(run, Math.max(0, due() - env.now()));
+  };
+  const apply = (result, fresh) => {
+    const o = outcome(result);
+    if (o === "ok") {
+      netFails = 0;
+      if (fresh > 0) lastNewAt = env.now();
+    } else if (o === "network") netFails += 1;
+    else if (o === "rate" || o === "busy") holdUntil = env.now() + Math.max(MIN_RETRY, (result.retryAfter ?? 0) * 1000);
+  };
+  async function run() {
+    timer = null;
+    if (!running || busy || !env.visible()) return;
+    busy = true;
+    lastPollAt = env.now();
+    let out;
+    try {
+      out = await tick();
+    } catch {
+      out = { result: { ok: false, status: 0, error: "network", retryAfter: null }, fresh: 0 };
+    }
+    busy = false;
+    apply(out.result, out.fresh ?? 0);
+    arm();
+  }
+  return {
+    /** `immediate: false`: lần hỏi đầu sau một nhịp (vừa hỏi xong ở chỗ khác, ví dụ lúc đóng khung). */
+    start({ immediate = true } = {}) {
+      if (running) return;
+      running = true;
+      lastNewAt = env.now();
+      lastPollAt = immediate ? -Infinity : env.now();
+      unlisten = env.onVisibility(arm);
+      arm();
+    },
+    stop() {
+      running = false;
+      unlisten?.();
+      unlisten = null;
+      if (timer !== null) env.clearTimer(timer);
+      timer = null;
+    },
+    bump() {
+      lastNewAt = env.now();
+      arm();
+    },
+    /** Kết quả của một request khác (gửi tin, lưu email): 429 hay lỗi mạng cũng giãn nhịp hỏi. */
+    report(result) {
+      apply(result, 0);
+      arm();
+    },
+    get running() {
+      return running;
+    },
+  };
+}
+
+/**
+ * Khung đóng, đang chờ trả lời: hỏi một lần ngay (`immediate`, lúc tải trang) rồi mỗi 60 giây. Thấy tin chủ dự án mới
+ * (id > lastId) thì gọi `onReply()` và dừng: chấm đỏ đã hiện, còn lastId chỉ tiến khi khách mở khung và thấy tin, nên trang
+ * sau vẫn hiện chấm đỏ. Hết chờ (quá 24 giờ, mất bản lưu) hay nhận 401 thì dừng. Trả về poller, hay null khi không đang chờ.
+ */
+export function watchReply({ immediate = true, onReply, env = browserEnv() }) {
+  const nowSec = () => Math.floor(env.now() / 1000);
+  if (!isWaiting(env.store.load(), nowSec())) return null;
+  const poller = createPoller({
+    mode: "watch",
+    env,
+    tick: async () => {
+      const st = env.store.load();
+      if (!isWaiting(st, nowSec())) {
+        poller.stop();
+        return { result: { ok: true }, fresh: 0 };
+      }
+      const result = await env.api.messages(st.token, st.lastId);
+      if (!result.ok) {
+        if (outcome(result) === "reset") {
+          env.store.clear();
+          poller.stop();
+        }
+        return { result, fresh: 0 };
+      }
+      const fresh = (result.data?.messages ?? []).filter((m) => m.sender === "owner").length;
+      if (fresh > 0) {
+        poller.stop();
+        onReply();
+      }
+      return { result, fresh };
+    },
+  });
+  poller.start({ immediate });
+  return poller;
+}
+
+/** Môi trường thật trên trình duyệt: đồng hồ, hẹn giờ, trạng thái hiện của tab, API, bản lưu (test truyền env giả). */
+export function browserEnv() {
+  return {
+    now: () => Date.now(),
+    setTimer: (fn, ms) => setTimeout(fn, ms),
+    clearTimer: (id) => clearTimeout(id),
+    visible: () => document.visibilityState === "visible",
+    onVisibility(fn) {
+      document.addEventListener("visibilitychange", fn);
+      return () => document.removeEventListener("visibilitychange", fn);
+    },
+    api: createApi((url, init) => fetch(url, init)),
+    store: createStore(() => localStorage),
+  };
+}

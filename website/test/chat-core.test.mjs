@@ -4,7 +4,10 @@
 //   node --test test/chat-core.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { API, STORE_KEY, MAX_CHARS, WAIT_WINDOW, normalizeText, charCount, validText, parseState, isWaiting, createStore, createApi, outcome } from "../src/assets/chat-core.js";
+import {
+  API, STORE_KEY, MAX_CHARS, WAIT_WINDOW, normalizeText, charCount, validText, parseState, isWaiting, createStore,
+  createApi, outcome, createPoller, watchReply,
+} from "../src/assets/chat-core.js";
 
 const TOKEN = "A".repeat(40) + "b-_";
 
@@ -165,4 +168,190 @@ test("outcome: bảng mã lỗi của hợp đồng", () => {
     [{ ok: false, status: 415, error: "unsupported_media_type" }, "invalid"],
   ];
   for (const [r, want] of cases) assert.equal(outcome(r), want, JSON.stringify(r));
+});
+
+/** Đồng hồ, hẹn giờ và trạng thái tab giả. `fire()` chạy hẹn giờ đang chờ (đẩy đồng hồ tới lúc hẹn) và đợi lần hỏi xong. */
+function fakeEnv({ visible = true } = {}) {
+  const env = {
+    t: 1_800_000_000_000,
+    timers: [],
+    vis: visible,
+    listeners: new Set(),
+    now: () => env.t,
+    setTimer: (fn, ms) => {
+      const id = Symbol("timer");
+      env.timers.push({ id, fn, ms, at: env.t + ms });
+      return id;
+    },
+    clearTimer: (id) => {
+      env.timers = env.timers.filter((x) => x.id !== id);
+    },
+    visible: () => env.vis,
+    onVisibility: (fn) => {
+      env.listeners.add(fn);
+      return () => env.listeners.delete(fn);
+    },
+    setVisible(v) {
+      env.vis = v;
+      for (const fn of env.listeners) fn();
+    },
+    /** Số ms của hẹn giờ đang chờ (đúng một hẹn giờ), hay null khi không có. */
+    next() {
+      assert.ok(env.timers.length <= 1, `có ${env.timers.length} hẹn giờ cùng lúc`);
+      return env.timers[0]?.ms ?? null;
+    },
+    async fire() {
+      const x = env.timers.shift();
+      assert.ok(x, "không có hẹn giờ nào");
+      env.t = x.at;
+      await x.fn();
+      return x.ms;
+    },
+  };
+  return env;
+}
+const OK = { ok: true, status: 200, data: {} };
+
+test("poller khung mở: hỏi ngay, rồi 3 giây; 2 phút liền không có tin mới thì 15 giây; có tin mới hay khách gửi tin thì về 3 giây", async () => {
+  const env = fakeEnv();
+  const replies = [];
+  let calls = 0;
+  const poller = createPoller({ mode: "open", env, tick: async () => { calls++; return { result: OK, fresh: replies.shift() ?? 0 }; } });
+  poller.start();
+  assert.equal(env.next(), 0, "mở khung thì hỏi ngay");
+  await env.fire();
+  assert.equal(env.next(), 3_000);
+  for (let i = 0; i < 39; i++) await env.fire(); // 39 lần × 3 giây = 117 giây không có tin mới
+  assert.equal(env.next(), 3_000);
+  await env.fire(); // 120 giây
+  assert.equal(env.next(), 15_000, "sau 2 phút không có tin mới");
+  replies.push(1);
+  await env.fire();
+  assert.equal(env.next(), 3_000, "có tin mới của chủ dự án thì về 3 giây");
+  for (let i = 0; i < 40; i++) await env.fire();
+  assert.equal(env.next(), 15_000);
+  env.t += 5_000;
+  poller.bump();
+  assert.equal(env.next(), 0, "khách gửi tin: lần hỏi 3 giây đã quá hạn nên hỏi ngay");
+  await env.fire();
+  assert.equal(env.next(), 3_000);
+  poller.stop();
+  assert.equal(env.next(), null);
+  assert.equal(calls, 83);
+});
+
+test("poller: 429 chờ đúng Retry-After (tối thiểu 15 giây); lỗi mạng giãn 3 → 15 → 60 giây rồi về nhịp thường khi thông", async () => {
+  const env = fakeEnv();
+  const results = [
+    { ok: false, status: 429, error: "rate_limited", retryAfter: 40 },
+    { ok: false, status: 429, error: "support_busy", retryAfter: 2 },
+    { ok: false, status: 429, error: "rate_limited", retryAfter: null },
+    { ok: false, status: 0, error: "network" },
+    { ok: false, status: 0, error: "network" },
+    { ok: false, status: 502, error: "http_502" },
+    { ok: false, status: 0, error: "network" },
+    OK,
+  ];
+  const poller = createPoller({ mode: "open", env, tick: async () => ({ result: results.shift(), fresh: 0 }) });
+  poller.start();
+  await env.fire();
+  assert.equal(env.next(), 40_000);
+  await env.fire();
+  assert.equal(env.next(), 15_000, "Retry-After 2 giây thì vẫn chờ 15 giây");
+  await env.fire();
+  assert.equal(env.next(), 15_000, "429 không có Retry-After: 15 giây");
+  const waits = [];
+  for (let i = 0; i < 4; i++) {
+    await env.fire();
+    waits.push(env.next());
+  }
+  assert.deepEqual(waits, [3_000, 15_000, 60_000, 60_000]);
+  await env.fire();
+  assert.equal(env.next(), 15_000, "thông mạng thì về nhịp thường (đã hơn 2 phút không có tin mới nên là 15 giây)");
+  poller.report({ ok: false, status: 429, error: "rate_limited", retryAfter: 90 });
+  assert.equal(env.next(), 90_000, "429 khi gửi tin cũng giãn nhịp hỏi");
+  poller.stop();
+});
+
+test("poller khung đóng (watch): 60 giây; lỗi mạng không làm nhanh hơn 60 giây; start({ immediate: false }) chờ một nhịp", async () => {
+  const env = fakeEnv();
+  const results = [OK, { ok: false, status: 0, error: "network" }, OK];
+  const poller = createPoller({ mode: "watch", env, tick: async () => ({ result: results.shift(), fresh: 0 }) });
+  poller.start();
+  assert.equal(env.next(), 0, "tải trang thì hỏi một lần ngay");
+  await env.fire();
+  assert.equal(env.next(), 60_000);
+  await env.fire();
+  assert.equal(env.next(), 60_000, "lỗi mạng: 3 giây nhưng không dưới nhịp nền 60 giây");
+  poller.stop();
+  const later = createPoller({ mode: "watch", env, tick: async () => ({ result: OK, fresh: 0 }) });
+  later.start({ immediate: false });
+  assert.equal(env.next(), 60_000);
+  later.stop();
+});
+
+test("poller: tab ẩn thì không hẹn giờ, không gọi mạng; hiện lại thì hỏi khi tới hạn", async () => {
+  const env = fakeEnv({ visible: false });
+  let calls = 0;
+  const poller = createPoller({ mode: "open", env, tick: async () => { calls++; return { result: OK, fresh: 0 }; } });
+  poller.start();
+  assert.equal(env.next(), null, "tab ẩn lúc mở: chưa hỏi");
+  env.setVisible(true);
+  assert.equal(env.next(), 0);
+  await env.fire();
+  assert.equal(calls, 1);
+  env.t += 1_000;
+  env.setVisible(false);
+  assert.equal(env.next(), null, "ẩn tab: hủy hẹn giờ");
+  env.t += 500;
+  env.setVisible(true);
+  assert.equal(env.next(), 1_500, "hiện lại: còn 1,5 giây tới hạn 3 giây");
+  env.t += 60_000;
+  env.setVisible(false);
+  env.setVisible(true);
+  assert.equal(env.next(), 0, "hạn đã qua: hỏi ngay");
+  poller.stop();
+  assert.equal(env.listeners.size, 0, "dừng thì gỡ nghe visibilitychange");
+});
+
+/** Môi trường cho watchReply: env giả cộng API và bản lưu giả. */
+function watchEnv(state, replies) {
+  const env = fakeEnv();
+  const s = fakeStorage();
+  if (state) s.setItem(STORE_KEY, JSON.stringify(state));
+  const { fn, calls } = fakeFetch(replies);
+  return Object.assign(env, { api: createApi(fn), store: createStore(() => s), calls, storage: s });
+}
+
+test("watchReply: không đang chờ thì không làm gì; đang chờ thì hỏi ?after=lastId, thấy trả lời thì chấm đỏ một lần và dừng", async () => {
+  const nowSec = 1_800_000_000;
+  assert.equal(watchReply({ onReply: () => assert.fail(), env: watchEnv(null, []) }), null);
+  assert.equal(watchReply({ onReply: () => assert.fail(), env: watchEnv({ token: TOKEN, lastId: 4, waitingSince: null }, []) }), null);
+  assert.equal(watchReply({ onReply: () => assert.fail(), env: watchEnv({ token: TOKEN, lastId: 4, waitingSince: nowSec - WAIT_WINDOW - 5 }, []) }), null, "quá 24 giờ");
+
+  const env = watchEnv({ token: TOKEN, lastId: 4, waitingSince: nowSec - 30 }, [
+    { status: 200, body: { enabled: true, status: "open", messages: [{ id: 5, sender: "customer", text: "còn đó không?", created_at: nowSec }] } },
+    { status: 200, body: { enabled: true, status: "open", messages: [{ id: 5, sender: "customer", text: "còn đó không?", created_at: nowSec }, { id: 9, sender: "owner", text: "Có", created_at: nowSec + 60 }] } },
+  ]);
+  let replied = 0;
+  const poller = watchReply({ onReply: () => replied++, env });
+  assert.equal(env.next(), 0);
+  await env.fire();
+  assert.equal(replied, 0, "chỉ có tin của khách");
+  assert.equal(env.next(), 60_000);
+  await env.fire();
+  assert.equal(replied, 1);
+  assert.equal(poller.running, false);
+  assert.equal(env.next(), null);
+  assert.deepEqual(env.calls.map((c) => c.url), [`${API}/v1/support/messages?after=4`, `${API}/v1/support/messages?after=4`]);
+  assert.equal(env.store.load().lastId, 4, "lastId chỉ tiến khi khách mở khung, để trang sau vẫn hiện chấm đỏ");
+});
+
+test("watchReply: 401 thì xóa bản lưu và dừng", async () => {
+  const env = watchEnv({ token: TOKEN, lastId: 0, waitingSince: 1_800_000_000 - 30 }, [{ status: 401, body: { error: "invalid_token" } }]);
+  const poller = watchReply({ onReply: () => assert.fail(), env });
+  await env.fire();
+  assert.equal(poller.running, false);
+  assert.equal(env.store.load(), null);
+  assert.equal(env.storage.map.has(STORE_KEY), false);
 });
