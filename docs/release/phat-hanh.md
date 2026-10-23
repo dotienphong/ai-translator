@@ -1359,3 +1359,49 @@ Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho
 9. **Thử tay với app 0.2.5:** đổi giao diện sang tiếng Nhật, Cài đặt › Bản quyền › "Mất key?" › gửi lại key: thư tiếng Nhật, tiếng Anh ở dưới. Khi có đơn thật đầu tiên từ app 0.2.5, kiểm D1: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT order_code, lang, currency, status FROM orders ORDER BY order_code DESC LIMIT 5"`: đơn mới có `lang` đúng ngôn ngữ giao diện của người mua.
 
 **Đường lui.** Thư lỗi hay xấu ở hộp thư nào đó: `pnpm exec wrangler rollback` (Worker API) về bản trước đợt này, thư quay về chữ thuần Việt trên, Anh dưới; cột `orders.lang` ở lại (Worker cũ không đọc), app 0.2.5 vẫn gửi `lang` và server cũ bỏ qua. Worker admin lỗi: `pnpm exec wrangler rollback -c wrangler.admin.jsonc`; sau khi lùi Worker admin, ẩn danh theo email **không** xóa `orders.lang`, nên chạy thêm `UPDATE orders SET lang = NULL WHERE email IS NULL AND lang IS NOT NULL` (đơn có email NULL là đơn đã ẩn danh). Migration 0006 không cần lùi: chỉ thêm một cột cho phép NULL.
+
+## 13. Cập nhật model bằng `pnpm models:update`
+
+Spec: `docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md`.
+
+### 13.1. Điều kiện máy
+
+- Chạy ở thư mục chính, nhánh `main`, cây sạch, khớp `origin/main`. Không có phiên nào khác đang sửa `main`.
+- rclone có remote `r2:` (token R2 chỉ quyền object, vì vậy lệnh dùng `--s3-no-check-bucket`).
+- `gh auth login` với tài khoản `dotienphong` (lệnh tự lấy token bằng `gh auth token --user dotienphong`).
+- wrangler đăng nhập được (`pnpm --dir server exec wrangler whoami`).
+- `uv`, `cargo`, dữ liệu thử `bench/phase0/data/` và `tools/llama-b11146/` có sẵn.
+- Ổ còn trống trên 10 GB (bản mới tải vào `target/models-update/`).
+
+### 13.2. Cách chạy
+
+| Lệnh | Việc |
+|---|---|
+| `pnpm models:update --check` | Chỉ kiểm nguồn, in bảng. Chạy ở đâu cũng được. |
+| `pnpm models:update` | Có bản mới thì chuẩn bị, chạy cổng kiểm (máy bận 30–60 phút mỗi model), in bảng, hỏi y/N. Gõ y thì đăng. |
+| `pnpm models:update --gate-only <id>` | Cổng kiểm với file đang phát hành (phải đạt); dùng khi nghi cổng kiểm lệch. |
+| `pnpm models:update --rollback-to <S>` | Quay các model về như manifest số S (mục 13.4). |
+
+Sau khi đăng: app nhận manifest mới trong vòng một ngày (luồng nền kiểm mỗi giờ, tối đa một lần mỗi ngày), hiện thông báo "Có bản mới của gói…" và, từ 0.2.6, dấu chấm trên khay.
+
+### 13.3. Lệnh dừng giữa chừng
+
+Lượt đã gõ y được ghi ở `target/models-update/state.json`. Chạy lại `pnpm models:update` thì lệnh hỏi "Làm tiếp lượt đăng dở?" và làm tiếp từ bước dở: file đã có trên R2 (cùng SHA-256) không tải lại, commit đã đẩy không commit lại, lượt CI đã hỏng thì kích lượt mới. Muốn bỏ hẳn lượt dở: xóa `state.json` và hoàn tác các file lệnh đã ghi trong repo (`git checkout -- scripts/models bench/model-updates`); file đã tải lên R2 mà chưa manifest nào trỏ tới thì vô hại.
+
+Lỗi "Bản đã ký không khớp phần thân": dừng hẳn, không đăng tay; xem lượt chạy CI và phần thân trong repo.
+
+Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.io.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `target/models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`.
+
+### 13.4. Quay lại bản trước
+
+`pnpm models:update --rollback-to <S>` đăng manifest số mới có phần nội dung (`file`, `version`, `url`, `bytes`, `sha256`) của các mục lấy từ `body-S.json`; `tier` và các trường khác giữ như bản đang chạy. Lệnh kiểm từng file cũ còn trên R2 và khớp SHA-256 trước khi hỏi y/N; không chạy cổng kiểm. Người đã tải bản mới sẽ thấy thông báo "có bản mới" để tải lại bản cũ.
+
+Bản vừa gỡ được ghi vào `rejected` của mục đó trong `scripts/models/upstream.json`; các lần kiểm sau báo "bỏ qua" cho bản đó thay vì đề nghị đăng lại. Khi nguồn sửa xong và ra bản khác, lệnh đề nghị bản mới như thường. Muốn đăng lại đúng bản đã gỡ: xóa dòng đó khỏi `rejected`, commit, rồi chạy lại `pnpm models:update`.
+
+### 13.4b. Nguồn đổi mà nội dung không đổi
+
+Khi nguồn ra revision mới mà file chuẩn bị xong trùng SHA-256 với file đang phát hành (thường ở gói Nhanh khi repo nguồn chỉ đổi tệp phụ), lệnh không chạy cổng kiểm, không đăng file đó. Nếu mọi mục đều như vậy, lệnh hỏi "Ghi nhận revision mới vào upstream.json?"; gõ y thì chỉ commit `upstream.json` và đẩy `main` (không ký, không đăng manifest, người dùng không thấy gì).
+
+### 13.5. VAD và các file giấy phép không theo dõi
+
+Bản silero-vad mới chỉ được báo ("có bản mới (chỉ báo)"): đổi VAD làm tay (kiểm giao diện ONNX với `crates/pipeline`, đo lại, dựng phần thân bằng `build-manifest.mjs`, ký và đăng như mục 2). Các file `whisper-license`, `whisper-cpp-license`, `silero-vad-license` cũng đổi bằng tay.
