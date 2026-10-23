@@ -15,12 +15,14 @@ use crate::{
     compose, diagnostics, events, hotkey_registry, login_item, overlay, session, system, tray, updater, window,
 };
 
-/// Menu khay cần dựng lại không: chữ theo ngôn ngữ, mục khóa, phím tắt bên cạnh mục và mục Gõ dịch đều lấy từ cài đặt.
+/// Menu khay cần dựng lại không: chữ theo ngôn ngữ, mục khóa, phím tắt bên cạnh mục, mục Gõ dịch và gói model đang dùng (để
+/// xét có bản mới) đều lấy từ cài đặt.
 fn tray_needs_refresh(previous: &Settings, next: &Settings) -> bool {
     previous.ui_language != next.ui_language
         || previous.overlay.locked != next.overlay.locked
         || previous.hotkeys != next.hotkeys
         || previous.compose.enabled != next.compose.enabled
+        || previous.model_tier != next.model_tier
 }
 
 /// Lưu cài đặt mới rồi báo mọi nơi cần biết.
@@ -383,8 +385,8 @@ mod tests {
     use super::*;
     use crate::settings::UiLanguage;
 
-    /// Menu khay hiện chữ theo ngôn ngữ, trạng thái khóa, phím tắt và Gõ dịch (spec 2026-10-20 §2): đổi một trong số đó thì
-    /// phải dựng lại.
+    /// Menu khay hiện chữ theo ngôn ngữ, trạng thái khóa, phím tắt, Gõ dịch (spec 2026-10-20 §2) và có bản mới của gói model
+    /// đang dùng (spec 2026-10-23 §6.1): đổi một trong số đó thì phải dựng lại.
     #[test]
     fn the_tray_menu_is_rebuilt_only_when_something_in_it_changes() {
         let base = Settings::defaults(UiLanguage::Vi);
@@ -405,6 +407,9 @@ mod tests {
         let mut other = base.clone();
         other.compose.enabled = !base.compose.enabled;
         assert!(tray_needs_refresh(&base, &other), "Gõ dịch bật hay tắt");
+        let mut other = base.clone();
+        other.model_tier = Some("standard".into());
+        assert!(tray_needs_refresh(&base, &other), "gói model đang dùng");
         let mut other = base.clone();
         other.save_history = !base.save_history;
         assert!(!tray_needs_refresh(&base, &other), "cài đặt không liên quan");

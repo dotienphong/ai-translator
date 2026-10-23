@@ -360,6 +360,13 @@ impl ModelService {
         }
     }
 
+    /// Có hiện mục "Có bản cập nhật gói model" và dấu chấm trên khay không (spec 2026-10-23 §6.1): như thông báo trong cửa
+    /// sổ chính (`update_available`), trừ lúc đang tải.
+    pub fn tray_update<R: Runtime>(&self, app: &AppHandle<R>) -> bool {
+        let view = self.view(app);
+        view.update_available && view.job.state != JobState::Downloading
+    }
+
     pub fn view<R: Runtime>(&self, app: &AppHandle<R>) -> ModelsView {
         self.ensure_loaded();
         let machine = self.machine(app);
@@ -413,13 +420,15 @@ impl ModelService {
         }
     }
 
-    /// Báo trạng thái mới cho cửa sổ chính.
+    /// Báo trạng thái mới cho cửa sổ chính và menu khay.
     pub fn changed<R: Runtime>(&self, app: &AppHandle<R>) -> ModelsView {
         self.lock().rev += 1;
         let view = self.view(app);
         if let Err(e) = app.emit_to(EventTarget::webview_window(window::MAIN), STATE_EVENT, &view) {
             log::warn!("không gửi được sự kiện {STATE_EVENT}: {e}");
         }
+        // Gọi khi không giữ khóa nào: menu khay đọc lại `tray_update`.
+        crate::tray::refresh(app);
         view
     }
 
@@ -1198,6 +1207,29 @@ mod tests {
             std::fs::read(h.dir().join("Hy-MT2-1.8B-Q4_K_M.gguf")).unwrap(),
             content("hy-mt2-q4", 1_101)
         );
+    }
+
+    /// Spec 2026-10-23 §6.1: mục khay và dấu chấm theo `updateAvailable` của cửa sổ chính.
+    #[test]
+    fn the_tray_offers_a_model_update_like_the_main_window() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.wait("done");
+        assert!(!h.service().tray_update(h.app.handle()), "chưa có bản mới");
+        let mut newer = real_sample();
+        newer["sequence"] = 4.into();
+        let q4 = &mut newer["files"][3];
+        q4["version"] = "2".into();
+        q4["bytes"] = 1_101.into();
+        let sha = sha2::Sha256::digest(content("hy-mt2-q4", 1_101));
+        q4["sha256"] = sha.iter().map(|b| format!("{b:02x}")).collect::<String>().into();
+        publish(&h.server, &newer);
+        h.tick_days(1);
+        h.call("load_models", json!({})).unwrap();
+        assert!(h.service().tray_update(h.app.handle()), "có bản mới");
+        h.call("dismiss_models_update", json!({})).unwrap();
+        assert!(!h.service().tray_update(h.app.handle()), "đã bấm Để sau");
     }
 
     /// Đang dịch bằng gói thì không tải đè hay xóa gói đó (ghi chú 8 của review cuối 02).
