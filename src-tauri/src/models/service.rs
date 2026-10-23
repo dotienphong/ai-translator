@@ -169,6 +169,7 @@ struct Inner {
     /// `changed()` (chạy mỗi 250 ms lúc tải) chỉ dựng lại menu khay khi cờ đổi: dựng lại menu đóng menu đang mở.
     tray_shown: Option<bool>,
     /// Số lần `changed()` đã yêu cầu dựng lại menu khay (cho test).
+    #[cfg(test)]
     tray_refreshes: u64,
 }
 
@@ -239,6 +240,7 @@ impl ModelService {
                 maintenance: None,
                 rev: 0,
                 tray_shown: None,
+                #[cfg(test)]
                 tray_refreshes: 0,
             }),
             pause: Arc::new(Pause::default()),
@@ -380,7 +382,10 @@ impl ModelService {
         let mut inner = self.lock();
         let changed = inner.tray_shown != Some(flag);
         inner.tray_shown = Some(flag);
-        inner.tray_refreshes += u64::from(changed);
+        #[cfg(test)]
+        {
+            inner.tray_refreshes += u64::from(changed);
+        }
         changed
     }
 
@@ -1280,8 +1285,8 @@ mod tests {
         assert!(!service.tray_update(h.app.handle()), "tải xong thì hết");
         let inner = service.lock();
         assert!(
-            inner.rev >= rev + 2,
-            "changed() chạy nhiều lần: {} → {}",
+            inner.rev >= rev + 3,
+            "changed() chạy thêm ngoài lúc bắt đầu và xong (có tick tiến độ): {} → {}",
             rev,
             inner.rev
         );

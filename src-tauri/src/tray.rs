@@ -2,6 +2,7 @@
 //! Menu dựng lại mỗi khi trạng thái hay ngôn ngữ giao diện đổi, nên chữ luôn theo ngôn ngữ đang chọn.
 //! Nội dung menu (dòng nào, chữ gì) nằm ở `tray_menu.rs`, có test.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tauri::image::Image;
@@ -76,7 +77,13 @@ fn append_item<R: Runtime>(
 }
 
 /// Dấu chấm đang hiện trên icon: chỉ đặt lại icon khi nó đổi, để icon không nháy mỗi lần dựng lại menu.
-struct TrayBadge(Mutex<bool>);
+struct TrayBadge {
+    /// Giá trị mới nhất mà `refresh` muốn (luồng nào cũng ghi): việc đặt icon xếp hàng trên luồng chính đọc giá trị này chứ
+    /// không dùng giá trị lúc gửi, nên lần gửi cũ chạy trễ không đè lên giá trị mới hơn.
+    wanted: AtomicBool,
+    /// Dấu chấm đang hiện trên icon; chỉ luồng chính đụng tới.
+    shown: Mutex<bool>,
+}
 
 /// Icon khay theo hệ điều hành, có dấu chấm khi `badge` (spec 2026-10-23 §6.2). macOS: icon template đơn sắc.
 #[cfg(target_os = "macos")]
@@ -111,12 +118,17 @@ fn badged(base: Image<'static>, badge: bool, style: BadgeStyle) -> Image<'static
 /// `TrayBadge`): không giữ khóa nào khi gọi vào khay (`set_icon…` chờ luồng chính), nên không thể khóa chéo với luồng chính
 /// đang gọi `refresh`. Lời gọi không chờ; các lần đặt chạy theo thứ tự gửi.
 fn set_badge<R: Runtime>(app: &AppHandle<R>, tray: TrayIcon<R>, badge: bool) {
+    let Some(state) = app.try_state::<TrayBadge>() else {
+        return;
+    };
+    state.wanted.store(badge, Ordering::SeqCst);
     let handle = app.clone();
     let posted = app.run_on_main_thread(move || {
-        let Some(shown) = handle.try_state::<TrayBadge>() else {
+        let Some(state) = handle.try_state::<TrayBadge>() else {
             return;
         };
-        let mut shown = shown.0.lock().unwrap_or_else(|e| e.into_inner());
+        let badge = state.wanted.load(Ordering::SeqCst);
+        let mut shown = state.shown.lock().unwrap_or_else(|e| e.into_inner());
         if *shown == badge {
             return;
         }
@@ -137,7 +149,10 @@ fn set_badge<R: Runtime>(app: &AppHandle<R>, tray: TrayIcon<R>, badge: bool) {
 
 pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let (menu, tooltip, badge) = build_menu(app)?;
-    app.manage(TrayBadge(Mutex::new(badge)));
+    app.manage(TrayBadge {
+        wanted: AtomicBool::new(badge),
+        shown: Mutex::new(badge),
+    });
     let builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
         .tooltip(tooltip)
