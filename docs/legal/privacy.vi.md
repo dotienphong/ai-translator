@@ -50,7 +50,7 @@ Máy chủ lưu các dữ liệu dưới đây. Dòng "Dùng thử Free" áp cho
 |---|---|
 | Email bạn nhập khi mua | Gửi key, khôi phục key khi bạn mất, và, với đơn thẻ, điền sẵn trang thanh toán của Creem |
 | Thời điểm bạn đồng ý xử lý email | Làm bằng chứng đã có sự đồng ý |
-| Đơn hàng: mã đơn, gói, số tiền và loại tiền, thời điểm thanh toán, trạng thái, mã phiên thanh toán của cổng (PayOS hay Creem) | Cấp và gia hạn license; đối soát; nghĩa vụ kế toán |
+| Đơn hàng: mã đơn, gói, số tiền và loại tiền, thời điểm thanh toán, trạng thái, mã phiên thanh toán của cổng (PayOS hay Creem), ngôn ngữ giao diện của ứng dụng lúc mua | Cấp và gia hạn license; đối soát; nghĩa vụ kế toán; gửi thư bằng ngôn ngữ của bạn |
 | License: key, gói, ngày hết hạn, chu kỳ hạn mức | Cấp quyền dùng gói trả phí |
 | Dùng thử Free: **mã băm** của ID máy, lúc bắt đầu và lúc hết dùng thử, lần ứng dụng gọi gần nhất | Mỗi máy chỉ dùng thử 10 ngày một lần, kể cả khi cài lại ứng dụng |
 | Máy đã kích hoạt: **mã băm** của ID máy, tên máy (`device_label`) và lần kiểm tra bản quyền gần nhất | Mỗi key chỉ dùng trên một máy, chống lạm dụng, giúp bạn nhận ra máy khi cần gỡ |
@@ -80,7 +80,7 @@ Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp 
 Bạn có quyền: biết dữ liệu nào đang được lưu, yêu cầu **xóa** hoặc **ẩn danh**, rút lại sự đồng ý, và khiếu nại theo quy định của **Luật Bảo vệ dữ liệu cá nhân** của Việt Nam. Gửi yêu cầu tới **support@aitranslator.io.vn** từ email đã dùng khi mua, hay email bạn đã để lại trong chat hỗ trợ (để chúng tôi xác nhận là bạn). Chúng tôi xử lý trong thời hạn pháp luật quy định.
 
 Khi bạn yêu cầu xóa, chúng tôi sẽ:
-- **bỏ** email và tên máy của bạn;
+- **bỏ** email và tên máy của bạn, cùng ngôn ngữ giao diện lưu trên đơn hàng;
 - **xóa** các báo cáo lỗi của những máy từng kích hoạt key của email đó (mục 10);
 - **xóa** các cuộc chat hỗ trợ mà bạn đã để lại email đó, cả trên máy chủ của chúng tôi lẫn bản đã chuyển vào cuộc trò chuyện Zalo của người vận hành (mục 11);
 - **giữ lại** mã băm của ID máy (dữ liệu bí danh, chỉ để chống lạm dụng: mỗi key một máy, khóa tạm khi đổi máy quá nhiều, dùng lại đúng kích hoạt khi bạn kích hoạt lại cùng máy, mỗi máy chỉ dùng thử Free một lần);

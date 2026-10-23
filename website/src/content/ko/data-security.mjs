@@ -74,7 +74,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="앱이 연결하는 곳" tabindex="0"><table>
 <thead><tr><th scope="col">연결 대상</th><th scope="col">용도</th><th scope="col">보내는 것</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신, 지원 채팅. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만). 보낸 지원 채팅 메시지와, 체크를 남겨 둔 경우의 기기 정보 줄, 직접 남긴 경우의 이메일(채팅을 쓸 때만)</td></tr>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신, 지원 채팅. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일과 앱의 인터페이스 언어도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만). 보낸 지원 채팅 메시지와, 체크를 남겨 둔 경우의 기기 정보 줄, 직접 남긴 경우의 이메일(채팅을 쓸 때만)</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>모델 다운로드, 앱 업데이트 확인과 다운로드</td><td>파일 다운로드 요청뿐</td></tr>
 <tr><th scope="row">PayOS 결제 페이지(pay.payos.vn)</th><td>요금제를 구매할 때 VietQR로 결제</td><td>앱 안이 아니라 브라우저에서 열립니다</td></tr>
 <tr><th scope="row">Creem 결제 페이지(www.creem.io)</th><td>요금제를 구매할 때 해외 카드로 결제</td><td>앱 안이 아니라 브라우저에서 열립니다. 이메일은 앱이 아니라 저희 서버에서 Creem으로 보냅니다(‘데이터를 처리하는 다른 곳’ 참고)</td></tr>
@@ -97,7 +97,7 @@ ${callout({ kind: "warn", title: "이 테스트의 한계", text: "macOS, 기기
 <thead><tr><th scope="col">데이터</th><th scope="col">목적</th></tr></thead>
 <tbody>
 <tr><th scope="row">구매 시 이메일, 이메일 처리에 동의한 시각</th><td>키 발송과 다시 받기. 카드 주문에서는 Creem 결제 페이지 미리 채우기. 동의의 증명</td></tr>
-<tr><th scope="row">주문: 주문 번호, 요금제, 금액과 통화, 시각, 상태, 결제 대행사의 세션 ID(PayOS 또는 Creem)</th><td>라이선스 발급과 연장, 대사, 회계</td></tr>
+<tr><th scope="row">주문: 주문 번호, 요금제, 금액과 통화, 시각, 상태, 결제 대행사의 세션 ID(PayOS 또는 Creem), 구매 시 앱의 인터페이스 언어</th><td>라이선스 발급과 연장, 대사, 회계, 사용자의 언어로 이메일 발송</td></tr>
 <tr><th scope="row">라이선스: 키, 요금제, 만료일, 번역 시간 주기</th><td>유료 요금제 부여</td></tr>
 <tr><th scope="row">활성화한 기기: 해시 처리한 기기 ID, 기기 이름, 마지막 확인</th><td>키 하나에 기기 1대, 부정 사용 방지</td></tr>
 <tr><th scope="row">Free 체험: 해시 처리한 기기 ID, 시작과 종료 시각, 앱이 마지막으로 연결한 시각</th><td>기기당 체험 1회. 이메일이나 기기 이름은 없습니다.</td></tr>

@@ -74,7 +74,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="应用连接的地方" tabindex="0"><table>
 <thead><tr><th scope="col">连接到</th><th scope="col">用途</th><th scope="col">发送的内容</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱和应用的界面语言；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>下载模型，检查并下载应用更新</td><td>只有文件下载请求</td></tr>
 <tr><th scope="row">PayOS 付款页面（pay.payos.vn）</th><td>购买套餐时用 VietQR 付款</td><td>在你的浏览器中打开，而不是在应用内</td></tr>
 <tr><th scope="row">Creem 付款页面（www.creem.io）</th><td>购买套餐时用国际银行卡付款</td><td>在你的浏览器中打开，而不是在应用内。你的邮箱由我们的服务器发送给 Creem，而不是由应用发送（见“还有谁处理数据？”）</td></tr>
@@ -97,7 +97,7 @@ ${callout({ kind: "warn", title: "这项测试的局限", text: "只在 macOS、
 <thead><tr><th scope="col">数据</th><th scope="col">用途</th></tr></thead>
 <tbody>
 <tr><th scope="row">购买时的邮箱，你同意处理邮箱的时间</th><td>发送和找回密钥；银行卡订单预先填写 Creem 的付款页面；同意的证明</td></tr>
-<tr><th scope="row">订单：订单号、套餐、金额和币种、时间、状态、支付网关的会话 ID（PayOS 或 Creem）</th><td>签发和续期许可证、对账、会计</td></tr>
+<tr><th scope="row">订单：订单号、套餐、金额和币种、时间、状态、支付网关的会话 ID（PayOS 或 Creem）、购买时应用的界面语言</th><td>签发和续期许可证、对账、会计、用你的语言发送邮件</td></tr>
 <tr><th scope="row">许可证：密钥、套餐、到期时间、翻译时长周期</th><td>授予付费套餐</td></tr>
 <tr><th scope="row">已激活的设备：哈希处理后的设备 ID、设备名称、最后一次检查</th><td>一个密钥一台设备，防止滥用</td></tr>
 <tr><th scope="row">Free 试用：哈希处理后的设备 ID、开始和结束时间、应用最后一次联系服务器的时间</th><td>每台设备一次试用。没有邮箱或设备名称。</td></tr>

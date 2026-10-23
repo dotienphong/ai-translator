@@ -50,7 +50,7 @@ Our servers store the data below. The "Free trial" row applies to every machine 
 |---|---|
 | The email you enter when buying | Send your key and recover it if you lose it, and, for card orders, pre-fill Creem's payment page |
 | When you consented to us processing your email | Proof that you consented |
-| Orders: order code, plan, amount and currency, payment time, status, the payment gateway's session ID (PayOS or Creem) | Issue and renew licenses; reconciliation; accounting obligations |
+| Orders: order code, plan, amount and currency, payment time, status, the payment gateway's session ID (PayOS or Creem), the app's interface language at purchase | Issue and renew licenses; reconciliation; accounting obligations; email you in your language |
 | License: key, plan, expiry date, usage cycle | Grant the paid plan |
 | Free trial: a **hash** of the machine ID, when the trial started and ends, the app's last call | Each machine gets the 10-day trial only once, even after reinstalling the app |
 | Activated machines: a **hash** of the machine ID, the computer name (`device_label`) and the last license check | Enforce one machine per key, prevent abuse, help you recognize a machine to remove |
@@ -80,7 +80,7 @@ Cloudflare and Resend operate servers outside Vietnam and Creem is an Estonian c
 You have the right to know what is stored, to request **deletion** or **anonymization**, to withdraw consent, and to complain under Vietnam's **Law on Personal Data Protection**. Send requests to **support@aitranslator.io.vn** from the email you used when buying, or the email you left in the support chat (so we can confirm it is you). We respond within the period required by law.
 
 When you ask for deletion we will:
-- **remove** your email and computer name;
+- **remove** your email and computer name, and the interface language stored on your orders;
 - **delete** the error reports of the machines that ever activated a key for that email (section 10);
 - **delete** the support chats in which you left that email, both on our server and the copies forwarded into the operator's Zalo conversation (section 11);
 - **keep** the hash of the machine ID (pseudonymous data, only to prevent abuse: one machine per key, the temporary lock for excessive machine switching, reusing the correct activation when you re-activate the same machine, one Free trial per machine);

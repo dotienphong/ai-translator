@@ -76,7 +76,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports, the support chat; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating); support chat messages you send, with the machine details line if you leave it ticked and your email if you choose to leave it (only if you use the chat)</td></tr>
+<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports, the support chat; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email and the app's interface language when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating); support chat messages you send, with the machine details line if you leave it ticked and your email if you choose to leave it (only if you use the chat)</td></tr>
 <tr><th scope="row">releases.aitranslator.io.vn</th><td>Downloading models, checking for and downloading app updates</td><td>File download requests only</td></tr>
 <tr><th scope="row">PayOS payment page (pay.payos.vn)</th><td>VietQR payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
 <tr><th scope="row">Creem payment page (www.creem.io)</th><td>International card payment when you buy a plan</td><td>Opens in your browser, not inside the app. Your email goes to Creem from our server, not from the app (see “Who else processes data?”)</td></tr>
@@ -99,7 +99,7 @@ ${callout({ kind: "warn", title: "Limits of this test", text: "Measured only on 
 <thead><tr><th scope="col">Data</th><th scope="col">Purpose</th></tr></thead>
 <tbody>
 <tr><th scope="row">Email at purchase, time you consented to email processing</th><td>Sending and recovering keys; for card orders, pre-filling Creem's payment page; proof of consent</td></tr>
-<tr><th scope="row">Orders: order code, plan, amount and currency, time, status, the payment gateway's session ID (PayOS or Creem)</th><td>Issuing and renewing licenses, reconciliation, accounting</td></tr>
+<tr><th scope="row">Orders: order code, plan, amount and currency, time, status, the payment gateway's session ID (PayOS or Creem), the app's interface language at purchase</th><td>Issuing and renewing licenses, reconciliation, accounting, emailing you in your language</td></tr>
 <tr><th scope="row">License: key, plan, expiry, quota cycle</th><td>Granting the paid plan</td></tr>
 <tr><th scope="row">Activated devices: hashed machine ID, device name, last check</th><td>One device per key, abuse prevention</td></tr>
 <tr><th scope="row">Free trial: hashed machine ID, start and end times, last time the app called</th><td>One trial per device. No email or device name.</td></tr>

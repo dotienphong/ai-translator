@@ -2489,3 +2489,35 @@ test("chat hỗ trợ: ngoài hai trang Chính sách quyền riêng tư, không 
   assert.ok(sources.has("_headers") && sources.has("sitemap.xml"), "bộ quét không đọc được dist");
   assert.deepEqual(supportInternalHits(sources), []);
 });
+
+// ---- Email theo ngôn ngữ app (spec 2026-10-23-email-theo-ngon-ngu-design §5): chính sách 1.6, Dữ liệu và bảo mật năm ngôn ngữ ----
+
+test("chính sách quyền riêng tư nêu ngôn ngữ giao diện lưu trên đơn (mục 5) và bị bỏ khi xóa theo email (mục 7)", () => {
+  const errors = [
+    ...sectionErrors("/chinh-sach-quyen-rieng-tu/", {
+      5: ["ngôn ngữ giao diện của ứng dụng lúc mua", "gửi thư bằng ngôn ngữ của bạn"],
+      7: ["cùng ngôn ngữ giao diện lưu trên đơn hàng"],
+    }),
+    ...sectionErrors("/en/privacy/", {
+      5: ["interface language at purchase", "email you in your language"],
+      7: ["the interface language stored on your orders"],
+    }),
+  ];
+  assert.deepEqual(errors, []);
+});
+
+test("Dữ liệu và bảo mật (năm ngôn ngữ): app gửi ngôn ngữ giao diện khi mua và khôi phục key; máy chủ lưu nó trên đơn để gửi thư đúng ngôn ngữ", () => {
+  const needs = {
+    "/bao-mat-du-lieu/": ["email và ngôn ngữ giao diện của app khi bạn mua hoặc khôi phục key", "ngôn ngữ giao diện của app lúc mua", "gửi thư bằng ngôn ngữ của bạn"],
+    "/en/data-security/": ["interface language when you buy or recover a key", "interface language at purchase", "emailing you in your language"],
+    "/ja/data-security/": ["メールアドレスとアプリの表示言語も", "購入時のアプリの表示言語", "お使いの言語でのメール送付"],
+    "/zh/data-security/": ["你的邮箱和应用的界面语言", "购买时应用的界面语言", "用你的语言发送邮件"],
+    "/ko/data-security/": ["이메일과 앱의 인터페이스 언어도", "구매 시 앱의 인터페이스 언어", "사용자의 언어로 이메일 발송"],
+  };
+  const errors = [];
+  for (const [urlPath, list] of Object.entries(needs)) {
+    const text = textOf(htmlByPath.get(urlPath));
+    for (const needle of list) if (!text.includes(needle)) errors.push(`${urlPath}: thiếu "${needle}"`);
+  }
+  assert.deepEqual(errors, []);
+});
