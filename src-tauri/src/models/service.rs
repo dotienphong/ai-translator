@@ -165,6 +165,11 @@ struct Inner {
     /// (N-10 của review 04 lần 2).
     maintenance: Option<bool>,
     rev: u64,
+    /// Cờ "có bản cập nhật gói model" mà menu khay đang hiện (spec 2026-10-23 §6.1); `None` khi khay chưa đọc lần nào. Để
+    /// `changed()` (chạy mỗi 250 ms lúc tải) chỉ dựng lại menu khay khi cờ đổi: dựng lại menu đóng menu đang mở.
+    tray_shown: Option<bool>,
+    /// Số lần `changed()` đã yêu cầu dựng lại menu khay (cho test).
+    tray_refreshes: u64,
 }
 
 impl Inner {
@@ -233,6 +238,8 @@ impl ModelService {
                 job: Job::idle(),
                 maintenance: None,
                 rev: 0,
+                tray_shown: None,
+                tray_refreshes: 0,
             }),
             pause: Arc::new(Pause::default()),
         }
@@ -363,8 +370,18 @@ impl ModelService {
     /// Có hiện mục "Có bản cập nhật gói model" và dấu chấm trên khay không (spec 2026-10-23 §6.1): như thông báo trong cửa
     /// sổ chính (`update_available`), trừ lúc đang tải.
     pub fn tray_update<R: Runtime>(&self, app: &AppHandle<R>) -> bool {
-        let view = self.view(app);
-        view.update_available && view.job.state != JobState::Downloading
+        let flag = tray_flag(&self.view(app));
+        self.lock().tray_shown = Some(flag);
+        flag
+    }
+
+    /// Cờ khay đổi so với lần khay đã hiện không; ghi lại cờ mới.
+    fn tray_flag_changed(&self, flag: bool) -> bool {
+        let mut inner = self.lock();
+        let changed = inner.tray_shown != Some(flag);
+        inner.tray_shown = Some(flag);
+        inner.tray_refreshes += u64::from(changed);
+        changed
     }
 
     pub fn view<R: Runtime>(&self, app: &AppHandle<R>) -> ModelsView {
@@ -427,8 +444,11 @@ impl ModelService {
         if let Err(e) = app.emit_to(EventTarget::webview_window(window::MAIN), STATE_EVENT, &view) {
             log::warn!("không gửi được sự kiện {STATE_EVENT}: {e}");
         }
-        // Gọi khi không giữ khóa nào: menu khay đọc lại `tray_update`.
-        crate::tray::refresh(app);
+        // Chỉ khi cờ khay đổi (không dựng lại menu mỗi lần báo tiến độ). Gọi khi không giữ khóa nào: menu khay đọc lại
+        // `tray_update`.
+        if self.tray_flag_changed(tray_flag(&view)) {
+            crate::tray::refresh(app);
+        }
         view
     }
 
@@ -850,6 +870,11 @@ pub fn verify_in_background<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
+/// Cờ của mục "Có bản cập nhật gói model" và dấu chấm trên khay (spec 2026-10-23 §6.1) theo một lần xem trạng thái.
+fn tray_flag(view: &ModelsView) -> bool {
+    view.update_available && view.job.state != JobState::Downloading
+}
+
 /// Báo trạng thái model mới (ví dụ khi `--probe` vừa có kết quả).
 pub fn changed<R: Runtime>(app: &AppHandle<R>) {
     if let Some(service) = app.try_state::<Arc<ModelService>>() {
@@ -1230,6 +1255,32 @@ mod tests {
         assert!(h.service().tray_update(h.app.handle()), "có bản mới");
         h.call("dismiss_models_update", json!({})).unwrap();
         assert!(!h.service().tray_update(h.app.handle()), "đã bấm Để sau");
+    }
+
+    /// Lúc tải, `changed()` chạy mỗi 250 ms: menu khay chỉ được dựng lại khi cờ đổi (dựng lại đóng menu đang mở). Đang tải
+    /// thì không có dấu chấm, tải xong thì hết.
+    #[test]
+    fn the_tray_is_rebuilt_only_when_its_flag_changes() {
+        let h = harness_with(FakeDeps::default(), |_| {});
+        publish(&h.server, &slow_sample());
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        h.wait("done");
+        publish_update_of_standard(&h);
+        let service = h.service();
+        assert!(service.tray_update(h.app.handle()), "có bản mới");
+        let (rev, refreshes) = {
+            let inner = service.lock();
+            (inner.rev, inner.tray_refreshes)
+        };
+        h.call("download_models", json!({ "pack": "standard" })).unwrap();
+        wait_progress(&h);
+        assert!(!service.tray_update(h.app.handle()), "đang tải thì không có dấu chấm");
+        h.wait("done");
+        assert!(!service.tray_update(h.app.handle()), "tải xong thì hết");
+        let inner = service.lock();
+        assert!(inner.rev >= rev + 2, "changed() chạy nhiều lần: {} → {}", rev, inner.rev);
+        assert_eq!(inner.tray_refreshes, refreshes + 1, "chỉ dựng lại khi cờ đổi (có → không)");
     }
 
     /// Đang dịch bằng gói thì không tải đè hay xóa gói đó (ghi chú 8 của review cuối 02).
