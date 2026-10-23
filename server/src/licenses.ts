@@ -417,6 +417,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
           db,
           deps,
           email,
+          "vi",
           "recover",
           results.map((r) => ({ licenseKey: r.license_key, planName: PLAN_NAMES[r.plan], expiresAt: r.expires_at })),
         );

@@ -326,7 +326,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
         detail: { plan, note: input.note },
       }),
     ]);
-    await sendLicenseMail(c.env.DB, deps, email, "purchase", [{ licenseKey: key, planName: PLAN_NAMES[plan], expiresAt }]);
+    // Cấp tay không qua app nên không biết ngôn ngữ của khách: tiếng Việt, phần tiếng Anh ở dưới (spec 2026-10-23 D3).
+    await sendLicenseMail(c.env.DB, deps, email, "vi", "purchase", [{ licenseKey: key, planName: PLAN_NAMES[plan], expiresAt }]);
     return c.json({ license_id: id, license_key: formatLicenseKey(key), plan, expires_at: expiresAt }, 201);
   });
 
@@ -474,7 +475,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       .first<{ license_key: string; email: string | null; plan: PlanCode; expires_at: number }>();
     if (!lic) return fail(c, 404, "not_found");
     if (!lic.email) return fail(c, 400, "invalid_request", { field: "email" });
-    const { ok: sent } = await sendLicenseMail(c.env.DB, deps, lic.email, "resend", [
+    const { ok: sent } = await sendLicenseMail(c.env.DB, deps, lic.email, "vi", "resend", [
       { licenseKey: lic.license_key, planName: PLAN_NAMES[lic.plan], expiresAt: lic.expires_at },
     ]);
     await audit(c.env.DB, { at: deps.now(), actor: c.get("actor"), action: "key_resent", licenseId: id, detail: { sent } });

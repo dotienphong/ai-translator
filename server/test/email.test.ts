@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { EmailProviderError, maskEmail } from "../src/email/provider";
 import { ResendEmailProvider } from "../src/email/resend";
-import { licenseEmail } from "../src/email/templates";
+import { type LicenseEmailKind, MAIL, pick } from "../src/email/strings";
+import { licenseEmail, mailLang, supportReplyEmail } from "../src/email/templates";
+import { type Lang, LANGS } from "../src/lang";
 
 describe("Resend", () => {
   it("gửi đúng endpoint, header, idempotency key", async () => {
@@ -87,32 +89,164 @@ describe("Resend", () => {
   });
 });
 
-describe("nội dung email", () => {
-  it("có tên sản phẩm, key đã định dạng, gói, ngày hết hạn theo giờ Việt Nam, cả vi lẫn en", () => {
-    // 2026-10-31T17:30:00Z là 01/11/2026 ở Việt Nam.
-    const { subject, text } = licenseEmail("purchase", [
-      { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Yearly", expiresAt: Date.UTC(2026, 9, 31, 17, 30) / 1000 },
-    ]);
-    expect(subject).toBe("License key AI Translator / Your AI Translator license key");
-    expect(text).toContain("Cảm ơn bạn đã dùng AI Translator.");
-    expect(text).toContain("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR  (Yearly, hết hạn / expires 01/11/2026)");
-    expect(text).toContain("Cài đặt > Bản quyền");
-    expect(text).toContain("Settings > License");
+describe("nội dung email (spec 2026-10-23)", () => {
+  // 2026-10-31T17:30:00Z là 01/11/2026 ở Việt Nam.
+  const yearly = { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Yearly", expiresAt: Date.UTC(2026, 9, 31, 17, 30) / 1000 };
+  const monthly = { licenseKey: "ABCDEFGHJKMNPQRSTVWXYZ012345", planName: "Monthly", expiresAt: Date.UTC(2026, 10, 22, 3) / 1000 };
+  const KINDS: LicenseEmailKind[] = ["purchase", "renewal", "plan_change", "recover", "resend"];
+
+  it("mailLang: có ngôn ngữ thì dùng; không có thì đơn USD ra tiếng Anh, còn lại tiếng Việt", () => {
+    expect(mailLang("ja", "VND")).toBe("ja");
+    expect(mailLang("vi", "USD")).toBe("vi");
+    expect(mailLang(null, "USD")).toBe("en");
+    expect(mailLang(null, "VND")).toBe("vi");
+    expect(mailLang(null, null)).toBe("vi");
   });
 
-  it("mỗi key chỉ dùng trên 1 máy (spec 2026-10-07 §1): không còn nhắc 2 máy", () => {
-    const { text } = licenseEmail("purchase", [{ licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 }]);
-    expect(text).toContain("Mỗi key dùng trên 1 máy.");
-    expect(text).toContain("Each key works on 1 computer.");
-    expect(text).not.toMatch(/2 máy|2 computers/);
+  it("thư tiếng Việt: tiêu đề và bản chữ thuần đầy đủ, Việt trên, Anh dưới", () => {
+    const { subject, text } = licenseEmail("vi", "purchase", [yearly]);
+    expect(subject).toBe("License key AI Translator của bạn / Your AI Translator license key");
+    expect(text).toBe(
+      [
+        "AI Translator",
+        "",
+        "Cảm ơn bạn đã mua AI Translator",
+        "Đây là license key của bạn.",
+        "",
+        "    0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR",
+        "    Gói Yearly · Hết hạn 01/11/2026",
+        "",
+        "Kích hoạt trên máy của bạn",
+        "  1. Mở AI Translator.",
+        "  2. Vào Cài đặt › Bản quyền.",
+        "  3. Dán key rồi bấm Kích hoạt.",
+        "",
+        "Mỗi key dùng trên 1 máy. Hãy giữ thư này để kích hoạt lại khi cài lại máy hay chuyển sang máy khác.",
+        "Hướng dẫn chi tiết: https://aitranslator.io.vn/huong-dan/mua-va-kich-hoat-key/",
+        "Cần giúp? Trả lời thư này, chúng tôi sẽ hồi âm.",
+        "",
+        "─".repeat(28),
+        "English",
+        "",
+        "Thank you for buying AI Translator",
+        "Your license key is shown above.",
+        "  Yearly · Expires 1 Nov 2026",
+        "",
+        "Activate on your computer",
+        "  1. Open AI Translator.",
+        "  2. Go to Settings › License.",
+        "  3. Paste the key and click Activate.",
+        "",
+        "Each key works on 1 computer. Keep this email to activate again after reinstalling or moving to another computer.",
+        "Step-by-step guide: https://aitranslator.io.vn/en/guide/buy-and-activate/",
+        "Need help? Reply to this email.",
+        "",
+        "--",
+        "AI Translator · aitranslator.io.vn",
+        "",
+      ].join("\n"),
+    );
   });
 
-  it("thư đổi gói có tiêu đề riêng; không còn tên tạm", () => {
-    const entry = { licenseKey: "0123456789ABCDEFGHJKMNPQRSTR", planName: "Monthly", expiresAt: 0 };
-    expect(licenseEmail("plan_change", [entry]).subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
-    for (const kind of ["purchase", "renewal", "plan_change", "recover", "resend"] as const) {
-      const { subject, text } = licenseEmail(kind, [entry]);
-      expect(`${subject}\n${text}`).not.toMatch(/Meeting Translator/);
+  it("tiêu đề: <ngôn ngữ của khách> / <tiếng Anh>; app tiếng Anh thì chỉ tiếng Anh", () => {
+    expect(licenseEmail("ja", "purchase", [yearly]).subject).toBe("AI Translator のライセンスキー / Your AI Translator license key");
+    expect(licenseEmail("zh", "renewal", [yearly]).subject).toBe("你的 AI Translator 套餐已续期 / Your AI Translator plan is renewed");
+    expect(licenseEmail("ko", "plan_change", [yearly]).subject).toBe("AI Translator 플랜이 변경되었습니다 / Your AI Translator plan has changed");
+    expect(licenseEmail("vi", "renewal", [yearly]).subject).toBe("Đã gia hạn gói AI Translator / Your AI Translator plan is renewed");
+    expect(licenseEmail("en", "purchase", [yearly]).subject).toBe("Your AI Translator license key");
+    expect(supportReplyEmail("ko", ["x"]).subject).toBe("AI Translator 지원팀의 답변 / Reply from AI Translator support");
+    expect(supportReplyEmail("vi", ["x"]).subject).toBe("Trả lời từ hỗ trợ AI Translator / Reply from AI Translator support");
+    expect(supportReplyEmail("en", ["x"]).subject).toBe("Reply from AI Translator support");
+  });
+
+  it("HTML: lang của trang, key, ngày theo ngôn ngữ, link hướng dẫn đúng ngôn ngữ, phần tiếng Anh ở dưới; app tiếng Anh thì không có phần dưới", () => {
+    const { html } = licenseEmail("ja", "purchase", [yearly]);
+    expect(html).toMatch(/^<!doctype html>\n<html lang="ja">/);
+    expect(html).toContain("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR");
+    expect(html).toContain("2026年11月1日");
+    expect(html).toContain('href="https://aitranslator.io.vn/ja/guide/buy-and-activate/"');
+    expect(html).toContain('href="https://aitranslator.io.vn/en/guide/buy-and-activate/"');
+    expect(html).toContain('<td class="pad" lang="en"');
+    expect(html).toContain("1 Nov 2026");
+    expect(html.indexOf("ライセンスキーをお送りします。")).toBeLessThan(html.indexOf("Your license key is shown above."));
+    const en = licenseEmail("en", "purchase", [yearly]).html;
+    expect(en).toMatch(/<html lang="en">/);
+    expect(en).not.toContain('<td class="pad" lang="en"');
+    expect(en).toContain("Here is your license key.");
+    expect(en).not.toContain("shown above");
+  });
+
+  it("dòng xem trước ẩn (preheader): gói và ngày hết hạn, không có key", () => {
+    const { html } = licenseEmail("ja", "purchase", [yearly]);
+    const preheader = /<div style="display:none;[^"]*">([^<]*)<\/div>/.exec(html)?.[1];
+    expect(preheader).toBe("プラン Yearly · 有効期限 2026年11月1日");
+  });
+
+  it("ngày hết hạn (giờ Việt Nam) viết theo thói quen của từng ngôn ngữ", () => {
+    const text = (lang: Lang) => licenseEmail(lang, "resend", [yearly]).text;
+    expect(text("vi")).toContain("Hết hạn 01/11/2026");
+    expect(text("en")).toContain("Expires 1 Nov 2026");
+    expect(text("ja")).toContain("有効期限 2026年11月1日");
+    expect(text("zh")).toContain("到期时间 2026年11月1日");
+    expect(text("ko")).toContain("만료일 2026년 11월 1일");
+  });
+
+  it("các bước kích hoạt chỉ ở thư mua, lấy lại, gửi lại; thư gia hạn và đổi gói nói key giữ nguyên", () => {
+    for (const kind of ["purchase", "recover", "resend"] as const) {
+      const { text, html } = licenseEmail("vi", kind, [yearly]);
+      expect(text).toContain("  2. Vào Cài đặt › Bản quyền.");
+      expect(text).toContain("  2. Go to Settings › License.");
+      expect(html).toContain("Kích hoạt trên máy của bạn");
+    }
+    for (const kind of ["renewal", "plan_change"] as const) {
+      const { text, html } = licenseEmail("vi", kind, [yearly]);
+      expect(text).not.toContain("Cài đặt › Bản quyền");
+      expect(html).not.toContain("Kích hoạt trên máy của bạn");
+      expect(text).toContain("Key giữ nguyên, không cần kích hoạt lại.");
+      expect(text).toContain("stays the same; no need to activate it again.");
+    }
+  });
+
+  it("nhiều key: mỗi key một ô; tiếng Anh dùng số nhiều", () => {
+    const two = licenseEmail("en", "recover", [yearly, monthly]);
+    expect(two.subject).toBe("Your AI Translator license keys");
+    expect(two.text).toContain("Here are the active license keys for this email.");
+    expect(two.html.match(/class="keybox"/g)).toHaveLength(2);
+    expect(licenseEmail("en", "recover", [yearly]).subject).toBe("Your AI Translator license key");
+    const vi = licenseEmail("vi", "recover", [yearly, monthly]).text;
+    expect(vi).toContain("The active license keys for this email are shown above.");
+    expect(vi).toContain("  Yearly · Expires 1 Nov 2026\n  Monthly · Expires 22 Nov 2026");
+  });
+
+  it("thư trả lời hỗ trợ: escape HTML, giữ xuống dòng; bản chữ thuần giữ nguyên văn; tiếng Anh ở dưới", () => {
+    const reply = `Thử <script>alert("x")</script> & 'y'\nDòng hai`;
+    const { html, text } = supportReplyEmail("vi", [reply, "Câu hai"]);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("Thử &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;y&#39;\nDòng hai");
+    expect(html).toContain("white-space:pre-wrap");
+    expect(text).toContain(`  Thử <script>alert("x")</script> & 'y'\n  Dòng hai\n\n  Câu hai`);
+    expect(text).toContain("AI Translator support has replied to your message (above).");
+    expect(html.indexOf("Bộ phận hỗ trợ AI Translator đã trả lời tin nhắn của bạn.")).toBeLessThan(html.indexOf("(above)"));
+  });
+
+  it("mỗi key một máy (spec 2026-10-07 §1); không còn tên tạm; không lộ công nghệ lõi hay dịch vụ gửi thư; không ảnh, không script", () => {
+    for (const lang of LANGS) {
+      const mails = [...KINDS.map((kind) => licenseEmail(lang, kind, [yearly])), supportReplyEmail(lang, ["x"])];
+      for (const { subject, html, text } of mails) {
+        const all = `${subject}\n${html}\n${text}`;
+        expect(all).not.toMatch(/2 máy|2 computers|Meeting Translator/);
+        expect(all).not.toMatch(/Resend|Cloudflare|Whisper|Hy-MT|llama|ggml|Tauri|Hono|<img|<script/i);
+      }
+    }
+  });
+
+  it("đủ chữ ở cả năm ngôn ngữ: không chuỗi rỗng, đúng ba bước", () => {
+    for (const lang of LANGS) {
+      const s = MAIL[lang];
+      for (const kind of [...KINDS, "support"] as const) {
+        for (const field of [s.subject, s.heading, s.lead]) expect(pick(field[kind], 1).length, `${lang} ${kind}`).toBeGreaterThan(0);
+      }
+      expect(s.steps).toHaveLength(3);
     }
   });
 

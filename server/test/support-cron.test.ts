@@ -181,7 +181,7 @@ describe("việc định kỳ của chat hỗ trợ (spec 2026-10-22 §2.6)", ()
     expect(await sendSupportEmails(env.DB, w.deps, w.clock.now)).toBe(1);
     expect(w.resend.sent).toHaveLength(1);
     expect(w.resend.sent[0]).toMatchObject({ to: ["khach@example.com"], subject: "Trả lời từ hỗ trợ AI Translator / Reply from AI Translator support" });
-    expect(w.resend.sent[0]?.text).toContain("Câu một\n\nCâu hai");
+    expect(w.resend.sent[0]?.text).toContain("  Câu một\n\n  Câu hai");
     expect(w.resend.sent[0]?.idempotencyKey).toMatch(/^support-\d+-\d+$/);
     await webhook(w, ownerSays(`#${chat.code} Câu ba`));
     w.clock.now = T0 + 120 + 3599;
@@ -194,6 +194,26 @@ describe("việc định kỳ của chat hỗ trợ (spec 2026-10-22 §2.6)", ()
     await w.call("GET", "/v1/support/messages?after=0", undefined, auth(chat.token));
     w.clock.now = T0 + 120 + 3600 * 3;
     expect(await sendSupportEmails(env.DB, w.deps, w.clock.now)).toBe(0);
+  });
+
+  it("thư trả lời viết bằng ngôn ngữ của cuộc chat, tiếng Anh ở dưới (spec 2026-10-23); chat tiếng Anh thì chỉ tiếng Anh", async () => {
+    const w = makeWorld();
+    await enableChat();
+    const ip = { "cf-connecting-ip": "203.0.113.77" };
+    const ko = await startChat(w, { lang: "ko" });
+    await leaveEmail(w, ko.token, "ko@example.com");
+    const en = await startChat(w, { lang: "en" }, ip);
+    await leaveEmail(w, en.token, "en@example.com", ip);
+    await webhook(w, ownerSays(`#${ko.code} 안녕하세요`));
+    await webhook(w, ownerSays(`#${en.code} Hello`));
+    w.clock.now = T0 + 120;
+    expect(await sendSupportEmails(env.DB, w.deps, w.clock.now)).toBe(2);
+    const byTo = Object.fromEntries(w.resend.sent.map((m) => [m.to[0], m]));
+    expect(byTo["ko@example.com"]?.subject).toBe("AI Translator 지원팀의 답변 / Reply from AI Translator support");
+    expect(byTo["ko@example.com"]?.html).toMatch(/<html lang="ko">/);
+    expect(byTo["ko@example.com"]?.text).toContain("  안녕하세요");
+    expect(byTo["en@example.com"]?.subject).toBe("Reply from AI Translator support");
+    expect(byTo["en@example.com"]?.text).not.toContain("(above)");
   });
 
   it("email lỗi tạm thì lần cron sau gửi lại; lỗi vĩnh viễn thì thôi, không gửi lại mãi", async () => {

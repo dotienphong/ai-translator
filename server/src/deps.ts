@@ -4,6 +4,7 @@ import { type EmailProvider, EmailProviderError, maskEmail } from "./email/provi
 import { ResendEmailProvider } from "./email/resend";
 import { type LicenseEmailEntry, type LicenseEmailKind, licenseEmail } from "./email/templates";
 import type { ApiEnv } from "./env";
+import type { Lang } from "./lang";
 import { CreemProvider, parseProductIds } from "./payment/creem";
 import { PayOSProvider } from "./payment/payos";
 import type { PaymentProvider } from "./payment/provider";
@@ -124,7 +125,8 @@ export interface MailResult {
 }
 
 /**
- * Gửi email chứa key. Resend báo idempotency key đã dùng (409 invalid_idempotent_request) thì coi là đã gửi.
+ * Gửi email chứa key, viết bằng `lang` (phần tiếng Anh ở dưới, trừ khi `lang` là tiếng Anh; chọn `lang` bằng `mailLang`, spec
+ * 2026-10-23). Resend báo idempotency key đã dùng (409 invalid_idempotent_request) thì coi là đã gửi.
  * Lỗi thì ghi log và (nếu `alert`) tạo cảnh báo email_failed; key vẫn lấy được qua
  * GET /v1/orders, recover hay admin, và cron gửi lại thư mua hàng gặp lỗi tạm (orders.ts, retryUnsentEmails).
  */
@@ -132,14 +134,15 @@ export async function sendLicenseMail(
   db: D1Database,
   deps: Pick<Deps, "email" | "now">,
   to: string,
+  lang: Lang,
   kind: LicenseEmailKind,
   entries: LicenseEmailEntry[],
   opts: { idempotencyKey?: string; alert?: boolean } = {},
 ): Promise<MailResult> {
-  const { subject, text } = licenseEmail(kind, entries);
+  const { subject, html, text } = licenseEmail(lang, kind, entries);
   try {
     const key = opts.idempotencyKey;
-    await deps.email.send(key ? { to, subject, text, idempotencyKey: key } : { to, subject, text });
+    await deps.email.send(key ? { to, subject, text, html, idempotencyKey: key } : { to, subject, text, html });
     return { ok: true, permanent: false };
   } catch (err) {
     if (err instanceof EmailProviderError && err.alreadySent) {

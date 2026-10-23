@@ -4,6 +4,7 @@ import { raiseAlert } from "../alerts";
 import type { Deps } from "../deps";
 import { EmailProviderError, maskEmail } from "../email/provider";
 import { supportReplyEmail } from "../email/templates";
+import type { Lang } from "../lang";
 import { FORWARD_WINDOW, forwardBatch, MAX_ATTEMPTS } from "./forward";
 import { getSetting, setSetting } from "./store";
 
@@ -59,7 +60,7 @@ export async function forwardPendingSupport(db: D1Database, deps: Pick<Deps, "za
 export async function sendSupportEmails(db: D1Database, deps: Pick<Deps, "email">, now: number): Promise<number> {
   const { results } = await db
     .prepare(
-      `SELECT c.id, c.email, MAX(c.delivered_owner_id, c.emailed_owner_id) AS seen
+      `SELECT c.id, c.email, c.lang, MAX(c.delivered_owner_id, c.emailed_owner_id) AS seen
        FROM support_conversations c
        WHERE c.email IS NOT NULL AND c.status = 'open'
          AND (c.emailed_at IS NULL OR c.emailed_at <= ?1 - ?3)
@@ -69,7 +70,7 @@ export async function sendSupportEmails(db: D1Database, deps: Pick<Deps, "email"
        ORDER BY c.id LIMIT ?4`,
     )
     .bind(now, EMAIL_AFTER, EMAIL_EVERY, EMAIL_BATCH)
-    .all<{ id: number; email: string; seen: number }>();
+    .all<{ id: number; email: string; lang: Lang; seen: number }>();
   let sent = 0;
   for (const conv of results) {
     const { results: replies } = await db
@@ -78,11 +79,12 @@ export async function sendSupportEmails(db: D1Database, deps: Pick<Deps, "email"
       .all<{ id: number; text: string }>();
     const last = replies.at(-1);
     if (!last) continue;
-    const { subject, text } = supportReplyEmail(replies.map((r) => r.text));
+    // Thư viết bằng ngôn ngữ của cuộc chat (app gửi ngôn ngữ giao diện, website gửi ngôn ngữ trang), tiếng Anh ở dưới (spec 2026-10-23).
+    const { subject, html, text } = supportReplyEmail(conv.lang, replies.map((r) => r.text));
     const markSent = () =>
       db.prepare("UPDATE support_conversations SET emailed_at = ?2, emailed_owner_id = ?3 WHERE id = ?1").bind(conv.id, now, last.id).run();
     try {
-      await deps.email.send({ to: conv.email, subject, text, idempotencyKey: `support-${conv.id}-${last.id}` });
+      await deps.email.send({ to: conv.email, subject, text, html, idempotencyKey: `support-${conv.id}-${last.id}` });
       await markSent();
       sent++;
     } catch (err) {

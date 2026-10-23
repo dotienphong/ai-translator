@@ -279,7 +279,7 @@ describe("mua thêm cùng gói (§6.8)", () => {
     expect(order.license_expires_at).toBe(T0 + 60 * DAY);
     expect(await license()).toEqual({ plan: "monthly", expires_at: T0 + 60 * DAY, cycle_anchor: T0, version: 1 });
     expect(await licenseCount()).toBe(1);
-    expect(w.resend.sent.at(-1)!.subject).toBe("Đã gia hạn AI Translator / AI Translator renewed");
+    expect(w.resend.sent.at(-1)!.subject).toBe("Đã gia hạn gói AI Translator / Your AI Translator plan is renewed");
   });
 
   it("license đã hết hạn 5 ngày: 30 ngày từ bây giờ, cycle_anchor đặt lại", async () => {
@@ -299,8 +299,8 @@ describe("đổi gói (§6.8)", () => {
     const order = await renew(w, licenseKey, "yearly");
     expect(order).toMatchObject({ grant_kind: "change", license_plan: "yearly", license_expires_at: T0 + 399 * DAY });
     expect(await license()).toEqual({ plan: "yearly", expires_at: T0 + 399 * DAY, cycle_anchor: T0 + 10 * DAY, version: 1 });
-    expect(w.resend.sent.at(-1)!.subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
-    expect(w.resend.sent.at(-1)!.text).toContain("Yearly, hết hạn");
+    expect(w.resend.sent.at(-1)!.subject).toBe("Đã đổi gói AI Translator / Your AI Translator plan has changed");
+    expect(w.resend.sent.at(-1)!.text).toContain("Gói Yearly · Hết hạn");
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed'").first<{ detail: string }>();
     expect(JSON.parse(log!.detail)).toMatchObject({
       plan: "yearly",
@@ -735,7 +735,7 @@ describe("gói 6 Months (spec 2026-10-13)", () => {
     expect(paid.body).toMatchObject({ status: "paid", grant_kind: "new", license_plan: "six_months", license_expires_at: T0 + 120 + 180 * DAY });
     expect(await env.DB.prepare("SELECT amount, amount_paid FROM orders").first()).toEqual({ amount: 269000, amount_paid: 269000 });
     expect(await license()).toEqual({ plan: "six_months", expires_at: T0 + 120 + 180 * DAY, cycle_anchor: T0 + 120, version: 0 });
-    expect(w.resend.sent[0]!.text).toContain("6 Months, hết hạn");
+    expect(w.resend.sent[0]!.text).toContain("Gói 6 Months · Hết hạn");
   });
 
   it("trả thiếu tiền (underpaid) thì không cấp license, như các gói khác", async () => {
@@ -763,8 +763,8 @@ describe("gói 6 Months (spec 2026-10-13)", () => {
     const order = await renew(w, licenseKey, "six_months");
     expect(order).toMatchObject({ grant_kind: "change", license_plan: "six_months", license_expires_at: T0 + 212 * DAY });
     expect(await license()).toEqual({ plan: "six_months", expires_at: T0 + 212 * DAY, cycle_anchor: T0 + 10 * DAY, version: 1 });
-    expect(w.resend.sent.at(-1)!.subject).toBe("Đã đổi gói AI Translator / AI Translator plan changed");
-    expect(w.resend.sent.at(-1)!.text).toContain("6 Months, hết hạn");
+    expect(w.resend.sent.at(-1)!.subject).toBe("Đã đổi gói AI Translator / Your AI Translator plan has changed");
+    expect(w.resend.sent.at(-1)!.text).toContain("Gói 6 Months · Hết hạn");
     const log = await env.DB.prepare("SELECT detail FROM audit_log WHERE action = 'license_plan_changed'").first<{ detail: string }>();
     expect(JSON.parse(log!.detail)).toMatchObject({ plan: "six_months", from_plan: "monthly", from_expires_at: T0 + 30 * DAY, converted_days: 22 });
   });

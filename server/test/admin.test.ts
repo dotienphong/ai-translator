@@ -645,7 +645,7 @@ describe("thay đổi license", () => {
     expect(created.body).toMatchObject({ plan: "yearly", expires_at: T0 + 365 * DAY });
     expect(await licenseRow()).toMatchObject({ plan: "yearly", cycle_anchor: T0, anchor_applied_at: T0 });
     expect(w.resend.sent[0]!.to).toEqual(["gift@example.com"]);
-    expect(w.resend.sent[0]!.text).toContain("Yearly, hết hạn");
+    expect(w.resend.sent[0]!.text).toContain("Gói Yearly · Hết hạn");
     const id = created.body.license_id as string;
     w.clock.now = T0 + DAY;
     const ext = await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 7, note: "bù sự cố" } });
@@ -660,7 +660,7 @@ describe("thay đổi license", () => {
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({ plan: "six_months", expires_at: T0 + 180 * DAY });
     expect(await licenseRow()).toMatchObject({ plan: "six_months", expires_at: T0 + 180 * DAY, cycle_anchor: T0, anchor_applied_at: T0 });
-    expect(w.resend.sent[0]!.text).toContain("6 Months, hết hạn");
+    expect(w.resend.sent[0]!.text).toContain("Gói 6 Months · Hết hạn");
     const id = created.body.license_id as string;
     w.clock.now = T0 + DAY;
     const ext = await adminCall(`/admin/licenses/${id}/extend`, { body: { days: 7, note: "bù sự cố" } });

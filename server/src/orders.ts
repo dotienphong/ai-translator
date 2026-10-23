@@ -6,6 +6,7 @@ import type { AppEnv } from "./app";
 import { auditIfChanged } from "./audit";
 import { sha256Hex, timingSafeEqual } from "./crypto";
 import { type Deps, sendLicenseMail } from "./deps";
+import { mailLang } from "./email/templates";
 import { clientIp, fail, tooMany } from "./http";
 import type { Lang } from "./lang";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
@@ -251,7 +252,8 @@ export function emailRetryDelay(attempts: number): number {
 }
 
 /**
- * Gửi email sau khi cấp; idempotency key theo đơn để Resend không gửi hai lần (kể cả khi cron gửi lại).
+ * Gửi email sau khi cấp, bằng ngôn ngữ app lúc tạo đơn (đơn không có ngôn ngữ thì đoán theo loại tiền, spec 2026-10-23 §1);
+ * idempotency key theo đơn để Resend không gửi hai lần (kể cả khi cron gửi lại).
  * Lỗi tạm (401, 403, 409 concurrent_idempotent_requests, 429, 5xx, mạng) thì hẹn lần gửi lại; lỗi vĩnh viễn (400, 422)
  * thì thôi; 409 invalid_idempotent_request (lần gửi trước đã được nhận) thì coi là đã gửi.
  * Cảnh báo email_failed chỉ tạo ở lần lỗi đầu của mỗi đơn.
@@ -260,7 +262,7 @@ export async function mailGranted(
   db: D1Database,
   deps: Pick<Deps, "now" | "email">,
   envName: string,
-  order: Pick<OrderRow, "order_code" | "email">,
+  order: Pick<OrderRow, "order_code" | "email" | "lang" | "currency">,
   g: Pick<Granted, "licenseKey" | "plan" | "expiresAt" | "kind">,
 ) {
   if (!order.email) return;
@@ -273,6 +275,7 @@ export async function mailGranted(
     db,
     deps,
     order.email,
+    mailLang(order.lang, order.currency),
     mailKind(g.kind),
     [{ licenseKey: g.licenseKey, planName: PLAN_NAMES[g.plan], expiresAt: g.expiresAt }],
     { idempotencyKey: `${envName}-order-${order.order_code}`, alert: attempts === 1 },
@@ -635,7 +638,7 @@ export async function recordUnmatched(
  */
 export async function retryUnsentEmails(env: { DB: D1Database; ENVIRONMENT: string }, deps: Deps): Promise<number> {
   const { results } = await env.DB.prepare(
-    `SELECT o.order_code, o.email, o.grant_kind, l.license_key, l.plan, l.expires_at
+    `SELECT o.order_code, o.email, o.lang, o.currency, o.grant_kind, l.license_key, l.plan, l.expires_at
      FROM orders o JOIN licenses l ON l.id = o.license_id
      -- email_gave_up_at IS NULL là lớp phòng thủ: đơn đã thôi gửi luôn có email_retry_at NULL và email_attempts > 0.
      WHERE o.status = 'paid' AND o.email IS NOT NULL AND o.email_sent_at IS NULL AND o.email_gave_up_at IS NULL
@@ -650,6 +653,8 @@ export async function retryUnsentEmails(env: { DB: D1Database; ENVIRONMENT: stri
     .all<{
       order_code: number;
       email: string;
+      lang: Lang | null;
+      currency: string;
       grant_kind: Granted["kind"];
       license_key: string;
       plan: PlanCode;
