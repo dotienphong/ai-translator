@@ -277,10 +277,13 @@ M+1 (M là số đang chạy) có các mục model lấy từ `body-S.json`. Fil
 được mọi bản còn file.
 
 1. Kiểm điều kiện như mục 3.1 bước 1. `S` phải nhỏ hơn M và `scripts/models/released/body-S.json` phải có.
-2. Dựng `body-(M+1)` từ `body-M.json`: mỗi `id` có ở cả hai bản mà mục file khác nhau thì lấy nguyên mục của `body-S`.
-   `id` chỉ có ở `body-M` (ví dụ gói thêm sau số S) giữ nguyên; `id` chỉ có ở `body-S` (đã bỏ) thì dừng, quay lại kiểu đó
-   làm tay. `packs`, `recommend`, `pipeline` giữ như `body-M`. Không có mục nào khác nhau thì báo "không có gì để quay
-   lại" và thoát mã 0.
+2. Dựng `body-(M+1)` từ `body-M.json`: mỗi `id` có ở cả hai bản mà phần nội dung (`file`, `version`, `url`, `bytes`,
+   `sha256`) khác nhau thì lấy năm trường đó của `body-S`; các trường khác (`tier`, `min_app_version`, `prompt`…) giữ như
+   `body-M`. Lấy nguyên mục là sai: từ số 2 lên số 3, whisper turbo, VAD và các file giấy phép chỉ đổi `tier` (thêm gói
+   Nhanh), nên chép nguyên mục của số 2 sẽ làm gói Nhanh thiếu file. `id` chỉ có ở `body-M` (gói thêm sau số S) giữ nguyên;
+   `id` chỉ có ở `body-S` (đã bỏ) thì dừng, quay lại kiểu đó làm tay. `packs`, `recommend`, `pipeline` giữ như `body-M`.
+   Không có mục nào khác phần nội dung thì báo "không có gì để quay lại" và thoát mã 0 (ví dụ `--rollback-to 2` lúc đang
+   ở số 3).
 3. Kiểm từng file được lấy lại vẫn còn trên R2: `curl` qua tên miền công khai, tải đủ, so `bytes` và `sha256`. Thiếu hay
    sai thì dừng.
 4. Bỏ qua cổng kiểm: các file này đã từng phát hành và đã qua cổng kiểm lúc đó.
