@@ -11,6 +11,10 @@ import { REPO, signBody, testKey } from "./lib.mjs";
 import {
   ASR_RELATIVE,
   MANIFEST_URL,
+  applyConfigText,
+  applyUpstream,
+  bumpBody,
+  bumpNotice,
   checkTable,
   checkUpstream,
   contentId,
@@ -20,10 +24,17 @@ import {
   gateAsr,
   gateMt,
   gateTable,
+  isYes,
   latestBody,
+  manifestUrlOf,
   mtRunName,
+  nextNoticeVersion,
   parseArgs,
+  r2Key,
+  restoreUpstream,
+  rollbackChanges,
   sameSignedBody,
+  versionOf,
 } from "./update-lib.mjs";
 import { checkLiveManifest, checkSources, createIo, exec, fetchFile, fetchPublished, gitBlobId } from "./update-io.mjs";
 import { ASR_FEATURES, GATE_PATHS, buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
@@ -930,4 +941,94 @@ test("checkGateInputs: thiếu llama-server, bộ thử dịch hay manifest nh�
   assert.throws(() => checkGateInputs(paths), /Thiếu .*manifest\.jsonl/);
   writeFileSync(join(paths.asrData, "manifest.jsonl"), "");
   checkGateInputs(paths);
+});
+
+const body3 = () => readJson("scripts/models/released/body-3.json");
+const Q8_ID = "hy-mt2-1.8b-q8_0";
+
+test("r2Key, manifestUrlOf, versionOf", () => {
+  const key = r2Key("hy-mt2", REV("b"), "Hy-MT2-1.8B-Q8_0.gguf");
+  assert.equal(key, "models/hy-mt2/bbbbbbbbbbbb/Hy-MT2-1.8B-Q8_0.gguf");
+  assert.equal(manifestUrlOf(key), "hy-mt2/bbbbbbbbbbbb/Hy-MT2-1.8B-Q8_0.gguf");
+  assert.equal(versionOf({ version_prefix: "whisper.cpp-" }, REV("b")), "whisper.cpp-bbbbbbb");
+  assert.equal(versionOf({ version_prefix: "" }, "v6.3.0"), "v6.3.0");
+});
+
+test("bumpBody thay đúng mục, tăng số, giữ phần còn lại", () => {
+  const prev = body3();
+  const q8 = prev.files.find((f) => f.id === Q8_ID);
+  const next = bumpBody(prev, { [Q8_ID]: { ...q8, version: "x", sha256: SHA("7") } }, "2026-10-24T00:00:00Z");
+  assert.equal(next.sequence, 4);
+  assert.equal(next.published_at, "2026-10-24T00:00:00Z");
+  assert.deepEqual(Object.keys(next), Object.keys(prev), "giữ thứ tự khóa");
+  const changed = next.files.filter((f, i) => JSON.stringify(f) !== JSON.stringify(prev.files[i]));
+  assert.deepEqual(changed.map((f) => f.id), [Q8_ID]);
+  assert.deepEqual(next.packs, prev.packs);
+  assert.throws(() => bumpBody(prev, { khong: {} }, "t"), /không có mục khong/);
+});
+
+test("rollbackChanges chỉ lấy lại phần nội dung; giữ tier, giữ mục thêm sau; mục đã bỏ thì dừng", () => {
+  const prev = body3();
+  const q8 = prev.files.find((f) => f.id === Q8_ID);
+  const current = bumpBody(prev, { [Q8_ID]: { ...q8, version: "x", url: "hy-mt2/x/f", sha256: SHA("7"), bytes: 1 } }, "t");
+  const changes = rollbackChanges(current, prev);
+  assert.deepEqual(changes, { [Q8_ID]: q8 });
+  const body2 = readJson("scripts/models/released/body-2.json");
+  assert.deepEqual(rollbackChanges(prev, body2), {}, "số 2 và số 3 chỉ khác tier, không có gì để quay lại");
+  const retiered = structuredClone(current);
+  retiered.files.find((f) => f.id === Q8_ID).tier = ["standard", "moi"];
+  assert.deepEqual(rollbackChanges(retiered, prev)[Q8_ID].tier, ["standard", "moi"], "tier giữ như bản đang chạy");
+  const dropped = structuredClone(prev);
+  dropped.files = dropped.files.filter((f) => f.id !== "notice");
+  assert.throws(() => rollbackChanges(dropped, prev), /mục đã bỏ: notice/);
+});
+
+test("bumpNotice thay revision của đúng repo trong NOTICE", () => {
+  const notice = readFileSync(resolve(REPO, "scripts/models/NOTICE.txt"), "utf8");
+  const next = bumpNotice(notice, "tencent/Hy-MT2-1.8B-GGUF", REV("b"));
+  assert.match(next, new RegExp(`https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF \\(revision ${REV("b")}\\)`));
+  assert.match(next, /ggerganov\/whisper\.cpp \(revision 5359861c739e955e79d9a303bcbc70fb988958b1\)/, "whisper giữ nguyên");
+  assert.throws(() => bumpNotice(notice, "org/khac", REV("b")), /NOTICE không có dòng/);
+  assert.equal(nextNoticeVersion("1"), "2");
+  assert.throws(() => nextNoticeVersion("x"), /version/);
+});
+
+test("applyConfigText chỉ sửa đúng dòng của mục trong models.config.json", () => {
+  const text = readFileSync(resolve(REPO, "scripts/models/models.config.json"), "utf8");
+  const next = applyConfigText(text, Q8_ID, { version: "9f3c2a1", url: "hy-mt2/9f3c2a1b4d5e/Hy-MT2-1.8B-Q8_0.gguf" });
+  const [a, b] = [text.split("\n"), next.split("\n")];
+  assert.equal(a.length, b.length);
+  assert.equal(a.filter((line, i) => line !== b[i]).length, 1);
+  const entry = JSON.parse(next).files.find((f) => f.id === Q8_ID);
+  assert.equal(entry.version, "9f3c2a1");
+  assert.equal(entry.url, "hy-mt2/9f3c2a1b4d5e/Hy-MT2-1.8B-Q8_0.gguf");
+  assert.throws(() => applyConfigText(text, "khong", { version: "1", url: "u" }), /không có dòng của khong/);
+});
+
+test("applyUpstream thêm dòng history; restoreUpstream lấy lại đúng bản cũ", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  const next = { revision: REV("b"), content: `sha256:${SHA("7")}` };
+  const up4 = applyUpstream(upstream, Q8_ID, next, 4, "bench/model-updates/x/s7_mt-x.json");
+  const e4 = up4.entries[Q8_ID];
+  assert.equal(e4.revision, REV("b"));
+  assert.equal(e4.content, `sha256:${SHA("7")}`);
+  assert.equal(e4.gate.baseline, "bench/model-updates/x/s7_mt-x.json");
+  assert.deepEqual(e4.history.at(-1), { sequence: 4, revision: REV("b"), content: `sha256:${SHA("7")}`, baseline: "bench/model-updates/x/s7_mt-x.json" });
+  assert.equal(upstream.entries[Q8_ID].revision, "a0c709d9fac510f2c807aa3af52872340dc37a4a", "không sửa bản gốc");
+  const up5 = restoreUpstream(up4, Q8_ID, 3, 5);
+  const e5 = up5.entries[Q8_ID];
+  assert.equal(e5.revision, "a0c709d9fac510f2c807aa3af52872340dc37a4a");
+  assert.equal(e5.gate.baseline, "bench/phase0/results/s7_mt-gd1-a3.json");
+  assert.equal(e5.history.length, 3);
+  assert.equal(e5.history.at(-1).sequence, 5);
+  assert.deepEqual(e5.rejected, [{ sequence: 5, content: `sha256:${SHA("7")}` }], "bản vừa gỡ vào rejected");
+  assert.equal(detect(Q8_ID, e5, { api: { sha: REV("b"), cardData: { license: "apache-2.0" }, siblings: [{ rfilename: "Hy-MT2-1.8B-Q8_0.gguf", lfs: { sha256: SHA("7") } }] } }).status, "skip");
+  assert.throws(() => restoreUpstream(upstream, "lmt-60-0.6b-q8_0", 2, 5), /không có bản nào/);
+  const license = applyUpstream(upstream, "hy-mt2-license", { revision: REV("b"), content: "blob:b9" }, 4, null);
+  assert.equal(license.entries["hy-mt2-license"].history.at(-1).baseline, undefined, "mục không có cổng kiểm thì không ghi mốc");
+});
+
+test("isYes chỉ nhận y hay Y", () => {
+  for (const yes of ["y", "Y", " y "]) assert.equal(isYes(yes), true, yes);
+  for (const no of ["", "n", "yes", "có", undefined]) assert.equal(isYes(no), false, String(no));
 });

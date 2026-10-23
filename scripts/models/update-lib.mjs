@@ -295,3 +295,126 @@ export function gateTable(gate, kind) {
   lines.push("", gate.pass ? "Cổng kiểm: ĐẠT." : `Cổng kiểm: KHÔNG ĐẠT.\n- ${gate.problems.join("\n- ")}`);
   return lines.join("\n");
 }
+
+export const BUCKET = "ai-translator-releases";
+
+/** Khóa R2 của bản mới: thư mục theo revision (12 ký tự đầu), để không bao giờ ghi đè file của bản cũ (spec mục 5.1). */
+export const r2Key = (dir, revision, file) => `models/${dir}/${revision.slice(0, 12)}/${file}`;
+/** `url` trong manifest: tương đối so với thư mục `models/` (`PUBLIC_BASE`). */
+export const manifestUrlOf = (key) => key.replace(/^models\//, "");
+/** Trường `version` của file: tiền tố của mục cộng revision ngắn. */
+export const versionOf = (entry, revision) => `${entry.version_prefix}${shortRev(revision)}`;
+/** JSON thụt lề hai dấu cách, như build-manifest.mjs. */
+export const serializeJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
+/** Giờ UTC dạng `published_at` của build-manifest.mjs. */
+export const publishedAtNow = (date = new Date()) => date.toISOString().replace(/\.\d{3}Z$/, "Z");
+export const isYes = (answer) => /^[yY]$/.test(String(answer ?? "").trim());
+
+/** Phần thân số mới: thay nguyên mục của các `id` trong `replace`, các phần khác giữ như `prev`. */
+export function bumpBody(prev, replace, publishedAt) {
+  const ids = new Set(prev.files.map((f) => f.id));
+  for (const id of Object.keys(replace)) {
+    if (!ids.has(id)) throw new Error(`manifest số ${prev.sequence} không có mục ${id}`);
+  }
+  return { ...prev, sequence: prev.sequence + 1, published_at: publishedAt, files: prev.files.map((f) => replace[f.id] ?? f) };
+}
+
+/** Phần nội dung của một mục file; quay lại chỉ lấy lại phần này (spec mục 7.1). */
+const CONTENT = ["file", "version", "url", "bytes", "sha256"];
+
+/**
+ * Các mục cần đổi để quay về như `target`: mỗi `id` có ở cả hai bản mà phần nội dung khác thì lấy phần nội dung của
+ * `target`, các trường khác giữ như `current`. `id` chỉ có ở `current` giữ nguyên; `id` chỉ có ở `target` thì ném.
+ */
+export function rollbackChanges(current, target) {
+  const now = new Map(current.files.map((f) => [f.id, f]));
+  const dropped = target.files.filter((f) => !now.has(f.id)).map((f) => f.id);
+  if (dropped.length) {
+    throw new Error(`manifest số ${target.sequence} có mục đã bỏ: ${dropped.join(", ")}; quay lại kiểu này làm tay.`);
+  }
+  const changes = {};
+  for (const old of target.files) {
+    const cur = now.get(old.id);
+    if (CONTENT.some((k) => cur[k] !== old[k])) {
+      changes[old.id] = { ...cur, ...Object.fromEntries(CONTENT.map((k) => [k, old[k]])) };
+    }
+  }
+  return changes;
+}
+
+/** Thay revision của `repo` trong văn bản NOTICE ("https://huggingface.co/<repo> (revision <40 hex>)"). */
+export function bumpNotice(text, repo, revision) {
+  const escaped = repo.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  const pattern = `(https://huggingface\\.co/${escaped} \\(revision )[0-9a-f]{40}\\)`;
+  if (!new RegExp(pattern).test(text)) {
+    throw new Error(`NOTICE không có dòng "https://huggingface.co/${repo} (revision …)": sửa NOTICE bằng tay trước.`);
+  }
+  return text.replace(new RegExp(pattern, "g"), `$1${revision})`);
+}
+
+export function nextNoticeVersion(version) {
+  if (!/^[1-9]\d*$/.test(version)) throw new Error(`version của NOTICE phải là số nguyên dương, không phải ${version}`);
+  return String(Number(version) + 1);
+}
+
+/** Các `id` của mục NOTICE mà upstream.json nhắc tới (`notice`). */
+export const noticeIds = (upstream) => [...new Set(Object.values(upstream.entries).map((e) => e.notice).filter(Boolean))];
+
+/**
+ * Sửa `version`, `url` của mục `id` ngay trên văn bản của models.config.json: mỗi mục nằm trên một dòng, nên chỉ đổi đúng
+ * dòng đó và giữ nguyên cách trình bày của cả file.
+ */
+export function applyConfigText(text, id, { version, url }) {
+  const lines = text.split("\n");
+  const i = lines.findIndex((line) => line.includes(`"id": "${id}"`));
+  if (i < 0) throw new Error(`models.config.json không có dòng của ${id}`);
+  let line = lines[i];
+  for (const [key, value] of Object.entries({ version, url })) {
+    const re = new RegExp(`"${key}": "[^"]*"`);
+    if (!re.test(line)) throw new Error(`dòng của ${id} trong models.config.json thiếu ${key}`);
+    line = line.replace(re, `"${key}": ${JSON.stringify(value)}`);
+  }
+  lines[i] = line;
+  const out = lines.join("\n");
+  JSON.parse(out);
+  return out;
+}
+
+/** upstream.json sau khi đăng bản `next` của `id` ở manifest số `sequence`; `baseline`: mốc mới (hay `null`). */
+export function applyUpstream(upstream, id, next, sequence, baseline) {
+  const out = structuredClone(upstream);
+  const e = out.entries[id];
+  e.revision = next.revision;
+  const record = { sequence, revision: next.revision };
+  if (next.inputs) {
+    e.inputs = next.inputs;
+    record.inputs = next.inputs;
+  } else {
+    e.content = next.content;
+    record.content = next.content;
+  }
+  if (e.gate.baseline !== undefined) {
+    if (baseline) e.gate.baseline = baseline;
+    record.baseline = e.gate.baseline;
+  }
+  e.history.push(record);
+  return out;
+}
+
+/**
+ * upstream.json khi quay `id` về bản đang dùng ở manifest số `target`, ghi thành dòng `history` số `sequence`. Bản đang bị
+ * quay lại vào `rejected`, để lần kiểm sau không đề nghị đăng lại (spec mục 4.1, 7.1).
+ */
+export function restoreUpstream(upstream, id, target, sequence) {
+  const out = structuredClone(upstream);
+  const e = out.entries[id];
+  const record = e.history.filter((h) => h.sequence <= target).at(-1);
+  if (!record) throw new Error(`upstream.json không có bản nào của ${id} ở manifest số ${target} trở về trước`);
+  e.rejected = [...(e.rejected ?? []), e.inputs ? { sequence, inputs: e.inputs } : { sequence, content: e.content }];
+  e.revision = record.revision;
+  if (record.inputs) e.inputs = record.inputs;
+  else e.content = record.content;
+  if (record.baseline !== undefined) e.gate.baseline = record.baseline;
+  e.history.push({ ...record, sequence });
+  return out;
+}
