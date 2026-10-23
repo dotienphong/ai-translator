@@ -828,4 +828,20 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ## Kết quả hiệu chỉnh
 
-(Điền ở Task 5.)
+Chạy 2026-10-23 trên MacBook Pro M4 Pro, ở worktree `cap-nhat-model` (HEAD 64e11ca7) với `tools/` và
+`bench/phase0/data/` nối từ thư mục chính, `CARGO_TARGET_DIR` là `target/` của thư mục chính. File đang phát hành lấy bằng
+bản clone APFS từ `models/` của thư mục chính (SHA-256 trùng `body-3.json`, không tải lại). Chủ dự án cho phép chạy.
+
+| Mục | Mốc | Kết quả | Thời gian |
+|---|---|---|---|
+| `whisper-small-q5_1` | `a4_m4pro-small-final.json` | ĐẠT, 20 nhóm WER/CER trùng mốc | 2 phút |
+| `whisper-large-v3-turbo-q5_0` | `a4_m4pro-turbo-final.json` | ĐẠT, 20 nhóm trùng mốc | 3 phút |
+| `hy-mt2-1.8b-q4_k_m` | `s7_mt-gd1-a3.json` | ĐẠT, COMET 8 chiều chênh +0,000 (en→vi 0,841) | 4 phút |
+| `hy-mt2-1.8b-q8_0` | `s7_mt-gd1-a3.json` | ĐẠT, COMET 8 chiều chênh +0,000 (en→vi 0,842) | 7 phút |
+| `lmt-60-0.6b-q8_0` | `s7_mt-goi-nhanh.json` | ĐẠT, COMET 8 chiều chênh +0,000 (en→vi 0,802) | 2 phút |
+
+Step 3b (chuyển lại LMT ở revision `dd18984`): lần đầu ra `e0669479…` (804 754 208 byte), khác bản phát hành. Gói Python
+trùng `CONVERT.md`; nguyên nhân là `convert_hf_to_gguf.py` lấy `general.name`, `general.basename`, `general.size_label` từ
+tên thư mục nguồn, mà `prepare` tải về thư mục `src` ("Src", "752M" thay vì "LMT 60 0.6B", "LMT-60", "0.6B"). Sửa: tải về
+thư mục mang tên repo (`LMT-60-0.6B`), có test. Chạy lại ra đúng `7b64cce458930ca3b6dd6da3d04503b309fdaacb6190eb6f9865263b6d67f55b`,
+804 754 272 byte, trùng bản đang phát hành; hai lần chuyển trùng nhau.

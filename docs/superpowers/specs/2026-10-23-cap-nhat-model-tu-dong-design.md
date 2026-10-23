@@ -155,6 +155,8 @@ Luật dừng an toàn (không chạy cổng kiểm, không đăng):
 - `hf-convert`: làm lại đúng các bước của `bench/2026-10-21-goi-nhanh/CONVERT.md` (clone llama.cpp đúng tag trong
   `convert`, `uv venv` Python 3.12 với đúng các gói, `snapshot_download` theo revision mới,
   `convert_hf_to_gguf.py --outtype q8_0`). Chạy chuyển hai lần; SHA-256 hai lần phải trùng, không trùng thì dừng.
+  Thư mục nguồn phải mang đúng tên repo (ví dụ `LMT-60-0.6B`): script chuyển lấy `general.name`, `basename`, `size_label`
+  từ tên thư mục, tên khác cho ra file khác dù trọng số y hệt (hiệu chỉnh 2026-10-23 tái lập đúng `7b64cce4…`).
 - File giấy phép (`hf-file`, cổng `none`): tải như `hf-file`, kiểm mã blob git tự tính (không qua `git hash-object`, vì
   `.gitattributes` của repo đổi xuống dòng); in phần khác so với bản đang phát hành.
 - Bản chuẩn bị xong mà SHA-256 trùng file đang phát hành (thường gặp ở `hf-convert` khi nguồn chỉ đổi tệp phụ): không
