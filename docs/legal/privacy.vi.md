@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.5, hiệu lực từ 23/10/2026.**
+**Phiên bản 1.6, hiệu lực từ 23/10/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
