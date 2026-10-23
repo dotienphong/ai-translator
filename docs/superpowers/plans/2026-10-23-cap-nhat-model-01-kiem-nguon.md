@@ -1,5 +1,7 @@
 # Cập nhật model, kế hoạch 01: `upstream.json` và `pnpm models:update --check`
 
+> **Ghi chú sau thực thi (2026-10-23):** kế hoạch đã thực thi xong. Sau các lượt rà, code cuối cùng khác một số đoạn mã trong văn bản này (ví dụ thư mục trạng thái `.models-update/`, luồng ở `update-flow.mjs`, `gateTable(gate, kind)`, cách cập nhật icon khay). Khi cần đối chiếu, tin code và spec, không tin đoạn mã ở đây.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `pnpm models:update --check` đọc nguồn gốc các model (Hugging Face, GitHub), so với bản đang phát hành, in bảng "đang phát hành / mới nhất ở nguồn". Không tải model, không đăng gì.

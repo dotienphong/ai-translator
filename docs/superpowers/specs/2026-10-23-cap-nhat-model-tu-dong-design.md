@@ -1,9 +1,9 @@
 # Cập nhật model bằng một lệnh pnpm, dấu chấm trên khay (thiết kế)
 
 Ngày 2026-10-23. Nhánh `cap-nhat-model` (worktree `meeting-translator-work/cap-nhat-model`). Phạm vi: `scripts/models`,
-`package.json`, `.github/workflows/ci.yml` (bước test), `bench/model-updates/`, `src-tauri/src/tray.rs`,
-`src-tauri/src/tray_menu.rs`, `src-tauri/src/i18n.rs`, `src-tauri/src/models/service.rs`, spec chính §6.7,
-`docs/release/phat-hanh.md`.
+`package.json`, `.github/workflows/ci.yml` (bước test), `.gitignore`, `bench/model-updates/`, `src-tauri/src/tray.rs`,
+`src-tauri/src/tray_menu.rs`, `src-tauri/src/tray_badge.rs`, `src-tauri/src/lib.rs`, `src-tauri/src/i18n.rs`,
+`src-tauri/src/actions.rs`, `src-tauri/src/models/service.rs`, spec chính §4.5, §6.7, §6.11, `docs/release/phat-hanh.md`.
 
 ## 1. Mục tiêu
 
@@ -53,8 +53,15 @@ File mới:
 
 - `scripts/models/upstream.json`: nguồn gốc từng file của manifest theo `id` (mục 4.1). Tách khỏi `models.config.json` vì
   `build-manifest.mjs` chép nguyên mục cấu hình vào manifest công khai.
-- `scripts/models/update.mjs`: điều phối các bước, gọi công cụ ngoài.
-- `scripts/models/update-lib.mjs`: logic thuần (so bản mới, dựng phần thân mới, đường dẫn R2, trạng thái chạy lại), có test.
+- `scripts/models/update.mjs`: lệnh (đọc tham số, dựng `io` thật, đường dẫn thật), gọi `update-flow.mjs`.
+- `scripts/models/update-flow.mjs`: các luồng (`--check`, `--gate-only`, đăng, làm tiếp lượt dở, `--rollback-to`), nhận
+  `io`, đường dẫn, hàm hỏi và khóa tin cậy qua tham số nên test được.
+- `scripts/models/update-lib.mjs`: phần không gọi mạng, không chạy lệnh ngoài (so bản mới, luật cổng kiểm, dựng phần thân
+  mới, kế hoạch đăng và quay lại).
+- `scripts/models/update-io.mjs`: chạy lệnh, curl, băm file, mã blob git, hỏi người vận hành.
+- `scripts/models/update-prepare.mjs`: tải hay tự chuyển bản mới (mục 4.3).
+- `scripts/models/update-gate.mjs`: chạy cổng kiểm (mục 4.4).
+- `scripts/models/update-publish.mjs`: các bước đăng (mục 5).
 - `scripts/models/update.test.mjs`: test (mục 9).
 
 ### 3.1. Luồng
@@ -96,9 +103,10 @@ Mỗi mục theo `id` của `models.config.json`:
 - `history`: các lần phát hành của mục này, mỗi lần `{ sequence, revision, content hay inputs, baseline }` (`sequence` là
   số manifest đầu tiên có bản đó; ban đầu một dòng với số 1 hay số 3 cho LMT). Mỗi lần đăng thêm một dòng; `--rollback-to`
   đọc ở đây (mục 7.1).
-- `rejected` (không bắt buộc): các bản đã bị quay lại, mỗi bản `{ sequence, content hay inputs }`, do `--rollback-to` ghi
-  (mục 7.1). Bản ở nguồn trùng một dòng ở đây thì lệnh báo "bỏ qua", không chuẩn bị, không đề nghị đăng lại. Muốn đăng lại
-  thì xóa dòng đó bằng tay.
+- `rejected` (không bắt buộc): các bản đã bị quay lại, mỗi bản `{ sequence, content hay inputs, sha256 }`, do
+  `--rollback-to` ghi (mục 7.1); `sha256` là SHA-256 của file đã phát hành bị gỡ. Bản ở nguồn trùng `content`/`inputs` của
+  một dòng thì lệnh báo "bỏ qua", không chuẩn bị. Bản chuẩn bị xong mà SHA-256 trùng `sha256` của một dòng (nguồn đổi tệp
+  phụ nhưng file chuyển ra vẫn là bản bị gỡ) cũng bị bỏ qua. Muốn đăng lại thì xóa dòng đó, commit và đẩy.
 
 Giá trị ban đầu (theo `docs/superpowers/plans/2026-10-02-phase-1-04a-quan-ly-model-loi.md`, `CONVERT.md`):
 
@@ -164,15 +172,17 @@ Dùng công cụ đã có, chạy bằng `llama-server` và `asr-worker` **đún
    (thường vì cần llama.cpp mới hơn) thì dừng: "cần nâng engine trong app; không đăng".
 2. **Dịch (`gate: mt`, A3)**:
    - Dịch bộ thử A3 bằng `latency-bench mt-eval` (code dịch của app, đúng họ prompt của gói) ra
-     `bench/phase0/data/mt/outputs-update-<id>-<rev7>/`, chấm COMET bằng `score_mt.py --label update-<id>-<rev7>
-     --baseline <mốc>`.
+     `bench/phase0/data/mt/outputs-update-<id>-<rev7>/`, chấm COMET bằng `score_mt.py --label update-<id>-<rev7>`; lệnh
+     tự so kết quả với mốc theo luật dưới đây (không dùng `--baseline` của `score_mt.py`).
    - Mốc là kết quả của **model đang phát hành**, ghi ở `gate.baseline`: ban đầu `bench/phase0/results/s7_mt-gd1-a3.json`
      (Hy-MT2 Q8_0, Q4_K_M; chạy bằng `mt-eval`, COMET trùng `s7_mt.json`, có cột `failed`) và
      `bench/phase0/results/s7_mt-goi-nhanh.json` (LMT).
    - Đạt khi: mỗi chiều không thấp hơn mốc quá 0,01 (`REGRESSION` của `score_mt.py`); Anh→Việt không dưới mức sàn
      (`FLOOR`: Q8_0 0,83, Q4_K_M 0,80, LMT 0,77); số câu lỗi (lặp, lạc đề) không nhiều hơn mốc.
-   - Môi trường COMET theo `bench/2026-10-21-goi-nhanh/README.md` (`unbabel-comet==2.2.7`, Python 3.12, CPU), dựng bằng
-     `uv` trong `target/models-update/venv-comet/`.
+   - Môi trường COMET theo `bench/2026-10-21-goi-nhanh/README.md` (`unbabel-comet==2.2.7`, `transformers==4.57.6`,
+     `torch==2.14.1`, Python 3.12, CPU), chạy bằng `uv run --no-project --with …` (uv giữ môi trường trong cache của nó).
+   - Chạy lại cổng kiểm: lượt chạy thử luôn chạy lại từ đầu; lượt dịch đầy đủ dịch tiếp phần dở nếu điều kiện (commit,
+     `llama-server`, model) y như lần trước, khác thì xóa kết quả cũ và dịch lại.
 3. **Nhận dạng (`gate: asr`, A4)**: `latency-bench asr-eval` rồi `score_asr.py`. Mốc ban đầu
    `bench/phase0/results/a4_m4pro-turbo-final.json` và `a4_m4pro-small-final.json`. Đạt khi mỗi nhóm không xấu hơn mốc quá
    10% tương đối (`A4_RELATIVE` của `gates.py`).
@@ -202,7 +212,7 @@ Chỉ chạy sau khi người vận hành gõ `y`.
   `published_at` = giờ UTC hiện tại (dạng `build-manifest.mjs`). Các phần khác giữ nguyên.
 - Cập nhật `models.config.json` (`version`, `url` của mục đã đổi) và `upstream.json` (revision, SHA-256, `gate.baseline`,
   thêm dòng `history`). Mục có `notice` thì sửa file NOTICE và mục NOTICE như mục 4.1 (đường dẫn R2
-  `models/notice/<version>/<file>`).
+  `models/notice/<version>-<8 ký tự đầu SHA-256>/<file>`, để một số `version` dùng lại sau khi quay lại không trùng khóa).
 - Chạy trên máy đúng bài kiểm của CI trước khi đẩy:
   `MANIFEST_BODY=… MANIFEST_PREVIOUS=… cargo test --locked -p meeting-translator --lib check_manifest_body -- --ignored`.
 
@@ -212,7 +222,8 @@ Chỉ chạy sau khi người vận hành gõ `y`.
   `chore(models): Hy-MT2 Q8_0 lên revision 9f3c2a1 (manifest số 4)`. Đẩy `origin main`.
 - `gh workflow run sign-manifest.yml --ref main -f body=scripts/models/released/body-(N+1).json
   -f previous=scripts/models/released/body-N.json`, tìm lượt chạy vừa tạo, `gh run watch --exit-status`.
-- `gh run download <lượt> -n models-manifest` vào `target/models-update/signed/`.
+- `gh run download <lượt> -n models-manifest` vào `.models-update/signed/` (ở gốc repo, bị `.gitignore`; không đặt trong
+  `target/` vì `cargo clean` xóa mất).
 - Kiểm trên máy bằng `verifyEnvelope` của `scripts/models/lib.mjs`: phong bì đúng định dạng; `kid` thuộc khối
   `production` của `src-tauri/keys/manifest-public-keys.json`; chữ ký hợp lệ; `body` giải mã ra trùng từng byte với dạng
   gọn `JSON.stringify(JSON.parse(body-(N+1).json))` (CI ký dạng gọn, như `sign-manifest.mjs`). Sai bất kỳ điều nào: dừng
@@ -220,7 +231,8 @@ Chỉ chạy sau khi người vận hành gõ `y`.
 
 ### 5.4. Đăng manifest
 
-- Sao lưu `models.json` đang chạy vào `target/models-update/backup/models-seq-N.json`.
+- Kiểm lại manifest đang chạy vẫn là số N (có ai đăng xen giữa thì dừng). Sao lưu nó vào
+  `.models-update/backup/models-seq-N.json`.
 - `wrangler r2 object put ai-translator-releases/models/models.json --file <bản đã ký> --content-type application/json
   --cache-control no-cache --remote`.
 - `curl` lại URL công khai, so trùng từng byte với bản đã ký. Lỗi mạng hay DNS thì in gợi ý kiểm
@@ -273,9 +285,11 @@ trước khi có 0.2.6.
 Lệnh dừng ngay ở bước lỗi, in lý do bằng tiếng Việt kèm cách sửa, thoát mã khác 0. Không bao giờ in khóa, token hay nội
 dung `rclone.conf`.
 
-`target/models-update/state.json` ghi các bước đã xong (đã tải lên, mã commit, mã lượt chạy CI, đã đăng) theo
-`sequence` đích. Chạy lại thì lệnh kiểm lại trạng thái thật (object trên R2, commit trên `origin/main`, lượt chạy CI,
-`models.json` công khai) rồi làm tiếp từ bước dở; không tải lại, không tăng `sequence` hai lần.
+`.models-update/state.json` (ghi nguyên tử lúc gõ y) giữ kế hoạch đăng: các mục thay, file cần tải lên, nội dung các file
+trong repo, `origin/main` lúc gõ y, mã lượt chạy CI. Chạy lại thì lệnh kiểm lại trạng thái thật (nhánh, `origin/main`,
+object trên R2, lượt chạy CI, `models.json` công khai) rồi làm tiếp từ bước dở; không tải lại, không commit hai lần, không
+tăng `sequence` hai lần. `main` đổi từ lúc gõ y, hay cây làm việc có file ngoài kế hoạch, thì dừng. File lớn đã chuẩn bị
+nằm ở `target/models-update/`; mất do `cargo clean` thì lệnh báo bỏ lượt và chạy lại từ đầu.
 
 | Lúc lỗi | Trạng thái để lại | Làm gì tiếp |
 |---|---|---|
@@ -283,7 +297,7 @@ dung `rclone.conf`.
 | Đã tải lên R2, chưa commit | file mới trên R2, chưa manifest nào trỏ tới (vô hại) | chạy lại; bước tải lên được bỏ qua vì SHA trùng |
 | Đã đẩy commit, CI ký lỗi | `body-(N+1)` trên `main`, chưa đăng | chạy lại: chạy lại workflow, không commit lần hai |
 | Bản đã ký không khớp hay chữ ký sai | không đăng | dừng hẳn, cần người xem |
-| Đã đăng, `curl` kiểm lại không khớp | `models.json` mới có thể lỗi | đăng lại bản đã ký trong `target/models-update/signed/`; nếu chính bản đó hỏng, quay lại bằng `--rollback-to N` (mục 7.1), không đăng bản sao lưu số N vì app từ chối `sequence` cũ |
+| Đã đăng, `curl` kiểm lại không khớp | `models.json` mới có thể lỗi | đăng lại bản đã ký trong `.models-update/signed/`; nếu chính bản đó hỏng, quay lại bằng `--rollback-to N` (mục 7.1), không đăng bản sao lưu số N vì app từ chối `sequence` cũ |
 
 ### 7.1. Quay lại bản trước: `--rollback-to <S>`
 
@@ -296,7 +310,8 @@ M+1 (M là số đang chạy) có các mục model lấy từ `body-S.json`. Fil
    `sha256`) khác nhau thì lấy năm trường đó của `body-S`; các trường khác (`tier`, `min_app_version`, `prompt`…) giữ như
    `body-M`. Lấy nguyên mục là sai: từ số 2 lên số 3, whisper turbo, VAD và các file giấy phép chỉ đổi `tier` (thêm gói
    Nhanh), nên chép nguyên mục của số 2 sẽ làm gói Nhanh thiếu file. `id` chỉ có ở `body-M` (gói thêm sau số S) giữ nguyên;
-   `id` chỉ có ở `body-S` (đã bỏ) thì dừng, quay lại kiểu đó làm tay. `packs`, `recommend`, `pipeline` giữ như `body-M`.
+   `id` chỉ có ở `body-S` (đã bỏ) thì dừng, quay lại kiểu đó làm tay; mục có `prompt` hay `kind` khác giữa hai bản cũng dừng
+   (file của S không chạy được với họ prompt của M). `packs`, `recommend`, `pipeline` giữ như `body-M`.
    Không có mục nào khác phần nội dung thì báo "không có gì để quay lại" và thoát mã 0 (ví dụ `--rollback-to 2` lúc đang
    ở số 3).
 3. Kiểm từng file được lấy lại vẫn còn trên R2: `curl` qua tên miền công khai, tải đủ, so `bytes` và `sha256`. Thiếu hay
@@ -306,7 +321,8 @@ M+1 (M là số đang chạy) có các mục model lấy từ `body-S.json`. Fil
    **"Quay các model về như manifest số S? [y/N]"**.
 6. Trả `models.config.json` (`version`, `url` theo `body-S`) và `upstream.json` (revision, SHA-256, `gate.baseline` theo
    dòng `history` của bản đó) về bản cũ, thêm một dòng `history` mới với số M+1, và thêm bản đang bị quay lại vào
-   `rejected` của mục đó (mục 4.1), để lần kiểm sau không đề nghị đăng lại bản vừa gỡ.
+   `rejected` của mục đó (kèm `sha256` của file bị gỡ; mục 4.1), để lần kiểm sau không đề nghị đăng lại bản vừa gỡ. NOTICE
+   của số S được tải lại từ R2 (có tham số chống cache) và phải khớp SHA-256 trong `body-S`.
 7. Kiểm `check_manifest_body` trên máy, commit (ví dụ `chore(models): quay lại model như manifest số 3 (manifest số 5)`),
    đẩy, ký trong CI, kiểm chữ ký, đăng như mục 5.3, 5.4. Dùng chung `state.json` và luật chạy lại.
 
