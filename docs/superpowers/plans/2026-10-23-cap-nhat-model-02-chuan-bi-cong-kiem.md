@@ -783,6 +783,26 @@ cd $W && pnpm models:update --gate-only whisper-small-q5_1; echo "mã $?"
 
 Chạy nền từng lệnh (`run_in_background`), chờ thông báo xong. Expected: mỗi lệnh in bảng và "Cổng kiểm: ĐẠT.", `mã 0`. Ghi lại các bảng.
 
+- [ ] **Step 3b: Kiểm chuyển LMT còn tái lập được bản đã phát hành**
+
+Chuyển hai lần trong cùng môi trường chỉ chứng minh hai lần chạy giống nhau. Phải kiểm thêm: môi trường chuyển dựng hôm
+nay (requirements của llama.cpp b11146, không ghim bản gói) có ra đúng file đang phát hành không.
+
+```bash
+cd $W && node --input-type=module -e '
+import { readFileSync } from "node:fs";
+import { createIo } from "./scripts/models/update-io.mjs";
+import { prepare } from "./scripts/models/update-prepare.mjs";
+const id = "lmt-60-0.6b-q8_0";
+const e = JSON.parse(readFileSync("scripts/models/upstream.json", "utf8")).entries[id];
+const r = await prepare(createIo(), "target/models-update", id, e, { revision: e.revision, inputs: e.inputs }, "LMT-60-0.6B-Q8_0.gguf");
+console.log(r.sha256);'
+```
+
+Expected: `7b64cce458930ca3b6dd6da3d04503b309fdaacb6190eb6f9865263b6d67f55b` (SHA-256 của file đang phát hành,
+`bench/2026-10-21-goi-nhanh/CONVERT.md`). Khác thì môi trường hôm nay không tái lập bản cũ: so `convert-env.txt` với danh
+sách gói trong CONVERT.md, báo chủ dự án, đề xuất ghim bản gói trong `convert` của upstream.json (kế hoạch riêng).
+
 - [ ] **Step 4: Nếu một lượt không đạt**
 
 Dùng superpowers:systematic-debugging. Các nghi vấn theo thứ tự:

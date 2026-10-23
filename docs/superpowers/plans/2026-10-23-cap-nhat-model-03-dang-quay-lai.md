@@ -1010,7 +1010,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 // `pnpm models:update`: kiểm bản mới của các model ở nguồn, chuẩn bị, chạy cổng kiểm, hỏi rồi đăng lên hệ thống; quay lại
 // bản trước bằng `--rollback-to` (spec docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md; runbook
 // docs/release/phat-hanh.md mục 13).
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import { builtInKeys, REPO } from "./lib.mjs";
 import {
@@ -1172,9 +1172,12 @@ async function update(io) {
       const label = `update-${r.id}-${shortRev(r.next.revision)}`;
       const outDir = join(PATHS.work, r.id, r.next.revision, "gate");
       item.gate = runGate(io, entry, local.path, label, outDir);
+      // Môi trường chuyển (bản các gói Python) đi cùng kết quả đo vào repo, để biết bản phát hành được chuyển thế nào.
+      const convertEnv = join(PATHS.work, r.id, r.next.revision, "convert-env.txt");
+      if (existsSync(convertEnv)) copyFileSync(convertEnv, join(outDir, "convert-env.txt"));
       item.bench = { from: outDir, to: `bench/model-updates/${date}-${r.id}-${shortRev(r.next.revision)}` };
       item.baseline = `${item.bench.to}/${basename(item.gate.result)}`;
-      console.log(gateTable(item.gate));
+      console.log(gateTable(item.gate, entry.gate.kind));
     } else {
       console.log("Khác biệt so với bản đang phát hành:");
       io.run("diff", ["-u", await fetchPublished(io, PATHS.work, was), local.path], { inherit: true, ok: [0, 1] });
@@ -1246,20 +1249,8 @@ async function rollback(io, sequence) {
   return confirmAndPublish(io, plan, `Quay các model về như manifest số ${sequence}? [y/N] `);
 }
 
-async function gateOnly(io, id) {
-  const entry = readJson(PATHS.upstream).entries[id];
-  if (!entry) throw new Error(`upstream.json không có ${id}.`);
-  if (entry.gate.kind !== "mt" && entry.gate.kind !== "asr") {
-    throw new Error(`${id} không có cổng kiểm (gate.kind là ${entry.gate.kind}).`);
-  }
-  const file = readJson(latestBody(PATHS.released).path).files.find((f) => f.id === id);
-  const model = await fetchPublished(io, PATHS.work, file);
-  buildTools(io);
-  const label = `gate-only-${id}-${file.sha256.slice(0, 12)}`;
-  const gate = runGate(io, entry, model, label, join(PATHS.work, "gate-only", label));
-  console.log(`\n${id}: file đang phát hành so với mốc ${entry.gate.baseline}\n\n${gateTable(gate)}`);
-  return gate.pass ? 0 : 1;
-}
+// gateOnly: GIỮ NGUYÊN hàm `gateOnly` đang có trong file (đã sửa sau lượt rà của kế hoạch 02: kiểm mục có trong manifest,
+// `checkGateInputs` trước khi tải, `gateTable(gate, kind)`). Chép nguyên văn từ file hiện tại vào đây khi viết lại file.
 
 async function main(argv) {
   const args = parseArgs(argv);
@@ -1286,7 +1277,8 @@ main(process.argv.slice(2)).then(
 Ghi chú:
 - Trong `rollback`, mọi mục sẽ đổi (theo `rollbackChanges`, chỉ phần nội dung) đều được tải về qua tên miền công khai để
   kiểm SHA-256; mục chỉ khác `tier` không nằm trong danh sách nên không bị tải.
-- `gateOnly` giống hệt kế hoạch 02.
+- `gateOnly`: giữ nguyên bản đang có trong file (sau các lượt sửa của kế hoạch 02), cùng mọi import nó cần (ví dụ
+  `checkGateInputs` từ `update-gate.mjs`). Danh sách import ở trên là tối thiểu cho phần mới; gộp với import hiện có.
 
 - [ ] **Step 2: Kiểm cú pháp và test**
 
