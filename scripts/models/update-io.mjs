@@ -73,7 +73,7 @@ export function createIo(run = exec) {
       try {
         return JSON.parse(body);
       } catch (e) {
-        throw new Error(`${url} không trả JSON hợp lệ: ${e.message}`);
+        throw Object.assign(new Error(`${url} không trả JSON hợp lệ: ${e.message}`), { invalidJson: true });
       }
     },
     /**
@@ -160,13 +160,14 @@ export async function checkLiveManifest(io, releasedDir, keys) {
   if (inner !== latest.sequence) {
     throw new Error(`${relative(REPO, latest.path)} có sequence ${inner}, không khớp số ${latest.sequence} trong tên file.`);
   }
-  let text;
+  let envelope;
   try {
-    text = io.text(`${MANIFEST_URL}?t=${Date.now()}`);
+    envelope = io.json(`${MANIFEST_URL}?t=${Date.now()}`);
   } catch (e) {
+    // Nội dung không phải JSON thì lỗi đã nêu URL; chỉ lỗi tải mới gợi ý kiểm mạng, DNS.
+    if (e.invalidJson) throw e;
     throw new Error(`${e.message} (lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.io.vn)`);
   }
-  const envelope = JSON.parse(text);
   if (envelope.format !== FORMAT) throw new Error(`Manifest đang chạy có format ${envelope.format}, cần ${FORMAT}.`);
   if (envelope.version !== VERSION) throw new Error(`Manifest đang chạy có version ${envelope.version}, cần ${VERSION}.`);
   const live = await verifyEnvelope(envelope, keys);
@@ -193,7 +194,11 @@ export async function fetchPublished(io, work, file) {
   return dest;
 }
 
-/** Hỏi người vận hành một câu; không phải terminal, Ctrl+C hay đóng đầu vào thì trả chuỗi rỗng (coi là "không"). */
+/**
+ * Hỏi người vận hành một câu; không phải terminal hay đóng đầu vào thì trả chuỗi rỗng (coi là "không"). Ctrl+C chỉ trả
+ * chuỗi rỗng khi cả stdin và stdout là terminal; khi stdout bị dẫn đi (ví dụ `| tee`) thì Ctrl+C giết tiến trình (mã 130),
+ * vẫn an toàn vì chưa đăng gì trước khi có câu trả lời.
+ */
 export function ask(question) {
   if (!process.stdin.isTTY) return Promise.resolve("");
   const rl = createInterface({ input: process.stdin, output: process.stdout });

@@ -690,3 +690,46 @@ test("runGate nhận dạng: chạy thử trên vài clip, chấm, so mốc", (t
   assert.match(io.calls[0], /^lb asr-eval --manifest .*manifest-chay-thu\.jsonl --asr-worker aw --asr-model \/x\/ggml\.bin/);
   assert.match(io.calls[2], /score_asr\.py .*out-nhan\.jsonl$/);
 });
+
+test("checkUpstream: rejected phải là mảng, mỗi phần tử có sequence nguyên và đúng một trong content, inputs", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  const config = readJson("scripts/models/models.config.json");
+  const body = readJson(latestBody(resolve(REPO, "scripts/models/released")).path);
+  const id = "hy-mt2-1.8b-q8_0";
+  const withRejected = (rejected) => {
+    const copy = structuredClone(upstream);
+    copy.entries[id].rejected = rejected;
+    return checkUpstream(copy, config, body);
+  };
+  assert.deepEqual(withRejected([{ sequence: 2, content: `sha256:${SHA("5")}` }, { sequence: 3, inputs: { "a.bin": "blob:1" } }]), []);
+  for (const bad of [
+    "không phải mảng",
+    [{ content: `sha256:${SHA("5")}` }],
+    [{ sequence: 1.5, content: "x" }],
+    [{ sequence: 2 }],
+    [{ sequence: 2, content: "x", inputs: {} }],
+    [{ sequence: 2, content: 7 }],
+    [{ sequence: 2, inputs: "x" }],
+    [{ sequence: 2, inputs: [] }],
+    [null],
+  ]) {
+    const problems = withRejected(bad);
+    assert.ok(problems.some((p) => p.startsWith(`${id}: rejected`) && p.endsWith("sai dạng")), `${JSON.stringify(bad)}: ${problems.join()}`);
+  }
+  assert.ok(withRejected([{ sequence: 2, content: "x" }, { sequence: 2 }]).includes(`${id}: rejected[1] sai dạng`));
+});
+
+test("checkLiveManifest: nội dung không phải JSON thì lỗi nêu URL, không kèm gợi ý DNS; lỗi mạng vẫn kèm gợi ý DNS", async (t) => {
+  const dir = temp(t);
+  writeFileSync(join(dir, "body-1.json"), `${JSON.stringify({ schema: 1, sequence: 1, files: [] })}\n`);
+  const html = createIo(() => "<html>");
+  await assert.rejects(checkLiveManifest(html, dir, []), (e) => {
+    assert.ok(e.message.includes(`${MANIFEST_URL}?t=`) && e.message.includes("không trả JSON hợp lệ"), e.message);
+    assert.ok(!e.message.includes("dig @8.8.8.8"), e.message);
+    return true;
+  });
+  const offline = createIo(() => {
+    throw new Error("curl thoát mã 6");
+  });
+  await assert.rejects(checkLiveManifest(offline, dir, []), /curl thoát mã 6[\s\S]*dig @8\.8\.8\.8/);
+});

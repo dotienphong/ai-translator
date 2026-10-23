@@ -177,6 +177,15 @@ export function checkUpstream(upstream, config, body) {
       }
     }
     if (e.notice !== undefined && !configIds.has(e.notice)) problems.push(`${id}: notice ${e.notice} không có trong models.config.json`);
+    if (e.rejected !== undefined) {
+      const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+      const valid = (r) =>
+        isObject(r) &&
+        Number.isInteger(r.sequence) &&
+        (typeof r.content === "string" ? r.inputs === undefined : isObject(r.inputs) && r.content === undefined);
+      if (!Array.isArray(e.rejected)) problems.push(`${id}: rejected sai dạng`);
+      else e.rejected.forEach((r, i) => valid(r) || problems.push(`${id}: rejected[${i}] sai dạng`));
+    }
     if (e.history?.at(-1)?.revision !== e.revision) problems.push(`${id}: dòng history cuối không phải revision đang dùng`);
     const file = published.get(id);
     if (!file) problems.push(`${id}: manifest số ${body.sequence} không có mục này`);
