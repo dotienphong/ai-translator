@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -24,7 +25,8 @@ import {
   parseArgs,
   sameSignedBody,
 } from "./update-lib.mjs";
-import { checkLiveManifest, checkSources, createIo, exec, fetchFile, gitBlobId } from "./update-io.mjs";
+import { checkLiveManifest, checkSources, createIo, exec, fetchFile, fetchPublished, gitBlobId } from "./update-io.mjs";
+import { prepare } from "./update-prepare.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
 const temp = (t) => {
@@ -524,4 +526,95 @@ test("gateTable in bảng và kết luận", () => {
   const asr = gateAsr({ "en-wb": { wer: 0.07 } }, { "en-wb": { wer: 0.054 } });
   assert.match(gateTable(asr), /\| en-wb \(WER\) \| 0\.054 \| 0\.070 \| XẤU HƠN \|/);
   assert.match(gateTable(asr), /Cổng kiểm: KHÔNG ĐẠT\./);
+});
+
+const sha256 = (text) => createHash("sha256").update(text).digest("hex");
+
+test("prepare hf-file: tải theo revision mới, kiểm SHA-256 với nguồn", async (t) => {
+  const work = temp(t);
+  const io = fakeIo({ download: () => "model mới" });
+  const next = { revision: REV("b"), content: `sha256:${sha256("model mới")}` };
+  assert.deepEqual(await prepare(io, work, "m", hfEntry, next, "m-Q8_0.gguf"), {
+    path: join(work, "m", REV("b"), "m-Q8_0.gguf"),
+    bytes: Buffer.byteLength("model mới"),
+    sha256: sha256("model mới"),
+  });
+  assert.ok(io.calls.includes(`download https://huggingface.co/org/m-GGUF/resolve/${REV("b")}/m-Q8_0.gguf`));
+  const wrong = { revision: REV("c"), content: `sha256:${SHA("9")}` };
+  await assert.rejects(prepare(io, work, "m", hfEntry, wrong, "m-Q8_0.gguf"), /không khớp nguồn/);
+});
+
+test("prepare file thường (giấy phép): so mã blob git tự tính, kể cả file xuống dòng CRLF", async (t) => {
+  const work = temp(t);
+  const text = "Apache License\r\nVersion 2.0\r\n";
+  const blob = createHash("sha1").update(`blob ${Buffer.byteLength(text)}\0`).update(text).digest("hex");
+  const io = fakeIo({ download: () => text });
+  const entry = { ...hfEntry, path: "LICENSE.txt" };
+  const got = await prepare(io, work, "lic", entry, { revision: REV("b"), content: `blob:${blob}` }, "L.txt");
+  assert.equal(got.sha256, sha256(text));
+  assert.ok(!io.calls.some((c) => c.startsWith("git ")), "không gọi git");
+  await assert.rejects(prepare(io, work, "lic", entry, { revision: REV("c"), content: "blob:b2" }, "L.txt"), /không khớp nguồn/);
+});
+
+test("prepare github-release: tải file ở tag mới", async (t) => {
+  const work = temp(t);
+  const io = fakeIo({ download: () => "onnx" });
+  await prepare(io, work, "v", ghEntry, { revision: "v7", content: `sha256:${sha256("onnx")}` }, "vad.onnx");
+  assert.ok(io.calls.includes("download https://raw.githubusercontent.com/org/vad/v7/src/vad.onnx"));
+});
+
+const convertTool = { llama_tag: "b1", llama_commit: REV("d"), outtype: "q8_0", python: "3.12" };
+
+/** `io` giả cho bước chuyển: `outputs` là nội dung lần chuyển thứ nhất và thứ hai. */
+function convertIo(outputs) {
+  let round = 0;
+  return fakeIo({
+    run(cmd, args) {
+      if (cmd === "git" && args[0] === "clone") mkdirSync(args.at(-1), { recursive: true });
+      if (cmd === "git" && args.includes("rev-parse")) return `${REV("d")}\n`;
+      if (cmd === "uv" && args[0] === "venv") {
+        mkdirSync(join(args[3], "bin"), { recursive: true });
+        writeFileSync(join(args[3], "bin", "python"), "");
+      }
+      if (cmd === "uv" && args[1] === "freeze") return "torch==2.11.0\n";
+      if (args.includes("--outfile")) writeFileSync(args[args.indexOf("--outfile") + 1], outputs[round++]);
+      return "";
+    },
+  });
+}
+
+test("prepare hf-convert: chuyển hai lần ra cùng SHA-256 thì dùng, ghi môi trường chuyển", async (t) => {
+  const work = temp(t);
+  const io = convertIo(["gguf", "gguf"]);
+  const entry = { ...convertEntry, convert: convertTool };
+  const got = await prepare(io, work, "l", entry, { revision: REV("c"), inputs: {} }, "L-Q8_0.gguf");
+  assert.equal(got.sha256, sha256("gguf"));
+  assert.equal(existsSync(`${got.path}.lan-2`), false, "bỏ bản chuyển lần hai");
+  assert.equal(readFileSync(join(work, "l", REV("c"), "convert-env.txt"), "utf8"), "torch==2.11.0\n");
+  assert.ok(io.calls.some((c) => c.startsWith("git clone --depth 1 --branch b1 https://github.com/ggml-org/llama.cpp")));
+  assert.ok(io.calls.some((c) => c.includes(`snapshot_download("org/m", revision="${REV("c")}"`)));
+});
+
+test("prepare hf-convert: hai lần chuyển khác nhau thì dừng; llama.cpp sai commit thì dừng", async (t) => {
+  const entry = { ...convertEntry, convert: convertTool };
+  await assert.rejects(
+    prepare(convertIo(["a", "b"]), temp(t), "l", entry, { revision: REV("c"), inputs: {} }, "L.gguf"),
+    /hai SHA-256 khác nhau/,
+  );
+  const wrongCommit = { ...entry, convert: { ...convertTool, llama_commit: REV("e") } };
+  await assert.rejects(
+    prepare(convertIo(["a", "a"]), temp(t), "l", wrongCommit, { revision: REV("c"), inputs: {} }, "L.gguf"),
+    /không phải eeeeeee/,
+  );
+});
+
+test("fetchPublished tải file đang phát hành qua tên miền công khai và kiểm SHA-256", async (t) => {
+  const work = temp(t);
+  const file = { id: "m", file: "m.gguf", url: "hy-mt2/m.gguf", sha256: sha256("cũ") };
+  const io = fakeIo({ download: () => "cũ" });
+  const path = await fetchPublished(io, work, file);
+  assert.equal(readFileSync(path, "utf8"), "cũ");
+  assert.ok(io.calls.includes("download https://releases.aitranslator.io.vn/models/hy-mt2/m.gguf"));
+  const bad = fakeIo({ download: () => "khác" });
+  await assert.rejects(fetchPublished(bad, temp(t), file), /manifest ghi/);
 });

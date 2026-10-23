@@ -7,7 +7,7 @@ import { createReadStream, existsSync, readFileSync, renameSync, rmSync } from "
 import { join, relative } from "node:path";
 import { createInterface } from "node:readline";
 import { FORMAT, REPO, VERSION, verifyEnvelope } from "./lib.mjs";
-import { MANIFEST_URL, detect, latestBody, sameSignedBody } from "./update-lib.mjs";
+import { MANIFEST_URL, PUBLIC_BASE, detect, latestBody, sameSignedBody } from "./update-lib.mjs";
 
 export const HF_API = (repo) => `https://huggingface.co/api/models/${repo}/revision/main?blobs=true`;
 export const HF_RESOLVE = (repo, revision, path) => `https://huggingface.co/${repo}/resolve/${revision}/${path}`;
@@ -176,6 +176,21 @@ export async function checkLiveManifest(io, releasedDir, keys) {
     );
   }
   return latest;
+}
+
+/**
+ * File đang phát hành của một mục manifest: tải qua tên miền công khai về `work/published/<id>/<12 ký tự SHA>/`, kiểm
+ * SHA-256 với manifest. Trả đường dẫn.
+ */
+export async function fetchPublished(io, work, file) {
+  const dest = join(work, "published", file.id, file.sha256.slice(0, 12), file.file);
+  fetchFile(io, PUBLIC_BASE + file.url, dest);
+  const sha = await sha256File(dest);
+  if (sha !== file.sha256) {
+    rmSync(dest, { force: true });
+    throw new Error(`${file.url} tải về có SHA-256 ${sha.slice(0, 12)}…, manifest ghi ${file.sha256.slice(0, 12)}…`);
+  }
+  return dest;
 }
 
 /** Hỏi người vận hành một câu; không phải terminal, Ctrl+C hay đóng đầu vào thì trả chuỗi rỗng (coi là "không"). */
