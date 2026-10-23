@@ -43,3 +43,6 @@ __pycache__/
 
 # Mockup của bước brainstorming (visual companion)
 /.superpowers/
+
+# Trạng thái lượt đăng model của pnpm models:update (state.json, bản đã ký, bản sao lưu manifest)
+/.models-update/

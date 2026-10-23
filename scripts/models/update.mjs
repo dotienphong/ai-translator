@@ -14,7 +14,8 @@ const paths = {
   config: resolve(REPO, "scripts/models/models.config.json"),
   released: resolve(REPO, "scripts/models/released"),
   work: resolve(REPO, "target/models-update"),
-  state: resolve(REPO, "target/models-update"),
+  // state.json, models.json đã ký và bản sao lưu: ngoài target/ để `cargo clean` không xóa mất (đã .gitignore).
+  state: resolve(REPO, ".models-update"),
 };
 
 run(parseArgs(process.argv.slice(2)), { io: createIo(), paths, ask, keys: builtInKeys() }).then(

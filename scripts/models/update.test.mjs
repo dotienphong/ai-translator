@@ -34,6 +34,7 @@ import {
   parseArgs,
   planTable,
   r2Key,
+  rejectedHit,
   restoreUpstream,
   rollbackChanges,
   sameSignedBody,
@@ -43,6 +44,7 @@ import {
 import { checkLiveManifest, checkSources, createIo, exec, fetchFile, fetchPublished, gitBlobId } from "./update-io.mjs";
 import { ASR_FEATURES, GATE_PATHS, buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
+import { run } from "./update-flow.mjs";
 import {
   commitAndPush,
   commitRecord,
@@ -1576,4 +1578,221 @@ test("publish pushed: không ghi file, không tải lên, không commit; committ
   for (const prefix of ["pnpm build", "cargo", "git add", "git commit"]) {
     assert.ok(!committed.calls.some((c) => c.startsWith(prefix)), prefix);
   }
+});
+
+test("rollbackChanges: mục đổi mà prompt hay kind khác giữa hai bản thì dừng, làm tay", () => {
+  const prev = body3();
+  const q8 = prev.files.find((f) => f.id === Q8_ID);
+  const changed = { ...q8, version: "x", url: "hy-mt2/x/f", sha256: SHA("7"), bytes: 1 };
+  const current = bumpBody(prev, { [Q8_ID]: changed }, "t");
+  const withField = (field, value) => {
+    const copy = structuredClone(current);
+    copy.files.find((f) => f.id === Q8_ID)[field] = value;
+    return copy;
+  };
+  assert.throws(() => rollbackChanges(withField("prompt", "khac"), prev), /hy-mt2-1\.8b-q8_0: prompt\/kind khác giữa số 3 và số 4, quay lại làm tay/);
+  assert.throws(() => rollbackChanges(withField("kind", "asr"), prev), /prompt\/kind khác giữa số 3 và số 4/);
+});
+
+test("restoreUpstream ghi sha256 của file bị gỡ vào rejected; checkUpstream nhận sha256 hợp lệ; rejectedHit tìm theo sha256", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  const config = readJson("scripts/models/models.config.json");
+  const up4 = applyUpstream(upstream, Q8_ID, { revision: REV("b"), content: `sha256:${SHA("7")}` }, 4, null);
+  const up5 = restoreUpstream(up4, Q8_ID, 3, 5, SHA("7"));
+  assert.deepEqual(up5.entries[Q8_ID].rejected, [{ sequence: 5, content: `sha256:${SHA("7")}`, sha256: SHA("7") }]);
+  assert.deepEqual(rejectedHit(up5.entries[Q8_ID], SHA("7")), up5.entries[Q8_ID].rejected[0]);
+  assert.equal(rejectedHit(up5.entries[Q8_ID], SHA("8")), undefined);
+  assert.equal(rejectedHit(upstream.entries[Q8_ID], SHA("7")), undefined, "mục chưa có rejected");
+  const body = readJson(latestBody(resolve(REPO, "scripts/models/released")).path);
+  const check = (sha256) => {
+    const copy = structuredClone(upstream);
+    copy.entries[Q8_ID].rejected = [{ sequence: 2, content: `sha256:${SHA("5")}`, sha256 }];
+    return checkUpstream(copy, config, body);
+  };
+  assert.deepEqual(check(SHA("a")), []);
+  assert.deepEqual(check(undefined), []);
+  for (const bad of ["xyz", SHA("a").toUpperCase(), 7, "a".repeat(63)]) {
+    assert.ok(check(bad).includes(`${Q8_ID}: rejected[0] sai dạng`), String(bad));
+  }
+  // buildRollbackPlan truyền sha256 của mục đang chạy.
+  const current = JSON.parse(buildUpdatePlan({
+    body: body3(),
+    upstream,
+    configText: readFileSync(resolve(REPO, "scripts/models/models.config.json"), "utf8"),
+    noticeTexts: {
+      notice: readFileSync(resolve(REPO, "scripts/models/NOTICE.txt"), "utf8"),
+      "notice-fast": readFileSync(resolve(REPO, "scripts/models/NOTICE-fast.txt"), "utf8"),
+    },
+    prepared: [q8PreparedItem(upstream)],
+    publishedAt: "t",
+    repo: "/repo",
+  }).files["scripts/models/released/body-4.json"]);
+  const { plan, notice } = q8Plan();
+  const rollback = buildRollbackPlan({ current, target: body3(), upstream: JSON.parse(plan.files["scripts/models/upstream.json"]), configText: plan.files["scripts/models/models.config.json"], noticeTexts: { notice }, publishedAt: "t" });
+  assert.equal(JSON.parse(rollback.files["scripts/models/upstream.json"]).entries[Q8_ID].rejected[0].sha256, SHA("7"));
+});
+
+// ---------- Luồng (update-flow.mjs) với đồ giả: không mạng, không git thật ----------
+
+const Q8_TEXT = "noi dung q8 cu";
+const FLOW_KEY = await testKey("test-flow", "ai-translator update flow test key");
+
+/**
+ * Repo giả cho luồng: released có body-3 (Q8 có SHA khớp `Q8_TEXT`) và body-4 (đang chạy, Q8 khác); upstream.json và
+ * models.config.json khớp body-4. `live`: phần thân manifest "đang chạy" trên R2 (mặc định body-4). `r2`: file Q8 cũ trên R2
+ * ("ok", "missing", "wrong"). `git`: trạng thái git giả. `answers`: câu trả lời lần lượt của người vận hành.
+ */
+async function flowRig(t, { live, r2 = "ok", git = {}, answers = [], skipBody3 = false, status = "" } = {}) {
+  const root = temp(t);
+  const released = join(root, "scripts/models/released");
+  mkdirSync(released, { recursive: true });
+  const b3 = body3();
+  const q8 = b3.files.find((f) => f.id === Q8_ID);
+  Object.assign(q8, { bytes: Buffer.byteLength(Q8_TEXT), sha256: sha256(Q8_TEXT) });
+  const b4 = bumpBody(b3, { [Q8_ID]: { ...q8, version: "bbbbbbb", url: "hy-mt2/bbbbbbbbbbbb/Hy-MT2-1.8B-Q8_0.gguf", sha256: SHA("7"), bytes: 1 } }, "2026-10-24T00:00:00Z");
+  if (!skipBody3) writeFileSync(join(released, "body-3.json"), serializeJson(b3));
+  writeFileSync(join(released, "body-4.json"), serializeJson(b4));
+  const upstream = applyUpstream(readJson("scripts/models/upstream.json"), Q8_ID, { revision: REV("b"), content: `sha256:${SHA("7")}` }, 4, null);
+  writeFileSync(join(root, "upstream.json"), serializeJson(upstream));
+  writeFileSync(join(root, "models.config.json"), readFileSync(resolve(REPO, "scripts/models/models.config.json")));
+  const liveBody = live ?? b4;
+  const envelope = await signBody(FLOW_KEY.privateKey, FLOW_KEY.kid, JSON.stringify(liveBody));
+  const state = gitState({ status, ...git });
+  const gitAnswer = gitAnswers(state);
+  const asked = [];
+  const answersLeft = [...answers];
+  const io = fakeIo({
+    run(cmd, args) {
+      if (cmd === "git") {
+        // `status --porcelain` (preflight) và `status --porcelain -z …` (repoStage) trả hai thứ khác nhau.
+        if (args[0] === "status") return args.includes("-z") ? (git.statusZ ?? "") : state.status;
+        return gitAnswer(args);
+      }
+      if (cmd === "rclone") return "r2:\n";
+      if (cmd === "gh" && args[0] === "auth") return "token-thu\n";
+      if (cmd === "gh") return "[]";
+      if (cmd === "curl") {
+        if (args.includes("-sI")) return r2 === "missing" ? "404" : "200";
+        return "";
+      }
+      return "";
+    },
+    text: (url) => (url.startsWith(MANIFEST_URL) ? JSON.stringify(envelope) : Q8_TEXT),
+    download: () => (r2 === "wrong" ? "khac hoan toan" : Q8_TEXT),
+  });
+  const ctx = {
+    io,
+    paths: {
+      repo: root,
+      upstream: join(root, "upstream.json"),
+      config: join(root, "models.config.json"),
+      released,
+      work: join(root, "work"),
+      state: join(root, "state"),
+    },
+    ask: async (question) => {
+      asked.push(question);
+      return answersLeft.shift() ?? "";
+    },
+    keys: [{ kid: FLOW_KEY.kid, x: FLOW_KEY.x }],
+  };
+  return { ctx, io, asked, root, b3, b4, stateFile: join(root, "state", "state.json") };
+}
+
+const quiet = (t) => {
+  t.mock.method(console, "log", () => {});
+  t.mock.method(console, "warn", () => {});
+};
+
+test("luồng quay lại: kiểm điều kiện trước (nhánh, cây sạch, main khớp origin, công cụ)", async (t) => {
+  quiet(t);
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, (await flowRig(t, { git: { branch: "feat" } })).ctx), /Phải chạy ở nhánh main \(đang ở feat\)/);
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, (await flowRig(t, { status: " M a.txt\n" })).ctx), /Cây làm việc chưa sạch/);
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, (await flowRig(t, { git: { origin: "h1" } })).ctx), /main ở máy khác origin\/main/);
+  const rig = await flowRig(t, { answers: ["n"] });
+  assert.equal(await run({ mode: "rollback", sequence: 3 }, rig.ctx), 0);
+  assert.ok(rig.io.calls.includes("pnpm --dir server exec wrangler whoami"), "wrangler đăng nhập thật");
+  assert.ok(rig.io.calls.includes("curl --version"));
+  const noRemote = await flowRig(t);
+  noRemote.io.run = ((orig) => (cmd, args, opts) => (cmd === "rclone" ? "khác:\n" : orig(cmd, args, opts)))(noRemote.io.run);
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, noRemote.ctx), /rclone chưa có remote r2:/);
+});
+
+test("luồng quay lại: số S phải nhỏ hơn số đang chạy, phải có body-S; còn lượt dở thì từ chối", async (t) => {
+  quiet(t);
+  for (const sequence of [4, 9]) {
+    await assert.rejects(run({ mode: "rollback", sequence }, (await flowRig(t)).ctx), /manifest đang chạy là số 4, phải chọn số nhỏ hơn/);
+  }
+  await assert.rejects(run({ mode: "rollback", sequence: 1 }, (await flowRig(t)).ctx), /Không có scripts\/models\/released\/body-1\.json/);
+  const pending = await flowRig(t);
+  mkdirSync(join(pending.root, "state"), { recursive: true });
+  writeFileSync(pending.stateFile, "{}");
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, pending.ctx), /Còn lượt đăng dở/);
+});
+
+test("luồng quay lại: file cũ không còn hay khác SHA-256 trên R2 thì dừng trước khi hỏi", async (t) => {
+  quiet(t);
+  const missing = await flowRig(t, { r2: "missing" });
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, missing.ctx), /không còn trên R2: không quay lại được/);
+  assert.deepEqual(missing.asked, []);
+  const wrong = await flowRig(t, { r2: "wrong" });
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, wrong.ctx), /khác SHA-256 trên R2/);
+  assert.deepEqual(wrong.asked, []);
+});
+
+test("luồng quay lại: upstream.json lệch manifest đang chạy thì dừng; trả lời n thì không đăng, không ghi state", async (t) => {
+  quiet(t);
+  const bad = await flowRig(t);
+  const up = readJson("scripts/models/upstream.json"); // còn bản Q8 cũ, không khớp body-4
+  writeFileSync(bad.ctx.paths.upstream, serializeJson(up));
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, bad.ctx), /upstream\.json không khớp/);
+  const rig = await flowRig(t, { answers: ["n"] });
+  assert.equal(await run({ mode: "rollback", sequence: 3 }, rig.ctx), 0);
+  assert.deepEqual(rig.asked, ["Quay các model về như manifest số 3? [y/N] "]);
+  assert.ok(!existsSync(rig.stateFile));
+  assert.ok(!rig.io.calls.some((c) => c.startsWith("git commit") || c.startsWith("git push") || c.startsWith("rclone copyto")));
+});
+
+test("luồng quay lại: trả lời y thì ghi plan.head vào state.json (ghi nguyên tử) trước khi đăng; main đổi hay file lạ thì dừng", async (t) => {
+  quiet(t);
+  const rig = await flowRig(t, { answers: ["y"], git: { statusZ: "?? ghi-chu.txt\0" } });
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, rig.ctx), /file ngoài kế hoạch \(ghi-chu\.txt\)/);
+  const saved = JSON.parse(readFileSync(rig.stateFile, "utf8"));
+  assert.equal(saved.head, "h0");
+  assert.equal(saved.kind, "rollback");
+  assert.equal(saved.target, 5);
+  assert.ok(!existsSync(`${rig.stateFile}.tmp`), "không còn file tạm");
+  assert.ok(!rig.io.calls.some((c) => c.startsWith("git commit") || c.startsWith("rclone copyto") || c.includes("wrangler r2")));
+});
+
+/** state.json của một lượt đăng số 4 trên số 3, với phần thân `body` (thật từ rig). */
+function writePending(rig) {
+  const bodyRel = "scripts/models/released/body-4.json";
+  const plan = { ...smallPlan(), files: { [bodyRel]: serializeJson(rig.b4) }, bench: [], bodyRel };
+  mkdirSync(join(rig.root, "state"), { recursive: true });
+  writeFileSync(rig.stateFile, serializeJson(plan));
+  return plan;
+}
+
+test("luồng làm tiếp: manifest đang chạy đã là bản của lượt dở thì xóa state; đúng số base thì hỏi rồi làm tiếp; số khác thì dừng", async (t) => {
+  quiet(t);
+  // đã xong từ trước
+  const done = await flowRig(t);
+  writePending(done);
+  assert.equal(await run({ mode: "update" }, done.ctx), 0);
+  assert.ok(!existsSync(done.stateFile));
+  assert.deepEqual(done.asked, []);
+  // đang ở số base: hỏi; n giữ state, y làm tiếp (repoStage dừng vì sai nhánh, chứng tỏ đã vào publish)
+  const base = await flowRig(t, { live: body3(), answers: ["n", "y"], git: { branch: "feat" } });
+  writePending(base);
+  assert.equal(await run({ mode: "update" }, base.ctx), 0);
+  assert.ok(existsSync(base.stateFile), "n thì giữ state");
+  await assert.rejects(run({ mode: "update" }, base.ctx), /Phải ở nhánh main \(đang ở feat\)/);
+  assert.deepEqual(base.asked, ["Làm tiếp lượt đăng dở? [y/N] ", "Làm tiếp lượt đăng dở? [y/N] "]);
+  assert.ok(!base.io.calls.some((c) => c.startsWith("rclone copyto") || c.includes("wrangler r2")));
+  // số lạ
+  const other = await flowRig(t, { live: { ...body3(), sequence: 7 } });
+  writePending(other);
+  await assert.rejects(run({ mode: "update" }, other.ctx), /nhưng manifest đang chạy là số 7/);
+  assert.ok(existsSync(other.stateFile));
 });

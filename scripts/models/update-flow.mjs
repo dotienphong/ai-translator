@@ -2,6 +2,7 @@
 // docs/release/phat-hanh.md mục 13): kiểm nguồn, chuẩn bị, cổng kiểm, hỏi rồi đăng, quay lại, làm tiếp lượt dở. Mọi thứ
 // bên ngoài (lệnh, mạng, câu hỏi, đường dẫn, khóa) đến qua `ctx = { io, paths, ask, keys }`, nên test chạy được bằng đồ giả.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { sha256hex } from "./lib.mjs";
 import { basename, join, relative, resolve } from "node:path";
 import {
   buildRollbackPlan,
@@ -13,6 +14,7 @@ import {
   latestBody,
   noticeIds,
   planTable,
+  rejectedHit,
   publishedAtNow,
   PUBLIC_BASE,
   rollbackChanges,
@@ -30,9 +32,12 @@ const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
 const stateFile = (ctx) => join(ctx.paths.state, "state.json");
 const loadState = (ctx) => (existsSync(stateFile(ctx)) ? readJson(stateFile(ctx)) : null);
+/** Ghi nguyên tử (file tạm rồi đổi tên): bị ngắt giữa chừng thì state.json cũ vẫn đọc được. */
 function saveState(ctx, plan) {
   mkdirSync(ctx.paths.state, { recursive: true });
-  writeFileSync(stateFile(ctx), serializeJson(plan));
+  const tmp = `${stateFile(ctx)}.tmp`;
+  writeFileSync(tmp, serializeJson(plan));
+  renameSync(tmp, stateFile(ctx));
 }
 const clearState = (ctx) => rmSync(stateFile(ctx), { force: true });
 
@@ -62,7 +67,8 @@ function preflight({ io }) {
     throw new Error("rclone chưa có remote r2: (runbook docs/release/phat-hanh.md mục 13).");
   }
   ghEnv(io);
-  io.run("pnpm", ["--dir", "server", "exec", "wrangler", "--version"]);
+  io.run("pnpm", ["--dir", "server", "exec", "wrangler", "whoami"]); // đăng nhập thật, không chỉ có lệnh
+  io.run("curl", ["--version"]);
   io.run("uv", ["--version"]);
   io.run("cargo", ["--version"]);
 }
@@ -83,7 +89,7 @@ function warnCi({ io }) {
 
 /** Hỏi rồi thực hiện kế hoạch; ghi state.json trước bước đầu tiên để chạy lại được. */
 async function confirmAndPublish(ctx, plan, question) {
-  const { io } = ctx;
+  const { io, paths } = ctx;
   warnCi(ctx);
   console.log(
     "\nGõ y: tải file lên R2 (nếu có), commit và đẩy main, ký manifest trong CI, đăng models.json. App của người dùng nhận trong vòng một ngày.",
@@ -94,7 +100,7 @@ async function confirmAndPublish(ctx, plan, question) {
   }
   plan.head = recordHead(io); // từ đây main phải đứng yên tới khi đẩy xong (repoStage)
   saveState(ctx, plan);
-  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, repo: paths.repo });
+  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo });
   clearState(ctx);
   console.log(`\nXong: manifest số ${plan.target} đã đăng.`);
   return 0;
@@ -102,7 +108,7 @@ async function confirmAndPublish(ctx, plan, question) {
 
 /** Làm tiếp lượt đăng dở trong state.json. */
 async function resume(ctx, plan) {
-  const { io } = ctx;
+  const { io, paths } = ctx;
   const envelope = JSON.parse(io.text(`${MANIFEST_URL}?t=${Date.now()}`));
   const live = JSON.parse(Buffer.from(envelope.body, "base64url").toString("utf8")).sequence;
   if (live === plan.target && sameSignedBody(envelope, plan.files[plan.bodyRel])) {
@@ -118,7 +124,7 @@ async function resume(ctx, plan) {
     console.log(`Không làm tiếp. Muốn bỏ hẳn lượt này thì xóa ${stateFile(ctx)} và hoàn tác các file đã ghi trong repo.`);
     return 0;
   }
-  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, repo: paths.repo });
+  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo });
   clearState(ctx);
   console.log(`\nXong: manifest số ${plan.target} đã đăng.`);
   return 0;
@@ -148,6 +154,11 @@ async function update(ctx) {
     const was = body.files.find((f) => f.id === r.id);
     console.log(`\n== ${r.id}: chuẩn bị bản ${shortRev(r.next.revision)}`);
     const local = await prepare(io, paths.work, r.id, entry, r.next, was.file);
+    const hit = rejectedHit(entry, local.sha256);
+    if (hit) {
+      console.log(`Bỏ qua: bản chuyển ra trùng bản đã bị quay lại ở manifest số ${hit.sequence}.`);
+      continue;
+    }
     const item = { id: r.id, entry, next: r.next, local, gate: null, bench: null, baseline: null, unchanged: false };
     if (local.sha256 === was.sha256) {
       console.log("Bản chuẩn bị trùng file đang phát hành: không chạy cổng kiểm, không đăng file này.");
@@ -171,6 +182,10 @@ async function update(ctx) {
       io.run("diff", ["-u", await fetchPublished(io, paths.work, was), local.path], { inherit: true, ok: [0, 1] });
     }
     prepared.push(item);
+  }
+  if (prepared.length === 0) {
+    console.log("\nKhông còn gì để đăng.");
+    return 0;
   }
   const failed = prepared.filter((p) => p.gate && !p.gate.pass).map((p) => p.id);
   if (failed.length) {
@@ -200,7 +215,7 @@ async function update(ctx) {
     return 0;
   }
   console.log(`\n${planTable(plan, body)}`);
-  return confirmAndPublish(io, plan, "Đăng bản model mới cho người dùng? [y/N] ");
+  return confirmAndPublish(ctx, plan, "Đăng bản model mới cho người dùng? [y/N] ");
 }
 
 async function rollback(ctx, sequence) {
@@ -214,12 +229,20 @@ async function rollback(ctx, sequence) {
   const current = readJson(latest.path);
   const target = readJson(targetPath);
   const upstream = readJson(paths.upstream);
+  const problems = checkUpstream(upstream, readJson(paths.config), current);
+  if (problems.length) throw new Error(`upstream.json không khớp:\n- ${problems.join("\n- ")}`);
   const notices = new Set(noticeIds(upstream));
   const noticeTexts = {};
   for (const [id, f] of Object.entries(rollbackChanges(current, target))) {
-    const same = await publicMatches(io, PUBLIC_BASE + f.url, f.sha256, join(paths.work, "scratch"));
+    const url = PUBLIC_BASE + f.url;
+    const same = await publicMatches(io, url, f.sha256, join(paths.work, "scratch"));
     if (same !== true) throw new Error(`${f.url} ${same === null ? "không còn" : "khác SHA-256"} trên R2: không quay lại được.`);
-    if (notices.has(id)) noticeTexts[id] = io.text(PUBLIC_BASE + f.url);
+    if (notices.has(id)) {
+      // Tải lại bản NOTICE (qua tham số chống cache) để ghi vào repo; phải đúng SHA-256 của manifest.
+      const text = io.text(`${url}?t=${Date.now()}`);
+      if (sha256hex(Buffer.from(text)) !== f.sha256) throw new Error(`${f.url} tải về không khớp SHA-256 của manifest số ${target.sequence}: không quay lại được.`);
+      noticeTexts[id] = text;
+    }
   }
   const plan = buildRollbackPlan({
     current,
@@ -234,7 +257,7 @@ async function rollback(ctx, sequence) {
     return 0;
   }
   console.log(`\n${planTable(plan, current)}`);
-  return confirmAndPublish(io, plan, `Quay các model về như manifest số ${sequence}? [y/N] `);
+  return confirmAndPublish(ctx, plan, `Quay các model về như manifest số ${sequence}? [y/N] `);
 }
 
 /** Cổng kiểm với file đang phát hành của `id` (hiệu chỉnh: phải đạt). Kết quả giữ trong target/, không commit. */

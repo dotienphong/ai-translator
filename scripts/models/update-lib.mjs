@@ -184,7 +184,8 @@ export function checkUpstream(upstream, config, body) {
       const valid = (r) =>
         isObject(r) &&
         Number.isInteger(r.sequence) &&
-        (r.content !== undefined ? validContent(r.content) && r.inputs === undefined : isObject(r.inputs));
+        (r.content !== undefined ? validContent(r.content) && r.inputs === undefined : isObject(r.inputs)) &&
+        (r.sha256 === undefined || /^[0-9a-f]{64}$/.test(r.sha256));
       if (!Array.isArray(e.rejected)) problems.push(`${id}: rejected sai dạng`);
       else e.rejected.forEach((r, i) => valid(r) || problems.push(`${id}: rejected[${i}] sai dạng`));
     }
@@ -325,7 +326,8 @@ const CONTENT = ["file", "version", "url", "bytes", "sha256"];
 
 /**
  * Các mục cần đổi để quay về như `target`: mỗi `id` có ở cả hai bản mà phần nội dung khác thì lấy phần nội dung của
- * `target`, các trường khác giữ như `current`. `id` chỉ có ở `current` giữ nguyên; `id` chỉ có ở `target` thì ném.
+ * `target`, các trường khác giữ như `current`. `id` chỉ có ở `current` giữ nguyên; `id` chỉ có ở `target` thì ném; mục đổi
+ * mà `prompt` hay `kind` khác nhau giữa hai bản cũng ném.
  */
 export function rollbackChanges(current, target) {
   const now = new Map(current.files.map((f) => [f.id, f]));
@@ -337,6 +339,10 @@ export function rollbackChanges(current, target) {
   for (const old of target.files) {
     const cur = now.get(old.id);
     if (CONTENT.some((k) => cur[k] !== old[k])) {
+      // Cổng kiểm và cách chạy model phụ thuộc prompt và kind: khác nhau thì không quay lại tự động được.
+      if (cur.prompt !== old.prompt || cur.kind !== old.kind) {
+        throw new Error(`${old.id}: prompt/kind khác giữa số ${target.sequence} và số ${current.sequence}, quay lại làm tay.`);
+      }
       changes[old.id] = { ...cur, ...Object.fromEntries(CONTENT.map((k) => [k, old[k]])) };
     }
   }
@@ -404,14 +410,17 @@ export function applyUpstream(upstream, id, next, sequence, baseline) {
 
 /**
  * upstream.json khi quay `id` về bản đang dùng ở manifest số `target`, ghi thành dòng `history` số `sequence`. Bản đang bị
- * quay lại vào `rejected`, để lần kiểm sau không đề nghị đăng lại (spec mục 4.1, 7.1).
+ * quay lại vào `rejected` (kèm `rejectedSha256` của file bị gỡ), để lần kiểm sau không đề nghị đăng lại (spec mục 4.1, 7.1).
  */
-export function restoreUpstream(upstream, id, target, sequence) {
+export function restoreUpstream(upstream, id, target, sequence, rejectedSha256) {
   const out = structuredClone(upstream);
   const e = out.entries[id];
   const record = e.history.filter((h) => h.sequence <= target).at(-1);
   if (!record) throw new Error(`upstream.json không có bản nào của ${id} ở manifest số ${target} trở về trước`);
-  e.rejected = [...(e.rejected ?? []), e.inputs ? { sequence, inputs: e.inputs } : { sequence, content: e.content }];
+  const rejected = e.inputs ? { sequence, inputs: e.inputs } : { sequence, content: e.content };
+  // SHA-256 của file bị quay lại: bản chuyển ra từ `inputs` khác chưa chắc khác file, nên lần sau so cả SHA-256 này.
+  if (rejectedSha256) rejected.sha256 = rejectedSha256;
+  e.rejected = [...(e.rejected ?? []), rejected];
   e.revision = record.revision;
   if (record.inputs) e.inputs = record.inputs;
   else e.content = record.content;
@@ -520,7 +529,7 @@ export function buildRollbackPlan({ current, target, upstream, configText, notic
   let up = upstream;
   let config = configText;
   for (const [id, entry] of Object.entries(replace)) {
-    if (up.entries[id]) up = restoreUpstream(up, id, target.sequence, sequence);
+    if (up.entries[id]) up = restoreUpstream(up, id, target.sequence, sequence, current.files.find((f) => f.id === id).sha256);
     config = applyConfigText(config, id, entry);
     if (noticeTexts[id] !== undefined) files[`scripts/models/${entry.file}`] = noticeTexts[id];
   }
@@ -542,6 +551,9 @@ export function buildRollbackPlan({ current, target, upstream, configText, notic
     message: `chore(models): quay lại model như manifest số ${target.sequence} (manifest số ${sequence})`,
   };
 }
+
+/** Bản đã bị quay lại của `entry` có cùng SHA-256 với file vừa chuẩn bị không: trả dòng `rejected` đó, hay `undefined`. */
+export const rejectedHit = (entry, sha256) => (entry.rejected ?? []).find((r) => r.sha256 === sha256);
 
 /** Bảng "đang chạy / sẽ đăng" của kế hoạch, in trước câu hỏi y/N. */
 export function planTable(plan, body) {
