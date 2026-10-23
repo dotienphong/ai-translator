@@ -25,6 +25,20 @@ describe("POST /v1/licenses/recover", () => {
     expect(mail.text).not.toContain(revoked.licenseKey);
   });
 
+  it("thư viết bằng ngôn ngữ app gửi kèm (spec 2026-10-23), không theo đơn đã mua; thiếu hay mã lạ thì tiếng Việt", async () => {
+    const w = makeWorld();
+    await w.buy({ email: "buyer@example.com", lang: "ja" });
+    w.resend.sent.length = 0;
+    await w.call("POST", "/v1/licenses/recover", { email: "buyer@example.com", lang: "ko" });
+    await w.call("POST", "/v1/licenses/recover", { email: "buyer@example.com", lang: "fr" });
+    await w.call("POST", "/v1/licenses/recover", { email: "buyer@example.com" });
+    expect(w.resend.sent.map((m) => m.subject)).toEqual([
+      "AI Translator 라이선스 키 / Your AI Translator license key",
+      "License key AI Translator của bạn / Your AI Translator license key",
+      "License key AI Translator của bạn / Your AI Translator license key",
+    ]);
+  });
+
   it("email không có key: vẫn 200 với cùng body, không gửi gì", async () => {
     const w = makeWorld();
     const res = await w.call("POST", "/v1/licenses/recover", { email: "nobody@example.com" });

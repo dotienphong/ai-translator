@@ -5,7 +5,9 @@ import { alertIfChanged } from "./alerts";
 import type { AppEnv } from "./app";
 import { audit, auditIfChanged } from "./audit";
 import { type Deps, sendLicenseMail } from "./deps";
+import { mailLang } from "./email/templates";
 import { clientIp, fail, parseDeviceIdHash, parseDeviceLabel, parseEmail, parseUuid, readJson, tooMany } from "./http";
+import { parseLang } from "./lang";
 import { normalizeLicenseKey } from "./license-key";
 import { PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
 import { failureBlock, hit, noteFailure } from "./ratelimit";
@@ -403,6 +405,8 @@ export function registerLicenses(app: Hono<AppEnv>) {
     const byIp = await hit(c.env, "recover_ip", clientIp(c), now);
     const byEmail = await hit(c.env, "recover_email", email, now);
     if (!byIp.allowed || !byEmail.allowed) return tooMany(c, Math.max(byIp.retryAfter, byEmail.retryAfter));
+    // Ngôn ngữ giao diện app gửi kèm (spec 2026-10-23 §3): chỉ để chọn ngôn ngữ thư, không lưu. Thiếu hay mã lạ thì tiếng Việt.
+    const lang = mailLang(parseLang(body?.lang), null);
     // Tra và gửi sau khi trả lời, để thời gian phản hồi không lộ email nào có key.
     c.executionCtx.waitUntil(
       (async () => {
@@ -417,7 +421,7 @@ export function registerLicenses(app: Hono<AppEnv>) {
           db,
           deps,
           email,
-          "vi",
+          lang,
           "recover",
           results.map((r) => ({ licenseKey: r.license_key, planName: PLAN_NAMES[r.plan], expiresAt: r.expires_at })),
         );
