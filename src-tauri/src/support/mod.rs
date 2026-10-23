@@ -264,6 +264,21 @@ mod tests {
         }
     }
 
+    /// Có cụm liền (không dấu cách) chứa `@` cùng ký tự khác, như một địa chỉ email. Tên CPU Intel có `@` đứng riêng
+    /// ("CPU @ 2.80GHz"), không phải email: kiểm `contains('@')` thì hỏng trên máy Intel (CI Windows 2026-10-23).
+    fn has_email(line: &str) -> bool {
+        line.split_whitespace().any(|word| word.contains('@') && word != "@")
+    }
+
+    #[test]
+    fn an_intel_cpu_name_is_not_an_email() {
+        assert!(!has_email(
+            "AI Translator 0.2.6 · Windows 11 (26100) · Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz · 16 GB · UI vi"
+        ));
+        assert!(has_email("AI Translator 0.2.6 · ban@example.com · UI vi"));
+        assert!(has_email("x @ban@example.com"));
+    }
+
     /// Spec §4: dòng thông tin máy không bao giờ có key, email của license, mã máy, tên máy hay tên người dùng.
     #[test]
     fn the_machine_line_never_carries_identity() {
@@ -276,7 +291,7 @@ mod tests {
         );
         assert!(line.ends_with(" · UI vi"), "{line}");
         assert!(line.chars().count() <= context::MAX_CHARS);
-        assert!(!line.contains('@'), "không có email: {line}");
+        assert!(!has_email(&line), "không có email: {line}");
         if let Ok(id) = device::hardware_id() {
             assert!(
                 !line.contains(&id) && !line.contains(&device::hash_id(&id)),
