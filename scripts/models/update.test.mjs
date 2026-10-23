@@ -8,13 +8,19 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { REPO, signBody, testKey } from "./lib.mjs";
 import {
+  ASR_RELATIVE,
   MANIFEST_URL,
   checkTable,
   checkUpstream,
   contentId,
   convertInputs,
   detect,
+  floorFor,
+  gateAsr,
+  gateMt,
+  gateTable,
   latestBody,
+  mtRunName,
   parseArgs,
   sameSignedBody,
 } from "./update-lib.mjs";
@@ -458,4 +464,64 @@ test("checkLiveManifest: body-N.json phải có sequence đúng N", async (t) =>
   const signed = await signBody(key.privateKey, key.kid, JSON.stringify(JSON.parse(bodyText)));
   const io = fakeIo({ text: () => JSON.stringify(signed) });
   await assert.rejects(checkLiveManifest(io, dir, [{ kid: key.kid, x: key.x }]), /body-3\.json.*sequence/);
+});
+
+const dirResult = (comet, extra = {}) => ({ n: 100, comet, failed: 0, leaked: 0, ...extra });
+const Q8 = "Hy-MT2-1.8B-Q8_0-plain";
+
+test("gateMt: thụt lùi quá 0,01, dưới mức sàn, chấm thiếu câu, nhiều câu lỗi hơn đều không đạt", () => {
+  const base = { [Q8]: { "en->vi": dirResult(0.842), "vi->en": dirResult(0.821) } };
+  const ok = gateMt({ [Q8]: { "en->vi": dirResult(0.835), "vi->en": dirResult(0.83) } }, base, Q8);
+  assert.equal(ok.pass, true, ok.problems.join());
+  assert.equal(ok.rows.length, 2);
+  const worse = gateMt({ [Q8]: { "en->vi": dirResult(0.84), "vi->en": dirResult(0.805) } }, base, Q8);
+  assert.equal(worse.pass, false);
+  assert.match(worse.problems.join("\n"), /vi->en: COMET 0\.805 thấp hơn mốc 0\.821/);
+  const lowBase = { [Q8]: { "en->vi": dirResult(0.832), "vi->en": dirResult(0.821) } };
+  const floor = gateMt({ [Q8]: { "en->vi": dirResult(0.829), "vi->en": dirResult(0.83) } }, lowBase, Q8);
+  assert.match(floor.problems.join("\n"), /en->vi 0\.829 dưới mức sàn 0\.83/);
+  const fewer = gateMt({ [Q8]: { "en->vi": dirResult(0.85, { n: 90 }), "vi->en": dirResult(0.83) } }, base, Q8);
+  assert.match(fewer.problems.join("\n"), /chỉ chấm 90\/100 câu/);
+  const errors = gateMt({ [Q8]: { "en->vi": dirResult(0.85, { failed: 1 }), "vi->en": dirResult(0.83) } }, base, Q8);
+  assert.match(errors.problems.join("\n"), /số câu lỗi 1 nhiều hơn mốc 0/);
+  assert.equal(gateMt({}, base, Q8).pass, false);
+});
+
+test("floorFor, mtRunName theo đúng luật của score_mt.py", () => {
+  assert.equal(floorFor("LMT-60-0.6B-Q8_0-plain"), 0.77);
+  assert.equal(floorFor(Q8), 0.83);
+  assert.equal(floorFor("Hy-MT2-1.8B-Q4_K_M-plain"), 0.8);
+  assert.equal(floorFor("khac-plain"), null);
+  assert.equal(mtRunName("/a/b/Hy-MT2-1.8B-Q8_0.gguf"), Q8);
+});
+
+test("gateAsr: mỗi nhóm không xấu hơn mốc quá 10% tương đối", () => {
+  const base = { "en-wb": { n: 102, wer: 0.054 }, "zh-wb": { n: 90, cer: 0.05 } };
+  assert.equal(gateAsr({ "en-wb": { wer: 0.059 }, "zh-wb": { cer: 0.055 } }, base).pass, true);
+  const worse = gateAsr({ "en-wb": { wer: 0.06 }, "zh-wb": { cer: 0.05 } }, base);
+  assert.equal(worse.pass, false);
+  assert.match(worse.problems.join(), /en-wb: WER 0\.060 xấu hơn mốc 0\.054/);
+  assert.equal(gateAsr({ "en-wb": { wer: 0.05 } }, base).pass, false, "thiếu nhóm");
+  assert.equal(ASR_RELATIVE, 0.1);
+});
+
+test("cổng kiểm trên mốc thật: model đang phát hành so với chính nó thì đạt", () => {
+  const gd1 = readJson("bench/phase0/results/s7_mt-gd1-a3.json").runs;
+  assert.equal(gateMt(gd1, gd1, Q8).pass, true);
+  assert.equal(gateMt(gd1, gd1, "Hy-MT2-1.8B-Q4_K_M-plain").pass, true);
+  const fast = readJson("bench/phase0/results/s7_mt-goi-nhanh.json").runs;
+  assert.equal(gateMt(fast, fast, "LMT-60-0.6B-Q8_0-plain").pass, true);
+  for (const name of ["a4_m4pro-turbo-final.json", "a4_m4pro-small-final.json"]) {
+    const a4 = readJson(`bench/phase0/results/${name}`);
+    assert.equal(gateAsr(a4, a4).pass, true, name);
+  }
+});
+
+test("gateTable in bảng và kết luận", () => {
+  const mt = gateMt({ [Q8]: { "en->vi": dirResult(0.85) } }, { [Q8]: { "en->vi": dirResult(0.842) } }, Q8);
+  assert.match(gateTable(mt), /\| en->vi \| 0\.842 \| 0\.850 \| \+0\.008 \| đạt \|/);
+  assert.match(gateTable(mt), /Cổng kiểm: ĐẠT\./);
+  const asr = gateAsr({ "en-wb": { wer: 0.07 } }, { "en-wb": { wer: 0.054 } });
+  assert.match(gateTable(asr), /\| en-wb \(WER\) \| 0\.054 \| 0\.070 \| XẤU HƠN \|/);
+  assert.match(gateTable(asr), /Cổng kiểm: KHÔNG ĐẠT\./);
 });

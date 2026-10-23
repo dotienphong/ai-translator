@@ -2,7 +2,7 @@
 // so bản ở nguồn với upstream.json, kiểm upstream.json, dựng bảng in ra. Không gọi mạng, không chạy lệnh ngoài (phần đó ở
 // update-io.mjs); chỉ đọc file cục bộ (`latestBody` liệt kê thư mục released), nên test được bằng dữ liệu mẫu.
 import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 /** URL của models.json đang phát hành; trùng `PRODUCTION_URL` của `src-tauri/src/models/source.rs` (có test). */
 export const MANIFEST_URL = "https://releases.aitranslator.io.vn/models/models.json";
@@ -190,4 +190,96 @@ export function checkUpstream(upstream, config, body) {
 /** Phần thân trong phong bì đã ký trùng từng byte với dạng gọn của file phần thân (CI ký `JSON.stringify` dạng gọn). */
 export function sameSignedBody(envelope, bodyText) {
   return Buffer.from(envelope.body, "base64url").toString("utf8") === JSON.stringify(JSON.parse(bodyText));
+}
+
+/** Cổng dịch (A3), như `score_mt.py`: mỗi chiều không thấp hơn mốc quá mức này. */
+export const REGRESSION = 0.01;
+/** Mức sàn Anh→Việt, xét theo thứ tự như `FLOOR` của `score_mt.py`: LMT trước Q8_0 vì tên LMT cũng có "Q8_0". */
+export const FLOORS = [
+  ["LMT-60", 0.77],
+  ["Q8_0", 0.83],
+  ["Q4_K_M", 0.8],
+];
+/** Cổng nhận dạng (A4), như `A4_RELATIVE` của `bench/phase1/acceptance/gates.py`: không xấu hơn mốc quá 10% tương đối. */
+export const ASR_RELATIVE = 0.1;
+
+export const floorFor = (run) => FLOORS.find(([key]) => run.includes(key))?.[1] ?? null;
+/** Tên lượt mà `score_mt.py` đặt cho kết quả `latency-bench mt-eval` (biến thể plain) của file model. */
+export const mtRunName = (modelPath) => `${basename(modelPath).replace(/\.gguf$/, "")}-plain`;
+
+/**
+ * Cổng dịch (spec mục 4.4): `report`, `baseline` là `runs` của `s7_mt-*.json`; `run` là tên lượt. Đạt khi mỗi chiều của
+ * mốc có COMET không thấp hơn quá `REGRESSION` và chấm đủ số câu, Anh→Việt không dưới mức sàn, số câu lỗi (`failed`,
+ * `leaked`) không nhiều hơn mốc.
+ */
+export function gateMt(report, baseline, run) {
+  const now = report[run];
+  const base = baseline[run];
+  if (!now) return { pass: false, rows: [], problems: [`kết quả không có lượt ${run}`] };
+  if (!base) return { pass: false, rows: [], problems: [`mốc không có lượt ${run}`] };
+  const rows = [];
+  const problems = [];
+  for (const dir of Object.keys(base).sort()) {
+    const b = base[dir];
+    const n = now[dir];
+    if (b.comet === undefined) continue;
+    if (n?.comet === undefined) {
+      problems.push(`${dir}: thiếu COMET`);
+      continue;
+    }
+    if (n.n < b.n) problems.push(`${dir}: chỉ chấm ${n.n}/${b.n} câu`);
+    const diff = n.comet - b.comet;
+    const ok = diff >= -REGRESSION;
+    if (!ok) problems.push(`${dir}: COMET ${n.comet.toFixed(3)} thấp hơn mốc ${b.comet.toFixed(3)} quá ${REGRESSION}`);
+    rows.push({ dir, baseline: b.comet, result: n.comet, diff, ok });
+  }
+  const floor = floorFor(run);
+  const enVi = now["en->vi"]?.comet;
+  if (floor !== null && !(enVi >= floor)) problems.push(`en->vi ${enVi?.toFixed(3)} dưới mức sàn ${floor}`);
+  const errors = (runs) => Object.values(runs).reduce((sum, d) => sum + (d.failed ?? 0) + (d.leaked ?? 0), 0);
+  if (errors(now) > errors(base)) problems.push(`số câu lỗi ${errors(now)} nhiều hơn mốc ${errors(base)}`);
+  return { pass: problems.length === 0, rows, problems };
+}
+
+/** Cổng nhận dạng (spec mục 4.4): mỗi nhóm của mốc (`a4_*.json`) có WER/CER không xấu hơn quá `ASR_RELATIVE`. */
+export function gateAsr(result, baseline) {
+  const rows = [];
+  const problems = [];
+  for (const group of Object.keys(baseline).sort()) {
+    const metric = "cer" in baseline[group] ? "cer" : "wer";
+    const base = baseline[group][metric];
+    const now = result[group]?.[metric];
+    if (now === undefined) {
+      problems.push(`thiếu nhóm ${group}`);
+      continue;
+    }
+    const ok = now <= base * (1 + ASR_RELATIVE) + 1e-12;
+    if (!ok) problems.push(`${group}: ${metric.toUpperCase()} ${now.toFixed(3)} xấu hơn mốc ${base.toFixed(3)} quá 10%`);
+    rows.push({ group, metric, baseline: base, result: now, ok });
+  }
+  return { pass: rows.length > 0 && problems.length === 0, rows, problems };
+}
+
+/** Bảng Markdown của một lượt cổng kiểm, kèm kết luận. */
+export function gateTable(gate) {
+  const mt = gate.rows.some((r) => r.dir !== undefined);
+  const lines = mt
+    ? [
+        "| Chiều | Mốc | Bản mới | Chênh | Kết luận |",
+        "|---|---|---|---|---|",
+        ...gate.rows.map(
+          (r) =>
+            `| ${r.dir} | ${r.baseline.toFixed(3)} | ${r.result.toFixed(3)} | ${r.diff >= 0 ? "+" : ""}${r.diff.toFixed(3)} | ${r.ok ? "đạt" : "THỤT LÙI"} |`,
+        ),
+      ]
+    : [
+        "| Nhóm | Mốc | Bản mới | Kết luận |",
+        "|---|---|---|---|",
+        ...gate.rows.map(
+          (r) =>
+            `| ${r.group} (${r.metric.toUpperCase()}) | ${r.baseline.toFixed(3)} | ${r.result.toFixed(3)} | ${r.ok ? "đạt" : "XẤU HƠN"} |`,
+        ),
+      ];
+  lines.push("", gate.pass ? "Cổng kiểm: ĐẠT." : `Cổng kiểm: KHÔNG ĐẠT.\n- ${gate.problems.join("\n- ")}`);
+  return lines.join("\n");
 }
