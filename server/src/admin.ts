@@ -15,8 +15,10 @@ import { registerAdminReports } from "./admin-reports";
 import { registerAdminStats } from "./admin-stats";
 import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
+import { mailLang } from "./email/templates";
 import type { AdminEnv } from "./env";
 import { fail, isRecord, parseDeviceIdHash, parseEmail, parseUuid, readJson } from "./http";
+import type { Lang } from "./lang";
 import { formatLicenseKey, generateLicenseKey, normalizeLicenseKey } from "./license-key";
 import { grantOrder, loadOrder, mailGranted, settledResult } from "./orders";
 import { PaymentProviderError } from "./payment/provider";
@@ -475,7 +477,12 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       .first<{ license_key: string; email: string | null; plan: PlanCode; expires_at: number }>();
     if (!lic) return fail(c, 404, "not_found");
     if (!lic.email) return fail(c, 400, "invalid_request", { field: "email" });
-    const { ok: sent } = await sendLicenseMail(c.env.DB, deps, lic.email, "vi", "resend", [
+    // Ngôn ngữ thư theo đơn mới nhất đã cấp cho key này (spec 2026-10-23 §1); key cấp tay không có đơn nào thì tiếng Việt.
+    const last = await c.env.DB.prepare("SELECT lang, currency FROM orders WHERE license_id = ? ORDER BY order_code DESC LIMIT 1")
+      .bind(id)
+      .first<{ lang: Lang | null; currency: string }>();
+    const lang = mailLang(last?.lang ?? null, last?.currency ?? null);
+    const { ok: sent } = await sendLicenseMail(c.env.DB, deps, lic.email, lang, "resend", [
       { licenseKey: lic.license_key, planName: PLAN_NAMES[lic.plan], expiresAt: lic.expires_at },
     ]);
     await audit(c.env.DB, { at: deps.now(), actor: c.get("actor"), action: "key_resent", licenseId: id, detail: { sent } });
@@ -599,7 +606,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       db.prepare("DELETE FROM support_conversations WHERE email = ?").bind(email),
       db.prepare(`UPDATE activations SET device_label = NULL WHERE ${activationsOf.replaceAll("?3", "?")}`).bind(email),
       db.prepare("UPDATE licenses SET email = NULL WHERE email = ?").bind(email),
-      db.prepare("UPDATE orders SET email = NULL WHERE email = ?").bind(email),
+      // Bỏ cả ngôn ngữ lưu trên đơn (spec 2026-10-23 §3): chính sách mục 7 chỉ giữ dòng đơn ở mức kế toán.
+      db.prepare("UPDATE orders SET email = NULL, lang = NULL WHERE email = ?").bind(email),
     ]);
     const counts = { activations: acts?.meta.changes ?? 0, licenses: lics?.meta.changes ?? 0, orders: ords?.meta.changes ?? 0 };
     return c.json(counts);

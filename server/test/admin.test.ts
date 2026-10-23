@@ -436,6 +436,32 @@ describe("tra cứu, gửi lại key", () => {
     expect(await lastAudit()).toMatchObject({ actor: "admin:ops@example.com", action: "key_resent" });
   });
 
+  it("gửi lại key: thư theo ngôn ngữ của đơn mới nhất của key; key cấp tay (không có đơn) thì tiếng Việt (spec 2026-10-23 §1)", async () => {
+    const { w, adminCall } = makeAdmin();
+    const { licenseKey } = await w.buy({ lang: "ja" });
+    // Gia hạn từ app tiếng Trung: đơn mới nhất của key là đơn này.
+    const re = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true, license_key: licenseKey, lang: "zh" });
+    w.payos.pay(re.body.order_code as number);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(re.body.order_code as number));
+    const id = (await licenseRow())!.id as string;
+    w.resend.sent.length = 0;
+    await adminCall(`/admin/licenses/${id}/resend`, { body: {} });
+    expect(w.resend.sent[0]!.subject).toBe("你的 AI Translator 许可证密钥 / Your AI Translator license key");
+    const created = await adminCall("/admin/licenses", { body: { email: "gift@example.com", plan: "monthly", note: "tặng" } });
+    expect(w.resend.sent.at(-1)!.subject).toBe("License key AI Translator của bạn / Your AI Translator license key");
+    await adminCall(`/admin/licenses/${created.body.license_id as string}/resend`, { body: {} });
+    expect(w.resend.sent.at(-1)!.subject).toBe("License key AI Translator của bạn / Your AI Translator license key");
+  });
+
+  it("gửi lại key của đơn USD từ app cũ (không có lang): chỉ tiếng Anh", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buyCreem();
+    const id = (await licenseRow())!.id as string;
+    w.resend.sent.length = 0;
+    await adminCall(`/admin/licenses/${id}/resend`, { body: {} });
+    expect(w.resend.sent[0]!.subject).toBe("Your AI Translator license key");
+  });
+
   it("xem trạng thái đơn trực tiếp từ cổng thanh toán của đơn, có ghi nhật ký", async () => {
     const { w, adminCall } = makeAdmin();
     const co = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "b@example.com", consent: true });
@@ -1128,6 +1154,18 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     });
     const again = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: await sha256Hex("d1"), device_label: "M" });
     expect(again.status).toBe(200);
+  });
+
+  it("xóa luôn ngôn ngữ lưu trên đơn (spec 2026-10-23 §3); đơn của email khác giữ nguyên", async () => {
+    const { w, adminCall } = makeAdmin();
+    await w.buy({ email: "erase@example.com", lang: "ja" });
+    await w.buy({ email: "keep@example.com", lang: "ko" });
+    await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+    const rows = await env.DB.prepare("SELECT email, lang FROM orders ORDER BY order_code").all();
+    expect(rows.results).toEqual([
+      { email: null, lang: null },
+      { email: "keep@example.com", lang: "ko" },
+    ]);
   });
 
   it("giữ device_id_hash (đã băm): máy đó kích hoạt lại thì dùng lại đúng activation cũ, không tốn suất mới", async () => {
