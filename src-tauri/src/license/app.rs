@@ -25,6 +25,7 @@ use super::store::Vault;
 use crate::errors::{self, CommandError};
 use crate::pro::{self, ProGate};
 use crate::security::keystore::Keystore;
+use crate::settings::UiLanguage;
 use crate::state::AppState;
 use crate::{actions, navigation, window};
 
@@ -422,6 +423,15 @@ pub fn plans<R: Runtime>(app: &AppHandle<R>) -> Result<PlansView, CommandError> 
     purchase::plans(&*license_or_error(app)?).map_err(command_error)
 }
 
+/// Mã ngôn ngữ giao diện lúc khách bấm (`vi`, `en`, `ja`, `zh`, `ko`), gửi kèm tạo đơn và lấy lại key để server viết thư gửi key
+/// bằng ngôn ngữ đó (spec 2026-10-23-email-theo-ngon-ngu-design.md §4). Cùng mã app gửi ở chat hỗ trợ.
+fn ui_lang<R: Runtime>(app: &AppHandle<R>) -> &'static str {
+    crate::support::lang_code(
+        app.try_state::<AppState>()
+            .map_or(UiLanguage::En, |state| state.settings().ui_language),
+    )
+}
+
 pub fn start_checkout<R: Runtime>(
     app: &AppHandle<R>,
     plan: &str,
@@ -430,8 +440,16 @@ pub fn start_checkout<R: Runtime>(
     renew: bool,
     currency: &str,
 ) -> Result<CheckoutView, CommandError> {
-    let view =
-        purchase::start(&*license_or_error(app)?, plan, email, consent, renew, currency).map_err(command_error)?;
+    let view = purchase::start(
+        &*license_or_error(app)?,
+        plan,
+        email,
+        consent,
+        renew,
+        currency,
+        ui_lang(app),
+    )
+    .map_err(command_error)?;
     // Đơn thẻ không có mã QR để quét: mở ngay trang thanh toán của cổng bằng trình duyệt (spec 2026-10-14 §5). Mở không được
     // thì thôi (đơn đã tạo và đã lưu, luồng hỏi vẫn bật), giao diện vẫn có nút "Mở lại trang thanh toán". Log chỉ nhãn cố
     // định của nhánh lỗi (`open_failed:…`): lỗi thô của trình mở (macOS `open`) có thể chứa nguyên URL thanh toán.
@@ -484,7 +502,7 @@ pub fn open_checkout_page<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandE
 
 pub fn recover<R: Runtime>(app: &AppHandle<R>, email: &str) -> Result<(), CommandError> {
     let license = license_or_error(app)?;
-    let reply = license.api().recover(email.trim());
+    let reply = license.api().recover(email.trim(), ui_lang(app));
     license.observe_reply(&reply);
     reply.result.map_err(|e| command_error(super::manager::map_api(e)))
 }

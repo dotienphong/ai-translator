@@ -152,8 +152,16 @@ pub struct Reply<T> {
 /// Các lệnh của license server mà app dùng (spec §6.8). App thật là [`HttpApi`]; test dùng bản giả.
 pub trait LicenseApi: Send + Sync {
     fn plans(&self) -> Reply<PlansReply>;
-    /// `currency`: `VND` (VietQR qua PayOS) hay `USD` (thẻ qua Creem; spec 2026-10-14 D4).
-    fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>, currency: &str) -> Reply<Checkout>;
+    /// `currency`: `VND` (VietQR qua PayOS) hay `USD` (thẻ qua Creem; spec 2026-10-14 D4). `lang`: mã ngôn ngữ giao diện (`vi`,
+    /// `en`, `ja`, `zh`, `ko`), server lưu vào đơn để viết thư gửi key bằng ngôn ngữ đó (spec 2026-10-23).
+    fn checkout(
+        &self,
+        plan: &str,
+        email: &str,
+        license_key: Option<&str>,
+        currency: &str,
+        lang: &str,
+    ) -> Reply<Checkout>;
     fn order(&self, order_code: i64, order_token: &str) -> Reply<OrderStatus>;
     /// `allow_conflict`: người dùng đã chọn "Vẫn kích hoạt" khi key đang dùng ở máy khác (spec 2026-10-07 §4.2).
     fn activate(
@@ -165,7 +173,8 @@ pub trait LicenseApi: Send + Sync {
     ) -> Reply<Granted>;
     fn validate(&self, key: &str, activation_id: &str) -> Reply<Granted>;
     fn deactivate(&self, key: &str, activation_id: &str) -> Reply<()>;
-    fn recover(&self, email: &str) -> Reply<()>;
+    /// `lang`: như ở `checkout`; server chỉ dùng để chọn ngôn ngữ thư, không lưu.
+    fn recover(&self, email: &str, lang: &str) -> Reply<()>;
     /// Đăng ký dùng thử của máy này, hay lấy lại token của lần đăng ký trước (spec 2026-10-07 §3.1).
     fn trial(&self, device_id_hash: &str) -> Reply<TrialGrant>;
 }
@@ -321,8 +330,15 @@ impl LicenseApi for HttpApi {
         self.call("GET", &path, None, None)
     }
 
-    fn checkout(&self, plan: &str, email: &str, license_key: Option<&str>, currency: &str) -> Reply<Checkout> {
-        let mut body = json!({ "plan": plan, "email": email, "consent": true, "currency": currency });
+    fn checkout(
+        &self,
+        plan: &str,
+        email: &str,
+        license_key: Option<&str>,
+        currency: &str,
+        lang: &str,
+    ) -> Reply<Checkout> {
+        let mut body = json!({ "plan": plan, "email": email, "consent": true, "currency": currency, "lang": lang });
         if let Some(key) = license_key {
             body["license_key"] = json!(key);
         }
@@ -357,8 +373,9 @@ impl LicenseApi for HttpApi {
         unit(self.call::<Ok200>("POST", "/v1/licenses/deactivate", Some(body), None))
     }
 
-    fn recover(&self, email: &str) -> Reply<()> {
-        unit(self.call::<Ok200>("POST", "/v1/licenses/recover", Some(json!({ "email": email })), None))
+    fn recover(&self, email: &str, lang: &str) -> Reply<()> {
+        let body = json!({ "email": email, "lang": lang });
+        unit(self.call::<Ok200>("POST", "/v1/licenses/recover", Some(body), None))
     }
 
     fn trial(&self, device_id_hash: &str) -> Reply<TrialGrant> {
@@ -624,7 +641,7 @@ mod tests {
             (e.code.as_str(), e.expires_at),
             ("license_expired", Some(1_790_000_000))
         );
-        let Err(ApiError::Server(e)) = api.recover("a@b.vn").result else {
+        let Err(ApiError::Server(e)) = api.recover("a@b.vn", "vi").result else {
             panic!()
         };
         assert_eq!(e.code, "http_502");
@@ -649,22 +666,39 @@ mod tests {
         assert_eq!(req.authorization.as_deref(), Some("Bearer tok-1"));
     }
 
+    /// Ngôn ngữ giao diện đi kèm đơn (spec 2026-10-23 §4) để server viết thư gửi key bằng ngôn ngữ đó.
     #[test]
-    fn checkout_sends_consent_the_currency_and_the_key_only_when_renewing() {
+    fn checkout_sends_consent_the_currency_the_ui_language_and_the_key_only_when_renewing() {
         let body = r#"{"order_code":7,"order_token":"t","checkout_url":"https://pay.payos.vn/web/x","qr_code":"000201","plan":"monthly","amount":50000,"currency":"VND","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let order = api.checkout("monthly", "a@b.vn", None, "VND").result.unwrap();
+        let order = api.checkout("monthly", "a@b.vn", None, "VND", "ja").result.unwrap();
         assert_eq!(order.order_code, 7);
         // Server cũ (≤ 0.1.9) không có `provider`: không đoán, để nơi dùng coi là PayOS.
         assert_eq!((order.qr_code.as_deref(), order.provider), (Some("000201"), None));
-        api.checkout("monthly", "a@b.vn", Some("KEY"), "VND").result.unwrap();
+        api.checkout("monthly", "a@b.vn", Some("KEY"), "VND", "vi")
+            .result
+            .unwrap();
         let reqs = seen.lock().unwrap().clone();
         assert_eq!(
             reqs[0].body,
-            json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "currency": "VND" })
+            json!({ "plan": "monthly", "email": "a@b.vn", "consent": true, "currency": "VND", "lang": "ja" })
         );
-        assert_eq!(reqs[1].body["license_key"], "KEY");
+        assert_eq!(
+            (reqs[1].body["license_key"].as_str(), reqs[1].body["lang"].as_str()),
+            (Some("KEY"), Some("vi"))
+        );
+    }
+
+    /// Lấy lại key gửi kèm ngôn ngữ giao diện (spec 2026-10-23 §4); server chỉ dùng để chọn ngôn ngữ thư.
+    #[test]
+    fn recover_sends_the_email_and_the_ui_language() {
+        let (base, seen) = serve(vec![(200, vec![], r#"{"ok":true}"#)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        api.recover("a@b.vn", "ko").result.unwrap();
+        let req = seen.lock().unwrap()[0].clone();
+        assert_eq!(req.path, "/v1/licenses/recover");
+        assert_eq!(req.body, json!({ "email": "a@b.vn", "lang": "ko" }));
     }
 
     /// Đơn thẻ quốc tế (Creem, spec 2026-10-14 §3): `qr_code` là `null`, có `provider`; app gửi `currency: "USD"`.
@@ -673,7 +707,7 @@ mod tests {
         let body = r#"{"order_code":8,"order_token":"t","provider":"creem","checkout_url":"https://checkout.creem.io/ch_1","qr_code":null,"plan":"monthly","amount":399,"currency":"USD","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let order = api.checkout("monthly", "a@b.vn", None, "USD").result.unwrap();
+        let order = api.checkout("monthly", "a@b.vn", None, "USD", "en").result.unwrap();
         assert_eq!(
             (
                 order.qr_code,

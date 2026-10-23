@@ -178,8 +178,9 @@ pub fn plans(license: &License) -> Result<PlansView, LicenseError> {
     Ok(PlansView { plans })
 }
 
-/// Tạo đơn bằng loại tiền `currency` (`VND` hay `USD`). `renew`: gia hạn hay đổi gói key đang có (cần đã kích hoạt). Thiếu ô
-/// đồng ý thì từ chối, không gọi server (§10.1).
+/// Tạo đơn bằng loại tiền `currency` (`VND` hay `USD`). `renew`: gia hạn hay đổi gói key đang có (cần đã kích hoạt). `lang`: mã
+/// ngôn ngữ giao diện, để server viết thư gửi key bằng ngôn ngữ đó (spec 2026-10-23). Thiếu ô đồng ý thì từ chối, không gọi
+/// server (§10.1).
 pub fn start(
     license: &License,
     plan: &str,
@@ -187,6 +188,7 @@ pub fn start(
     consent: bool,
     renew: bool,
     currency: &str,
+    lang: &str,
 ) -> Result<CheckoutView, LicenseError> {
     if !consent {
         return Err(LicenseError::ConsentRequired);
@@ -203,7 +205,7 @@ pub fn start(
     } else {
         None
     };
-    let reply = license.api().checkout(plan, &email, key.as_deref(), currency);
+    let reply = license.api().checkout(plan, &email, key.as_deref(), currency, lang);
     license.observe_reply(&reply);
     let checkout = reply.result.map_err(super::manager::map_api)?;
     let view = checkout_view(&checkout)?;
@@ -390,20 +392,20 @@ mod tests {
     fn a_checkout_needs_consent_a_valid_email_and_a_paid_plan() {
         let (api, _, l) = setup();
         assert_eq!(
-            start(&l, "monthly", "a@b.vn", false, false, "VND"),
+            start(&l, "monthly", "a@b.vn", false, false, "VND", "vi"),
             Err(LicenseError::ConsentRequired)
         );
         assert_eq!(
-            start(&l, "monthly", "khong-co-a-cong", true, false, "VND"),
+            start(&l, "monthly", "khong-co-a-cong", true, false, "VND", "vi"),
             Err(LicenseError::EmailInvalid)
         );
         assert_eq!(
-            start(&l, "monthly", "a b@c.vn", true, false, "VND"),
+            start(&l, "monthly", "a b@c.vn", true, false, "VND", "vi"),
             Err(LicenseError::EmailInvalid)
         );
-        assert!(start(&l, "free", "a@b.vn", true, false, "VND").is_err());
+        assert!(start(&l, "free", "a@b.vn", true, false, "VND", "vi").is_err());
         assert_eq!(
-            start(&l, "monthly", "a@b.vn", true, true, "VND"),
+            start(&l, "monthly", "a@b.vn", true, true, "VND", "vi"),
             Err(LicenseError::NotActivated),
             "gia hạn cần key đã kích hoạt"
         );
@@ -416,14 +418,14 @@ mod tests {
         assert_eq!(PLANS, ["monthly", "six_months", "yearly"]);
         let (api, _, l) = setup();
         for code in ["pro", "six-months", "SIX_MONTHS", ""] {
-            assert!(start(&l, code, "a@b.vn", true, false, "VND").is_err(), "{code}");
+            assert!(start(&l, code, "a@b.vn", true, false, "VND", "vi").is_err(), "{code}");
         }
         assert!(api.calls.lock().unwrap().is_empty(), "mã lạ thì không gọi server");
         let mut c = checkout(9);
         c.plan = "six_months".into();
         c.amount = 269_000;
         api.checkouts.lock().unwrap().push_back(Ok(c));
-        let view = start(&l, "six_months", "a@b.vn", true, false, "VND").unwrap();
+        let view = start(&l, "six_months", "a@b.vn", true, false, "VND", "vi").unwrap();
         assert_eq!(api.calls.lock().unwrap()[0], "checkout six_months a@b.vn -");
         assert_eq!((view.plan.as_str(), view.amount), ("six_months", 269_000));
         assert_eq!(pending(&l).unwrap().plan, "six_months");
@@ -433,7 +435,7 @@ mod tests {
     fn a_new_order_draws_the_qr_and_is_kept_for_polling() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        let view = start(&l, "monthly", " a@b.vn ", true, false, "VND").unwrap();
+        let view = start(&l, "monthly", " a@b.vn ", true, false, "VND", "vi").unwrap();
         assert_eq!(api.calls.lock().unwrap()[0], "checkout monthly a@b.vn -");
         assert!(
             view.qr_svg
@@ -459,6 +461,15 @@ mod tests {
         assert!(!json.contains("tok"), "order_token không ra giao diện");
     }
 
+    /// Ngôn ngữ giao diện đi kèm đơn (spec 2026-10-23 §4): `start` chuyển nguyên mã cho server.
+    #[test]
+    fn a_checkout_carries_the_ui_language() {
+        let (api, _, l) = setup();
+        api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "ja").unwrap();
+        assert_eq!(api.calls.lock().unwrap()[0], "checkout monthly a@b.vn - ja");
+    }
+
     /// Loại tiền (spec 2026-10-14 D4): chỉ VND (VietQR) hay USD (thẻ); loại khác thì từ chối, không gọi server.
     #[test]
     fn only_vnd_and_usd_can_be_chosen() {
@@ -466,7 +477,7 @@ mod tests {
         let (api, _, l) = setup();
         for currency in ["EUR", "usd", "", "VND,USD"] {
             assert!(
-                start(&l, "monthly", "a@b.vn", true, false, currency).is_err(),
+                start(&l, "monthly", "a@b.vn", true, false, currency, "vi").is_err(),
                 "{currency}"
             );
         }
@@ -497,7 +508,7 @@ mod tests {
     fn a_card_order_has_no_qr_is_kept_for_polling_and_activates_when_paid() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
-        let view = start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        let view = start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         assert_eq!(api.calls.lock().unwrap()[0], "checkout monthly a@b.vn - USD");
         assert_eq!(
             (view.qr_svg, view.provider.as_str(), view.amount, view.currency.as_str()),
@@ -523,11 +534,11 @@ mod tests {
     fn a_card_order_is_polled_every_5_seconds_and_a_vietqr_order_every_3() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         assert_eq!(poll_secs(&pending(&l).unwrap(), T0), 3);
         assert_eq!(POLL_EVERY_SECS, 3);
         api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
-        start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         assert_eq!(poll_secs(&pending(&l).unwrap(), T0), 5);
     }
 
@@ -643,7 +654,7 @@ mod tests {
         let (api, _, l) = setup();
         assert!(!another_order_pending(&l, 7), "không có đơn nào");
         api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
-        start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         assert!(!another_order_pending(&l, 8), "vẫn là đơn vừa hỏi");
         assert!(another_order_pending(&l, 7), "đơn mới tạo sau đơn 7");
     }
@@ -655,7 +666,7 @@ mod tests {
         use std::time::{Duration, Instant};
         let (api, vault, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(card_checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         let (reached_tx, reached) = std::sync::mpsc::channel();
         let (release, release_rx) = std::sync::mpsc::channel();
         *vault.hold_after_get.lock().unwrap() = Some((store::ORDER.into(), reached_tx, release_rx));
@@ -664,7 +675,7 @@ mod tests {
             // Đọc đơn 7 xong thì dừng, chưa xóa.
             let finishing = s.spawn(|| forget_order(&l, 7));
             reached.recv().unwrap();
-            let creating = s.spawn(|| start(&l, "yearly", "a@b.vn", true, false, "USD"));
+            let creating = s.spawn(|| start(&l, "yearly", "a@b.vn", true, false, "USD", "vi"));
             // Không có khóa thì đơn 9 được ghi ngay; có khóa thì lần ghi chờ việc quên đơn 7 xong.
             let deadline = Instant::now() + Duration::from_millis(300);
             while Instant::now() < deadline && pending(&l).map(|o| o.order_code) != Some(9) {
@@ -685,11 +696,11 @@ mod tests {
         let (api, _, l) = setup();
         assert_eq!(poll_delay(&l, T0), Duration::from_secs(3), "không có đơn");
         api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
-        start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         assert_eq!(poll_delay(&l, T0 + 1800), Duration::from_secs(5));
         assert_eq!(poll_delay(&l, T0 + 1801), Duration::from_secs(30));
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         assert_eq!(poll_delay(&l, T0 + 5), Duration::from_secs(3));
     }
 
@@ -701,7 +712,7 @@ mod tests {
         for status in ["pending", "processing"] {
             let (api, _, l) = setup();
             api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
-            start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+            start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
             api.orders
                 .lock()
                 .unwrap()
@@ -737,7 +748,7 @@ mod tests {
         for (status, outcome) in cases {
             let (api, _, l) = setup();
             api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
-            start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+            start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
             api.orders.lock().unwrap().push_back(Ok(order(status, None, None)));
             assert_eq!(poll(&l, T0 + 5), Some(outcome), "{status}");
             assert_eq!(pending(&l), None, "{status}: thôi hỏi");
@@ -749,7 +760,7 @@ mod tests {
     fn a_late_final_answer_for_a_cancelled_order_keeps_the_new_one() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(card_checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         let (release, hold) = std::sync::mpsc::channel();
         *api.order_hold.lock().unwrap() = Some(hold);
         api.orders.lock().unwrap().push_back(Ok(order("expired", None, None)));
@@ -760,7 +771,7 @@ mod tests {
             }
             forget(&l);
             api.checkouts.lock().unwrap().push_back(Ok(card_checkout(9)));
-            start(&l, "yearly", "a@b.vn", true, false, "USD").unwrap();
+            start(&l, "yearly", "a@b.vn", true, false, "USD", "vi").unwrap();
             release.send(()).unwrap();
             assert_eq!(asking.join().unwrap(), Some(OrderOutcome::Failed { order_code: 7 }));
         });
@@ -786,7 +797,7 @@ mod tests {
             c.provider = provider.map(String::from);
             api.checkouts.lock().unwrap().push_back(Ok(c));
             let currency = if qr { "VND" } else { "USD" };
-            let view = start(&l, "monthly", "a@b.vn", true, false, currency).unwrap();
+            let view = start(&l, "monthly", "a@b.vn", true, false, currency, "vi").unwrap();
             assert_eq!(
                 (view.provider.as_str(), pending(&l).unwrap().provider.as_str()),
                 (expect, expect),
@@ -802,7 +813,7 @@ mod tests {
         let mut c = card_checkout(8);
         c.qr_code = Some(String::new());
         api.checkouts.lock().unwrap().push_back(Ok(c));
-        let view = start(&l, "monthly", "a@b.vn", true, false, "USD").unwrap();
+        let view = start(&l, "monthly", "a@b.vn", true, false, "USD", "vi").unwrap();
         assert_eq!(view.qr_svg, None);
         assert_eq!(pending(&l).unwrap().qr_code, None);
     }
@@ -812,7 +823,7 @@ mod tests {
     fn an_order_without_a_provider_is_a_payos_order() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        let view = start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        let view = start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         assert_eq!(view.provider, "payos");
         assert_eq!(pending(&l).unwrap().provider, "payos");
     }
@@ -830,7 +841,7 @@ mod tests {
     fn a_paid_new_order_activates_its_key_on_this_machine() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         api.orders.lock().unwrap().extend([
             Ok(order("pending", None, None)),
             Ok(order("paid", Some("new"), Some(KEY))),
@@ -875,7 +886,7 @@ mod tests {
             ("new", "activate 1111111111111111111111111Z0V"),
         ] {
             api.checkouts.lock().unwrap().push_back(Ok(checkout(8)));
-            start(&l, "yearly", "a@b.vn", true, true, "VND").unwrap();
+            start(&l, "yearly", "a@b.vn", true, true, "VND", "vi").unwrap();
             assert!(
                 api.calls
                     .lock()
@@ -909,7 +920,7 @@ mod tests {
         for (status, outcome, done) in cases {
             let (api, _, l) = setup();
             api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-            start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+            start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
             api.orders.lock().unwrap().push_back(Ok(order(status, None, None)));
             assert_eq!(poll(&l, T0 + 3), Some(outcome), "{status}");
             assert_eq!(pending(&l).is_none(), done, "{status}");
@@ -917,13 +928,13 @@ mod tests {
         // Link đã hết hạn mà server vẫn báo `pending`: đơn không thành.
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         api.orders.lock().unwrap().push_back(Ok(order("pending", None, None)));
         assert_eq!(poll(&l, T0 + 901), Some(OrderOutcome::Failed { order_code: 7 }));
         // Lỗi mạng: hỏi tiếp, tới 24 giờ sau khi link hết hạn.
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         api.orders.lock().unwrap().push_back(Err(ApiError::Network("x".into())));
         assert!(matches!(poll(&l, T0 + 3600), Some(OrderOutcome::Waiting { .. })));
         api.orders.lock().unwrap().push_back(Err(ApiError::Network("x".into())));
@@ -937,7 +948,7 @@ mod tests {
     fn a_paid_order_whose_key_cannot_be_activated_here_reports_why() {
         let (api, _, l) = setup();
         api.checkouts.lock().unwrap().push_back(Ok(checkout(7)));
-        start(&l, "monthly", "a@b.vn", true, false, "VND").unwrap();
+        start(&l, "monthly", "a@b.vn", true, false, "VND", "vi").unwrap();
         api.orders
             .lock()
             .unwrap()

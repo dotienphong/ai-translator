@@ -1419,17 +1419,23 @@ pub mod tests {
                 date: *self.date.lock().unwrap(),
             }
         }
-        fn checkout(&self, plan: &str, email: &str, key: Option<&str>, currency: &str) -> Reply<Checkout> {
-            // Ghi loại tiền chỉ khi không phải VND, để các dòng ghi của đơn VietQR giữ nguyên.
+        fn checkout(&self, plan: &str, email: &str, key: Option<&str>, currency: &str, lang: &str) -> Reply<Checkout> {
+            // Ghi loại tiền chỉ khi không phải VND, và ngôn ngữ chỉ khi không phải vi, để các dòng ghi của đơn VietQR từ app
+            // tiếng Việt giữ nguyên.
             let currency = if currency == "VND" {
                 String::new()
             } else {
                 format!(" {currency}")
             };
-            self.calls
-                .lock()
-                .unwrap()
-                .push(format!("checkout {plan} {email} {}{currency}", key.unwrap_or("-")));
+            let lang = if lang == "vi" {
+                String::new()
+            } else {
+                format!(" {lang}")
+            };
+            self.calls.lock().unwrap().push(format!(
+                "checkout {plan} {email} {}{currency}{lang}",
+                key.unwrap_or("-")
+            ));
             Reply {
                 result: self
                     .checkouts
@@ -1483,7 +1489,7 @@ pub mod tests {
                 date: None,
             }
         }
-        fn recover(&self, _: &str) -> Reply<()> {
+        fn recover(&self, _: &str, _: &str) -> Reply<()> {
             Reply {
                 result: Ok(()),
                 date: None,
