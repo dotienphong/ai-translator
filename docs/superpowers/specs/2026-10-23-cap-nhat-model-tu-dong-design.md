@@ -102,8 +102,16 @@ Giá trị ban đầu (theo `docs/superpowers/plans/2026-10-02-phase-1-04a-quan-
 | `whisper-large-v3-turbo-q5_0`, `whisper-small-q5_1` | `hf-file` `ggerganov/whisper.cpp` | `ggml-large-v3-turbo-q5_0.bin`, `ggml-small-q5_1.bin` | `5359861c739e955e79d9a303bcbc70fb988958b1` |
 | `silero-vad-v6.2.3` | `github-release` `snakers4/silero-vad` | `src/silero_vad/data/silero_vad.onnx` | `v6.2.3` |
 
-Mục `kind: license` và NOTICE không tự theo dõi riêng: file giấy phép của model được tải lại theo revision mới của model
-(mục 4.3); `NOTICE.txt`, `NOTICE-fast.txt` là văn bản của mình, đổi bằng tay.
+File giấy phép lấy từ Hugging Face được theo dõi như một mục `hf-file` với cổng `none` (không chạy cổng kiểm; nội dung
+đổi thì in phần khác ở bảng y/N): `hy-mt2-license` (`LICENSE.txt` của `tencent/Hy-MT2-1.8B-GGUF`) và `lmt-60-license`
+(`LICENSE` của `Qwen/Qwen3-0.6B-Base`, revision `da87bfb608c14b7cf20ba1ce41287e8de496c0cd`). Các file giấy phép còn lại
+(`whisper-license`, `whisper-cpp-license`, `silero-vad-license`) không theo dõi, đổi bằng tay.
+
+`NOTICE.txt` và `NOTICE-fast.txt` là văn bản của mình nhưng ghi revision của model. Mỗi mục model trong `upstream.json` có
+`notice` (`notice` hay `notice-fast`, hay không có). Khi đăng bản mới của mục đó, lệnh thay chuỗi revision cũ bằng revision
+mới trong file NOTICE tương ứng (`scripts/models/NOTICE*.txt`; không thấy chuỗi cũ thì dừng), tăng `version` của mục NOTICE
+lên 1 và đăng file NOTICE mới như mọi file khác (mục 5.1). NOTICE.txt nằm trong cả ba gói, nên người dùng gói Nhanh cũng
+thấy thông báo cập nhật (tải vài KB) khi Hy-MT2 hay whisper đổi.
 
 ### 4.2. Phát hiện
 
@@ -143,8 +151,9 @@ Dùng công cụ đã có, chạy bằng `llama-server` và `asr-worker` **đún
    - Dịch bộ thử A3 bằng `latency-bench mt-eval` (code dịch của app, đúng họ prompt của gói) ra
      `bench/phase0/data/mt/outputs-update-<id>-<rev7>/`, chấm COMET bằng `score_mt.py --label update-<id>-<rev7>
      --baseline <mốc>`.
-   - Mốc là kết quả của **model đang phát hành**, ghi ở `gate.baseline`: ban đầu `bench/phase0/results/s7_mt.json`
-     (Hy-MT2 Q8_0, Q4_K_M) và `bench/phase0/results/s7_mt-goi-nhanh.json` (LMT).
+   - Mốc là kết quả của **model đang phát hành**, ghi ở `gate.baseline`: ban đầu `bench/phase0/results/s7_mt-gd1-a3.json`
+     (Hy-MT2 Q8_0, Q4_K_M; chạy bằng `mt-eval`, COMET trùng `s7_mt.json`, có cột `failed`) và
+     `bench/phase0/results/s7_mt-goi-nhanh.json` (LMT).
    - Đạt khi: mỗi chiều không thấp hơn mốc quá 0,01 (`REGRESSION` của `score_mt.py`); Anh→Việt không dưới mức sàn
      (`FLOOR`: Q8_0 0,83, Q4_K_M 0,80, LMT 0,77); số câu lỗi (lặp, lạc đề) không nhiều hơn mốc.
    - Môi trường COMET theo `bench/2026-10-21-goi-nhanh/README.md` (`unbabel-comet==2.2.7`, Python 3.12, CPU), dựng bằng
@@ -176,7 +185,9 @@ Chỉ chạy sau khi người vận hành gõ `y`.
 
 - `scripts/models/released/body-(N+1).json` dựng từ `body-N.json`: chỉ thay các mục đã đổi, `sequence` = N+1,
   `published_at` = giờ UTC hiện tại (dạng `build-manifest.mjs`). Các phần khác giữ nguyên.
-- Cập nhật `models.config.json` (`version`, `url` của mục đã đổi) và `upstream.json` (revision, SHA-256, `gate.baseline`).
+- Cập nhật `models.config.json` (`version`, `url` của mục đã đổi) và `upstream.json` (revision, SHA-256, `gate.baseline`,
+  thêm dòng `history`). Mục có `notice` thì sửa file NOTICE và mục NOTICE như mục 4.1 (đường dẫn R2
+  `models/notice/<version>/<file>`).
 - Chạy trên máy đúng bài kiểm của CI trước khi đẩy:
   `MANIFEST_BODY=… MANIFEST_PREVIOUS=… cargo test --locked -p meeting-translator --lib check_manifest_body -- --ignored`.
 
@@ -188,8 +199,9 @@ Chỉ chạy sau khi người vận hành gõ `y`.
   -f previous=scripts/models/released/body-N.json`, tìm lượt chạy vừa tạo, `gh run watch --exit-status`.
 - `gh run download <lượt> -n models-manifest` vào `target/models-update/signed/`.
 - Kiểm trên máy bằng `verifyEnvelope` của `scripts/models/lib.mjs`: phong bì đúng định dạng; `kid` thuộc khối
-  `production` của `src-tauri/keys/manifest-public-keys.json`; chữ ký hợp lệ; `body` giải mã ra trùng từng byte với
-  `body-(N+1).json`. Sai bất kỳ điều nào: dừng hẳn, không đăng (dấu hiệu bất thường).
+  `production` của `src-tauri/keys/manifest-public-keys.json`; chữ ký hợp lệ; `body` giải mã ra trùng từng byte với dạng
+  gọn `JSON.stringify(JSON.parse(body-(N+1).json))` (CI ký dạng gọn, như `sign-manifest.mjs`). Sai bất kỳ điều nào: dừng
+  hẳn, không đăng (dấu hiệu bất thường). Mục 3.1 bước 1 so `body-N.json` với manifest đang chạy theo cùng cách.
 
 ### 5.4. Đăng manifest
 
