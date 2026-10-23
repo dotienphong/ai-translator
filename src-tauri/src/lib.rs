@@ -38,6 +38,7 @@ pub mod support;
 pub mod system;
 pub mod transcript;
 pub mod tray;
+pub mod tray_badge;
 pub mod tray_menu;
 pub mod updater;
 pub mod window;
