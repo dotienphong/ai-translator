@@ -347,8 +347,9 @@ người phải tải hai lần.
   cả hai kiểu; `changed()` của `ModelService` cập nhật cờ model.
 - Thử thật trước khi dùng: `pnpm models:update --check` trên máy chủ dự án phải báo không có bản mới cho cả bốn nguồn;
   `--gate-only` với model đang phát hành phải đạt.
-- Thử tay khay trên Mac: tạm đổi tên file MT của gói đang dùng (gói thành chưa đủ) để thấy dấu chấm và mục menu, rồi trả
-  tên. Bản dev dùng chung thư mục model với app thật của chủ dự án, nên báo trước khi làm.
+- Thử tay khay trên Mac: sao lưu rồi sửa tạm `sha256` của file MT trong `installed.json` (gói vẫn dùng được nhưng "chưa
+  đủ", như khi có bản mới; đổi tên file thì gói thành "không dùng được" nên không có dấu chấm) để thấy dấu chấm và mục
+  menu, rồi trả bản sao lưu. Bản dev dùng chung thư mục model với app thật của chủ dự án, nên báo trước khi làm.
 
 ## 10. Rủi ro
 

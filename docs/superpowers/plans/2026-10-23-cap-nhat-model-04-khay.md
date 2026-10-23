@@ -729,14 +729,18 @@ Expected: tất cả xanh. Sửa lỗi nào thì commit riêng.
 
 - [ ] **Step 2: Thử tay (báo chủ dự án trước khi làm)**
 
-Bản dev dùng chung bundle id và thư mục model với app thật của chủ dự án. Nhắn trước: "Tôi sẽ thoát app thật, tạm đổi tên một file model trong `~/Library/Application Support/com.aitranslator.desktop/models/` để thử dấu chấm khay, rồi trả lại tên cũ; trong lúc đó đừng mở app thật."
+Bản dev dùng chung bundle id và thư mục model với app thật của chủ dự án. Nhắn trước: "Tôi sẽ thoát app thật, sao lưu rồi sửa tạm `installed.json` trong `~/Library/Application Support/com.aitranslator.desktop/models/` để giả lập có bản model mới, thử dấu chấm khay, rồi trả lại bản sao lưu; trong lúc đó đừng mở app thật."
 
-1. Thoát app thật. Đọc `settings.json` (thư mục dữ liệu app) lấy `modelTier`; đọc `models/models.json` hay `models/state.json` để biết tên file MT của gói đó (ví dụ `Hy-MT2-1.8B-Q8_0.gguf`).
-2. `mv <file> <file>.thu-khay`.
+Giả lập bằng cách sửa SHA đã cài, không đổi tên file: đổi tên làm file "không có", gói thành "không dùng được"
+(`usable = false`) nên `updateAvailable` là false và không có dấu chấm. Sửa `sha256` trong `installed.json` (giữ `bytes`)
+thì gói vẫn dùng được nhưng "chưa đủ" (`usable && !complete`), đúng như khi manifest có bản mới.
+
+1. Thoát app thật. Đọc `settings.json` (thư mục dữ liệu app) lấy `modelTier`; đọc `models/models.json` để biết `id` file MT của gói đó, và `models/state.json` để chắc `dismissed_sequence` nhỏ hơn `sequence` của manifest (bằng thì đặt tạm `dismissed_sequence` nhỏ hơn và ghi lại giá trị cũ).
+2. `cp installed.json installed.json.thu-khay` (và `state.json` nếu sửa ở bước 1); sửa `sha256` của mục MT đó trong `installed.json` thành 64 chữ `0`, giữ nguyên `bytes`.
 3. Chạy bản dev theo `scripts/run-dev-app.sh` (đọc đầu script). Chờ cửa sổ chính.
-4. Chụp màn hình menu bar (`screencapture -R <vùng góc trên phải> …`) và đọc ảnh: có dấu chấm ở icon AI Translator. Bấm icon: menu có "Có bản cập nhật gói model" ngay trên "Thoát". Bấm mục đó: cửa sổ chính mở ở Home, có thanh "Có bản mới của gói…".
+4. Chụp màn hình menu bar (`screencapture -R <vùng góc trên phải> …`) và đọc ảnh: có dấu chấm ở icon AI Translator. Bấm icon: menu có "Có bản cập nhật gói model" ngay trên "Thoát". Bấm mục đó: cửa sổ chính mở ở Home, có thanh "Có bản mới của gói…". Không bấm "Tải ngay".
 5. Bấm "Để sau": dấu chấm mất, mục menu mất.
-6. Thoát bản dev. `mv <file>.thu-khay <file>`. Mở lại app thật, kiểm gói vẫn sẵn sàng (không có thông báo "Có bản mới…" ngoài ý muốn; nếu có vì `dismissed_sequence` đã ghi, đó là đúng luật, báo chủ dự án).
+6. Thoát bản dev. Trả `installed.json.thu-khay` (và `state.json` nếu đã sửa) về chỗ cũ. Mở lại app thật, kiểm gói vẫn sẵn sàng và không có thông báo "Có bản mới…".
 7. Tắt mọi tiến trình đã mở (bản dev, Vite cổng 1420).
 
 Ghi kết quả (ảnh chụp, đạt/không) vào báo cáo cho chủ dự án.
