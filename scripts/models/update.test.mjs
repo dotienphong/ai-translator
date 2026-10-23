@@ -2,6 +2,7 @@
 // Chạy: node --test scripts/models/update.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -17,7 +18,7 @@ import {
   parseArgs,
   sameSignedBody,
 } from "./update-lib.mjs";
-import { checkLiveManifest, checkSources, fetchFile } from "./update-io.mjs";
+import { checkLiveManifest, checkSources, createIo, exec, fetchFile, gitBlobId } from "./update-io.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
 const temp = (t) => {
@@ -31,7 +32,7 @@ const REV = (c) => c.repeat(40);
 
 /**
  * `io` giả: `handlers.run(cmd, args, opts)` trả stdout hay một `Error` (để ném); `handlers.text(url)` trả nội dung URL;
- * `handlers.download(url)` trả nội dung file tải về. Mọi lời gọi ghi vào `calls`.
+ * `handlers.download(url)` trả nội dung file tải về hay một `Error` (để ném). Mọi lời gọi ghi vào `calls`.
  */
 function fakeIo(handlers = {}) {
   const calls = [];
@@ -58,8 +59,10 @@ function fakeIo(handlers = {}) {
     json: (url) => JSON.parse(io.text(url)),
     download(url, dest) {
       calls.push(`download ${url}`);
+      const out = handlers.download(url);
+      if (out instanceof Error) throw out;
       mkdirSync(dirname(dest), { recursive: true });
-      writeFileSync(dest, handlers.download(url));
+      writeFileSync(dest, out);
       return dest;
     },
     sleep() {},
@@ -319,6 +322,26 @@ test("checkSources: mỗi repo Hugging Face đọc một lần; file GitHub ch�
   const sameTag = await checkSources(io, { entries: { v: { ...ghEntry, revision: "v7" } } }, work);
   assert.equal(sameTag[0].status, "same");
   assert.equal(io.calls.filter((c) => c.startsWith("download ")).length, 1, "tag trùng thì không tải");
+  assert.equal(existsSync(join(work, "check", "v", "scratch")), false, "file tải để băm bị xóa sau khi băm");
+});
+
+test("checkSources: một nguồn đọc lỗi thành dòng DỪNG, các mục khác vẫn được kiểm", async (t) => {
+  const io = fakeIo({
+    text(url) {
+      if (url.includes("/org/m-GGUF/")) throw new Error("mạng đứt");
+      if (url.includes("/org/m/")) return JSON.stringify(convertApi());
+      throw new Error(`URL lạ ${url}`);
+    },
+  });
+  const results = await checkSources(io, { entries: { a: hfEntry, l: convertEntry } }, temp(t));
+  assert.deepEqual(
+    results.map((r) => [r.id, r.status]),
+    [
+      ["a", "stop"],
+      ["l", "same"],
+    ],
+  );
+  assert.match(results[0].reason, /^không đọc được nguồn: mạng đứt/);
 });
 
 test("fetchFile tải vào .part rồi mới đổi tên; file đã có thì không tải lại", (t) => {
@@ -330,6 +353,75 @@ test("fetchFile tải vào .part rồi mới đổi tên; file đã có thì kh�
   assert.equal(io.calls.at(-1), "download https://e/f.bin");
   fetchFile(io, "https://e/f.bin", dest);
   assert.equal(io.calls.length, 1);
+});
+
+test("fetchFile: lỗi curl 33 hay 36 thì xóa .part và tải lại; lỗi khác thì giữ .part và ném tiếp", (t) => {
+  const dir = temp(t);
+  const failure = (status) => Object.assign(new Error(`curl thoát mã ${status}`), { status });
+  const dest = join(dir, "f.bin");
+  for (const status of [33, 36]) {
+    rmSync(dest, { force: true });
+    writeFileSync(`${dest}.part`, "dở");
+    let first = true;
+    const io = fakeIo({
+      download() {
+        if (!first) return "đủ";
+        first = false;
+        return failure(status);
+      },
+    });
+    assert.equal(fetchFile(io, "https://e/f.bin", dest), dest);
+    assert.equal(readFileSync(dest, "utf8"), "đủ");
+    assert.equal(existsSync(`${dest}.part`), false);
+    assert.equal(io.calls.length, 2);
+  }
+  rmSync(dest, { force: true });
+  writeFileSync(`${dest}.part`, "dở");
+  const io = fakeIo({ download: () => failure(56) });
+  assert.throws(() => fetchFile(io, "https://e/f.bin", dest), /thoát mã 56/);
+  assert.equal(readFileSync(`${dest}.part`, "utf8"), "dở", "lỗi khác: giữ .part để lần sau tải tiếp");
+  assert.equal(io.calls.length, 1);
+});
+
+test("exec ném lỗi có status; bị tín hiệu giết thì ghi rõ tín hiệu", () => {
+  assert.equal(exec(process.execPath, ["-e", "process.stdout.write('ok')"]), "ok");
+  assert.throws(
+    () => exec(process.execPath, ["-e", "process.exit(3)"]),
+    (e) => e.status === 3 && e.signal === null && /thoát mã 3/.test(e.message),
+  );
+  assert.throws(
+    () => exec(process.execPath, ["-e", "process.kill(process.pid, 'SIGKILL')"]),
+    (e) => e.status === null && e.signal === "SIGKILL" && /bị dừng bởi tín hiệu SIGKILL/.test(e.message),
+  );
+  assert.deepEqual(exec(process.execPath, ["-e", "process.exit(2)"], { ok: [2] }), "");
+});
+
+test("createIo: curl có hạn chờ; JSON hỏng thì lỗi nêu URL", () => {
+  const seen = [];
+  const io = createIo((cmd, args) => {
+    seen.push([cmd, ...args]);
+    return args.at(-1).includes("hong") ? "<html>" : '{"a":1}';
+  });
+  assert.deepEqual(io.json("https://e/tot"), { a: 1 });
+  assert.deepEqual(seen[0].slice(0, 7), ["curl", "-fsSL", "--retry", "2", "--connect-timeout", "20", "--max-time"]);
+  assert.equal(seen[0][7], "120");
+  assert.throws(() => io.json("https://e/hong"), /^Error: https:\/\/e\/hong không trả JSON hợp lệ: /);
+  io.download("https://e/f", "/tmp/x/f.part");
+  const args = seen.at(-1).join(" ");
+  assert.match(args, /--connect-timeout 20 --speed-limit 1024 --speed-time 60/);
+  assert.doesNotMatch(args, /--max-time/);
+  assert.match(args, /-C -/);
+});
+
+test("gitBlobId trùng git hash-object (kể cả CRLF)", (t) => {
+  const dir = temp(t);
+  const known = join(dir, "hello.txt");
+  writeFileSync(known, "hello\n");
+  assert.equal(gitBlobId(known), "ce013625030ba8dba906f756967f9e9ca394464a");
+  const crlf = join(dir, "crlf.txt");
+  writeFileSync(crlf, "dòng 1\r\ndòng 2\r\n");
+  const expected = execFileSync("git", ["hash-object", "--no-filters", crlf], { cwd: dir, encoding: "utf8" }).trim();
+  assert.equal(gitBlobId(crlf), expected);
 });
 
 test("checkLiveManifest: manifest đang chạy phải là body mới nhất, ký bằng khóa tin cậy", async (t) => {
@@ -346,4 +438,24 @@ test("checkLiveManifest: manifest đang chạy phải là body mới nhất, ký
   const other = await testKey("test-u2", "ai-translator update test key 2");
   const foreign = await signBody(other.privateKey, other.kid, JSON.stringify(JSON.parse(bodyText)));
   await assert.rejects(checkLiveManifest(live(foreign), dir, keys), /Không có khóa công khai/);
+  const tampered = { ...signed, sig: `${signed.sig[0] === "A" ? "B" : "A"}${signed.sig.slice(1)}` };
+  await assert.rejects(checkLiveManifest(live(tampered), dir, keys), /Chữ ký không đúng/);
+  await assert.rejects(checkLiveManifest(live({ ...signed, format: "khac" }), dir, keys), /format/);
+  await assert.rejects(checkLiveManifest(live({ ...signed, version: 2 }), dir, keys), /version/);
+  const offline = fakeIo({
+    text() {
+      throw new Error("curl thoát mã 6");
+    },
+  });
+  await assert.rejects(checkLiveManifest(offline, dir, keys), /curl thoát mã 6[\s\S]*dig @8\.8\.8\.8 releases\.aitranslator\.io\.vn/);
+});
+
+test("checkLiveManifest: body-N.json phải có sequence đúng N", async (t) => {
+  const dir = temp(t);
+  const bodyText = `${JSON.stringify({ schema: 1, sequence: 2, files: [] }, null, 2)}\n`;
+  writeFileSync(join(dir, "body-3.json"), bodyText);
+  const key = await testKey("test-u3", "ai-translator update test key 3");
+  const signed = await signBody(key.privateKey, key.kid, JSON.stringify(JSON.parse(bodyText)));
+  const io = fakeIo({ text: () => JSON.stringify(signed) });
+  await assert.rejects(checkLiveManifest(io, dir, [{ kid: key.kid, x: key.x }]), /body-3\.json.*sequence/);
 });
