@@ -26,6 +26,7 @@ import {
   sameSignedBody,
 } from "./update-lib.mjs";
 import { checkLiveManifest, checkSources, createIo, exec, fetchFile, fetchPublished, gitBlobId } from "./update-io.mjs";
+import { runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
@@ -617,4 +618,75 @@ test("fetchPublished tải file đang phát hành qua tên miền công khai và
   assert.ok(io.calls.includes("download https://releases.aitranslator.io.vn/models/hy-mt2/m.gguf"));
   const bad = fakeIo({ download: () => "khác" });
   await assert.rejects(fetchPublished(bad, temp(t), file), /manifest ghi/);
+});
+
+/** Thoát ký tự đặc biệt của chuỗi (đường dẫn thư mục tạm) để đưa vào RegExp. */
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Đường dẫn cổng kiểm trong thư mục tạm; `latency-bench` là "lb", `asr-worker` là "aw". */
+function gatePaths(root) {
+  const paths = {
+    repo: root,
+    results: join(root, "results"),
+    mtOutputs: join(root, "mt"),
+    mtTestset: join(root, "mt", "testset.jsonl"),
+    asrData: join(root, "asr"),
+    llamaServer: "ls",
+    latencyBench: "lb",
+    asrWorker: "aw",
+  };
+  for (const dir of [paths.results, paths.mtOutputs, paths.asrData]) mkdirSync(dir, { recursive: true });
+  return paths;
+}
+
+test("runGate dịch: chạy thử trước, chấm, so mốc, chuyển kết quả ra khỏi bench/phase0/results", (t) => {
+  const root = temp(t);
+  const paths = gatePaths(root);
+  const runs = (comet) => JSON.stringify({ runs: { "m-Q8_0-plain": { "en->vi": { n: 2, comet, failed: 0, leaked: 0 } } } });
+  writeFileSync(join(root, "base.json"), runs(0.85));
+  const io = fakeIo({
+    run(cmd) {
+      if (cmd === "uv") {
+        writeFileSync(join(paths.results, "s7_mt-nhan.json"), runs(0.86));
+        writeFileSync(join(paths.results, "s7_mt-nhan.md"), "bảng");
+      }
+      return "";
+    },
+  });
+  const entry = { gate: { kind: "mt", prompt: "hy-mt2", baseline: "base.json" } };
+  const out = join(root, "out");
+  const gate = runGate(io, entry, "/x/m-Q8_0.gguf", "nhan", out, paths);
+  assert.equal(gate.pass, true, gate.problems.join());
+  assert.equal(gate.result, join(out, "s7_mt-nhan.json"));
+  assert.ok(existsSync(join(out, "s7_mt-nhan.md")) && existsSync(join(out, "gate.md")));
+  assert.equal(existsSync(join(paths.results, "s7_mt-nhan.json")), false);
+  assert.match(io.calls[0], /^lb mt-eval .*--prompt hy-mt2 .*--limit 2$/);
+  assert.match(io.calls[1], new RegExp(`^lb mt-eval .*--out-dir ${escapeRegExp(join(paths.mtOutputs, "outputs-nhan"))}$`));
+  assert.match(io.calls[2], /^uv run --no-project --python 3\.12 .*unbabel-comet==2\.2\.7.* python bench\/phase0\/mt\/score_mt\.py --outputs .* --label nhan$/);
+});
+
+test("runGate: model không chạy được bằng engine của app thì báo cần nâng engine", (t) => {
+  const root = temp(t);
+  const io = fakeIo({ run: (cmd, args) => (args.includes("--limit") ? new Error("llama-server thoát mã 1") : "") });
+  const entry = { gate: { kind: "mt", prompt: "hy-mt2", baseline: "base.json" } };
+  assert.throws(() => runGate(io, entry, "/x/m.gguf", "nhan", join(root, "out"), gatePaths(root)), /cần nâng engine/);
+});
+
+test("runGate nhận dạng: chạy thử trên vài clip, chấm, so mốc", (t) => {
+  const root = temp(t);
+  const paths = gatePaths(root);
+  writeFileSync(join(paths.asrData, "manifest.jsonl"), '{"id":"a"}\n{"id":"b"}\n{"id":"c"}\n');
+  writeFileSync(join(root, "a4-base.json"), JSON.stringify({ "en-wb": { n: 3, wer: 0.05 } }));
+  const io = fakeIo({
+    run(cmd) {
+      if (cmd === "uv") writeFileSync(join(paths.results, "a4_nhan.json"), JSON.stringify({ "en-wb": { n: 3, wer: 0.06 } }));
+      return "";
+    },
+  });
+  const entry = { gate: { kind: "asr", baseline: "a4-base.json" } };
+  const gate = runGate(io, entry, "/x/ggml.bin", "nhan", join(root, "out"), paths);
+  assert.equal(gate.pass, false, "0,06 xấu hơn 0,05 quá 10%");
+  assert.equal(readFileSync(join(paths.asrData, "manifest-chay-thu.jsonl"), "utf8"), '{"id":"a"}\n{"id":"b"}\n');
+  assert.match(io.calls[0], /^lb asr-eval --manifest .*manifest-chay-thu\.jsonl --asr-worker aw --asr-model \/x\/ggml\.bin/);
+  assert.match(io.calls[2], /score_asr\.py .*out-nhan\.jsonl$/);
 });
