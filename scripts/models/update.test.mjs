@@ -17,6 +17,7 @@ import {
   parseArgs,
   sameSignedBody,
 } from "./update-lib.mjs";
+import { checkLiveManifest, checkSources, fetchFile } from "./update-io.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
 export const temp = (t) => {
@@ -225,5 +226,57 @@ test("checkTable in một dòng mỗi mục", () => {
   assert.match(table, /\| v \| org\/vad \| v6\.2\.3 \| v6\.3\.0 \| có bản mới \(chỉ báo\): đổi bằng tay \|/);
 });
 
-void signBody;
-void testKey;
+test("checkSources: mỗi repo Hugging Face đọc một lần; file GitHub chỉ tải khi tag khác", async (t) => {
+  const work = temp(t);
+  const io = fakeIo({
+    text(url) {
+      if (url.startsWith("https://huggingface.co/api/models/org/m-GGUF/")) return JSON.stringify(hfApi());
+      if (url === "https://api.github.com/repos/org/vad/releases/latest") return JSON.stringify({ tag_name: "v7" });
+      if (url === "https://api.github.com/repos/org/vad") return JSON.stringify({ license: { spdx_id: "MIT" } });
+      throw new Error(`URL lạ ${url}`);
+    },
+    download: () => "vad mới",
+  });
+  const upstream = { entries: { a: hfEntry, b: { ...hfEntry, path: "m-Q4.gguf" }, v: ghEntry } };
+  const results = await checkSources(io, upstream, work);
+  assert.deepEqual(
+    results.map((r) => [r.id, r.status]),
+    [
+      ["a", "same"],
+      ["b", "stop"],
+      ["v", "report"],
+    ],
+  );
+  assert.equal(io.calls.filter((c) => c.startsWith("text https://huggingface.co/api/")).length, 1);
+  assert.ok(io.calls.includes("download https://raw.githubusercontent.com/org/vad/v7/src/vad.onnx"));
+  const sameTag = await checkSources(io, { entries: { v: { ...ghEntry, revision: "v7" } } }, work);
+  assert.equal(sameTag[0].status, "same");
+  assert.equal(io.calls.filter((c) => c.startsWith("download ")).length, 1, "tag trùng thì không tải");
+});
+
+test("fetchFile tải vào .part rồi mới đổi tên; file đã có thì không tải lại", (t) => {
+  const dir = temp(t);
+  const io = fakeIo({ download: () => "abc" });
+  const dest = join(dir, "x", "f.bin");
+  assert.equal(fetchFile(io, "https://e/f.bin", dest), dest);
+  assert.equal(readFileSync(dest, "utf8"), "abc");
+  assert.equal(io.calls.at(-1), "download https://e/f.bin");
+  fetchFile(io, "https://e/f.bin", dest);
+  assert.equal(io.calls.length, 1);
+});
+
+test("checkLiveManifest: manifest đang chạy phải là body mới nhất, ký bằng khóa tin cậy", async (t) => {
+  const dir = temp(t);
+  const bodyText = `${JSON.stringify({ schema: 1, sequence: 3, files: [] }, null, 2)}\n`;
+  writeFileSync(join(dir, "body-3.json"), bodyText);
+  const key = await testKey("test-u1", "ai-translator update test key 1");
+  const keys = [{ kid: key.kid, x: key.x }];
+  const live = (body) => fakeIo({ text: () => JSON.stringify(body) });
+  const signed = await signBody(key.privateKey, key.kid, JSON.stringify(JSON.parse(bodyText)));
+  assert.deepEqual(await checkLiveManifest(live(signed), dir, keys), { sequence: 3, path: join(dir, "body-3.json") });
+  const older = await signBody(key.privateKey, key.kid, JSON.stringify({ schema: 1, sequence: 2, files: [] }));
+  await assert.rejects(checkLiveManifest(live(older), dir, keys), /lệch nhau/);
+  const other = await testKey("test-u2", "ai-translator update test key 2");
+  const foreign = await signBody(other.privateKey, other.kid, JSON.stringify(JSON.parse(bodyText)));
+  await assert.rejects(checkLiveManifest(live(foreign), dir, keys), /Không có khóa công khai/);
+});
