@@ -47,6 +47,7 @@ Thêm vào `package.json` ở gốc repo: `"models:update": "node scripts/models
 | `pnpm models:update` | Chạy đủ luồng ở mục 3.1 |
 | `pnpm models:update --check` | Chỉ kiểm nguồn, in bảng "đang phát hành / mới nhất ở nguồn"; không tải, không đăng |
 | `pnpm models:update --gate-only <id>` | Chạy cổng kiểm (mục 4.4) với file đang phát hành của `<id>`; dùng để thử cổng kiểm, không đăng |
+| `pnpm models:update --rollback-to <S>` | Quay các model về như manifest số `S` đã phát hành, bằng một manifest số mới (mục 7.1) |
 
 File mới:
 
@@ -88,6 +89,9 @@ Mỗi mục theo `id` của `models.config.json`:
 - `license_file`: nơi lấy file giấy phép đi kèm (repo, revision, đường dẫn), cho mục `kind: license` gắn với model.
 - `gate`: loại cổng (`mt`, `asr`, `none`) và file mốc đang dùng (mục 4.4).
 - `r2_dir`: thư mục trên R2 (`hy-mt2`, `lmt-60`, `whisper`, `silero-vad`).
+- `history`: các lần phát hành của mục này, mỗi lần `{ sequence, revision, sha256, gate_baseline }` (`sequence` là số
+  manifest đầu tiên có bản đó; ban đầu một dòng với số 1 hay số 3 cho LMT). Mỗi lần đăng thêm một dòng; `--rollback-to`
+  đọc ở đây (mục 7.1).
 
 Giá trị ban đầu (theo `docs/superpowers/plans/2026-10-02-phase-1-04a-quan-ly-model-loi.md`, `CONVERT.md`):
 
@@ -252,16 +256,44 @@ dung `rclone.conf`.
 | Đã tải lên R2, chưa commit | file mới trên R2, chưa manifest nào trỏ tới (vô hại) | chạy lại; bước tải lên được bỏ qua vì SHA trùng |
 | Đã đẩy commit, CI ký lỗi | `body-(N+1)` trên `main`, chưa đăng | chạy lại: chạy lại workflow, không commit lần hai |
 | Bản đã ký không khớp hay chữ ký sai | không đăng | dừng hẳn, cần người xem |
-| Đã đăng, `curl` kiểm lại không khớp | `models.json` mới có thể lỗi | lệnh in cách đăng lại bản sao lưu; vì app từ chối `sequence` cũ, phải quay lại bằng `body-(N+2)` |
+| Đã đăng, `curl` kiểm lại không khớp | `models.json` mới có thể lỗi | đăng lại bản đã ký trong `target/models-update/signed/`; nếu chính bản đó hỏng, quay lại bằng `--rollback-to N` (mục 7.1), không đăng bản sao lưu số N vì app từ chối `sequence` cũ |
 
-Quay lại bản cũ (làm tay, ghi trong runbook): dựng `body-(N+2)` với các mục cũ (file cũ vẫn trên R2), ký và đăng như mục
-5. `sequence` luôn tăng nên không gỡ manifest được. Người đã tải bản mới sẽ thấy thông báo "có bản mới" để về bản cũ.
+### 7.1. Quay lại bản trước: `--rollback-to <S>`
+
+App chỉ nhận manifest có `sequence` lớn hơn bản đã nhận, nên không gỡ được manifest đã đăng. Quay lại là đăng manifest số
+M+1 (M là số đang chạy) có các mục model lấy từ `body-S.json`. File cũ không bao giờ bị xóa trên R2 (mục 5.1), nên quay về
+được mọi bản còn file.
+
+1. Kiểm điều kiện như mục 3.1 bước 1. `S` phải nhỏ hơn M và `scripts/models/released/body-S.json` phải có.
+2. Dựng `body-(M+1)` từ `body-M.json`: mỗi `id` có ở cả hai bản mà mục file khác nhau thì lấy nguyên mục của `body-S`.
+   `id` chỉ có ở `body-M` (ví dụ gói thêm sau số S) giữ nguyên; `id` chỉ có ở `body-S` (đã bỏ) thì dừng, quay lại kiểu đó
+   làm tay. `packs`, `recommend`, `pipeline` giữ như `body-M`. Không có mục nào khác nhau thì báo "không có gì để quay
+   lại" và thoát mã 0.
+3. Kiểm từng file được lấy lại vẫn còn trên R2: `curl` qua tên miền công khai, tải đủ, so `bytes` và `sha256`. Thiếu hay
+   sai thì dừng.
+4. Bỏ qua cổng kiểm: các file này đã từng phát hành và đã qua cổng kiểm lúc đó.
+5. In bảng "đang chạy / sẽ quay về" theo từng `id` (revision, SHA-256, dung lượng) và hỏi
+   **"Quay các model về như manifest số S? [y/N]"**.
+6. Trả `models.config.json` (`version`, `url` theo `body-S`) và `upstream.json` (revision, SHA-256, `gate.baseline` theo
+   dòng `history` của bản đó) về bản cũ, thêm một dòng `history` mới với số M+1.
+7. Kiểm `check_manifest_body` trên máy, commit (ví dụ `chore(models): quay lại model như manifest số 3 (manifest số 5)`),
+   đẩy, ký trong CI, kiểm chữ ký, đăng như mục 5.3, 5.4. Dùng chung `state.json` và luật chạy lại.
+
+Phía người dùng (trong vòng một ngày, theo nhịp kiểm của app):
+
+- Chưa tải bản mới: file trên máy khớp lại manifest, thông báo và dấu chấm tự biến mất.
+- Đã tải bản mới: thấy thông báo "Có bản mới của gói…" và phải tải lại bản cũ. Lúc cập nhật, app thay file tại chỗ nên
+  trên máy không còn bản cũ.
+- Đã bấm Để sau ở số M: thông báo hiện lại, vì số M+1 lớn hơn.
+
+Từ lúc đăng bản mới tới khi app nhận bản quay lại (tối đa khoảng một ngày), vẫn có người tải bản mới; quay lại sớm thì ít
+người phải tải hai lần.
 
 ## 8. Tài liệu
 
 - Spec chính §6.7: thêm đoạn phát hành bản model mới bằng `pnpm models:update` và luật dấu chấm khay.
 - `docs/release/phat-hanh.md`: mục 13 "Cập nhật model bằng `pnpm models:update`": điều kiện máy, cách chạy, chạy lại khi
-  lỗi, quay lại bản cũ.
+  lỗi, quay lại bản cũ bằng `--rollback-to`.
 
 ## 9. Kiểm thử
 
@@ -274,6 +306,9 @@ Quay lại bản cũ (làm tay, ghi trong runbook): dựng `body-(N+2)` với c�
 - Đường dẫn R2 theo revision; luật object đã có (SHA trùng thì bỏ qua, khác thì dừng).
 - Kiểm bản đã ký: khóa lạ, chữ ký sai, `body` khác một byte đều bị từ chối.
 - `state.json`: chạy lại từ từng bước dở.
+- `--rollback-to`: chỉ đổi đúng các `id` khác nhau giữa `body-S` và `body-M`; `id` mới sau số S giữ nguyên; `id` đã bỏ
+  thì dừng; không có gì khác thì thoát mã 0; `S` không nhỏ hơn M hay thiếu `body-S` thì lỗi; file trên R2 thiếu hay sai
+  SHA thì dừng; `upstream.json` lấy lại đúng dòng `history` và thêm dòng mới.
 - Câu trả lời y/N: chỉ `y`, `Y` là đồng ý.
 - Các bước gọi ra ngoài (rclone, gh, wrangler, curl, cargo, uv, git) đi qua một lớp `run()` để test thay bằng bản giả và
   ghi lại lệnh đã gọi; test không đụng mạng thật.
