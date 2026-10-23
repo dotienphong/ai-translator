@@ -50,7 +50,7 @@ jobs:
           pnpm build
           pnpm test
       - name: Script phát hành và script manifest model (node --test)
-        run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs scripts/dev-env.test.mjs scripts/run-dev-app.test.mjs
+        run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs scripts/models/update.test.mjs scripts/dev-env.test.mjs scripts/run-dev-app.test.mjs
       - name: Công cụ nghiệm thu (unittest, 08a)
         run: python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py'
       - name: cargo clippy
