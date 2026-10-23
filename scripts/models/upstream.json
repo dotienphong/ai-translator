@@ -1,0 +1,210 @@
+{
+  "_note": "Nguồn gốc các file của manifest model cho `pnpm models:update` (spec docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md mục 4.1). Khóa là `id` của models.config.json. `content`: `sha256:<hex>` (file LFS trên Hugging Face, file tải từ GitHub) hay `blob:<mã blob git>` (file thường trên Hugging Face). `gate.kind`: `mt`, `asr`, `none` (không chạy cổng kiểm), `report` (chỉ báo, đổi bằng tay). `history`: mỗi lần phát hành một dòng, `sequence` là số manifest đầu tiên có bản đó. Lệnh tự sửa file này khi đăng hay quay lại; chỉ sửa tay khi thêm hay bỏ mục.",
+  "entries": {
+    "whisper-large-v3-turbo-q5_0": {
+      "source": "hf-file",
+      "repo": "ggerganov/whisper.cpp",
+      "path": "ggml-large-v3-turbo-q5_0.bin",
+      "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+      "content": "sha256:394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+      "license": "mit",
+      "version_prefix": "whisper.cpp-",
+      "r2_dir": "whisper",
+      "notice": "notice",
+      "gate": {
+        "kind": "asr",
+        "baseline": "bench/phase0/results/a4_m4pro-turbo-final.json"
+      },
+      "history": [
+        {
+          "sequence": 1,
+          "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+          "content": "sha256:394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+          "baseline": "bench/phase0/results/a4_m4pro-turbo-final.json"
+        }
+      ]
+    },
+    "whisper-small-q5_1": {
+      "source": "hf-file",
+      "repo": "ggerganov/whisper.cpp",
+      "path": "ggml-small-q5_1.bin",
+      "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+      "content": "sha256:ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb",
+      "license": "mit",
+      "version_prefix": "whisper.cpp-",
+      "r2_dir": "whisper",
+      "notice": "notice",
+      "gate": {
+        "kind": "asr",
+        "baseline": "bench/phase0/results/a4_m4pro-small-final.json"
+      },
+      "history": [
+        {
+          "sequence": 1,
+          "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+          "content": "sha256:ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb",
+          "baseline": "bench/phase0/results/a4_m4pro-small-final.json"
+        }
+      ]
+    },
+    "hy-mt2-1.8b-q8_0": {
+      "source": "hf-file",
+      "repo": "tencent/Hy-MT2-1.8B-GGUF",
+      "path": "Hy-MT2-1.8B-Q8_0.gguf",
+      "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+      "content": "sha256:5c3fe0b1408a5ceb0143184ef247b11b579c525f4b02b060e6c851bb76fef1a4",
+      "license": "apache-2.0",
+      "version_prefix": "",
+      "r2_dir": "hy-mt2",
+      "notice": "notice",
+      "gate": {
+        "kind": "mt",
+        "prompt": "hy-mt2",
+        "baseline": "bench/phase0/results/s7_mt-gd1-a3.json"
+      },
+      "history": [
+        {
+          "sequence": 1,
+          "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+          "content": "sha256:5c3fe0b1408a5ceb0143184ef247b11b579c525f4b02b060e6c851bb76fef1a4",
+          "baseline": "bench/phase0/results/s7_mt-gd1-a3.json"
+        }
+      ]
+    },
+    "hy-mt2-1.8b-q4_k_m": {
+      "source": "hf-file",
+      "repo": "tencent/Hy-MT2-1.8B-GGUF",
+      "path": "Hy-MT2-1.8B-Q4_K_M.gguf",
+      "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+      "content": "sha256:dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+      "license": "apache-2.0",
+      "version_prefix": "",
+      "r2_dir": "hy-mt2",
+      "notice": "notice",
+      "gate": {
+        "kind": "mt",
+        "prompt": "hy-mt2",
+        "baseline": "bench/phase0/results/s7_mt-gd1-a3.json"
+      },
+      "history": [
+        {
+          "sequence": 1,
+          "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+          "content": "sha256:dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+          "baseline": "bench/phase0/results/s7_mt-gd1-a3.json"
+        }
+      ]
+    },
+    "hy-mt2-license": {
+      "source": "hf-file",
+      "repo": "tencent/Hy-MT2-1.8B-GGUF",
+      "path": "LICENSE.txt",
+      "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+      "content": "blob:271c97261848d7b61366d20262762f5c47b4a0c6",
+      "license": "apache-2.0",
+      "version_prefix": "",
+      "r2_dir": "hy-mt2",
+      "gate": {
+        "kind": "none"
+      },
+      "history": [
+        {
+          "sequence": 1,
+          "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+          "content": "blob:271c97261848d7b61366d20262762f5c47b4a0c6"
+        }
+      ]
+    },
+    "lmt-60-0.6b-q8_0": {
+      "source": "hf-convert",
+      "repo": "NiuTrans/LMT-60-0.6B",
+      "revision": "dd189845cdc73346cef33c7a94f4b8bd8efdd4eb",
+      "inputs": {
+        "added_tokens.json": "blob:b54f9135e44c1e81047e8d05cb027af8bc039eed",
+        "chat_template.jinja": "blob:699ff8df401fe4788525e9c1f9b86a99eadd6230",
+        "config.json": "blob:bee635756e3cb6f65e3c2324fd6efe6ea7d949d6",
+        "generation_config.json": "blob:89cb4b5ab4eefe1e2da8d40c59f433c74c4919dd",
+        "merges.txt": "blob:31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+        "model.safetensors": "sha256:c48c3b8d7b04d3c6e56452fa51ddefc03921043b0f70641cb80c5d3ac71b73e6",
+        "special_tokens_map.json": "blob:ac23c0aaa2434523c494330aeb79c58395378103",
+        "tokenizer.json": "sha256:aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "tokenizer_config.json": "blob:ddaf69808214a44fdd26d3785b66c1367c78277a",
+        "vocab.json": "blob:4783fe10ac3adce15ac8f358ef5462739852c569"
+      },
+      "convert": {
+        "llama_tag": "b11146",
+        "llama_commit": "7fe450e19305b828c199d602c23a8337aaa1f03b",
+        "outtype": "q8_0",
+        "python": "3.12"
+      },
+      "license": "apache-2.0",
+      "version_prefix": "",
+      "r2_dir": "lmt-60",
+      "notice": "notice-fast",
+      "gate": {
+        "kind": "mt",
+        "prompt": "lmt",
+        "baseline": "bench/phase0/results/s7_mt-goi-nhanh.json"
+      },
+      "history": [
+        {
+          "sequence": 3,
+          "revision": "dd189845cdc73346cef33c7a94f4b8bd8efdd4eb",
+          "inputs": {
+            "added_tokens.json": "blob:b54f9135e44c1e81047e8d05cb027af8bc039eed",
+            "chat_template.jinja": "blob:699ff8df401fe4788525e9c1f9b86a99eadd6230",
+            "config.json": "blob:bee635756e3cb6f65e3c2324fd6efe6ea7d949d6",
+            "generation_config.json": "blob:89cb4b5ab4eefe1e2da8d40c59f433c74c4919dd",
+            "merges.txt": "blob:31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+            "model.safetensors": "sha256:c48c3b8d7b04d3c6e56452fa51ddefc03921043b0f70641cb80c5d3ac71b73e6",
+            "special_tokens_map.json": "blob:ac23c0aaa2434523c494330aeb79c58395378103",
+            "tokenizer.json": "sha256:aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+            "tokenizer_config.json": "blob:ddaf69808214a44fdd26d3785b66c1367c78277a",
+            "vocab.json": "blob:4783fe10ac3adce15ac8f358ef5462739852c569"
+          },
+          "baseline": "bench/phase0/results/s7_mt-goi-nhanh.json"
+        }
+      ]
+    },
+    "lmt-60-license": {
+      "source": "hf-file",
+      "repo": "Qwen/Qwen3-0.6B-Base",
+      "path": "LICENSE",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "content": "blob:6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+      "license": "apache-2.0",
+      "version_prefix": "",
+      "r2_dir": "lmt-60",
+      "gate": {
+        "kind": "none"
+      },
+      "history": [
+        {
+          "sequence": 3,
+          "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+          "content": "blob:6634c8cc3133b3848ec74b9f275acaaa1ea618ab"
+        }
+      ]
+    },
+    "silero-vad-v6.2.3": {
+      "source": "github-release",
+      "repo": "snakers4/silero-vad",
+      "path": "src/silero_vad/data/silero_vad.onnx",
+      "revision": "v6.2.3",
+      "content": "sha256:1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+      "license": "MIT",
+      "version_prefix": "",
+      "r2_dir": "silero-vad",
+      "gate": {
+        "kind": "report"
+      },
+      "history": [
+        {
+          "sequence": 1,
+          "revision": "v6.2.3",
+          "content": "sha256:1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+        }
+      ]
+    }
+  }
+}
