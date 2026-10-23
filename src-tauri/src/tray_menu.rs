@@ -357,6 +357,19 @@ mod tests {
                 .any(|(id, _)| *id == "model-update"),
             "đang dịch thì không hiện"
         );
+        // Đủ tám tổ hợp: dấu chấm có đúng khi menu có mục cập nhật (không để hai luật lệch nhau).
+        for (running, model_update, update_ready) in (0..8).map(|n| (n & 1 != 0, n & 2 != 0, n & 4 != 0)) {
+            let m = model(running, model_update, update_ready);
+            let has_item = menu_lines(&i18n::VI, m)
+                .iter()
+                .flatten()
+                .any(|(item, _)| matches!(item, TrayItem::ModelUpdate | TrayItem::RestartToUpdate));
+            assert_eq!(
+                has_badge(m),
+                has_item,
+                "running={running} model={model_update} app={update_ready}"
+            );
+        }
         assert!(has_badge(model(false, true, false)), "chỉ có bản model mới");
         assert!(has_badge(model(false, false, true)), "chỉ có bản app mới");
         assert!(!has_badge(model(false, false, false)));
