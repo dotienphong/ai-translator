@@ -15,6 +15,8 @@ import {
   applyUpstream,
   bumpBody,
   bumpNotice,
+  buildRollbackPlan,
+  buildUpdatePlan,
   checkTable,
   checkUpstream,
   contentId,
@@ -30,6 +32,7 @@ import {
   mtRunName,
   nextNoticeVersion,
   parseArgs,
+  planTable,
   r2Key,
   restoreUpstream,
   rollbackChanges,
@@ -1031,4 +1034,174 @@ test("applyUpstream thêm dòng history; restoreUpstream lấy lại đúng bả
 test("isYes chỉ nhận y hay Y", () => {
   for (const yes of ["y", "Y", " y "]) assert.equal(isYes(yes), true, yes);
   for (const no of ["", "n", "yes", "có", undefined]) assert.equal(isYes(no), false, String(no));
+});
+
+/** Kế hoạch đăng bản Q8_0 mới (revision REV("b")) trên dữ liệu thật của repo. */
+function q8Plan() {
+  const upstream = readJson("scripts/models/upstream.json");
+  const notice = readFileSync(resolve(REPO, "scripts/models/NOTICE.txt"), "utf8");
+  const noticeFast = readFileSync(resolve(REPO, "scripts/models/NOTICE-fast.txt"), "utf8");
+  const plan = buildUpdatePlan({
+    body: body3(),
+    upstream,
+    configText: readFileSync(resolve(REPO, "scripts/models/models.config.json"), "utf8"),
+    noticeTexts: { notice, "notice-fast": noticeFast },
+    prepared: [
+      {
+        id: Q8_ID,
+        entry: upstream.entries[Q8_ID],
+        next: { revision: REV("b"), content: `sha256:${SHA("7")}` },
+        local: { path: "/w/q8.gguf", bytes: 123, sha256: SHA("7") },
+        bench: { from: "/w/gate", to: "bench/model-updates/2026-10-24-q8" },
+        baseline: "bench/model-updates/2026-10-24-q8/s7_mt-x.json",
+      },
+    ],
+    publishedAt: "2026-10-24T00:00:00Z",
+    repo: "/repo",
+  });
+  return { plan, notice, upstream };
+}
+
+test("buildUpdatePlan: mục model mới, NOTICE mới, các file trong repo, lời commit", () => {
+  const { plan, notice } = q8Plan();
+  assert.equal(plan.kind, "update");
+  assert.equal(plan.base, 3);
+  assert.equal(plan.target, 4);
+  assert.deepEqual(Object.keys(plan.replace).sort(), [Q8_ID, "notice"]);
+  const q8 = plan.replace[Q8_ID];
+  assert.equal(q8.url, "hy-mt2/bbbbbbbbbbbb/Hy-MT2-1.8B-Q8_0.gguf");
+  assert.equal(q8.version, "bbbbbbb");
+  assert.equal(q8.sha256, SHA("7"));
+  assert.equal(q8.file, "Hy-MT2-1.8B-Q8_0.gguf", "giữ tên file");
+  const n = plan.replace.notice;
+  assert.equal(n.version, "2");
+  assert.match(n.url, /^notice\/2-[0-9a-f]{8}\/NOTICE\.txt$/);
+  const newNotice = plan.files["scripts/models/NOTICE.txt"];
+  assert.notEqual(newNotice, notice);
+  assert.equal(n.sha256, createHash("sha256").update(newNotice).digest("hex"));
+  assert.deepEqual(plan.uploads.map((u) => u.path), ["/w/q8.gguf", "/repo/scripts/models/NOTICE.txt"]);
+  assert.deepEqual(Object.keys(plan.files).sort(), [
+    "scripts/models/NOTICE.txt",
+    "scripts/models/models.config.json",
+    "scripts/models/released/body-4.json",
+    "scripts/models/upstream.json",
+  ]);
+  const body4 = JSON.parse(plan.files[plan.bodyRel]);
+  assert.equal(body4.sequence, 4);
+  assert.deepEqual(body4.files.find((f) => f.id === Q8_ID), q8);
+  assert.equal(JSON.parse(plan.files["scripts/models/upstream.json"]).entries[Q8_ID].gate.baseline, "bench/model-updates/2026-10-24-q8/s7_mt-x.json");
+  assert.equal(plan.prevRel, "scripts/models/released/body-3.json");
+  assert.deepEqual(plan.bench, [{ from: "/w/gate", to: "bench/model-updates/2026-10-24-q8" }]);
+  assert.equal(plan.message, "chore(models): hy-mt2-1.8b-q8_0 lên bbbbbbb (manifest số 4)");
+});
+
+test("buildUpdatePlan: bản chuẩn bị trùng file đang phát hành thì không đăng, chỉ ghi nhận revision", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  const lmt = "lmt-60-0.6b-q8_0";
+  const published = body3().files.find((f) => f.id === lmt);
+  const same = {
+    id: lmt,
+    entry: upstream.entries[lmt],
+    next: { revision: REV("c"), inputs: { "config.json": "blob:c9" } },
+    local: { path: "/w/lmt.gguf", bytes: published.bytes, sha256: published.sha256 },
+    unchanged: true,
+    bench: null,
+    baseline: null,
+  };
+  const args = {
+    body: body3(),
+    upstream,
+    configText: readFileSync(resolve(REPO, "scripts/models/models.config.json"), "utf8"),
+    noticeTexts: {
+      notice: readFileSync(resolve(REPO, "scripts/models/NOTICE.txt"), "utf8"),
+      "notice-fast": readFileSync(resolve(REPO, "scripts/models/NOTICE-fast.txt"), "utf8"),
+    },
+    publishedAt: "t",
+    repo: "/repo",
+  };
+  const record = buildUpdatePlan({ ...args, prepared: [same] });
+  assert.equal(record.kind, "record");
+  assert.deepEqual(Object.keys(record.files), ["scripts/models/upstream.json"]);
+  const recorded = JSON.parse(record.files["scripts/models/upstream.json"]).entries[lmt];
+  assert.equal(recorded.revision, REV("c"));
+  assert.equal(recorded.history.at(-1).sequence, 3);
+  assert.match(record.message, /^chore\(models\): ghi nhận revision mới của nguồn, nội dung không đổi \(lmt-60-0\.6b-q8_0 lên ccccccc\)$/);
+  const { plan: q8 } = q8Plan();
+  const mixed = buildUpdatePlan({ ...args, prepared: [same, { ...q8PreparedItem(upstream) }] });
+  assert.equal(mixed.kind, "update");
+  assert.deepEqual(Object.keys(mixed.replace).sort(), [Q8_ID, "notice"], "không thay mục LMT, không đụng NOTICE-fast");
+  assert.equal(JSON.parse(mixed.files["scripts/models/upstream.json"]).entries[lmt].revision, REV("c"));
+  assert.equal(mixed.message, q8.message);
+});
+
+/** Mục Q8_0 đã chuẩn bị, như trong `q8Plan`. */
+function q8PreparedItem(upstream) {
+  return {
+    id: Q8_ID,
+    entry: upstream.entries[Q8_ID],
+    next: { revision: REV("b"), content: `sha256:${SHA("7")}` },
+    local: { path: "/w/q8.gguf", bytes: 123, sha256: SHA("7") },
+    bench: { from: "/w/gate", to: "bench/model-updates/2026-10-24-q8" },
+    baseline: "bench/model-updates/2026-10-24-q8/s7_mt-x.json",
+  };
+}
+
+test("buildUpdatePlan dừng khi NOTICE trong repo khác bản đang phát hành", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  assert.throws(
+    () =>
+      buildUpdatePlan({
+        body: body3(),
+        upstream,
+        configText: readFileSync(resolve(REPO, "scripts/models/models.config.json"), "utf8"),
+        noticeTexts: { notice: "khác", "notice-fast": "khác" },
+        prepared: [
+          {
+            id: Q8_ID,
+            entry: upstream.entries[Q8_ID],
+            next: { revision: REV("b"), content: `sha256:${SHA("7")}` },
+            local: { path: "/w/q8.gguf", bytes: 1, sha256: SHA("7") },
+            bench: null,
+            baseline: null,
+          },
+        ],
+        publishedAt: "t",
+        repo: "/repo",
+      }),
+    /NOTICE\.txt trong repo khác bản đang phát hành/,
+  );
+});
+
+test("buildRollbackPlan quay về số 3 từ số 4: lấy lại mục và NOTICE cũ, upstream.json về bản cũ", () => {
+  const { plan, notice } = q8Plan();
+  const current = JSON.parse(plan.files[plan.bodyRel]);
+  const rollback = buildRollbackPlan({
+    current,
+    target: body3(),
+    upstream: JSON.parse(plan.files["scripts/models/upstream.json"]),
+    configText: plan.files["scripts/models/models.config.json"],
+    noticeTexts: { notice },
+    publishedAt: "2026-10-25T00:00:00Z",
+  });
+  assert.equal(rollback.kind, "rollback");
+  assert.equal(rollback.base, 4);
+  assert.equal(rollback.target, 5);
+  const old = new Map(body3().files.map((f) => [f.id, f]));
+  assert.deepEqual(rollback.replace[Q8_ID], old.get(Q8_ID));
+  assert.deepEqual(rollback.replace.notice, old.get("notice"));
+  assert.equal(rollback.files["scripts/models/NOTICE.txt"], notice);
+  assert.deepEqual(rollback.uploads, []);
+  const up = JSON.parse(rollback.files["scripts/models/upstream.json"]);
+  assert.equal(up.entries[Q8_ID].revision, "a0c709d9fac510f2c807aa3af52872340dc37a4a");
+  const config = JSON.parse(rollback.files["scripts/models/models.config.json"]);
+  assert.equal(config.files.find((f) => f.id === Q8_ID).url, "hy-mt2/Hy-MT2-1.8B-Q8_0.gguf");
+  assert.equal(rollback.message, "chore(models): quay lại model như manifest số 3 (manifest số 5)");
+  assert.equal(buildRollbackPlan({ current: body3(), target: readJson("scripts/models/released/body-2.json"), upstream: readJson("scripts/models/upstream.json"), configText: "{}", noticeTexts: {}, publishedAt: "t" }), null);
+});
+
+test("planTable in mỗi mục một dòng", () => {
+  const { plan } = q8Plan();
+  const table = planTable(plan, body3());
+  assert.match(table, /^Manifest số 3 → số 4\./);
+  assert.match(table, /\| hy-mt2-1\.8b-q8_0 \| a0c709d, 5c3fe0b1408a, 1820\.1 MB \| bbbbbbb, 777777777777, 0\.0 MB \| hy-mt2\/bbbbbbbbbbbb\/Hy-MT2-1\.8B-Q8_0\.gguf \|/);
 });

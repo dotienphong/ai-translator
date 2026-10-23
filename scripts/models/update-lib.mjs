@@ -3,6 +3,7 @@
 // update-io.mjs); chỉ đọc file cục bộ (`latestBody` liệt kê thư mục released), nên test được bằng dữ liệu mẫu.
 import { readdirSync } from "node:fs";
 import { basename, join } from "node:path";
+import { sha256hex } from "./lib.mjs";
 
 /** URL của models.json đang phát hành; trùng `PRODUCTION_URL` của `src-tauri/src/models/source.rs` (có test). */
 export const MANIFEST_URL = "https://releases.aitranslator.io.vn/models/models.json";
@@ -417,4 +418,138 @@ export function restoreUpstream(upstream, id, target, sequence) {
   if (record.baseline !== undefined) e.gate.baseline = record.baseline;
   e.history.push({ ...record, sequence });
   return out;
+}
+
+/**
+ * Kế hoạch đăng bản mới (spec mục 5). `body`: phần thân đang chạy. `prepared`: các mục đã chuẩn bị và qua cổng kiểm, mỗi
+ * mục `{ id, entry, next, local: { path, bytes, sha256 }, bench, baseline }` (`bench`: `{ from, to }` chép kết quả đo vào
+ * repo, `baseline`: mốc mới trong repo; cả hai `null` với mục không có cổng kiểm). `noticeTexts`: nội dung hiện tại của các
+ * file NOTICE trong repo, theo `id` của mục NOTICE. `repo`: thư mục gốc của repo (đường dẫn tải lên của NOTICE).
+ */
+export function buildUpdatePlan({ body, upstream, configText, noticeTexts, prepared, publishedAt, repo }) {
+  const changed = prepared.filter((p) => !p.unchanged);
+  const names = (list) => list.map((p) => `${p.id} lên ${shortRev(p.next.revision)}`).join(", ");
+  if (changed.length === 0) {
+    // Mọi bản chuẩn bị đều trùng file đang phát hành: chỉ ghi nhận revision mới (spec mục 4.3), không ký, không đăng.
+    let up = upstream;
+    for (const p of prepared) up = applyUpstream(up, p.id, p.next, body.sequence, null);
+    return {
+      kind: "record",
+      base: body.sequence,
+      target: body.sequence,
+      replace: {},
+      uploads: [],
+      files: { "scripts/models/upstream.json": serializeJson(up) },
+      bench: [],
+      message: `chore(models): ghi nhận revision mới của nguồn, nội dung không đổi (${names(prepared)})`,
+    };
+  }
+  const target = body.sequence + 1;
+  const old = new Map(body.files.map((f) => [f.id, f]));
+  const replace = {};
+  const uploads = [];
+  const files = {};
+  const notices = {};
+  let up = upstream;
+  let config = configText;
+  for (const p of prepared.filter((item) => item.unchanged)) up = applyUpstream(up, p.id, p.next, target, null);
+  for (const p of changed) {
+    const was = old.get(p.id);
+    const key = r2Key(p.entry.r2_dir, p.next.revision, was.file);
+    replace[p.id] = {
+      ...was,
+      version: versionOf(p.entry, p.next.revision),
+      url: manifestUrlOf(key),
+      bytes: p.local.bytes,
+      sha256: p.local.sha256,
+    };
+    uploads.push({ key, path: p.local.path, sha256: p.local.sha256 });
+    up = applyUpstream(up, p.id, p.next, target, p.baseline);
+    config = applyConfigText(config, p.id, replace[p.id]);
+    const noticeId = p.entry.notice;
+    if (noticeId && p.entry.source !== "github-release") {
+      if (notices[noticeId] === undefined) {
+        const was = old.get(noticeId);
+        if (sha256hex(Buffer.from(noticeTexts[noticeId])) !== was.sha256) {
+          throw new Error(`scripts/models/${was.file} trong repo khác bản đang phát hành: đối chiếu với R2 trước.`);
+        }
+      }
+      notices[noticeId] = bumpNotice(notices[noticeId] ?? noticeTexts[noticeId], p.entry.repo, p.next.revision);
+    }
+  }
+  for (const [id, text] of Object.entries(notices)) {
+    const was = old.get(id);
+    if (text === noticeTexts[id]) continue;
+    const sha256 = sha256hex(Buffer.from(text));
+    const version = nextNoticeVersion(was.version);
+    const key = `models/notice/${version}-${sha256.slice(0, 8)}/${was.file}`;
+    replace[id] = { ...was, version, url: manifestUrlOf(key), bytes: Buffer.byteLength(text), sha256 };
+    const rel = `scripts/models/${was.file}`;
+    files[rel] = text;
+    uploads.push({ key, path: join(repo, rel), sha256 });
+    config = applyConfigText(config, id, replace[id]);
+  }
+  const bodyRel = `scripts/models/released/body-${target}.json`;
+  files[bodyRel] = serializeJson(bumpBody(body, replace, publishedAt));
+  files["scripts/models/upstream.json"] = serializeJson(up);
+  files["scripts/models/models.config.json"] = config;
+  return {
+    kind: "update",
+    base: body.sequence,
+    target,
+    publishedAt,
+    replace,
+    uploads,
+    files,
+    bench: changed.map((p) => p.bench).filter(Boolean),
+    bodyRel,
+    prevRel: `scripts/models/released/body-${body.sequence}.json`,
+    message: `chore(models): ${names(changed)} (manifest số ${target})`,
+  };
+}
+
+/**
+ * Kế hoạch quay các model về như phần thân `target` (spec mục 7.1), hay `null` khi không có gì để quay lại. `noticeTexts`:
+ * nội dung các file NOTICE của `target` (tải từ R2), theo `id`, cho các mục NOTICE có đổi.
+ */
+export function buildRollbackPlan({ current, target, upstream, configText, noticeTexts, publishedAt }) {
+  const replace = rollbackChanges(current, target);
+  if (Object.keys(replace).length === 0) return null;
+  const sequence = current.sequence + 1;
+  const files = {};
+  let up = upstream;
+  let config = configText;
+  for (const [id, entry] of Object.entries(replace)) {
+    if (up.entries[id]) up = restoreUpstream(up, id, target.sequence, sequence);
+    config = applyConfigText(config, id, entry);
+    if (noticeTexts[id] !== undefined) files[`scripts/models/${entry.file}`] = noticeTexts[id];
+  }
+  const bodyRel = `scripts/models/released/body-${sequence}.json`;
+  files[bodyRel] = serializeJson(bumpBody(current, replace, publishedAt));
+  files["scripts/models/upstream.json"] = serializeJson(up);
+  files["scripts/models/models.config.json"] = config;
+  return {
+    kind: "rollback",
+    base: current.sequence,
+    target: sequence,
+    publishedAt,
+    replace,
+    uploads: [],
+    files,
+    bench: [],
+    bodyRel,
+    prevRel: `scripts/models/released/body-${current.sequence}.json`,
+    message: `chore(models): quay lại model như manifest số ${target.sequence} (manifest số ${sequence})`,
+  };
+}
+
+/** Bảng "đang chạy / sẽ đăng" của kế hoạch, in trước câu hỏi y/N. */
+export function planTable(plan, body) {
+  const old = new Map(body.files.map((f) => [f.id, f]));
+  const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const rows = Object.entries(plan.replace).map(([id, f]) => {
+    const was = old.get(id);
+    return `| ${id} | ${was.version}, ${was.sha256.slice(0, 12)}, ${mb(was.bytes)} | ${f.version}, ${f.sha256.slice(0, 12)}, ${mb(f.bytes)} | ${f.url} |`;
+  });
+  return [`Manifest số ${plan.base} → số ${plan.target}.`, "", "| id | Đang chạy | Sẽ đăng | url |", "|---|---|---|---|", ...rows].join("\n");
 }
