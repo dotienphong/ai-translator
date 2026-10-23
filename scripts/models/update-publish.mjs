@@ -249,9 +249,10 @@ export function publishManifest(io, signedPath, work, plan) {
  * Thực hiện kế hoạch đăng từ đầu hay từ bước dở. `save(plan)` ghi lại state.json khi kế hoạch có thêm thông tin. Giai đoạn
  * của repo (`repoStage`) quyết định phần nào làm lại: "fresh" làm hết; "committed" chỉ tải lên rồi đẩy; "pushed" bỏ qua
  * mọi bước tới khi đẩy.
+ * `keys`: khóa công khai tin cậy cho bản đã ký (mặc định khóa build sẵn trong app; test truyền khóa thử).
  * `work`: thư mục làm việc lớn (bản tải về, chạy thử); `state`: nơi giữ bản đã ký và bản sao lưu manifest.
  */
-export async function publish(io, plan, { save, work, state = work, repo = REPO }) {
+export async function publish(io, plan, { save, work, state = work, repo = REPO, keys }) {
   const stage = repoStage(io, plan);
   if (stage === "fresh") {
     // Chạy lại sau `cargo clean` thì file model đã chuẩn bị (trong target/) không còn: dừng trước khi ghi gì vào repo.
@@ -267,6 +268,6 @@ export async function publish(io, plan, { save, work, state = work, repo = REPO 
     commitAndPush(io, plan, stage);
   }
   const signed = signInCi(io, plan, { save, work: state });
-  await verifySigned(signed, plan.files[plan.bodyRel]);
+  await verifySigned(signed, plan.files[plan.bodyRel], keys);
   console.log(publishManifest(io, signed, state, plan));
 }

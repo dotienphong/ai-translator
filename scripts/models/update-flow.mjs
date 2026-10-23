@@ -114,7 +114,7 @@ async function confirmAndPublish(ctx, plan, question, preflightHead) {
   }
   plan.head = holdHead(io, preflightHead); // từ đây main phải đứng yên tới khi đẩy xong (repoStage)
   saveState(ctx, plan);
-  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo });
+  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo, keys: ctx.keys });
   clearState(ctx);
   console.log(`\nXong: manifest số ${plan.target} đã đăng.`);
   return 0;
@@ -138,7 +138,7 @@ async function resume(ctx, plan) {
     console.log(`Không làm tiếp. Muốn bỏ hẳn lượt này thì xóa ${stateFile(ctx)} và hoàn tác các file đã ghi trong repo.`);
     return 0;
   }
-  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo });
+  await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo, keys: ctx.keys });
   clearState(ctx);
   console.log(`\nXong: manifest số ${plan.target} đã đăng.`);
   return 0;
