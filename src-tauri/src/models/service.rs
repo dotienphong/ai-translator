@@ -1279,8 +1279,17 @@ mod tests {
         h.wait("done");
         assert!(!service.tray_update(h.app.handle()), "tải xong thì hết");
         let inner = service.lock();
-        assert!(inner.rev >= rev + 2, "changed() chạy nhiều lần: {} → {}", rev, inner.rev);
-        assert_eq!(inner.tray_refreshes, refreshes + 1, "chỉ dựng lại khi cờ đổi (có → không)");
+        assert!(
+            inner.rev >= rev + 2,
+            "changed() chạy nhiều lần: {} → {}",
+            rev,
+            inner.rev
+        );
+        assert_eq!(
+            inner.tray_refreshes,
+            refreshes + 1,
+            "chỉ dựng lại khi cờ đổi (có → không)"
+        );
     }
 
     /// Đang dịch bằng gói thì không tải đè hay xóa gói đó (ghi chú 8 của review cuối 02).
