@@ -1396,7 +1396,13 @@ Chạy lại `pnpm models:update` thì lệnh hỏi "Làm tiếp lượt đăng 
 | Đã commit, chưa đẩy | `origin/main` còn đúng `head`, `HEAD` là một commit ngay trên đó, có đúng lời commit của lượt | tải lên (nếu thiếu), đẩy, rồi ký, đăng |
 | Đã đẩy | `origin/main` đã có `body-N.json` mới | chỉ ký, kiểm, đăng |
 
-Mọi trường hợp khác (sai nhánh, `main` ở máy khác `origin/main`, có người đẩy thêm commit, cây có file ngoài lượt đăng) lệnh dừng với "main đã đổi từ lúc gõ y" và không làm gì thêm.
+Mọi trường hợp khác lệnh dừng và không làm gì thêm, với một trong các thông báo:
+
+- sai nhánh: "Phải ở nhánh main (đang ở …)";
+- cây làm việc có file ngoài lượt đăng: "Cây làm việc có file ngoài kế hoạch (…)";
+- `main` đã đổi (người khác đẩy thêm commit, `HEAD` hay `origin/main` không còn đúng lúc gõ y, commit không phải của lượt này): "main đã đổi từ lúc gõ y (…)". Nếu `main` đổi ngay trong lúc còn chuẩn bị (trước khi gõ y) thì thông báo là "main đã đổi trong lúc chuẩn bị (…): chạy lại từ đầu."
+
+Nếu một lượt chạy cổng kiểm hỏng giữa chừng, trước khi kết quả được chuyển đi, các file dở `bench/phase0/results/s7_mt-update-*` hay `a4_update-*` còn lại làm cây làm việc không sạch (lệnh sau dừng ở "Cây làm việc chưa sạch"): xóa chúng đi, đó chỉ là file trung gian.
 
 **Bỏ hẳn một lượt dở**, theo giai đoạn:
 
