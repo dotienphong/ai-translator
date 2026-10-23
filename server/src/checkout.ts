@@ -8,6 +8,7 @@ import { audit } from "./audit";
 import { b64urlEncode, randomBytes, sha256Hex } from "./crypto";
 import type { Deps } from "./deps";
 import { clientIp, fail, parseEmail, readJson, tooMany } from "./http";
+import { parseLang } from "./lang";
 import { normalizeLicenseKey } from "./license-key";
 import { isProviderAuthFailure } from "./payment/provider";
 import {
@@ -117,6 +118,9 @@ export function registerCheckout(app: Hono<AppEnv>) {
     if (consent !== true) return fail(c, 400, "invalid_request", { field: "consent" });
     const currency = body.currency === undefined ? "VND" : body.currency;
     if (!isCurrency(currency)) return fail(c, 400, "invalid_request", { field: "currency" });
+    // Ngôn ngữ giao diện app lúc tạo đơn (spec 2026-10-23 §3), lưu để thư gửi key viết bằng ngôn ngữ đó. Thiếu, sai kiểu hay mã lạ
+    // (app sau này có thêm ngôn ngữ mà server chưa biết) thì NULL: không bao giờ chặn việc mua vì ngôn ngữ thư.
+    const lang = parseLang(body.lang);
     const { provider, ttl } = SALES[currency];
 
     // Cùng luật với GET /v1/plans: loại tiền không được chào thì không bán (503), kể cả khi app gửi thẳng.
@@ -157,10 +161,10 @@ export function registerCheckout(app: Hono<AppEnv>) {
     const row = await db
       .prepare(
         `INSERT INTO orders (order_token_hash, provider, plan, amount, currency, email, email_consent_at,
-                             renew_license_id, status, created_at, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?) RETURNING order_code`,
+                             renew_license_id, lang, status, created_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?) RETURNING order_code`,
       )
-      .bind(await sha256Hex(orderToken), provider, plan, amount, currency, email, now, renewLicenseId, now, expiresAt)
+      .bind(await sha256Hex(orderToken), provider, plan, amount, currency, email, now, renewLicenseId, lang, now, expiresAt)
       .first<{ order_code: number }>();
     if (!row) throw new Error("không tạo được đơn");
     const orderCode = row.order_code;

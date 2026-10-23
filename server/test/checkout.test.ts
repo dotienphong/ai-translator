@@ -391,4 +391,23 @@ describe("POST /v1/checkout", () => {
     expect(cancelHtml).toContain("Đã hủy thanh toán");
     expect(cancelHtml).toContain("Payment cancelled");
   });
+
+  it("lưu ngôn ngữ giao diện app (spec 2026-10-23): mã hợp lệ thì lưu; thiếu, sai kiểu hay mã lạ thì NULL mà vẫn tạo đơn", async () => {
+    const w = makeWorld();
+    const cases: [unknown, string | null][] = [
+      ["ja", "ja"],
+      ["vi", "vi"],
+      [undefined, null],
+      ["fr", null],
+      ["VI", null],
+      [5, null],
+      [null, null],
+    ];
+    for (const [lang, stored] of cases) {
+      const res = await w.call("POST", "/v1/checkout", lang === undefined ? valid : { ...valid, lang });
+      expect(res.status, String(lang)).toBe(201);
+      const row = await env.DB.prepare("SELECT lang FROM orders WHERE order_code = ?").bind(res.body.order_code as number).first();
+      expect(row, String(lang)).toEqual({ lang: stored });
+    }
+  });
 });

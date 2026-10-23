@@ -89,13 +89,14 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
   }
 
   /** Mua trọn một đơn: checkout, khách trả đủ tiền, PayOS gửi webhook. Trả về key đã cấp. */
-  async function buy(opts: { plan?: string; email?: string; licenseKey?: string } = {}) {
+  async function buy(opts: { plan?: string; email?: string; licenseKey?: string; lang?: string } = {}) {
     const req: Record<string, unknown> = {
       plan: opts.plan ?? "monthly",
       email: opts.email ?? "buyer@example.com",
       consent: true,
     };
     if (opts.licenseKey) req.license_key = opts.licenseKey;
+    if (opts.lang) req.lang = opts.lang;
     const co = await call("POST", "/v1/checkout", req);
     if (co.status !== 201) throw new Error(`checkout ${co.status} ${JSON.stringify(co.body)}`);
     const orderCode = co.body.order_code as number;
@@ -111,7 +112,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
    * nói rõ bước nào hỏng nếu checkout không 201, webhook không 200 `granted`, hay đơn không có key: để test không âm thầm chạy
    * tiếp với `licenseKey` undefined.
    */
-  async function buyCreem(opts: { plan?: string; email?: string; licenseKey?: string; tax?: number } = {}) {
+  async function buyCreem(opts: { plan?: string; email?: string; licenseKey?: string; tax?: number; lang?: string } = {}) {
     const req: Record<string, unknown> = {
       plan: opts.plan ?? "monthly",
       email: opts.email ?? "buyer@example.com",
@@ -119,6 +120,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
       currency: "USD",
     };
     if (opts.licenseKey) req.license_key = opts.licenseKey;
+    if (opts.lang) req.lang = opts.lang;
     const co = await call("POST", "/v1/checkout", req);
     if (co.status !== 201) throw new Error(`checkout ${co.status} ${JSON.stringify(co.body)}`);
     const orderCode = co.body.order_code as number;

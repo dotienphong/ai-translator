@@ -340,6 +340,20 @@ describe("đối soát mỗi 5 phút", () => {
     expect(w.resend.sent).toHaveLength(1);
   });
 
+  it("cron gửi lại thư bằng ngôn ngữ lưu trên đơn (spec 2026-10-23)", async () => {
+    const w = makeWorld();
+    const res = await w.call("POST", "/v1/checkout", { plan: "monthly", email: "buyer@example.com", consent: true, lang: "zh" });
+    const orderCode = res.body.order_code as number;
+    w.payos.pay(orderCode);
+    w.resend.down = true;
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    w.resend.down = false;
+    w.clock.now = T0 + 300;
+    expect((await reconcile(w.env, w.deps)).emails_retried).toBe(1);
+    expect(w.resend.sent).toHaveLength(1);
+    expect(w.resend.sent[0]!.subject).toBe("你的 AI Translator 许可证密钥 / Your AI Translator license key");
+  });
+
   it("email chưa gửi được quá 24 giờ thì thôi gửi lại", async () => {
     const w = makeWorld();
     const orderCode = await newOrder(w);

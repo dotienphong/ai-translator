@@ -823,3 +823,40 @@ describe("ngôn ngữ lưu trên đơn (spec 2026-10-23)", () => {
     expect((await loadOrder(env.DB, orderCode))!.lang).toBe("ja");
   });
 });
+
+describe("thư theo ngôn ngữ của đơn (spec 2026-10-23)", () => {
+  it("đơn có lang: thư mua viết bằng ngôn ngữ đó, tiếng Anh ở dưới, có bản HTML", async () => {
+    const w = makeWorld();
+    await w.buy({ lang: "ja" });
+    const mail = w.resend.sent.at(-1)!;
+    expect(mail.subject).toBe("AI Translator のライセンスキー / Your AI Translator license key");
+    expect(mail.html).toMatch(/<html lang="ja">/);
+    expect(mail.text).toContain("ライセンスキーをお送りします。");
+    expect(mail.text).toContain("Your license key is shown above.");
+  });
+
+  it("app cũ không gửi lang: đơn VND ra tiếng Việt (Việt trên, Anh dưới), đơn USD chỉ tiếng Anh", async () => {
+    const w = makeWorld();
+    await w.buy();
+    expect(w.resend.sent.at(-1)!.subject).toBe("License key AI Translator của bạn / Your AI Translator license key");
+    await w.buyCreem({ email: "card@example.com" });
+    const card = w.resend.sent.at(-1)!;
+    expect(card.subject).toBe("Your AI Translator license key");
+    expect(card.text).not.toContain("Cảm ơn");
+  });
+
+  it("lang thắng loại tiền: đơn USD từ app tiếng Việt vẫn viết tiếng Việt", async () => {
+    const w = makeWorld();
+    await w.buyCreem({ lang: "vi" });
+    expect(w.resend.sent.at(-1)!.subject).toBe("License key AI Translator của bạn / Your AI Translator license key");
+  });
+
+  it("thư gia hạn theo ngôn ngữ của đơn gia hạn, không theo đơn mua trước", async () => {
+    const w = makeWorld();
+    const { licenseKey } = await w.buy({ lang: "ja" });
+    const { orderCode } = await checkout(w, { license_key: licenseKey, lang: "ko" });
+    w.payos.pay(orderCode);
+    await w.call("POST", "/v1/webhooks/payos", await w.payos.webhookBody(orderCode));
+    expect(w.resend.sent.at(-1)!.subject).toBe("AI Translator 플랜이 갱신되었습니다 / Your AI Translator plan is renewed");
+  });
+});
