@@ -2,7 +2,7 @@
 // Chạy: node --test scripts/models/update.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { REPO, signBody, testKey } from "./lib.mjs";
@@ -20,7 +20,7 @@ import {
 import { checkLiveManifest, checkSources, fetchFile } from "./update-io.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
-export const temp = (t) => {
+const temp = (t) => {
   const dir = mkdtempSync(join(tmpdir(), "mt-update-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
@@ -33,7 +33,7 @@ const REV = (c) => c.repeat(40);
  * `io` giả: `handlers.run(cmd, args, opts)` trả stdout hay một `Error` (để ném); `handlers.text(url)` trả nội dung URL;
  * `handlers.download(url)` trả nội dung file tải về. Mọi lời gọi ghi vào `calls`.
  */
-export function fakeIo(handlers = {}) {
+function fakeIo(handlers = {}) {
   const calls = [];
   const io = {
     calls,
@@ -120,7 +120,7 @@ test("parseArgs đọc đúng bốn chế độ và từ chối tham số lạ",
   assert.deepEqual(parseArgs(["--check"]), { mode: "check" });
   assert.deepEqual(parseArgs(["--gate-only", "hy-mt2-1.8b-q8_0"]), { mode: "gate-only", id: "hy-mt2-1.8b-q8_0" });
   assert.deepEqual(parseArgs(["--rollback-to", "3"]), { mode: "rollback", sequence: 3 });
-  for (const bad of [["--check", "x"], ["--gate-only"], ["--rollback-to", "0"], ["--rollback-to", "3a"], ["--khac"]]) {
+  for (const bad of [["--check", "x"], ["--gate-only"], ["--rollback-to", "0"], ["--rollback-to", "3a"], ["--khac"], ["--gate-only", "--check"]]) {
     assert.throws(() => parseArgs(bad), /Tham số không hợp lệ|--rollback-to cần/, bad.join(" "));
   }
 });
@@ -156,6 +156,46 @@ test("detect hf-file: chỉ đổi README thì không tính; đổi file thì c�
   const relicensed = detect("m", hfEntry, { api: hfApi({ license: "other" }) });
   assert.equal(relicensed.status, "stop");
   assert.match(relicensed.reason, /giấy phép/);
+});
+
+test("detect: gate.kind report chỉ báo với cả nguồn Hugging Face; bản đã bị quay lại thì bỏ qua", () => {
+  const reported = detect("m", { ...hfEntry, gate: { kind: "report" } }, { api: hfApi({ sha: SHA("2") }) });
+  assert.equal(reported.status, "report");
+  assert.match(reported.reason, /có bbbbbbb, đang dùng aaaaaaa; đổi bằng tay/);
+  assert.deepEqual(reported.next, { revision: REV("b"), content: `sha256:${SHA("2")}`, size: 10 });
+  const rejectedEntry = { ...hfEntry, rejected: [{ sequence: 4, content: `sha256:${SHA("2")}` }] };
+  const skipped = detect("m", rejectedEntry, { api: hfApi({ sha: SHA("2") }) });
+  assert.equal(skipped.status, "skip");
+  assert.match(skipped.reason, /đã bị quay lại ở manifest số 4; xóa khỏi rejected trong upstream\.json nếu muốn đăng lại/);
+  assert.equal(detect("m", rejectedEntry, { api: hfApi({ sha: SHA("7") }) }).status, "new");
+  const ghRejected = { ...ghEntry, gate: { kind: "none" }, rejected: [{ sequence: 5, content: `sha256:${SHA("5")}` }] };
+  assert.equal(detect("v", ghRejected, { tag: "v7", license: "MIT", content: `sha256:${SHA("5")}` }).status, "skip");
+});
+
+test("detect hf-convert: đầu vào trùng bản đã bị quay lại thì bỏ qua", () => {
+  const inputs = { "config.json": "blob:c2", "model.safetensors": `sha256:${SHA("3")}` };
+  const entry = { ...convertEntry, rejected: [{ sequence: 6, inputs }] };
+  const skipped = detect("l", entry, { api: convertApi("c2") });
+  assert.equal(skipped.status, "skip");
+  assert.match(skipped.reason, /manifest số 6/);
+  assert.equal(detect("l", entry, { api: convertApi("c3") }).status, "new");
+});
+
+test("convertInputs bỏ qua tài liệu, giấy phép, ảnh; file khác thì tính", () => {
+  const skip = [
+    { rfilename: "LICENSE", blobId: "l1" },
+    { rfilename: "LICENSE.txt", blobId: "l2" },
+    { rfilename: "NOTICE", blobId: "n1" },
+    { rfilename: "docs/README.rst", blobId: "r1" },
+    { rfilename: "imgs/logo.png", blobId: "p1" },
+    { rfilename: "a.JPG", blobId: "p2" },
+    { rfilename: "b.svg", blobId: "p3" },
+  ];
+  assert.deepEqual(convertInputs([...convertApi().siblings, ...skip]), convertInputs(convertApi().siblings));
+  assert.equal(detect("l", convertEntry, { api: convertApi("c1", skip) }).status, "same");
+  const added = detect("l", convertEntry, { api: convertApi("c1", [...skip, { rfilename: "tokenizer.json", blobId: "t1" }]) });
+  assert.equal(added.status, "new");
+  assert.equal(convertInputs([{ rfilename: "licensed-model.bin", blobId: "z" }])["licensed-model.bin"], "blob:z");
 });
 
 test("detect hf-convert: so mọi file đầu vào trừ tài liệu", () => {
@@ -195,10 +235,24 @@ test("upstream.json trong repo khớp models.config.json và manifest mới nh�
   broken.entries["hy-mt2-1.8b-q8_0"].content = `sha256:${SHA("0")}`;
   broken.entries["khong-co"] = { ...broken.entries["hy-mt2-license"] };
   delete broken.entries["whisper-small-q5_1"].gate.baseline;
+  broken.entries["lmt-60-0.6b-q8_0"].gate.prompt = "hy-mt2";
   const problems = checkUpstream(broken, config, body);
   assert.ok(problems.some((p) => p.startsWith("hy-mt2-1.8b-q8_0: content khác")), problems.join("\n"));
   assert.ok(problems.some((p) => p.startsWith("khong-co: không có trong models.config.json")), problems.join("\n"));
   assert.ok(problems.some((p) => p.startsWith("whisper-small-q5_1: thiếu gate.baseline")), problems.join("\n"));
+  assert.ok(
+    problems.some((p) => p === "lmt-60-0.6b-q8_0: gate.prompt khác prompt của models.config.json"),
+    problems.join("\n"),
+  );
+});
+
+test("mọi gate.baseline của upstream.json có file trên đĩa", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  for (const [id, e] of Object.entries(upstream.entries)) {
+    for (const baseline of [e.gate.baseline, ...e.history.map((h) => h.baseline)].filter(Boolean)) {
+      assert.ok(existsSync(resolve(REPO, baseline)), `${id}: không có file ${baseline}`);
+    }
+  }
 });
 
 test("MANIFEST_URL trùng PRODUCTION_URL của app", () => {
@@ -211,6 +265,19 @@ test("sameSignedBody so phần thân đã ký với dạng gọn của file", ()
   const envelope = { body: Buffer.from(JSON.stringify({ schema: 1, sequence: 4 })).toString("base64url") };
   assert.equal(sameSignedBody(envelope, text), true);
   assert.equal(sameSignedBody(envelope, text.replace("4", "5")), false);
+});
+
+test("checkTable: dòng DỪNG không có bản mới thì cột mới nhất là ?; có dòng bỏ qua", () => {
+  const upstream = { entries: { a: hfEntry, b: hfEntry } };
+  const table = checkTable(
+    [
+      { id: "a", status: "stop", reason: "mất file" },
+      { id: "b", status: "skip", reason: "đã quay lại", next: { revision: REV("c") } },
+    ],
+    upstream,
+  );
+  assert.match(table, /\| a \| org\/m-GGUF \| aaaaaaa \| \? \| DỪNG: mất file \|/);
+  assert.match(table, /\| b \| org\/m-GGUF \| aaaaaaa \| ccccccc \| bỏ qua: đã quay lại \|/);
 });
 
 test("checkTable in một dòng mỗi mục", () => {
