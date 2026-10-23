@@ -2,21 +2,30 @@
 //! Menu dựng lại mỗi khi trạng thái hay ngôn ngữ giao diện đổi, nên chữ luôn theo ngôn ngữ đang chọn.
 //! Nội dung menu (dòng nào, chữ gì) nằm ở `tray_menu.rs`, có test.
 
+use std::sync::{Arc, Mutex};
+
+use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::hotkeys::HotkeyAction;
 use crate::i18n;
+use crate::models::service::ModelService;
 use crate::state::{AppState, SessionStatus};
-use crate::tray_menu::{TrayItem, TrayModel, accelerator, menu_lines};
+use crate::tray_badge::{BadgeStyle, with_badge};
+use crate::tray_menu::{TrayItem, TrayModel, accelerator, has_badge, menu_lines};
 use crate::{actions, compose, events, updater, window};
 
 pub const TRAY_ID: &str = "main";
 
-fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)> {
+fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String, bool)> {
     let state = app.state::<AppState>();
     let (settings, status) = (state.settings(), state.status());
+    // Đọc sau khi đã có bản sao cài đặt và trạng thái: `tray_update` khóa ModelService rồi đọc lại AppState.
+    let model_update = app
+        .try_state::<Arc<ModelService>>()
+        .is_some_and(|models| models.tray_update(app));
     let model = TrayModel {
         running: matches!(status.session, SessionStatus::Starting | SessionStatus::Running),
         overlay_visible: status.overlay_visible,
@@ -24,7 +33,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)
         hotkeys_failed: !status.hotkey_failures.is_empty(),
         update_ready: status.update_ready.is_some(),
         compose_enabled: settings.compose.enabled,
-        model_update: false,
+        model_update,
     };
     let strings = i18n::strings(settings.ui_language);
     let menu = Menu::new(app)?;
@@ -37,7 +46,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)
             None => menu.append(&PredefinedMenuItem::separator(app)?)?,
         }
     }
-    Ok((menu, strings.tooltip(&app.package_info().name, model.running)))
+    Ok((menu, strings.tooltip(&app.package_info().name, model.running), has_badge(model)))
 }
 
 /// Thêm một mục vào menu, kèm phím tắt nếu có (spec 2026-10-20 §3). `muda` không nhận vài phím mà plugin phím tắt nhận (phím
@@ -59,23 +68,69 @@ fn append_item<R: Runtime>(
     menu.append(&MenuItem::with_id(app, item.id(), text, true, None::<&str>)?)
 }
 
+/// Dấu chấm đang hiện trên icon: chỉ đặt lại icon khi nó đổi, để icon không nháy mỗi lần dựng lại menu.
+struct TrayBadge(Mutex<bool>);
+
+/// Icon khay theo hệ điều hành, có dấu chấm khi `badge` (spec 2026-10-23 §6.2). macOS: icon template đơn sắc.
+#[cfg(target_os = "macos")]
+fn tray_icon<R: Runtime>(_app: &AppHandle<R>, badge: bool) -> Option<Image<'static>> {
+    Some(badged(tauri::include_image!("icons/tray-template.png"), badge, BadgeStyle::Template))
+}
+
+/// Windows: icon màu của app; không có thì `None` (Tauri dùng icon mặc định, không có dấu chấm).
+#[cfg(not(target_os = "macos"))]
+fn tray_icon<R: Runtime>(app: &AppHandle<R>, badge: bool) -> Option<Image<'static>> {
+    // `Image::to_owned` (hàm riêng của Image) chép điểm ảnh ra bản `'static`.
+    Some(badged(app.default_window_icon()?.clone().to_owned(), badge, BadgeStyle::Color))
+}
+
+fn badged(base: Image<'static>, badge: bool, style: BadgeStyle) -> Image<'static> {
+    if !badge {
+        return base;
+    }
+    let (width, height) = (base.width(), base.height());
+    Image::new_owned(with_badge(base.rgba(), width, height, style), width, height)
+}
+
+fn set_badge<R: Runtime>(app: &AppHandle<R>, tray: &TrayIcon<R>, badge: bool) {
+    let Some(shown) = app.try_state::<TrayBadge>() else { return };
+    let mut shown = shown.0.lock().unwrap_or_else(|e| e.into_inner());
+    if *shown == badge {
+        return;
+    }
+    if let Some(icon) = tray_icon(app, badge) {
+        if let Err(e) = tray.set_icon(Some(icon)) {
+            log::warn!("không đặt được icon khay: {e}");
+            return;
+        }
+        #[cfg(target_os = "macos")]
+        if let Err(e) = tray.set_icon_as_template(true) {
+            log::warn!("không đặt được icon khay dạng template: {e}");
+        }
+    }
+    *shown = badge;
+}
+
 pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let (menu, tooltip) = build_menu(app)?;
+    let (menu, tooltip, badge) = build_menu(app)?;
+    app.manage(TrayBadge(Mutex::new(badge)));
     let builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
         .tooltip(tooltip)
         .on_menu_event(|app, event| on_menu_event(app, event.id().as_ref()));
+    let builder = match tray_icon(app, badge) {
+        Some(icon) => builder.icon(icon),
+        None => builder,
+    };
     // macOS: icon đơn sắc dạng template, hệ thống tự đổi màu theo menu bar sáng hay tối; bấm chuột
     // trái mở menu như mọi icon menu bar. Windows: icon màu của app; bấm chuột trái mở cửa sổ chính,
     // chuột phải mở menu.
     #[cfg(target_os = "macos")]
-    let builder = builder
-        .icon(tauri::include_image!("icons/tray-template.png"))
-        .icon_as_template(true);
+    let builder = builder.icon_as_template(true);
     #[cfg(not(target_os = "macos"))]
     let builder = {
         use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
-        let builder = builder
+        builder
             .show_menu_on_left_click(false)
             .on_tray_icon_event(|tray, event| {
                 if let TrayIconEvent::Click {
@@ -86,23 +141,20 @@ pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 {
                     window::show_main(tray.app_handle());
                 }
-            });
-        match app.default_window_icon() {
-            Some(icon) => builder.icon(icon.clone()),
-            None => builder,
-        }
+            })
     };
     builder.build(app)?;
     Ok(())
 }
 
-/// Dựng lại menu và chú thích theo trạng thái hiện tại.
+/// Dựng lại menu, chú thích và dấu chấm theo trạng thái hiện tại.
 pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
     match build_menu(app) {
-        Ok((menu, tooltip)) => {
+        Ok((menu, tooltip, badge)) => {
             let _ = tray.set_menu(Some(menu));
             let _ = tray.set_tooltip(Some(tooltip));
+            set_badge(app, &tray, badge);
         }
         Err(e) => log::warn!("không dựng lại được menu khay: {e}"),
     }
