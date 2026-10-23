@@ -685,7 +685,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - trần là 9.999.999, để mô tả đơn `AT<order_code>` (`AT` cộng tối đa 7 chữ số) không quá 9 ký tự (§14, giả định 7). Vượt trần thì checkout trả `503`, không gọi PayOS.
 
 **Gửi email:** qua Resend (API HTTP, gọi từ Worker), sau interface `EmailProvider` để đổi dịch vụ được. Khóa API của Resend là secret của Worker. Tên miền gửi phải được xác thực (SPF, DKIM).
-- Email là văn bản thuần, song ngữ vi/en.
+- Email là HTML kèm bản chữ thuần; phần trên viết bằng ngôn ngữ app của khách (vi, en, ja, zh hay ko), phần tiếng Anh ở dưới (app tiếng Anh thì chỉ có tiếng Anh). Ngôn ngữ lưu trên đơn lúc tạo đơn; chi tiết và luật đoán khi không biết ngôn ngữ: spec `2026-10-23-email-theo-ngon-ngu-design.md`.
 - Lỗi gửi email không chặn việc cấp key: key vẫn lấy được qua `GET /v1/orders`, `recover` hoặc admin.
 - Email mua hàng có idempotency key theo đơn, nên gửi lại không bao giờ thành hai thư.
 - **Phân loại lỗi của Resend:**
