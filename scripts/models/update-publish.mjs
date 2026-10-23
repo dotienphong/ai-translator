@@ -9,7 +9,7 @@ import { sha256File } from "./update-io.mjs";
 
 export const GH_USER = "dotienphong";
 export const GH_REPO = "dotienphong/ai-translator";
-const DNS_HINT = "lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.io.vn";
+export const DNS_HINT = "lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.io.vn";
 
 /** Biến môi trường cho `gh` chạy bằng tài khoản dotienphong (GITHUB_TOKEN của máy là tài khoản khác). */
 export function ghEnv(io) {
@@ -24,7 +24,7 @@ export function ghEnv(io) {
 const fresh = (url) => `${url}?t=${Date.now()}`;
 
 /** Mã thoát của curl khi lỗi mạng: 6 không phân giải được tên, 7 không nối được, 28 quá hạn. */
-const NETWORK_STATUS = [6, 7, 28];
+export const NETWORK_STATUS = [6, 7, 28];
 
 /** Chạy `fn`; lỗi mạng của curl thì ném lại kèm gợi ý kiểm DNS. */
 async function withDnsHint(url, fn) {
@@ -32,6 +32,16 @@ async function withDnsHint(url, fn) {
     return await fn();
   } catch (e) {
     if (NETWORK_STATUS.includes(e.status)) throw new Error(`${url}: ${e.message} (${DNS_HINT})`);
+    throw e;
+  }
+}
+
+/** Đọc `url` bằng `io.text`; lỗi mạng của curl thì ném lại kèm gợi ý kiểm DNS. */
+export function textWithHint(io, url) {
+  try {
+    return io.text(url);
+  } catch (e) {
+    if (NETWORK_STATUS.includes(e.status)) throw new Error(`${e.message} (${DNS_HINT})`);
     throw e;
   }
 }
@@ -220,7 +230,7 @@ export async function verifySigned(path, bodyText, keys = builtInKeys()) {
  */
 export function publishManifest(io, signedPath, work, plan) {
   const signed = readFileSync(signedPath, "utf8");
-  const live = io.text(fresh(MANIFEST_URL));
+  const live = textWithHint(io, fresh(MANIFEST_URL));
   if (live === signed) return "models.json này đã được đăng từ trước";
   const sequence = JSON.parse(Buffer.from(JSON.parse(live).body, "base64url").toString("utf8")).sequence;
   if (sequence !== plan.base) {

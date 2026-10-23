@@ -26,7 +26,7 @@ import {
 import { checkLiveManifest, checkSources, fetchPublished } from "./update-io.mjs";
 import { buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
-import { GH_REPO, commitRecord, ghEnv, publicMatches, publish, recordHead } from "./update-publish.mjs";
+import { GH_REPO, commitRecord, ghEnv, publicMatches, publish, recordHead, textWithHint } from "./update-publish.mjs";
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
@@ -123,7 +123,7 @@ async function confirmAndPublish(ctx, plan, question, preflightHead) {
 /** Làm tiếp lượt đăng dở trong state.json. */
 async function resume(ctx, plan) {
   const { io, paths } = ctx;
-  const envelope = JSON.parse(io.text(`${MANIFEST_URL}?t=${Date.now()}`));
+  const envelope = JSON.parse(textWithHint(io, `${MANIFEST_URL}?t=${Date.now()}`));
   const live = JSON.parse(Buffer.from(envelope.body, "base64url").toString("utf8")).sequence;
   if (live === plan.target && sameSignedBody(envelope, plan.files[plan.bodyRel])) {
     clearState(ctx);
@@ -159,6 +159,8 @@ async function update(ctx) {
     console.log("\nKhông có bản mới để đăng.");
     return 0;
   }
+  // Dữ liệu thử và công cụ của cổng kiểm phải có trước khi tải model vài GB.
+  if (fresh.some((r) => ["mt", "asr"].includes(upstream.entries[r.id].gate.kind))) checkGateInputs(ctx.gatePaths);
   const body = readJson(latest.path);
   const date = new Date().toISOString().slice(0, 10);
   const prepared = [];
@@ -179,12 +181,12 @@ async function update(ctx) {
       item.unchanged = true;
     } else if (entry.gate.kind === "mt" || entry.gate.kind === "asr") {
       if (!built) {
-        buildTools(io);
+        buildTools(io, ctx.gatePaths);
         built = true;
       }
       const label = `update-${r.id}-${shortRev(r.next.revision)}`;
       const outDir = join(paths.work, r.id, r.next.revision, "gate");
-      item.gate = runGate(io, entry, local.path, label, outDir);
+      item.gate = runGate(io, entry, local.path, label, outDir, ctx.gatePaths);
       // Môi trường chuyển (bản các gói Python) đi cùng kết quả đo vào repo, để biết bản phát hành được chuyển thế nào.
       const convertEnv = join(paths.work, r.id, r.next.revision, "convert-env.txt");
       if (existsSync(convertEnv)) copyFileSync(convertEnv, join(outDir, "convert-env.txt"));
@@ -286,11 +288,11 @@ async function gateOnly(ctx, id) {
   const latest = latestBody(paths.released);
   const file = readJson(latest.path).files.find((f) => f.id === id);
   if (!file) throw new Error(`manifest số ${latest.sequence} không có ${id}.`);
-  checkGateInputs(); // trước khi tải model vài GB
+  checkGateInputs(ctx.gatePaths); // trước khi tải model vài GB
   const model = await fetchPublished(io, paths.work, file);
-  buildTools(io);
+  buildTools(io, ctx.gatePaths);
   const label = `gate-only-${id}-${file.sha256.slice(0, 12)}`;
-  const gate = runGate(io, entry, model, label, join(paths.work, "gate-only", label));
+  const gate = runGate(io, entry, model, label, join(paths.work, "gate-only", label), ctx.gatePaths);
   console.log(`\n${id}: file đang phát hành so với mốc ${entry.gate.baseline}\n\n${gateTable(gate, entry.gate.kind)}`);
   return gate.pass ? 0 : 1;
 }

@@ -3,11 +3,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { KeyObject, createHash, sign as cryptoSign } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { REPO, signBody, testKey } from "./lib.mjs";
+import { CONTEXT, FORMAT, REPO, VERSION, signBody, testKey } from "./lib.mjs";
 import {
   ASR_RELATIVE,
   MANIFEST_URL,
@@ -1641,6 +1641,16 @@ test("restoreUpstream ghi sha256 của file bị gỡ vào rejected; checkUpstre
 const Q8_TEXT = "noi dung q8 cu";
 const FLOW_KEY = await testKey("test-flow", "ai-translator update flow test key");
 
+/** Mã blob git của một đoạn văn bản (như `git hash-object`). */
+const gitBlobOf = (text) => createHash("sha1").update(`blob ${Buffer.byteLength(text)}\0`).update(text).digest("hex");
+
+/** Phong bì ký đúng bằng khóa thử của luồng (đồng bộ, để dùng trong `io` giả). */
+function signSync(bodyJson) {
+  const body = Buffer.from(bodyJson).toString("base64url");
+  const sig = cryptoSign(null, Buffer.from(CONTEXT + body), KeyObject.from(FLOW_KEY.privateKey));
+  return { format: FORMAT, version: VERSION, kid: FLOW_KEY.kid, body, sig: sig.toString("base64url") };
+}
+
 const NOTICE_OLD = "NOTICE cũ: danh sách giấy phép của bản đang quay về";
 
 /**
@@ -1651,14 +1661,17 @@ const NOTICE_OLD = "NOTICE cũ: danh sách giấy phép của bản đang quay v
  * - `git`, `status`: trạng thái git giả; `answers`: câu trả lời lần lượt của người vận hành;
  * - `fail(lệnh)`: lệnh (cả dòng) nào thì ném lỗi;
  * - `published`: nội dung file Q8 đang phát hành ở body-4 (mặc định SHA giả);
- * - `trim`: upstream.json chỉ còn mục Q8 (cho luồng cập nhật, đỡ phải giả cả nguồn khác); `rejected`: dòng rejected của Q8;
+ * - `trim`: upstream.json chỉ còn mục Q8 (`true`) hay các mục trong mảng (cho luồng cập nhật, đỡ phải giả cả nguồn khác); `rejected`: dòng rejected của Q8;
  * - `source`: `{ text, revision }`, nguồn Hugging Face hiện có file Q8 là `text`;
+ * - `licenseText`: nội dung file giấy phép Hy-MT2 đang phát hành (mặc định SHA thật); `onRun(cmd, args)`: xử lý lệnh trước các câu
+ *   trả lời mặc định (trả `undefined` để dùng mặc định); `sign`: giả `gh run download` bằng bản ký đúng của phần thân vừa ghi;
+ *   `r2: "upload"`: file chưa có trên R2 cho tới khi `rclone copyto` chép nó lên (và tải về trả đúng nội dung đã chép);
  * - `blobContent`: upstream.json ghi nội dung Q8 dạng `blob:` (để nguồn báo "bản mới" dù file trùng bản đang phát hành);
  * - `notice`: NOTICE đổi giữa body-3 và body-4; `noticeServed`: nội dung trả khi tải lại NOTICE bằng `io.text`.
  */
 async function flowRig(
   t,
-  { live, r2 = "ok", git = {}, answers = [], skipBody3 = false, status = "", fail, published, trim = false, rejected, source, notice = false, noticeServed = NOTICE_OLD, blobContent = false } = {},
+  { live, r2 = "ok", git = {}, answers = [], skipBody3 = false, status = "", fail, published, trim = false, rejected, source, notice = false, noticeServed = NOTICE_OLD, blobContent = false, licenseText, onRun, sign = false } = {},
 ) {
   const root = temp(t);
   const released = join(root, "scripts/models/released");
@@ -1673,11 +1686,18 @@ async function flowRig(
     Object.assign(old, { bytes: Buffer.byteLength(NOTICE_OLD), sha256: sha256(NOTICE_OLD) });
     replace.notice = { ...old, version: "2", url: "notice/2-12345678/NOTICE.txt", sha256: SHA("8"), bytes: 1 };
   }
+  if (licenseText !== undefined) {
+    const lic = b3.files.find((f) => f.id === "hy-mt2-license");
+    Object.assign(lic, { bytes: Buffer.byteLength(licenseText), sha256: sha256(licenseText) });
+  }
   const b4 = bumpBody(b3, replace, "2026-10-24T00:00:00Z");
   if (!skipBody3) writeFileSync(join(released, "body-3.json"), serializeJson(b3));
   writeFileSync(join(released, "body-4.json"), serializeJson(b4));
   let upstream = applyUpstream(readJson("scripts/models/upstream.json"), Q8_ID, { revision: REV("b"), content: `sha256:${now.sha256}` }, 4, null);
-  if (trim) upstream.entries = { [Q8_ID]: upstream.entries[Q8_ID] };
+  if (trim) {
+    const keep = trim === true ? [Q8_ID] : trim;
+    upstream.entries = Object.fromEntries(keep.map((id) => [id, upstream.entries[id]]));
+  }
   if (rejected) upstream.entries[Q8_ID].rejected = rejected;
   if (blobContent) upstream.entries[Q8_ID].content = `blob:${"ab".repeat(20)}`;
   writeFileSync(join(root, "upstream.json"), serializeJson(upstream));
@@ -1690,15 +1710,40 @@ async function flowRig(
   const state = gitState({ status, ...git });
   const gitAnswer = gitAnswers(state);
   const asked = [];
+  let ranWorkflow = false;
   const answersLeft = [...answers];
   const hfApi = source && {
     sha: source.revision,
     cardData: { license: "apache-2.0" },
-    siblings: [{ rfilename: "Hy-MT2-1.8B-Q8_0.gguf", lfs: { sha256: sha256(source.text), size: Buffer.byteLength(source.text) } }],
+    siblings: [
+      { rfilename: "Hy-MT2-1.8B-Q8_0.gguf", lfs: { sha256: sha256(source.text), size: Buffer.byteLength(source.text) } },
+      ...(source.license === undefined ? [] : [{ rfilename: "LICENSE.txt", blobId: gitBlobOf(source.license) }]),
+    ],
   };
+  const uploaded = new Map(); // khóa R2 -> nội dung đã chép lên (r2: "upload")
+  const keyOf = (url) => url.split("?")[0].replace("https://releases.aitranslator.io.vn/models/", "");
+  let liveText = JSON.stringify(envelope);
   const io = fakeIo({
     run(cmd, args) {
       if (fail?.([cmd, ...args].join(" "))) return new Error("lỗi giả");
+      const custom = onRun?.(cmd, args);
+      if (custom !== undefined) return custom;
+      if (cmd === "pnpm" && args.includes("put")) liveText = readFileSync(args[args.indexOf("--file") + 1], "utf8");
+      if (cmd === "rclone" && args[0] === "copyto") {
+        uploaded.set(args[2].replace("r2:ai-translator-releases/models/", ""), readFileSync(args[1], "utf8"));
+        return "";
+      }
+      if (cmd === "gh" && sign && args[0] === "run" && args[1] === "download") {
+        const dir = args[args.indexOf("-D") + 1];
+        const bodyFile = join(root, "scripts/models/released/body-5.json");
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, "models.json"), `${JSON.stringify(signSync(JSON.stringify(JSON.parse(readFileSync(bodyFile, "utf8")))))}\n`);
+        return "";
+      }
+      if (cmd === "gh" && args[0] === "run" && args[1] === "list") {
+        return JSON.stringify(args.includes("--json") && ranWorkflow ? [{ databaseId: 8, headSha: state.origin }] : []);
+      }
+      if (cmd === "gh" && args[0] === "workflow") ranWorkflow = true;
       if (cmd === "git") {
         // `status --porcelain` (preflight) và `status --porcelain -z …` (repoStage) trả hai thứ khác nhau.
         if (args[0] === "status") return args.includes("-z") ? (git.statusZ ?? "") : state.status;
@@ -1708,19 +1753,24 @@ async function flowRig(
       if (cmd === "gh" && args[0] === "auth") return "token-thu\n";
       if (cmd === "gh") return "[]";
       if (cmd === "curl") {
-        if (args.includes("-sI")) return r2 === "missing" ? "404" : "200";
+        if (args.includes("-sI")) {
+          if (r2 === "upload") return uploaded.has(keyOf(args.at(-1))) ? "200" : "404";
+          return r2 === "missing" ? "404" : "200";
+        }
         return "";
       }
       return "";
     },
     text(url) {
-      if (url.startsWith(MANIFEST_URL)) return JSON.stringify(envelope);
+      if (url.startsWith(MANIFEST_URL)) return liveText;
       if (url.includes("/api/models/")) return JSON.stringify(hfApi);
       if (url.split("?")[0].endsWith("/NOTICE.txt")) return noticeServed;
       return Q8_TEXT;
     },
     download(url) {
-      if (url.includes("/resolve/")) return source.text;
+      if (uploaded.has(keyOf(url))) return uploaded.get(keyOf(url));
+      if (url.includes("/resolve/")) return url.endsWith("/LICENSE.txt") ? source.license : source.text;
+      if (licenseText !== undefined && url.includes("Hy-MT2-LICENSE.txt")) return licenseText;
       if (url.split("?")[0].endsWith("/NOTICE.txt")) return NOTICE_OLD;
       return r2 === "wrong" ? "khac hoan toan" : Q8_TEXT;
     },
@@ -1877,6 +1927,15 @@ test("luồng: main đổi giữa lúc chuẩn bị và lúc gõ y thì không �
 
 // ---------- Luồng cập nhật (không tham số) với nguồn Hugging Face giả ----------
 
+/** Cổng kiểm giả có đủ dữ liệu thử, llama-server (trả về đường dẫn để rig dùng tiếp). */
+function gateInputs(root) {
+  const gate = gatePaths(root);
+  writeFileSync(gate.llamaServer, "");
+  writeFileSync(gate.mtTestset, "");
+  writeFileSync(join(gate.asrData, "manifest.jsonl"), "");
+  return gate;
+}
+
 const FILE_NOW = "file Q8 đang phát hành";
 const FILE_REJECTED = "file Q8 mới đã bị gỡ";
 const ASKED_RECORD = "Ghi nhận revision mới vào upstream.json (không đăng gì cho người dùng)? [y/N] ";
@@ -1893,6 +1952,7 @@ test("luồng cập nhật: bản chuyển ra trùng sha256 đã bị quay lại
   const log = quiet(t);
   const rejected = [{ sequence: 3, content: `sha256:${SHA("e")}`, sha256: sha256(FILE_REJECTED) }];
   const rig = await flowRig(t, { trim: true, published: FILE_NOW, rejected, source: { text: FILE_REJECTED, revision: REV("c") } });
+  rig.ctx.gatePaths = gateInputs(rig.root);
   const before = readFileSync(rig.ctx.paths.upstream, "utf8");
   assert.equal(await run({ mode: "update" }, rig.ctx), 0);
   const printed = log.mock.calls.map((c) => c.arguments.join(" ")).join("\n");
@@ -1911,6 +1971,7 @@ test("luồng cập nhật: bản chuyển ra trùng sha256 đã bị quay lại
 test("luồng cập nhật: revision mới mà file trùng bản đang phát hành thì chỉ ghi nhận upstream.json (commit đúng đường dẫn, đẩy)", async (t) => {
   quiet(t);
   const rig = await flowRig(t, { trim: true, published: FILE_NOW, blobContent: true, answers: ["y"], source: { text: FILE_NOW, revision: REV("c") } });
+  rig.ctx.gatePaths = gateInputs(rig.root);
   assert.equal(await run({ mode: "update" }, rig.ctx), 0);
   assert.deepEqual(rig.asked, [ASKED_RECORD]);
   const written = JSON.parse(readFileSync(join(rig.root, "scripts/models/upstream.json"), "utf8"));
@@ -1926,6 +1987,7 @@ test("luồng cập nhật: revision mới mà file trùng bản đang phát hà
 test("luồng cập nhật: đường chỉ ghi nhận cũng dừng khi main đổi giữa lúc chuẩn bị và lúc gõ y", async (t) => {
   quiet(t);
   const rig = await flowRig(t, { trim: true, published: FILE_NOW, blobContent: true, answers: ["y"], source: { text: FILE_NOW, revision: REV("c") } });
+  rig.ctx.gatePaths = gateInputs(rig.root);
   const ask = rig.ctx.ask;
   rig.ctx.ask = async (question) => {
     rig.git.head = "h1";
@@ -1982,4 +2044,143 @@ test("publish: bản đã ký đúng khóa tin cậy (truyền vào) thì gọi 
   const io2 = ciIo({ git: { pushed: true, head: "h9", origin: "h9" }, after: [{ databaseId: 8, headSha: "h9" }], signed, text: () => live });
   await assert.rejects(publish(io2, { ...plan, run: undefined }, { save() {}, work, state: work, repo, keys: [{ kid: other.kid, x: other.x }] }), /Không có khóa công khai/);
   assert.ok(!io2.calls.some((c) => c.includes("wrangler r2 object put")));
+});
+
+// ---------- Luồng chính: cập nhật có cổng kiểm, từ chuẩn bị tới đăng ----------
+
+const FILE_NEW = "file Q8 mới, đạt cổng kiểm";
+const BASELINE = "bench/phase0/results/s7_mt-gd1-a3.json";
+const ASKED_UPDATE = "Đăng bản model mới cho người dùng? [y/N] ";
+
+/**
+ * Repo giả có cổng kiểm: llama-server, bộ thử, mốc thật (bench/phase0/results/s7_mt-gd1-a3.json), `latency-bench` và `uv`
+ * giả. `uv` ghi kết quả chấm vào thư mục results giả: bằng mốc (đạt) hay thấp hơn 0,05 COMET (`degrade`, không đạt).
+ */
+async function gateRig(t, { degrade = false, ...over } = {}) {
+  let gate;
+  const rig = await flowRig(t, {
+    trim: true,
+    published: FILE_NOW,
+    source: { text: FILE_NEW, revision: REV("c") },
+    answers: ["y"],
+    r2: "upload",
+    sign: true,
+    ...over,
+    onRun(cmd, args) {
+      if (cmd === "lb") {
+        const out = args[args.indexOf("--out-dir") + 1];
+        mkdirSync(out, { recursive: true });
+        if (args.includes("--limit")) writeFileSync(join(out, "chay-thu.txt"), "kết quả chạy thử");
+        return "";
+      }
+      if (cmd === "uv") {
+        const label = args[args.indexOf("--label") + 1];
+        const result = readJson(BASELINE);
+        if (degrade) for (const run of Object.values(result.runs)) for (const d of Object.values(run)) d.comet -= 0.05;
+        writeFileSync(join(gate.results, `s7_mt-${label}.json`), JSON.stringify(result));
+        return "";
+      }
+      return over.onRun?.(cmd, args);
+    },
+  });
+  gate = gateInputs(rig.root);
+  const baseline = join(rig.root, BASELINE);
+  mkdirSync(dirname(baseline), { recursive: true });
+  writeFileSync(baseline, readFileSync(resolve(REPO, BASELINE)));
+  rig.ctx.gatePaths = gate;
+  return rig;
+}
+
+test("luồng chính: bản mới qua cổng kiểm thì ghi mốc và kết quả đo vào repo, tải lên, commit, ký, đăng wrangler đúng một lần", async (t) => {
+  quiet(t);
+  const rig = await gateRig(t);
+  const prepared = join(rig.ctx.paths.work, Q8_ID, REV("c"));
+  mkdirSync(prepared, { recursive: true });
+  writeFileSync(join(prepared, "convert-env.txt"), "python 3.12\n");
+  assert.equal(await run({ mode: "update" }, rig.ctx), 0);
+  assert.deepEqual(rig.asked, [ASKED_UPDATE]);
+  const upstream = JSON.parse(readFileSync(join(rig.root, "scripts/models/upstream.json"), "utf8"));
+  const baseline = upstream.entries[Q8_ID].gate.baseline;
+  assert.match(baseline, /^bench\/model-updates\/\d{4}-\d{2}-\d{2}-hy-mt2-1\.8b-q8_0-ccccccc\/s7_mt-update-hy-mt2-1\.8b-q8_0-ccccccc\.json$/);
+  assert.equal(upstream.entries[Q8_ID].history.at(-1).baseline, baseline);
+  assert.equal(upstream.entries[Q8_ID].revision, REV("c"));
+  assert.ok(existsSync(join(rig.root, baseline)), "mốc mới nằm trong repo");
+  const benchDir = join(rig.root, dirname(baseline));
+  assert.deepEqual(readdirSync(benchDir).sort(), ["convert-env.txt", "gate.md", "s7_mt-update-hy-mt2-1.8b-q8_0-ccccccc.json"], "không có chay-thu*");
+  const body = JSON.parse(readFileSync(join(rig.root, "scripts/models/released/body-5.json"), "utf8"));
+  assert.equal(body.sequence, 5);
+  assert.equal(body.files.find((f) => f.id === Q8_ID).sha256, sha256(FILE_NEW));
+  const at = (prefix) => rig.io.calls.findIndex((c) => c.startsWith(prefix));
+  assert.ok(rig.io.calls.some((c) => c.includes("copyto") && c.includes("r2:ai-translator-releases/models/hy-mt2/cccccccccccc/Hy-MT2-1.8B-Q8_0.gguf --s3-no-check-bucket --immutable")));
+  assert.ok(at("cargo build") >= 0 && at("rclone copyto") > at("cargo test") && at("git commit") > at("rclone copyto"));
+  assert.ok(at("git push") > at("git commit") && at("gh workflow run") > at("git push"));
+  const puts = rig.io.calls.filter((c) => c.includes("wrangler r2 object put"));
+  assert.equal(puts.length, 1);
+  assert.ok(rig.io.calls.indexOf(puts[0]) > at("gh run download"));
+  assert.ok(!existsSync(rig.stateFile), "xong thì xóa state");
+});
+
+test("luồng chính: không đạt cổng kiểm thì trả 1, không hỏi, không ghi gì", async (t) => {
+  const log = quiet(t);
+  const rig = await gateRig(t, { degrade: true });
+  const upstreamBefore = readFileSync(rig.ctx.paths.upstream, "utf8");
+  assert.equal(await run({ mode: "update" }, rig.ctx), 1);
+  assert.deepEqual(rig.asked, []);
+  assert.match(log.mock.calls.map((c) => c.arguments.join(" ")).join("\n"), /Không đạt cổng kiểm: hy-mt2-1\.8b-q8_0\. Không đăng gì\./);
+  assert.equal(readFileSync(rig.ctx.paths.upstream, "utf8"), upstreamBefore);
+  assert.ok(!existsSync(rig.stateFile));
+  assert.ok(!existsSync(join(rig.root, "bench/model-updates")));
+  assert.ok(!existsSync(join(rig.root, "scripts/models/released/body-5.json")));
+  for (const prefix of ["git add", "git commit", "git push", "rclone copyto", "gh workflow"]) {
+    assert.ok(!rig.io.calls.some((c) => c.startsWith(prefix)), prefix);
+  }
+});
+
+test("luồng chính: mục không có cổng kiểm (giấy phép) so khác biệt bằng diff -u và vào kế hoạch", async (t) => {
+  const log = quiet(t);
+  const rig = await flowRig(t, {
+    trim: ["hy-mt2-license"],
+    licenseText: "giấy phép cũ",
+    source: { text: FILE_NEW, license: "giấy phép mới", revision: REV("c") },
+    answers: ["n"],
+  });
+  assert.equal(await run({ mode: "update" }, rig.ctx), 0);
+  const diff = rig.io.calls.find((c) => c.startsWith("diff -u "));
+  assert.ok(diff?.includes("Hy-MT2-LICENSE.txt"), `đã so với bản đang phát hành: ${diff}`);
+  assert.ok(!rig.io.calls.some((c) => c.startsWith("cargo build")), "không chạy cổng kiểm");
+  assert.deepEqual(rig.asked, [ASKED_UPDATE]);
+  assert.match(log.mock.calls.map((c) => c.arguments.join(" ")).join("\n"), /\| hy-mt2-license \|/);
+});
+
+test("luồng chính: thiếu dữ liệu thử hay công cụ cổng kiểm thì dừng trước khi tải model", async (t) => {
+  quiet(t);
+  const rig = await flowRig(t, { trim: true, published: FILE_NOW, source: { text: FILE_NEW, revision: REV("c") } });
+  rig.ctx.gatePaths = gatePaths(rig.root); // chưa có llama-server, bộ thử
+  await assert.rejects(run({ mode: "update" }, rig.ctx), /Thiếu .*llama-server/);
+  assert.ok(!rig.io.calls.some((c) => c.startsWith("download ") && c.includes("/resolve/")), "chưa tải gì");
+  assert.deepEqual(rig.asked, []);
+  // Mục không có cổng kiểm thì không cần dữ liệu thử.
+  const license = await flowRig(t, { trim: ["hy-mt2-license"], licenseText: "giấy phép cũ", source: { text: FILE_NEW, license: "giấy phép mới", revision: REV("c") } });
+  license.ctx.gatePaths = gatePaths(license.root);
+  assert.equal(await run({ mode: "update" }, license.ctx), 0);
+});
+
+test("luồng làm tiếp: lỗi mạng khi đọc manifest đang chạy kèm gợi ý DNS", async (t) => {
+  quiet(t);
+  const rig = await flowRig(t);
+  writePending(rig);
+  rig.io.text = (url) => {
+    throw Object.assign(new Error(`curl ${url} thoát mã 6`), { status: 6 });
+  };
+  await assert.rejects(run({ mode: "update" }, rig.ctx), /thoát mã 6.*dig @8\.8\.8\.8/s);
+  assert.ok(existsSync(rig.stateFile));
+});
+
+test("publishManifest: lỗi mạng khi đọc manifest đang chạy kèm gợi ý DNS, không sao lưu, không đăng", (t) => {
+  const work = temp(t);
+  const signedPath = join(work, "models.json");
+  writeFileSync(signedPath, '{"body":"bmV3"}\n');
+  const io = fakeIo({ text: () => { throw Object.assign(new Error("curl thoát mã 28"), { status: 28 }); } });
+  assert.throws(() => publishManifest(io, signedPath, work, smallPlan()), /thoát mã 28.*dig @8\.8\.8\.8/s);
+  assert.ok(!io.calls.some((c) => c.startsWith("pnpm")));
 });
