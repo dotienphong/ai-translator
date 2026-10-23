@@ -22,12 +22,15 @@ pub const TRAY_ID: &str = "main";
 fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String, bool)> {
     let state = app.state::<AppState>();
     let (settings, status) = (state.settings(), state.status());
-    // Đọc sau khi đã có bản sao cài đặt và trạng thái: `tray_update` khóa ModelService rồi đọc lại AppState.
-    let model_update = app
-        .try_state::<Arc<ModelService>>()
-        .is_some_and(|models| models.tray_update(app));
+    let running = matches!(status.session, SessionStatus::Starting | SessionStatus::Running);
+    // Đang dịch thì mục và dấu chấm đều ẩn (`tray_menu`): khỏi dựng `ModelsView` (đọc đĩa) chỉ để bỏ kết quả. `tray_update`
+    // đọc lại AppState trong `view()`, nhưng các hàm của AppState trả bản sao nên thứ tự lấy khóa không phải ràng buộc.
+    let model_update = !running
+        && app
+            .try_state::<Arc<ModelService>>()
+            .is_some_and(|models| models.tray_update(app));
     let model = TrayModel {
-        running: matches!(status.session, SessionStatus::Starting | SessionStatus::Running),
+        running,
         overlay_visible: status.overlay_visible,
         locked: settings.overlay.locked,
         hotkeys_failed: !status.hotkey_failures.is_empty(),
@@ -104,25 +107,32 @@ fn badged(base: Image<'static>, badge: bool, style: BadgeStyle) -> Image<'static
     Image::new_owned(with_badge(base.rgba(), width, height, style), width, height)
 }
 
-fn set_badge<R: Runtime>(app: &AppHandle<R>, tray: &TrayIcon<R>, badge: bool) {
-    let Some(shown) = app.try_state::<TrayBadge>() else {
-        return;
-    };
-    let mut shown = shown.0.lock().unwrap_or_else(|e| e.into_inner());
-    if *shown == badge {
-        return;
-    }
-    if let Some(icon) = tray_icon(app, badge) {
-        if let Err(e) = tray.set_icon(Some(icon)) {
+/// Đặt icon khay theo `badge`. Việc so sánh, đặt icon và ghi `TrayBadge` đều chạy trên luồng chính (chỉ luồng đó đụng
+/// `TrayBadge`): không giữ khóa nào khi gọi vào khay (`set_icon…` chờ luồng chính), nên không thể khóa chéo với luồng chính
+/// đang gọi `refresh`. Lời gọi không chờ; các lần đặt chạy theo thứ tự gửi.
+fn set_badge<R: Runtime>(app: &AppHandle<R>, tray: TrayIcon<R>, badge: bool) {
+    let handle = app.clone();
+    let posted = app.run_on_main_thread(move || {
+        let Some(shown) = handle.try_state::<TrayBadge>() else {
+            return;
+        };
+        let mut shown = shown.0.lock().unwrap_or_else(|e| e.into_inner());
+        if *shown == badge {
+            return;
+        }
+        let Some(icon) = tray_icon(&handle, badge) else {
+            return;
+        };
+        // Một lần gọi đặt cả icon lẫn cờ template (đặt rời hai lần thì icon nháy); Windows chỉ đặt icon.
+        if let Err(e) = tray.set_icon_with_as_template(Some(icon), cfg!(target_os = "macos")) {
             log::warn!("không đặt được icon khay: {e}");
             return;
         }
-        #[cfg(target_os = "macos")]
-        if let Err(e) = tray.set_icon_as_template(true) {
-            log::warn!("không đặt được icon khay dạng template: {e}");
-        }
+        *shown = badge;
+    });
+    if let Err(e) = posted {
+        log::warn!("không gửi được việc đặt icon khay sang luồng chính: {e}");
     }
-    *shown = badge;
 }
 
 pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
@@ -168,7 +178,7 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
         Ok((menu, tooltip, badge)) => {
             let _ = tray.set_menu(Some(menu));
             let _ = tray.set_tooltip(Some(tooltip));
-            set_badge(app, &tray, badge);
+            set_badge(app, tray, badge);
         }
         Err(e) => log::warn!("không dựng lại được menu khay: {e}"),
     }
