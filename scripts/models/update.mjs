@@ -2,10 +2,11 @@
 // `pnpm models:update`: kiểm bản mới của các model ở nguồn, chuẩn bị, chạy cổng kiểm, hỏi rồi đăng lên hệ thống (spec
 // docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md; runbook docs/release/phat-hanh.md mục 13).
 import { readFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { builtInKeys, REPO } from "./lib.mjs";
-import { checkTable, checkUpstream, parseArgs } from "./update-lib.mjs";
-import { checkLiveManifest, checkSources, createIo } from "./update-io.mjs";
+import { checkTable, checkUpstream, gateTable, latestBody, parseArgs } from "./update-lib.mjs";
+import { checkLiveManifest, checkSources, createIo, fetchPublished } from "./update-io.mjs";
+import { buildTools, runGate } from "./update-gate.mjs";
 
 const PATHS = {
   upstream: resolve(REPO, "scripts/models/upstream.json"),
@@ -27,6 +28,22 @@ async function check(io) {
   return { latest, upstream, results };
 }
 
+/** Cổng kiểm với file đang phát hành của `id` (hiệu chỉnh: phải đạt). Kết quả giữ trong target/, không commit. */
+async function gateOnly(io, id) {
+  const entry = readJson(PATHS.upstream).entries[id];
+  if (!entry) throw new Error(`upstream.json không có ${id}.`);
+  if (entry.gate.kind !== "mt" && entry.gate.kind !== "asr") {
+    throw new Error(`${id} không có cổng kiểm (gate.kind là ${entry.gate.kind}).`);
+  }
+  const file = readJson(latestBody(PATHS.released).path).files.find((f) => f.id === id);
+  const model = await fetchPublished(io, PATHS.work, file);
+  buildTools(io);
+  const label = `gate-only-${id}-${file.sha256.slice(0, 12)}`;
+  const gate = runGate(io, entry, model, label, join(PATHS.work, "gate-only", label));
+  console.log(`\n${id}: file đang phát hành so với mốc ${entry.gate.baseline}\n\n${gateTable(gate)}`);
+  return gate.pass ? 0 : 1;
+}
+
 async function main(argv) {
   const args = parseArgs(argv);
   const io = createIo();
@@ -34,7 +51,8 @@ async function main(argv) {
     const { results } = await check(io);
     return results.some((r) => r.status === "stop") ? 1 : 0;
   }
-  throw new Error(`Chế độ ${args.mode} chưa có (kế hoạch 02, 03 của cap-nhat-model).`);
+  if (args.mode === "gate-only") return gateOnly(io, args.id);
+  throw new Error(`Chế độ ${args.mode} chưa có (kế hoạch 03 của cap-nhat-model).`);
 }
 
 main(process.argv.slice(2)).then(
