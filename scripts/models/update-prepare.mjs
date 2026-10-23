@@ -7,12 +7,14 @@ import { GH_RAW, HF_RESOLVE, fetchFile, gitBlobId, sha256File } from "./update-i
 /**
  * Kiểm file khớp định danh nội dung ở nguồn (`sha256:<hex>` hay `blob:<mã blob git>`); trả SHA-256 của file. Mã blob tự
  * tính (`gitBlobId`), không qua `git hash-object`: file nằm trong repo nên git sẽ đổi xuống dòng theo .gitattributes.
+ * File không khớp bị xóa, để lần chạy lại tải lại thay vì dùng tiếp file sai.
  */
 export async function verifyContent(path, content) {
   const sha = await sha256File(path);
   const got = content.startsWith("blob:") ? `blob:${gitBlobId(path)}` : `sha256:${sha}`;
   if (got !== content) {
-    throw new Error(`${path} không khớp nguồn (${got.slice(0, 20)}…, nguồn ghi ${content.slice(0, 20)}…): xóa file đó rồi chạy lại.`);
+    rmSync(path, { force: true });
+    throw new Error(`${path} không khớp nguồn (${got.slice(0, 20)}…, nguồn ghi ${content.slice(0, 20)}…): đã xóa, chạy lại để tải lại.`);
   }
   return sha;
 }
@@ -50,12 +52,17 @@ async function convert(io, work, dir, entry, next, file) {
   }
   const head = io.run("git", ["-C", llama, "rev-parse", "HEAD"]).trim();
   if (head !== c.llama_commit) {
-    throw new Error(`llama.cpp ${c.llama_tag} ở ${llama} là commit ${head}, không phải ${c.llama_commit.slice(0, 7)}: xóa thư mục đó rồi chạy lại.`);
+    throw new Error(
+      `llama.cpp tag ${c.llama_tag} ở ${llama} là commit ${head}, upstream.json ghi ${c.llama_commit.slice(0, 7)}. Nếu vừa clone lại mà vẫn khác thì tag ở GitHub đã bị dời: sửa convert trong upstream.json sau khi kiểm.`,
+    );
   }
-  const venv = join(tools, "venv");
+  // Môi trường theo tag llama.cpp (requirements đổi theo tag). Dấu `.cai-xong` chỉ ghi sau khi cài xong: lần cài dở thì
+  // lần chạy sau cài lại, không tin vào `bin/python` đã có.
+  const venv = join(tools, `venv-${c.llama_tag}`);
   const python = join(venv, "bin", "python");
-  if (!existsSync(python)) {
-    io.run("uv", ["venv", "-p", c.python, venv], { inherit: true });
+  const installed = join(venv, ".cai-xong");
+  if (!existsSync(installed)) {
+    if (!existsSync(python)) io.run("uv", ["venv", "-p", c.python, venv], { inherit: true });
     io.run(
       "uv",
       [
@@ -71,6 +78,7 @@ async function convert(io, work, dir, entry, next, file) {
       ],
       { inherit: true },
     );
+    writeFileSync(installed, "");
   }
   writeFileSync(join(dir, "convert-env.txt"), io.run("uv", ["pip", "freeze", "--python", python]));
   const src = join(dir, "src");

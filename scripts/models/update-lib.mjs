@@ -179,10 +179,11 @@ export function checkUpstream(upstream, config, body) {
     if (e.notice !== undefined && !configIds.has(e.notice)) problems.push(`${id}: notice ${e.notice} không có trong models.config.json`);
     if (e.rejected !== undefined) {
       const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+      const validContent = (c) => typeof c === "string" && /^(sha256|blob):./.test(c);
       const valid = (r) =>
         isObject(r) &&
         Number.isInteger(r.sequence) &&
-        (typeof r.content === "string" ? r.inputs === undefined : isObject(r.inputs) && r.content === undefined);
+        (r.content !== undefined ? validContent(r.content) && r.inputs === undefined : isObject(r.inputs));
       if (!Array.isArray(e.rejected)) problems.push(`${id}: rejected sai dạng`);
       else e.rejected.forEach((r, i) => valid(r) || problems.push(`${id}: rejected[${i}] sai dạng`));
     }
@@ -244,7 +245,10 @@ export function gateMt(report, baseline, run) {
   }
   const floor = floorFor(run);
   const enVi = now["en->vi"]?.comet;
-  if (floor !== null && !(enVi >= floor)) problems.push(`en->vi ${enVi?.toFixed(3)} dưới mức sàn ${floor}`);
+  if (floor !== null) {
+    if (enVi === undefined) problems.push(`en->vi: không có COMET (mức sàn ${floor})`);
+    else if (!(enVi >= floor)) problems.push(`en->vi ${enVi.toFixed(3)} dưới mức sàn ${floor}`);
+  }
   const errors = (runs) => Object.values(runs).reduce((sum, d) => sum + (d.failed ?? 0) + (d.leaked ?? 0), 0);
   if (errors(now) > errors(base)) problems.push(`số câu lỗi ${errors(now)} nhiều hơn mốc ${errors(base)}`);
   return { pass: problems.length === 0, rows, problems };
@@ -269,10 +273,9 @@ export function gateAsr(result, baseline) {
   return { pass: rows.length > 0 && problems.length === 0, rows, problems };
 }
 
-/** Bảng Markdown của một lượt cổng kiểm, kèm kết luận. */
-export function gateTable(gate) {
-  const mt = gate.rows.some((r) => r.dir !== undefined);
-  const lines = mt
+/** Bảng Markdown của một lượt cổng kiểm (`kind`: "mt" hay "asr"), kèm kết luận. */
+export function gateTable(gate, kind) {
+  const lines = kind === "mt"
     ? [
         "| Chiều | Mốc | Bản mới | Chênh | Kết luận |",
         "|---|---|---|---|---|",

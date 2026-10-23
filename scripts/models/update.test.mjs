@@ -26,7 +26,7 @@ import {
   sameSignedBody,
 } from "./update-lib.mjs";
 import { checkLiveManifest, checkSources, createIo, exec, fetchFile, fetchPublished, gitBlobId } from "./update-io.mjs";
-import { runGate } from "./update-gate.mjs";
+import { ASR_FEATURES, GATE_PATHS, buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
@@ -65,7 +65,14 @@ function fakeIo(handlers = {}) {
       calls.push(`text ${url}`);
       return handlers.text(url);
     },
-    json: (url) => JSON.parse(io.text(url)),
+    json(url) {
+      const body = io.text(url);
+      try {
+        return JSON.parse(body);
+      } catch (e) {
+        throw Object.assign(new Error(`${url} không trả JSON hợp lệ: ${e.message}`), { invalidJson: true });
+      }
+    },
     download(url, dest) {
       calls.push(`download ${url}`);
       const out = handlers.download(url);
@@ -488,6 +495,8 @@ test("gateMt: thụt lùi quá 0,01, dưới mức sàn, chấm thiếu câu, nh
   const errors = gateMt({ [Q8]: { "en->vi": dirResult(0.85, { failed: 1 }), "vi->en": dirResult(0.83) } }, base, Q8);
   assert.match(errors.problems.join("\n"), /số câu lỗi 1 nhiều hơn mốc 0/);
   assert.equal(gateMt({}, base, Q8).pass, false);
+  const noComet = gateMt({ [Q8]: { "vi->en": dirResult(0.83) } }, { [Q8]: { "vi->en": dirResult(0.821) } }, Q8);
+  assert.deepEqual(noComet.problems, ["en->vi: không có COMET (mức sàn 0.83)"]);
 });
 
 test("floorFor, mtRunName theo đúng luật của score_mt.py", () => {
@@ -522,11 +531,13 @@ test("cổng kiểm trên mốc thật: model đang phát hành so với chính 
 
 test("gateTable in bảng và kết luận", () => {
   const mt = gateMt({ [Q8]: { "en->vi": dirResult(0.85) } }, { [Q8]: { "en->vi": dirResult(0.842) } }, Q8);
-  assert.match(gateTable(mt), /\| en->vi \| 0\.842 \| 0\.850 \| \+0\.008 \| đạt \|/);
-  assert.match(gateTable(mt), /Cổng kiểm: ĐẠT\./);
+  assert.match(gateTable(mt, "mt"), /\| en->vi \| 0\.842 \| 0\.850 \| \+0\.008 \| đạt \|/);
+  assert.match(gateTable(mt, "mt"), /Cổng kiểm: ĐẠT\./);
+  assert.match(gateTable({ pass: false, rows: [], problems: ["kết quả không có lượt x"] }, "mt"), /\| Chiều \| Mốc \|/);
+  assert.match(gateTable({ pass: false, rows: [], problems: ["thiếu"] }, "asr"), /\| Nhóm \| Mốc \|/);
   const asr = gateAsr({ "en-wb": { wer: 0.07 } }, { "en-wb": { wer: 0.054 } });
-  assert.match(gateTable(asr), /\| en-wb \(WER\) \| 0\.054 \| 0\.070 \| XẤU HƠN \|/);
-  assert.match(gateTable(asr), /Cổng kiểm: KHÔNG ĐẠT\./);
+  assert.match(gateTable(asr, "asr"), /\| en-wb \(WER\) \| 0\.054 \| 0\.070 \| XẤU HƠN \|/);
+  assert.match(gateTable(asr, "asr"), /Cổng kiểm: KHÔNG ĐẠT\./);
 });
 
 const sha256 = (text) => createHash("sha256").update(text).digest("hex");
@@ -542,7 +553,8 @@ test("prepare hf-file: tải theo revision mới, kiểm SHA-256 với nguồn",
   });
   assert.ok(io.calls.includes(`download https://huggingface.co/org/m-GGUF/resolve/${REV("b")}/m-Q8_0.gguf`));
   const wrong = { revision: REV("c"), content: `sha256:${SHA("9")}` };
-  await assert.rejects(prepare(io, work, "m", hfEntry, wrong, "m-Q8_0.gguf"), /không khớp nguồn/);
+  await assert.rejects(prepare(io, work, "m", hfEntry, wrong, "m-Q8_0.gguf"), /không khớp nguồn.*đã xóa, chạy lại để tải lại/);
+  assert.equal(existsSync(join(work, "m", REV("c"), "m-Q8_0.gguf")), false, "file sai bị xóa");
 });
 
 test("prepare file thường (giấy phép): so mã blob git tự tính, kể cả file xuống dòng CRLF", async (t) => {
@@ -605,7 +617,7 @@ test("prepare hf-convert: hai lần chuyển khác nhau thì dừng; llama.cpp s
   const wrongCommit = { ...entry, convert: { ...convertTool, llama_commit: REV("e") } };
   await assert.rejects(
     prepare(convertIo(["a", "a"]), temp(t), "l", wrongCommit, { revision: REV("c"), inputs: {} }, "L.gguf"),
-    /không phải eeeeeee/,
+    /^Error: llama\.cpp tag b1 ở .* là commit d{40}, upstream\.json ghi eeeeeee\. Nếu vừa clone lại mà vẫn khác thì tag ở GitHub đã bị dời: sửa convert trong upstream\.json sau khi kiểm\.$/,
   );
 });
 
@@ -631,7 +643,7 @@ function gatePaths(root) {
     mtOutputs: join(root, "mt"),
     mtTestset: join(root, "mt", "testset.jsonl"),
     asrData: join(root, "asr"),
-    llamaServer: "ls",
+    llamaServer: join(root, "llama-server"),
     latencyBench: "lb",
     asrWorker: "aw",
   };
@@ -669,7 +681,16 @@ test("runGate: model không chạy được bằng engine của app thì báo c�
   const root = temp(t);
   const io = fakeIo({ run: (cmd, args) => (args.includes("--limit") ? new Error("llama-server thoát mã 1") : "") });
   const entry = { gate: { kind: "mt", prompt: "hy-mt2", baseline: "base.json" } };
-  assert.throws(() => runGate(io, entry, "/x/m.gguf", "nhan", join(root, "out"), gatePaths(root)), /cần nâng engine/);
+  const paths = gatePaths(root);
+  const out = join(root, "out");
+  assert.throws(
+    () => runGate(io, entry, "/x/m.gguf", "nhan", out, paths),
+    (e) => {
+      assert.match(e.message, /^Model không chạy được bằng llama-server của app \(thường do model cần llama\.cpp\/whisper\.cpp mới hơn bản đóng trong app; không đăng\)\. Xem log: /);
+      assert.ok(e.message.includes(`${join(out, "chay-thu", "m.llama.log")}: llama-server thoát mã 1`), e.message);
+      return true;
+    },
+  );
 });
 
 test("runGate nhận dạng: chạy thử trên vài clip, chấm, so mốc", (t) => {
@@ -709,6 +730,8 @@ test("checkUpstream: rejected phải là mảng, mỗi phần tử có sequence 
     [{ sequence: 2 }],
     [{ sequence: 2, content: "x", inputs: {} }],
     [{ sequence: 2, content: 7 }],
+    [{ sequence: 2, content: "x" }],
+    [{ sequence: 2, content: "md5:abc" }],
     [{ sequence: 2, inputs: "x" }],
     [{ sequence: 2, inputs: [] }],
     [null],
@@ -716,7 +739,7 @@ test("checkUpstream: rejected phải là mảng, mỗi phần tử có sequence 
     const problems = withRejected(bad);
     assert.ok(problems.some((p) => p.startsWith(`${id}: rejected`) && p.endsWith("sai dạng")), `${JSON.stringify(bad)}: ${problems.join()}`);
   }
-  assert.ok(withRejected([{ sequence: 2, content: "x" }, { sequence: 2 }]).includes(`${id}: rejected[1] sai dạng`));
+  assert.ok(withRejected([{ sequence: 2, content: `blob:${SHA("1")}` }, { sequence: 2 }]).includes(`${id}: rejected[1] sai dạng`));
 });
 
 test("checkLiveManifest: nội dung không phải JSON thì lỗi nêu URL, không kèm gợi ý DNS; lỗi mạng vẫn kèm gợi ý DNS", async (t) => {
@@ -732,4 +755,179 @@ test("checkLiveManifest: nội dung không phải JSON thì lỗi nêu URL, khô
     throw new Error("curl thoát mã 6");
   });
   await assert.rejects(checkLiveManifest(offline, dir, []), /curl thoát mã 6[\s\S]*dig @8\.8\.8\.8/);
+});
+
+test("prepare hf-convert: môi trường Python theo tag llama.cpp; cài lại khi chưa có dấu .cai-xong, có rồi thì bỏ qua", async (t) => {
+  const entry = { ...convertEntry, convert: convertTool };
+  const next = { revision: REV("c"), inputs: {} };
+  const installs = (io) => io.calls.filter((c) => c.startsWith("uv pip install"));
+  // Lần đầu: dựng venv-<tag>, cài, rồi mới ghi dấu.
+  const work = temp(t);
+  const first = convertIo(["g", "g"]);
+  await prepare(first, work, "l", entry, next, "L.gguf");
+  const venv = join(work, "convert", "venv-b1");
+  assert.equal(installs(first).length, 1);
+  assert.ok(existsSync(join(venv, ".cai-xong")), "ghi dấu sau khi cài xong");
+  // Có python nhưng chưa có dấu (lần cài trước dở): phải cài lại, không dựng lại venv.
+  const half = temp(t);
+  mkdirSync(join(half, "convert", "venv-b1", "bin"), { recursive: true });
+  writeFileSync(join(half, "convert", "venv-b1", "bin", "python"), "");
+  const second = convertIo(["g", "g"]);
+  await prepare(second, half, "l", entry, next, "L.gguf");
+  assert.equal(installs(second).length, 1);
+  assert.ok(!second.calls.some((c) => c.startsWith("uv venv")));
+  assert.ok(existsSync(join(half, "convert", "venv-b1", ".cai-xong")));
+  // Đã có dấu: bỏ qua cả dựng lẫn cài.
+  const again = convertIo(["g", "g"]);
+  await prepare(again, work, "l2", entry, next, "L.gguf");
+  assert.equal(installs(again).length, 0);
+  // Cài hỏng thì không có dấu.
+  const broken = temp(t);
+  const failing = fakeIo({
+    run(cmd, args) {
+      if (cmd === "git" && args[0] === "clone") mkdirSync(args.at(-1), { recursive: true });
+      if (cmd === "git" && args.includes("rev-parse")) return `${REV("d")}\n`;
+      if (cmd === "uv" && args[0] === "venv") {
+        mkdirSync(join(args[3], "bin"), { recursive: true });
+        writeFileSync(join(args[3], "bin", "python"), "");
+      }
+      if (cmd === "uv" && args[1] === "install") return new Error("uv pip install thoát mã 1");
+      return "";
+    },
+  });
+  await assert.rejects(prepare(failing, broken, "l", entry, next, "L.gguf"), /uv pip install/);
+  assert.equal(existsSync(join(broken, "convert", "venv-b1", ".cai-xong")), false);
+});
+
+/** Bộ dựng cho test chạy lại cổng dịch: `io` giả với trạng thái git và meta của lượt dịch cũ. */
+function mtRig(t, { meta, head = "aaa", dirty = "" }) {
+  const root = temp(t);
+  const paths = gatePaths(root);
+  const out = join(root, "out");
+  const outputs = join(paths.mtOutputs, "outputs-nhan");
+  const metaFile = join(outputs, "m-Q8_0-plain.meta.json");
+  if (meta) {
+    mkdirSync(outputs, { recursive: true });
+    writeFileSync(metaFile, JSON.stringify(meta));
+    writeFileSync(join(outputs, "m-Q8_0-plain.jsonl"), "{}\n");
+  }
+  const runs = JSON.stringify({ runs: { "m-Q8_0-plain": { "en->vi": { n: 2, comet: 0.86, failed: 0, leaked: 0 } } } });
+  writeFileSync(join(root, "base.json"), runs);
+  const seen = { gitCwd: [] };
+  mkdirSync(join(out, "chay-thu"), { recursive: true });
+  writeFileSync(join(out, "chay-thu", "cu.txt"), "kết quả chạy thử cũ");
+  const io = fakeIo({
+    run(cmd, args, opts) {
+      if (cmd === "git") {
+        seen.gitCwd.push(opts?.cwd);
+        return args[0] === "rev-parse" ? `${head}\n` : dirty;
+      }
+      if (cmd === "lb" && args.includes("--limit")) seen.smokeSawOld = existsSync(join(out, "chay-thu", "cu.txt"));
+      if (cmd === "lb" && !args.includes("--limit")) seen.fullSawOutputs = existsSync(outputs);
+      if (cmd === "uv") writeFileSync(join(paths.results, "s7_mt-nhan.json"), runs);
+      return "";
+    },
+  });
+  const entry = { gate: { kind: "mt", prompt: "hy-mt2", baseline: "base.json" } };
+  const run = () => runGate(io, entry, "/x/m-Q8_0.gguf", "nhan", out, paths);
+  return { io, seen, run, outputs, metaFile, root };
+}
+
+test("runGate dịch: xóa thư mục chạy thử cũ trước khi chạy thử", (t) => {
+  const rig = mtRig(t, {});
+  rig.run();
+  assert.equal(rig.seen.smokeSawOld, false);
+});
+
+test("runGate dịch: kết quả dịch cũ khác git HEAD hay git_dirty thì xóa, dịch lại từ đầu", (t) => {
+  for (const meta of [
+    { git_head: "bbb", git_dirty: false },
+    { git_head: "aaa", git_dirty: true },
+  ]) {
+    const rig = mtRig(t, { meta });
+    rig.run();
+    assert.equal(rig.seen.fullSawOutputs, false, JSON.stringify(meta));
+    assert.ok(rig.seen.gitCwd.length === 2 && rig.seen.gitCwd.every((c) => c === rig.root), "git chạy trong repo của cổng kiểm");
+  }
+  const dirty = mtRig(t, { meta: { git_head: "aaa", git_dirty: false }, dirty: " M crates/x.rs\n" });
+  dirty.run();
+  assert.equal(dirty.seen.fullSawOutputs, false, "cây làm việc đang sửa dở mà meta ghi sạch");
+});
+
+test("runGate dịch: cùng trạng thái code thì giữ kết quả cũ để dịch tiếp; không có meta cũng không gọi git", (t) => {
+  const same = mtRig(t, { meta: { git_head: "aaa", git_dirty: false } });
+  same.run();
+  assert.equal(same.seen.fullSawOutputs, true);
+  assert.ok(existsSync(same.metaFile));
+  const none = mtRig(t, {});
+  none.run();
+  assert.deepEqual(none.seen.gitCwd, []);
+});
+
+test("runGate: gate.kind lạ thì báo lỗi", (t) => {
+  const root = temp(t);
+  assert.throws(() => runGate(fakeIo(), { gate: { kind: "none" } }, "/x/m.gguf", "nhan", join(root, "out"), gatePaths(root)), /^Error: gate\.kind lạ none$/);
+});
+
+test("runGate nhận dạng: xóa kết quả và log chạy thử cũ; lỗi engine chỉ tới log của lượt chạy thử", (t) => {
+  const root = temp(t);
+  const paths = gatePaths(root);
+  const out = join(root, "out");
+  writeFileSync(join(paths.asrData, "manifest.jsonl"), '{"id":"a"}\n{"id":"b"}\n');
+  mkdirSync(join(paths.asrData, "logs"), { recursive: true });
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "chay-thu.jsonl"), "{}\n");
+  writeFileSync(join(paths.asrData, "logs", "chay-thu.log"), "log cũ");
+  const seen = {};
+  const io = fakeIo({
+    run(cmd, args) {
+      if (cmd === "lb") {
+        seen.jsonl = existsSync(join(out, "chay-thu.jsonl"));
+        seen.log = existsSync(join(paths.asrData, "logs", "chay-thu.log"));
+        return new Error("asr-worker thoát mã 1");
+      }
+      return "";
+    },
+  });
+  const entry = { gate: { kind: "asr", baseline: "a4-base.json" } };
+  assert.throws(
+    () => runGate(io, entry, "/x/ggml.bin", "nhan", out, paths),
+    (e) => {
+      assert.match(e.message, /^Model không chạy được bằng asr-worker của app \(thường do model cần llama\.cpp\/whisper\.cpp mới hơn/);
+      assert.ok(e.message.includes(`Xem log: ${join(paths.asrData, "logs", "chay-thu.log")}: asr-worker thoát mã 1`), e.message);
+      return true;
+    },
+  );
+  assert.deepEqual(seen, { jsonl: false, log: false });
+});
+
+test("cổng kiểm khớp scripts/copy-sidecars.sh: cùng llama-server và cùng features của asr-worker", (t) => {
+  const script = readFileSync(resolve(REPO, "scripts/copy-sidecars.sh"), "utf8");
+  const llamaDir = /^llama_dir="\$root\/([^"]+)"$/m.exec(script)?.[1];
+  assert.ok(llamaDir, "không đọc được llama_dir");
+  assert.ok(GATE_PATHS.llamaServer.endsWith(`${llamaDir}/llama-server`), GATE_PATHS.llamaServer);
+  const features = /cargo build --release -p asr-worker --features (\S+?)\)/.exec(script)?.[1];
+  assert.equal(features, ASR_FEATURES);
+  const root = temp(t);
+  const paths = gatePaths(root);
+  writeFileSync(paths.llamaServer, "");
+  writeFileSync(paths.mtTestset, "");
+  writeFileSync(join(paths.asrData, "manifest.jsonl"), "");
+  const io = fakeIo();
+  buildTools(io, paths);
+  assert.deepEqual(io.calls, [
+    "cargo build --release --locked -p latency-bench",
+    `cargo build --release --locked -p asr-worker --features ${features}`,
+  ]);
+});
+
+test("checkGateInputs: thiếu llama-server, bộ thử dịch hay manifest nhận dạng thì báo trước khi tải gì", (t) => {
+  const paths = gatePaths(temp(t));
+  assert.throws(() => checkGateInputs(paths), /^Error: Thiếu .*llama-server/);
+  writeFileSync(paths.llamaServer, "");
+  assert.throws(() => checkGateInputs(paths), /Thiếu .*testset\.jsonl/);
+  writeFileSync(paths.mtTestset, "");
+  assert.throws(() => checkGateInputs(paths), /Thiếu .*manifest\.jsonl/);
+  writeFileSync(join(paths.asrData, "manifest.jsonl"), "");
+  checkGateInputs(paths);
 });

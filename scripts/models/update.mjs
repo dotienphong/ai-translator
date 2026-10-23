@@ -6,7 +6,7 @@ import { join, relative, resolve } from "node:path";
 import { builtInKeys, REPO } from "./lib.mjs";
 import { checkTable, checkUpstream, gateTable, latestBody, parseArgs } from "./update-lib.mjs";
 import { checkLiveManifest, checkSources, createIo, fetchPublished } from "./update-io.mjs";
-import { buildTools, runGate } from "./update-gate.mjs";
+import { buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
 
 const PATHS = {
   upstream: resolve(REPO, "scripts/models/upstream.json"),
@@ -35,12 +35,15 @@ async function gateOnly(io, id) {
   if (entry.gate.kind !== "mt" && entry.gate.kind !== "asr") {
     throw new Error(`${id} không có cổng kiểm (gate.kind là ${entry.gate.kind}).`);
   }
-  const file = readJson(latestBody(PATHS.released).path).files.find((f) => f.id === id);
+  const latest = latestBody(PATHS.released);
+  const file = readJson(latest.path).files.find((f) => f.id === id);
+  if (!file) throw new Error(`manifest số ${latest.sequence} không có ${id}.`);
+  checkGateInputs(); // trước khi tải model vài GB
   const model = await fetchPublished(io, PATHS.work, file);
   buildTools(io);
   const label = `gate-only-${id}-${file.sha256.slice(0, 12)}`;
   const gate = runGate(io, entry, model, label, join(PATHS.work, "gate-only", label));
-  console.log(`\n${id}: file đang phát hành so với mốc ${entry.gate.baseline}\n\n${gateTable(gate)}`);
+  console.log(`\n${id}: file đang phát hành so với mốc ${entry.gate.baseline}\n\n${gateTable(gate, entry.gate.kind)}`);
   return gate.pass ? 0 : 1;
 }
 
