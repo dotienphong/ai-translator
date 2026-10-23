@@ -1290,7 +1290,7 @@ Spec `2026-10-23-email-theo-ngon-ngu-design.md` (mục 6), kế hoạch `2026-10
 
 Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho phép NULL, không dựng lại bảng), Worker cũ không đọc cột này nên chạy đúng trên schema mới; Worker API mới ghi và đọc `orders.lang`, Worker admin mới đọc nó (Gửi lại key) và xóa nó (ẩn danh theo email), nên cả hai chỉ lên sau migration. Server cũ bỏ qua trường `lang` lạ, nên app 0.2.5 lên trước server cũng không lỗi, nhưng chỉ server mới lưu được. Chính sách 1.6 nói máy chủ lưu ngôn ngữ trên đơn: máy chủ chỉ lưu khi app 0.2.5 gửi lên, nên app phát hành cùng chính sách 1.6; website nói điều đã thật nên đi sau.
 
-**Điều kiện trước khi bắt đầu:** mã của kế hoạch đã gộp vào `main` (chủ dự án quyết lúc nào), CI xanh, `pnpm check` trong `server/` xanh trên `main`.
+**Điều kiện trước khi bắt đầu:** mã của kế hoạch đã gộp vào `main` (chủ dự án quyết lúc nào), CI xanh, `pnpm check` trong `server/` xanh trên `main`. **Từ lúc gộp nhánh này vào `main` tới hết bước 8, không `pnpm deploy` website và không build bản app nào khi chưa làm Task 12 của kế hoạch** (đặt chính sách 1.6 và ngày hiệu lực): website và app lấy văn bản pháp lý từ `docs/legal`, mà nội dung chính sách 1.6 đã nằm trên `main` dưới dòng phiên bản 1.5, và trang Dữ liệu và bảo mật đã nói app gửi ngôn ngữ giao diện; deploy hay build lúc đó là công bố điều chưa thật. Có thay đổi website khác đang chờ trên `main` thì deploy trước khi gộp, hay gộp sát ngày phát hành.
 
 1. **Kiểm trước khi áp (chỉ đọc), ghi lại kết quả để so sau.**
 
@@ -1337,7 +1337,9 @@ Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho
 
    Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`).
 
-6. **Thử thư thật, trước khi phát hành app.** Dùng email của chủ dự án đang có key còn hạn. Mỗi email chỉ được lấy lại key 3 lần mỗi giờ, nên chạy ba ngôn ngữ trước, hai ngôn ngữ sau ít nhất một giờ:
+6. **Thử thư thật, trước khi phát hành app.** Dùng email của chủ dự án đang có key còn hạn. Trước khi thử, **kiểm (chỉ đọc)** ở Dashboard Resend › Domains › `mail.aitranslator.io.vn`: Open Tracking và Click Tracking đều **tắt**. Thư giờ có HTML; bật theo dõi thì Resend chèn ảnh 1×1 và đổi các link qua tên miền theo dõi, trái spec mục 2 và chính sách mục 6. Đang bật thì tắt rồi mới thử.
+
+   Mỗi email chỉ được lấy lại key 3 lần mỗi giờ, nên chạy ba ngôn ngữ trước, hai ngôn ngữ sau ít nhất một giờ:
 
    ```bash
    E='<email của chủ dự án>'
@@ -1347,6 +1349,8 @@ Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho
    ```
 
    Expected: mỗi lệnh in `{"ok":true}`; tới hộp thư năm thư. Xem ở Gmail (web và điện thoại), Apple Mail (sáng và tối) và Outlook cho Windows: tiêu đề `<ngôn ngữ> / <tiếng Anh>` (thư `en` chỉ tiếng Anh); phần tiếng Anh ở dưới đường kẻ (trừ thư `en`); key nằm trong ô xanh, chạm một lần chọn được cả key; "Hướng dẫn chi tiết" mở đúng trang của ngôn ngữ đó; không có ảnh bị chặn hay chữ vỡ; ở Outlook cho Windows thẻ thư rộng khoảng 560 px, không giãn hết cửa sổ, và câu trả lời hỗ trợ nhiều dòng vẫn xuống dòng. Thư hiện như chữ thuần ở hộp thư nào thì ghi lại tên hộp thư đó.
+
+   **Thêm một ca thử thư trả lời hỗ trợ** (đường gửi khác với thư key; chat đã bật từ đợt mục 11): mở chat trên trang tiếng Nhật của website (`https://aitranslator.io.vn/ja/`), gửi một tin, để lại email của chủ dự án ở thẻ email, rồi đóng trang. Trong Zalo, trả lời bằng `#<mã> ` (mã trong dòng `🆕 #<mã> · web · ja · …` bot vừa gửi, như mục 11) rồi câu trả lời **hai dòng** (xuống dòng bằng Shift+Enter). Sau khoảng 2 phút tới vài phút (tin phải cũ hơn 2 phút, cron `*/5`), thư tới với tiêu đề `AI Translator サポートからの返信 / Reply from AI Translator support`, phần tiếng Anh ở dưới đường kẻ, và câu trả lời xuống dòng đúng hai dòng ở cả Gmail và Outlook cho Windows. Xong thì xóa cuộc chat bằng nút xóa trong khung chat.
 
 7. **Đặt ngày chính sách 1.6** theo kế hoạch `2026-10-23-email-theo-ngon-ngu.md`, Task 12, **trước khi build app**, rồi **phát hành app 0.2.5** theo mục 2.
 
