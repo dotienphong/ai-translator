@@ -14,12 +14,13 @@ pub enum TrayItem {
     Compose,
     OpenMain,
     CheckForUpdates,
+    ModelUpdate,
     RestartToUpdate,
     Quit,
 }
 
 impl TrayItem {
-    pub const ALL: [TrayItem; 9] = [
+    pub const ALL: [TrayItem; 10] = [
         Self::HotkeyWarning,
         Self::Session,
         Self::Overlay,
@@ -27,6 +28,7 @@ impl TrayItem {
         Self::Compose,
         Self::OpenMain,
         Self::CheckForUpdates,
+        Self::ModelUpdate,
         Self::RestartToUpdate,
         Self::Quit,
     ];
@@ -40,6 +42,7 @@ impl TrayItem {
             Self::Compose => "compose",
             Self::OpenMain => "open-main",
             Self::CheckForUpdates => "check-updates",
+            Self::ModelUpdate => "model-update",
             Self::RestartToUpdate => "restart-to-update",
             Self::Quit => "quit",
         }
@@ -56,7 +59,12 @@ impl TrayItem {
             Self::Overlay => Some(HotkeyAction::ToggleOverlay),
             Self::Lock => Some(HotkeyAction::ToggleLock),
             Self::Compose => Some(HotkeyAction::Compose),
-            Self::HotkeyWarning | Self::OpenMain | Self::CheckForUpdates | Self::RestartToUpdate | Self::Quit => None,
+            Self::HotkeyWarning
+            | Self::OpenMain
+            | Self::CheckForUpdates
+            | Self::ModelUpdate
+            | Self::RestartToUpdate
+            | Self::Quit => None,
         }
     }
 }
@@ -79,6 +87,8 @@ pub struct TrayModel {
     pub update_ready: bool,
     /// Gõ dịch đang bật (`compose.enabled`): phím của nó chỉ đăng ký khi bật, nên mục chỉ hiện khi bật.
     pub compose_enabled: bool,
+    /// Gói model đang dùng có bản mới, người dùng chưa bấm "Để sau", không đang tải (spec 2026-10-23 §6.1).
+    pub model_update: bool,
 }
 
 /// Các dòng của menu theo thứ tự; `None` là đường kẻ ngang.
@@ -115,11 +125,22 @@ pub fn menu_lines(strings: &Strings, model: TrayModel) -> Vec<Option<(TrayItem, 
     lines.push(Some((TrayItem::OpenMain, strings.tray_open_main)));
     lines.push(Some((TrayItem::CheckForUpdates, strings.tray_check_updates)));
     lines.push(None);
-    if model.update_ready && !model.running {
-        lines.push(Some((TrayItem::RestartToUpdate, strings.tray_restart_to_update)));
+    // Mục cập nhật chỉ hiện khi không dịch (§6.11 "app đang rảnh"), để không làm phiền giữa cuộc họp.
+    if !model.running {
+        if model.model_update {
+            lines.push(Some((TrayItem::ModelUpdate, strings.tray_model_update)));
+        }
+        if model.update_ready {
+            lines.push(Some((TrayItem::RestartToUpdate, strings.tray_restart_to_update)));
+        }
     }
     lines.push(Some((TrayItem::Quit, strings.tray_quit)));
     lines
+}
+
+/// Icon khay có dấu chấm khi menu có ít nhất một mục cập nhật (spec 2026-10-23 §6.1).
+pub fn has_badge(model: TrayModel) -> bool {
+    !model.running && (model.update_ready || model.model_update)
 }
 
 #[cfg(test)]
@@ -144,6 +165,7 @@ mod tests {
             hotkeys_failed: false,
             update_ready: false,
             compose_enabled: false,
+            model_update: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::VI, model)),
@@ -169,6 +191,7 @@ mod tests {
             hotkeys_failed: true,
             update_ready: true,
             compose_enabled: false,
+            model_update: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::EN, model)),
@@ -208,12 +231,13 @@ mod tests {
                 TrayItem::Compose => 4,
                 TrayItem::OpenMain => 5,
                 TrayItem::CheckForUpdates => 6,
-                TrayItem::RestartToUpdate => 7,
-                TrayItem::Quit => 8,
+                TrayItem::ModelUpdate => 7,
+                TrayItem::RestartToUpdate => 8,
+                TrayItem::Quit => 9,
             };
             assert_eq!(position, index, "{item:?}");
         }
-        assert_eq!(TrayItem::ALL.len(), 9);
+        assert_eq!(TrayItem::ALL.len(), 10);
     }
 
     #[test]
@@ -225,6 +249,7 @@ mod tests {
             hotkeys_failed: false,
             update_ready: true,
             compose_enabled: false,
+            model_update: false,
         };
         assert_eq!(
             lines(&menu_lines(&i18n::VI, model(false)))[4..],
@@ -253,6 +278,7 @@ mod tests {
             hotkeys_failed: false,
             update_ready: false,
             compose_enabled,
+            model_update: false,
         };
         let on = lines(&menu_lines(&i18n::VI, model(true)));
         assert_eq!(
@@ -294,10 +320,46 @@ mod tests {
             TrayItem::HotkeyWarning,
             TrayItem::OpenMain,
             TrayItem::CheckForUpdates,
+            TrayItem::ModelUpdate,
             TrayItem::RestartToUpdate,
             TrayItem::Quit,
         ] {
             assert_eq!(key(item, &[]), None, "{item:?}");
         }
+    }
+
+    /// Spec 2026-10-23 §6.1: mục cập nhật gói model và dấu chấm chỉ khi rảnh; dấu chấm khi có ít nhất một mục cập nhật.
+    #[test]
+    fn model_update_item_and_badge_follow_state() {
+        let model = |running, model_update, update_ready| TrayModel {
+            running,
+            overlay_visible: false,
+            locked: false,
+            hotkeys_failed: false,
+            update_ready,
+            compose_enabled: false,
+            model_update,
+        };
+        assert_eq!(
+            lines(&menu_lines(&i18n::VI, model(false, true, true)))[4..],
+            [
+                ("open-main", "Mở cửa sổ chính"),
+                ("check-updates", "Kiểm tra cập nhật…"),
+                ("---", "---"),
+                ("model-update", "Có bản cập nhật gói model"),
+                ("restart-to-update", "Khởi động lại để cập nhật"),
+                ("quit", "Thoát")
+            ]
+        );
+        assert!(
+            !lines(&menu_lines(&i18n::VI, model(true, true, false)))
+                .iter()
+                .any(|(id, _)| *id == "model-update"),
+            "đang dịch thì không hiện"
+        );
+        assert!(has_badge(model(false, true, false)), "chỉ có bản model mới");
+        assert!(has_badge(model(false, false, true)), "chỉ có bản app mới");
+        assert!(!has_badge(model(false, false, false)));
+        assert!(!has_badge(model(true, true, true)), "đang dịch thì không có dấu chấm");
     }
 }

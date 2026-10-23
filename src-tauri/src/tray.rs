@@ -24,6 +24,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String)
         hotkeys_failed: !status.hotkey_failures.is_empty(),
         update_ready: status.update_ready.is_some(),
         compose_enabled: settings.compose.enabled,
+        model_update: false,
     };
     let strings = i18n::strings(settings.ui_language);
     let menu = Menu::new(app)?;
@@ -135,6 +136,14 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 updater::check_now(&app);
             });
         }
+        // Thông báo "Có bản mới của gói…" nằm ở Home (spec 2026-10-23 §6.1).
+        Some(TrayItem::ModelUpdate) => actions::open_main_at(
+            app,
+            events::Navigate {
+                screen: "home",
+                settings_group: None,
+            },
+        ),
         Some(TrayItem::RestartToUpdate) => {
             if let Err(e) = updater::restart_to_update(app, |app| app.request_restart()) {
                 log::warn!("không khởi động lại để cập nhật được: {}", e.message);
