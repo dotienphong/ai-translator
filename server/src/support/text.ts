@@ -1,10 +1,9 @@
 // Kiểm và chuẩn hóa input của chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo-design.md §2.2; hợp đồng ở kế hoạch 00).
 import { b64urlEncode, randomBytes } from "../crypto";
 
-export type Lang = "vi" | "en" | "ja" | "zh" | "ko";
+export { type Lang, parseLang } from "../lang";
 export type Source = "web" | "app" | "app-debug";
 
-const LANGS: readonly string[] = ["vi", "en", "ja", "zh", "ko"];
 const SOURCES: readonly string[] = ["web", "app", "app-debug"];
 
 /** Độ dài tối đa một tin của khách (ký tự, đếm theo code point). */
@@ -57,10 +56,6 @@ export function parseText(v: unknown, max = MAX_TEXT): string | null {
     .trim();
   const length = Array.from(text).length;
   return length >= 1 && length <= max ? text : null;
-}
-
-export function parseLang(v: unknown): Lang | null {
-  return typeof v === "string" && LANGS.includes(v) ? (v as Lang) : null;
 }
 
 export function parseSource(v: unknown): Source | null {
