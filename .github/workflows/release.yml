@@ -104,7 +104,7 @@ jobs:
           pnpm install --frozen-lockfile --ignore-scripts
           cargo fetch --locked
           node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-sidecars
           path: |
@@ -146,7 +146,7 @@ jobs:
           fi
           unset P12 P12_PASSWORD
           scripts/release/build-sidecars-macos.sh --sign-only
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-sidecars-signed
           path: src-tauri/binaries/
@@ -194,7 +194,7 @@ jobs:
         run: |
           scripts/release/package-macos.sh build
           tar -C target/release/bundle/macos -cf "$RUNNER_TEMP/app.tar" "AI Translator.app"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-app
           path: ${{ runner.temp }}/app.tar
@@ -263,7 +263,7 @@ jobs:
           node scripts/release/release-check.mjs table src-tauri/binaries --target aarch64-apple-darwin \
             --out "$MT_RELEASE_OUT/sidecar-sha256-macos.json"
           cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/THIRD_PARTY_NOTICES-macos.txt"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-arm64
           path: target/release-out/
@@ -309,7 +309,7 @@ jobs:
           pnpm install --frozen-lockfile --ignore-scripts
           cargo fetch --locked
           node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-sidecars
           path: |
@@ -344,7 +344,7 @@ jobs:
         env:
           MT_WINDOWS_SIGN_CMD: ${{ vars.MT_WINDOWS_SIGN_CMD }}
         run: node scripts/release/build-sidecars-windows.mjs --sign-only
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-sidecars-signed
           path: src-tauri/binaries/
@@ -396,7 +396,7 @@ jobs:
           # Chưa có tên chủ chứng thư (chưa có chứng thư ký mã) thì bản chưa ký: app không kiểm chữ ký (spec 2026-10-08).
           AI_TRANSLATOR_WIN_SIGNING: ${{ vars.WINDOWS_SIGNER == '' && 'unsigned' || '' }}
         run: node scripts/release/package-windows.mjs build
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-app
           path: |
@@ -464,7 +464,7 @@ jobs:
           node scripts/release/release-check.mjs table src-tauri/binaries --target x86_64-pc-windows-msvc \
             --out "$MT_RELEASE_OUT/sidecar-sha256-windows.json"
           cp THIRD_PARTY_NOTICES.txt "$MT_RELEASE_OUT/THIRD_PARTY_NOTICES-windows.txt"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-x64
           path: target/release-out/
@@ -508,7 +508,7 @@ jobs:
         run: |
           node scripts/release/sign-updates.mjs --dir target/release-out
           ls target/release-out
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release
           path: target/release-out/
