@@ -303,12 +303,7 @@ kbd { display: inline-block; min-width: 1.9em; padding: .18em .5em; text-align: 
 .feature.accent .ico { background: var(--accent-soft); color: var(--accent); }
 .bento { display: grid; gap: clamp(14px, 1.8vw, 22px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
 @media (min-width: 900px) { .bento { grid-template-columns: repeat(6, 1fr); } .bento > .span-2 { grid-column: span 2; } .bento > .span-3 { grid-column: span 3; } .bento > .span-4 { grid-column: span 4; } }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: clamp(16px, 3vw, 32px); margin-top: clamp(32px, 5vw, 56px); padding: clamp(22px, 3vw, 40px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-sm); }
 .center-text { text-align: center; margin-top: 28px; }
-.stat { text-align: center; padding: 8px; }
-.stat span { display: block; margin-top: 8px; line-height: 1.45; }
-.stat b { display: block; font-size: clamp(2rem, 1.4rem + 2vw, 3rem); color: var(--ink); letter-spacing: -.03em; line-height: 1.1; font-weight: 700; }
-.stat span { color: var(--ink-3); font-size: .95rem; }
 
 /* ---------- Steps ---------- */
 .steps { list-style: none; counter-reset: step; padding: 0; margin: 0; display: grid; gap: clamp(14px, 2vw, 22px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
@@ -494,9 +489,7 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .facts dd { margin: 0; color: var(--ink); font-weight: 500; line-height: 1.5; }
 .facts dd small { display: block; color: var(--ink-3); font-weight: 400; }
 
-/* ---------- Chips, app strip ---------- */
-.app-strip { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 0; padding: 0; list-style: none; }
-.app-strip li { padding: 10px 18px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); font-weight: 600; font-size: .95rem; }
+/* ---------- Disclaimer ---------- */
 .disclaimer { font-size: .82rem; color: var(--ink-3); text-align: center; margin-top: 14px; }
 
 /* ---------- Footer ---------- */
