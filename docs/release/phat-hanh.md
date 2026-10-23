@@ -1369,8 +1369,8 @@ Spec: `docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md`.
 - Chạy ở thư mục chính, nhánh `main`, cây sạch, khớp `origin/main`. Không có phiên nào khác đang sửa `main`.
 - rclone có remote `r2:` (token R2 chỉ quyền object, vì vậy lệnh dùng `--s3-no-check-bucket`).
 - `gh auth login` với tài khoản `dotienphong` (lệnh tự lấy token bằng `gh auth token --user dotienphong`).
-- wrangler đăng nhập được (`pnpm --dir server exec wrangler whoami`).
-- `uv`, `cargo`, dữ liệu thử `bench/phase0/data/` và `tools/llama-b11146/` có sẵn.
+- wrangler đã đăng nhập (lệnh chạy `pnpm --dir server exec wrangler whoami` và dừng nếu lỗi).
+- `uv`, `cargo`, `curl`, dữ liệu thử `bench/phase0/data/` và `tools/llama-b11146/` có sẵn.
 - Ổ còn trống trên 10 GB (bản mới tải vào `target/models-update/`).
 
 ### 13.2. Cách chạy
@@ -1386,17 +1386,36 @@ Sau khi đăng: app nhận manifest mới trong vòng một ngày (luồng nền
 
 ### 13.3. Lệnh dừng giữa chừng
 
-Lượt đã gõ y được ghi ở `target/models-update/state.json`. Chạy lại `pnpm models:update` thì lệnh hỏi "Làm tiếp lượt đăng dở?" và làm tiếp từ bước dở: file đã có trên R2 (cùng SHA-256) không tải lại, commit đã đẩy không commit lại, lượt CI đã hỏng thì kích lượt mới. Muốn bỏ hẳn lượt dở: xóa `state.json` và hoàn tác các file lệnh đã ghi trong repo (`git checkout -- scripts/models bench/model-updates`); file đã tải lên R2 mà chưa manifest nào trỏ tới thì vô hại.
+Lượt đã gõ y được ghi ở `.models-update/state.json` (thư mục chính của repo, đã `.gitignore`; bản đã ký và bản sao lưu manifest cũng nằm ở đó, nên `cargo clean` không xóa mất; file model lớn tải về ở `target/models-update/`). Lúc gõ y lệnh ghi thêm `head`: commit của `main` lúc đó. Từ đây tới khi đẩy xong `main` phải đứng yên: lệnh kiểm trước mỗi lần chạy lại.
 
-Lỗi "Bản đã ký không khớp phần thân": dừng hẳn, không đăng tay; xem lượt chạy CI và phần thân trong repo.
+Chạy lại `pnpm models:update` thì lệnh hỏi "Làm tiếp lượt đăng dở?" và làm tiếp từ bước dở: file đã có trên R2 (cùng SHA-256) không tải lại, commit đã đẩy không commit lại, lượt CI đã hỏng thì kích lượt mới. Lệnh nhìn repo để biết đang ở giai đoạn nào:
 
-Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.io.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `target/models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`.
+| Giai đoạn | Dấu hiệu | Chạy lại |
+|---|---|---|
+| Chưa commit | `main` còn đúng `head`, cây làm việc chỉ có các file của lượt đăng (hay sạch) | làm lại từ ghi file |
+| Đã commit, chưa đẩy | `origin/main` còn đúng `head`, `HEAD` là một commit ngay trên đó, có đúng lời commit của lượt | tải lên (nếu thiếu), đẩy, rồi ký, đăng |
+| Đã đẩy | `origin/main` đã có `body-N.json` mới | chỉ ký, kiểm, đăng |
+
+Mọi trường hợp khác (sai nhánh, `main` ở máy khác `origin/main`, có người đẩy thêm commit, cây có file ngoài lượt đăng) lệnh dừng với "main đã đổi từ lúc gõ y" và không làm gì thêm.
+
+**Bỏ hẳn một lượt dở**, theo giai đoạn:
+
+- *Chưa commit:* xóa `.models-update/state.json`, rồi `git checkout -- scripts/models` và `git clean -fd -- scripts/models/released bench/model-updates`. File đã tải lên R2 mà chưa manifest nào trỏ tới thì vô hại.
+- *Đã commit, chưa đẩy:* xóa `.models-update/state.json`, rồi `git reset --hard origin/main`.
+- *Đẩy bị từ chối vì `main` đã tiến lên:* lệnh không hỗ trợ làm tiếp tay. `git pull`, xóa `.models-update/state.json` (và hoàn tác như hai mục trên nếu cần), chạy lại từ đầu.
+- *Đã đẩy:* **không** hoàn tác commit (CI có thể đã ký số N+1, bản ký nằm trong artifact của lượt chạy). Chỉ có hai đường: chạy lại để làm tiếp cho xong, hoặc làm tiếp cho xong rồi `pnpm models:update --rollback-to N` để quay các model về như số N.
+
+`--rollback-to` từ chối chạy khi còn `.models-update/state.json` (làm tiếp hay xóa lượt dở trước).
+
+Lỗi "Bản đã ký không khớp phần thân": dừng hẳn, không đăng tay; xem lượt chạy CI và phần thân trong repo. Lỗi "manifest đang chạy là số X, không phải số <base>": có ai đăng manifest khác từ lúc gõ y; không đăng, xem lại rồi xóa lượt dở nếu bỏ.
+
+Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.io.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `.models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`. Lệnh cũng cảnh báo (không dừng) nếu URL app tải (không tham số) còn trả bản cũ: chờ cache Cloudflare hết hạn rồi kiểm lại.
 
 ### 13.4. Quay lại bản trước
 
-`pnpm models:update --rollback-to <S>` đăng manifest số mới có phần nội dung (`file`, `version`, `url`, `bytes`, `sha256`) của các mục lấy từ `body-S.json`; `tier` và các trường khác giữ như bản đang chạy. Lệnh kiểm từng file cũ còn trên R2 và khớp SHA-256 trước khi hỏi y/N; không chạy cổng kiểm. Người đã tải bản mới sẽ thấy thông báo "có bản mới" để tải lại bản cũ.
+`pnpm models:update --rollback-to <S>` đăng manifest số mới có phần nội dung (`file`, `version`, `url`, `bytes`, `sha256`) của các mục lấy từ `body-S.json`; `tier` và các trường khác giữ như bản đang chạy. Lệnh kiểm từng file cũ còn trên R2 và khớp SHA-256 (bản NOTICE tải lại kèm tham số chống cache và kiểm SHA-256 lần nữa) trước khi hỏi y/N; chạy `checkUpstream` như `--check`; không chạy cổng kiểm. Mục nào đổi mà `prompt` hay `kind` khác giữa số S và số đang chạy thì lệnh dừng ("quay lại làm tay"). Người đã tải bản mới sẽ thấy thông báo "có bản mới" để tải lại bản cũ.
 
-Bản vừa gỡ được ghi vào `rejected` của mục đó trong `scripts/models/upstream.json`; các lần kiểm sau báo "bỏ qua" cho bản đó thay vì đề nghị đăng lại. Khi nguồn sửa xong và ra bản khác, lệnh đề nghị bản mới như thường. Muốn đăng lại đúng bản đã gỡ: xóa dòng đó khỏi `rejected`, commit, rồi chạy lại `pnpm models:update`.
+Bản vừa gỡ được ghi vào `rejected` của mục đó trong `scripts/models/upstream.json` (kèm `sha256` của file bị gỡ); các lần kiểm sau báo "bỏ qua" cho bản đó thay vì đề nghị đăng lại, và nếu bản chuyển ra từ nguồn mới trùng `sha256` đó thì lệnh bỏ qua mục. Khi nguồn sửa xong và ra bản khác, lệnh đề nghị bản mới như thường. Muốn đăng lại đúng bản đã gỡ: xóa dòng đó khỏi `rejected`, **commit và đẩy `main`** (lệnh chỉ chạy khi `main` khớp `origin/main`), rồi chạy lại `pnpm models:update`.
 
 ### 13.4b. Nguồn đổi mà nội dung không đổi
 
@@ -1405,3 +1424,7 @@ Khi nguồn ra revision mới mà file chuẩn bị xong trùng SHA-256 với fi
 ### 13.5. VAD và các file giấy phép không theo dõi
 
 Bản silero-vad mới chỉ được báo ("có bản mới (chỉ báo)"): đổi VAD làm tay (kiểm giao diện ONNX với `crates/pipeline`, đo lại, dựng phần thân bằng `build-manifest.mjs`, ký và đăng như mục 2). Các file `whisper-license`, `whisper-cpp-license`, `silero-vad-license` cũng đổi bằng tay.
+
+### 13.6. Giới hạn đã biết: cổng kiểm chỉ thử với engine hiện tại
+
+Cổng kiểm chạy model mới bằng engine của app lúc này (llama.cpp b11146 trong `tools/`, `asr-worker` build từ `main`). Các mục trong manifest giữ `min_app_version` của chúng. Nếu sau này engine trong app được nâng, phải cân nhắc lại `min_app_version` của các model trước khi đăng (model được thử bằng engine mới có thể không chạy trên app cũ), vì lệnh chưa tự xử lý chuyện này.
