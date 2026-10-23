@@ -1,7 +1,7 @@
 // Bước chuẩn bị của `pnpm models:update` (spec docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md mục
 // 4.3): tải hay tự chuyển bản mới vào target/models-update/<id>/<revision>/, kiểm nội dung khớp nguồn.
 import { existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { GH_RAW, HF_RESOLVE, fetchFile, gitBlobId, sha256File } from "./update-io.mjs";
 
 /**
@@ -81,7 +81,9 @@ async function convert(io, work, dir, entry, next, file) {
     writeFileSync(installed, "");
   }
   writeFileSync(join(dir, "convert-env.txt"), io.run("uv", ["pip", "freeze", "--python", python]));
-  const src = join(dir, "src");
+  // Thư mục nguồn mang đúng tên repo, như CONVERT.md: convert_hf_to_gguf.py lấy general.name, general.basename,
+  // general.size_label từ tên thư mục, nên tên khác ("src") cho ra file khác bản đã phát hành dù trọng số y hệt.
+  const src = join(dir, basename(entry.repo));
   const download = `from huggingface_hub import snapshot_download; snapshot_download(${JSON.stringify(entry.repo)}, revision=${JSON.stringify(next.revision)}, local_dir=${JSON.stringify(src)})`;
   io.run(python, ["-c", download], { inherit: true });
   const outs = [join(dir, file), join(dir, `${file}.lan-2`)];

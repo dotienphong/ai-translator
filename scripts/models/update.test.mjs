@@ -635,6 +635,10 @@ test("prepare hf-convert: chuyển hai lần ra cùng SHA-256 thì dùng, ghi m�
   assert.equal(readFileSync(join(work, "l", REV("c"), "convert-env.txt"), "utf8"), "torch==2.11.0\n");
   assert.ok(io.calls.some((c) => c.startsWith("git clone --depth 1 --branch b1 https://github.com/ggml-org/llama.cpp")));
   assert.ok(io.calls.some((c) => c.includes(`snapshot_download("org/m", revision="${REV("c")}"`)));
+  // convert_hf_to_gguf.py lấy general.name, basename, size_label từ tên thư mục nguồn: phải là tên repo, như CONVERT.md.
+  const src = join(work, "l", REV("c"), "m");
+  assert.ok(io.calls.some((c) => c.includes(`local_dir=${JSON.stringify(src)}`)), "tải về thư mục mang tên repo");
+  assert.ok(io.calls.some((c) => c.includes(`convert_hf_to_gguf.py ${src} --outtype`)), "chuyển từ thư mục mang tên repo");
 });
 
 test("prepare hf-convert: hai lần chuyển khác nhau thì dừng; llama.cpp sai commit thì dừng", async (t) => {
