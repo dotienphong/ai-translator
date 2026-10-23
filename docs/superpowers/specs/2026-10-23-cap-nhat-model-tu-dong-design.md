@@ -349,7 +349,9 @@ người phải tải hai lần.
   `--gate-only` với model đang phát hành phải đạt.
 - Thử tay khay trên Mac: sao lưu rồi sửa tạm `sha256` của file MT trong `installed.json` (gói vẫn dùng được nhưng "chưa
   đủ", như khi có bản mới; đổi tên file thì gói thành "không dùng được" nên không có dấu chấm) để thấy dấu chấm và mục
-  menu, rồi trả bản sao lưu. Bản dev dùng chung thư mục model với app thật của chủ dự án, nên báo trước khi làm.
+  menu, rồi trả bản sao lưu. Bản dev dùng chung thư mục model với app thật của chủ dự án, nên báo trước khi làm, sao lưu
+  file MT bằng bản clone APFS (`cp -c`), và không bấm "Tải ngay" hay "Kiểm tra và tải lại" (với SHA đã sửa, app sẽ xóa file
+  thật).
 
 ## 10. Rủi ro
 

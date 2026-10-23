@@ -736,11 +736,11 @@ Giả lập bằng cách sửa SHA đã cài, không đổi tên file: đổi t�
 thì gói vẫn dùng được nhưng "chưa đủ" (`usable && !complete`), đúng như khi manifest có bản mới.
 
 1. Thoát app thật. Đọc `settings.json` (thư mục dữ liệu app) lấy `modelTier`; đọc `models/models.json` để biết `id` file MT của gói đó, và `models/state.json` để chắc `dismissed_sequence` nhỏ hơn `sequence` của manifest (bằng thì đặt tạm `dismissed_sequence` nhỏ hơn và ghi lại giá trị cũ).
-2. `cp installed.json installed.json.thu-khay` (và `state.json` nếu sửa ở bước 1); sửa `sha256` của mục MT đó trong `installed.json` thành 64 chữ `0`, giữ nguyên `bytes`.
+2. `cp installed.json installed.json.thu-khay` (và `state.json` nếu sửa ở bước 1); sao lưu file MT bằng bản clone APFS (tức thời, không tốn chỗ): `cp -c <file MT> <file MT>.thu-khay`. Sửa `sha256` của mục MT đó trong `installed.json` thành 64 chữ `0`, giữ nguyên `bytes`. Trong lúc thử **không bấm "Tải ngay", không bấm "Kiểm tra và tải lại"**: với SHA đã sửa, bước kiểm của app (`Store::verify_pack`) sẽ coi file thật là hỏng và xóa nó.
 3. Chạy bản dev theo `scripts/run-dev-app.sh` (đọc đầu script). Chờ cửa sổ chính.
 4. Chụp màn hình menu bar (`screencapture -R <vùng góc trên phải> …`) và đọc ảnh: có dấu chấm ở icon AI Translator. Bấm icon: menu có "Có bản cập nhật gói model" ngay trên "Thoát". Bấm mục đó: cửa sổ chính mở ở Home, có thanh "Có bản mới của gói…". Không bấm "Tải ngay".
 5. Bấm "Để sau": dấu chấm mất, mục menu mất.
-6. Thoát bản dev. Trả `installed.json.thu-khay` (và `state.json` nếu đã sửa) về chỗ cũ. Mở lại app thật, kiểm gói vẫn sẵn sàng và không có thông báo "Có bản mới…".
+6. Thoát bản dev. Trả `installed.json.thu-khay` (và `state.json` nếu đã sửa) về chỗ cũ. Nếu file MT không còn (lỡ bị xóa), trả bản clone `<file MT>.thu-khay` về tên cũ; còn thì xóa bản clone. Mở lại app thật, kiểm gói vẫn sẵn sàng và không có thông báo "Có bản mới…".
 7. Tắt mọi tiến trình đã mở (bản dev, Vite cổng 1420).
 
 Ghi kết quả (ảnh chụp, đạt/không) vào báo cáo cho chủ dự án.
