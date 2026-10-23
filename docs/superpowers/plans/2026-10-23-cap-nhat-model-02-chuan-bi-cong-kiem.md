@@ -256,12 +256,15 @@ test("prepare hf-file: tải theo revision mới, kiểm SHA-256 với nguồn",
   await assert.rejects(prepare(io, work, "m", hfEntry, wrong, "m-Q8_0.gguf"), /không khớp nguồn/);
 });
 
-test("prepare file thường (giấy phép): so mã blob git", async (t) => {
+test("prepare file thường (giấy phép): so mã blob git tự tính, kể cả file xuống dòng CRLF", async (t) => {
   const work = temp(t);
-  const io = fakeIo({ download: () => "Apache License", run: (cmd, args) => (args[0] === "hash-object" ? "b1\n" : "") });
+  const text = "Apache License\r\nVersion 2.0\r\n";
+  const blob = createHash("sha1").update(`blob ${Buffer.byteLength(text)}\0`).update(text).digest("hex");
+  const io = fakeIo({ download: () => text });
   const entry = { ...hfEntry, path: "LICENSE.txt" };
-  const got = await prepare(io, work, "lic", entry, { revision: REV("b"), content: "blob:b1" }, "L.txt");
-  assert.equal(got.sha256, sha256("Apache License"));
+  const got = await prepare(io, work, "lic", entry, { revision: REV("b"), content: `blob:${blob}` }, "L.txt");
+  assert.equal(got.sha256, sha256(text));
+  assert.ok(!io.calls.some((c) => c.startsWith("git ")), "không gọi git");
   await assert.rejects(prepare(io, work, "lic", entry, { revision: REV("c"), content: "blob:b2" }, "L.txt"), /không khớp nguồn/);
 });
 
@@ -368,12 +371,15 @@ export async function fetchPublished(io, work, file) {
 // 4.3): tải hay tự chuyển bản mới vào target/models-update/<id>/<revision>/, kiểm nội dung khớp nguồn.
 import { existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { GH_RAW, HF_RESOLVE, fetchFile, sha256File } from "./update-io.mjs";
+import { GH_RAW, HF_RESOLVE, fetchFile, gitBlobId, sha256File } from "./update-io.mjs";
 
-/** Kiểm file khớp định danh nội dung ở nguồn (`sha256:<hex>` hay `blob:<mã blob git>`); trả SHA-256 của file. */
-export async function verifyContent(io, path, content) {
+/**
+ * Kiểm file khớp định danh nội dung ở nguồn (`sha256:<hex>` hay `blob:<mã blob git>`); trả SHA-256 của file. Mã blob tự
+ * tính (`gitBlobId`), không qua `git hash-object`: file nằm trong repo nên git sẽ đổi xuống dòng theo .gitattributes.
+ */
+export async function verifyContent(path, content) {
   const sha = await sha256File(path);
-  const got = content.startsWith("blob:") ? `blob:${io.run("git", ["hash-object", path]).trim()}` : `sha256:${sha}`;
+  const got = content.startsWith("blob:") ? `blob:${gitBlobId(path)}` : `sha256:${sha}`;
   if (got !== content) {
     throw new Error(`${path} không khớp nguồn (${got.slice(0, 20)}…, nguồn ghi ${content.slice(0, 20)}…): xóa file đó rồi chạy lại.`);
   }
@@ -393,7 +399,7 @@ export async function prepare(io, work, id, entry, next, file) {
       ? HF_RESOLVE(entry.repo, next.revision, entry.path)
       : GH_RAW(entry.repo, next.revision, entry.path);
   const path = fetchFile(io, url, join(dir, file));
-  const sha256 = await verifyContent(io, path, next.content);
+  const sha256 = await verifyContent(path, next.content);
   return { path, bytes: statSync(path).size, sha256 };
 }
 

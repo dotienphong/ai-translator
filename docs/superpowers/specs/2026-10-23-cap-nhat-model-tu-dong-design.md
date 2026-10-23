@@ -82,23 +82,30 @@ File mới:
 Mỗi mục theo `id` của `models.config.json`:
 
 - `source`: `hf-file` (file có sẵn trên Hugging Face), `hf-convert` (tự chuyển từ repo Hugging Face), `github-release`.
-- `repo`, `path` (file theo dõi; `hf-convert` là danh sách file đầu vào), `revision` (commit đầy đủ hay tag), `sha256` của
-  file nguồn (với `hf-convert`: `lfs.sha256` hay `blobId` của từng file đầu vào).
-- `license`: giấy phép khai ở model card (ví dụ `apache-2.0`), hay của repo GitHub.
-- `convert` (chỉ `hf-convert`): bản llama.cpp (tag và commit), `outtype`, bản Python và các gói như `CONVERT.md`.
-- `license_file`: nơi lấy file giấy phép đi kèm (repo, revision, đường dẫn), cho mục `kind: license` gắn với model.
-- `gate`: loại cổng (`mt`, `asr`, `none`) và file mốc đang dùng (mục 4.4).
+- `repo`; `path` (file theo dõi, trừ `hf-convert`); `revision` (commit đầy đủ hay tag).
+- `content` (trừ `hf-convert`): định danh nội dung file nguồn, `sha256:<hex>` (file LFS, file tải từ GitHub) hay
+  `blob:<mã blob git>` (file thường trên Hugging Face). `inputs` (chỉ `hf-convert`): định danh nội dung của từng file đầu
+  vào, cùng dạng.
+- `license`: giấy phép khai ở model card (ví dụ `apache-2.0`), hay `spdx_id` của repo GitHub.
+- `version_prefix`: tiền tố của trường `version` trong manifest (`whisper.cpp-` cho whisper, rỗng cho mục khác).
+- `convert` (chỉ `hf-convert`): bản llama.cpp (tag và commit), `outtype`, bản Python.
+- `notice`: `id` của mục NOTICE ghi revision của mục này (dưới đây), nếu có.
+- `gate`: `kind` (`mt`, `asr`, `none` không chạy cổng kiểm, `report` chỉ báo và đổi bằng tay), `prompt` (với `mt`, phải
+  trùng `prompt` của `models.config.json`) và `baseline` (file mốc đang dùng, mục 4.4).
 - `r2_dir`: thư mục trên R2 (`hy-mt2`, `lmt-60`, `whisper`, `silero-vad`).
-- `history`: các lần phát hành của mục này, mỗi lần `{ sequence, revision, sha256, gate_baseline }` (`sequence` là số
-  manifest đầu tiên có bản đó; ban đầu một dòng với số 1 hay số 3 cho LMT). Mỗi lần đăng thêm một dòng; `--rollback-to`
+- `history`: các lần phát hành của mục này, mỗi lần `{ sequence, revision, content hay inputs, baseline }` (`sequence` là
+  số manifest đầu tiên có bản đó; ban đầu một dòng với số 1 hay số 3 cho LMT). Mỗi lần đăng thêm một dòng; `--rollback-to`
   đọc ở đây (mục 7.1).
+- `rejected` (không bắt buộc): các bản đã bị quay lại, mỗi bản `{ sequence, content hay inputs }`, do `--rollback-to` ghi
+  (mục 7.1). Bản ở nguồn trùng một dòng ở đây thì lệnh báo "bỏ qua", không chuẩn bị, không đề nghị đăng lại. Muốn đăng lại
+  thì xóa dòng đó bằng tay.
 
 Giá trị ban đầu (theo `docs/superpowers/plans/2026-10-02-phase-1-04a-quan-ly-model-loi.md`, `CONVERT.md`):
 
 | `id` | Nguồn | File theo dõi | Revision |
 |---|---|---|---|
 | `hy-mt2-1.8b-q8_0`, `hy-mt2-1.8b-q4_k_m` | `hf-file` `tencent/Hy-MT2-1.8B-GGUF` | `Hy-MT2-1.8B-Q8_0.gguf`, `Hy-MT2-1.8B-Q4_K_M.gguf` | `a0c709d9fac510f2c807aa3af52872340dc37a4a` |
-| `lmt-60-0.6b-q8_0` | `hf-convert` `NiuTrans/LMT-60-0.6B` | mọi file trừ `README.md`, `.gitattributes` | `dd189845cdc73346cef33c7a94f4b8bd8efdd4eb` |
+| `lmt-60-0.6b-q8_0` | `hf-convert` `NiuTrans/LMT-60-0.6B` | mọi file trừ tài liệu (`*.md`), `.gitattributes`, file tên LICENSE/NOTICE/README, ảnh | `dd189845cdc73346cef33c7a94f4b8bd8efdd4eb` |
 | `whisper-large-v3-turbo-q5_0`, `whisper-small-q5_1` | `hf-file` `ggerganov/whisper.cpp` | `ggml-large-v3-turbo-q5_0.bin`, `ggml-small-q5_1.bin` | `5359861c739e955e79d9a303bcbc70fb988958b1` |
 | `silero-vad-v6.2.3` | `github-release` `snakers4/silero-vad` | `src/silero_vad/data/silero_vad.onnx` | `v6.2.3` |
 
@@ -128,8 +135,10 @@ So **nội dung file**, không so commit của repo, để một lần sửa REA
 Luật dừng an toàn (không chạy cổng kiểm, không đăng):
 
 - Giấy phép trên model card hay của repo khác `upstream.json`: dừng, chờ người xem.
-- **VAD**: chỉ báo có bản mới. VAD không có bộ đo chất lượng, và bản mới có thể đổi giao diện ONNX mà app đang gọi; đổi
-  VAD làm tay.
+- **VAD** (`gate.kind` là `report`): chỉ báo có bản mới. VAD không có bộ đo chất lượng, và bản mới có thể đổi giao diện
+  ONNX mà app đang gọi; đổi VAD làm tay.
+- Một nguồn không đọc được (lỗi mạng, 403 do giới hạn lượt gọi API): dòng đó báo "DỪNG", các nguồn khác vẫn được kiểm.
+- Bản trùng một dòng `rejected`: báo "bỏ qua" (mục 4.1).
 
 ### 4.3. Chuẩn bị
 
@@ -138,7 +147,13 @@ Luật dừng an toàn (không chạy cổng kiểm, không đăng):
 - `hf-convert`: làm lại đúng các bước của `bench/2026-10-21-goi-nhanh/CONVERT.md` (clone llama.cpp đúng tag trong
   `convert`, `uv venv` Python 3.12 với đúng các gói, `snapshot_download` theo revision mới,
   `convert_hf_to_gguf.py --outtype q8_0`). Chạy chuyển hai lần; SHA-256 hai lần phải trùng, không trùng thì dừng.
-- File giấy phép gắn với model (`license_file`) được tải lại theo revision mới; nội dung đổi thì in phần khác ở bảng y/N.
+- File giấy phép (`hf-file`, cổng `none`): tải như `hf-file`, kiểm mã blob git tự tính (không qua `git hash-object`, vì
+  `.gitattributes` của repo đổi xuống dòng); in phần khác so với bản đang phát hành.
+- Bản chuẩn bị xong mà SHA-256 trùng file đang phát hành (thường gặp ở `hf-convert` khi nguồn chỉ đổi tệp phụ): không
+  chạy cổng kiểm, không đăng file đó. Nếu mọi mục đều như vậy, lệnh hỏi "Ghi nhận revision mới vào upstream.json? [y/N]"
+  rồi chỉ commit `upstream.json` (không ký, không đăng manifest), để lần kiểm sau không đề nghị lại. Có mục khác cần đăng
+  thì phần ghi nhận này đi chung commit đăng.
+- Tải file lớn: phần dở được giữ khi lỗi mạng, lần chạy sau tải tiếp; chỉ tải lại từ đầu khi máy chủ không cho tải tiếp.
 
 ### 4.4. Cổng kiểm
 
@@ -290,7 +305,8 @@ M+1 (M là số đang chạy) có các mục model lấy từ `body-S.json`. Fil
 5. In bảng "đang chạy / sẽ quay về" theo từng `id` (revision, SHA-256, dung lượng) và hỏi
    **"Quay các model về như manifest số S? [y/N]"**.
 6. Trả `models.config.json` (`version`, `url` theo `body-S`) và `upstream.json` (revision, SHA-256, `gate.baseline` theo
-   dòng `history` của bản đó) về bản cũ, thêm một dòng `history` mới với số M+1.
+   dòng `history` của bản đó) về bản cũ, thêm một dòng `history` mới với số M+1, và thêm bản đang bị quay lại vào
+   `rejected` của mục đó (mục 4.1), để lần kiểm sau không đề nghị đăng lại bản vừa gỡ.
 7. Kiểm `check_manifest_body` trên máy, commit (ví dụ `chore(models): quay lại model như manifest số 3 (manifest số 5)`),
    đẩy, ký trong CI, kiểm chữ ký, đăng như mục 5.3, 5.4. Dùng chung `state.json` và luật chạy lại.
 

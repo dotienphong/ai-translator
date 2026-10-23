@@ -54,7 +54,7 @@ Hình dạng của `plan` (dùng ở cả `update-lib.mjs`, `update-publish.mjs`
 
 - [ ] **Step 1: Viết test**
 
-Thêm vào import từ `./update-lib.mjs`: `applyConfigText, applyUpstream, bumpBody, bumpNotice, isYes, manifestUrlOf, nextNoticeVersion, r2Key, restoreUpstream, rollbackChanges, versionOf`. Thêm cuối file:
+Thêm vào import từ `./update-lib.mjs`: `applyConfigText, applyUpstream, bumpBody, bumpNotice, isYes, manifestUrlOf, nextNoticeVersion, r2Key, restoreUpstream, rollbackChanges, versionOf` (`detect` đã có từ kế hoạch 01). Thêm cuối file:
 
 ```js
 const body3 = () => readJson("scripts/models/released/body-3.json");
@@ -135,6 +135,8 @@ test("applyUpstream thêm dòng history; restoreUpstream lấy lại đúng bả
   assert.equal(e5.gate.baseline, "bench/phase0/results/s7_mt-gd1-a3.json");
   assert.equal(e5.history.length, 3);
   assert.equal(e5.history.at(-1).sequence, 5);
+  assert.deepEqual(e5.rejected, [{ sequence: 5, content: `sha256:${SHA("7")}` }], "bản vừa gỡ vào rejected");
+  assert.equal(detect(Q8_ID, e5, { api: { sha: REV("b"), cardData: { license: "apache-2.0" }, siblings: [{ rfilename: "Hy-MT2-1.8B-Q8_0.gguf", lfs: { sha256: SHA("7") } }] } }).status, "skip");
   assert.throws(() => restoreUpstream(upstream, "lmt-60-0.6b-q8_0", 2, 5), /không có bản nào/);
   const license = applyUpstream(upstream, "hy-mt2-license", { revision: REV("b"), content: "blob:b9" }, 4, null);
   assert.equal(license.entries["hy-mt2-license"].history.at(-1).baseline, undefined, "mục không có cổng kiểm thì không ghi mốc");
@@ -261,12 +263,16 @@ export function applyUpstream(upstream, id, next, sequence, baseline) {
   return out;
 }
 
-/** upstream.json khi quay `id` về bản đang dùng ở manifest số `target`, ghi thành dòng `history` số `sequence`. */
+/**
+ * upstream.json khi quay `id` về bản đang dùng ở manifest số `target`, ghi thành dòng `history` số `sequence`. Bản đang bị
+ * quay lại vào `rejected`, để lần kiểm sau không đề nghị đăng lại (spec mục 4.1, 7.1).
+ */
 export function restoreUpstream(upstream, id, target, sequence) {
   const out = structuredClone(upstream);
   const e = out.entries[id];
   const record = e.history.filter((h) => h.sequence <= target).at(-1);
   if (!record) throw new Error(`upstream.json không có bản nào của ${id} ở manifest số ${target} trở về trước`);
+  e.rejected = [...(e.rejected ?? []), e.inputs ? { sequence, inputs: e.inputs } : { sequence, content: e.content }];
   e.revision = record.revision;
   if (record.inputs) e.inputs = record.inputs;
   else e.content = record.content;
@@ -361,6 +367,57 @@ test("buildUpdatePlan: mục model mới, NOTICE mới, các file trong repo, l�
   assert.equal(plan.message, "chore(models): hy-mt2-1.8b-q8_0 lên bbbbbbb (manifest số 4)");
 });
 
+test("buildUpdatePlan: bản chuẩn bị trùng file đang phát hành thì không đăng, chỉ ghi nhận revision", () => {
+  const upstream = readJson("scripts/models/upstream.json");
+  const lmt = "lmt-60-0.6b-q8_0";
+  const published = body3().files.find((f) => f.id === lmt);
+  const same = {
+    id: lmt,
+    entry: upstream.entries[lmt],
+    next: { revision: REV("c"), inputs: { "config.json": "blob:c9" } },
+    local: { path: "/w/lmt.gguf", bytes: published.bytes, sha256: published.sha256 },
+    unchanged: true,
+    bench: null,
+    baseline: null,
+  };
+  const args = {
+    body: body3(),
+    upstream,
+    configText: readFileSync(resolve(REPO, "scripts/models/models.config.json"), "utf8"),
+    noticeTexts: {
+      notice: readFileSync(resolve(REPO, "scripts/models/NOTICE.txt"), "utf8"),
+      "notice-fast": readFileSync(resolve(REPO, "scripts/models/NOTICE-fast.txt"), "utf8"),
+    },
+    publishedAt: "t",
+    repo: "/repo",
+  };
+  const record = buildUpdatePlan({ ...args, prepared: [same] });
+  assert.equal(record.kind, "record");
+  assert.deepEqual(Object.keys(record.files), ["scripts/models/upstream.json"]);
+  const recorded = JSON.parse(record.files["scripts/models/upstream.json"]).entries[lmt];
+  assert.equal(recorded.revision, REV("c"));
+  assert.equal(recorded.history.at(-1).sequence, 3);
+  assert.match(record.message, /^chore\(models\): ghi nhận revision mới của nguồn, nội dung không đổi \(lmt-60-0\.6b-q8_0 lên ccccccc\)$/);
+  const { plan: q8 } = q8Plan();
+  const mixed = buildUpdatePlan({ ...args, prepared: [same, { ...q8PreparedItem(upstream) }] });
+  assert.equal(mixed.kind, "update");
+  assert.deepEqual(Object.keys(mixed.replace).sort(), [Q8_ID, "notice"], "không thay mục LMT, không đụng NOTICE-fast");
+  assert.equal(JSON.parse(mixed.files["scripts/models/upstream.json"]).entries[lmt].revision, REV("c"));
+  assert.equal(mixed.message, q8.message);
+});
+
+/** Mục Q8_0 đã chuẩn bị, như trong `q8Plan`. */
+function q8PreparedItem(upstream) {
+  return {
+    id: Q8_ID,
+    entry: upstream.entries[Q8_ID],
+    next: { revision: REV("b"), content: `sha256:${SHA("7")}` },
+    local: { path: "/w/q8.gguf", bytes: 123, sha256: SHA("7") },
+    bench: { from: "/w/gate", to: "bench/model-updates/2026-10-24-q8" },
+    baseline: "bench/model-updates/2026-10-24-q8/s7_mt-x.json",
+  };
+}
+
 test("buildUpdatePlan dừng khi NOTICE trong repo khác bản đang phát hành", () => {
   const upstream = readJson("scripts/models/upstream.json");
   assert.throws(
@@ -439,6 +496,23 @@ Trong `update-lib.mjs`, thêm import ở đầu file: `import { sha256hex } from
  * file NOTICE trong repo, theo `id` của mục NOTICE. `repo`: thư mục gốc của repo (đường dẫn tải lên của NOTICE).
  */
 export function buildUpdatePlan({ body, upstream, configText, noticeTexts, prepared, publishedAt, repo }) {
+  const changed = prepared.filter((p) => !p.unchanged);
+  const names = (list) => list.map((p) => `${p.id} lên ${shortRev(p.next.revision)}`).join(", ");
+  if (changed.length === 0) {
+    // Mọi bản chuẩn bị đều trùng file đang phát hành: chỉ ghi nhận revision mới (spec mục 4.3), không ký, không đăng.
+    let up = upstream;
+    for (const p of prepared) up = applyUpstream(up, p.id, p.next, body.sequence, null);
+    return {
+      kind: "record",
+      base: body.sequence,
+      target: body.sequence,
+      replace: {},
+      uploads: [],
+      files: { "scripts/models/upstream.json": serializeJson(up) },
+      bench: [],
+      message: `chore(models): ghi nhận revision mới của nguồn, nội dung không đổi (${names(prepared)})`,
+    };
+  }
   const target = body.sequence + 1;
   const old = new Map(body.files.map((f) => [f.id, f]));
   const replace = {};
@@ -447,7 +521,8 @@ export function buildUpdatePlan({ body, upstream, configText, noticeTexts, prepa
   const notices = {};
   let up = upstream;
   let config = configText;
-  for (const p of prepared) {
+  for (const p of prepared.filter((item) => item.unchanged)) up = applyUpstream(up, p.id, p.next, target, null);
+  for (const p of changed) {
     const was = old.get(p.id);
     const key = r2Key(p.entry.r2_dir, p.next.revision, was.file);
     replace[p.id] = {
@@ -487,7 +562,6 @@ export function buildUpdatePlan({ body, upstream, configText, noticeTexts, prepa
   files[bodyRel] = serializeJson(bumpBody(body, replace, publishedAt));
   files["scripts/models/upstream.json"] = serializeJson(up);
   files["scripts/models/models.config.json"] = config;
-  const names = prepared.map((p) => `${p.id} lên ${shortRev(p.next.revision)}`).join(", ");
   return {
     kind: "update",
     base: body.sequence,
@@ -496,10 +570,10 @@ export function buildUpdatePlan({ body, upstream, configText, noticeTexts, prepa
     replace,
     uploads,
     files,
-    bench: prepared.map((p) => p.bench).filter(Boolean),
+    bench: changed.map((p) => p.bench).filter(Boolean),
     bodyRel,
     prevRel: `scripts/models/released/body-${body.sequence}.json`,
-    message: `chore(models): ${names} (manifest số ${target})`,
+    message: `chore(models): ${names(changed)} (manifest số ${target})`,
   };
 }
 
@@ -578,7 +652,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 Thêm import:
 
 ```js
-import { commitAndPush, publicMatches, publishManifest, signInCi, uploadR2, verifySigned } from "./update-publish.mjs";
+import { commitAndPush, commitRecord, publicMatches, publishManifest, signInCi, uploadR2, verifySigned } from "./update-publish.mjs";
 ```
 
 và thêm `serializeJson` vào import từ `./update-lib.mjs`.
@@ -617,6 +691,16 @@ const smallPlan = () => ({
   files: { "scripts/models/released/body-4.json": "{}", "scripts/models/upstream.json": "{}" },
   bench: [{ from: "/w/gate", to: "bench/model-updates/x" }],
   message: "chore(models): thử (manifest số 4)",
+});
+
+test("commitRecord chỉ commit upstream.json rồi đẩy", () => {
+  const io = fakeIo();
+  commitRecord(io, { files: { "scripts/models/upstream.json": "{}" }, message: "chore(models): ghi nhận" });
+  assert.deepEqual(io.calls, [
+    "git add -- scripts/models/upstream.json",
+    "git commit -m chore(models): ghi nhận",
+    "git push origin HEAD:main",
+  ]);
 });
 
 test("commitAndPush: đã có trên origin thì thôi; đã commit thì chỉ đẩy; chưa thì add, commit, đẩy", () => {
@@ -823,6 +907,13 @@ export function commitAndPush(io, plan) {
   return io.run("git", ["rev-parse", "HEAD"]).trim();
 }
 
+/** Commit và đẩy kế hoạch chỉ ghi nhận revision (`kind: "record"`, spec mục 4.3): không ký, không đăng manifest. */
+export function commitRecord(io, plan) {
+  io.run("git", ["add", "--", ...Object.keys(plan.files)]);
+  io.run("git", ["commit", "-m", plan.message]);
+  io.run("git", ["push", "origin", "HEAD:main"], { inherit: true });
+}
+
 /**
  * Ký phần thân trong CI (sign-manifest.yml), trả đường dẫn models.json đã ký. Mã lượt chạy ghi vào `plan.run` rồi `save`
  * ngay, để lần chạy lại đợi đúng lượt đó; lượt đó đã hỏng hay bị hủy thì kích lượt mới.
@@ -944,7 +1035,7 @@ import {
 import { ask, checkLiveManifest, checkSources, createIo, fetchPublished } from "./update-io.mjs";
 import { buildTools, runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
-import { GH_REPO, ghEnv, publicMatches, publish } from "./update-publish.mjs";
+import { GH_REPO, commitRecord, ghEnv, publicMatches, publish, writeFiles } from "./update-publish.mjs";
 
 const PATHS = {
   upstream: resolve(REPO, "scripts/models/upstream.json"),
@@ -1069,8 +1160,11 @@ async function update(io) {
     const was = body.files.find((f) => f.id === r.id);
     console.log(`\n== ${r.id}: chuẩn bị bản ${shortRev(r.next.revision)}`);
     const local = await prepare(io, PATHS.work, r.id, entry, r.next, was.file);
-    const item = { id: r.id, entry, next: r.next, local, gate: null, bench: null, baseline: null };
-    if (entry.gate.kind === "mt" || entry.gate.kind === "asr") {
+    const item = { id: r.id, entry, next: r.next, local, gate: null, bench: null, baseline: null, unchanged: false };
+    if (local.sha256 === was.sha256) {
+      console.log("Bản chuẩn bị trùng file đang phát hành: không chạy cổng kiểm, không đăng file này.");
+      item.unchanged = true;
+    } else if (entry.gate.kind === "mt" || entry.gate.kind === "asr") {
       if (!built) {
         buildTools(io);
         built = true;
@@ -1104,6 +1198,17 @@ async function update(io) {
     publishedAt: publishedAtNow(),
     repo: REPO,
   });
+  if (plan.kind === "record") {
+    console.log(`\n${plan.message}`);
+    if (!isYes(await ask("Ghi nhận revision mới vào upstream.json (không đăng gì cho người dùng)? [y/N] "))) {
+      console.log("Không ghi nhận.");
+      return 0;
+    }
+    writeFiles(plan);
+    commitRecord(io, plan);
+    console.log("Đã ghi nhận và đẩy main.");
+    return 0;
+  }
   console.log(`\n${planTable(plan, body)}`);
   return confirmAndPublish(io, plan, "Đăng bản model mới cho người dùng? [y/N] ");
 }
@@ -1255,6 +1360,12 @@ Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.
 ### 13.4. Quay lại bản trước
 
 `pnpm models:update --rollback-to <S>` đăng manifest số mới có phần nội dung (`file`, `version`, `url`, `bytes`, `sha256`) của các mục lấy từ `body-S.json`; `tier` và các trường khác giữ như bản đang chạy. Lệnh kiểm từng file cũ còn trên R2 và khớp SHA-256 trước khi hỏi y/N; không chạy cổng kiểm. Người đã tải bản mới sẽ thấy thông báo "có bản mới" để tải lại bản cũ.
+
+Bản vừa gỡ được ghi vào `rejected` của mục đó trong `scripts/models/upstream.json`; các lần kiểm sau báo "bỏ qua" cho bản đó thay vì đề nghị đăng lại. Khi nguồn sửa xong và ra bản khác, lệnh đề nghị bản mới như thường. Muốn đăng lại đúng bản đã gỡ: xóa dòng đó khỏi `rejected`, commit, rồi chạy lại `pnpm models:update`.
+
+### 13.4b. Nguồn đổi mà nội dung không đổi
+
+Khi nguồn ra revision mới mà file chuẩn bị xong trùng SHA-256 với file đang phát hành (thường ở gói Nhanh khi repo nguồn chỉ đổi tệp phụ), lệnh không chạy cổng kiểm, không đăng file đó. Nếu mọi mục đều như vậy, lệnh hỏi "Ghi nhận revision mới vào upstream.json?"; gõ y thì chỉ commit `upstream.json` và đẩy `main` (không ký, không đăng manifest, người dùng không thấy gì).
 
 ### 13.5. VAD và các file giấy phép không theo dõi
 
