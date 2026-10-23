@@ -77,7 +77,7 @@ ${STYLE}
 ${rows}
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;font-family:${font};">
-<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.io.vn</a></td></tr>
+<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.vn</a></td></tr>
 </table>
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>

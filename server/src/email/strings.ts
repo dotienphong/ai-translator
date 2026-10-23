@@ -4,7 +4,7 @@
 import type { Lang } from "../lang";
 
 /** Gốc website; link trong thư chỉ trỏ về đây, không thêm tham số theo dõi. */
-export const SITE_URL = "https://aitranslator.io.vn";
+export const SITE_URL = "https://aitranslator.vn";
 
 export type LicenseEmailKind = "purchase" | "renewal" | "plan_change" | "recover" | "resend";
 export type MailKind = LicenseEmailKind | "support";
@@ -79,7 +79,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "Hướng dẫn chi tiết",
     guidePath: "/huong-dan/mua-va-kich-hoat-key/",
     help: "Cần giúp? Trả lời thư này, chúng tôi sẽ hồi âm.",
-    supportOutro: "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat trên aitranslator.io.vn hay mục Hỗ trợ trong app.",
+    supportOutro: "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat trên aitranslator.vn hay mục Hỗ trợ trong app.",
   },
   en: {
     date: (y, m, d) => `${d} ${MONTHS_EN[m - 1]} ${y}`,
@@ -116,7 +116,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "Step-by-step guide",
     guidePath: "/en/guide/buy-and-activate/",
     help: "Need help? Reply to this email.",
-    supportOutro: "Reply to this email to continue, or reopen the chat on aitranslator.io.vn or in the app's Support screen.",
+    supportOutro: "Reply to this email to continue, or reopen the chat on aitranslator.vn or in the app's Support screen.",
   },
   ja: {
     date: (y, m, d) => `${y}年${m}月${d}日`,
@@ -153,7 +153,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "詳しい手順",
     guidePath: "/ja/guide/buy-and-activate/",
     help: "ご不明な点は、このメールに返信してください。",
-    supportOutro: "このメールに返信して続けるか、aitranslator.io.vn またはアプリの「サポート」画面からチャットを再開できます。",
+    supportOutro: "このメールに返信して続けるか、aitranslator.vn またはアプリの「サポート」画面からチャットを再開できます。",
   },
   zh: {
     date: (y, m, d) => `${y}年${m}月${d}日`,
@@ -190,7 +190,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "详细步骤",
     guidePath: "/zh/guide/buy-and-activate/",
     help: "需要帮助？直接回复此邮件即可。",
-    supportOutro: "你可以直接回复此邮件，或在 aitranslator.io.vn 或应用的“客服”页面重新打开聊天。",
+    supportOutro: "你可以直接回复此邮件，或在 aitranslator.vn 或应用的“客服”页面重新打开聊天。",
   },
   ko: {
     date: (y, m, d) => `${y}년 ${m}월 ${d}일`,
@@ -227,7 +227,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "자세한 안내",
     guidePath: "/ko/guide/buy-and-activate/",
     help: "도움이 필요하면 이 이메일에 회신하세요.",
-    supportOutro: "이 이메일에 회신하거나, aitranslator.io.vn 또는 앱의 지원 화면에서 채팅을 다시 열 수 있습니다.",
+    supportOutro: "이 이메일에 회신하거나, aitranslator.vn 또는 앱의 지원 화면에서 채팅을 다시 열 수 있습니다.",
   },
 };
 

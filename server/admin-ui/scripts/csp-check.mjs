@@ -222,7 +222,7 @@ function auditFixture() {
   const rows = [
     ["api", "activated", "lic", '{"activation_id":"act-1"}'],
     ["webhook", "license_issued", "both", null],
-    ["admin:ops@aitranslator.io.vn", "license_revoked", "lic", '{"note":"khách yêu cầu hoàn tiền"}'],
+    ["admin:ops@aitranslator.vn", "license_revoked", "lic", '{"note":"khách yêu cầu hoàn tiền"}'],
     ["webhook", "order_underpaid", "order", '{"amount":500000,"amount_paid":200000}'],
     ["reconcile", "license_extended", "both", null],
     ["api", "license_conflict", "lic", '{"devices":2}'],
@@ -274,7 +274,7 @@ function lookupFixture() {
         ],
         audit: [
           { at: NOW - 3600, actor: "api", action: "license_conflict", order_code: null, detail: '{"activation_id":"act-2","devices":2}' },
-          { at: NOW - 9 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "deactivated_by_admin", order_code: null, detail: '{"activation_id":"act-0"}' },
+          { at: NOW - 9 * DAY, actor: "admin:ops@aitranslator.vn", action: "deactivated_by_admin", order_code: null, detail: '{"activation_id":"act-0"}' },
           { at: NOW - 60 * DAY, actor: "webhook", action: "license_issued", order_code: 1000012, detail: null },
         ],
       },
@@ -303,7 +303,7 @@ function lookupFixture() {
 const API = {
   "/admin/lookup": lookupFixture,
   "/admin/orders/1000012/payment-status": () => ({ orderCode: 1000012, status: "underpaid", amount: 500000, amountPaid: 200000, paidAt: NOW - 3600 }),
-  "/admin/whoami": () => ({ operator: "ops@aitranslator.io.vn" }),
+  "/admin/whoami": () => ({ operator: "ops@aitranslator.vn" }),
   "/admin/stats": statsFixture,
   "/admin/alerts": alertsFixture,
   "/admin/releases": releasesFixture,

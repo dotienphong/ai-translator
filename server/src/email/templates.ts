@@ -47,7 +47,7 @@ export function mailLang(lang: Lang | null, currency: string | null): Lang {
 /** Thư mua, lấy lại và gửi lại có các bước kích hoạt; thư gia hạn và đổi gói thì key giữ nguyên, không cần kích hoạt lại. */
 const WITH_STEPS: ReadonlySet<LicenseEmailKind> = new Set<LicenseEmailKind>(["purchase", "recover", "resend"]);
 const RULE_TEXT = "─".repeat(28);
-const FOOTER_TEXT = ["", "--", "AI Translator · aitranslator.io.vn", ""];
+const FOOTER_TEXT = ["", "--", "AI Translator · aitranslator.vn", ""];
 
 /** Ngày hết hạn theo giờ Việt Nam (UTC+7, không đổi theo mùa), viết theo ngôn ngữ. */
 function dateIn(s: MailStrings, epochSeconds: number): string {

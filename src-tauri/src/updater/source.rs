@@ -11,8 +11,8 @@ use reqwest::Url;
 
 use crate::settings::UpdateChannel;
 
-/// URL gốc production: bucket R2 `ai-translator-releases` trên tên miền riêng (spec 2026-10-06).
-pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.io.vn");
+/// URL gốc production: bucket R2 `ai-translator-releases` trên tên miền riêng (spec 2026-10-23-ten-mien-aitranslator-vn).
+pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.vn");
 
 const KEYS: &str = include_str!("../../keys/updater-public-keys.json");
 

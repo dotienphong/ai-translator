@@ -15,7 +15,7 @@ import { KeyValue } from "../components/KeyValue";
 import { PageHeader } from "../components/PageHeader";
 import { fmtHm, nowSec } from "../format";
 
-const WEBHOOK_URL = "https://api.aitranslator.io.vn/v1/webhooks/payos";
+const WEBHOOK_URL = "https://api.aitranslator.vn/v1/webhooks/payos";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Dialog = "sign" | "webhook" | "erase" | null;

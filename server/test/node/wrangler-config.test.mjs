@@ -312,14 +312,19 @@ test("runbook mục 9 (Creem): một khối lệnh đặt đủ secret Creem c�
   assert.equal(runbookSection("## 1. Một mục\n", 9), null);
 });
 
-test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gửi và origin của Worker admin, tên miền của admin", () => {
-  assert.deepEqual(api.routes, [{ pattern: "api.aitranslator.io.vn", custom_domain: true }]);
+test("tên miền aitranslator.vn (spec 2026-10-23): API nhận hai tên, email gửi, origin và tên miền của admin", () => {
+  // Tên cũ chạy song song cho app ≤ 0.2.6 (license client không theo redirect); tên mới đứng đầu.
+  assert.deepEqual(api.routes, [
+    { pattern: "api.aitranslator.vn", custom_domain: true },
+    { pattern: "api.aitranslator.io.vn", custom_domain: true },
+  ]);
   for (const config of [api, admin]) {
-    assert.equal(config.vars.EMAIL_FROM, "AI Translator <no-reply@mail.aitranslator.io.vn>");
-    assert.equal(config.vars.EMAIL_REPLY_TO, "support@aitranslator.io.vn");
+    assert.equal(config.vars.EMAIL_FROM, "AI Translator <no-reply@mail.aitranslator.vn>");
+    assert.equal(config.vars.EMAIL_REPLY_TO, "support@aitranslator.vn");
   }
   assert.equal(admin.vars.API_ORIGIN, `https://${api.routes[0].pattern}`);
-  assert.deepEqual(admin.routes, [{ pattern: "admin.aitranslator.io.vn", custom_domain: true }], "admin chuyển sang tên miền riêng 2026-10-08");
+  assert.equal(admin.vars.RELEASES_BASE_URL, "https://releases.aitranslator.vn");
+  assert.deepEqual(admin.routes, [{ pattern: "admin.aitranslator.vn", custom_domain: true }], "tên cũ của admin do Worker chuyển hướng giữ");
   assert.equal(admin.workers_dev, false, "admin chỉ còn tên miền riêng, workers.dev tắt từ 2026-10-08");
   assert.equal(api.workers_dev, true, "giữ workers_dev tạm làm đường lui cho bản cài cũ");
 });

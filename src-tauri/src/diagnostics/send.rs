@@ -237,6 +237,6 @@ mod tests {
 
     #[test]
     fn the_real_build_talks_only_to_the_production_api_host() {
-        assert_eq!(PRODUCTION_URL, Some("https://api.aitranslator.io.vn"));
+        assert_eq!(PRODUCTION_URL, Some("https://api.aitranslator.vn"));
     }
 }

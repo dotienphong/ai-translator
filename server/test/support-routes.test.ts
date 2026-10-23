@@ -137,24 +137,27 @@ describe("POST /v1/support/messages và GET /v1/support/status (spec 2026-10-22 
 
   it("CORS: preflight từ website được phép; lỗi vẫn có header cho website; origin khác và route khác không có header CORS", async () => {
     const w = makeWorld();
-    const origin = { origin: "https://aitranslator.io.vn" };
+    const origin = { origin: "https://aitranslator.vn" };
     const pre = await w.call("OPTIONS", "/v1/support/messages", undefined, {
       ...origin,
       "access-control-request-method": "POST",
       "access-control-request-headers": "content-type,authorization",
     });
     expect(pre.status).toBe(204);
-    expect(pre.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(pre.headers.get("access-control-allow-origin")).toBe("https://aitranslator.vn");
     expect(pre.headers.get("access-control-allow-methods")).toBe("GET,POST,PUT,DELETE,OPTIONS");
     expect(pre.headers.get("access-control-allow-headers")).toBe("Content-Type,Authorization");
     expect(pre.headers.get("access-control-max-age")).toBe("86400");
     const off = await post(w, firstMessage(), origin);
     expect(off.status).toBe(503);
-    expect(off.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(off.headers.get("access-control-allow-origin")).toBe("https://aitranslator.vn");
     expect(off.headers.get("access-control-expose-headers")).toBe("Retry-After");
     const evil = await w.call("GET", "/v1/support/status", undefined, { origin: "https://evil.example" });
     expect(evil.headers.get("access-control-allow-origin")).toBeNull();
     expect((await w.call("GET", "/v1/health", undefined, origin)).headers.get("access-control-allow-origin")).toBeNull();
+    // Origin cũ (aitranslator.io.vn) vẫn được trong khoảng giữa lần deploy server và lần deploy website (spec 2026-10-23 §2.4).
+    const old = await w.call("GET", "/v1/support/status", undefined, { origin: "https://aitranslator.io.vn" });
+    expect(old.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
   });
 
   it("Zalo lỗi lúc khách gửi: vẫn 201, tin nằm chờ để cron gửi lại", async () => {
@@ -332,15 +335,15 @@ describe("rà đợt 3: token không đúng dạng, thông báo Zalo có trần,
   it("CORS có trên phản hồi 415 và 429 cho origin của website", async () => {
     const w = makeWorld();
     await enableChat();
-    const origin = { origin: "https://aitranslator.io.vn" };
+    const origin = { origin: "https://aitranslator.vn" };
     const unsupported = await w.call("POST", "/v1/support/messages", JSON.stringify(firstMessage()), { ...origin, "content-type": "text/plain" });
     expect(unsupported.status).toBe(415);
-    expect(unsupported.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(unsupported.headers.get("access-control-allow-origin")).toBe("https://aitranslator.vn");
     const chat = await startChat(w);
     const limited = makeWorld({ SUPPORT_POLL_LIMITER: { limit: async () => ({ success: false }) } });
     const r = await limited.call("GET", "/v1/support/messages", undefined, { ...auth(chat.token), ...origin });
     expect(r.status).toBe(429);
-    expect(r.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(r.headers.get("access-control-allow-origin")).toBe("https://aitranslator.vn");
     expect(r.headers.get("access-control-expose-headers")).toBe("Retry-After");
     expect(r.headers.get("retry-after")).toBe("60");
   });

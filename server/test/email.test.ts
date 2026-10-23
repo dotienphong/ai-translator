@@ -122,7 +122,7 @@ describe("nội dung email (spec 2026-10-23)", () => {
         "  3. Dán key rồi bấm Kích hoạt.",
         "",
         "Mỗi key dùng trên 1 máy. Hãy giữ thư này để kích hoạt lại khi cài lại máy hay chuyển sang máy khác.",
-        "Hướng dẫn chi tiết: https://aitranslator.io.vn/huong-dan/mua-va-kich-hoat-key/",
+        "Hướng dẫn chi tiết: https://aitranslator.vn/huong-dan/mua-va-kich-hoat-key/",
         "Cần giúp? Trả lời thư này, chúng tôi sẽ hồi âm.",
         "",
         "─".repeat(28),
@@ -138,11 +138,11 @@ describe("nội dung email (spec 2026-10-23)", () => {
         "  3. Paste the key and click Activate.",
         "",
         "Each key works on 1 computer. Keep this email to activate again after reinstalling or moving to another computer.",
-        "Step-by-step guide: https://aitranslator.io.vn/en/guide/buy-and-activate/",
+        "Step-by-step guide: https://aitranslator.vn/en/guide/buy-and-activate/",
         "Need help? Reply to this email.",
         "",
         "--",
-        "AI Translator · aitranslator.io.vn",
+        "AI Translator · aitranslator.vn",
         "",
       ].join("\n"),
     );
@@ -164,8 +164,8 @@ describe("nội dung email (spec 2026-10-23)", () => {
     expect(html).toMatch(/^<!doctype html>\n<html lang="ja">/);
     expect(html).toContain("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR");
     expect(html).toContain("2026年11月1日");
-    expect(html).toContain('href="https://aitranslator.io.vn/ja/guide/buy-and-activate/"');
-    expect(html).toContain('href="https://aitranslator.io.vn/en/guide/buy-and-activate/"');
+    expect(html).toContain('href="https://aitranslator.vn/ja/guide/buy-and-activate/"');
+    expect(html).toContain('href="https://aitranslator.vn/en/guide/buy-and-activate/"');
     expect(html).toContain('<td class="pad" lang="en"');
     expect(html).toContain("1 Nov 2026");
     expect(html.indexOf("ライセンスキーをお送りします。")).toBeLessThan(html.indexOf("Your license key is shown above."));

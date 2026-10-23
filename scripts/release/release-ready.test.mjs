@@ -59,8 +59,8 @@ test("đọc PRODUCTION_URL của file Rust và khóa công khai của tauri sig
 });
 
 // Đã điền đủ (2026-10-06): license server, khóa công khai của bản cập nhật và của manifest model, URL R2 của bản cập nhật
-// và của manifest model (tên miền `api.` và `releases.aitranslator.io.vn`, spec 2026-10-06), tên miền website
-// (`aitranslator.io.vn` trong `EXTERNAL_HOSTS`).
+// và của manifest model (tên miền `api.` và `releases.aitranslator.vn`, spec 2026-10-23), tên miền website
+// (`aitranslator.vn` trong `EXTERNAL_HOSTS`).
 test("repo hiện tại đủ cấu hình production", (t) => {
   assert.deepEqual(readinessErrors(copy(t)), []);
 });
@@ -68,24 +68,24 @@ test("repo hiện tại đủ cấu hình production", (t) => {
 // Còn trang thanh toán của PayOS và của Creem trong danh sách vẫn không đủ: chỉ tên miền website mới làm đạt.
 test("thiếu tên miền website trong EXTERNAL_HOSTS thì bị bắt", (t) => {
   const dir = copy(t);
-  edit(dir, "src-tauri/src/navigation.rs", (s) => s.replace(/^\s*\/\/ Website của sản phẩm[^\n]*\n\s*"aitranslator\.io\.vn",\n/m, ""));
+  edit(dir, "src-tauri/src/navigation.rs", (s) => s.replace(/^\s*\/\/ Website của sản phẩm[^\n]*\n\s*"aitranslator\.vn",\n/m, ""));
   const errors = readinessErrors(dir);
   assert.equal(errors.length, 1, errors.join("\n"));
   assert.ok(errors[0].includes("EXTERNAL_HOSTS"), errors[0]);
 });
 
-// Chỉ nhận đúng cả tên miền, không nhận `www.` hay tên miền con: danh sách có `www.aitranslator.io.vn` mà không có
-// `aitranslator.io.vn` thì vẫn thiếu (`decide` của navigation.rs so khớp từng tên miền một, `www.` là tên miền khác).
-test("EXTERNAL_HOSTS có www.aitranslator.io.vn thay cho aitranslator.io.vn thì bị bắt", (t) => {
+// Chỉ nhận đúng cả tên miền, không nhận `www.` hay tên miền con: danh sách có `www.aitranslator.vn` mà không có
+// `aitranslator.vn` thì vẫn thiếu (`decide` của navigation.rs so khớp từng tên miền một, `www.` là tên miền khác).
+test("EXTERNAL_HOSTS có www.aitranslator.vn thay cho aitranslator.vn thì bị bắt", (t) => {
   const dir = copy(t);
   let replaced = 0;
   edit(dir, "src-tauri/src/navigation.rs", (s) =>
-    s.replace(/^(\s*)"aitranslator\.io\.vn",$/m, (_, indent) => {
+    s.replace(/^(\s*)"aitranslator\.vn",$/m, (_, indent) => {
       replaced += 1;
-      return `${indent}"www.aitranslator.io.vn",`;
+      return `${indent}"www.aitranslator.vn",`;
     }),
   );
-  assert.equal(replaced, 1, "không thấy dòng \"aitranslator.io.vn\" trong EXTERNAL_HOSTS để thay");
+  assert.equal(replaced, 1, "không thấy dòng \"aitranslator.vn\" trong EXTERNAL_HOSTS để thay");
   const errors = readinessErrors(dir);
   assert.equal(errors.length, 1, errors.join("\n"));
   assert.ok(errors[0].includes("EXTERNAL_HOSTS"), errors[0]);

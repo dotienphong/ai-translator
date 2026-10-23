@@ -22,12 +22,14 @@ import {
 } from "./store";
 import { isTokenShape, newToken, parseContext, parseLang, parsePage, parseSource, parseText } from "./text";
 
-/** Origin duy nhất được gọi từ trình duyệt. App gọi qua Rust, không có header Origin. */
-export const SUPPORT_ORIGIN = "https://aitranslator.io.vn";
+/** Origin được gọi từ trình duyệt: website. App gọi qua Rust, không có header Origin. Tên cũ `aitranslator.io.vn` chỉ để chat
+ * không gãy trong vài phút giữa lần deploy server và lần deploy website; sau đó tên cũ chuyển hướng 301 nên không trang nào ở
+ * origin đó còn tải được (spec 2026-10-23-ten-mien-aitranslator-vn §2.4). */
+export const SUPPORT_ORIGINS = ["https://aitranslator.vn", "https://aitranslator.io.vn"];
 
 /** CORS của `/v1/support/*`: chỉ origin của website; đặt trước mọi middleware có thể trả lỗi, để trình duyệt đọc được cả thân lỗi. */
 export const supportCors = cors({
-  origin: SUPPORT_ORIGIN,
+  origin: SUPPORT_ORIGINS,
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
   exposeHeaders: ["Retry-After"],

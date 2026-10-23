@@ -17,9 +17,9 @@ use serde_json::{Value, json};
 
 use super::purchase::PLANS;
 
-/// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-06). Để `None` thì app
+/// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-23-ten-mien-aitranslator-vn). Để `None` thì app
 /// chỉ dùng được token đã lưu và gói Free.
-pub const PRODUCTION_URL: Option<&str> = Some("https://api.aitranslator.io.vn");
+pub const PRODUCTION_URL: Option<&str> = Some("https://api.aitranslator.vn");
 const USER_AGENT: &str = "AI-Translator";
 
 /// Lỗi của một lần gọi server.

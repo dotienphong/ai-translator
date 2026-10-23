@@ -12,6 +12,10 @@ dòng cuối). Dữ liệu cá nhân là giả (`spike@example.com`, `Test Teste
 | `get-checkout.paid.real.json` | thân `GET /v1/checkouts` sau khi trả (sau khi hoàn đủ, API vẫn trả y hình dạng này: `completed`, `order.status: "paid"`) |
 | `create-checkout.real.json` | thân trả về của `POST /v1/checkouts` (`checkout_url` là host sandbox `creem.io/test/…`, không phải host production) |
 
+Ngoại lệ duy nhất với "giữ nguyên từng byte": ngày 2026-10-23 chuỗi `success_url` đổi tên miền từ `api.aitranslator.io.vn`
+sang `api.aitranslator.vn` (spec `2026-10-23-ten-mien-aitranslator-vn-design.md`); test tự ký thân nên chữ ký không bị ảnh
+hưởng.
+
 Không có chữ ký hay secret nào ở đây: test tự ký thân thô bằng secret giả của test (HMAC-SHA256 hex, header
 `creem-signature`), không dùng secret của lần đo. Test đọc file bằng `import … from "./fixtures/creem/<file>?raw"` để có đúng
 byte của thân; muốn đổi `request_id` thì sửa chuỗi trong bộ nhớ, không sửa file.

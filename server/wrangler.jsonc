@@ -10,10 +10,14 @@
   "name": "mt-license",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-26",
-  // Tên miền riêng (spec 2026-10-06): Worker phục vụ api.aitranslator.io.vn. Giữ workers_dev tạm làm đường lui cho bản cài
-  // cũ; tắt khi không còn bản cài nào dùng URL workers.dev.
+  // Tên miền riêng (spec 2026-10-23): Worker phục vụ api.aitranslator.vn. Tên cũ api.aitranslator.io.vn chạy song song cho app
+  // ≤ 0.2.6 (gọi cứng tên cũ, license client không theo redirect); bỏ khi không còn bản cài nào dùng tên cũ. Giữ workers_dev
+  // tạm làm đường lui cho bản cài cũ; tắt khi không còn bản cài nào dùng URL workers.dev.
   "workers_dev": true,
-  "routes": [{ "pattern": "api.aitranslator.io.vn", "custom_domain": true }],
+  "routes": [
+    { "pattern": "api.aitranslator.vn", "custom_domain": true },
+    { "pattern": "api.aitranslator.io.vn", "custom_domain": true }
+  ],
   "preview_urls": false,
   // Tắt invocation log (log đó lưu cả URL và query của request) và bỏ query khỏi URL trong log và trace (QĐ25).
   // Log JSON do code tự ghi vẫn giữ. Bật Workers Issues để có cảnh báo không phụ thuộc Resend (QĐ27).
@@ -30,9 +34,9 @@
     // không trả giá USD, POST /v1/checkout với currency USD trả 503, nhưng webhook Creem và đơn Creem đang chờ vẫn được xử lý.
     "CREEM_BASE_URL": "https://api.creem.io",
     "CREEM_PRODUCT_IDS": { "monthly": "prod_57yUG34lD35XDVFLLGA6nE", "six_months": "prod_4KnLuBCX1uqnJTEjL9utdD", "yearly": "prod_3tLlmFlWNKMR6xQonTQ1Wb" },
-    // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
-    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
-    "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
+    // Tên miền gửi mail.aitranslator.vn phải xác thực ở Resend (SPF, DKIM) trước khi deploy; khách trả lời thư thì về EMAIL_REPLY_TO.
+    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
+    "EMAIL_REPLY_TO": "support@aitranslator.vn",
     // Giá chính thức (spec 2026-10-07 §2.1; thay bốn gói chốt 2026-10-01). six_months thêm theo spec 2026-10-13 §1:
     // 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn. Thứ tự các gói là thứ tự trong màn hình Nâng cấp (theo thời hạn).
     // Giá USD (cent, bán qua Creem) thêm theo spec 2026-10-14 D2: giữ tỉ lệ giá mỗi ngày giữa các gói gần bảng VND (sai số 3%,

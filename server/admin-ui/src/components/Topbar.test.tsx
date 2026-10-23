@@ -5,8 +5,8 @@ import { Topbar } from "./Topbar";
 
 describe("Topbar", () => {
   it("chip người vận hành: avatar chữ cái đầu (viết hoa, ẩn với trình đọc màn hình) và email", () => {
-    render(<Topbar operator="ops@aitranslator.io.vn" operatorLoading={false} menuOpen={false} onMenu={() => {}} />);
-    expect(screen.getByText("ops@aitranslator.io.vn").className).toBe("operator-email");
+    render(<Topbar operator="ops@aitranslator.vn" operatorLoading={false} menuOpen={false} onMenu={() => {}} />);
+    expect(screen.getByText("ops@aitranslator.vn").className).toBe("operator-email");
     const avatar = document.querySelector(".avatar");
     expect(avatar?.textContent).toBe("O");
     expect(avatar?.getAttribute("aria-hidden")).toBe("true");

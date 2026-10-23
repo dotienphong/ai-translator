@@ -156,7 +156,7 @@ describe("GET /admin/alerts", () => {
 
 /** 1 MiB, viết lại tại đây (không import từ src) để test khóa đúng giá trị của hợp đồng. */
 const MAX_BODY_BYTES = 1024 * 1024;
-const BASE = "https://releases.aitranslator.io.vn";
+const BASE = "https://releases.aitranslator.vn";
 const URLS = { stable: `${BASE}/stable/latest.json`, beta: `${BASE}/beta/latest.json`, models: `${BASE}/models/models.json` };
 
 type Reply = Response | Error | (() => Response | Promise<Response>);
@@ -289,9 +289,9 @@ describe("GET /admin/releases: dữ liệu và danh sách trắng", () => {
     const { app } = await getReleases();
     expect([...app.calls].sort()).toEqual([URLS.beta, URLS.models, URLS.stable].sort());
     expect(URLS).toEqual({
-      stable: "https://releases.aitranslator.io.vn/stable/latest.json",
-      beta: "https://releases.aitranslator.io.vn/beta/latest.json",
-      models: "https://releases.aitranslator.io.vn/models/models.json",
+      stable: "https://releases.aitranslator.vn/stable/latest.json",
+      beta: "https://releases.aitranslator.vn/beta/latest.json",
+      models: "https://releases.aitranslator.vn/models/models.json",
     });
   });
 
@@ -555,9 +555,9 @@ describe("GET /admin/releases: cấu hình, quyền và nhật ký", () => {
     ["thiếu biến", undefined],
     ["rỗng", ""],
     ["có / cuối", `${BASE}/`],
-    ["không phải https", "http://releases.aitranslator.io.vn"],
+    ["không phải https", "http://releases.aitranslator.vn"],
     ["có đường dẫn", `${BASE}/x`],
-    ["có thông tin đăng nhập", "https://user@releases.aitranslator.io.vn"],
+    ["có thông tin đăng nhập", "https://user@releases.aitranslator.vn"],
   ])("RELEASES_BASE_URL %s: 503 releases_not_configured, không gọi mạng, không ghi nhật ký", async (_name, value) => {
     const app = releasesApp(okReplies(), value === undefined ? {} : { RELEASES_BASE_URL: value });
     const res = await app.adminCall("/admin/releases");

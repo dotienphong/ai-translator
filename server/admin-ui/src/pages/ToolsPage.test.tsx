@@ -78,15 +78,15 @@ describe("ToolsPage", () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const input = screen.getByLabelText("URL webhook") as HTMLInputElement;
-    expect(input.value).toBe("https://api.aitranslator.io.vn/v1/webhooks/payos");
+    expect(input.value).toBe("https://api.aitranslator.vn/v1/webhooks/payos");
     await user.clear(input);
-    await user.type(input, "  https://api.aitranslator.io.vn/v1/webhooks/payos-moi  ");
+    await user.type(input, "  https://api.aitranslator.vn/v1/webhooks/payos-moi  ");
     await user.click(screen.getByRole("button", { name: "Xác nhận…" }));
-    expect(screen.getByRole("dialog").textContent).toContain("https://api.aitranslator.io.vn/v1/webhooks/payos-moi");
+    expect(screen.getByRole("dialog").textContent).toContain("https://api.aitranslator.vn/v1/webhooks/payos-moi");
     await user.click(screen.getByRole("button", { name: "Xác nhận" }));
-    expect(await screen.findByText("Đã đăng ký webhook: https://api.aitranslator.io.vn/v1/webhooks/payos-moi")).toBeTruthy();
+    expect(await screen.findByText("Đã đăng ký webhook: https://api.aitranslator.vn/v1/webhooks/payos-moi")).toBeTruthy();
     expect(calls).toEqual([
-      { url: "/admin/payos/confirm-webhook", method: "POST", body: { webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos-moi" } },
+      { url: "/admin/payos/confirm-webhook", method: "POST", body: { webhook_url: "https://api.aitranslator.vn/v1/webhooks/payos-moi" } },
     ]);
   });
 
@@ -95,9 +95,9 @@ describe("ToolsPage", () => {
     render(<ToolsPage />);
     await user.click(screen.getByRole("button", { name: "Xác nhận…" }));
     await user.click(screen.getByRole("button", { name: "Xác nhận" }));
-    expect(await screen.findByText("Đã đăng ký webhook: https://api.aitranslator.io.vn/v1/webhooks/payos")).toBeTruthy();
+    expect(await screen.findByText("Đã đăng ký webhook: https://api.aitranslator.vn/v1/webhooks/payos")).toBeTruthy();
     expect(calls).toEqual([
-      { url: "/admin/payos/confirm-webhook", method: "POST", body: { webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos" } },
+      { url: "/admin/payos/confirm-webhook", method: "POST", body: { webhook_url: "https://api.aitranslator.vn/v1/webhooks/payos" } },
     ]);
   });
 });
@@ -114,7 +114,7 @@ describe("ToolsPage: bố cục mới", () => {
     const hook = screen.getByRole("region", { name: "Xác nhận webhook PayOS" });
     await user.click(within(hook).getByRole("button", { name: "Xác nhận…" }));
     await user.click(screen.getByRole("button", { name: "Xác nhận" }));
-    expect(await within(hook).findByText("Đã đăng ký webhook: https://api.aitranslator.io.vn/v1/webhooks/payos")).toBeTruthy();
+    expect(await within(hook).findByText("Đã đăng ký webhook: https://api.aitranslator.vn/v1/webhooks/payos")).toBeTruthy();
 
     const danger = screen.getByRole("region", { name: "Khu vực nguy hiểm" });
     expect(within(danger).getByLabelText("Email của khách")).toBeTruthy();

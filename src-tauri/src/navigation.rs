@@ -19,7 +19,7 @@ use tauri::{AppHandle, Manager, Runtime, Url};
 use crate::system;
 
 /// Tên miền được mở bằng trình duyệt. Kế hoạch 06 thêm trang thanh toán của PayOS, kế hoạch 07 thêm
-/// website của sản phẩm (tên miền `aitranslator.io.vn`, spec 2026-10-06), spec 2026-10-14 thêm trang thanh toán của
+/// website của sản phẩm (tên miền `aitranslator.vn` từ spec 2026-10-23-ten-mien-aitranslator-vn), spec 2026-10-14 thêm trang thanh toán của
 /// Creem. Chỉ so khớp đúng cả tên miền, không nhận tên miền con.
 pub const EXTERNAL_HOSTS: &[&str] = &[
     // Trang thanh toán của PayOS (`checkout_url` của đơn, kế hoạch 06; spec §6.8 "Mua ngay trong app" bước 2).
@@ -30,7 +30,7 @@ pub const EXTERNAL_HOSTS: &[&str] = &[
     "checkout.creem.io",
     "www.creem.io",
     // Website của sản phẩm (trang chính sách quyền riêng tư, hỗ trợ, tải bản mới); website có spec riêng.
-    "aitranslator.io.vn",
+    "aitranslator.vn",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -369,12 +369,7 @@ mod tests {
     fn external_hosts_are_exactly_the_payment_pages_and_the_website() {
         assert_eq!(
             EXTERNAL_HOSTS,
-            [
-                "pay.payos.vn",
-                "checkout.creem.io",
-                "www.creem.io",
-                "aitranslator.io.vn"
-            ]
+            ["pay.payos.vn", "checkout.creem.io", "www.creem.io", "aitranslator.vn"]
         );
         let ok = Url::parse("https://pay.payos.vn/web/abc").unwrap();
         assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);
@@ -393,19 +388,21 @@ mod tests {
         }
     }
 
-    /// Website của sản phẩm (`aitranslator.io.vn`) mở bằng trình duyệt; `www.`, tên miền con, `http` hay cổng khác thì chặn.
+    /// Website của sản phẩm (`aitranslator.vn`) mở bằng trình duyệt; `www.`, tên miền con, `http` hay cổng khác thì chặn.
     #[test]
     fn the_product_website_opens_in_the_browser_and_lookalikes_do_not() {
-        let ok = Url::parse("https://aitranslator.io.vn/").unwrap();
+        let ok = Url::parse("https://aitranslator.vn/").unwrap();
         assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);
         for bad in [
-            "http://aitranslator.io.vn/",
-            "https://www.aitranslator.io.vn/",
-            "https://admin.aitranslator.io.vn/",
-            "https://aitranslator.io.vn:8443/",
-            "https://aitranslator.io.vn.evil.example/",
-            "https://user@aitranslator.io.vn/",
-            "https://io.vn/",
+            "http://aitranslator.vn/",
+            "https://www.aitranslator.vn/",
+            "https://admin.aitranslator.vn/",
+            "https://aitranslator.vn:8443/",
+            "https://aitranslator.vn.evil.example/",
+            "https://user@aitranslator.vn/",
+            "https://vn/",
+            // Tên cũ chuyển hướng về tên mới, nên app không cần mở nó (spec 2026-10-23-ten-mien-aitranslator-vn).
+            "https://aitranslator.io.vn/",
         ] {
             assert_eq!(
                 decide(&Url::parse(bad).unwrap(), Os::MacOs, None, EXTERNAL_HOSTS),

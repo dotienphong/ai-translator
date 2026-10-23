@@ -10,13 +10,13 @@
   "name": "mt-license-admin",
   "main": "src/admin-entry.ts",
   "compatibility_date": "2026-09-26",
-  // Tắt địa chỉ workers.dev (2026-10-08): admin chỉ còn https://admin.aitranslator.io.vn. Hoàn tác: đặt lại true và deploy.
+  // Tắt địa chỉ workers.dev (2026-10-08): admin chỉ còn https://admin.aitranslator.vn. Hoàn tác: đặt lại true và deploy.
   "workers_dev": false,
   "preview_urls": false,
-  // Tên miền riêng của admin (2026-10-08): https://admin.aitranslator.io.vn (bản ghi DNS và chứng chỉ do Cloudflare tạo khi deploy).
+  // Tên miền riêng của admin (spec 2026-10-23): https://admin.aitranslator.vn (bản ghi DNS và chứng chỉ do Cloudflare tạo khi deploy).
   // Ứng dụng Access phải phủ hostname này và ACCESS_AUD phải là AUD tag của ứng dụng đó (chưa phủ thì Worker trả 403,
-  // không lộ gì).
-  "routes": [{ "pattern": "admin.aitranslator.io.vn", "custom_domain": true }],
+  // không lộ gì). Tên cũ admin.aitranslator.io.vn do Worker chuyển hướng của website giữ (website/wrangler.redirect.jsonc).
+  "routes": [{ "pattern": "admin.aitranslator.vn", "custom_domain": true }],
   // Trang Web Admin (spec 2026-10-07 Web Admin §2): SPA build từ admin-ui/ (`pnpm ui:build` trước khi deploy).
   // run_worker_first: mọi request, kể cả file tĩnh, đi qua lớp kiểm Access của Worker (src/admin-auth.ts) trước;
   // Worker gọi env.ASSETS.fetch sau đó (src/admin-assets.ts). Route lạ trả index.html (SPA), trừ /admin/*.
@@ -34,18 +34,18 @@
     "PAYOS_BASE_URL": "https://api-merchant.payos.vn",
     // Cổng Creem (spec 2026-10-14): chỉ để xem trạng thái đơn Creem; production cố định, không sandbox (spec 2026-10-04).
     "CREEM_BASE_URL": "https://api.creem.io",
-    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
-    "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
+    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
+    "EMAIL_REPLY_TO": "support@aitranslator.vn",
     // Bắt buộc (QĐ6): Audience tag của ứng dụng Access, điền ở Task 21, Step 10. Trống thì Worker trả 403 cho mọi request.
     "ACCESS_AUD": "211e8ca91f71c69830df567b4e1a2488d84ec5380dfeb25b473102e111f21de0",
     // Tên miền team Access (Zero Trust > Settings > Custom pages, hay đoạn đầu của địa chỉ đăng nhập Access). Worker có Static
     // Assets không nhận ctx.access (router nội bộ không chuyển tiếp), nên xác thực JWT của Access bằng khóa công khai của team
     // này (src/access-jwt.ts). Sai hay trống thì mọi request bị 403.
     "ACCESS_TEAM_DOMAIN": "snowy-credit-f444.cloudflareaccess.com",
-    // Origin của Worker API (tên miền riêng, spec 2026-10-06); confirm-webhook chỉ nhận URL trên origin này.
-    "API_ORIGIN": "https://api.aitranslator.io.vn",
+    // Origin của Worker API (tên miền riêng, spec 2026-10-23); confirm-webhook chỉ nhận URL trên origin này.
+    "API_ORIGIN": "https://api.aitranslator.vn",
     // Bucket R2 công khai (bản phát hành và model) cho trang Hệ thống; khớp PRODUCTION_URL của app, không có `/` cuối.
-    "RELEASES_BASE_URL": "https://releases.aitranslator.io.vn"
+    "RELEASES_BASE_URL": "https://releases.aitranslator.vn"
   },
   // ADMIN_EMAILS (kiểm toán bảo mật 2026-10-09): email được làm admin, cách nhau bằng dấu phẩy; thiếu thì mọi request bị
   // 403. Đặt TRƯỚC khi deploy bản có kiểm này: `wrangler secret put ADMIN_EMAILS -c wrangler.admin.jsonc`.

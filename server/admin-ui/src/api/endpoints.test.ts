@@ -146,10 +146,10 @@ const CASES: Case[] = [
   },
   {
     fn: "confirmWebhook",
-    run: () => api.confirmWebhook("https://api.aitranslator.io.vn/v1/webhooks/payos"),
+    run: () => api.confirmWebhook("https://api.aitranslator.vn/v1/webhooks/payos"),
     method: "POST",
     url: "/admin/payos/confirm-webhook",
-    body: { webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos" },
+    body: { webhook_url: "https://api.aitranslator.vn/v1/webhooks/payos" },
   },
 ];
 

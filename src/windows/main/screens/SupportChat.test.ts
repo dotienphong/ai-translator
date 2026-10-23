@@ -181,7 +181,7 @@ describe("SupportChat: thẻ email, chế độ tắt và đóng", () => {
     const markup = html({ view: { ...withConversation, enabled: false }, emailCard: "asking" });
     expect(markup).not.toContain("<textarea");
     expect(markup).toContain(text("error.supportDisabled"));
-    expect(markup).toContain("support@aitranslator.io.vn");
+    expect(markup).toContain("support@aitranslator.vn");
     expect(markup).toContain("Phụ đề không hiện khi họp Teams");
     expect(markup).not.toContain("support-email");
   });

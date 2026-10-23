@@ -17,8 +17,8 @@ use super::manifest::FileEntry;
 use super::signed::{self, Signed, SignedError, TrustedKey};
 use super::store::StoreState;
 
-/// URL `models.json` production: cùng bucket với bản cập nhật, trên tên miền riêng (spec 2026-10-06).
-pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.io.vn/models/models.json");
+/// URL `models.json` production: cùng bucket với bản cập nhật, trên tên miền riêng (spec 2026-10-23-ten-mien-aitranslator-vn).
+pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.vn/models/models.json");
 /// Kiểm manifest tối đa mỗi ngày một lần (§6.7).
 pub const CHECK_EVERY_SECS: u64 = 24 * 3600;
 

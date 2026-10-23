@@ -123,7 +123,7 @@ const licenseDetail: LicenseDetail = {
   audit: [
     { at: NOW - 3600, actor: "api", action: "license_conflict", order_code: null, detail: '{"activation_id":"act-2","devices":2}' },
     { at: NOW - 3650, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-2"}' },
-    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "key_resent", order_code: null, detail: '{"sent":true}' },
+    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.vn", action: "key_resent", order_code: null, detail: '{"sent":true}' },
     { at: NOW - 11 * DAY, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-1"}' },
     { at: NOW - 11 * DAY - 600, actor: "api", action: "deactivated", order_code: null, detail: '{"activation_id":"act-0"}' },
     { at: NOW - 39 * DAY, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-0"}' },
@@ -150,7 +150,7 @@ const lockedDetail: LicenseDetail = {
     { at: NOW - 3 * 3600, actor: "api", action: "license_locked", order_code: null, detail: '{"deactivations_30d":3}' },
     { at: NOW - 4 * 3600, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-7"}' },
     { at: NOW - 5 * 3600, actor: "api", action: "deactivated", order_code: null, detail: '{"activation_id":"act-6"}' },
-    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "deactivated_by_admin", order_code: null, detail: '{"activation_id":"act-5","note":"khách đổi máy"}' },
+    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.vn", action: "deactivated_by_admin", order_code: null, detail: '{"activation_id":"act-5","note":"khách đổi máy"}' },
     { at: NOW - 12 * DAY, actor: "webhook", action: "license_issued", order_code: 1000190, detail: null },
   ],
 };
@@ -166,7 +166,7 @@ const revokedDetail: LicenseDetail = {
   conflict: false,
   activations: [{ ...activation("act-9", DEVICE_A, "MacBook-Phong"), license_id: REVOKED, created_at: NOW - 10 * DAY, last_validated_at: NOW - 2 * DAY }],
   audit: [
-    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.io.vn", action: "license_revoked", order_code: null, detail: '{"note":"khách yêu cầu hoàn tiền, đã chuyển khoản lại"}' },
+    { at: NOW - 2 * DAY, actor: "admin:ops@aitranslator.vn", action: "license_revoked", order_code: null, detail: '{"note":"khách yêu cầu hoàn tiền, đã chuyển khoản lại"}' },
     { at: NOW - 10 * DAY, actor: "api", action: "activated", order_code: null, detail: '{"activation_id":"act-9"}' },
     { at: NOW - 10 * DAY - 300, actor: "webhook", action: "license_issued", order_code: 1000150, detail: null },
   ],
@@ -338,20 +338,20 @@ const trials: TrialRow[] = Array.from({ length: 58 }, (_, i) => {
 const AUDIT_MIX: [string, string, ("lic" | "order" | "both")?, string?][] = [
   ["api", "activated", "lic", '{"activation_id":"act-1"}'],
   ["webhook", "license_issued", "both"],
-  ["admin:ops@aitranslator.io.vn", "list_viewed", undefined, '{"list":"orders"}'],
+  ["admin:ops@aitranslator.vn", "list_viewed", undefined, '{"list":"orders"}'],
   ["api", "order_created", "order", '{"plan":"yearly","amount":500000}'],
   ["reconcile", "license_extended", "both"],
-  ["admin:ops@aitranslator.io.vn", "license_revoked", "lic", '{"note":"khách yêu cầu hoàn tiền, đã chuyển khoản lại ngày 06/10"}'],
+  ["admin:ops@aitranslator.vn", "license_revoked", "lic", '{"note":"khách yêu cầu hoàn tiền, đã chuyển khoản lại ngày 06/10"}'],
   ["webhook", "order_underpaid", "order", '{"amount":500000,"amount_paid":200000}'],
   ["api", "license_conflict", "lic", '{"activation_id":"act-2","devices":2}'],
-  ["admin:ops@aitranslator.io.vn", "license_extended_manually", "lic", '{"days":30,"note":"bù 30 ngày do lỗi cập nhật"}'],
+  ["admin:ops@aitranslator.vn", "license_extended_manually", "lic", '{"days":30,"note":"bù 30 ngày do lỗi cập nhật"}'],
   ["api", "deactivated", "lic", '{"activation_id":"act-1"}'],
-  ["admin:ops@aitranslator.io.vn", "lookup", undefined, '{"by":"email"}'],
+  ["admin:ops@aitranslator.vn", "lookup", undefined, '{"by":"email"}'],
   ["api", "license_locked", "lic", '{"deactivations_30d":3}'],
   ["webhook", "order_needs_review", "order"],
-  ["admin:ops@aitranslator.io.vn", "key_resent", "lic", '{"sent":true}'],
+  ["admin:ops@aitranslator.vn", "key_resent", "lic", '{"sent":true}'],
   ["api", "reactivated", "lic", '{"activation_id":"act-3"}'],
-  ["admin:ops@aitranslator.io.vn", "queue_viewed", undefined, '{"needs_review":2,"underpaid":23}'],
+  ["admin:ops@aitranslator.vn", "queue_viewed", undefined, '{"needs_review":2,"underpaid":23}'],
 ];
 const audits: AuditRow[] = Array.from({ length: 90 }, (_, i) => {
   const [actor, action, rel, detail] = AUDIT_MIX[i % AUDIT_MIX.length] ?? ["api", "activated"];
@@ -702,7 +702,7 @@ function respond(method: string, url: URL, body: Record<string, unknown>): Reply
     if (path === "/admin/lookup") return lookupReply(body);
     if (path === "/admin/keys/test-sign") return ok(keyCheck);
     if (path === "/admin/erase") return ok(erased);
-    if (path === "/admin/payos/confirm-webhook") return ok({ ok: true, webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos" });
+    if (path === "/admin/payos/confirm-webhook") return ok({ ok: true, webhook_url: "https://api.aitranslator.vn/v1/webhooks/payos" });
     if (path === "/admin/licenses") return ok(issued, 201);
     if (/^\/admin\/orders\/\d+\/(grant|resolve)$/.test(path)) return ok({ ...issued, order_code: 1000014, status: "paid" });
     if (/\/extend$/.test(path)) return ok({ license_id: LIC, expires_at: NOW + 395 * DAY });
@@ -720,7 +720,7 @@ function respond(method: string, url: URL, body: Record<string, unknown>): Reply
   }
   switch (path) {
     case "/admin/whoami":
-      return ok({ operator: "ops@aitranslator.io.vn" });
+      return ok({ operator: "ops@aitranslator.vn" });
     case "/admin/summary":
       return ok(summary);
     case "/admin/stats":

@@ -423,7 +423,7 @@ function Timelines() {
         <Timeline
           label="Nhật ký của license"
           items={[
-            { key: "1", day: "08/10/2026", time: "14:01", actor: "admin:ops@aitranslator.io.vn", action: "license_extended", detail: "days: 30 · note: bù cho khách", tone: "info" },
+            { key: "1", day: "08/10/2026", time: "14:01", actor: "admin:ops@aitranslator.vn", action: "license_extended", detail: "days: 30 · note: bù cho khách", tone: "info" },
             { key: "2", day: "08/10/2026", time: "13:01", actor: "api", action: "license_activated", detail: "allow_conflict: true", tone: "warn" },
             {
               key: "3",
@@ -440,7 +440,7 @@ function Timelines() {
               ),
             },
             { key: "4", day: "07/10/2026", time: "14:01", actor: "reconcile", action: "order_expired" },
-            { key: "5", day: "07/10/2026", time: "09:12", actor: "admin:ops@aitranslator.io.vn", action: "license_revoked", detail: "note: hoàn tiền", tone: "bad" },
+            { key: "5", day: "07/10/2026", time: "09:12", actor: "admin:ops@aitranslator.vn", action: "license_revoked", detail: "note: hoàn tiền", tone: "bad" },
           ]}
         />
       </Card>
@@ -493,7 +493,7 @@ function Filters() {
           <input defaultValue="khach@" aria-invalid="true" />
         </Field>
         <Field label="Khóa" hint="Chỉ đọc">
-          <input defaultValue="ops@aitranslator.io.vn" disabled />
+          <input defaultValue="ops@aitranslator.vn" disabled />
         </Field>
       </Row>
       <Row label="SegmentedControl">
