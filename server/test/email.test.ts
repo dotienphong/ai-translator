@@ -41,6 +41,18 @@ describe("Resend", () => {
     expect(bodies[1]).not.toHaveProperty("reply_to");
   });
 
+  it("có html thì gửi html cùng text (thư HTML kèm bản chữ thuần, spec 2026-10-23 D4); không có thì không gửi trường đó", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const p = new ResendEmailProvider({ apiKey: "re_test", from: "a@mt.test" }, async (_url: string, init: RequestInit = {}) => {
+      bodies.push(JSON.parse(init.body as string));
+      return new Response("{}");
+    });
+    await p.send({ to: "b@mt.test", subject: "S", text: "T", html: "<p>H</p>" });
+    await p.send({ to: "b@mt.test", subject: "S", text: "T" });
+    expect(bodies[0]).toEqual({ from: "a@mt.test", to: ["b@mt.test"], subject: "S", text: "T", html: "<p>H</p>" });
+    expect(bodies[1]).not.toHaveProperty("html");
+  });
+
   it("HTTP lỗi thì ném lỗi, không kèm body", async () => {
     const p = new ResendEmailProvider(
       { apiKey: "re_test", from: "a@mt.test" },

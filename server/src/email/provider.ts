@@ -4,6 +4,8 @@ export interface EmailMessage {
   to: string;
   subject: string;
   text: string;
+  /** Bản HTML; có thì hộp thư hiện bản này, `text` là bản dự phòng cho hộp thư không hiện HTML (spec 2026-10-23 D4). */
+  html?: string;
   /** Cùng khóa thì dịch vụ chỉ gửi một lần (Resend giữ khóa 24 giờ). */
   idempotencyKey?: string;
 }

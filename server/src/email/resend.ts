@@ -41,6 +41,7 @@ export class ResendEmailProvider implements EmailProvider {
       subject: message.subject,
       text: message.text,
     };
+    if (message.html) body.html = message.html;
     if (this.cfg.replyTo) body.reply_to = this.cfg.replyTo;
     const res = await this.fetchFn("https://api.resend.com/emails", {
       method: "POST",

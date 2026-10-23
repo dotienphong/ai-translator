@@ -164,6 +164,8 @@ export interface SentEmail {
   to: string[];
   subject: string;
   text: string;
+  /** Bản HTML của thư; null nếu thư chỉ có chữ thuần (thư cảnh báo cho người vận hành). */
+  html: string | null;
   idempotencyKey: string | null;
 }
 
@@ -184,9 +186,15 @@ export class FakeResend {
     this.attemptKeys.push((init.headers as Record<string, string>)["idempotency-key"] ?? null);
     if (this.failStatus !== null) return json({ statusCode: this.failStatus, message: "lỗi giả", name: this.failName }, this.failStatus);
     if (this.down) return json({ statusCode: 500, message: "down", name: "internal_server_error" }, 500);
-    const body = JSON.parse(init.body as string) as { to: string[]; subject: string; text: string };
+    const body = JSON.parse(init.body as string) as { to: string[]; subject: string; text: string; html?: string };
     const headers = init.headers as Record<string, string>;
-    this.sent.push({ to: body.to, subject: body.subject, text: body.text, idempotencyKey: headers["idempotency-key"] ?? null });
+    this.sent.push({
+      to: body.to,
+      subject: body.subject,
+      text: body.text,
+      html: body.html ?? null,
+      idempotencyKey: headers["idempotency-key"] ?? null,
+    });
     return json({ id: crypto.randomUUID() });
   };
 }
