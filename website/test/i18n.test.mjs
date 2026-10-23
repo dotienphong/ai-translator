@@ -162,6 +162,8 @@ test("videoObject tự lấy thời lượng từ file; demoVideo có nút phát
   assert.equal(v.duration, "PT40S");
   assert.equal(v["@id"], "https://aitranslator.io.vn/#demo-video");
   assert.equal(v.inLanguage, "vi");
+  assert.equal(v.uploadDate, "2026-10-21T00:00:00+07:00");
+  assert.throws(() => videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "21/10/2026" }), /uploadDate/);
   const html = demoVideo({ lang: "en", label: "Demo", fallback: "Download" });
   assert.match(html, /<figure class="shot video reveal" data-video>/);
   assert.match(html, /<video controls preload="none" playsinline width="1920" height="1200" poster="/);

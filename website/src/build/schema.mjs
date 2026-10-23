@@ -138,8 +138,10 @@ export function faqPage(items, id) {
   };
 }
 
-/** Video demo của trang chủ (spec 2026-10-21-website-demo-video; thời lượng đọc từ file MP4, spec 2026-10-22 §4). `uploadDate` dạng ngày. */
+/** Video demo của trang chủ (spec 2026-10-21-website-demo-video; thời lượng đọc từ file MP4, spec 2026-10-22 §4). `uploadDate` truyền vào dạng ngày
+ *  (YYYY-MM-DD), ghi ra ngày giờ kèm múi giờ Việt Nam vì Google báo lỗi khi `uploadDate` của VideoObject thiếu giờ hoặc múi giờ. */
 export function videoObject({ lang, name, description, uploadDate }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(uploadDate)) throw new Error(`videoObject: uploadDate phải dạng YYYY-MM-DD, nhận ${uploadDate}`);
   const file = `/assets/video/ai-translator-demo.${lang}`;
   return {
     "@type": "VideoObject",
@@ -149,7 +151,7 @@ export function videoObject({ lang, name, description, uploadDate }) {
     thumbnailUrl: abs(`${file}.webp`),
     contentUrl: abs(`${file}.mp4`),
     duration: videoMeta(lang).iso,
-    uploadDate,
+    uploadDate: `${uploadDate}T00:00:00+07:00`,
     inLanguage: tagOf(lang),
     publisher: { "@id": ORG_ID },
   };
