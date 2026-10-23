@@ -7,6 +7,7 @@ import { auditIfChanged } from "./audit";
 import { sha256Hex, timingSafeEqual } from "./crypto";
 import { type Deps, sendLicenseMail } from "./deps";
 import { clientIp, fail, tooMany } from "./http";
+import type { Lang } from "./lang";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
 import type { WebhookEvent } from "./payment/provider";
 import { computeGrant, type GrantTerms, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
@@ -23,6 +24,8 @@ export interface OrderRow {
   amount_paid: number;
   currency: string;
   email: string | null;
+  /** Ngôn ngữ giao diện app lúc tạo đơn (spec 2026-10-23); NULL với đơn của app ≤ 0.2.4 và đơn đã ẩn danh theo email. */
+  lang: Lang | null;
   renew_license_id: string | null;
   license_id: string | null;
   created_at: number;
@@ -42,7 +45,7 @@ export interface Granted {
 export async function loadOrder(db: D1Database, orderCode: number): Promise<OrderRow | null> {
   return db
     .prepare(
-      `SELECT order_code, provider, provider_ref, status, plan, amount, amount_paid, currency, email, renew_license_id,
+      `SELECT order_code, provider, provider_ref, status, plan, amount, amount_paid, currency, email, lang, renew_license_id,
               license_id, created_at, expires_at
        FROM orders WHERE order_code = ?`,
     )

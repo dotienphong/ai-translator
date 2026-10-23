@@ -813,3 +813,13 @@ describe("(A5e) nhật ký cấp, gia hạn, đổi gói và chờ xử lý ghi 
     vi.restoreAllMocks();
   });
 });
+
+describe("ngôn ngữ lưu trên đơn (spec 2026-10-23)", () => {
+  it("loadOrder đọc cả lang; đơn không có ngôn ngữ thì NULL", async () => {
+    const w = makeWorld();
+    const { orderCode } = await checkout(w);
+    expect((await loadOrder(env.DB, orderCode))!.lang).toBeNull();
+    await env.DB.prepare("UPDATE orders SET lang = 'ja' WHERE order_code = ?").bind(orderCode).run();
+    expect((await loadOrder(env.DB, orderCode))!.lang).toBe("ja");
+  });
+});

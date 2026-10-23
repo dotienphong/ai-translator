@@ -7,13 +7,14 @@ import { expect, it } from "vitest";
 const db = env.MIGRATION_DB;
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 
-it("có đúng năm migration theo thứ tự", () => {
+it("có đúng sáu migration theo thứ tự", () => {
   expect(names).toEqual([
     "0001_init.sql",
     "0002_three_plans_trials.sql",
     "0003_six_months_plan.sql",
     "0004_error_reports.sql",
     "0005_support_chat.sql",
+    "0006_order_lang.sql",
   ]);
 });
 
@@ -315,7 +316,8 @@ it("0005 chỉ thêm bốn bảng chat hỗ trợ và bốn index; chat mặc đ
   const indexesBefore = await indexNames();
   const licensesBefore = (await db.prepare("SELECT * FROM licenses ORDER BY id").all()).results;
 
-  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+  // Chỉ áp tới 0005: 0006 có test riêng ở cuối file.
+  await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 5));
 
   const after = await tables();
   expect(after.filter((t) => !t.name.startsWith("support_"))).toEqual(before);
@@ -334,5 +336,42 @@ it("0005 chỉ thêm bốn bảng chat hỗ trợ và bốn index; chat mặc đ
     { key: "enabled", value: "0" },
     { key: "zalo_fail_streak", value: "0" },
   ]);
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("0006 chỉ thêm cột orders.lang (NULL được, chỉ năm mã); đơn cũ giữ nguyên với lang NULL; bảng khác và bộ đếm số đơn không đổi", async () => {
+  // D1 đang ở trạng thái sau 0005 (test trên chỉ áp năm migration đầu).
+  const tables = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name",
+        )
+        .all<{ name: string; sql: string }>()
+    ).results;
+  const before = await tables();
+  const ordersBefore = (await db.prepare("SELECT * FROM orders ORDER BY order_code").all()).results;
+  const seq = () => db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'orders'").first();
+  const seqBefore = await seq();
+
+  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+
+  const after = await tables();
+  expect(after.filter((t) => t.name !== "orders")).toEqual(before.filter((t) => t.name !== "orders"));
+  expect((await db.prepare("SELECT * FROM orders ORDER BY order_code").all()).results).toEqual(
+    ordersBefore.map((o) => ({ ...o, lang: null })),
+  );
+  expect(await seq()).toEqual(seqBefore);
+  const insert = (lang: unknown) =>
+    db
+      .prepare(
+        `INSERT INTO orders (order_token_hash, provider, plan, amount, currency, email_consent_at, status, created_at, expires_at, lang)
+         VALUES ('h', 'payos', 'monthly', 1, 'VND', 0, 'failed', 0, 0, ?)`,
+      )
+      .bind(lang);
+  await expect(insert("fr").run()).rejects.toThrow(/CHECK/);
+  await expect(insert("VI").run()).rejects.toThrow(/CHECK/);
+  await insert("ja").run();
+  await insert(null).run();
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });
