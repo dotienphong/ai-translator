@@ -46,7 +46,11 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, String,
             None => menu.append(&PredefinedMenuItem::separator(app)?)?,
         }
     }
-    Ok((menu, strings.tooltip(&app.package_info().name, model.running), has_badge(model)))
+    Ok((
+        menu,
+        strings.tooltip(&app.package_info().name, model.running),
+        has_badge(model),
+    ))
 }
 
 /// Thêm một mục vào menu, kèm phím tắt nếu có (spec 2026-10-20 §3). `muda` không nhận vài phím mà plugin phím tắt nhận (phím
@@ -74,14 +78,22 @@ struct TrayBadge(Mutex<bool>);
 /// Icon khay theo hệ điều hành, có dấu chấm khi `badge` (spec 2026-10-23 §6.2). macOS: icon template đơn sắc.
 #[cfg(target_os = "macos")]
 fn tray_icon<R: Runtime>(_app: &AppHandle<R>, badge: bool) -> Option<Image<'static>> {
-    Some(badged(tauri::include_image!("icons/tray-template.png"), badge, BadgeStyle::Template))
+    Some(badged(
+        tauri::include_image!("icons/tray-template.png"),
+        badge,
+        BadgeStyle::Template,
+    ))
 }
 
 /// Windows: icon màu của app; không có thì `None` (Tauri dùng icon mặc định, không có dấu chấm).
 #[cfg(not(target_os = "macos"))]
 fn tray_icon<R: Runtime>(app: &AppHandle<R>, badge: bool) -> Option<Image<'static>> {
     // `Image::to_owned` (hàm riêng của Image) chép điểm ảnh ra bản `'static`.
-    Some(badged(app.default_window_icon()?.clone().to_owned(), badge, BadgeStyle::Color))
+    Some(badged(
+        app.default_window_icon()?.clone().to_owned(),
+        badge,
+        BadgeStyle::Color,
+    ))
 }
 
 fn badged(base: Image<'static>, badge: bool, style: BadgeStyle) -> Image<'static> {
@@ -93,7 +105,9 @@ fn badged(base: Image<'static>, badge: bool, style: BadgeStyle) -> Image<'static
 }
 
 fn set_badge<R: Runtime>(app: &AppHandle<R>, tray: &TrayIcon<R>, badge: bool) {
-    let Some(shown) = app.try_state::<TrayBadge>() else { return };
+    let Some(shown) = app.try_state::<TrayBadge>() else {
+        return;
+    };
     let mut shown = shown.0.lock().unwrap_or_else(|e| e.into_inner());
     if *shown == badge {
         return;

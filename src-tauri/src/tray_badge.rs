@@ -96,7 +96,10 @@ mod tests {
                 let (radius, ring) = geometry(style, size as f32);
                 let cx = size as f32 - radius - ring;
                 let cy = radius + ring;
-                assert!(cx + radius + ring <= size as f32 + 1e-3 && cy - radius - ring >= -1e-3, "{size} {style:?}");
+                assert!(
+                    cx + radius + ring <= size as f32 + 1e-3 && cy - radius - ring >= -1e-3,
+                    "{size} {style:?}"
+                );
                 let dot = if style == BadgeStyle::Template { INK } else { RED };
                 assert_eq!(px(&out, size, cx as u32, cy as u32), dot, "{size} {style:?}");
             }
