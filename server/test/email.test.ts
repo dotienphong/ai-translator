@@ -174,12 +174,47 @@ describe("nội dung email (spec 2026-10-23)", () => {
     expect(en).not.toContain('<td class="pad" lang="en"');
     expect(en).toContain("Here is your license key.");
     expect(en).not.toContain("shown above");
+    // Bảng "ma" chỉ Outlook cho Windows thấy (mở trước thẻ thư, đóng sau chân thư): Outlook bỏ qua max-width.
+    expect(html.match(/<!--\[if mso\]>/g)).toHaveLength(2);
   });
 
-  it("dòng xem trước ẩn (preheader): gói và ngày hết hạn, không có key", () => {
+  it("font và lang theo ngôn ngữ (như app và website): chữ Hán tiếng Trung không vẽ theo dáng Nhật; tiếng Việt, Anh không có font CJK; tiếng Hàn ngắt theo từ", () => {
+    // Chuỗi font của thẻ thư và của bảng chân thư (bỏ font đơn cách của ô key): hai chỗ phải như nhau.
+    const fontOf = (html: string) => {
+      const list = [...html.matchAll(/font-family:([^;"]+)/g)].map((m) => m[1] ?? "").filter((f) => !f.includes("monospace"));
+      expect(list).toHaveLength(2);
+      expect(list[1]).toBe(list[0]);
+      return list[0] ?? "";
+    };
+    const font = (lang: Lang) => fontOf(licenseEmail(lang, "purchase", [yearly]).html);
+    const CJK = /Hiragino|Yu Gothic|Meiryo|PingFang|YaHei|SD Gothic|Malgun/;
+    const zh = licenseEmail("zh", "purchase", [yearly]).html;
+    expect(zh).toMatch(/^<!doctype html>\n<html lang="zh-Hans">/);
+    expect(zh).toContain('<td class="pad" lang="en"');
+    expect(supportReplyEmail("zh", ["x"]).html).toMatch(/^<!doctype html>\n<html lang="zh-Hans">/);
+    expect(font("zh")).toContain("'PingFang SC'");
+    expect(font("zh")).not.toMatch(/Hiragino Sans'|Yu Gothic/);
+    expect(font("ja")).toContain("'Hiragino Sans'");
+    expect(font("ja")).not.toContain("PingFang");
+    expect(font("ko")).toContain("'Malgun Gothic'");
+    for (const lang of ["vi", "en"] as const) {
+      expect(font(lang)).not.toMatch(CJK);
+      expect(font(lang)).toMatch(/,sans-serif$/);
+    }
+    expect(fontOf(supportReplyEmail("vi", ["x"]).html)).not.toMatch(CJK);
+    expect(licenseEmail("ko", "purchase", [yearly]).html).toContain("word-break:keep-all;overflow-wrap:break-word;");
+    for (const lang of ["vi", "en", "ja", "zh"] as const) expect(licenseEmail(lang, "purchase", [yearly]).html).not.toContain("word-break:keep-all");
+  });
+
+  it("dòng xem trước ẩn (preheader): gói và ngày hết hạn, không có key; đệm sau đó để chữ thân thư (có key) không lọt vào dòng xem trước", () => {
     const { html } = licenseEmail("ja", "purchase", [yearly]);
-    const preheader = /<div style="display:none;[^"]*">([^<]*)<\/div>/.exec(html)?.[1];
-    expect(preheader).toBe("プラン Yearly · 有効期限 2026年11月1日");
+    const hidden = /<div style="display:none;[^"]*">(.*?)((?:&zwnj;&nbsp;)+)<\/div>/.exec(html);
+    expect(hidden?.[1]).toBe("プラン Yearly · 有効期限 2026年11月1日");
+    expect(hidden?.[2]?.match(/&zwnj;&nbsp;/g)?.length).toBeGreaterThanOrEqual(100);
+    expect(hidden?.[0]).not.toContain("0123-4567-89AB");
+    const support = /<div style="display:none;[^"]*">(.*?)((?:&zwnj;&nbsp;)+)<\/div>/.exec(supportReplyEmail("vi", ["x"]).html);
+    expect(support?.[1]).toBe("Bộ phận hỗ trợ AI Translator đã trả lời tin nhắn của bạn.");
+    expect(support?.[2]?.match(/&zwnj;&nbsp;/g)?.length).toBeGreaterThanOrEqual(100);
   });
 
   it("ngày hết hạn (giờ Việt Nam) viết theo thói quen của từng ngôn ngữ", () => {
@@ -218,11 +253,15 @@ describe("nội dung email (spec 2026-10-23)", () => {
     expect(vi).toContain("  Yearly · Expires 1 Nov 2026\n  Monthly · Expires 22 Nov 2026");
   });
 
-  it("thư trả lời hỗ trợ: escape HTML, giữ xuống dòng; bản chữ thuần giữ nguyên văn; tiếng Anh ở dưới", () => {
+  it("thư trả lời hỗ trợ: escape HTML, xuống dòng bằng <br> (Outlook cho Windows không bảo đảm pre-wrap); bản chữ thuần giữ nguyên văn; tiếng Anh ở dưới", () => {
     const reply = `Thử <script>alert("x")</script> & 'y'\nDòng hai`;
     const { html, text } = supportReplyEmail("vi", [reply, "Câu hai"]);
     expect(html).not.toContain("<script>");
-    expect(html).toContain("Thử &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;y&#39;\nDòng hai");
+    expect(html).toContain("Thử &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;y&#39;<br>Dòng hai");
+    // Tin từ Zalo giữ nguyên văn, có thể xuống dòng kiểu Windows: một lần xuống dòng là đúng một <br> (CR còn sót dưới pre-wrap là thêm một dòng).
+    const crlf = supportReplyEmail("vi", ["A\r\nB\rC"]).html;
+    expect(crlf).toContain(">A<br>B<br>C</td>");
+    expect(crlf).not.toContain("\r");
     expect(html).toContain("white-space:pre-wrap");
     expect(text).toContain(`  Thử <script>alert("x")</script> & 'y'\n  Dòng hai\n\n  Câu hai`);
     expect(text).toContain("AI Translator support has replied to your message (above).");
@@ -237,6 +276,17 @@ describe("nội dung email (spec 2026-10-23)", () => {
         expect(all).not.toMatch(/2 máy|2 computers|Meeting Translator/);
         expect(all).not.toMatch(/Resend|Cloudflare|Whisper|Hy-MT|llama|ggml|Tauri|Hono|<img|<script/i);
       }
+    }
+  });
+
+  it("bản chữ thuần không có quá hai dòng trống liền nhau (spec 2026-10-23 §2), ở mọi ngôn ngữ và loại thư, một hay hai key", () => {
+    for (const lang of LANGS) {
+      const mails = [
+        ...KINDS.flatMap((kind) => [licenseEmail(lang, kind, [yearly]), licenseEmail(lang, kind, [yearly, monthly])]),
+        supportReplyEmail(lang, ["x"]),
+        supportReplyEmail(lang, ["Câu một\nDòng hai", "Câu hai"]),
+      ];
+      for (const { text } of mails) expect(text, lang).not.toMatch(/\n{4}/);
     }
   });
 

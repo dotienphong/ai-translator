@@ -1,7 +1,8 @@
 // Khung HTML của thư gửi khách (spec 2026-10-23 §2): bảng lồng, kiểu đặt inline, không ảnh (hộp thư chặn ảnh từ xa, tải ảnh là
-// một cách theo dõi người đọc), không font web, không script. Mọi chữ động đi qua escapeHtml; link chỉ trỏ tới SITE_URL. Màu theo
-// website (website/src/assets/site.css). Khối <style> lo màn hình hẹp và hộp thư tối (Apple Mail, iOS Mail, Outlook cho Mac);
-// Gmail bỏ qua khối này và tự đảo màu, nên bản sáng vẫn phải đọc được khi bị đảo.
+// một cách theo dõi người đọc), không font web, không script. Mọi chữ động đi qua escapeHtml; link chỉ trỏ tới SITE_URL. Màu và
+// font theo website (website/src/assets/site.css). Khối <style> trong <head> lo màn hình hẹp (Gmail cũng dùng, kể cả media query
+// max-width) và hộp thư tối (Apple Mail, iOS Mail, Outlook cho Mac); Gmail bỏ phần prefers-color-scheme và tự đảo màu, nên bản
+// sáng vẫn phải đọc được khi bị đảo. Outlook cho Windows (vẽ bằng Word) bỏ qua max-width nên có thêm bảng "ma" rộng 560 px.
 import type { Lang } from "../lang";
 import { SITE_URL } from "./strings";
 
@@ -17,8 +18,18 @@ const C = {
   brandInk: "#0f4aa3",
   brandSoft: "#e7f0ff",
 };
-const FONT =
-  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Hiragino Sans','Yu Gothic','PingFang SC','Microsoft YaHei','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
+// Font hệ thống theo ngôn ngữ của thư, như website: mỗi thư chỉ có font CJK của ngôn ngữ đó, để chữ Hán tiếng Trung không vẽ theo
+// dáng Nhật (và ngược lại) hay lẫn hai font trong một dòng. Chữ Latin (phần tiếng Anh, tên gói) lấy font đầu chuỗi.
+const LATIN = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial";
+const FONTS: Record<Lang, string> = {
+  vi: `${LATIN},sans-serif`,
+  en: `${LATIN},sans-serif`,
+  ja: `${LATIN},'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic UI','Yu Gothic',Meiryo,sans-serif`,
+  zh: `${LATIN},'PingFang SC','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei',sans-serif`,
+  ko: `${LATIN},'Apple SD Gothic Neo','Malgun Gothic',sans-serif`,
+};
+/** Thẻ `<html lang>`: tiếng Trung là chữ giản thể (zh-Hans), như app (src/i18n/index.ts, htmlLang) và website (website/src/langs.mjs). */
+const HTML_LANG: Record<Lang, string> = { vi: "vi", en: "en", ja: "ja", zh: "zh-Hans", ko: "ko" };
 const MONO = "'SF Mono',Menlo,Consolas,'Liberation Mono',monospace";
 
 // Màn hình ≤ 600 px: key 34 ký tự cỡ 14 px vừa một dòng ở 375 px. Bảng màu tối theo website.
@@ -28,6 +39,11 @@ const STYLE = [
   "@media (prefers-color-scheme:dark){.bg{background:#080d18!important}.card{background:#111a2d!important;border-color:#1f2c47!important}.ink{color:#eef3fb!important}.ink2{color:#c3cde0!important}.ink3{color:#98a5bf!important}.keybox{background:#12274a!important;border-color:#2b3b5c!important}.key{color:#8fc0ff!important}.soft{background:#0c1322!important;border-color:#1f2c47!important}.rule{border-color:#1f2c47!important}.num{background:#12274a!important;color:#8fc0ff!important}a{color:#8fc0ff!important}}",
 ].join("\n");
 
+// Hộp thư lấy dòng xem trước từ đầu thư: chữ preheader rồi nối tiếp chữ thân thư, mà key nằm ở khoảng ký tự 75–126 của thân thư.
+// Đệm 100 cặp &zwnj;&nbsp; (không hiện) sau preheader để dòng xem trước hết chỗ trước khi tới key (dòng này hiện cả ở thông báo
+// trên điện thoại).
+const PREHEADER_PAD = "&zwnj;&nbsp;".repeat(100);
+
 const ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
 export function escapeHtml(text: string): string {
@@ -36,8 +52,11 @@ export function escapeHtml(text: string): string {
 
 /** Cả thư. `rows` là các hàng `<tr>` của thẻ thư: mainRow, rồi RULE_ROW và englishRow, hay END_ROW khi không có phần tiếng Anh. */
 export function emailPage(lang: Lang, subject: string, preheader: string, rows: string): string {
+  const font = FONTS[lang];
+  // Tiếng Hàn ngắt dòng theo từ, không ngắt giữa một từ (như website).
+  const wrap = lang === "ko" ? "word-break:keep-all;overflow-wrap:break-word;" : "";
   return `<!doctype html>
-<html lang="${lang}">
+<html lang="${HTML_LANG[lang]}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -49,16 +68,18 @@ ${STYLE}
 </style>
 </head>
 <body class="bg" style="margin:0;padding:0;background:${C.bg};">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(preheader)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(preheader)}${PREHEADER_PAD}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background:${C.bg};">
 <tr><td align="center" class="outer" style="padding:32px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card" style="max-width:560px;background:${C.card};border:1px solid ${C.line};border-radius:14px;font-family:${FONT};">
+<!--[if mso]><table role="presentation" width="560" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card" style="max-width:560px;background:${C.card};border:1px solid ${C.line};border-radius:14px;font-family:${font};${wrap}">
 <tr><td class="pad" style="padding:24px 32px 0;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${C.brand};vertical-align:middle;"></span><span class="ink" style="font-size:15px;font-weight:700;color:${C.ink};vertical-align:middle;letter-spacing:.2px;">&nbsp;AI Translator</span></td></tr>
 ${rows}
 </table>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;font-family:${FONT};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;font-family:${font};">
 <tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.io.vn</a></td></tr>
 </table>
+<!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
 </table>
 </body>
@@ -124,6 +145,10 @@ export function compactSteps(title: string, steps: readonly string[]): string {
   return `<p class="ink2" style="margin:0 0 14px;font-size:14px;line-height:22px;color:${C.ink2};">${body}</p>`;
 }
 
-/** Một câu trả lời của hỗ trợ: giữ nguyên văn và xuống dòng như người vận hành gõ. */
+/**
+ * Một câu trả lời của hỗ trợ: giữ nguyên văn và xuống dòng như người vận hành gõ. Xuống dòng thành <br> vì Outlook cho Windows
+ * không bảo đảm white-space:pre-wrap; pre-wrap vẫn giữ để các khoảng trắng liền nhau không bị gộp. Tin từ Zalo giữ nguyên văn nên
+ * có thể có \r\n: mỗi lần xuống dòng là đúng một <br> (CR còn sót thì dưới pre-wrap thành thêm một dòng).
+ */
 export const replyBox = (text: string) =>
-  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr><td class="soft ink" style="background:${C.bg};border:1px solid ${C.line};border-radius:10px;padding:14px 16px;font-size:15px;line-height:23px;color:${C.ink};white-space:pre-wrap;">${escapeHtml(text)}</td></tr></table>`;
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr><td class="soft ink" style="background:${C.bg};border:1px solid ${C.line};border-radius:10px;padding:14px 16px;font-size:15px;line-height:23px;color:${C.ink};white-space:pre-wrap;">${escapeHtml(text).replace(/\r\n?|\n/g, "<br>")}</td></tr></table>`;

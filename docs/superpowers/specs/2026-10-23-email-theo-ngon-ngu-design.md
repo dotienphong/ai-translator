@@ -55,12 +55,19 @@ Bản mẫu đã duyệt: https://claude.ai/artifact/TkNhF57MUGmb6DctvdMKCj. Ch�
 
 - HTML dựng bằng bảng (`<table role="presentation">`), mọi kiểu đặt inline; thêm một khối `<style>` cho cỡ màn hình nhỏ và hộp thư tối. Không dùng ảnh (hầu hết hộp thư chặn ảnh từ xa, và tải ảnh là một cách theo dõi người đọc), không font web, không script, không form.
 - Nền ngoài `#f1f5fb`, thẻ thư trắng rộng tối đa 560 px, viền `#dfe7f2`, bo 14 px. Màu theo website (`website/src/assets/site.css`): chữ `#0b1322`, chữ phụ `#3d4a63`, chữ mờ `#6b7891`, xanh thương hiệu `#1d63c9`, xanh đậm `#0f4aa3`, xanh nhạt `#e7f0ff`.
-- Font hệ thống, có font CJK dự phòng: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Hiragino Sans', 'Yu Gothic', 'PingFang SC', 'Microsoft YaHei', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`. Key dùng font đơn cách `'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace`.
+- Outlook cho Windows (vẽ bằng Word) bỏ qua `max-width`: thẻ thư và bảng chân thư được bọc trong một bảng "ma" rộng 560 px chỉ Outlook thấy (`<!--[if mso]>…<![endif]-->`), để thẻ không giãn hết cửa sổ.
+- Font hệ thống, chọn theo ngôn ngữ của thư như website (`site.css`, `html:lang(…)`): mỗi thư chỉ có font CJK của ngôn ngữ đó, để chữ Hán tiếng Trung không vẽ theo dáng Nhật hay lẫn hai font trong một dòng. Chuỗi Latin chung `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial`, rồi:
+  - `vi`, `en`: `sans-serif` (không có font CJK);
+  - `ja`: `'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', Meiryo, sans-serif`;
+  - `zh`: `'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif`;
+  - `ko`: `'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`, và thẻ thư thêm `word-break: keep-all; overflow-wrap: break-word` (ngắt dòng theo từ, như website).
+
+  Chuỗi font dùng cho cả thẻ thư lẫn bảng chân thư. Key dùng font đơn cách `'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace`.
 - Đầu thư: ô vuông xanh 10 px và chữ "AI Translator" đậm. Chân thư (ngoài thẻ): "AI Translator · aitranslator.io.vn" (link tới trang chủ).
 - Màn hình hẹp (≤ 600 px): thẻ bỏ bo góc và viền hai bên, lề trong 20 px, key cỡ 14 px không giãn chữ (key 34 ký tự vừa một dòng ở 375 px).
-- Hộp thư tối: khai báo `color-scheme: light dark`; khối `@media (prefers-color-scheme: dark)` đổi màu theo bộ màu tối của website (nền `#080d18`, thẻ `#111a2d`, chữ `#eef3fb`, ô key `#12274a`, key `#8fc0ff`). Gmail bỏ qua khối này và tự đảo màu theo cách riêng; thiết kế sáng vẫn đọc được khi bị đảo.
-- `<html lang>` theo ngôn ngữ của khách; phần tiếng Anh nằm trong khối có `lang="en"`.
-- Dòng xem trước ẩn (preheader) đặt ngay đầu `<body>`: thư key ghi gói và ngày hết hạn của key đầu tiên (không ghi key, vì dòng này hiện ở thông báo của điện thoại); thư hỗ trợ ghi câu dẫn.
+- Hộp thư tối: khai báo `color-scheme: light dark`; khối `@media (prefers-color-scheme: dark)` đổi màu theo bộ màu tối của website (nền `#080d18`, thẻ `#111a2d`, chữ `#eef3fb`, ô key `#12274a`, key `#8fc0ff`). Gmail dùng khối `<style>` trong `<head>` (kể cả media query `max-width` của màn hình hẹp) nhưng bỏ phần `prefers-color-scheme` và tự đảo màu theo cách riêng; thiết kế sáng vẫn đọc được khi bị đảo.
+- `<html lang>` theo ngôn ngữ của khách, tiếng Trung là `zh-Hans` (chữ giản thể, như app `htmlLang` và website); phần tiếng Anh nằm trong khối có `lang="en"`.
+- Dòng xem trước ẩn (preheader) đặt ngay đầu `<body>`: thư key ghi gói và ngày hết hạn của key đầu tiên (không ghi key, vì dòng này hiện ở thông báo của điện thoại); thư hỗ trợ ghi câu dẫn. Hộp thư nối chữ thân thư vào sau preheader cho đủ dòng xem trước, mà key nằm gần đầu thân thư; nên ngay sau chữ preheader, trong cùng khối ẩn, có 100 lần `&zwnj;&nbsp;` (không hiện) để dòng xem trước hết chỗ trước khi tới key.
 - Mọi chuỗi động (key, tên gói, ngày, câu trả lời hỗ trợ) đều qua hàm escape HTML. Link chỉ trỏ tới `https://aitranslator.io.vn` (đường cố định trong mã), không thêm tham số theo dõi. Không bật theo dõi mở thư hay bấm link của Resend.
 
 ### Thư license key
@@ -79,7 +86,7 @@ Chỉ thư lấy lại key mới có thể có nhiều key. Khi thư có từ 2 
 
 ### Thư trả lời hỗ trợ
 
-Phần ngôn ngữ của khách: nhãn "Hỗ trợ", tiêu đề "Hỗ trợ đã trả lời bạn", câu dẫn, mỗi câu trả lời một ô nền nhạt (giữ nguyên văn, giữ xuống dòng bằng `white-space: pre-wrap`, escape HTML), rồi câu "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat…". Phần tiếng Anh: nhãn, tiêu đề nhỏ, "AI Translator support has replied to your message (above).", câu trả lời thư hay mở lại chat.
+Phần ngôn ngữ của khách: nhãn "Hỗ trợ", tiêu đề "Hỗ trợ đã trả lời bạn", câu dẫn, mỗi câu trả lời một ô nền nhạt (giữ nguyên văn, escape HTML; mỗi lần xuống dòng, kể cả `\r\n`, thành một `<br>` vì Outlook cho Windows không bảo đảm `white-space: pre-wrap`; `pre-wrap` vẫn giữ để khoảng trắng liền nhau không bị gộp), rồi câu "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat…". Phần tiếng Anh: nhãn, tiêu đề nhỏ, "AI Translator support has replied to your message (above).", câu trả lời thư hay mở lại chat.
 
 ### Bản chữ thuần
 
@@ -173,7 +180,7 @@ App (Rust): body của `checkout` và `recover` có `lang` đúng mã của ngô
 
 Website: các test sẵn có (ngày của văn bản pháp lý trùng nhau giữa vi và en, không nêu công nghệ lõi).
 
-Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn ngữ, bấm "Gửi lại key" với email của chủ dự án; xem thư ở Gmail (web và điện thoại) và Apple Mail (sáng và tối): đúng ngôn ngữ, phần tiếng Anh ở dưới (trừ tiếng Anh), key chọn được, link mở đúng trang.
+Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn ngữ, bấm "Gửi lại key" với email của chủ dự án; xem thư ở Gmail (web và điện thoại), Apple Mail (sáng và tối) và Outlook cho Windows: đúng ngôn ngữ, phần tiếng Anh ở dưới (trừ tiếng Anh), key chọn được, link mở đúng trang.
 
 ## 8. Ngoài phạm vi
 
