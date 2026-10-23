@@ -54,23 +54,37 @@ async function check(ctx) {
   return { latest, upstream, results };
 }
 
-/** Điều kiện trước khi đăng hay quay lại (spec mục 3.1 bước 1). */
+/** Điều kiện trước khi đăng hay quay lại (spec mục 3.1 bước 1). Trả commit `HEAD` lúc kiểm, để so lại khi gõ y. */
 function preflight({ io }) {
   const branch = io.run("git", ["branch", "--show-current"]).trim();
   if (branch !== "main") throw new Error(`Phải chạy ở nhánh main (đang ở ${branch || "HEAD rời"}).`);
   if (io.run("git", ["status", "--porcelain"]).trim()) throw new Error("Cây làm việc chưa sạch: commit hay cất các thay đổi trước.");
   io.run("git", ["fetch", "--quiet", "origin", "main"]);
-  if (io.run("git", ["rev-parse", "HEAD"]).trim() !== io.run("git", ["rev-parse", "origin/main"]).trim()) {
+  const head = io.run("git", ["rev-parse", "HEAD"]).trim();
+  if (head !== io.run("git", ["rev-parse", "origin/main"]).trim()) {
     throw new Error("main ở máy khác origin/main: pull hay push trước.");
   }
   if (!io.run("rclone", ["listremotes"]).split("\n").includes("r2:")) {
     throw new Error("rclone chưa có remote r2: (runbook docs/release/phat-hanh.md mục 13).");
   }
   ghEnv(io);
-  io.run("pnpm", ["--dir", "server", "exec", "wrangler", "whoami"]); // đăng nhập thật, không chỉ có lệnh
+  io.run("pnpm", ["--dir", "server", "exec", "wrangler", "whoami", "--json"]); // `--json` mới thoát khác 0 khi chưa đăng nhập
   io.run("curl", ["--version"]);
   io.run("uv", ["--version"]);
   io.run("cargo", ["--version"]);
+  return head;
+}
+
+/**
+ * Lúc gõ y: `main` phải còn đúng commit đã kiểm ở `preflight` (kế hoạch được dựng trên repo lúc đó, mà cổng kiểm có thể
+ * chạy cả giờ). Trả commit để ghi vào `plan.head`.
+ */
+function holdHead(io, preflightHead) {
+  const head = recordHead(io);
+  if (head !== preflightHead) {
+    throw new Error(`main đã đổi trong lúc chuẩn bị (${preflightHead.slice(0, 7)} → ${head.slice(0, 7)}): chạy lại từ đầu.`);
+  }
+  return head;
 }
 
 /** Đẩy main hủy lượt CI đang chạy trên main (cancel-in-progress): báo trước câu hỏi y/N. */
@@ -88,7 +102,7 @@ function warnCi({ io }) {
 }
 
 /** Hỏi rồi thực hiện kế hoạch; ghi state.json trước bước đầu tiên để chạy lại được. */
-async function confirmAndPublish(ctx, plan, question) {
+async function confirmAndPublish(ctx, plan, question, preflightHead) {
   const { io, paths } = ctx;
   warnCi(ctx);
   console.log(
@@ -98,7 +112,7 @@ async function confirmAndPublish(ctx, plan, question) {
     console.log("Không đăng.");
     return 0;
   }
-  plan.head = recordHead(io); // từ đây main phải đứng yên tới khi đẩy xong (repoStage)
+  plan.head = holdHead(io, preflightHead); // từ đây main phải đứng yên tới khi đẩy xong (repoStage)
   saveState(ctx, plan);
   await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, state: paths.state, repo: paths.repo });
   clearState(ctx);
@@ -134,7 +148,7 @@ async function update(ctx) {
   const { io, paths } = ctx;
   const pending = loadState(ctx);
   if (pending) return resume(ctx, pending);
-  preflight(ctx);
+  const preflightHead = preflight(ctx);
   const { latest, upstream, results } = await check(ctx);
   if (results.some((r) => r.status === "stop")) {
     console.log("\nCó mục phải dừng (xem bảng). Không đăng gì.");
@@ -210,18 +224,19 @@ async function update(ctx) {
       console.log("Không ghi nhận.");
       return 0;
     }
+    holdHead(io, preflightHead);
     commitRecord(io, plan, paths.repo);
     console.log("Đã ghi nhận và đẩy main.");
     return 0;
   }
   console.log(`\n${planTable(plan, body)}`);
-  return confirmAndPublish(ctx, plan, "Đăng bản model mới cho người dùng? [y/N] ");
+  return confirmAndPublish(ctx, plan, "Đăng bản model mới cho người dùng? [y/N] ", preflightHead);
 }
 
 async function rollback(ctx, sequence) {
   const { io, paths } = ctx;
   if (loadState(ctx)) throw new Error(`Còn lượt đăng dở (${stateFile(ctx)}): chạy pnpm models:update để làm tiếp, hay xóa file đó.`);
-  preflight(ctx);
+  const preflightHead = preflight(ctx);
   const latest = await checkLiveManifest(io, paths.released, ctx.keys);
   if (sequence >= latest.sequence) throw new Error(`--rollback-to ${sequence}: manifest đang chạy là số ${latest.sequence}, phải chọn số nhỏ hơn.`);
   const targetPath = join(paths.released, `body-${sequence}.json`);
@@ -257,7 +272,7 @@ async function rollback(ctx, sequence) {
     return 0;
   }
   console.log(`\n${planTable(plan, current)}`);
-  return confirmAndPublish(ctx, plan, `Quay các model về như manifest số ${sequence}? [y/N] `);
+  return confirmAndPublish(ctx, plan, `Quay các model về như manifest số ${sequence}? [y/N] `, preflightHead);
 }
 
 /** Cổng kiểm với file đang phát hành của `id` (hiệu chỉnh: phải đạt). Kết quả giữ trong target/, không commit. */

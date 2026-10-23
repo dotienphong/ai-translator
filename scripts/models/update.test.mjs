@@ -1519,8 +1519,11 @@ test("publishManifest: manifest đang chạy không phải số base của kế 
 function publishPlan(repo) {
   const file = join(repo, "model.gguf");
   writeFileSync(file, "noi dung");
+  const gate = join(repo, "gate");
+  mkdirSync(gate, { recursive: true });
   return {
     ...smallPlan(),
+    bench: [{ from: gate, to: "bench/model-updates/x" }],
     uploads: [{ key: "models/hy-mt2/bbbbbbbbbbbb/f.gguf", path: file, sha256: sha256("noi dung") }],
   };
 }
@@ -1637,32 +1640,62 @@ test("restoreUpstream ghi sha256 của file bị gỡ vào rejected; checkUpstre
 const Q8_TEXT = "noi dung q8 cu";
 const FLOW_KEY = await testKey("test-flow", "ai-translator update flow test key");
 
+const NOTICE_OLD = "NOTICE cũ: danh sách giấy phép của bản đang quay về";
+
 /**
  * Repo giả cho luồng: released có body-3 (Q8 có SHA khớp `Q8_TEXT`) và body-4 (đang chạy, Q8 khác); upstream.json và
- * models.config.json khớp body-4. `live`: phần thân manifest "đang chạy" trên R2 (mặc định body-4). `r2`: file Q8 cũ trên R2
- * ("ok", "missing", "wrong"). `git`: trạng thái git giả. `answers`: câu trả lời lần lượt của người vận hành.
+ * models.config.json khớp body-4. Tùy chọn:
+ * - `live`: phần thân manifest "đang chạy" trên R2 (mặc định body-4);
+ * - `r2`: file Q8 cũ trên R2 ("ok", "missing", "wrong");
+ * - `git`, `status`: trạng thái git giả; `answers`: câu trả lời lần lượt của người vận hành;
+ * - `fail(lệnh)`: lệnh (cả dòng) nào thì ném lỗi;
+ * - `published`: nội dung file Q8 đang phát hành ở body-4 (mặc định SHA giả);
+ * - `trim`: upstream.json chỉ còn mục Q8 (cho luồng cập nhật, đỡ phải giả cả nguồn khác); `rejected`: dòng rejected của Q8;
+ * - `source`: `{ text, revision }`, nguồn Hugging Face hiện có file Q8 là `text`;
+ * - `notice`: NOTICE đổi giữa body-3 và body-4; `noticeServed`: nội dung trả khi tải lại NOTICE bằng `io.text`.
  */
-async function flowRig(t, { live, r2 = "ok", git = {}, answers = [], skipBody3 = false, status = "" } = {}) {
+async function flowRig(
+  t,
+  { live, r2 = "ok", git = {}, answers = [], skipBody3 = false, status = "", fail, published, trim = false, rejected, source, notice = false, noticeServed = NOTICE_OLD } = {},
+) {
   const root = temp(t);
   const released = join(root, "scripts/models/released");
   mkdirSync(released, { recursive: true });
   const b3 = body3();
   const q8 = b3.files.find((f) => f.id === Q8_ID);
   Object.assign(q8, { bytes: Buffer.byteLength(Q8_TEXT), sha256: sha256(Q8_TEXT) });
-  const b4 = bumpBody(b3, { [Q8_ID]: { ...q8, version: "bbbbbbb", url: "hy-mt2/bbbbbbbbbbbb/Hy-MT2-1.8B-Q8_0.gguf", sha256: SHA("7"), bytes: 1 } }, "2026-10-24T00:00:00Z");
+  const now = published === undefined ? { sha256: SHA("7"), bytes: 1 } : { sha256: sha256(published), bytes: Buffer.byteLength(published) };
+  const replace = { [Q8_ID]: { ...q8, version: "bbbbbbb", url: "hy-mt2/bbbbbbbbbbbb/Hy-MT2-1.8B-Q8_0.gguf", ...now } };
+  if (notice) {
+    const old = b3.files.find((f) => f.id === "notice");
+    Object.assign(old, { bytes: Buffer.byteLength(NOTICE_OLD), sha256: sha256(NOTICE_OLD) });
+    replace.notice = { ...old, version: "2", url: "notice/2-12345678/NOTICE.txt", sha256: SHA("8"), bytes: 1 };
+  }
+  const b4 = bumpBody(b3, replace, "2026-10-24T00:00:00Z");
   if (!skipBody3) writeFileSync(join(released, "body-3.json"), serializeJson(b3));
   writeFileSync(join(released, "body-4.json"), serializeJson(b4));
-  const upstream = applyUpstream(readJson("scripts/models/upstream.json"), Q8_ID, { revision: REV("b"), content: `sha256:${SHA("7")}` }, 4, null);
+  let upstream = applyUpstream(readJson("scripts/models/upstream.json"), Q8_ID, { revision: REV("b"), content: `sha256:${now.sha256}` }, 4, null);
+  if (trim) upstream.entries = { [Q8_ID]: upstream.entries[Q8_ID] };
+  if (rejected) upstream.entries[Q8_ID].rejected = rejected;
   writeFileSync(join(root, "upstream.json"), serializeJson(upstream));
   writeFileSync(join(root, "models.config.json"), readFileSync(resolve(REPO, "scripts/models/models.config.json")));
+  for (const name of ["NOTICE.txt", "NOTICE-fast.txt"]) {
+    writeFileSync(join(root, "scripts/models", name), readFileSync(resolve(REPO, "scripts/models", name)));
+  }
   const liveBody = live ?? b4;
   const envelope = await signBody(FLOW_KEY.privateKey, FLOW_KEY.kid, JSON.stringify(liveBody));
   const state = gitState({ status, ...git });
   const gitAnswer = gitAnswers(state);
   const asked = [];
   const answersLeft = [...answers];
+  const hfApi = source && {
+    sha: source.revision,
+    cardData: { license: "apache-2.0" },
+    siblings: [{ rfilename: "Hy-MT2-1.8B-Q8_0.gguf", lfs: { sha256: sha256(source.text), size: Buffer.byteLength(source.text) } }],
+  };
   const io = fakeIo({
     run(cmd, args) {
+      if (fail?.([cmd, ...args].join(" "))) return new Error("lỗi giả");
       if (cmd === "git") {
         // `status --porcelain` (preflight) và `status --porcelain -z …` (repoStage) trả hai thứ khác nhau.
         if (args[0] === "status") return args.includes("-z") ? (git.statusZ ?? "") : state.status;
@@ -1677,8 +1710,17 @@ async function flowRig(t, { live, r2 = "ok", git = {}, answers = [], skipBody3 =
       }
       return "";
     },
-    text: (url) => (url.startsWith(MANIFEST_URL) ? JSON.stringify(envelope) : Q8_TEXT),
-    download: () => (r2 === "wrong" ? "khac hoan toan" : Q8_TEXT),
+    text(url) {
+      if (url.startsWith(MANIFEST_URL)) return JSON.stringify(envelope);
+      if (url.includes("/api/models/")) return JSON.stringify(hfApi);
+      if (url.includes("/notice/")) return noticeServed;
+      return Q8_TEXT;
+    },
+    download(url) {
+      if (url.includes("/resolve/")) return source.text;
+      if (url.includes("/notice/")) return NOTICE_OLD;
+      return r2 === "wrong" ? "khac hoan toan" : Q8_TEXT;
+    },
   });
   const ctx = {
     io,
@@ -1696,12 +1738,12 @@ async function flowRig(t, { live, r2 = "ok", git = {}, answers = [], skipBody3 =
     },
     keys: [{ kid: FLOW_KEY.kid, x: FLOW_KEY.x }],
   };
-  return { ctx, io, asked, root, b3, b4, stateFile: join(root, "state", "state.json") };
+  return { ctx, io, asked, root, b3, b4, git: state, stateFile: join(root, "state", "state.json") };
 }
 
 const quiet = (t) => {
-  t.mock.method(console, "log", () => {});
   t.mock.method(console, "warn", () => {});
+  return t.mock.method(console, "log", () => {});
 };
 
 test("luồng quay lại: kiểm điều kiện trước (nhánh, cây sạch, main khớp origin, công cụ)", async (t) => {
@@ -1711,7 +1753,9 @@ test("luồng quay lại: kiểm điều kiện trước (nhánh, cây sạch, m
   await assert.rejects(run({ mode: "rollback", sequence: 3 }, (await flowRig(t, { git: { origin: "h1" } })).ctx), /main ở máy khác origin\/main/);
   const rig = await flowRig(t, { answers: ["n"] });
   assert.equal(await run({ mode: "rollback", sequence: 3 }, rig.ctx), 0);
-  assert.ok(rig.io.calls.includes("pnpm --dir server exec wrangler whoami"), "wrangler đăng nhập thật");
+  assert.ok(rig.io.calls.includes("pnpm --dir server exec wrangler whoami --json"), "wrangler đăng nhập thật: --json mới thoát khác 0 khi chưa đăng nhập");
+  const loggedOut = await flowRig(t, { fail: (c) => c === "pnpm --dir server exec wrangler whoami --json" });
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, loggedOut.ctx), /lỗi giả/);
   assert.ok(rig.io.calls.includes("curl --version"));
   const noRemote = await flowRig(t);
   noRemote.io.run = ((orig) => (cmd, args, opts) => (cmd === "rclone" ? "khác:\n" : orig(cmd, args, opts)))(noRemote.io.run);
@@ -1795,4 +1839,35 @@ test("luồng làm tiếp: manifest đang chạy đã là bản của lượt d�
   writePending(other);
   await assert.rejects(run({ mode: "update" }, other.ctx), /nhưng manifest đang chạy là số 7/);
   assert.ok(existsSync(other.stateFile));
+});
+
+test("publish fresh: file đã chuẩn bị (tải lên, kết quả đo) không còn thì dừng trước khi ghi gì (cargo clean)", async (t) => {
+  const repo = temp(t);
+  const work = temp(t);
+  const message = /File đã chuẩn bị không còn \(có thể do cargo clean\): bỏ lượt này theo runbook mục 13\.3 rồi chạy lại từ đầu\./;
+  const noUpload = publishPlan(repo);
+  rmSync(noUpload.uploads[0].path);
+  const io = ciIo({ git: { head: "h0", origin: "h0" } });
+  await assert.rejects(publish(io, noUpload, { save() {}, work, repo }), message);
+  const noBench = publishPlan(repo);
+  rmSync(noBench.bench[0].from, { recursive: true });
+  await assert.rejects(publish(io, noBench, { save() {}, work, repo }), message);
+  assert.ok(!existsSync(join(repo, noBench.bodyRel)), "chưa ghi file nào");
+  for (const prefix of ["pnpm build", "cargo", "rclone", "git add", "git commit", "git push"]) {
+    assert.ok(!io.calls.some((c) => c.startsWith(prefix)), prefix);
+  }
+});
+
+test("luồng: main đổi giữa lúc chuẩn bị và lúc gõ y thì không đăng, không ghi state", async (t) => {
+  quiet(t);
+  const rig = await flowRig(t, { answers: ["y"] });
+  const ask = rig.ctx.ask;
+  rig.ctx.ask = async (question) => {
+    rig.git.head = "h1"; // người khác đẩy main, máy này pull trong lúc đang chạy
+    rig.git.origin = "h1";
+    return ask(question);
+  };
+  await assert.rejects(run({ mode: "rollback", sequence: 3 }, rig.ctx), /main đã đổi trong lúc chuẩn bị \(h0 → h1\): chạy lại từ đầu\./);
+  assert.ok(!existsSync(rig.stateFile));
+  assert.ok(!rig.io.calls.some((c) => c.startsWith("git commit") || c.startsWith("git push") || c.startsWith("rclone copyto")));
 });

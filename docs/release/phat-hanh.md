@@ -1369,7 +1369,7 @@ Spec: `docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md`.
 - Chạy ở thư mục chính, nhánh `main`, cây sạch, khớp `origin/main`. Không có phiên nào khác đang sửa `main`.
 - rclone có remote `r2:` (token R2 chỉ quyền object, vì vậy lệnh dùng `--s3-no-check-bucket`).
 - `gh auth login` với tài khoản `dotienphong` (lệnh tự lấy token bằng `gh auth token --user dotienphong`).
-- wrangler đã đăng nhập (lệnh chạy `pnpm --dir server exec wrangler whoami` và dừng nếu lỗi).
+- wrangler đã đăng nhập (lệnh chạy `pnpm --dir server exec wrangler whoami --json`, chỉ bản `--json` mới thoát khác 0 khi chưa đăng nhập, và dừng nếu lỗi).
 - `uv`, `cargo`, `curl`, dữ liệu thử `bench/phase0/data/` và `tools/llama-b11146/` có sẵn.
 - Ổ còn trống trên 10 GB (bản mới tải vào `target/models-update/`).
 
@@ -1402,7 +1402,7 @@ Mọi trường hợp khác (sai nhánh, `main` ở máy khác `origin/main`, c�
 
 - *Chưa commit:* xóa `.models-update/state.json`, rồi `git checkout -- scripts/models` và `git clean -fd -- scripts/models/released bench/model-updates`. File đã tải lên R2 mà chưa manifest nào trỏ tới thì vô hại.
 - *Đã commit, chưa đẩy:* xóa `.models-update/state.json`, rồi `git reset --hard origin/main`.
-- *Đẩy bị từ chối vì `main` đã tiến lên:* lệnh không hỗ trợ làm tiếp tay. `git pull`, xóa `.models-update/state.json` (và hoàn tác như hai mục trên nếu cần), chạy lại từ đầu.
+- *Đẩy bị từ chối vì `main` đã tiến lên:* lệnh không hỗ trợ làm tiếp tay. Xóa `.models-update/state.json`, rồi `git reset --hard origin/main` (bỏ commit chưa đẩy và các file đã ghi; cần reset trước, vì cây còn commit cũ thì `git pull` sẽ trộn nó vào), sau đó chạy lại từ đầu.
 - *Đã đẩy:* **không** hoàn tác commit (CI có thể đã ký số N+1, bản ký nằm trong artifact của lượt chạy). Chỉ có hai đường: chạy lại để làm tiếp cho xong, hoặc làm tiếp cho xong rồi `pnpm models:update --rollback-to N` để quay các model về như số N.
 
 `--rollback-to` từ chối chạy khi còn `.models-update/state.json` (làm tiếp hay xóa lượt dở trước).

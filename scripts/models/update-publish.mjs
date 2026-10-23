@@ -254,6 +254,11 @@ export function publishManifest(io, signedPath, work, plan) {
 export async function publish(io, plan, { save, work, state = work, repo = REPO }) {
   const stage = repoStage(io, plan);
   if (stage === "fresh") {
+    // Chạy lại sau `cargo clean` thì file model đã chuẩn bị (trong target/) không còn: dừng trước khi ghi gì vào repo.
+    const missing = [...plan.uploads.map((u) => u.path), ...plan.bench.map((b) => b.from)].filter((p) => !existsSync(p));
+    if (missing.length) {
+      throw new Error(`File đã chuẩn bị không còn (có thể do cargo clean): bỏ lượt này theo runbook mục 13.3 rồi chạy lại từ đầu. Thiếu: ${missing.join(", ")}`);
+    }
     writeFiles(plan, repo);
     checkManifestBody(io, plan, repo);
   }
