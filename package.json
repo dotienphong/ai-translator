@@ -15,7 +15,7 @@
     "models:update": "node scripts/models/update.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.12.1",
+    "@tauri-apps/api": "2.12.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zustand": "5.0.15"
