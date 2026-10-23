@@ -72,7 +72,7 @@ Creem rẻ hơn Polar khi rút từ khoảng 700 USD trở lên (mức 1%); dư�
 ### 5.1 Tài khoản, chi trả, điều khoản *(nguồn)*
 
 - Luồng đăng ký: thông tin doanh nghiệp (hay cá nhân) → xác minh danh tính (KYC) → tài khoản chi trả → Creem xét duyệt → bật thanh toán thật. Xét duyệt 1–2 ngày làm việc, tối đa 3.
-- Điều kiện duyệt: sản phẩm chạy thật, có Chính sách quyền riêng tư và Điều khoản, giá hiển thị, email hỗ trợ khớp với website, không vi phạm nhãn hiệu. Creem có thể mua thử bằng mã giảm giá 100%. Website `aitranslator.io.vn` đã có các trang này.
+- Điều kiện duyệt: sản phẩm chạy thật, có Chính sách quyền riêng tư và Điều khoản, giá hiển thị, email hỗ trợ khớp với website, không vi phạm nhãn hiệu. Creem có thể mua thử bằng mã giảm giá 100%. Website `aitranslator.vn` đã có các trang này.
 - Bán được phần mềm và SaaS. Quy tắc riêng về AI chỉ áp cho sản phẩm tạo ảnh hay video; "Generative AI products" (tạo ảnh, tạo video) nằm ở nhóm hạn chế *(suy luận: ứng dụng dịch giọng nói ngoại tuyến không thuộc nhóm này)*.
 - Người bán cá nhân: tài khoản chi trả phải là tài khoản cá nhân, tên người thụ hưởng khớp KYC.
 - Chi trả vào ngày 1 và 15; tối thiểu 50 USD; chỉ tiền phát sinh trước ngày 8 mới rút được vào ngày 15 (chờ 7–12 ngày để Creem đánh giá rủi ro). Tiền trả theo tiền tệ của tài khoản ngân hàng; khác tiền tệ bán thì đối tác ngân hàng tự quy đổi và thu phí. Creem xuất "hóa đơn ngược" cho mỗi lần rút.

@@ -451,7 +451,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 | `legal.eula` | `Thỏa thuận cấp phép (EULA)` | `License Agreement (EULA)` |
 | `legal.privacy` | `Chính sách quyền riêng tư` | `Privacy Policy` |
 | `legal.loading` | `Đang tải văn bản…` | `Loading the document…` |
-| `legal.missing` | `Không tải được văn bản. Liên hệ support@aitranslator.io.vn.` | `Could not load the document. Contact support@aitranslator.io.vn.` |
+| `legal.missing` | `Không tải được văn bản. Liên hệ support@aitranslator.vn.` | `Could not load the document. Contact support@aitranslator.vn.` |
 | `about.legal` | `Điều khoản và quyền riêng tư` | `Terms and privacy` |
 
 - [ ] **Step 2: Component.** Tạo `src/windows/main/LegalDocument.tsx`:

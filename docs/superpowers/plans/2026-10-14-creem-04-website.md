@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Website `aitranslator.io.vn` (tiếng Việt và tiếng Anh) nói đúng sự thật sau khi có thanh toán bằng thẻ quốc tế: mọi chỗ nhắc giá và cách trả nêu hai cách (VietQR bằng VND qua PayOS, thẻ quốc tế bằng USD qua Creem), giá USD ghi "chưa gồm thuế", các câu cũ "chưa có thẻ quốc tế" bị gỡ và có test chặn, ảnh màn hình Nâng cấp là giao diện mới.
+**Goal:** Website `aitranslator.vn` (tiếng Việt và tiếng Anh) nói đúng sự thật sau khi có thanh toán bằng thẻ quốc tế: mọi chỗ nhắc giá và cách trả nêu hai cách (VietQR bằng VND qua PayOS, thẻ quốc tế bằng USD qua Creem), giá USD ghi "chưa gồm thuế", các câu cũ "chưa có thẻ quốc tế" bị gỡ và có test chặn, ảnh màn hình Nâng cấp là giao diện mới.
 
 **Architecture:** Giá USD nằm một chỗ (`website/src/plans.mjs`, đơn vị cent, test đối chiếu `server/wrangler.jsonc`); các thành phần dựng từ đó (thẻ gói, JSON-LD, `llms.txt`) tự lấy giá. Các trang nội dung (`website/src/content/{vi,en}/*.mjs`) sửa tay từng câu; mỗi nhóm trang có một test kiểu bảng `need` (đường dẫn → các cụm phải xuất hiện) viết trước, thấy đỏ rồi mới sửa. Ba test quét cả site giữ cho điều đó không trôi lại: câu cũ, giá USD lạ, số "nơi app kết nối". Ảnh màn hình Nâng cấp chụp lại từ trang xem trước của app (`scripts/ui-preview`).
 
@@ -491,8 +491,8 @@ Expected: FAIL một test: `Bảng giá và trang chủ nêu hai cách trả, gi
    },
    {
      q: "Có hoàn tiền không?",
--    a: "<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Chi tiết trong <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a>.</p>",
-+    a: "<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Khoản trả bằng thẻ quốc tế do Creem xử lý, nên Creem cũng có thể hoàn tiền theo điều khoản của họ; đơn đã hoàn tiền thì license của đơn đó có thể bị thu hồi. Chi tiết trong <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a>.</p>",
+-    a: "<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.vn kèm mã đơn. Đổi gói không được hoàn tiền. Chi tiết trong <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a>.</p>",
++    a: "<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.vn kèm mã đơn. Đổi gói không được hoàn tiền. Khoản trả bằng thẻ quốc tế do Creem xử lý, nên Creem cũng có thể hoàn tiền theo điều khoản của họ; đơn đã hoàn tiền thì license của đơn đó có thể bị thu hồi. Chi tiết trong <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a>.</p>",
    },
    {
      q: "Tôi cần hóa đơn điện tử cho doanh nghiệp?",
@@ -572,8 +572,8 @@ Expected: FAIL một test: `Bảng giá và trang chủ nêu hai cách trả, gi
    },
    {
      q: "Can I get a refund?",
--    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request within 7 days of the payment date to support@aitranslator.io.vn, with your order number. Changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
-+    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request within 7 days of the payment date to support@aitranslator.io.vn, with your order number. Changing plans is not refundable. Card payments are handled by Creem, which may also issue refunds under its own terms; the license of a refunded order may then be revoked. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
+-    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request within 7 days of the payment date to support@aitranslator.vn, with your order number. Changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
++    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request within 7 days of the payment date to support@aitranslator.vn, with your order number. Changing plans is not refundable. Card payments are handled by Creem, which may also issue refunds under its own terms; the license of a refunded order may then be revoked. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
    },
    {
      q: "Can I get an e-invoice for my company?",
@@ -665,7 +665,7 @@ Expected: FAIL một test: `Bảng giá và trang chủ nêu hai cách trả, gi
    ["Xử lý", "100% trên máy, âm thanh không gửi đi<small>Nhận dạng giọng nói và dịch đều chạy trên máy</small>"],
 -  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR, không tự gia hạn</small>"],
 +  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR (VND) hoặc thẻ quốc tế (USD), không tự gia hạn</small>"],
-   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.io.vn</small>"],
+   ["Bên cung cấp", "Đỗ Tiến Phong<small>Hỗ trợ: support@aitranslator.vn</small>"],
  ])}</div>
  </div></section>
 @@ -198,9 +198,9 @@
@@ -711,7 +711,7 @@ Expected: FAIL một test: `Bảng giá và trang chủ nêu hai cách trả, gi
    ["Processing", "100% on your device; audio is never sent out<small>Speech recognition and translation both run on your device</small>"],
 -  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid in VND by VietQR from a Vietnamese bank, no auto-renewal</small>"],
 +  ["Price", "Free 10-day trial · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid by VietQR (VND) or international card (USD), no auto-renewal</small>"],
-   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.io.vn</small>"],
+   ["Provider", "Đỗ Tiến Phong<small>Support: support@aitranslator.vn</small>"],
  ])}</div>
  </div></section>
 @@ -200,9 +200,9 @@
@@ -910,15 +910,15 @@ Expected: FAIL hai test: `hướng dẫn mua gói và hỏi đáp nêu cả hai 
 +<p>VietQR chỉ nhận chuyển khoản từ ngân hàng Việt Nam, bằng VND, qua PayOS. Thẻ quốc tế tính bằng USD, chưa gồm thuế (nếu có) và do Creem xử lý: sao kê thẻ có thể ghi tên Creem. Giá và hạn mức xem ở <a href="/bang-gia/">bảng giá</a>.</p>
  
  <h2 id="nhap-key">Nhận key qua email và nhập key</h2>
- <p>Key được gửi từ no-reply@mail.aitranslator.io.vn tới email bạn đã nhập. Hãy giữ thư này để cài lại hoặc kích hoạt máy khác; không thấy thư thì kiểm hộp thư rác. Key gồm 7 nhóm 4 ký tự: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
+ <p>Key được gửi từ no-reply@mail.aitranslator.vn tới email bạn đã nhập. Hãy giữ thư này để cài lại hoặc kích hoạt máy khác; không thấy thư thì kiểm hộp thư rác. Key gồm 7 nhóm 4 ký tự: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
 @@ -136,8 +138,9 @@
  <ul>
  <li>“Số tiền nhận được ít hơn giá gói. Chuyển bù cho đơn … trong 24 giờ, hoặc liên hệ hỗ trợ kèm mã đơn này.” Chuyển bù phần thiếu, hoặc liên hệ.</li>
  <li>“Đã nhận tiền nhưng chưa kích hoạt được key trên máy này…” Nhập key trong email ở Cài đặt › Bản quyền.</li>
 +<li>Đã trả bằng thẻ mà app vẫn ghi “Đang chờ thanh toán…”: chờ vài phút (máy chủ của chúng tôi hỏi lại Creem định kỳ), rồi kiểm email xem đã có key chưa. Vẫn không có thì liên hệ hỗ trợ kèm mã đơn và biên lai của Creem.</li>
  </ul>
--<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Chưa có hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
-+<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Khoản trả bằng thẻ quốc tế do Creem xử lý: Creem gửi biên lai tới email bạn nhập và cũng có thể hoàn tiền theo điều khoản của họ; đơn đã hoàn tiền thì license của đơn đó có thể bị thu hồi. Chúng tôi chưa xuất hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
+-<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Chưa có hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
++<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Khoản trả bằng thẻ quốc tế do Creem xử lý: Creem gửi biên lai tới email bạn nhập và cũng có thể hoàn tiền theo điều khoản của họ; đơn đã hoàn tiền thì license của đơn đó có thể bị thu hồi. Chúng tôi chưa xuất hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
  `,
  })}
  ${docNav(
@@ -1008,15 +1008,15 @@ Expected: FAIL hai test: `hướng dẫn mua gói và hỏi đáp nêu cả hai 
 +<p>VietQR is bank transfer from a Vietnamese bank, in VND, through PayOS. International cards are charged in USD, excluding tax (if any), and are handled by Creem: your card statement may show Creem’s name. See the <a href="/en/pricing/">pricing page</a> for prices and quotas.</p>
  
  <h2 id="enter-key">Get your key by email and enter it</h2>
- <p>The key is sent from no-reply@mail.aitranslator.io.vn to the email you entered. Keep that email for reinstalling or activating another computer; if it is missing, check your spam folder. A key has 7 groups of 4 characters: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
+ <p>The key is sent from no-reply@mail.aitranslator.vn to the email you entered. Keep that email for reinstalling or activating another computer; if it is missing, check your spam folder. A key has 7 groups of 4 characters: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
 @@ -136,8 +138,9 @@
  <ul>
  <li>“The amount received is less than the price. Transfer the rest for order … within 24 hours, or contact support with this order number.” Transfer the difference, or contact support.</li>
  <li>“Payment received, but the key could not be activated here…” Enter the key from your email in Settings › License.</li>
 +<li>You paid by card but the app still says “Waiting for your payment…”: wait a few minutes (our server asks Creem again on a schedule), then check your email for the key. If there is still none, contact support with the order number and your Creem receipt.</li>
  </ul>
--<p>Payments are not refundable, except where our fault leaves you unable to use the plan you bought and we cannot fix it within a reasonable time, or where the law says otherwise. Send a request within 7 days of the payment date to support@aitranslator.io.vn with your <strong>order number</strong> (shown on the Upgrade screen as “Order …”); changing plan is not refundable. E-invoices are not available yet; if you need a document, contact support to discuss it. Details are in the <a href="/en/terms/">Terms of use</a> and on the <a href="/en/contact/">contact page</a>.</p>
-+<p>Payments are not refundable, except where our fault leaves you unable to use the plan you bought and we cannot fix it within a reasonable time, or where the law says otherwise. Send a request within 7 days of the payment date to support@aitranslator.io.vn with your <strong>order number</strong> (shown on the Upgrade screen as “Order …”); changing plan is not refundable. Card payments are handled by Creem: Creem emails a receipt to the address you entered and may also refund under its own terms; the license of a refunded order may then be revoked. We do not issue e-invoices yet; if you need a document, contact support to discuss it. Details are in the <a href="/en/terms/">Terms of use</a> and on the <a href="/en/contact/">contact page</a>.</p>
+-<p>Payments are not refundable, except where our fault leaves you unable to use the plan you bought and we cannot fix it within a reasonable time, or where the law says otherwise. Send a request within 7 days of the payment date to support@aitranslator.vn with your <strong>order number</strong> (shown on the Upgrade screen as “Order …”); changing plan is not refundable. E-invoices are not available yet; if you need a document, contact support to discuss it. Details are in the <a href="/en/terms/">Terms of use</a> and on the <a href="/en/contact/">contact page</a>.</p>
++<p>Payments are not refundable, except where our fault leaves you unable to use the plan you bought and we cannot fix it within a reasonable time, or where the law says otherwise. Send a request within 7 days of the payment date to support@aitranslator.vn with your <strong>order number</strong> (shown on the Upgrade screen as “Order …”); changing plan is not refundable. Card payments are handled by Creem: Creem emails a receipt to the address you entered and may also refund under its own terms; the license of a refunded order may then be revoked. We do not issue e-invoices yet; if you need a document, contact support to discuss it. Details are in the <a href="/en/terms/">Terms of use</a> and on the <a href="/en/contact/">contact page</a>.</p>
  `,
  })}
  ${docNav(
@@ -1094,8 +1094,8 @@ Expected: FAIL hai test: `hướng dẫn mua gói và hỏi đáp nêu cả hai 
        },
        {
          q: "Có hoàn tiền không?",
--        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
-+        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Khoản trả bằng thẻ quốc tế do Creem xử lý, nên Creem cũng có thể hoàn tiền theo điều khoản của họ; đơn đã hoàn tiền thì license của đơn đó có thể bị thu hồi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
+-        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.vn kèm mã đơn. Đổi gói không được hoàn tiền. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
++        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu trong 7 ngày kể từ ngày thanh toán tới support@aitranslator.vn kèm mã đơn. Đổi gói không được hoàn tiền. Khoản trả bằng thẻ quốc tế do Creem xử lý, nên Creem cũng có thể hoàn tiền theo điều khoản của họ; đơn đã hoàn tiền thì license của đơn đó có thể bị thu hồi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
        },
        {
          q: "Tôi dùng được key trên mấy máy? Chuyển sang máy khác thế nào?",
@@ -1130,8 +1130,8 @@ Expected: FAIL hai test: `hướng dẫn mua gói và hỏi đáp nêu cả hai 
        },
        {
          q: "Can I get a refund?",
--        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request within 7 days of the payment date to support@aitranslator.io.vn with the order code. Changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
-+        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request within 7 days of the payment date to support@aitranslator.io.vn with the order code. Changing plans is not refundable. Card payments are handled by Creem, which may also issue refunds under its own terms; the license of a refunded order may then be revoked. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
+-        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request within 7 days of the payment date to support@aitranslator.vn with the order code. Changing plans is not refundable. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
++        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request within 7 days of the payment date to support@aitranslator.vn with the order code. Changing plans is not refundable. Card payments are handled by Creem, which may also issue refunds under its own terms; the license of a refunded order may then be revoked. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
        },
        {
          q: "How many devices can I use a key on? How do I move to another one?",
@@ -1373,7 +1373,7 @@ Expected: FAIL một test: `Về chúng tôi, Giải pháp, Tải xuống, Tính
 +  ["Giá sau đó", "Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR (VND) hoặc thẻ quốc tế (USD), không tự gia hạn</small>"],
    ["Model", "Tải một lần, 1,3 hoặc 2,5 GB<small>Sau đó nhận dạng và dịch chạy offline trên máy bạn</small>"],
  ])}</div>
- ${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: "Chỉ cài AI Translator bằng lệnh trên trang này, hoặc từ liên kết do <strong>support@aitranslator.io.vn</strong> hay website <strong>aitranslator.io.vn</strong> gửi cho bạn. Các bản cài từ nguồn khác có thể là bản giả." })}
+ ${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: "Chỉ cài AI Translator bằng lệnh trên trang này, hoặc từ liên kết do <strong>support@aitranslator.vn</strong> hay website <strong>aitranslator.vn</strong> gửi cho bạn. Các bản cài từ nguồn khác có thể là bản giả." })}
 ```
 
 **Sửa `website/src/content/en/download.mjs`** (diff đã kiểm chứng; dòng `-` xóa, dòng `+` thêm):
@@ -1398,7 +1398,7 @@ Expected: FAIL một test: `Về chúng tôi, Giải pháp, Tải xuống, Tính
 +  ["Price afterwards", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR (VND) or international card (USD), no automatic renewal</small>"],
    ["Models", "Downloaded once, 1.3 or 2.5 GB<small>After that, recognition and translation run offline on your machine</small>"],
  ])}</div>
- ${callout({ kind: "ok", title: "Only get the installer from us", text: "Install AI Translator only with the command on this page, or from a link sent by <strong>support@aitranslator.io.vn</strong> or from the website <strong>aitranslator.io.vn</strong>. Installers from any other source may be fake." })}
+ ${callout({ kind: "ok", title: "Only get the installer from us", text: "Install AI Translator only with the command on this page, or from a link sent by <strong>support@aitranslator.vn</strong> or from the website <strong>aitranslator.vn</strong>. Installers from any other source may be fake." })}
 ```
 
 - [ ] **Step 5: Sửa Tính năng và Liên hệ**
@@ -1470,12 +1470,12 @@ Expected: FAIL một test: `Về chúng tôi, Giải pháp, Tải xuống, Tính
    erase: mail("Yêu cầu xóa hoặc ẩn danh dữ liệu cá nhân", ["Tôi yêu cầu xóa/ẩn danh dữ liệu cá nhân gắn với email này.", "(Thư này được gửi từ chính email đã dùng khi mua.)"]),
    security: mail("[Bảo mật] Báo lỗi bảo mật AI Translator", ["Mô tả lỗi:", "Các bước để tái hiện:", "Phiên bản/thành phần bị ảnh hưởng:"]),
 @@ -40,7 +40,7 @@
-     "Liên hệ AI Translator qua email support@aitranslator.io.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
+     "Liên hệ AI Translator qua email support@aitranslator.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
    schemaType: "ContactPage",
    breadcrumbs: crumbs,
 -  modified: "2026-10-08",
 +  modified: "2026-10-14",
-   llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
+   llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
    llmTitle: "Liên hệ và hỗ trợ AI Translator",
    body: () => `
 @@ -86,13 +86,13 @@
@@ -1511,12 +1511,12 @@ Expected: FAIL một test: `Về chúng tôi, Giải pháp, Tải xuống, Tính
    erase: mail("Request to delete or anonymize personal data", ["I ask you to delete or anonymize the personal data linked to this email.", "(Sent from the same email I used to buy.)"]),
    security: mail("[Security] AI Translator security report", ["What I found:", "Steps to reproduce:", "Affected version or component:"]),
 @@ -40,7 +40,7 @@
-     "Contact AI Translator at support@aitranslator.io.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
+     "Contact AI Translator at support@aitranslator.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
    schemaType: "ContactPage",
    breadcrumbs: crumbs,
 -  modified: "2026-10-08",
 +  modified: "2026-10-14",
-   llm: "How to reach us and get support: email support@aitranslator.io.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
+   llm: "How to reach us and get support: email support@aitranslator.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
    llmTitle: "Contact and support for AI Translator",
    body: () => `
 @@ -86,13 +86,13 @@
@@ -1573,11 +1573,11 @@ Expected: FAIL một test: `Về chúng tôi, Giải pháp, Tải xuống, Tính
  <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
  <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
  <tbody>
- <tr><th scope="row">api.aitranslator.io.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key</td></tr>
- <tr><th scope="row">releases.aitranslator.io.vn</th><td>Tải model và kiểm tra, tải bản cập nhật</td><td>Chỉ yêu cầu tải file</td></tr>
+ <tr><th scope="row">api.aitranslator.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key</td></tr>
+ <tr><th scope="row">releases.aitranslator.vn</th><td>Tải model và kiểm tra, tải bản cập nhật</td><td>Chỉ yêu cầu tải file</td></tr>
  <tr><th scope="row">Trang thanh toán PayOS (pay.payos.vn)</th><td>Thanh toán VietQR khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
 +<tr><th scope="row">Trang thanh toán Creem (checkout.creem.io)</th><td>Thanh toán bằng thẻ quốc tế khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
- <tr><th scope="row">aitranslator.io.vn (website này)</th><td>Liên kết ngoài (chính sách, hỗ trợ, trang tải) mở bằng trình duyệt hệ thống</td><td>App không gửi gì</td></tr>
+ <tr><th scope="row">aitranslator.vn (website này)</th><td>Liên kết ngoài (chính sách, hỗ trợ, trang tải) mở bằng trình duyệt hệ thống</td><td>App không gửi gì</td></tr>
  </tbody></table></div>
  
 @@ -92,14 +93,14 @@
@@ -1646,11 +1646,11 @@ Expected: FAIL một test: `Về chúng tôi, Giải pháp, Tải xuống, Tính
  <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
  <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
  <tbody>
- <tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key</td></tr>
- <tr><th scope="row">releases.aitranslator.io.vn</th><td>Downloading models, checking for and downloading app updates</td><td>File download requests only</td></tr>
+ <tr><th scope="row">api.aitranslator.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key</td></tr>
+ <tr><th scope="row">releases.aitranslator.vn</th><td>Downloading models, checking for and downloading app updates</td><td>File download requests only</td></tr>
  <tr><th scope="row">PayOS payment page (pay.payos.vn)</th><td>VietQR payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
 +<tr><th scope="row">Creem payment page (checkout.creem.io)</th><td>International card payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
- <tr><th scope="row">aitranslator.io.vn (this website)</th><td>External links (policies, support, download page) open in your system browser</td><td>The app sends nothing</td></tr>
+ <tr><th scope="row">aitranslator.vn (this website)</th><td>External links (policies, support, download page) open in your system browser</td><td>The app sends nothing</td></tr>
  </tbody></table></div>
  
 @@ -92,14 +93,14 @@
@@ -1807,7 +1807,7 @@ Expected: FAIL một test, đạt hai: `✖ không trang nào (kể cả llms.tx
 +<p>VietQR chỉ dùng được với tài khoản ngân hàng Việt Nam, bằng VND, qua PayOS. Thẻ quốc tế tính bằng USD, chưa gồm thuế (nếu có) và do Creem xử lý: sao kê thẻ có thể ghi tên Creem. Giá và hạn mức xem ở <a href="/bang-gia/">bảng giá</a>.</p>
  
  <h2 id="nhap-key">Nhận key qua email và nhập key</h2>
- <p>Key được gửi từ no-reply@mail.aitranslator.io.vn tới email bạn đã nhập. Hãy giữ thư này để cài lại hoặc kích hoạt máy khác; không thấy thư thì kiểm hộp thư rác. Key gồm 7 nhóm 4 ký tự: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
+ <p>Key được gửi từ no-reply@mail.aitranslator.vn tới email bạn đã nhập. Hãy giữ thư này để cài lại hoặc kích hoạt máy khác; không thấy thư thì kiểm hộp thư rác. Key gồm 7 nhóm 4 ký tự: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
 ```
 
 **Sửa `website/README.md`** (diff đã kiểm chứng; dòng `-` xóa, dòng `+` thêm):

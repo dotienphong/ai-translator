@@ -121,7 +121,7 @@ Tệp: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`
 kiểm tra cập nhật app và manifest model. Không request nào chứa âm thanh hay nội dung chép lời. |
 ```
 ```new
-kiểm tra cập nhật app và manifest model, và gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.io.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7). Không request nào chứa âm thanh hay nội dung chép lời. |
+kiểm tra cập nhật app và manifest model, và gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7). Không request nào chứa âm thanh hay nội dung chép lời. |
 ```
 
 - [ ] **Step 2: §4.1 bước 1b: ô tùy chọn tích sẵn**
@@ -420,7 +420,7 @@ Tệp: `docs/legal/privacy.vi.md`
 ```new
 ## 10. Báo cáo lỗi
 
-Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chúng tôi qua license server (`api.aitranslator.io.vn`) để chúng tôi biết và sửa lỗi. Tính năng này **bật mặc định**: ở bước Điều khoản khi mở ứng dụng lần đầu có một ô đã tích sẵn mà bạn bỏ tích được, và người dùng đã cài từ trước cũng được bật sau khi cập nhật lên bản có tính năng này. Bạn tắt hay bật lại bất cứ lúc nào ở **Cài đặt › Quyền riêng tư › Gửi báo cáo lỗi tự động**; tắt thì các báo cáo đang chờ gửi bị xóa. Bạn cũng tự gửi được một báo cáo bất cứ lúc nào bằng nút **Gửi log cho hỗ trợ** ở màn hình Giới thiệu: nút này gửi ngay, kể cả khi bạn đã tắt gửi tự động, và cho bạn một **mã báo cáo** để đưa cho bộ phận hỗ trợ.
+Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chúng tôi qua license server (`api.aitranslator.vn`) để chúng tôi biết và sửa lỗi. Tính năng này **bật mặc định**: ở bước Điều khoản khi mở ứng dụng lần đầu có một ô đã tích sẵn mà bạn bỏ tích được, và người dùng đã cài từ trước cũng được bật sau khi cập nhật lên bản có tính năng này. Bạn tắt hay bật lại bất cứ lúc nào ở **Cài đặt › Quyền riêng tư › Gửi báo cáo lỗi tự động**; tắt thì các báo cáo đang chờ gửi bị xóa. Bạn cũng tự gửi được một báo cáo bất cứ lúc nào bằng nút **Gửi log cho hỗ trợ** ở màn hình Giới thiệu: nút này gửi ngay, kể cả khi bạn đã tắt gửi tự động, và cho bạn một **mã báo cáo** để đưa cho bộ phận hỗ trợ.
 
 | Nội dung | Chi tiết |
 |---|---|
@@ -567,7 +567,7 @@ Tệp: `docs/legal/privacy.en.md`
 ```new
 ## 10. Error reports
 
-When the app hits an error, it **automatically sends us an error report** through our license server (`api.aitranslator.io.vn`) so we can find and fix the problem. This is **on by default**: the Terms step the first time you open the app has a pre-ticked box you can untick, and people who installed the app earlier have it on after updating to a version that includes this feature. You can turn it off or on again at any time in **Settings › Privacy › Send error reports automatically**; turning it off deletes any reports still waiting to be sent. You can also send a report yourself at any time with the **Send log to support** button on the About screen: it sends immediately, even if you turned automatic sending off, and gives you a **report code** to hand to support.
+When the app hits an error, it **automatically sends us an error report** through our license server (`api.aitranslator.vn`) so we can find and fix the problem. This is **on by default**: the Terms step the first time you open the app has a pre-ticked box you can untick, and people who installed the app earlier have it on after updating to a version that includes this feature. You can turn it off or on again at any time in **Settings › Privacy › Send error reports automatically**; turning it off deletes any reports still waiting to be sent. You can also send a report yourself at any time with the **Send log to support** button on the About screen: it sends immediately, even if you turned automatic sending off, and gives you a **report code** to hand to support.
 
 | What | Details |
 |---|---|
@@ -718,7 +718,7 @@ cd /Users/dtphong/Desktop/software_business/meeting-translator-work/diagnostics-
 **Files:**
 - Modify: `website/src/content/vi/data-security.mjs`, `website/src/content/en/data-security.mjs`
 
-Test hiện có ghim: câu mở đầu "Đúng năm nơi" / "exactly five places" và số dòng bảng "Các nơi app kết nối" = số mục ở mục 4 của chính sách (5). Vì vậy báo cáo lỗi **không** thêm hàng thứ sáu vào bảng đó: chỉ sửa hàng `api.aitranslator.io.vn`.
+Test hiện có ghim: câu mở đầu "Đúng năm nơi" / "exactly five places" và số dòng bảng "Các nơi app kết nối" = số mục ở mục 4 của chính sách (5). Vì vậy báo cáo lỗi **không** thêm hàng thứ sáu vào bảng đó: chỉ sửa hàng `api.aitranslator.vn`.
 
 - [ ] **Step 1: Tiếng Việt, mục lục, mô tả llm, bảng tóm tắt**
 
@@ -1148,11 +1148,11 @@ Tệp: `website/src/content/en/guide-troubleshooting.mjs`
 Tệp: `website/src/content/vi/guide-troubleshooting.mjs`
 
 ```old
-<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>; trên Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) hay không.</p>
+<p>Mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>; trên Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). Log chỉ nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ. App không tự gửi gì: bạn tự quyết có gửi cho <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.vn) hay không.</p>
 ```
 ```new
 <p>Khi app gặp lỗi (dừng đột ngột, phiên dịch dừng vì lỗi của app, hoặc một công cụ phụ chết rồi tự khởi động lại), nó <strong>tự gửi một báo cáo lỗi</strong> cho chúng tôi: thông tin máy và phần log liên quan, đã che đường dẫn thư mục cá nhân, key, token và email, không có âm thanh hay nội dung chép lời. Báo cáo chỉ được gửi khi app không đang dịch. Tính năng này bật mặc định; bạn tắt ở <strong>Cài đặt › Quyền riêng tư › Gửi báo cáo lỗi tự động</strong>. Xem <a href="/bao-mat-du-lieu/#bao-cao-loi">báo cáo gồm gì và giữ bao lâu</a>.</p>
-<p>Với lỗi không làm app dừng (phụ đề sai, chậm…), hãy vào <strong>Giới thiệu › Gửi log cho hỗ trợ</strong>: app gửi ngay một báo cáo, kể cả khi bạn đã tắt gửi tự động, và hiện một <strong>mã báo cáo</strong> (dạng <code>R-XXXX-XXXX</code>). Ghi mã này vào thư gửi <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.io.vn) để chúng tôi tìm đúng báo cáo của bạn.</p>
+<p>Với lỗi không làm app dừng (phụ đề sai, chậm…), hãy vào <strong>Giới thiệu › Gửi log cho hỗ trợ</strong>: app gửi ngay một báo cáo, kể cả khi bạn đã tắt gửi tự động, và hiện một <strong>mã báo cáo</strong> (dạng <code>R-XXXX-XXXX</code>). Ghi mã này vào thư gửi <a href="/lien-he/">hỗ trợ</a> (support@aitranslator.vn) để chúng tôi tìm đúng báo cáo của bạn.</p>
 <p>Muốn tự xem hay đính kèm log, mở <strong>Giới thiệu › Mở thư mục log</strong> để thấy file <code>app.log</code> (trên macOS: thư mục con <code>com.aitranslator.desktop</code> trong <code>~/Library/Logs/</code>; trên Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). File này nằm trên máy bạn và không chứa âm thanh, nội dung chép lời hay key đầy đủ.</p>
 ```
 
@@ -1179,11 +1179,11 @@ Tệp: `website/src/content/vi/guide-troubleshooting.mjs`
 Tệp: `website/src/content/en/guide-troubleshooting.mjs`
 
 ```old
-<p>Open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: the <code>com.aitranslator.desktop</code> folder inside <code>~/Library/Logs/</code>). Logs stay on your computer and contain no audio, no transcript text and no full license key. The app never sends anything by itself: you decide whether to send them to <a href="/en/contact/">support</a> (support@aitranslator.io.vn).</p>
+<p>Open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: the <code>com.aitranslator.desktop</code> folder inside <code>~/Library/Logs/</code>). Logs stay on your computer and contain no audio, no transcript text and no full license key. The app never sends anything by itself: you decide whether to send them to <a href="/en/contact/">support</a> (support@aitranslator.vn).</p>
 ```
 ```new
 <p>When the app hits an error (it stops suddenly, a translation session stops because of an error in the app, or a helper program dies and restarts), it <strong>automatically sends us an error report</strong>: machine details and the relevant part of the log, with personal folder paths, keys, tokens and email addresses scrubbed out, and no audio or transcript text. A report is only sent while the app is not translating. This is on by default; you turn it off in <strong>Settings › Privacy › Send error reports automatically</strong>. See <a href="/en/data-security/#error-reports">what a report contains and how long it is kept</a>.</p>
-<p>For a problem that does not stop the app (wrong or slow subtitles, for example), go to <strong>About › Send log to support</strong>: the app sends a report right away, even if you turned automatic sending off, and shows a <strong>report code</strong> (like <code>R-XXXX-XXXX</code>). Put that code in your email to <a href="/en/contact/">support</a> (support@aitranslator.io.vn) so we can find your report.</p>
+<p>For a problem that does not stop the app (wrong or slow subtitles, for example), go to <strong>About › Send log to support</strong>: the app sends a report right away, even if you turned automatic sending off, and shows a <strong>report code</strong> (like <code>R-XXXX-XXXX</code>). Put that code in your email to <a href="/en/contact/">support</a> (support@aitranslator.vn) so we can find your report.</p>
 <p>To look at or attach the log yourself, open <strong>About › Open log folder</strong> to find <code>app.log</code> (on macOS: the <code>com.aitranslator.desktop</code> folder inside <code>~/Library/Logs/</code>; on Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). That file stays on your computer and contains no audio, no transcript text and no full license key.</p>
 ```
 
@@ -1536,7 +1536,7 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
 **Điều kiện trước khi bắt đầu.** Chỉ làm khi đủ cả bốn điều:
 
 - **Mã xong và đã gộp.** Kế hoạch 01 đến 05 đã làm và đã rà, đã gộp vào `main` (chủ dự án quyết lúc nào), CI xanh, `pnpm check` trong `server/` xanh trên `main`.
-- **A7 đã chạy lại** bằng proxy trên macOS với một bản build có tính năng này (cách build: `docs/huong-dan-build/build-dmg-macos.md`), có một báo cáo đang xếp hàng trên đĩa: trong lúc dịch không có request nào, và báo cáo chỉ đi tới `api.aitranslator.io.vn` sau khi phiên dừng. Ghi số đo (ngày, máy, bản dựng). Rồi sửa câu "chúng tôi chưa đo lại điều này bằng proxy" ở mục "Chúng tôi đã kiểm tra điều đó thế nào?" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en}/data-security.mjs`) và đoạn "Báo cáo lỗi, chưa đối chiếu bằng số đo thật" của `docs/legal/README.md` cho khớp số đo.
+- **A7 đã chạy lại** bằng proxy trên macOS với một bản build có tính năng này (cách build: `docs/huong-dan-build/build-dmg-macos.md`), có một báo cáo đang xếp hàng trên đĩa: trong lúc dịch không có request nào, và báo cáo chỉ đi tới `api.aitranslator.vn` sau khi phiên dừng. Ghi số đo (ngày, máy, bản dựng). Rồi sửa câu "chúng tôi chưa đo lại điều này bằng proxy" ở mục "Chúng tôi đã kiểm tra điều đó thế nào?" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en}/data-security.mjs`) và đoạn "Báo cáo lỗi, chưa đối chiếu bằng số đo thật" của `docs/legal/README.md` cho khớp số đo.
 - **Ngày hiệu lực chính sách 1.3 đã đặt** theo `docs/legal/README.md`, mục "Đổi ngày hiệu lực" (kế hoạch 05, Task 8), **trước khi build app**: app đóng gói chính sách lúc build.
 - **Ảnh chụp của website đã được chụp lại** theo giao diện của bản app sắp phát hành (kế hoạch 05, Task 5).
 
@@ -1602,7 +1602,7 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
    curl -s -o /dev/null -w '%{http_code}\n' -H 'content-type: text/plain' --data-binary @"$W/ok.json" "$PROD/v1/diagnostics"
    ```
 
-   Expected: `{"id":"R-ZZZZ-0001"}` rồi `202`; `{"error":"rejected_sensitive","rule":"license_key"}` rồi `422`; `415`. Ở Web Admin › Báo cáo lỗi có **một nhóm** (`session_error`, `sidecarFailed`, phiên bản `0.0.0`, 1 máy, 1 báo cáo); mở báo cáo thấy dòng log thử ở dạng văn bản. Báo cáo `R-ZZZZ-0002` **không** có (bị từ chối, không lưu). Kiểm cảnh báo: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT kind, count FROM ops_alerts WHERE kind = 'error_report_new'"` ra một dòng; thư cảnh báo tới `ops@aitranslator.io.vn` trong vòng khoảng một giờ (gộp theo giờ) với tiêu đề `[license production] Cảnh báo: error_report_new (1)` và **chỉ có số lượng**, không có nội dung log hay mã máy. Dọn báo cáo thử (bằng nút xóa ở Web Admin, hoặc hai lệnh dưới, bảng log trước), rồi kiểm lại:
+   Expected: `{"id":"R-ZZZZ-0001"}` rồi `202`; `{"error":"rejected_sensitive","rule":"license_key"}` rồi `422`; `415`. Ở Web Admin › Báo cáo lỗi có **một nhóm** (`session_error`, `sidecarFailed`, phiên bản `0.0.0`, 1 máy, 1 báo cáo); mở báo cáo thấy dòng log thử ở dạng văn bản. Báo cáo `R-ZZZZ-0002` **không** có (bị từ chối, không lưu). Kiểm cảnh báo: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT kind, count FROM ops_alerts WHERE kind = 'error_report_new'"` ra một dòng; thư cảnh báo tới `ops@aitranslator.vn` trong vòng khoảng một giờ (gộp theo giờ) với tiêu đề `[license production] Cảnh báo: error_report_new (1)` và **chỉ có số lượng**, không có nội dung log hay mã máy. Dọn báo cáo thử (bằng nút xóa ở Web Admin, hoặc hai lệnh dưới, bảng log trước), rồi kiểm lại:
 
    ```bash
    pnpm exec wrangler d1 execute mt-license-production --remote --command "DELETE FROM error_report_logs WHERE id = 'R-ZZZZ-0001'"

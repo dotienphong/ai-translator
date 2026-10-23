@@ -2165,20 +2165,20 @@ describe("POST /v1/support/messages và GET /v1/support/status (spec 2026-10-22 
 
   it("CORS: preflight từ website được phép; lỗi vẫn có header cho website; origin khác và route khác không có header CORS", async () => {
     const w = makeWorld();
-    const origin = { origin: "https://aitranslator.io.vn" };
+    const origin = { origin: "https://aitranslator.vn" };
     const pre = await w.call("OPTIONS", "/v1/support/messages", undefined, {
       ...origin,
       "access-control-request-method": "POST",
       "access-control-request-headers": "content-type,authorization",
     });
     expect(pre.status).toBe(204);
-    expect(pre.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(pre.headers.get("access-control-allow-origin")).toBe("https://aitranslator.vn");
     expect(pre.headers.get("access-control-allow-methods")).toBe("GET,POST,PUT,DELETE,OPTIONS");
     expect(pre.headers.get("access-control-allow-headers")).toBe("Content-Type,Authorization");
     expect(pre.headers.get("access-control-max-age")).toBe("86400");
     const off = await post(w, firstMessage(), origin);
     expect(off.status).toBe(503);
-    expect(off.headers.get("access-control-allow-origin")).toBe("https://aitranslator.io.vn");
+    expect(off.headers.get("access-control-allow-origin")).toBe("https://aitranslator.vn");
     expect(off.headers.get("access-control-expose-headers")).toBe("Retry-After");
     const evil = await w.call("GET", "/v1/support/status", undefined, { origin: "https://evil.example" });
     expect(evil.headers.get("access-control-allow-origin")).toBeNull();
@@ -2300,7 +2300,7 @@ import { addCustomerMessage, type Conversation, conversationByToken, createConve
 import { newToken, parseContext, parseLang, parsePage, parseSource, parseText } from "./text";
 
 /** Origin duy nhất được gọi từ trình duyệt. App gọi qua Rust, không có header Origin. */
-export const SUPPORT_ORIGIN = "https://aitranslator.io.vn";
+export const SUPPORT_ORIGIN = "https://aitranslator.vn";
 
 /** CORS của `/v1/support/*`: chỉ origin của website; đặt trước mọi middleware có thể trả lỗi, để trình duyệt đọc được cả thân lỗi. */
 export const supportCors = cors({
@@ -3247,8 +3247,8 @@ export function supportReplyEmail(replies: string[]): { subject: string; text: s
       replies.join("\n\n"),
       "",
       "---",
-      "Bạn có thể trả lời thư này, hoặc mở lại khung chat trên aitranslator.io.vn hay mục Hỗ trợ trong app.",
-      "You can reply to this email, or reopen the chat on aitranslator.io.vn or in the app's Support screen.",
+      "Bạn có thể trả lời thư này, hoặc mở lại khung chat trên aitranslator.vn hay mục Hỗ trợ trong app.",
+      "You can reply to this email, or reopen the chat on aitranslator.vn or in the app's Support screen.",
     ].join("\n"),
   };
 }
@@ -3451,7 +3451,7 @@ Thêm vào **cuối** `docs/release/phat-hanh.md` (sau đoạn **Đường lui**
 
 ## 11. Đợt thêm chat hỗ trợ (migration D1 0005)
 
-Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.io.vn`.
+Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.vn`.
 
 Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi bảng nào đã có, nên Worker cũ chạy đúng trên schema mới; Worker mới cần ba bảng và ba secret Zalo (thiếu secret thì `wrangler deploy` từ chối); `setWebhook` cần route đã có (Zalo thử URL ngay khi lưu); chat mặc định **tắt** (`support_settings.enabled = '0'`), nên trong lúc chờ app và website, không ai gửi được tin; app và website chỉ nói điều đã thật nên đi sau; bật chat là bước cuối, bằng lệnh `/bat` gửi cho bot.
 
@@ -3522,14 +3522,14 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** ba bảng, không đổi
 
    Expected: như mục 4 bước 9 (`Uploaded mt-license`, `schedule: */5 * * * *`, binding `SUPPORT_POLL_LIMITER`); `{"ok":true}`; `{"enabled":false}`; `403` (route có, từ chối vì thiếu header secret). **Kiểm cron chạy thật**: `pnpm exec wrangler tail mt-license --format pretty` qua một mốc 5 phút; Expected: có `{"event":"reconcile",…}` và **không có** `reconcile_step_failed` với `"step":"support_forward"`, `"support_emails"` hay `"support_prune"`. Không thấy cron thì `pnpm exec wrangler triggers deploy` rồi kiểm lại (sự cố 2026-10-07).
 
-8. **Đặt webhook.** Trước tiên `dig @8.8.8.8 api.aitranslator.io.vn +short` phải in địa chỉ IP (sự cố DNSSEC của `io.vn` ngày 2026-10-22: `SERVFAIL` thì Zalo cũng không gọi được webhook; đợi rồi làm lại). Rồi:
+8. **Đặt webhook.** Trước tiên `dig @8.8.8.8 api.aitranslator.vn +short` phải in địa chỉ IP (sự cố DNSSEC của `io.vn` ngày 2026-10-22: `SERVFAIL` thì Zalo cũng không gọi được webhook; đợi rồi làm lại). Rồi:
 
    ```bash
    curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/setWebhook" -H 'content-type: application/json' -d "{\"url\":\"$PROD/v1/webhooks/zalo\",\"secret_token\":\"$ZALO_HOOK\"}"; echo
    curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/getWebhookInfo" -H 'content-type: application/json' -d '{}'; echo
    ```
 
-   Expected: lệnh đầu `"ok":true` và `"verification":{"ok":true,…,"outcome":"webhook.ok",…}`; lệnh sau có `"url":"https://api.aitranslator.io.vn/v1/webhooks/zalo"`. `verification` không `ok` thì xem `hint`, sửa, chạy lại.
+   Expected: lệnh đầu `"ok":true` và `"verification":{"ok":true,…,"outcome":"webhook.ok",…}`; lệnh sau có `"url":"https://api.aitranslator.vn/v1/webhooks/zalo"`. `verification` không `ok` thì xem `hint`, sửa, chạy lại.
 
 9. **Thử hai chiều, rồi tắt lại.** Nhắn `/bat` cho bot (bot trả `Đã BẬT chat trên website và app.`), rồi gửi một tin như khách:
 

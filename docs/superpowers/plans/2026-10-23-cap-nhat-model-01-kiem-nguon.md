@@ -528,9 +528,9 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /** URL của models.json đang phát hành; trùng `PRODUCTION_URL` của `src-tauri/src/models/source.rs` (có test). */
-export const MANIFEST_URL = "https://releases.aitranslator.io.vn/models/models.json";
+export const MANIFEST_URL = "https://releases.aitranslator.vn/models/models.json";
 /** `url` trong manifest là tương đối so với thư mục này. */
-export const PUBLIC_BASE = "https://releases.aitranslator.io.vn/models/";
+export const PUBLIC_BASE = "https://releases.aitranslator.vn/models/";
 
 export const USAGE = `Dùng:
   pnpm models:update                     kiểm nguồn, chuẩn bị, cổng kiểm, hỏi y/N rồi đăng
@@ -1015,7 +1015,7 @@ Expected:
 
 Nếu một dòng báo "DỪNG" vì giấy phép (ví dụ API trả `MIT` thay vì `mit`), đối chiếu giá trị thật bằng `curl -s 'https://huggingface.co/api/models/<repo>/revision/main?blobs=true' | python3 -c 'import json,sys; print(json.load(sys.stdin)["cardData"]["license"])'`, sửa `license` trong `upstream.json` cho đúng, chạy lại test của Task 2 rồi chạy lại bước này.
 
-Nếu lỗi `lệch nhau` hay lỗi mạng tới `releases.aitranslator.io.vn`: kiểm `dig @8.8.8.8 releases.aitranslator.io.vn`; dừng và báo chủ dự án, không sửa code để vượt qua.
+Nếu lỗi `lệch nhau` hay lỗi mạng tới `releases.aitranslator.vn`: kiểm `dig @8.8.8.8 releases.aitranslator.vn`; dừng và báo chủ dự án, không sửa code để vượt qua.
 
 - [ ] **Step 5: Chạy toàn bộ test script**
 

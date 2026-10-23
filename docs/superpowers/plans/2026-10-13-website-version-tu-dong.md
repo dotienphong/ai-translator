@@ -137,7 +137,7 @@ Kỳ vọng: lỗi không tìm thấy `../src/release.mjs`.
 // trước (pnpm build, dev, test) lấy từ src-tauri/tauri.conf.json; chế độ deploy (cờ --deploy của pnpm deploy) lấy từ bản đã
 // đăng trên R2, vì website chỉ được nói điều có thật.
 
-export const RELEASES_URL = "https://releases.aitranslator.io.vn";
+export const RELEASES_URL = "https://releases.aitranslator.vn";
 
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.(0|[1-9]\d*))?$/;
 const STABLE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -464,7 +464,7 @@ Thêm mục mới ngay trước dòng `## Triển khai`:
 ## Phiên bản và ngày phát hành
 `SITE.version` và `SITE.releaseDate` (JSON-LD, `llms.txt`) **không gõ tay**: `src/release.mjs` tính chúng lúc nạp `site.mjs` (spec `2026-10-13-website-version-tu-dong-design.md`).
 - **Xem trước** (`pnpm build`, `pnpm dev`, `pnpm test`; không cần mạng): version là `version` trong `src-tauri/tauri.conf.json`, ngày là ngày commit gần nhất đổi dòng đó. Nâng bản app là website tự theo.
-- **Deploy** (`pnpm deploy` dựng với cờ `--deploy`): version và ngày lấy từ `https://releases.aitranslator.io.vn/stable/latest.json` (bản đã đăng thật, `pub_date` đổi sang ngày giờ Việt Nam). Không đọc được R2 hay dữ liệu lạ thì dừng, không có gì lên Cloudflare. R2 thấp hơn repo là bình thường (đã nâng bản, chưa đăng): website vẫn nói bản đã phát hành. R2 **cao hơn** repo thì dừng: `git pull` rồi deploy lại.
+- **Deploy** (`pnpm deploy` dựng với cờ `--deploy`): version và ngày lấy từ `https://releases.aitranslator.vn/stable/latest.json` (bản đã đăng thật, `pub_date` đổi sang ngày giờ Việt Nam). Không đọc được R2 hay dữ liệu lạ thì dừng, không có gì lên Cloudflare. R2 thấp hơn repo là bình thường (đã nâng bản, chưa đăng): website vẫn nói bản đã phát hành. R2 **cao hơn** repo thì dừng: `git pull` rồi deploy lại.
 - Vì vậy sau mỗi lần phát hành **không còn commit `docs(website): phiên bản hiện tại X`**: chỉ cần `pnpm deploy`. `SITE.updated` (ngày cập nhật nội dung) vẫn do người sửa nội dung đặt.
 ```
 
@@ -490,7 +490,7 @@ Kỳ vọng ở thời điểm viết kế hoạch (R2 đang 0.1.7): `Current ve
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && HTTPS_PROXY=http://127.0.0.1:9 node src/build/build.mjs --deploy 2>&1 | tail -n 3; echo "mã thoát: $?"
 ```
 
-Kỳ vọng: lỗi `không đọc được https://releases.aitranslator.io.vn/stable/latest.json … website không deploy khi chưa xác minh được bản đã phát hành` (lệnh in lỗi và dừng; `fetch` của Node không tự dùng `HTTPS_PROXY`, nên nếu bước này vẫn đọc được R2 thì bỏ qua bước, hàng rào đã được test bằng `fetchStableLatest` ở Task 2).
+Kỳ vọng: lỗi `không đọc được https://releases.aitranslator.vn/stable/latest.json … website không deploy khi chưa xác minh được bản đã phát hành` (lệnh in lỗi và dừng; `fetch` của Node không tự dùng `HTTPS_PROXY`, nên nếu bước này vẫn đọc được R2 thì bỏ qua bước, hàng rào đã được test bằng `fetchStableLatest` ở Task 2).
 
 - [ ] **Bước 6: Commit**
 
@@ -611,7 +611,7 @@ Theo dõi bằng Monitor tới khi `completed`; thất bại thì đọc `gh run
 - [ ] **Bước 5: Kiểm sau phát hành**
 
 ```bash
-curl -s https://releases.aitranslator.io.vn/stable/latest.json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);console.log(j.version,j.pub_date)})'
+curl -s https://releases.aitranslator.vn/stable/latest.json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);console.log(j.version,j.pub_date)})'
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && node src/build/build.mjs --deploy 2>&1 | tail -n 2; grep -n "Current version" dist/llms.txt | head -1
 ```
 

@@ -70,7 +70,7 @@ File mới:
    - Thư mục làm việc ở nhánh `main`, cây sạch, khớp `origin/main` (sau `git fetch`).
    - Có `rclone` với remote `r2:`, `gh` đăng nhập được (token của dotienphong), `wrangler`, `uv`, `cargo`, `curl`.
    - Có dữ liệu thử `bench/phase0/data/mt` và `bench/phase0/data/asr`.
-   - `models.json` đang chạy trên R2 (đọc qua `https://releases.aitranslator.io.vn/models/models.json`) có `sequence`
+   - `models.json` đang chạy trên R2 (đọc qua `https://releases.aitranslator.vn/models/models.json`) có `sequence`
      bằng `sequence` của `scripts/models/released/body-N.json` có số lớn nhất, chữ ký hợp lệ, và `body` giải mã ra trùng
      từng byte với `body-N.json`. Khác thì dừng: repo và R2 đang lệch nhau, cần người xem.
 2. **Kiểm nguồn** (mục 4.1, 4.2). Không có gì mới thì in bảng rồi thoát mã 0.
@@ -238,7 +238,7 @@ Chỉ chạy sau khi người vận hành gõ `y`.
 - `wrangler r2 object put ai-translator-releases/models/models.json --file <bản đã ký> --content-type application/json
   --cache-control no-cache --remote`.
 - `curl` lại URL công khai, so trùng từng byte với bản đã ký. Lỗi mạng hay DNS thì in gợi ý kiểm
-  `dig @8.8.8.8 releases.aitranslator.io.vn` (sự cố DNSSEC io.vn 2026-10-22).
+  `dig @8.8.8.8 releases.aitranslator.vn` (sự cố DNSSEC io.vn 2026-10-22).
 
 ## 6. App 0.2.6: dấu chấm trên khay và mục menu
 

@@ -9,7 +9,7 @@ import { sha256File } from "./update-io.mjs";
 
 export const GH_USER = "dotienphong";
 export const GH_REPO = "dotienphong/ai-translator";
-export const DNS_HINT = "lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.io.vn";
+export const DNS_HINT = "lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.vn";
 
 /** Biến môi trường cho `gh` chạy bằng tài khoản dotienphong (GITHUB_TOKEN của máy là tài khoản khác). */
 export function ghEnv(io) {

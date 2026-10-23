@@ -137,7 +137,7 @@ bước 3, **không** thêm máy chủ đó vào danh sách.
 
 ## A7 lần hai: báo cáo lỗi tự động (spec 2026-10-17-diagnostics-reports-design §7)
 
-Chứng minh: **trong lúc dịch, app không gửi báo cáo lỗi** dù có một báo cáo đang xếp hàng; báo cáo chỉ đi tới `api.aitranslator.io.vn` **sau khi
+Chứng minh: **trong lúc dịch, app không gửi báo cáo lỗi** dù có một báo cáo đang xếp hàng; báo cáo chỉ đi tới `api.aitranslator.vn` **sau khi
 bấm Dừng**; thân báo cáo không chứa chữ chép lời. Làm như A7 ở trên (cùng bản release ký ad-hoc, cùng `mitmdump`, cùng `nettop`, cùng bước cài
 và gỡ chứng chỉ), khác ở bốn chỗ:
 
@@ -152,7 +152,7 @@ và gỡ chứng chỉ), khác ở bốn chỗ:
    Phải thấy một tệp báo cáo trong thư mục `reports` (chưa gửi). Bản dịch có thể khựng vài giây rồi chạy lại. Đây là báo cáo thật, sẽ tới
    production: xóa nó ở Web Admin sau khi đo.
 3. **Dừng và đợi báo cáo đi.** Bấm **Dừng**, ghi giờ Dừng, đợi tối đa khoảng 40 giây (10 giây đầu, rồi nhịp 30 giây): thư mục `reports` rỗng
-   và `mitmdump` có thêm một request tới `api.aitranslator.io.vn`. Rồi bấm **Kiểm tra ngay** và xác nhận có thêm một `validate`, **rồi mới** thoát app.
+   và `mitmdump` có thêm một request tới `api.aitranslator.vn`. Rồi bấm **Kiểm tra ngay** và xác nhận có thêm một `validate`, **rồi mới** thoát app.
 4. **Kiểm HAR có báo cáo, sau Dừng:**
    ```bash
    python3 - <<'PY'

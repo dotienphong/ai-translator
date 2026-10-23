@@ -1206,11 +1206,11 @@ Thay bằng:
 
 Tìm:
 ```text
-3. **Làm việc với license server** của chúng tôi (`api.aitranslator.io.vn`): khi mua gói, kích hoạt,
+3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi mua gói, kích hoạt,
 ```
 Thay bằng:
 ```text
-3. **Làm việc với license server** của chúng tôi (`api.aitranslator.io.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt,
+3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt,
 ```
 
 - [ ] **Step 3: privacy.vi.md, mục 5**
@@ -1287,11 +1287,11 @@ Thay bằng:
 
 Tìm:
 ```text
-3. **Talk to our license server** (`api.aitranslator.io.vn`): when you buy a plan, activate or deactivate,
+3. **Talk to our license server** (`api.aitranslator.vn`): when you buy a plan, activate or deactivate,
 ```
 Thay bằng:
 ```text
-3. **Talk to our license server** (`api.aitranslator.io.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate,
+3. **Talk to our license server** (`api.aitranslator.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate,
 ```
 
 - [ ] **Step 7: privacy.en.md, mục 5**
@@ -1434,7 +1434,7 @@ Co-Authored-By: <model đang chạy> <noreply@anthropic.com>"
 **Ai chạy lệnh:** auto mode chặn agent đọc D1 production, deploy production và dùng token OAuth của wrangler (memory "Sự cố cron license server 2026-10-07"). Mọi khối lệnh có ghi **[chủ dự án]** do chủ dự án chạy: trong Claude Code gõ `! <lệnh>` để kết quả vào hội thoại, hoặc chạy trong Terminal riêng rồi dán kết quả. Agent đọc kết quả, so với Expected, ghi biên bản.
 
 **Hằng dùng trong phần C:**
-- `PROD=https://api.aitranslator.io.vn` (Worker `mt-license`, route `custom_domain`, `docs/release/phat-hanh.md` mục 6).
+- `PROD=https://api.aitranslator.vn` (Worker `mt-license`, route `custom_domain`, `docs/release/phat-hanh.md` mục 6).
 - `PADMIN=https://mt-license-admin.dotienphong1993.workers.dev` (Worker admin sau Cloudflare Access).
 - D1: `mt-license-production`. Mọi lệnh `wrangler` chạy trong `server/`.
 
@@ -1585,7 +1585,7 @@ Sai một trong các điều trên thì **không deploy**: lùi D1 bằng Step 6
 
 ```bash
 pnpm check && pnpm exec wrangler deploy
-curl -s https://api.aitranslator.io.vn/v1/health; echo
+curl -s https://api.aitranslator.vn/v1/health; echo
 ```
 Expected: `Uploaded mt-license`, `Deployed mt-license triggers`, `schedule: */5 * * * *`; `curl` in `{"ok":true}`.
 
@@ -1611,7 +1611,7 @@ Lùi Worker trước, D1 sau: Worker cũ chỉ ghi được mã gói cũ, nên k
 - [ ] **Step 1: Bảng gói** **[chủ dự án]**
 
 ```bash
-curl -s https://api.aitranslator.io.vn/v1/plans; echo
+curl -s https://api.aitranslator.vn/v1/plans; echo
 ```
 Expected (đúng thứ tự):
 ```json
@@ -1622,9 +1622,9 @@ Expected (đúng thứ tự):
 
 ```bash
 H=$(printf %s ba-goi-deploy-check-2026-10-07 | shasum -a 256 | cut -d' ' -f1)
-R1=$(curl -s -X POST https://api.aitranslator.io.vn/v1/trial -H 'content-type: application/json' -d "{\"device_id_hash\":\"$H\"}")
+R1=$(curl -s -X POST https://api.aitranslator.vn/v1/trial -H 'content-type: application/json' -d "{\"device_id_hash\":\"$H\"}")
 sleep 2
-R2=$(curl -s -X POST https://api.aitranslator.io.vn/v1/trial -H 'content-type: application/json' -d "{\"device_id_hash\":\"$H\"}")
+R2=$(curl -s -X POST https://api.aitranslator.vn/v1/trial -H 'content-type: application/json' -d "{\"device_id_hash\":\"$H\"}")
 node -e '
 const [a, b] = process.argv.slice(1).map((s) => JSON.parse(s));
 const claims = JSON.parse(Buffer.from(a.token.split(".")[1], "base64url").toString());
@@ -1636,7 +1636,7 @@ console.log({
   kid: claims.kid,
 });
 ' "$R1" "$R2" "$H"
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.aitranslator.io.vn/v1/trial -H 'content-type: application/json' -d '{"device_id_hash":"khong-phai-hex"}'
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.aitranslator.vn/v1/trial -H 'content-type: application/json' -d '{"device_id_hash":"khong-phai-hex"}'
 ```
 Expected: `{ typ: 'trial', same_device: true, days: 10, same_start: true, kid: 'prod-…' }` (kid trùng kid đang ký ở `server/keys/public-keys.json`, ô `TOKEN_SIGNING_SLOT`); lệnh cuối in `400`.
 
@@ -1761,8 +1761,8 @@ Chạy trong Terminal riêng, gõ key bằng `read -s` để key không hiện l
 ```bash
 read -s KEY
 H2=$(printf %s ba-goi-may-thu-hai-2026-10-07 | shasum -a 256 | cut -d' ' -f1)
-curl -s -X POST https://api.aitranslator.io.vn/v1/licenses/activate -H 'content-type: application/json' -d "{\"key\":\"$KEY\",\"device_id_hash\":\"$H2\",\"device_label\":\"Máy thử xung đột\"}"; echo
-curl -s -X POST https://api.aitranslator.io.vn/v1/licenses/activate -H 'content-type: application/json' -d "{\"key\":\"$KEY\",\"device_id_hash\":\"$H2\",\"device_label\":\"Máy thử xung đột\",\"allow_conflict\":true}"; echo
+curl -s -X POST https://api.aitranslator.vn/v1/licenses/activate -H 'content-type: application/json' -d "{\"key\":\"$KEY\",\"device_id_hash\":\"$H2\",\"device_label\":\"Máy thử xung đột\"}"; echo
+curl -s -X POST https://api.aitranslator.vn/v1/licenses/activate -H 'content-type: application/json' -d "{\"key\":\"$KEY\",\"device_id_hash\":\"$H2\",\"device_label\":\"Máy thử xung đột\",\"allow_conflict\":true}"; echo
 unset KEY
 ```
 Expected: lần đầu `{"error":"key_in_use","devices":[…máy Mac…]}`; lần hai `{"error":"license_conflict","devices":[…2 máy…]}`.

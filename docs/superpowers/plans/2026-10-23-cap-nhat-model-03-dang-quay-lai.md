@@ -682,7 +682,7 @@ test("uploadR2: chưa có thì tải lên rồi kiểm lại; đã có cùng n�
   const other = fakeIo({ run: (cmd) => (cmd === "curl" ? "200" : ""), download: () => "khac" });
   await assert.rejects(uploadR2(other, u, scratch), /nội dung khác/);
   const offline = fakeIo({ run: (cmd) => (cmd === "curl" ? "000" : "") });
-  await assert.rejects(publicMatches(offline, "https://releases.aitranslator.io.vn/models/x", u.sha256, scratch), /dig @8\.8\.8\.8/);
+  await assert.rejects(publicMatches(offline, "https://releases.aitranslator.vn/models/x", u.sha256, scratch), /dig @8\.8\.8\.8/);
 });
 
 /** Kế hoạch tối giản cho các bước git, CI. */
@@ -832,7 +832,7 @@ import { sha256File } from "./update-io.mjs";
 
 export const GH_USER = "dotienphong";
 export const GH_REPO = "dotienphong/ai-translator";
-const DNS_HINT = "lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.io.vn";
+const DNS_HINT = "lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.vn";
 
 /** Biến môi trường cho `gh` chạy bằng tài khoản dotienphong (GITHUB_TOKEN của máy là tài khoản khác). */
 export function ghEnv(io) {
@@ -1349,7 +1349,7 @@ Lượt đã gõ y được ghi ở `target/models-update/state.json`. Chạy l�
 
 Lỗi "Bản đã ký không khớp phần thân": dừng hẳn, không đăng tay; xem lượt chạy CI và phần thân trong repo.
 
-Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.io.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `target/models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`.
+Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `target/models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`.
 
 ### 13.4. Quay lại bản trước
 

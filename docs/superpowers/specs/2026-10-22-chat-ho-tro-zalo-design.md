@@ -17,7 +17,7 @@
   - dịch vụ chat bên thứ ba như Tawk.to hay Crisp (thêm script ngoài trên website, nội dung chat nằm ở máy chủ của họ, không có cầu Zalo).
 - **Khách ẩn danh, email không bắt buộc.** Gõ được ngay; ô email hiện sau tin đầu tiên. Khách rời đi mà có email thì câu trả lời được gửi qua email.
 - **Vị trí:** app có mục **"Hỗ trợ" trong thanh bên**; website có **bong bóng nổi ở mọi trang**.
-- **Kỹ thuật:** chạy trong **Worker `mt-license` hiện có** (`api.aitranslator.io.vn`), lưu D1, khung chat hỏi tin mới định kỳ (polling). Không dựng Worker riêng: app chỉ nói chuyện với `api.` (danh sách host của A7 không thêm gì), chủ dự án ít việc cài đặt nhất, và báo cáo lỗi đã đi đúng đường này. Không dùng WebSocket hay Durable Object: chậm 3 giây không đáng đổi lấy thêm một công nghệ và một crate WebSocket bên Rust.
+- **Kỹ thuật:** chạy trong **Worker `mt-license` hiện có** (`api.aitranslator.vn`), lưu D1, khung chat hỏi tin mới định kỳ (polling). Không dựng Worker riêng: app chỉ nói chuyện với `api.` (danh sách host của A7 không thêm gì), chủ dự án ít việc cài đặt nhất, và báo cáo lỗi đã đi đúng đường này. Không dùng WebSocket hay Durable Object: chậm 3 giây không đáng đổi lấy thêm một công nghệ và một crate WebSocket bên Rust.
 - **Giữ 90 ngày** kể từ tin cuối, rồi tự xóa. Khách tự xóa được bất cứ lúc nào.
 - **Công tắc khẩn cấp là lệnh Zalo `/tat`, `/bat`**, không phải biến môi trường, để tắt chat không cần deploy.
 - **Bản sao trong Zalo xóa tay theo yêu cầu** (chủ dự án chốt 2026-10-22): tự xóa sau 90 ngày và nút xóa của khách chỉ xóa dữ liệu trên máy chủ; khách muốn xóa cả tin đã chuyển sang Zalo thì gửi email, chủ dự án xóa tay trong Zalo.
@@ -26,13 +26,13 @@
 
 ```
 Website (bong bóng, JS thuần) ─┐                           ┌─ sendMessage ──→ Zalo Bot ──→ Zalo của chủ dự án
-                               ├─→ api.aitranslator.io.vn ─┤
+                               ├─→ api.aitranslator.vn ─┤
 App (Rust reqwest, qua IPC) ───┘   /v1/support/*  (D1)      └─← webhook ←──── chủ dự án trả lời bot
 ```
 
 - **Server:** module mới `server/src/support/` trong Worker `mt-license`, gắn vào app Hono hiện có. Migration `0005_support_chat.sql`. Cron `*/5` hiện có thêm ba việc (mục 2.6).
 - **Secret mới (3):** `ZALO_BOT_TOKEN`, `ZALO_WEBHOOK_SECRET` (8–256 ký tự, Zalo gửi lại trong header `X-Bot-Api-Secret-Token`), `ZALO_OWNER_CHAT_ID` (`chat_id` của chủ dự án với bot). `chat_id` để trong secret chứ không ở `wrangler.jsonc` vì repo công khai. Thêm cả ba vào `secrets.required`. Bot token không bao giờ vào app hay website.
-- **Website:** gọi sang `api.` nên server bật CORS cho đúng origin `https://aitranslator.io.vn` (chỉ các đường `/v1/support/*`). CSP của website thêm `https://api.aitranslator.io.vn` vào `connect-src`. Mã khung chat là file riêng, chỉ tải khi khách bấm bong bóng.
+- **Website:** gọi sang `api.` nên server bật CORS cho đúng origin `https://aitranslator.vn` (chỉ các đường `/v1/support/*`). CSP của website thêm `https://api.aitranslator.vn` vào `connect-src`. Mã khung chat là file riêng, chỉ tải khi khách bấm bong bóng.
 - **App:** module Rust mới `src-tauri/src/support/`, dùng `reqwest` có sẵn theo mẫu `diagnostics/send.rs` (không theo redirect, lỗi không kèm URL, cùng `PRODUCTION_URL`). Giao diện gọi qua IPC vì CSP chặn webview gọi mạng. **Không thêm crate mới.**
 
 ## 2. Server
@@ -141,7 +141,7 @@ Phụ đề không hiện khi họp Teams
 ### 2.6 Cron (`*/5` có sẵn)
 
 1. **Chuyển lại tin chờ:** tin khách có `forwarded_at` rỗng, tạo trong 24 giờ qua, của cuộc chat đang mở, theo thứ tự `id`; tối đa 100 tin mỗi lần chạy. Lỗi ở một cuộc chat thì đi tiếp cuộc chat khác; 3 lần lỗi trong một lần chạy thì dừng (Zalo đang lỗi chung). Tin bị Zalo **từ chối nội dung** 5 lần (lỗi 4xx trừ 401, 403, 404, 408, 429) thì thôi, không chặn tin sau; lỗi mạng, 5xx và các mã kia không tính vào 5 lần đó (Zalo lỗi chung thì tin vẫn chờ, có cảnh báo). Gửi được tin nào hay không còn tin chờ thì đặt `zalo_fail_streak = 0`; lần chạy có lỗi mà không gửi được tin nào thì tăng; đạt 3 thì cảnh báo `support_zalo_failed`. Tin quá 24 giờ không chuyển nữa, vẫn còn trong cuộc chat của khách.
-2. **Gửi email câu trả lời:** cuộc chat có `email`, có tin chủ dự án `id > delivered_owner_id` tạo từ 2 phút trước, và `emailed_at` rỗng hay cách đây hơn 1 giờ. Gộp mọi tin chủ dự án chưa nhận vào một thư, đặt `emailed_at`. Thư song ngữ vi/en theo mẫu thư hiện có (`server/src/email/templates.ts`), văn bản thuần, `Reply-To: support@aitranslator.io.vn`; nói khách có thể trả lời thư này hay mở lại khung chat trên website hay trong app. Lỗi gửi thì thử lại ở lần cron sau. Từ spec `2026-10-23-email-theo-ngon-ngu-design.md`, thư trả lời viết bằng ngôn ngữ của cuộc chat (tiếng Anh ở dưới), dạng HTML kèm bản chữ thuần.
+2. **Gửi email câu trả lời:** cuộc chat có `email`, có tin chủ dự án `id > delivered_owner_id` tạo từ 2 phút trước, và `emailed_at` rỗng hay cách đây hơn 1 giờ. Gộp mọi tin chủ dự án chưa nhận vào một thư, đặt `emailed_at`. Thư song ngữ vi/en theo mẫu thư hiện có (`server/src/email/templates.ts`), văn bản thuần, `Reply-To: support@aitranslator.vn`; nói khách có thể trả lời thư này hay mở lại khung chat trên website hay trong app. Lỗi gửi thì thử lại ở lần cron sau. Từ spec `2026-10-23-email-theo-ngon-ngu-design.md`, thư trả lời viết bằng ngôn ngữ của cuộc chat (tiếng Anh ở dưới), dạng HTML kèm bản chữ thuần.
 3. **Xóa hết hạn:** xóa cuộc chat có `last_activity_at` cũ hơn 90 ngày (tin xóa theo), và dòng `support_zalo_updates` cũ hơn 2 ngày.
 
 ### 2.7 Chống spam và giới hạn
@@ -155,7 +155,7 @@ Phụ đề không hiện khi họp Teams
 | `support_global`: tin khách được nhận, toàn hệ thống | 200; chạm ngưỡng thì trả `support_busy` và cảnh báo `support_flood` |
 
 - Thông báo Zalo của việc khách để lại email hay xóa cuộc chat chỉ gửi khi chat đang bật và tính vào `support_global`; vượt trần thì bỏ thông báo (vẫn lưu email, vẫn xóa), để không ai dùng chúng spam Zalo của chủ dự án.
-- CORS chỉ cho `https://aitranslator.io.vn`; app gọi không có `Origin`.
+- CORS chỉ cho `https://aitranslator.vn`; app gọi không có `Origin`.
 - **Chưa dùng Turnstile** ở bản đầu (thêm script và việc cài đặt). Gặp spam thật thì dùng `/chan`, `/tat` trước, rồi mới tính Turnstile.
 - Hai loại cảnh báo mới trong `alerts.ts`: `support_zalo_failed` (kèm cách kiểm token và trạng thái bot), `support_flood`. Đi qua `OPERATOR_EMAIL` như các cảnh báo khác, tối đa một thư mỗi loại mỗi giờ.
 
@@ -180,7 +180,7 @@ Phụ đề không hiện khi họp Teams
   | Khung đóng, đang chờ trả lời (tin cuối là của khách, trong 24 giờ qua), tab đang hiện | Hỏi một lần khi tải trang, rồi 60 giây; có trả lời thì bong bóng hiện chấm đỏ |
   | Còn lại | Không gọi mạng |
 
-- **CSP:** `connect-src 'self' https://api.aitranslator.io.vn`. Không thêm nguồn script, style hay font nào.
+- **CSP:** `connect-src 'self' https://api.aitranslator.vn`. Không thêm nguồn script, style hay font nào.
 - **Chữ** theo năm ngôn ngữ ở `website/src/strings.mjs` (hay file riêng của khung chat), đủ cả năm bản.
 - **Bản xem cục bộ** (`serve.mjs`) không gọi được API production (CORS chỉ cho domain thật). Test dùng server giả.
 
@@ -212,7 +212,7 @@ Phụ đề không hiện khi họp Teams
   - mục 6 (bên xử lý): **Zalo, Công ty Cổ phần VNG, máy chủ ở Việt Nam** (điều khoản Zalo Bot Platform, https://bot.zapps.me/docs/terms/, đọc 2026-10-22: dữ liệu lưu trên máy chủ ở Việt Nam), nhận nội dung tin và các thông tin ở mục 2.3 (không nhận email); **Resend** (đã có trong bảng) thêm việc gửi thư câu trả lời cho khách để lại email;
   - mục 7 (thời gian lưu và quyền): tự xóa sau 90 ngày, khách tự xóa bằng nút trong khung chat. Hai việc này chỉ xóa dữ liệu trên máy chủ; bản sao các tin đã chuyển sang Zalo nằm trong cuộc trò chuyện Zalo của chủ dự án cho tới khi chủ dự án xóa tay (khi khách yêu cầu qua email).
   - **EULA giữ bản 1.3.** Ngày hiệu lực của 1.5 đặt lúc phát hành bản app có chat. Cập nhật `docs/legal/README.md`.
-- **Spec gốc:** sửa A7 (§3.3) thêm vào danh sách ngoại lệ: "gửi và nhận tin chat hỗ trợ (`/v1/support/*`, chỉ tới `api.aitranslator.io.vn`, chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi; không request nào chứa âm thanh hay nội dung chép lời)".
+- **Spec gốc:** sửa A7 (§3.3) thêm vào danh sách ngoại lệ: "gửi và nhận tin chat hỗ trợ (`/v1/support/*`, chỉ tới `api.aitranslator.vn`, chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi; không request nào chứa âm thanh hay nội dung chép lời)".
 - **Website, đủ năm ngôn ngữ** (pháp lý chỉ vi/en):
   - **Liên hệ:** bỏ "đây là kênh hỗ trợ duy nhất", "không có form trên web"; thêm chat (bong bóng ở góc trang, mục Hỗ trợ trong app) cạnh email; ô "Kênh khác" ghi đúng sự thật.
   - **Dữ liệu và bảo mật:** thêm chat hỗ trợ vào phần dữ liệu rời máy và dữ liệu trên máy chủ.
@@ -253,7 +253,7 @@ Phụ đề không hiện khi họp Teams
    1. Zalo › **Zalo Bot Manager** › Tạo bot (tên bắt đầu bằng "Bot"); token đến qua tin nhắn.
    2. Nhắn một tin cho bot; chạy `getUpdates` (khi chưa đặt webhook) để lấy `chat.id`.
    3. `wrangler secret put` ba secret; chạy migration 0005; `wrangler deploy`; kiểm cron còn chạy (bài học sự cố cron 2026-10-07).
-   4. `setWebhook` tới `https://api.aitranslator.io.vn/v1/webhooks/zalo` kèm `secret_token`; `getWebhookInfo` để kiểm.
+   4. `setWebhook` tới `https://api.aitranslator.vn/v1/webhooks/zalo` kèm `secret_token`; `getWebhookInfo` để kiểm.
    5. Nhắn `/ds` cho bot để kiểm hai chiều.
 3. **App 0.2.4** có màn hình Hỗ trợ và chính sách 1.5, theo quy trình phát hành 5 bước.
 4. **Website deploy** sau khi 0.2.4 lên R2, để trang Liên hệ và chính sách khớp app.

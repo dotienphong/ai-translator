@@ -8,10 +8,10 @@ Bản macOS ký ad-hoc, chưa notarize (chưa có Developer ID, spec `2026-10-05
 
 ## Quyết định
 
-Cung cấp script cài chạy bằng `curl -fsSL https://aitranslator.io.vn/install.sh | bash`. File tải bằng `curl` không bị macOS gắn cờ quarantine, nên Gatekeeper không đánh giá nó và app mở thẳng (chữ ký ad-hoc đủ để chạy trên Apple Silicon). Không đổi app, không đổi pipeline release.
+Cung cấp script cài chạy bằng `curl -fsSL https://aitranslator.vn/install.sh | bash`. File tải bằng `curl` không bị macOS gắn cờ quarantine, nên Gatekeeper không đánh giá nó và app mở thẳng (chữ ký ad-hoc đủ để chạy trên Apple Silicon). Không đổi app, không đổi pipeline release.
 
 - Script là file tĩnh `website/src/public/install.sh`, phục vụ bởi Worker website (`/install.sh`, `text/plain`, cache 5 phút, `noindex`).
-- Nguồn bộ cài: R2 `releases.aitranslator.io.vn` do job `publish` đã đăng: `<kênh>/latest.json` (lấy `version`), `<version>/AI Translator_<version>_aarch64.dmg`, `<version>/SHA256SUMS-macos.txt`.
+- Nguồn bộ cài: R2 `releases.aitranslator.vn` do job `publish` đã đăng: `<kênh>/latest.json` (lấy `version`), `<version>/AI Translator_<version>_aarch64.dmg`, `<version>/SHA256SUMS-macos.txt`.
 - Các bước: kiểm máy (Darwin, không root, Apple Silicon, macOS ≥ 14.2); đọc phiên bản (kênh stable mặc định, `--beta`); tải .dmg và SHA256SUMS, đối chiếu SHA-256; gắn .dmg chỉ đọc; kiểm mã định danh `com.aitranslator.desktop` và `codesign --verify --deep --strict`; đóng app đang chạy; `ditto` vào `.installing` rồi đổi tên (thay bản cũ nguyên khối, có hoàn tác); gỡ cờ quarantine khỏi app vừa cài (phòng hờ); kiểm chữ ký lần cuối; đóng .dmg, xóa thư mục tạm; mở app.
 - Cài vào `/Applications`, không ghi được thì `~/Applications`. Không sudo, không gửi dữ liệu, không sửa gì ngoài thư mục cài.
 - Toàn bộ script nằm trong hàm `main` gọi ở dòng cuối để đường truyền đứt giữa chừng không chạy nửa script. Thông báo song ngữ (theo ngôn ngữ macOS; vùng Việt Nam tính là tiếng Việt).
@@ -19,7 +19,7 @@ Cung cấp script cài chạy bằng `curl -fsSL https://aitranslator.io.vn/inst
 
 ## Giới hạn nói thẳng với người dùng
 
-- Chạy lệnh dán từ internet là tin nguồn `aitranslator.io.vn`. SHA-256 nằm cùng máy chủ nên chỉ chống file hỏng, không chống kẻ kiểm soát máy chủ. Website nói rõ điều này và đưa lệnh "tải về đọc rồi chạy".
+- Chạy lệnh dán từ internet là tin nguồn `aitranslator.vn`. SHA-256 nằm cùng máy chủ nên chỉ chống file hỏng, không chống kẻ kiểm soát máy chủ. Website nói rõ điều này và đưa lệnh "tải về đọc rồi chạy".
 - Cách này không làm app được Apple notarize. File .dmg tải bằng trình duyệt vẫn bị chặn lần mở đầu.
 - Cập nhật giữa hai bản ad-hoc vẫn hỏi 5 Keychain + 1 quyền thu âm (spec 2026-10-05, đã chốt chấp nhận).
 - macOS có thể siết Gatekeeper ở các bản sau; khi có Developer ID thì đây không còn là đường duy nhất.

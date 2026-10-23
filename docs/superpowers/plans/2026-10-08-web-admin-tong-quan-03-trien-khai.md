@@ -15,7 +15,7 @@
 ## Quy ước
 
 - Task 1 và Task 4 agent làm được. Task 2 (deploy) chạm production: **agent không chạy**; chủ dự án chạy bằng `!` (auto mode chặn agent dùng token OAuth của wrangler và deploy production). Task 3 là việc của chủ dự án, agent ghi kết quả.
-- `PADMIN` là `https://admin.aitranslator.io.vn` (địa chỉ `workers.dev` của admin đã tắt từ 2026-10-08).
+- `PADMIN` là `https://admin.aitranslator.vn` (địa chỉ `workers.dev` của admin đã tắt từ 2026-10-08).
 - Làm trên `main`, kiểm `git branch --show-current` trước mỗi commit; chỉ `git add` file của nhiệm vụ. Commit kết thúc bằng `Co-Authored-By: <model đang chạy> <noreply@anthropic.com>`. Không push trừ khi chủ dự án bảo.
 - Trước khi deploy, thư mục chính phải **sạch** (`git status --short` rỗng) và đang ở `main`: deploy lấy mã từ thư mục làm việc, nên mọi thay đổi chưa commit sẽ lên production mà không có dấu vết.
 
@@ -79,13 +79,13 @@ Expected (lệnh hai): `Uploaded mt-license-admin`, có dòng tải file tĩnh (
 
 ```bash
 for p in / /overview /admin/stats /admin/whoami; do
-  printf "%-16s " "$p"; curl -sS -o /dev/null -m 20 -w '%{http_code}\n' "https://admin.aitranslator.io.vn$p"
+  printf "%-16s " "$p"; curl -sS -o /dev/null -m 20 -w '%{http_code}\n' "https://admin.aitranslator.vn$p"
 done
 ```
 
 Expected: mọi dòng `302` (sang trang đăng nhập Access); **không dòng nào `200`**. Có `200` thì dừng, báo chủ dự án và hoàn tác: `! cd server && pnpm exec wrangler rollback -c wrangler.admin.jsonc`.
 
-Nếu `curl` báo không phân giải được tên miền dù `dig +short admin.aitranslator.io.vn` có bản ghi (resolver cục bộ nhớ kết quả cũ), dùng `curl --resolve admin.aitranslator.io.vn:443:<IP từ dig> …` thay vì kết luận tên miền hỏng.
+Nếu `curl` báo không phân giải được tên miền dù `dig +short admin.aitranslator.vn` có bản ghi (resolver cục bộ nhớ kết quả cũ), dùng `curl --resolve admin.aitranslator.vn:443:<IP từ dig> …` thay vì kết luận tên miền hỏng.
 
 - [ ] **Step 4: Cron của Worker API vẫn chạy (chủ dự án, tùy chọn)**
 
@@ -95,7 +95,7 @@ Lần này không deploy Worker API nên không bắt buộc. Nếu chủ dự �
 
 ## Task 3: Nghiệm thu với chủ dự án (spec mục 7)
 
-Chủ dự án làm trên trình duyệt tại `https://admin.aitranslator.io.vn/overview`; agent ghi kết quả từng bước (đạt, không đạt, bỏ qua và lý do).
+Chủ dự án làm trên trình duyệt tại `https://admin.aitranslator.vn/overview`; agent ghi kết quả từng bước (đạt, không đạt, bỏ qua và lý do).
 
 - [ ] **Step 1: Mở trang và kiểm Console, tải lười**
 

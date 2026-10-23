@@ -143,7 +143,7 @@ Mọi biểu đồ nằm sau một lớp mỏng `ChartCard` (nhận dữ liệu 
 ## 7. Triển khai, nghiệm thu, hoàn tác
 
 - Chỉ deploy Worker admin (`pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc`, chủ dự án chạy bằng `!`); không migration; không deploy Worker API; không đổi Access.
-- Nghiệm thu bởi chủ dự án trên `https://admin.aitranslator.io.vn/overview`: mở trang, đối chiếu vài con số với trang Đơn hàng (lọc `paid`, đếm tay) và với thẻ "Xem bảng số"; Console không có `Refused to …`; xem trên điện thoại. Biên bản ghi vào `bench/phase1/results/` theo mẫu của phần 1.
+- Nghiệm thu bởi chủ dự án trên `https://admin.aitranslator.vn/overview`: mở trang, đối chiếu vài con số với trang Đơn hàng (lọc `paid`, đếm tay) và với thẻ "Xem bảng số"; Console không có `Refused to …`; xem trên điện thoại. Biên bản ghi vào `bench/phase1/results/` theo mẫu của phần 1.
 - Hoàn tác: `pnpm exec wrangler rollback -c wrangler.admin.jsonc`. Không có thay đổi dữ liệu nên không có bước lùi dữ liệu.
 
 ## 8. Rủi ro và điều đã cân nhắc

@@ -4,7 +4,7 @@
 
 **Goal:** Khách chat trên website (bong bóng nổi) và trong app (mục Hỗ trợ); tin nhắn tới Zalo cá nhân của chủ dự án qua Zalo Bot; chủ dự án trả lời ngay trong Zalo và câu trả lời hiện trong khung chat của khách.
 
-**Architecture:** Module `server/src/support/` trong Worker `mt-license` (`api.aitranslator.io.vn`) lưu cuộc chat vào D1 (migration 0005), chuyển tin khách sang Zalo bằng `sendMessage` của Zalo Bot, nhận câu trả lời qua webhook `POST /v1/webhooks/zalo`. Website và app hỏi tin mới định kỳ (polling) qua `GET /v1/support/messages`. App đi qua Rust (`reqwest`) và IPC vì CSP chặn webview gọi mạng.
+**Architecture:** Module `server/src/support/` trong Worker `mt-license` (`api.aitranslator.vn`) lưu cuộc chat vào D1 (migration 0005), chuyển tin khách sang Zalo bằng `sendMessage` của Zalo Bot, nhận câu trả lời qua webhook `POST /v1/webhooks/zalo`. Website và app hỏi tin mới định kỳ (polling) qua `GET /v1/support/messages`. App đi qua Rust (`reqwest`) và IPC vì CSP chặn webview gọi mạng.
 
 **Tech Stack:** Cloudflare Workers + D1, Hono 4.13, TypeScript 7 strict, vitest 4 với `@cloudflare/vitest-plugin`; website JS thuần (ES module, không framework); app Rust 2024 + Tauri 2, React 19, Zustand 5, Vitest.
 
@@ -32,12 +32,12 @@
 - App: `cargo fmt --all -- --check`, `cargo clippy --locked --workspace --all-targets -- -D warnings`, `sh scripts/check-windows.sh --locked`, `cargo test --locked -p meeting-translator --lib`, `pnpm build`, `pnpm test`, `node scripts/ui-preview/check-i18n.mjs`.
 - Chú thích trong mã bằng tiếng Việt, theo giọng các file kế bên.
 - Commit có hai dòng `-m`, dòng thứ hai là `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- Không thêm biến môi trường ghi đè URL hay môi trường staging (CLAUDE.md). App và website luôn gọi production `https://api.aitranslator.io.vn`.
+- Không thêm biến môi trường ghi đè URL hay môi trường staging (CLAUDE.md). App và website luôn gọi production `https://api.aitranslator.vn`.
 - Thư viện mới: không cần thư viện nào. Nếu thấy cần, dừng và hỏi (CLAUDE.md, spec gốc §6.12).
 
 ## Hợp đồng API (01 cài đặt; 02 và 03 dùng; đừng đổi khi chưa sửa cả ba kế hoạch)
 
-Gốc: `https://api.aitranslator.io.vn`. Request ghi (`POST`, `PUT`, `DELETE`) phải có `Content-Type: application/json` và thân là object JSON (kể cả `DELETE`: gửi `{}`), tối đa 16 KiB (trần chung của `/v1`). Token của cuộc chat đi trong `Authorization: Bearer <token>`; token là 43 ký tự base64url (32 byte ngẫu nhiên).
+Gốc: `https://api.aitranslator.vn`. Request ghi (`POST`, `PUT`, `DELETE`) phải có `Content-Type: application/json` và thân là object JSON (kể cả `DELETE`: gửi `{}`), tối đa 16 KiB (trần chung của `/v1`). Token của cuộc chat đi trong `Authorization: Bearer <token>`; token là 43 ký tự base64url (32 byte ngẫu nhiên).
 
 ```ts
 type Lang = "vi" | "en" | "ja" | "zh" | "ko";
@@ -78,7 +78,7 @@ Luật nội dung (server kiểm, khách kiểm trước để báo sớm):
 - `context`: chỉ app; bỏ ký tự điều khiển, cắt còn 300 ký tự. Rỗng thì `null`.
 - `email`: dạng của `parseEmail` trong `server/src/http.ts` (tối đa 254 ký tự, chữ thường); `null` để bỏ email.
 
-**CORS** (chỉ các đường `/v1/support/*`): origin duy nhất `https://aitranslator.io.vn`; phương thức `GET, POST, PUT, DELETE, OPTIONS`; header `Content-Type, Authorization`; lộ header `Retry-After`; `Access-Control-Max-Age: 86400`. Origin khác không có header CORS (trình duyệt chặn). App gọi không có `Origin`.
+**CORS** (chỉ các đường `/v1/support/*`): origin duy nhất `https://aitranslator.vn`; phương thức `GET, POST, PUT, DELETE, OPTIONS`; header `Content-Type, Authorization`; lộ header `Retry-After`; `Access-Control-Max-Age: 86400`. Origin khác không có header CORS (trình duyệt chặn). App gọi không có `Origin`.
 
 **Giới hạn phía server** (để khách hiểu khi nào gặp 429): tin mỗi IP 30/giờ, cuộc chat mới mỗi IP 5/giờ, tin mỗi cuộc chat 20/giờ, đặt email mỗi cuộc chat 5/giờ, toàn hệ thống 200 tin khách/giờ; hỏi tin mới 60 lần/phút mỗi token. Token sai tính là thất bại của IP (bộ đếm `failure_ip` có sẵn, 60/giờ).
 
@@ -99,7 +99,7 @@ Luật nội dung (server kiểm, khách kiểm trước để báo sớm):
 - **Ô email:** hiện sau tin đầu tiên được gửi thành công, cho tới khi khách lưu email hay bấm đóng thẻ; lưu bằng `PUT /v1/support/email`. Bản đầu không có chỗ đổi email đã lưu (khách muốn đổi thì xóa cuộc trò chuyện hay gửi email support@).
 - **Hỏi tin nền cũng tính là đã nhận:** lần hỏi lúc khung đóng (nhịp 60 giây, để hiện chấm đỏ) trả về câu trả lời thì server coi khách đã nhận (`delivered_owner_id`), nên không gửi email cho câu đó. Chấp nhận (chủ dự án duyệt thiết kế, Claude chốt 2026-10-22): khách đang mở website hay app thì thấy chấm đỏ; email chỉ dành cho khách đã rời đi.
 - **Xóa cuộc trò chuyện:** hỏi lại trước khi xóa; `DELETE /v1/support/conversation`; `200` hay `401` thì xóa bản lưu và về trạng thái mới.
-- **Khi tắt:** `enabled = false` (từ `status` hay từ thân `GET messages`) hay `503 support_disabled` thì ô nhập được thay bằng dòng "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn" (năm ngôn ngữ); lịch sử cũ vẫn hiện. `status: "closed"` hay `403` thì "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.io.vn".
+- **Khi tắt:** `enabled = false` (từ `status` hay từ thân `GET messages`) hay `503 support_disabled` thì ô nhập được thay bằng dòng "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.vn" (năm ngôn ngữ); lịch sử cũ vẫn hiện. `status: "closed"` hay `403` thì "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.vn".
 - **Lời chào** (tin hiển thị phía khách, không gửi lên server), chữ đặt ở file chữ của từng kế hoạch:
   - vi: "Chào bạn 👋 Bạn cần giúp gì? Bạn có thể viết bằng tiếng Việt hoặc English."
   - en: "Hi 👋 How can we help? You can write in English or Vietnamese."

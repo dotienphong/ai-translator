@@ -23,7 +23,7 @@ Bước "Quyền riêng tư" cũ của onboarding giữ nguyên (nội dung ng�
 
 - **Không lưu bằng chứng đồng ý EULA ở máy** (chúng tôi không nhận được, và ô đồng ý email đã được server ghi thời điểm). Hỏi lại khi điều khoản đổi phiên bản: để sau.
 - **Bộ cài:** macOS (DMG) không có trang giấy phép; đồng ý ở onboarding là đủ. Trang giấy phép NSIS của Windows làm ở đợt Windows.
-- **Website** `aitranslator.io.vn/terms` và `/privacy`: cần spec riêng.
+- **Website** `aitranslator.vn/terms` và `/privacy`: cần spec riêng.
 - Người đã qua onboarding (máy đang dùng) không bị hỏi lại.
 
 ## 4. Kiểm thử

@@ -1,8 +1,10 @@
-# Chuyển sang tên miền `aitranslator.io.vn` Implementation Plan
+# Chuyển sang tên miền `aitranslator.vn` Implementation Plan
+
+> **Ghi chú 2026-10-23:** tên miền trong file này đã được thay bằng tên chính thức `aitranslator.vn` theo yêu cầu của chủ dự án. Đợt 2026-10-06 thật ra làm trên `aitranslator.io.vn`; việc chuyển sang `aitranslator.vn` và vai trò còn lại của tên cũ ở spec `2026-10-23-ten-mien-aitranslator-vn-design.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Task 3 đến 9 và một phần Task 11, 12 là việc của **chủ dự án** (Dashboard, `sudo`, tiền thật); agent chỉ soạn lệnh, hướng dẫn và kiểm kết quả bằng lệnh.
 
-**Goal:** Đưa license server, nguồn cập nhật, model và email của AI Translator sang tên miền riêng `aitranslator.io.vn` (`api.`, `releases.`, `mail.`, `support@`), rồi đổi ba URL nhúng cứng trong app, trước khi phát bản beta cho người khác.
+**Goal:** Đưa license server, nguồn cập nhật, model và email của AI Translator sang tên miền riêng `aitranslator.vn` (`api.`, `releases.`, `mail.`, `support@`), rồi đổi ba URL nhúng cứng trong app, trước khi phát bản beta cho người khác.
 
 **Architecture:** Hạ tầng dựng và kiểm xong trước (app cũ và `workers.dev`, `r2.dev` vẫn chạy làm đường lui); chỉ khi mọi kiểm tra qua tên mới đạt mới đổi code app. Code chạm tới: Worker API (`custom_domain`, `reply_to`), cấu hình hai Worker, ba hằng `PRODUCTION_URL` của app, danh sách A7, tài liệu. Admin giữ `workers.dev`.
 
@@ -37,7 +39,7 @@ Spec: `docs/superpowers/specs/2026-10-06-custom-domain-design.md`. Lệnh chạy
 - Modify: `server/src/email/resend.ts`, `server/src/env.ts`, `server/src/deps.ts`, `server/src/admin-entry.ts`
 - Test: `server/test/email.test.ts`
 
-Lý do: thư gửi từ `no-reply@mail.aitranslator.io.vn` không nhận thư; khách trả lời phải về `support@aitranslator.io.vn`.
+Lý do: thư gửi từ `no-reply@mail.aitranslator.vn` không nhận thư; khách trả lời phải về `support@aitranslator.vn`.
 
 - [ ] **Step 1: Viết test lỗi**
 
@@ -130,11 +132,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 Thêm vào cuối `server/test/node/wrangler-config.test.mjs`:
 
 ```js
-test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gửi và origin của Worker admin", () => {
-  assert.deepEqual(api.routes, [{ pattern: "api.aitranslator.io.vn", custom_domain: true }]);
+test("tên miền riêng aitranslator.vn (spec 2026-10-06): route, email gửi và origin của Worker admin", () => {
+  assert.deepEqual(api.routes, [{ pattern: "api.aitranslator.vn", custom_domain: true }]);
   for (const config of [api, admin]) {
-    assert.equal(config.vars.EMAIL_FROM, "AI Translator <no-reply@mail.aitranslator.io.vn>");
-    assert.equal(config.vars.EMAIL_REPLY_TO, "support@aitranslator.io.vn");
+    assert.equal(config.vars.EMAIL_FROM, "AI Translator <no-reply@mail.aitranslator.vn>");
+    assert.equal(config.vars.EMAIL_REPLY_TO, "support@aitranslator.vn");
   }
   assert.equal(admin.vars.API_ORIGIN, `https://${api.routes[0].pattern}`);
   assert.equal("routes" in admin, false, "admin giữ workers.dev, không có route (spec 2026-10-06, mục 3)");
@@ -159,10 +161,10 @@ Thay hai dòng:
 bằng:
 
 ```jsonc
-  // Tên miền riêng (spec 2026-10-06): Worker phục vụ api.aitranslator.io.vn. Giữ workers_dev tạm làm đường lui cho bản cài
+  // Tên miền riêng (spec 2026-10-06): Worker phục vụ api.aitranslator.vn. Giữ workers_dev tạm làm đường lui cho bản cài
   // cũ; tắt khi không còn bản cài nào dùng URL workers.dev.
   "workers_dev": true,
-  "routes": [{ "pattern": "api.aitranslator.io.vn", "custom_domain": true }],
+  "routes": [{ "pattern": "api.aitranslator.vn", "custom_domain": true }],
 ```
 
 Thay hai dòng:
@@ -175,9 +177,9 @@ Thay hai dòng:
 bằng:
 
 ```jsonc
-    // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
-    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
-    "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
+    // Tên miền gửi mail.aitranslator.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
+    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
+    "EMAIL_REPLY_TO": "support@aitranslator.vn",
 ```
 
 - [ ] **Step 4: Sửa `server/wrangler.admin.jsonc`**
@@ -185,11 +187,11 @@ bằng:
 Thay `"EMAIL_FROM": "AI Translator <onboarding@resend.dev>",` bằng:
 
 ```jsonc
-    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
-    "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
+    "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
+    "EMAIL_REPLY_TO": "support@aitranslator.vn",
 ```
 
-và `"API_ORIGIN": "https://mt-license.dotienphong1993.workers.dev"` bằng `"API_ORIGIN": "https://api.aitranslator.io.vn"`; sửa dòng chú thích ngay trên `API_ORIGIN` thành `// Origin của Worker API (tên miền riêng, spec 2026-10-06); confirm-webhook chỉ nhận URL trên origin này.`
+và `"API_ORIGIN": "https://mt-license.dotienphong1993.workers.dev"` bằng `"API_ORIGIN": "https://api.aitranslator.vn"`; sửa dòng chú thích ngay trên `API_ORIGIN` thành `// Origin của Worker API (tên miền riêng, spec 2026-10-06); confirm-webhook chỉ nhận URL trên origin này.`
 
 - [ ] **Step 5: Chạy, thấy đạt**
 
@@ -203,7 +205,7 @@ Expected: `typecheck`, `vectors:check`, `test`, `test:scripts` và `dry-run` đ�
 
 ```bash
 git add server/wrangler.jsonc server/wrangler.admin.jsonc server/test/node/wrangler-config.test.mjs
-git commit -m "feat(server): cấu hình tên miền riêng api.aitranslator.io.vn, email gửi từ mail. kèm Reply-To support@, admin trỏ API_ORIGIN mới (chưa deploy)
+git commit -m "feat(server): cấu hình tên miền riêng api.aitranslator.vn, email gửi từ mail. kèm Reply-To support@, admin trỏ API_ORIGIN mới (chưa deploy)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -212,15 +214,15 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 ### Task 3: Bước 0: đưa tên miền vào Cloudflare (chủ dự án)
 
-Hiện `aitranslator.io.vn` chưa được ủy quyền (máy chủ `.vn` trả `NXDOMAIN`). Mọi task sau cần zone này ở trạng thái **Active**.
+Hiện `aitranslator.vn` chưa được ủy quyền (máy chủ `.vn` trả `NXDOMAIN`). Mọi task sau cần zone này ở trạng thái **Active**.
 
 - [ ] **Step 1: Hoàn tất đăng ký.** Ở nơi bạn mua tên miền: trạng thái hoạt động, đã xác minh danh tính với `.vn` nếu được yêu cầu.
-- [ ] **Step 2: Thêm vào Cloudflare.** Dashboard Cloudflare (tài khoản đang dùng cho sản phẩm) › **Add a domain** › nhập `aitranslator.io.vn` › chọn gói **Free** › Continue (bỏ qua bản ghi DNS quét được nếu không có gì quan trọng). Ghi lại **hai nameserver** Cloudflare đưa.
+- [ ] **Step 2: Thêm vào Cloudflare.** Dashboard Cloudflare (tài khoản đang dùng cho sản phẩm) › **Add a domain** › nhập `aitranslator.vn` › chọn gói **Free** › Continue (bỏ qua bản ghi DNS quét được nếu không có gì quan trọng). Ghi lại **hai nameserver** Cloudflare đưa.
 - [ ] **Step 3: Đặt nameserver ở nhà đăng ký.** Thay toàn bộ nameserver hiện có bằng hai nameserver trên.
 - [ ] **Step 4: Chờ và kiểm.** Chờ (vài phút đến vài giờ). Rồi:
 
   ```bash
-  dig +short NS aitranslator.io.vn
+  dig +short NS aitranslator.vn
   ```
 
   Expected: hai nameserver `*.ns.cloudflare.com`. Trên Cloudflare, trang Overview của zone báo **Active**.
@@ -233,28 +235,28 @@ Cổng: zone **Active** thì mới làm Task 4 trở đi.
 
 ### Task 4: Email Routing và `support@` (chủ dự án)
 
-- [ ] **Step 1:** Cloudflare › zone `aitranslator.io.vn` › **Email** › **Email Routing** › **Get started**. Tạo địa chỉ `support`, đích là Gmail của bạn; mở thư xác nhận Cloudflare gửi tới Gmail và bấm xác thực. Bấm **Add records and enable** (Cloudflare tự thêm MX và SPF ở gốc).
+- [ ] **Step 1:** Cloudflare › zone `aitranslator.vn` › **Email** › **Email Routing** › **Get started**. Tạo địa chỉ `support`, đích là Gmail của bạn; mở thư xác nhận Cloudflare gửi tới Gmail và bấm xác thực. Bấm **Add records and enable** (Cloudflare tự thêm MX và SPF ở gốc).
 - [ ] **Step 2: Kiểm DNS.**
 
   ```bash
-  dig +short MX aitranslator.io.vn
-  dig +short TXT aitranslator.io.vn
+  dig +short MX aitranslator.vn
+  dig +short TXT aitranslator.vn
   ```
 
   Expected: ba bản ghi MX `route1.mx.cloudflare.net`, `route2…`, `route3…`; TXT chứa `v=spf1 include:_spf.mx.cloudflare.net ~all`.
-- [ ] **Step 3: Kiểm thư.** Từ một hộp thư khác (không phải Gmail đích) gửi thư tới `support@aitranslator.io.vn`. Expected: thư tới Gmail đích trong vài phút (xem cả mục Spam).
+- [ ] **Step 3: Kiểm thư.** Từ một hộp thư khác (không phải Gmail đích) gửi thư tới `support@aitranslator.vn`. Expected: thư tới Gmail đích trong vài phút (xem cả mục Spam).
 
 ---
 
-### Task 5: Resend xác thực `mail.aitranslator.io.vn` và DMARC (chủ dự án)
+### Task 5: Resend xác thực `mail.aitranslator.vn` và DMARC (chủ dự án)
 
-- [ ] **Step 1:** Resend › **Domains** › **Add Domain**: `mail.aitranslator.io.vn`, vùng gửi gần Việt Nam nếu có (Singapore hoặc Tokyo). Resend liệt kê các bản ghi DNS (DKIM, SPF, MX cho bounce).
+- [ ] **Step 1:** Resend › **Domains** › **Add Domain**: `mail.aitranslator.vn`, vùng gửi gần Việt Nam nếu có (Singapore hoặc Tokyo). Resend liệt kê các bản ghi DNS (DKIM, SPF, MX cho bounce).
 - [ ] **Step 2: Thêm bản ghi.** Dùng nút kết nối Cloudflare của Resend, hoặc thêm tay ở Cloudflare › DNS đúng như Resend liệt kê. Mọi bản ghi để **DNS only** (đám mây xám), không proxy. Không sửa MX hay SPF ở gốc (của Email Routing).
 - [ ] **Step 3:** Bấm **Verify** trong Resend. Expected: domain **Verified** (DKIM và SPF xanh). Có thể mất vài phút.
-- [ ] **Step 4: DMARC.** Cloudflare › DNS › thêm bản ghi TXT: Name `_dmarc`, Content `v=DMARC1; p=none; rua=mailto:support@aitranslator.io.vn`. Kiểm:
+- [ ] **Step 4: DMARC.** Cloudflare › DNS › thêm bản ghi TXT: Name `_dmarc`, Content `v=DMARC1; p=none; rua=mailto:support@aitranslator.vn`. Kiểm:
 
   ```bash
-  dig +short TXT _dmarc.aitranslator.io.vn
+  dig +short TXT _dmarc.aitranslator.vn
   ```
 
   Expected: in đúng chuỗi trên.
@@ -279,7 +281,7 @@ Cổng: zone **Active** thì mới làm Task 4 trở đi.
   pnpm exec wrangler deploy
   ```
 
-  Expected: có `Uploaded mt-license` và dòng `api.aitranslator.io.vn (custom domain)`. Nếu báo không tìm thấy zone hay không có quyền: `pnpm exec wrangler whoami` (đúng tài khoản chứa zone) rồi `pnpm exec wrangler login` lại; Task 3 phải Active.
+  Expected: có `Uploaded mt-license` và dòng `api.aitranslator.vn (custom domain)`. Nếu báo không tìm thấy zone hay không có quyền: `pnpm exec wrangler whoami` (đúng tài khoản chứa zone) rồi `pnpm exec wrangler login` lại; Task 3 phải Active.
 - [ ] **Step 3: Deploy Worker admin**
 
   ```bash
@@ -290,7 +292,7 @@ Cổng: zone **Active** thì mới làm Task 4 trở đi.
 - [ ] **Step 4: Kiểm API (chứng chỉ có thể mất tới vài phút lần đầu)**
 
   ```bash
-  API=https://api.aitranslator.io.vn
+  API=https://api.aitranslator.vn
   curl -s "$API/v1/health"; echo
   curl -sI "$API/v1/health" | head -3
   [ "$(curl -s $API/v1/plans | shasum)" = "$(curl -s https://mt-license.dotienphong1993.workers.dev/v1/plans | shasum)" ] && echo "plans giống workers.dev"
@@ -306,7 +308,7 @@ Cổng: zone **Active** thì mới làm Task 4 trở đi.
     -d '{"email":"<địa chỉ thứ hai>","plan":"pro","note":"kiểm email tên miền mới"}'; echo
   ```
 
-  Expected: `201` kèm `license_id`. Thư tới hộp thư **đến** (không spam) trong vài phút. Ở Gmail › menu ba chấm › **Show original**: `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`, `From: AI Translator <no-reply@mail.aitranslator.io.vn>`, `Reply-To: support@aitranslator.io.vn`. Trả lời thử thư: thư tới `support@` về Gmail đích.
+  Expected: `201` kèm `license_id`. Thư tới hộp thư **đến** (không spam) trong vài phút. Ở Gmail › menu ba chấm › **Show original**: `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`, `From: AI Translator <no-reply@mail.aitranslator.vn>`, `Reply-To: support@aitranslator.vn`. Trả lời thử thư: thư tới `support@` về Gmail đích.
 - [ ] **Step 6: Thu hồi license thử**
 
   ```bash
@@ -317,16 +319,16 @@ Cổng: zone **Active** thì mới làm Task 4 trở đi.
 
 ---
 
-### Task 7: R2 custom domain `releases.aitranslator.io.vn` (chủ dự án)
+### Task 7: R2 custom domain `releases.aitranslator.vn` (chủ dự án)
 
-- [ ] **Step 1: Kết nối domain.** Dashboard Cloudflare › **R2** › bucket `ai-translator-releases` › **Settings** › **Custom Domains** › **Connect Domain** › `releases.aitranslator.io.vn` › Continue › Connect. Chờ trạng thái **Active**. (Cách khác, nếu có: `cd server && pnpm exec wrangler r2 bucket domain add ai-translator-releases --domain releases.aitranslator.io.vn --zone-id <ZONE_ID>`.) Giữ nguyên `r2.dev`.
+- [ ] **Step 1: Kết nối domain.** Dashboard Cloudflare › **R2** › bucket `ai-translator-releases` › **Settings** › **Custom Domains** › **Connect Domain** › `releases.aitranslator.vn` › Continue › Connect. Chờ trạng thái **Active**. (Cách khác, nếu có: `cd server && pnpm exec wrangler r2 bucket domain add ai-translator-releases --domain releases.aitranslator.vn --zone-id <ZONE_ID>`.) Giữ nguyên `r2.dev`.
 - [ ] **Step 2: Kiểm từng file model qua hai URL (tên mới phải khớp `r2.dev`)**
 
 Chạy từ gốc repo (đoạn Python dưới đây không thụt lề, chép nguyên khối):
 
 ```bash
 OLD=https://pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev/models
-NEW=https://releases.aitranslator.io.vn/models
+NEW=https://releases.aitranslator.vn/models
 python3 - "$OLD" "$NEW" <<'PY'
 import json, sys, urllib.request
 old, new = sys.argv[1:3]
@@ -351,9 +353,9 @@ Expected: mọi dòng `OK`, cuối cùng `tất cả đạt` (10 file).
 - [ ] **Step 3: Kiểm `Range` và manifest**
 
   ```bash
-  curl -s -o /dev/null -w "%{http_code}\n" -r 0-1023 https://releases.aitranslator.io.vn/models/hy-mt2/Hy-MT2-1.8B-Q4_K_M.gguf
-  curl -s https://releases.aitranslator.io.vn/models/models.json | head -c 120; echo
-  curl -sI https://releases.aitranslator.io.vn/models/models.json | grep -i -E "^(cache-control|cf-cache-status|content-type)"
+  curl -s -o /dev/null -w "%{http_code}\n" -r 0-1023 https://releases.aitranslator.vn/models/hy-mt2/Hy-MT2-1.8B-Q4_K_M.gguf
+  curl -s https://releases.aitranslator.vn/models/models.json | head -c 120; echo
+  curl -sI https://releases.aitranslator.vn/models/models.json | grep -i -E "^(cache-control|cf-cache-status|content-type)"
   ```
 
   Expected: `206`; đầu của phong bì manifest (`{"format":"ai-translator-models",…`); in ra `cache-control` (nếu có) và `cf-cache-status`. Ghi lại giá trị: manifest và `latest.json` không được bị cache lâu (manifest đăng bằng `publish-release.mjs` đặt `Cache-Control: no-cache`; riêng `models.json` hiện đăng bằng `rclone`, nếu thấy `cf-cache-status: HIT` ngay sau khi vừa đổi nội dung thì đặt lại `Cache-Control: no-cache` khi đăng bản sau).
@@ -364,7 +366,7 @@ Expected: mọi dòng `OK`, cuối cùng `tất cả đạt` (10 file).
 
 Kế hoạch 05 Task 21 Step 9a chưa đặt được vì `workers.dev` không phải zone. Giờ có zone riêng.
 
-- [ ] **Step 1: Tạo luật.** Cloudflare › zone `aitranslator.io.vn` › **Security** › **Security rules** (hoặc **WAF** › tab **Rate limiting rules**) › **Create rule** › **Rate limiting rules**:
+- [ ] **Step 1: Tạo luật.** Cloudflare › zone `aitranslator.vn` › **Security** › **Security rules** (hoặc **WAF** › tab **Rate limiting rules**) › **Create rule** › **Rate limiting rules**:
   - **Rule name:** `webhook-rate-limit`.
   - **If incoming requests match:** Field `URI Path`, Operator `starts with`, Value `/v1/webhooks/` (nếu gói Free không cho `starts with`, dùng `equals` với `/v1/webhooks/payos`).
   - **With the same characteristics:** `IP`. **When rate exceeds:** Requests `5`, Period `10 seconds`.
@@ -373,7 +375,7 @@ Kế hoạch 05 Task 21 Step 9a chưa đặt được vì `workers.dev` không p
 - [ ] **Step 2: Thử**
 
   ```bash
-  API=https://api.aitranslator.io.vn
+  API=https://api.aitranslator.vn
   for i in 1 2 3 4 5 6 7; do curl -s -o /dev/null -w '%{http_code} ' -X POST "$API/v1/webhooks/payos" -H 'content-type: application/json' -d '{"data":{},"signature":"x"}'; done; echo
   ```
 
@@ -389,14 +391,14 @@ Kế hoạch 05 Task 21 Step 9a chưa đặt được vì `workers.dev` không p
 
   ```bash
   PADMIN=https://mt-license-admin.dotienphong1993.workers.dev
-  API=https://api.aitranslator.io.vn
+  API=https://api.aitranslator.vn
   cloudflared access login "$PADMIN"
   cloudflared access curl "$PADMIN/admin/payos/confirm-webhook" -X POST -H 'content-type: application/json' \
     -d "{\"webhook_url\":\"$API/v1/webhooks/payos\"}"; echo
   ```
 
-  Expected: `{"ok":true,"webhook_url":"https://api.aitranslator.io.vn/v1/webhooks/payos"}`, và kênh trên my.payos.vn hiện đúng Webhook URL mới. Nếu lỗi vì URL ngoài origin cho phép: Task 6 Step 3 chưa deploy admin.
-- [ ] **Step 2: Cấu hình kênh PayOS.** Trong my.payos.vn, nếu kênh có trường tên miền hay website thì đặt `https://aitranslator.io.vn`.
+  Expected: `{"ok":true,"webhook_url":"https://api.aitranslator.vn/v1/webhooks/payos"}`, và kênh trên my.payos.vn hiện đúng Webhook URL mới. Nếu lỗi vì URL ngoài origin cho phép: Task 6 Step 3 chưa deploy admin.
+- [ ] **Step 2: Cấu hình kênh PayOS.** Trong my.payos.vn, nếu kênh có trường tên miền hay website thì đặt `https://aitranslator.vn`.
 - [ ] **Step 3: Tạo đơn qua API.** Dùng một email **không phải** chủ tài khoản Resend:
 
   ```bash
@@ -413,8 +415,8 @@ Kế hoạch 05 Task 21 Step 9a chưa đặt được vì `workers.dev` không p
   curl -s "$API/v1/orders/$CODE" -H "authorization: Bearer $TOKEN"; echo
   ```
 
-  Expected (sau khi trả tiền, vài giây): `"status":"paid"`, có `license_key`. Trình duyệt sau khi trả được PayOS chuyển về `https://api.aitranslator.io.vn/v1/pay/return` (trang có thương hiệu, không phải lỗi).
-- [ ] **Step 5: Kiểm email.** Thư chứa key tới địa chỉ thứ hai, vào hộp thư **đến**, `SPF/DKIM/DMARC: PASS`, `Reply-To: support@aitranslator.io.vn`.
+  Expected (sau khi trả tiền, vài giây): `"status":"paid"`, có `license_key`. Trình duyệt sau khi trả được PayOS chuyển về `https://api.aitranslator.vn/v1/pay/return` (trang có thương hiệu, không phải lỗi).
+- [ ] **Step 5: Kiểm email.** Thư chứa key tới địa chỉ thứ hai, vào hộp thư **đến**, `SPF/DKIM/DMARC: PASS`, `Reply-To: support@aitranslator.vn`.
 - [ ] **Step 6: Giữ key cho Task 12**, rồi xóa tệp tạm: `rm -f /tmp/at-order.json`. Chủ dự án tự hoàn tiền tay như các đơn thử trước.
 
 **Cổng:** Task 6 (Step 4 và 5), 7, 8 và 9 đều đạt thì mới làm Task 10.
@@ -439,7 +441,7 @@ bằng:
 ```rust
 /// Địa chỉ license server production (Worker `mt-license` trên tên miền riêng, spec 2026-10-06). Để `None` thì app
 /// chỉ dùng được token đã lưu và gói Free.
-pub const PRODUCTION_URL: Option<&str> = Some("https://api.aitranslator.io.vn");
+pub const PRODUCTION_URL: Option<&str> = Some("https://api.aitranslator.vn");
 ```
 
 - [ ] **Step 2: Sửa `updater/source.rs`.** Thay hai dòng:
@@ -453,7 +455,7 @@ bằng:
 
 ```rust
 /// URL gốc production: bucket R2 `ai-translator-releases` trên tên miền riêng (spec 2026-10-06).
-pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.io.vn");
+pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.vn");
 ```
 
 - [ ] **Step 3: Sửa `models/source.rs`.** Thay:
@@ -467,10 +469,10 @@ bằng:
 
 ```rust
 /// URL `models.json` production: cùng bucket với bản cập nhật, trên tên miền riêng (spec 2026-10-06).
-pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.io.vn/models/models.json");
+pub const PRODUCTION_URL: Option<&str> = Some("https://releases.aitranslator.vn/models/models.json");
 ```
 
-- [ ] **Step 3b: Cổng `release-ready` còn đòi tên miền website** (bổ sung khi thực thi): `scripts/release/release-ready.mjs` báo lỗi nếu `EXTERNAL_HOSTS` trong `src-tauri/src/navigation.rs` chỉ có `pay.payos.vn`. Thêm `"aitranslator.io.vn"` (kèm chú thích "Website của sản phẩm …") và cập nhật `scripts/release/release-ready.test.mjs`: test "repo hiện tại đủ cấu hình production" và test "thiếu tên miền website trong EXTERNAL_HOSTS thì bị bắt".
+- [ ] **Step 3b: Cổng `release-ready` còn đòi tên miền website** (bổ sung khi thực thi): `scripts/release/release-ready.mjs` báo lỗi nếu `EXTERNAL_HOSTS` trong `src-tauri/src/navigation.rs` chỉ có `pay.payos.vn`. Thêm `"aitranslator.vn"` (kèm chú thích "Website của sản phẩm …") và cập nhật `scripts/release/release-ready.test.mjs`: test "repo hiện tại đủ cấu hình production" và test "thiếu tên miền website trong EXTERNAL_HOSTS thì bị bắt".
 
 - [ ] **Step 4: Kiểm không còn URL cũ trong mã app**
 
@@ -482,14 +484,14 @@ Expected: không có dòng nào.
 Run: `cargo fmt --all -- --check && cargo clippy -p meeting-translator --all-targets -- -D warnings 2>&1 | tail -3 && cargo test -p meeting-translator --lib 2>&1 | grep -E "test result|FAILED"`
 Expected: không lỗi định dạng hay cảnh báo; `test result: ok`, 0 failed.
 
-Run: `node scripts/release/release-ready.mjs --base-url https://releases.aitranslator.io.vn`
+Run: `node scripts/release/release-ready.mjs --base-url https://releases.aitranslator.vn`
 Expected: in `đủ cấu hình production` (kiểm `RELEASES_BASE_URL` khớp `updater/source.rs`). Nếu báo lỗi vì lý do khác với URL (khóa, bản), báo lại nguyên văn.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src-tauri/src/license/client.rs src-tauri/src/updater/source.rs src-tauri/src/models/source.rs
-git commit -m "feat(app): license, bản cập nhật và manifest model trỏ tên miền riêng api. và releases.aitranslator.io.vn
+git commit -m "feat(app): license, bản cập nhật và manifest model trỏ tên miền riêng api. và releases.aitranslator.vn
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -509,14 +511,14 @@ import json
 p = "bench/phase1/results/acceptance/a7-allow.json"
 a = json.load(open(p, encoding="utf-8"))
 h = a["hosts"]
-h["api.aitranslator.io.vn"] = h.pop("mt-license.dotienphong1993.workers.dev")
-h["releases.aitranslator.io.vn"] = h.pop("pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev")
-a["_note"] = a["_note"].replace("license server mt-license (workers.dev)", "license server api.aitranslator.io.vn").replace("bucket R2 công khai", "bucket R2 releases.aitranslator.io.vn")
+h["api.aitranslator.vn"] = h.pop("mt-license.dotienphong1993.workers.dev")
+h["releases.aitranslator.vn"] = h.pop("pub-a4be034c8c474a36b893a65e8f0b8365.r2.dev")
+a["_note"] = a["_note"].replace("license server mt-license (workers.dev)", "license server api.aitranslator.vn").replace("bucket R2 công khai", "bucket R2 releases.aitranslator.vn")
 json.dump(a, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 open(p, "a").write("\n")
 EOF
 python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py' 2>&1 | tail -3
-grep -c "aitranslator.io.vn" bench/phase1/results/acceptance/a7-allow.json
+grep -c "aitranslator.vn" bench/phase1/results/acceptance/a7-allow.json
 ```
 
 Expected: `OK` (82 test); số dòng khớp là 4 trở lên (hai tên máy chủ cộng `_note`); không còn `workers.dev` hay `r2.dev` trong file.
@@ -525,32 +527,32 @@ Expected: `OK` (82 test); số dòng khớp là 4 trở lên (hai tên máy ch�
 
 ```markdown
 
-## 6. Tên miền riêng `aitranslator.io.vn`
+## 6. Tên miền riêng `aitranslator.vn`
 
 Thiết kế: `docs/superpowers/specs/2026-10-06-custom-domain-design.md`. Kế hoạch: `docs/superpowers/plans/2026-10-06-chuyen-ten-mien.md`.
 
 | Mục đích | Tên | Gắn với |
 |---|---|---|
-| License server (app gọi) | `api.aitranslator.io.vn` | Worker `mt-license`, route `custom_domain` trong `server/wrangler.jsonc` |
-| Bản cập nhật và model | `releases.aitranslator.io.vn` | Bucket R2 `ai-translator-releases`, custom domain |
-| Gửi email | `mail.aitranslator.io.vn` | Resend; From `no-reply@mail…`, Reply-To `support@aitranslator.io.vn` |
-| Nhận email hỗ trợ | `support@aitranslator.io.vn` | Cloudflare Email Routing, chuyển về Gmail |
+| License server (app gọi) | `api.aitranslator.vn` | Worker `mt-license`, route `custom_domain` trong `server/wrangler.jsonc` |
+| Bản cập nhật và model | `releases.aitranslator.vn` | Bucket R2 `ai-translator-releases`, custom domain |
+| Gửi email | `mail.aitranslator.vn` | Resend; From `no-reply@mail…`, Reply-To `support@aitranslator.vn` |
+| Nhận email hỗ trợ | `support@aitranslator.vn` | Cloudflare Email Routing, chuyển về Gmail |
 | Admin | `mt-license-admin.<subdomain>.workers.dev` | Worker admin sau Access (chưa chuyển sang tên miền) |
 
-- Biến GitHub `RELEASES_BASE_URL` = `https://releases.aitranslator.io.vn` (Settings › Secrets and variables › Actions › Variables); `release-ready.mjs` kiểm khớp với `updater/source.rs`.
+- Biến GitHub `RELEASES_BASE_URL` = `https://releases.aitranslator.vn` (Settings › Secrets and variables › Actions › Variables); `release-ready.mjs` kiểm khớp với `updater/source.rs`.
 - Luật WAF `webhook-rate-limit` cho `/v1/webhooks/` đặt ở zone này (5 request mỗi 10 giây mỗi IP, 429).
-- Webhook PayOS: `https://api.aitranslator.io.vn/v1/webhooks/payos` (đăng ký bằng `confirm-webhook`; `API_ORIGIN` của Worker admin phải là `https://api.aitranslator.io.vn`).
+- Webhook PayOS: `https://api.aitranslator.vn/v1/webhooks/payos` (đăng ký bằng `confirm-webhook`; `API_ORIGIN` của Worker admin phải là `https://api.aitranslator.vn`).
 - Thư mới từ tên miền mới dễ vào spam lúc đầu: kiểm hộp thư thật sau mỗi thay đổi nội dung thư; DMARC đang `p=none`, siết `quarantine` sau vài tuần báo cáo sạch.
 - Còn giữ `workers_dev` của Worker API và `r2.dev` của bucket làm đường lui cho bản cài cũ. Chỉ tắt khi không còn bản cài nào dùng URL cũ (và nhớ Worker admin vẫn dùng `workers.dev` của nó).
 ```
 
-- [ ] **Step 3: Biến GitHub (chủ dự án).** Đặt `RELEASES_BASE_URL` = `https://releases.aitranslator.io.vn` ở Settings › Secrets and variables › Actions › **Variables** của repo `dotienphong/ai-translator` (hoặc `gh variable set RELEASES_BASE_URL --body https://releases.aitranslator.io.vn` với `GH_TOKEN` của dotienphong).
+- [ ] **Step 3: Biến GitHub (chủ dự án).** Đặt `RELEASES_BASE_URL` = `https://releases.aitranslator.vn` ở Settings › Secrets and variables › Actions › **Variables** của repo `dotienphong/ai-translator` (hoặc `gh variable set RELEASES_BASE_URL --body https://releases.aitranslator.vn` với `GH_TOKEN` của dotienphong).
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add bench/phase1/results/acceptance/a7-allow.json docs/release/phat-hanh.md
-git commit -m "docs: danh sách cho phép A7 và quy trình phát hành theo tên miền riêng aitranslator.io.vn
+git commit -m "docs: danh sách cho phép A7 và quy trình phát hành theo tên miền riêng aitranslator.vn
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -578,12 +580,12 @@ Mở app; khoảng 5 hộp thoại Keychain và 1 quyền thu âm sẽ hiện l�
 
 ```bash
 grep -E "workers\.dev|r2\.dev" ~/Library/Logs/com.aitranslator.desktop/app.log | awk '$0 >= "[2026-10-06][12:00:00]"' | tail -3
-grep -E "releases\.aitranslator\.io\.vn" ~/Library/Logs/com.aitranslator.desktop/app.log | tail -2 | cut -c1-200
+grep -E "releases\.aitranslator\.vn" ~/Library/Logs/com.aitranslator.desktop/app.log | tail -2 | cut -c1-200
 ```
 
-Expected: dòng đầu không in gì (không còn `workers.dev` hay `r2.dev` kể từ bản mới; chỉnh giờ trong lệnh cho đúng giờ mở bản mới); dòng sau in cảnh báo kiểm cập nhật chứa `https://releases.aitranslator.io.vn/stable/latest.json` (chưa có bản đăng nên báo không kiểm được là bình thường).
+Expected: dòng đầu không in gì (không còn `workers.dev` hay `r2.dev` kể từ bản mới; chỉnh giờ trong lệnh cho đúng giờ mở bản mới); dòng sau in cảnh báo kiểm cập nhật chứa `https://releases.aitranslator.vn/stable/latest.json` (chưa có bản đăng nên báo không kiểm được là bình thường).
 - [ ] **Step 4: Dịch thử và tải model.** Bấm Bắt đầu với một nguồn âm thanh, thấy phụ đề (model đã có trên máy). Cài đặt › Model: kiểm có hiện "Có bản mới" hay lỗi mạng không (không được lỗi chứng chỉ hay 404 của `models.json`).
-- [ ] **Step 5: A7 ngắn trên bản mới (khuyến nghị).** Làm theo `bench/phase1/acceptance/RUNBOOK-mac.md` mục A7 với dịch 5 phút: HAR phải chỉ có request tới `api.aitranslator.io.vn` (`/v1/licenses/validate`) và `releases.aitranslator.io.vn` (`/stable/latest.json`), `netaudit.py` báo `A7: ĐẠT`. Nhớ gỡ chứng chỉ mitmproxy sau đó và kiểm `security find-certificate -c mitmproxy /Library/Keychains/System.keychain`.
+- [ ] **Step 5: A7 ngắn trên bản mới (khuyến nghị).** Làm theo `bench/phase1/acceptance/RUNBOOK-mac.md` mục A7 với dịch 5 phút: HAR phải chỉ có request tới `api.aitranslator.vn` (`/v1/licenses/validate`) và `releases.aitranslator.vn` (`/stable/latest.json`), `netaudit.py` báo `A7: ĐẠT`. Nhớ gỡ chứng chỉ mitmproxy sau đó và kiểm `security find-certificate -c mitmproxy /Library/Keychains/System.keychain`.
 - [ ] **Step 6: Thu hồi license thử** của Task 9 (`POST /admin/licenses/<id>/revoke`) nếu không giữ.
 
 ---
@@ -593,17 +595,17 @@ Expected: dòng đầu không in gì (không còn `workers.dev` hay `r2.dev` k�
 **Files:**
 - Modify: `docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md`, bộ nhớ dự án
 
-- [ ] **Step 1: Bảng đối chiếu và T7.** Trong mục 5.3 của kế hoạch 00, dòng `T7` (Tên miền): đổi "Chưa có" thành "Đã có `aitranslator.io.vn` (2026-10-06), đã chuyển URL (kế hoạch `2026-10-06-chuyen-ten-mien.md`)". Trong khối quyết định ngày 2026-10-06 ở mục 8.3: thêm "Đã chuyển URL sang `api.` và `releases.` (ngày …)".
+- [ ] **Step 1: Bảng đối chiếu và T7.** Trong mục 5.3 của kế hoạch 00, dòng `T7` (Tên miền): đổi "Chưa có" thành "Đã có `aitranslator.vn` (2026-10-06), đã chuyển URL (kế hoạch `2026-10-06-chuyen-ten-mien.md`)". Trong khối quyết định ngày 2026-10-06 ở mục 8.3: thêm "Đã chuyển URL sang `api.` và `releases.` (ngày …)".
 - [ ] **Step 2: Bộ nhớ.** Cập nhật `decisions-2026-10-06.md`: tên miền đã chuyển xong, còn lại tắt `workers.dev` và `r2.dev` khi không còn bản cài cũ, website, EULA.
 - [ ] **Step 3: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-10-01-phase-1-00-tong-quan.md
-git commit -m "docs(plan): ghi nhận đã chuyển URL sang tên miền riêng aitranslator.io.vn
+git commit -m "docs(plan): ghi nhận đã chuyển URL sang tên miền riêng aitranslator.vn
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ## Việc để sau (ngoài kế hoạch này)
 
-Tắt `workers_dev` của Worker API và `r2.dev` khi mọi bản cài đã chuyển; chuyển admin sang tên miền (cần ứng dụng Access mới, đổi `ACCESS_AUD`, rồi tắt `workers_dev` của admin); website `aitranslator.io.vn`; nội dung EULA và chính sách quyền riêng tư; siết DMARC lên `quarantine`.
+Tắt `workers_dev` của Worker API và `r2.dev` khi mọi bản cài đã chuyển; chuyển admin sang tên miền (cần ứng dụng Access mới, đổi `ACCESS_AUD`, rồi tắt `workers_dev` của admin); website `aitranslator.vn`; nội dung EULA và chính sách quyền riêng tư; siết DMARC lên `quarantine`.

@@ -328,7 +328,7 @@ test("fetchPublished tải file đang phát hành qua tên miền công khai và
   const io = fakeIo({ download: () => "cũ" });
   const path = await fetchPublished(io, work, file);
   assert.equal(readFileSync(path, "utf8"), "cũ");
-  assert.ok(io.calls.includes("download https://releases.aitranslator.io.vn/models/hy-mt2/m.gguf"));
+  assert.ok(io.calls.includes("download https://releases.aitranslator.vn/models/hy-mt2/m.gguf"));
   const bad = fakeIo({ download: () => "khác" });
   await assert.rejects(fetchPublished(bad, temp(t), file), /manifest ghi/);
 });

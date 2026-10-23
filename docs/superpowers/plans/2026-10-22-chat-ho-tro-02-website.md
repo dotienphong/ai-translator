@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Mọi trang của website (vi, en, ja, zh, ko, cả trang 404) có bong bóng chat nổi ở góc dưới phải; bấm thì mở khung chat gửi tin tới `https://api.aitranslator.io.vn/v1/support/*` và hiện câu trả lời của chủ dự án, đúng hợp đồng API và hợp đồng phía khách của kế hoạch 00; không thêm thư viện, CSP chỉ mở `connect-src` cho đúng API đó.
+**Goal:** Mọi trang của website (vi, en, ja, zh, ko, cả trang 404) có bong bóng chat nổi ở góc dưới phải; bấm thì mở khung chat gửi tin tới `https://api.aitranslator.vn/v1/support/*` và hiện câu trả lời của chủ dự án, đúng hợp đồng API và hợp đồng phía khách của kế hoạch 00; không thêm thư viện, CSP chỉ mở `connect-src` cho đúng API đó.
 
 **Architecture:** Lõi không đụng DOM `website/src/assets/chat-core.js` giữ mọi luật của hợp đồng (luật chữ, bản lưu `support.v1`, gọi API, bảng mã lỗi, vòng hỏi tin theo nhịp 3/15/60 giây, chỉ hỏi khi tab đang hiện) và được test bằng `node:test` với đồng hồ, `fetch`, `localStorage` giả. `site.js` (bundle có sẵn) chèn bong bóng và đọc đường dẫn đã băm của các file chat từ thuộc tính `data-chat-*` của chính thẻ `<script>` của nó (do `layout.mjs` sinh), nên không có script nội tuyến mới và `script-src` giữ nguyên; khi khách đang chờ trả lời, `site.js` nạp động lõi để hỏi mỗi 60 giây và hiện chấm đỏ. Khung chat là ES module `chat.js` cộng `chat.css`, chỉ nạp khi bấm; `build.mjs` băm từng file và đổi hai dòng `import` của `chat.js` sang tên đã băm.
 
@@ -21,7 +21,7 @@
 - **Không đổi hợp đồng** (đường dẫn, thân JSON, mã lỗi, nhịp hỏi, khóa `support.v1`, lời chào, dòng phụ, chân khung). Thấy hợp đồng sai thì dừng và báo.
 - **Không sửa** trang Liên hệ, Dữ liệu và bảo mật, chính sách (`website/src/content/`, `docs/legal/`): đó là kế hoạch 04.
 - **Không nhắc Zalo** ở bất cứ file nào trong `website/src/assets/` (mã gửi xuống trình duyệt, ai cũng đọc được), kể cả trong chú thích: dẫn spec bằng chữ "spec chat hỗ trợ 2026-10-22", không dẫn tên file spec. Test ở Task 4 chặn.
-- Chỉ gọi `https://api.aitranslator.io.vn`. Không thêm biến môi trường, thuộc tính hay cách nào ghi đè URL (CLAUDE.md).
+- Chỉ gọi `https://api.aitranslator.vn`. Không thêm biến môi trường, thuộc tính hay cách nào ghi đè URL (CLAUDE.md).
 - Chú thích trong mã viết tiếng Việt, theo giọng các file kế bên.
 
 ## Cách đọc các bước
@@ -57,7 +57,7 @@
 | `website/src/assets/chat.css` (mới) | Giao diện khung theo token sáng/tối; toàn màn hình trên điện thoại |
 | `website/src/assets/site.js` | Chèn bong bóng; tải khung khi bấm; `watchReply` khi đang chờ trả lời; chấm đỏ |
 | `website/src/assets/site.css` | Token `--danger`; CSS bong bóng |
-| `website/src/build/build.mjs` | `chatAssets()` băm các file chat (đổi `import` của `chat.js`); CSP `connect-src 'self' https://api.aitranslator.io.vn` |
+| `website/src/build/build.mjs` | `chatAssets()` băm các file chat (đổi `import` của `chat.js`); CSP `connect-src 'self' https://api.aitranslator.vn` |
 | `website/src/build/layout.mjs` | `chatAttrs()`: thuộc tính `data-chat-*` trên thẻ script `site.js` |
 | `website/test/chat-core.test.mjs` (mới) | 19 test đơn vị của lõi |
 | `website/test/chat-strings.test.mjs` (mới) | 6 test: đủ năm ngôn ngữ, câu của hợp đồng, liên kết chính sách, nút bỏ qua thẻ email, không nhắc Zalo |
@@ -241,7 +241,7 @@ Tạo `website/src/assets/chat-core.js` với nội dung:
 // 2026-10-22-chat-ho-tro-00-tong-quan). Không đụng DOM: khung chat (chat.js) và site.js (hỏi tin khi khung đóng, chấm đỏ) cùng
 // dùng; test đơn vị ở test/chat-core.test.mjs. Chỉ gọi đúng máy chủ production, không có cách ghi đè URL (CLAUDE.md).
 
-export const API = "https://api.aitranslator.io.vn";
+export const API = "https://api.aitranslator.vn";
 export const STORE_KEY = "support.v1";
 export const MAX_CHARS = 1000;
 /** Hiện bộ đếm ký tự từ mức này (spec: "đếm ký tự khi gần 1000"). */
@@ -411,7 +411,7 @@ function fakeFetch(replies) {
   return { fn, calls };
 }
 
-test("createApi: đúng đường dẫn, phương thức, header và thân của hợp đồng; chỉ gọi api.aitranslator.io.vn", async () => {
+test("createApi: đúng đường dẫn, phương thức, header và thân của hợp đồng; chỉ gọi api.aitranslator.vn", async () => {
   const { fn, calls } = fakeFetch([
     { status: 200, body: { enabled: true } },
     { status: 201, body: { token: TOKEN, message: { id: 5, sender: "customer", text: "hi", created_at: 1 } } },
@@ -438,7 +438,7 @@ test("createApi: đúng đường dẫn, phương thức, header và thân của
     { url: `${API}/v1/support/email`, method: "PUT", headers: { ...auth, ...json }, body: { email: "a@b.vn" }, credentials: "omit" },
     { url: `${API}/v1/support/conversation`, method: "DELETE", headers: { ...auth, ...json }, body: {}, credentials: "omit" },
   ]);
-  assert.equal(API, "https://api.aitranslator.io.vn");
+  assert.equal(API, "https://api.aitranslator.vn");
 });
 
 test("createApi: lỗi không ném; đọc mã lỗi, Retry-After; mất mạng là status 0; thân không phải JSON vẫn có mã", async () => {
@@ -1018,7 +1018,7 @@ test("chat-strings: tiêu đề, dòng phụ, lời chào và chân khung trích
     assert.equal(CHAT[l].greeting, greeting, `${l}: lời chào`);
     assert.equal(`${CHAT[l].keep} · ${CHAT[l].privacy}`, foot, `${l}: chân khung`);
   }
-  const off = { vi: "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn", closed: "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.io.vn" };
+  const off = { vi: "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.vn", closed: "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.vn" };
   assert.equal(CHAT.vi.off.replace("{email}", SUPPORT_EMAIL), off.vi);
   assert.equal(CHAT.vi.closed.replace("{email}", SUPPORT_EMAIL), off.closed);
 });
@@ -1061,7 +1061,7 @@ Tạo `website/src/assets/chat-strings.js` với nội dung:
 // (trình duyệt) và layout.mjs (nhãn bong bóng, lúc dựng) cùng nhập file này. `{email}` được thay bằng liên kết mailto.
 // Không nhắc tên dịch vụ chuyển tin ở đây (quy tắc "không công bố công nghệ lõi" của website/README.md; có test chặn).
 
-export const SUPPORT_EMAIL = "support@aitranslator.io.vn";
+export const SUPPORT_EMAIL = "support@aitranslator.vn";
 
 export const CHAT = {
   vi: {
@@ -1302,7 +1302,7 @@ test("CSP: connect-src chỉ thêm API của chat hỗ trợ; script-src, style-
   const h = await readFile(path.join(DIST, "_headers"), "utf8");
   const csp = /Content-Security-Policy: (.+)/.exec(h)?.[1] ?? "";
   const dir = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1).join(" ")]));
-  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.io.vn");
+  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.vn");
   assert.match(dir["script-src"], /^'self' 'sha256-[A-Za-z0-9+/=]+'$/);
   assert.equal(dir["style-src"], "'self'");
   assert.equal(dir["font-src"], "'self'");
@@ -1449,7 +1449,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && test "$(git branch 
 - Modify: `website/src/assets/site.js` (khối chat trước "Hiện dần khi cuộn tới")
 - Test: `website/test/chat-widget.test.mjs` (mới)
 
-Test trình duyệt dùng API giả: máy chủ thật chỉ cho origin `https://aitranslator.io.vn` nên không gọi được từ bản dựng cục bộ. `fakeApi` chặn mọi request tới `https://api.aitranslator.io.vn/*` bằng `Fetch.enable` của Chrome DevTools Protocol (đã thử: Chrome chặn được cả preflight `OPTIONS`) và trả lời như server theo hợp đồng; CSP của trang vẫn áp như thật (`serve.mjs` đọc `_headers`), nên request tới nơi khác hay script lạ đều hiện ở `p.errors`. Không cần thư viện nào: `tools/browser/cdp.mjs` đã lộ `p.s.send` và `p.s.handlers`.
+Test trình duyệt dùng API giả: máy chủ thật chỉ cho origin `https://aitranslator.vn` nên không gọi được từ bản dựng cục bộ. `fakeApi` chặn mọi request tới `https://api.aitranslator.vn/*` bằng `Fetch.enable` của Chrome DevTools Protocol (đã thử: Chrome chặn được cả preflight `OPTIONS`) và trả lời như server theo hợp đồng; CSP của trang vẫn áp như thật (`serve.mjs` đọc `_headers`), nên request tới nơi khác hay script lạ đều hiện ở `p.errors`. Không cần thư viện nào: `tools/browser/cdp.mjs` đã lộ `p.s.send` và `p.s.handlers`.
 
 Sau task này bấm bong bóng chưa mở gì (khung chat ở Task 7); test của task này không bấm.
 
@@ -1459,8 +1459,8 @@ Tạo `website/test/chat-widget.test.mjs` với nội dung:
 
 ```js
 // Kiểm chat hỗ trợ của website trong Chrome không đầu (spec chat hỗ trợ 2026-10-22, mục 3; hợp đồng ở kế hoạch
-// 2026-10-22-chat-ho-tro-00-tong-quan), qua tools/browser/cdp.mjs. Máy chủ thật chỉ cho origin https://aitranslator.io.vn nên
-// test dùng API giả: chặn mọi request tới https://api.aitranslator.io.vn (cả preflight OPTIONS) bằng Fetch domain của CDP.
+// 2026-10-22-chat-ho-tro-00-tong-quan), qua tools/browser/cdp.mjs. Máy chủ thật chỉ cho origin https://aitranslator.vn nên
+// test dùng API giả: chặn mọi request tới https://api.aitranslator.vn (cả preflight OPTIONS) bằng Fetch domain của CDP.
 // CSP của trang vẫn áp như thật (serve.mjs đọc _headers), nên request tới nơi khác hay script lạ đều lộ ra ở p.errors.
 //   node --test test/chat-widget.test.mjs        (không có Chrome: bỏ qua; đặt CHROME=<đường dẫn> nếu Chrome ở chỗ khác)
 import { test, before, after } from "node:test";
@@ -1475,7 +1475,7 @@ import { CHAT } from "../src/assets/chat-strings.js";
 const skip = findChrome() ? false : "cần Google Chrome (hoặc biến CHROME)";
 const DIST = mkdtempSync(join(tmpdir(), "chat-dist-"));
 process.env.WEBSITE_DIST = DIST;
-const API = "https://api.aitranslator.io.vn";
+const API = "https://api.aitranslator.vn";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let server;
@@ -1499,7 +1499,7 @@ after(async () => {
 });
 
 /**
- * API chat giả theo hợp đồng, gắn vào một trang: chặn request tới api.aitranslator.io.vn bằng Fetch domain (kể cả preflight
+ * API chat giả theo hợp đồng, gắn vào một trang: chặn request tới api.aitranslator.vn bằng Fetch domain (kể cả preflight
  * OPTIONS) và trả lời như server. `fail` chen lỗi cho các request kế tiếp: `{ status, error, retryAfter }` hay "network".
  */
 async function fakeApi(page) {
@@ -2063,7 +2063,7 @@ test("chat tắt: ô nhập thay bằng dòng email support@; cuộc chat bị c
   await openChat(p);
   await until(p, `!document.querySelector(".chat-off").hidden`);
   const off = await p.eval(`(() => { const o = document.querySelector(".chat-off"); return { text: o.textContent, href: o.querySelector("a").getAttribute("href"), compose: document.querySelector(".chat-compose").hidden }; })()`);
-  assert.deepEqual(off, { text: CHAT.vi.off.replace("{email}", "support@aitranslator.io.vn"), href: "mailto:support@aitranslator.io.vn", compose: true });
+  assert.deepEqual(off, { text: CHAT.vi.off.replace("{email}", "support@aitranslator.vn"), href: "mailto:support@aitranslator.vn", compose: true });
   await p.close();
 
   const p2 = await browser.newPage({ width: 1280, height: 900 });
@@ -2076,7 +2076,7 @@ test("chat tắt: ô nhập thay bằng dòng email support@; cuộc chat bị c
   await p2.goto(base + "/");
   await openChat(p2);
   await until(p2, `!document.querySelector(".chat-off").hidden`);
-  assert.equal(await p2.eval(`document.querySelector(".chat-off").textContent`), CHAT.vi.closed.replace("{email}", "support@aitranslator.io.vn"));
+  assert.equal(await p2.eval(`document.querySelector(".chat-off").textContent`), CHAT.vi.closed.replace("{email}", "support@aitranslator.vn"));
   assert.equal(await p2.eval(`document.querySelector(".chat-compose").hidden`), true);
   assert.deepEqual((await msgs(p2)).map((x) => x[1]), [CHAT.vi.greeting, m.text]);
   assert.deepEqual(realErrors(p2), []);
@@ -2101,8 +2101,8 @@ test("lỗi khi gửi: 429 thì 'Không gửi được, thử lại' và báo g�
   await type(p, "#chat-input", "Tin hai");
   await p.press("Enter");
   await until(p, `[...document.querySelectorAll('.chat-msg.is-customer')].at(-1).dataset.state === "failed"`);
-  assert.equal(await p.eval(`document.querySelector(".chat-note").textContent`), CHAT.vi.busy.replace("{email}", "support@aitranslator.io.vn"));
-  assert.equal(await p.eval(`document.querySelector(".chat-note a").getAttribute("href")`), "mailto:support@aitranslator.io.vn");
+  assert.equal(await p.eval(`document.querySelector(".chat-note").textContent`), CHAT.vi.busy.replace("{email}", "support@aitranslator.vn"));
+  assert.equal(await p.eval(`document.querySelector(".chat-note a").getAttribute("href")`), "mailto:support@aitranslator.vn");
   api.fail.push("network");
   await type(p, "#chat-input", "Tin ba");
   await p.press("Enter");
@@ -2753,7 +2753,7 @@ src/assets/             site.css, site.js, chat hỗ trợ (chat-core.js, chat-s
 - Không cookie, không analytics, không script hay font của bên thứ ba (khớp lời hứa quyền riêng tư; CSP `default-src 'self'`).
 ```
 ```new
-- Không cookie, không analytics, không script hay font của bên thứ ba (khớp lời hứa quyền riêng tư; CSP `default-src 'self'`). Nơi duy nhất ngoài site mà trang gọi tới là API của chính dự án cho chat hỗ trợ (`connect-src` có `https://api.aitranslator.io.vn`; xem mục Chat hỗ trợ).
+- Không cookie, không analytics, không script hay font của bên thứ ba (khớp lời hứa quyền riêng tư; CSP `default-src 'self'`). Nơi duy nhất ngoài site mà trang gọi tới là API của chính dự án cho chat hỗ trợ (`connect-src` có `https://api.aitranslator.vn`; xem mục Chat hỗ trợ).
 ```
 
 ```old
@@ -2764,7 +2764,7 @@ src/assets/             site.css, site.js, chat hỗ trợ (chat-core.js, chat-s
 Spec: `docs/superpowers/specs/2026-10-22-chat-ho-tro-zalo-design.md` mục 3. Hợp đồng API và hợp đồng phía khách (nhịp hỏi tin, bản lưu, lời chào, mã lỗi): `docs/superpowers/plans/2026-10-22-chat-ho-tro-00-tong-quan.md`; app dùng cùng hợp đồng, đổi một bên thì đổi bên kia.
 - `site.js` chèn bong bóng góc dưới phải ở mọi trang (tắt JS thì không có; trang Liên hệ vẫn có email). Đường dẫn đã băm của chat đi qua thuộc tính `data-chat-*` của thẻ script `site.js` (`chatAttrs` ở `src/build/layout.mjs`), nên CSP không thêm script nội tuyến nào. `chat.js` và `chat.css` chỉ tải khi bấm bong bóng; `chat-core.js` tải thêm khi khách đang chờ trả lời (tin cuối là của khách, gửi trong 24 giờ qua) để hỏi tin mới lúc tải trang rồi mỗi 60 giây, có trả lời thì hiện chấm đỏ.
 - `chatAssets` ở `src/build/build.mjs` băm `chat-core.js` và `chat-strings.js`, đổi hai dòng `import` của `chat.js` thành tên đã băm rồi mới băm `chat.js`. `chat.js` chỉ được nhập hai file đó, viết đúng dạng `from "./tên.js"` (dựng sẽ báo lỗi nếu nhập file khác).
-- Chỉ gọi `https://api.aitranslator.io.vn` (`API` ở `src/assets/chat-core.js`, cũng là nguồn của `connect-src` trong CSP); không có biến hay cách ghi đè URL (CLAUDE.md). Bản xem cục bộ (`pnpm dev`) không gọi được API thật vì CORS chỉ cho `https://aitranslator.io.vn`: mở được khung, gửi tin sẽ báo không kết nối được. Test dùng API giả chặn qua Chrome DevTools Protocol (`test/chat-widget.test.mjs`).
+- Chỉ gọi `https://api.aitranslator.vn` (`API` ở `src/assets/chat-core.js`, cũng là nguồn của `connect-src` trong CSP); không có biến hay cách ghi đè URL (CLAUDE.md). Bản xem cục bộ (`pnpm dev`) không gọi được API thật vì CORS chỉ cho `https://aitranslator.vn`: mở được khung, gửi tin sẽ báo không kết nối được. Test dùng API giả chặn qua Chrome DevTools Protocol (`test/chat-widget.test.mjs`).
 - Lưu trên trình duyệt: `localStorage` khóa `support.v1` = `{ token, lastId, waitingSince }`. `lastId` chỉ tiến khi khách mở khung và thấy tin (nên chấm đỏ còn ở trang sau); trình duyệt chặn `localStorage` thì cuộc chat chỉ sống trong trang hiện tại.
 - Chữ năm ngôn ngữ ở `src/assets/chat-strings.js` (tiêu đề, dòng phụ, lời chào, chân khung trích đúng hợp đồng; nhãn bong bóng đi vào HTML lúc dựng). Sửa chữ thì sửa đủ năm bản. **Không** file nào trong `src/assets/` được nhắc tên dịch vụ chuyển tin, kể cả trong chú thích: mã gửi xuống trình duyệt ai cũng đọc được (test `chat-strings.test.mjs` chặn).
 - Test: `test/chat-core.test.mjs` (lõi, không cần trình duyệt), `test/chat-strings.test.mjs`, `test/chat-widget.test.mjs` (Chrome không đầu), và các test CSP, `data-chat-*` trong `test/site.test.mjs`.
@@ -2777,7 +2777,7 @@ Website là bước sau cùng của mục 9 (bước 11), chỉ khi bản app c�
 ```
 ```new
 Website là bước sau cùng của mục 9 (bước 11), chỉ khi bản app có Creem đã đăng và Creem đang bán thật; đọc mục 9 trước khi deploy bất cứ thứ gì sau khi gộp.
-- **Ngoại lệ, đợt chat hỗ trợ: từ lúc nội dung chat vào `main` (bong bóng của kế hoạch 02; trang Liên hệ, Dữ liệu và bảo mật, chính sách mục 11 của kế hoạch 04) cho tới bước deploy website của `docs/release/phat-hanh.md` mục 11, KHÔNG `pnpm deploy`.** Trong khoảng đó `main` có bong bóng gọi `/v1/support/*` của `api.aitranslator.io.vn` trong khi server có thể chưa có các đường đó (khung chat sẽ báo không gửi được), app chưa có màn hình Hỗ trợ, và các trang nói về chat có thể đi trước chính sách. Website đi sau khi app 0.2.4 đã lên R2 (spec chat hỗ trợ, mục 7).
+- **Ngoại lệ, đợt chat hỗ trợ: từ lúc nội dung chat vào `main` (bong bóng của kế hoạch 02; trang Liên hệ, Dữ liệu và bảo mật, chính sách mục 11 của kế hoạch 04) cho tới bước deploy website của `docs/release/phat-hanh.md` mục 11, KHÔNG `pnpm deploy`.** Trong khoảng đó `main` có bong bóng gọi `/v1/support/*` của `api.aitranslator.vn` trong khi server có thể chưa có các đường đó (khung chat sẽ báo không gửi được), app chưa có màn hình Hỗ trợ, và các trang nói về chat có thể đi trước chính sách. Website đi sau khi app 0.2.4 đã lên R2 (spec chat hỗ trợ, mục 7).
 ```
 
 - [ ] **Step 2: Kiểm**
@@ -2804,7 +2804,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && test "$(git branch 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm test 2>&1 | grep -E "^✖|ℹ (tests|pass|fail|skipped)" && pnpm build 2>&1 | tail -1 && grep "Content-Security-Policy" dist/_headers
 ```
-Expected: `ℹ tests 202`, `ℹ pass 200`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; dòng CSP có `connect-src 'self' https://api.aitranslator.io.vn`, còn `script-src 'self' 'sha256-…'`, `style-src 'self'`, `font-src 'self'`, `img-src 'self' data:` như cũ.
+Expected: `ℹ tests 202`, `ℹ pass 200`, `ℹ fail 0`, `ℹ skipped 2`; `Đã sinh 119 trang vào dist (…)`; dòng CSP có `connect-src 'self' https://api.aitranslator.vn`, còn `script-src 'self' 'sha256-…'`, `style-src 'self'`, `font-src 'self'`, `img-src 'self' data:` như cũ.
 
 - [ ] **Step 2: Không thêm thư viện, không đụng phần của kế hoạch khác, không nhắc Zalo trong mã gửi xuống trình duyệt**
 
@@ -2818,7 +2818,7 @@ Expected: lệnh `git diff --stat` đầu không in gì; danh sách file đổi 
 ```bash
 cd /Users/dtphong/Desktop/software_business/ai-translator/website && pnpm dev
 ```
-Mở `http://127.0.0.1:4173/`: bong bóng ở góc dưới phải; bấm thì khung hiện đúng tiêu đề, dòng phụ, lời chào. Gửi tin sẽ báo "Không kết nối được…" vì API thật chỉ cho origin `https://aitranslator.io.vn` (đúng như spec mục 3, "Bản xem cục bộ"). Xem xong thì dừng `pnpm dev` (Ctrl+C) và kiểm không còn tiến trình nghe cổng 4173: `lsof -nP -iTCP:4173 -sTCP:LISTEN` không in gì.
+Mở `http://127.0.0.1:4173/`: bong bóng ở góc dưới phải; bấm thì khung hiện đúng tiêu đề, dòng phụ, lời chào. Gửi tin sẽ báo "Không kết nối được…" vì API thật chỉ cho origin `https://aitranslator.vn` (đúng như spec mục 3, "Bản xem cục bộ"). Xem xong thì dừng `pnpm dev` (Ctrl+C) và kiểm không còn tiến trình nghe cổng 4173: `lsof -nP -iTCP:4173 -sTCP:LISTEN` không in gì.
 
 - [ ] **Step 4: Báo cho người giao việc**
 
@@ -2833,7 +2833,7 @@ Ghi lại: số test (202, `pass` 200 so với mốc 150), danh sách commit (`g
 | Bong bóng góc dưới phải ở mọi trang năm ngôn ngữ, do `site.js` chèn; tắt JS thì không có | Task 6 (`site.js`, `site.css`) | `chat-widget`: "mọi trang năm ngôn ngữ (và 404)…", "tắt JavaScript…" |
 | File khung chat (JS, CSS) tách riêng, tên có mã băm, chỉ tải khi bấm | Task 5, 7 (`chatAssets`, `chatAttrs`) | `site`: "HTML không tải sẵn…", "data-chat-ui, data-chat-css…"; `chat-widget`: "chưa bấm thì không tải file chat", "bấm bong bóng: tải chat.js và chat.css…" |
 | Truyền URL đã băm mà không thêm script nội tuyến (CSP) | Task 5 (`data-chat-*`) | `site`: "CSP trong _headers băm đúng script nội tuyến…" (có sẵn), "chat hỗ trợ: mọi trang (và 404)…" |
-| CSP `connect-src 'self' https://api.aitranslator.io.vn`, không thêm nguồn khác | Task 5 (`headers()`) | `site`: "CSP: connect-src chỉ thêm API…" |
+| CSP `connect-src 'self' https://api.aitranslator.vn`, không thêm nguồn khác | Task 5 (`headers()`) | `site`: "CSP: connect-src chỉ thêm API…" |
 | Tiêu đề "Hỗ trợ AI Translator", dòng phụ, lời chào theo ngôn ngữ trang | Task 4, 7 | `chat-strings`: "tiêu đề, dòng phụ, lời chào…"; `chat-widget`: "bấm bong bóng…" (cả năm ngôn ngữ) |
 | Enter gửi, Shift+Enter xuống dòng | Task 7 | `chat-widget`: "gửi tin: Enter gửi, Shift+Enter…" |
 | Đếm ký tự khi gần 1000 | Task 1, 7 | `chat-core`: "luật chữ…"; `chat-widget`: "đếm ký tự…" |

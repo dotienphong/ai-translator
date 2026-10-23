@@ -16,7 +16,7 @@ Ngày: 2026-10-08 (giờ ghi theo GMT+7 trừ khi có chữ Z). Chủ dự án c
 - **Chưa làm (chủ ý):** danh sách email cho phép trong Worker. Access hiện là lớp duy nhất quyết định "ai", đúng thiết kế đã duyệt; thêm lớp này cần secret vì repo public.
 
 ## Tên miền riêng của admin
-- Chủ dự án yêu cầu địa chỉ gọn: `admin.aitranslator.io.vn` (trước đó chưa có bản ghi DNS nào). `wrangler.admin.jsonc` thêm `routes` kiểu custom domain; `workers_dev` giữ tạm làm đường lui.
+- Chủ dự án yêu cầu địa chỉ gọn: `admin.aitranslator.vn` (trước đó chưa có bản ghi DNS nào). `wrangler.admin.jsonc` thêm `routes` kiểu custom domain; `workers_dev` giữ tạm làm đường lui.
 - Lần đầu vào tên miền mới vẫn `forbidden` vì ứng dụng Access chưa phủ hostname (Worker từ chối vì không có JWT: đúng thiết kế đóng, không lộ dữ liệu). Chủ dự án thêm hostname vào Access trên dashboard; sau đó kiểm từ ngoài thấy `302` sang đăng nhập với `kid` **bằng** `ACCESS_AUD`, nên mã audience không đổi và không phải sửa cấu hình.
 
 ## Các lần deploy `mt-license-admin` (wrangler deployments list)
@@ -27,13 +27,13 @@ Mọi lần deploy từ thư mục làm việc của chủ dự án (không từ
 | 08:09 | `206d3608-6666-4db0-81ad-19529eb9a1ac` | Web Admin lần đầu (`ad66242`): trang `forbidden` |
 | 08:34 | `15204f68-b411-4e8d-b3f9-ef218f40e361` | thêm log lý do từ chối (`c0a282e`) |
 | 08:47 | `23036737-b7e1-4fe5-bbaf-8a85b26747da` | xác thực JWT (`e13e4ba`): vào được trang |
-| 08:52 | `053c059f-43fa-4135-93a9-26ef9c75d31d` | tên miền `admin.aitranslator.io.vn` (`c8d43dc`) |
+| 08:52 | `053c059f-43fa-4135-93a9-26ef9c75d31d` | tên miền `admin.aitranslator.vn` (`c8d43dc`) |
 | 09:11 | `5c6e9b38-19d0-42fe-9bc9-aa8cd3fb9acc` | **hiện hành**: sửa treo của reviewer, token org, email chữ thường (`d55307d`) |
 
 Trước đó (không có trang Web Admin): `3d4d18be-65e0-476c-a228-0d709b83cde9` (2026-10-07 19:38, bản ba gói).
 
 ## Kiểm từ ngoài, không đăng nhập (khoảng 09:20, sau deploy cuối)
-- `https://admin.aitranslator.io.vn` các đường `/`, `/index.html`, `/admin/whoami`, `/admin/queue`: cả bốn `302` sang trang đăng nhập Access; `kid` trong địa chỉ đăng nhập bằng `ACCESS_AUD` (`211e8ca9…1de0`).
+- `https://admin.aitranslator.vn` các đường `/`, `/index.html`, `/admin/whoami`, `/admin/queue`: cả bốn `302` sang trang đăng nhập Access; `kid` trong địa chỉ đăng nhập bằng `ACCESS_AUD` (`211e8ca9…1de0`).
 - Header `Cf-Access-Jwt-Assertion` tự đặt (giả) vào `/admin/whoami`: vẫn `302` (bị chặn ở edge).
 - Địa chỉ cũ `mt-license-admin.<subdomain>.workers.dev` `/`: `302`.
 - Không có đường nào trả `200`.
@@ -42,7 +42,7 @@ Trước đó (không có trang Web Admin): `3d4d18be-65e0-476c-a228-0d709b83cde
 Worker API không deploy trong đợt này. `wrangler tail mt-license --format pretty` thấy `"*/5 * * * *"` chạy lúc 08:15:47 với log `{"event":"reconcile","checked":0,"granted":0,"errors":0,"emails_retried":0,"alerts_sent":0}`. Đạt: sự cố cron 2026-10-07 không tái phát.
 
 ## Nghiệm thu (kế hoạch 03, Task 3)
-Chủ dự án nghiệm thu trên `admin.aitranslator.io.vn` sau deploy cuối và báo **"hoạt động tốt, test pass"**. Kết quả ghi theo lời báo; không có chi tiết từng mục nên không ghi mục nào là agent đã tận mắt thấy.
+Chủ dự án nghiệm thu trên `admin.aitranslator.vn` sau deploy cuối và báo **"hoạt động tốt, test pass"**. Kết quả ghi theo lời báo; không có chi tiết từng mục nên không ghi mục nào là agent đã tận mắt thấy.
 
 | Bước | Kết quả |
 |---|---|

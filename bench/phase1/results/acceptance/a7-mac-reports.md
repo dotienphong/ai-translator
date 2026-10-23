@@ -1,6 +1,6 @@
 # A7 lần hai: báo cáo lỗi tự động (macOS, 2026-10-17)
 
-**Kết quả: A7 ĐẠT** (`a7-mac-reports.json`: `external: 3`, `in_session: 1`, không vi phạm). Chứng minh: trong lúc dịch app không gửi báo cáo lỗi dù có một báo cáo đang xếp hàng trên đĩa; báo cáo chỉ đi tới `api.aitranslator.io.vn` sau khi phiên dừng; thân báo cáo không có chữ chép lời hay dữ liệu cá nhân. Quy trình: `bench/phase1/acceptance/RUNBOOK-mac.md`, mục "A7 lần hai".
+**Kết quả: A7 ĐẠT** (`a7-mac-reports.json`: `external: 3`, `in_session: 1`, không vi phạm). Chứng minh: trong lúc dịch app không gửi báo cáo lỗi dù có một báo cáo đang xếp hàng trên đĩa; báo cáo chỉ đi tới `api.aitranslator.vn` sau khi phiên dừng; thân báo cáo không có chữ chép lời hay dữ liệu cá nhân. Quy trình: `bench/phase1/acceptance/RUNBOOK-mac.md`, mục "A7 lần hai".
 
 - **Bản đo:** bản release ký ad-hoc, không notarize, số phiên bản `0.1.10`, dựng từ `main` ở commit `24786a7` bằng `AI_TRANSLATOR_MAC_SIGNING=adhoc scripts/release/package-macos.sh` (CDHash `6d3331b5147d62b01462199dfd2bc1cbf6aece4f`), cài vào `/Applications`. Chuỗi công tắc dev không có trong file. MacBook Pro M4 Pro, macOS 26.6.2. Gói đang dùng: `six_months`.
 - **Cài đặt khi đo:** file cài đặt của người dùng đã cài từ trước (bản 1, `onboardingDone`) được migrate lên bản 2 và `sendErrorReports` thành `true` mà không hỏi, đúng thiết kế.
@@ -10,7 +10,7 @@
 
 | Kiểm tra | Kết quả |
 |---|---|
-| Request ra ngoài (HAR) | 3, đều tới máy chủ trong danh sách cho phép: `GET releases.aitranslator.io.vn/stable/latest.json` 09:20:54 (trước Bắt đầu); `POST api.aitranslator.io.vn/v1/licenses/validate` 09:21:02 (lúc Bắt đầu); `POST api.aitranslator.io.vn/v1/diagnostics` 09:33:34 (sau Dừng) trả `202` |
+| Request ra ngoài (HAR) | 3, đều tới máy chủ trong danh sách cho phép: `GET releases.aitranslator.vn/stable/latest.json` 09:20:54 (trước Bắt đầu); `POST api.aitranslator.vn/v1/licenses/validate` 09:21:02 (lúc Bắt đầu); `POST api.aitranslator.vn/v1/diagnostics` 09:33:34 (sau Dừng) trả `202` |
 | Trong lúc dịch | 1: `validate` lúc bắt đầu (việc theo lịch, `during_session: true`) |
 | Báo cáo trong lúc dịch | **0 request** `/v1/diagnostics` từ 09:26:09 (lúc xếp hàng) tới 09:33:33 (7 phút 24 giây); tệp vẫn nằm trong `reports/pending` suốt thời gian đó |
 | Báo cáo sau khi dừng | Gửi **1 giây** sau khi phiên kết thúc (09:33:33 → 09:33:34); server ghi `received_at` 09:33:34 (+07:00), `occurred_at` 09:26:08 |

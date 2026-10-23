@@ -1070,7 +1070,7 @@ EOF
     "placeholder": "Aa"
   },
   "taskbar": { "time": "10:42", "date": "21/10/2026" },
-  "outro": { "name": "AI Translator", "url": "aitranslator.io.vn" },
+  "outro": { "name": "AI Translator", "url": "aitranslator.vn" },
   "layout": {
     "workArea": { "width": 1536, "height": 912 },
     "meeting": { "titleBar": 32, "topBar": 48, "controlBar": 72, "padding": 12, "gap": 10 },

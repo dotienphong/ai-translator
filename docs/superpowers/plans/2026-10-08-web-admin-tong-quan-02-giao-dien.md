@@ -127,7 +127,7 @@ function statsFixture() {
 }
 const EMPTY = { count: 0, items: [] };
 const API = {
-  "/admin/whoami": () => ({ operator: "ops@aitranslator.io.vn" }),
+  "/admin/whoami": () => ({ operator: "ops@aitranslator.vn" }),
   "/admin/stats": statsFixture,
   "/admin/summary": () => ({ revenue_today: 0, currency: "VND", paid_orders_7d: 0, active_licenses: 0 }),
   "/admin/queue": () => ({ needs_review: EMPTY, underpaid: EMPTY, email_failed: EMPTY, locked: EMPTY, conflict: EMPTY, alerts: EMPTY }),

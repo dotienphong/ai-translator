@@ -1,4 +1,4 @@
-# Website marketing `aitranslator.io.vn` — Design
+# Website marketing `aitranslator.vn` — Design
 
 **Ngày:** 2026-10-08
 **Trạng thái:** Chủ dự án giao việc và duyệt hướng ngày 2026-10-08 qua hội thoại: website là hệ thống marketing để quảng bá và bắt đầu thương mại hóa AI Translator; đạt chuẩn SEO tối đa và tìm kiếm AI; bám sát tính năng thật của app để người dùng hiểu và dùng được; UI/UX làm thật kỹ, kiểm thử tới khi hết lỗi.
@@ -23,14 +23,14 @@
 - **Không so sánh giá hay chê bên thứ ba.** Chỉ nêu khác biệt kiến trúc (offline so với cloud) theo spec §1.
 - **Nhãn hiệu:** tên Zoom, Teams, Meet, Zalo chỉ là chữ thường để nói về khả năng tương thích, kèm câu miễn trừ ở chân trang.
 - **Hai ngôn ngữ ngang hàng:** tiếng Việt ở `/` (ngôn ngữ chính), tiếng Anh ở `/en/`; mỗi trang có bản đôi, hreflang đối xứng. Không tự chuyển ngôn ngữ theo `Accept-Language` (hại SEO).
-- Thông tin pháp lý: bên cung cấp Đỗ Tiến Phong (cá nhân), `support@aitranslator.io.vn`, không công bố địa chỉ (đã chốt). Rủi ro đăng ký kinh doanh/thông báo website bán hàng với Bộ Công Thương đã nằm ở `docs/legal/README.md` và spec gốc §15; website không giải quyết, chỉ không nói sai.
+- Thông tin pháp lý: bên cung cấp Đỗ Tiến Phong (cá nhân), `support@aitranslator.vn`, không công bố địa chỉ (đã chốt). Rủi ro đăng ký kinh doanh/thông báo website bán hàng với Bộ Công Thương đã nằm ở `docs/legal/README.md` và spec gốc §15; website không giải quyết, chỉ không nói sai.
 
 ## 3. Kiến trúc kỹ thuật
 
 - **Tĩnh, không thư viện.** `website/` có bộ sinh Node thuần (`src/build/build.mjs`), không framework, không dependency chạy (chỉ `wrangler` để deploy). Lý do: tốc độ (Core Web Vitals), bề mặt tấn công bằng không, đúng quy tắc phiên bản thư viện (CLAUDE.md): không thêm gì để phải theo dõi.
 - **Nguồn nội dung:** `src/content/vi/*.mjs` và `src/content/en/*.mjs`, mỗi trang một module; khối giao diện dùng lại ở `src/build/components.mjs`; khung trang (head SEO, header, footer, JSON-LD) ở `layout.mjs` và `schema.mjs`. Giá và hạn mức ở `src/plans.mjs`, có test đối chiếu `server/wrangler.jsonc` để không bao giờ lệch.
 - **Đầu ra `dist/`:** HTML từng trang, `assets/bundle/site.<hash>.css|js` (băm nội dung, cache immutable), `sitemap.xml` (có hreflang), `robots.txt`, `llms.txt`, `llms-full.txt`, `_headers`, `404.html`, `.well-known/security.txt`, `site.webmanifest`.
-- **Hosting:** Cloudflare Workers Static Assets (miễn phí cho tài nguyên tĩnh), Worker `ai-translator-site`, custom domain `aitranslator.io.vn`. Worker thứ hai `ai-translator-www` chỉ chuyển hướng 301 `www.` → gốc. `html_handling: auto-trailing-slash`, `not_found_handling: 404-page`. Không đụng `mt-license` (`api.`), R2 (`releases.`), MX/SPF/DMARC.
+- **Hosting:** Cloudflare Workers Static Assets (miễn phí cho tài nguyên tĩnh), Worker `ai-translator-site`, custom domain `aitranslator.vn`. Worker thứ hai `ai-translator-www` chỉ chuyển hướng 301 `www.` → gốc. `html_handling: auto-trailing-slash`, `not_found_handling: 404-page`. Không đụng `mt-license` (`api.`), R2 (`releases.`), MX/SPF/DMARC.
 - **Bảo mật:** CSP chặt (`default-src 'self'`; chỉ một script nội tuyến được băm SHA-256, tự sinh vào `_headers`; không `unsafe-inline`; không CSS/JS/font từ bên thứ ba), HSTS, `nosniff`, `frame-ancestors 'none'`, Referrer-Policy, Permissions-Policy. Font Be Vietnam Pro (OFL) tự host. Không cookie, không analytics, không script bên thứ ba: khớp lời hứa quyền riêng tư của sản phẩm.
 - **Truy cập và hiệu năng:** HTML ngữ nghĩa, WCAG 2.1 AA, sáng/tối theo hệ thống và nút đổi, `prefers-reduced-motion`, bố cục co giãn tới 320 px, ảnh có width/height (không CLS), font preload. JS chỉ để nâng cấp (nút giao diện, menu), trang đầy đủ khi tắt JS.
 
@@ -75,4 +75,4 @@ Danh sách cuối cùng bám bảng dữ kiện (`facts`): trang nào không có
 
 ## 9. Việc làm sau (không thuộc đợt này)
 
-Nút tải xuống thật (khi có bản phát hành công khai và quyết định về ký Developer ID), nội dung blog, trang Windows, hóa đơn và thông tin doanh nghiệp theo luật thương mại điện tử, `EXTERNAL_HOSTS` của app thêm `aitranslator.io.vn` (`src-tauri/src/navigation.rs`) khi app cần mở link website, analytics không cookie nếu chủ dự án muốn đo.
+Nút tải xuống thật (khi có bản phát hành công khai và quyết định về ký Developer ID), nội dung blog, trang Windows, hóa đơn và thông tin doanh nghiệp theo luật thương mại điện tử, `EXTERNAL_HOSTS` của app thêm `aitranslator.vn` (`src-tauri/src/navigation.rs`) khi app cần mở link website, analytics không cookie nếu chủ dự án muốn đo.

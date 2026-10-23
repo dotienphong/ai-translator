@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** website `aitranslator.io.vn` (vi và en) và tài liệu nói đúng về gói 6 Months (269.000 ₫, 180 ngày, 100 giờ mỗi chu kỳ 30 ngày) ở mọi chỗ nhắc gói hay giá, với giao diện đồng bộ kiểu hiện có, và có test chặn lệch giá hay sót chỗ cũ.
+**Goal:** website `aitranslator.vn` (vi và en) và tài liệu nói đúng về gói 6 Months (269.000 ₫, 180 ngày, 100 giờ mỗi chu kỳ 30 ngày) ở mọi chỗ nhắc gói hay giá, với giao diện đồng bộ kiểu hiện có, và có test chặn lệch giá hay sót chỗ cũ.
 
 **Architecture:** website lấy gói và giá từ `website/src/plans.mjs` (test đối chiếu `server/wrangler.jsonc`). Thêm gói vào đó rồi sửa: thẻ gói (`plansGrid`), `llms.txt` (`keyFacts()` đang lấy gói theo vị trí mảng nên phải đổi sang lấy theo mã), lưới thẻ 2×2, hai bảng so sánh, mọi câu liệt kê gói trong 14 trang × 2 ngôn ngữ, EULA (website sinh trang điều khoản từ chính `docs/legal`), ảnh màn hình Nâng cấp, và tài liệu. Ba test mới chặn sót: cột trong bảng, câu chỉ liệt kê Monthly và Yearly, và thẻ gói khớp `plans.mjs`.
 
@@ -1087,4 +1087,4 @@ Expected: `ĐẠT` (không dòng `FAIL`); `cổng 4175 đã đóng`. (Script `ve
 Run: `cd /Users/dtphong/Desktop/software_business/ai-translator && rm -rf target/website-dist-6m target/website-six-months && (lsof -nP -iTCP:4175 -iTCP:1430 -sTCP:LISTEN || echo "không còn cổng nào của kế hoạch này") && git log --oneline -6 && git status --short`
 Expected: `không còn cổng nào của kế hoạch này`; năm commit của Task 1 đến 5 ở đầu danh sách; `git status` chỉ còn file chưa theo dõi nói ở đầu (cổng 4173 của tiến trình khác, nếu có, không đụng).
 
-**Việc còn lại sau kế hoạch này (không làm ở đây):** deploy website sau khi bản app có gói 6 Months đã đăng lên R2 và khi chủ dự án cho phép (`cd website && pnpm deploy`; runbook mục 8 bước 8), rồi kiểm trang sống `aitranslator.io.vn/bang-gia/` và `/en/pricing/`. Nếu ngày deploy thật khác 2026-10-13 thì sửa ngày hiệu lực EULA 1.2 trước (runbook mục 8 bước 8).
+**Việc còn lại sau kế hoạch này (không làm ở đây):** deploy website sau khi bản app có gói 6 Months đã đăng lên R2 và khi chủ dự án cho phép (`cd website && pnpm deploy`; runbook mục 8 bước 8), rồi kiểm trang sống `aitranslator.vn/bang-gia/` và `/en/pricing/`. Nếu ngày deploy thật khác 2026-10-13 thì sửa ngày hiệu lực EULA 1.2 trước (runbook mục 8 bước 8).

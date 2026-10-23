@@ -11,7 +11,7 @@ Spec này bỏ việc sửa tay đó, không thêm quyền ghi nào cho CI.
 | Q1 | Version và ngày **không còn gõ trong `site.mjs`**; một module `website/src/release.mjs` tính chúng lúc nạp. | Hết commit tay thứ hai, hết lệch. |
 | Q2 | Có hai chế độ: **xem trước** (mặc định: `pnpm build`, `pnpm dev`, `pnpm test`) và **deploy** (`pnpm deploy`). | Build và test không cần mạng; chỉ deploy mới được lên mạng nên chỉ deploy cần sự thật từ R2. |
 | Q3 | Chế độ xem trước: version = `version` trong `src-tauri/tauri.conf.json`; ngày = ngày commit gần nhất đổi dòng `"version"` của file đó (qua `git`). | Nâng bản app là website tự theo; không cần mạng. |
-| Q4 | Chế độ deploy: version và ngày lấy từ `https://releases.aitranslator.io.vn/stable/latest.json` (`version`, `pub_date` đổi sang ngày giờ Việt Nam). Lỗi mạng hay dữ liệu lạ thì **dừng deploy**. | Website chỉ được nói điều có thật (CLAUDE.md): bản chưa đăng thì không được nói là đã phát hành. |
+| Q4 | Chế độ deploy: version và ngày lấy từ `https://releases.aitranslator.vn/stable/latest.json` (`version`, `pub_date` đổi sang ngày giờ Việt Nam). Lỗi mạng hay dữ liệu lạ thì **dừng deploy**. | Website chỉ được nói điều có thật (CLAUDE.md): bản chưa đăng thì không được nói là đã phát hành. |
 | Q5 | Deploy dùng version **của R2**, không từ chối khi nó thấp hơn `tauri.conf.json`. Từ chối khi nó **cao hơn** (repo cũ hơn bản đã đăng). | Giữa lúc nâng bản và lúc phát hành, bạn vẫn sửa được lỗi website (website nói bản đã phát hành thật). R2 mới hơn repo nghĩa là máy bạn chưa `git pull`, deploy lúc đó sẽ làm mất nội dung. |
 | Q6 | Không thêm gì vào `release.yml`, không commit nào do CI làm. | Không thêm đường ghi vào `main` cho pipeline phát hành (kiểm toán 2026-10-09). |
 
@@ -25,7 +25,7 @@ Spec này bỏ việc sửa tay đó, không thêm quyền ghi nào cho CI.
   - `latest.version` không phải `X.Y.Z` (kênh stable không có bản beta),
   - `latest.pub_date` không phải thời điểm ISO hợp lệ,
   - `latest.version` **cao hơn** `confVersion` ("R2 đã có bản X mới hơn repo (Y): `git pull` rồi deploy lại").
-- `resolveRelease({ deploy, confPath, readFile, git, fetchLatest, today })`: đọc `tauri.conf.json`, rồi gọi hàm tương ứng. `fetchLatest` là `fetch` tới `RELEASES_URL/stable/latest.json` (hằng `RELEASES_URL = "https://releases.aitranslator.io.vn"`), hết hạn sau 15 giây, mã khác 200 hay JSON hỏng thì ném lỗi.
+- `resolveRelease({ deploy, confPath, readFile, git, fetchLatest, today })`: đọc `tauri.conf.json`, rồi gọi hàm tương ứng. `fetchLatest` là `fetch` tới `RELEASES_URL/stable/latest.json` (hằng `RELEASES_URL = "https://releases.aitranslator.vn"`), hết hạn sau 15 giây, mã khác 200 hay JSON hỏng thì ném lỗi.
 - Chế độ deploy bật khi dòng lệnh có cờ `--deploy`. Dùng cờ, không dùng biến môi trường, để chạy giống nhau ở mọi shell.
 
 `website/src/site.mjs`: bỏ hai trường `version` và `releaseDate` gõ tay, thay bằng `const release = await resolveRelease(...)` rồi `version: release.version`, `releaseDate: release.releaseDate` (top-level await; `site.mjs` được nạp bằng `import` ở mọi nơi nên không đổi cách dùng).
@@ -58,6 +58,6 @@ Spec này bỏ việc sửa tay đó, không thêm quyền ghi nào cho CI.
 
 ## 6. Rủi ro còn lại
 
-- `pnpm deploy` cần mạng tới `releases.aitranslator.io.vn`; mất mạng thì deploy dừng (chủ ý, an toàn).
+- `pnpm deploy` cần mạng tới `releases.aitranslator.vn`; mất mạng thì deploy dừng (chủ ý, an toàn).
 - Chế độ xem trước có thể ghi version chưa phát hành (ví dụ sau khi nâng lên 0.1.8, trước khi đăng). Chỉ ảnh hưởng bản dựng cục bộ; không lên mạng được vì deploy dùng R2.
 - Ngày ở chế độ xem trước là ngày commit nâng bản, không phải ngày đăng; chỉ để xem thử.

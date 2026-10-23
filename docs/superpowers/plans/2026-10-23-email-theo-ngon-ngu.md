@@ -545,7 +545,7 @@ describe("nội dung email (spec 2026-10-23)", () => {
         "  3. Dán key rồi bấm Kích hoạt.",
         "",
         "Mỗi key dùng trên 1 máy. Hãy giữ thư này để kích hoạt lại khi cài lại máy hay chuyển sang máy khác.",
-        "Hướng dẫn chi tiết: https://aitranslator.io.vn/huong-dan/mua-va-kich-hoat-key/",
+        "Hướng dẫn chi tiết: https://aitranslator.vn/huong-dan/mua-va-kich-hoat-key/",
         "Cần giúp? Trả lời thư này, chúng tôi sẽ hồi âm.",
         "",
         "─".repeat(28),
@@ -561,11 +561,11 @@ describe("nội dung email (spec 2026-10-23)", () => {
         "  3. Paste the key and click Activate.",
         "",
         "Each key works on 1 computer. Keep this email to activate again after reinstalling or moving to another computer.",
-        "Step-by-step guide: https://aitranslator.io.vn/en/guide/buy-and-activate/",
+        "Step-by-step guide: https://aitranslator.vn/en/guide/buy-and-activate/",
         "Need help? Reply to this email.",
         "",
         "--",
-        "AI Translator · aitranslator.io.vn",
+        "AI Translator · aitranslator.vn",
         "",
       ].join("\n"),
     );
@@ -587,8 +587,8 @@ describe("nội dung email (spec 2026-10-23)", () => {
     expect(html).toMatch(/^<!doctype html>\n<html lang="ja">/);
     expect(html).toContain("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTR");
     expect(html).toContain("2026年11月1日");
-    expect(html).toContain('href="https://aitranslator.io.vn/ja/guide/buy-and-activate/"');
-    expect(html).toContain('href="https://aitranslator.io.vn/en/guide/buy-and-activate/"');
+    expect(html).toContain('href="https://aitranslator.vn/ja/guide/buy-and-activate/"');
+    expect(html).toContain('href="https://aitranslator.vn/en/guide/buy-and-activate/"');
     expect(html).toContain('<td class="pad" lang="en"');
     expect(html).toContain("1 Nov 2026");
     expect(html.indexOf("ライセンスキーをお送りします。")).toBeLessThan(html.indexOf("Your license key is shown above."));
@@ -737,7 +737,7 @@ Expected: vitest FAIL (không có `../src/email/strings`); node test lỗi `ERR_
 import type { Lang } from "../lang";
 
 /** Gốc website; link trong thư chỉ trỏ về đây, không thêm tham số theo dõi. */
-export const SITE_URL = "https://aitranslator.io.vn";
+export const SITE_URL = "https://aitranslator.vn";
 
 export type LicenseEmailKind = "purchase" | "renewal" | "plan_change" | "recover" | "resend";
 export type MailKind = LicenseEmailKind | "support";
@@ -812,7 +812,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "Hướng dẫn chi tiết",
     guidePath: "/huong-dan/mua-va-kich-hoat-key/",
     help: "Cần giúp? Trả lời thư này, chúng tôi sẽ hồi âm.",
-    supportOutro: "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat trên aitranslator.io.vn hay mục Hỗ trợ trong app.",
+    supportOutro: "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat trên aitranslator.vn hay mục Hỗ trợ trong app.",
   },
   en: {
     date: (y, m, d) => `${d} ${MONTHS_EN[m - 1]} ${y}`,
@@ -849,7 +849,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "Step-by-step guide",
     guidePath: "/en/guide/buy-and-activate/",
     help: "Need help? Reply to this email.",
-    supportOutro: "Reply to this email to continue, or reopen the chat on aitranslator.io.vn or in the app's Support screen.",
+    supportOutro: "Reply to this email to continue, or reopen the chat on aitranslator.vn or in the app's Support screen.",
   },
   ja: {
     date: (y, m, d) => `${y}年${m}月${d}日`,
@@ -886,7 +886,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "詳しい手順",
     guidePath: "/ja/guide/buy-and-activate/",
     help: "ご不明な点は、このメールに返信してください。",
-    supportOutro: "このメールに返信して続けるか、aitranslator.io.vn またはアプリの「サポート」画面からチャットを再開できます。",
+    supportOutro: "このメールに返信して続けるか、aitranslator.vn またはアプリの「サポート」画面からチャットを再開できます。",
   },
   zh: {
     date: (y, m, d) => `${y}年${m}月${d}日`,
@@ -923,7 +923,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "详细步骤",
     guidePath: "/zh/guide/buy-and-activate/",
     help: "需要帮助？直接回复此邮件即可。",
-    supportOutro: "你可以直接回复此邮件，或在 aitranslator.io.vn 或应用的“客服”页面重新打开聊天。",
+    supportOutro: "你可以直接回复此邮件，或在 aitranslator.vn 或应用的“客服”页面重新打开聊天。",
   },
   ko: {
     date: (y, m, d) => `${y}년 ${m}월 ${d}일`,
@@ -960,7 +960,7 @@ export const MAIL: Record<Lang, MailStrings> = {
     guide: "자세한 안내",
     guidePath: "/ko/guide/buy-and-activate/",
     help: "도움이 필요하면 이 이메일에 회신하세요.",
-    supportOutro: "이 이메일에 회신하거나, aitranslator.io.vn 또는 앱의 지원 화면에서 채팅을 다시 열 수 있습니다.",
+    supportOutro: "이 이메일에 회신하거나, aitranslator.vn 또는 앱의 지원 화면에서 채팅을 다시 열 수 있습니다.",
   },
 };
 
@@ -1037,7 +1037,7 @@ ${STYLE}
 ${rows}
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;font-family:${FONT};">
-<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.io.vn</a></td></tr>
+<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.vn</a></td></tr>
 </table>
 </td></tr>
 </table>
@@ -1163,7 +1163,7 @@ export function mailLang(lang: Lang | null, currency: string | null): Lang {
 /** Thư mua, lấy lại và gửi lại có các bước kích hoạt; thư gia hạn và đổi gói thì key giữ nguyên, không cần kích hoạt lại. */
 const WITH_STEPS: ReadonlySet<LicenseEmailKind> = new Set<LicenseEmailKind>(["purchase", "recover", "resend"]);
 const RULE_TEXT = "─".repeat(28);
-const FOOTER_TEXT = ["", "--", "AI Translator · aitranslator.io.vn", ""];
+const FOOTER_TEXT = ["", "--", "AI Translator · aitranslator.vn", ""];
 
 /** Ngày hết hạn theo giờ Việt Nam (UTC+7, không đổi theo mùa), viết theo ngôn ngữ. */
 function dateIn(s: MailStrings, epochSeconds: number): string {
@@ -2509,7 +2509,7 @@ Trong `docs/legal/README.md`, thay
 bằng (thêm một đoạn và một dòng trống phía trên, giữ nguyên phần còn lại của dòng cũ):
 
 ```
-**Chính sách 1.6 thêm ngôn ngữ của thư** theo spec `2026-10-23-email-theo-ngon-ngu-design.md` (mục 5): app gửi ngôn ngữ giao diện (`vi`, `en`, `ja`, `zh`, `ko`) khi tạo đơn và khi khôi phục key; máy chủ lưu ngôn ngữ đó trên đơn (`orders.lang`) để thư gửi key, kể cả các lần gửi lại, viết bằng ngôn ngữ của khách, phần tiếng Anh ở dưới (chính sách mục 5, dòng "Đơn hàng"); ngôn ngữ gửi kèm khôi phục key chỉ dùng để chọn ngôn ngữ thư, không lưu. Xóa theo email bỏ luôn ngôn ngữ trên đơn (mục 7, dòng "bỏ"), nên danh sách "giữ lại" không đổi. Không thêm bên xử lý, không thêm kết nối mạng (cùng request tới `api.aitranslator.io.vn`). **EULA không đổi** (giữ bản 1.3). Ngày hiệu lực của chính sách 1.6 đặt theo mục "Đổi ngày hiệu lực" lúc phát hành bản app gửi ngôn ngữ (0.2.5). Website (trang Dữ liệu và bảo mật, năm ngôn ngữ) nói cùng điều đó.
+**Chính sách 1.6 thêm ngôn ngữ của thư** theo spec `2026-10-23-email-theo-ngon-ngu-design.md` (mục 5): app gửi ngôn ngữ giao diện (`vi`, `en`, `ja`, `zh`, `ko`) khi tạo đơn và khi khôi phục key; máy chủ lưu ngôn ngữ đó trên đơn (`orders.lang`) để thư gửi key, kể cả các lần gửi lại, viết bằng ngôn ngữ của khách, phần tiếng Anh ở dưới (chính sách mục 5, dòng "Đơn hàng"); ngôn ngữ gửi kèm khôi phục key chỉ dùng để chọn ngôn ngữ thư, không lưu. Xóa theo email bỏ luôn ngôn ngữ trên đơn (mục 7, dòng "bỏ"), nên danh sách "giữ lại" không đổi. Không thêm bên xử lý, không thêm kết nối mạng (cùng request tới `api.aitranslator.vn`). **EULA không đổi** (giữ bản 1.3). Ngày hiệu lực của chính sách 1.6 đặt theo mục "Đổi ngày hiệu lực" lúc phát hành bản app gửi ngôn ngữ (0.2.5). Website (trang Dữ liệu và bảo mật, năm ngôn ngữ) nói cùng điều đó.
 
 > **Chưa được luật sư hay kế toán xem.**
 ```
@@ -2528,7 +2528,7 @@ Với chính sách 1.5, ở kế hoạch `2026-10-22-chat-ho-tro-04-phap-ly-noi-
 
 - [ ] **Step 6: Trang Dữ liệu và bảo mật, năm ngôn ngữ**
 
-Mỗi file hai chỗ: hàng `api.aitranslator.io.vn` của bảng kết nối mạng, và hàng "Đơn hàng" của bảng dữ liệu máy chủ.
+Mỗi file hai chỗ: hàng `api.aitranslator.vn` của bảng kết nối mạng, và hàng "Đơn hàng" của bảng dữ liệu máy chủ.
 
 `website/src/content/vi/data-security.mjs`:
 - `thêm email khi bạn mua hoặc khôi phục key` → `thêm email và ngôn ngữ giao diện của app khi bạn mua hoặc khôi phục key`

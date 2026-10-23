@@ -2087,7 +2087,7 @@ cd /Users/dtphong/Desktop/software_business/meeting-translator-work/diagnostics-
 - Modify: `src-tauri/src/diagnostics/mod.rs`
 - Create: `src-tauri/src/diagnostics/send.rs`
 
-`HttpReportApi` POST thân JSON nguyên văn tới `/v1/diagnostics` của **cùng host** với `license::client` (`api.aitranslator.io.vn`, dùng lại `PRODUCTION_URL` và `accept_base`), nên danh sách kết nối cho phép của A7 không thêm host nào. Không token, không theo redirect, timeout kết nối 10 giây và tổng 15 giây; lỗi mạng không kèm URL. Kết quả: `2xx` thành công; `429` là `RateLimited` (kèm `Retry-After` nếu có); `5xx` và lỗi mạng là `Transient` (thử lại ở lần mở sau); mọi `4xx`, `3xx` còn lại là `Rejected` (bỏ báo cáo, mã lấy từ trường `error` của server).
+`HttpReportApi` POST thân JSON nguyên văn tới `/v1/diagnostics` của **cùng host** với `license::client` (`api.aitranslator.vn`, dùng lại `PRODUCTION_URL` và `accept_base`), nên danh sách kết nối cho phép của A7 không thêm host nào. Không token, không theo redirect, timeout kết nối 10 giây và tổng 15 giây; lỗi mạng không kèm URL. Kết quả: `2xx` thành công; `429` là `RateLimited` (kèm `Retry-After` nếu có); `5xx` và lỗi mạng là `Transient` (thử lại ở lần mở sau); mọi `4xx`, `3xx` còn lại là `Rejected` (bỏ báo cáo, mã lấy từ trường `error` của server).
 
 - [ ] **Step 1: Khai báo module và viết test trước (đỏ)**
 
@@ -2237,7 +2237,7 @@ mod tests {
 
     #[test]
     fn the_real_build_talks_only_to_the_production_api_host() {
-        assert_eq!(PRODUCTION_URL, Some("https://api.aitranslator.io.vn"));
+        assert_eq!(PRODUCTION_URL, Some("https://api.aitranslator.vn"));
     }
 }
 ```

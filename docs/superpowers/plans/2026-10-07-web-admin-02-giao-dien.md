@@ -2785,7 +2785,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Notice } from "../components/Feedback";
 import { CopyButton } from "../components/MaskedKey";
 
-const WEBHOOK_URL = "https://api.aitranslator.io.vn/v1/webhooks/payos";
+const WEBHOOK_URL = "https://api.aitranslator.vn/v1/webhooks/payos";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Dialog = "sign" | "webhook" | "erase" | null;
@@ -3472,7 +3472,7 @@ function respond(method: string, path: string): unknown {
     if (path === "/admin/lookup") return { licenses: [licenseDetail], orders: [order(1000012, "paid")], trial: { started_at: NOW - 12 * DAY, ends_at: NOW - 2 * DAY, last_seen_at: NOW - DAY } };
     if (path === "/admin/keys/test-sign") return { slot: "b", kid: "2026-10-b", token: "v1.eyJ0ZXN0Ijp0cnVlfQ.c2ln" };
     if (path === "/admin/erase") return { activations: 2, licenses: 1, orders: 1 };
-    if (path === "/admin/payos/confirm-webhook") return { ok: true, webhook_url: "https://api.aitranslator.io.vn/v1/webhooks/payos" };
+    if (path === "/admin/payos/confirm-webhook") return { ok: true, webhook_url: "https://api.aitranslator.vn/v1/webhooks/payos" };
     if (/\/(grant|resolve)$/.test(path) || path === "/admin/licenses") {
       return { order_code: 1000013, status: "paid", license_id: LIC, license_key: KEY, plan: "yearly", expires_at: NOW + 365 * DAY };
     }
@@ -3481,7 +3481,7 @@ function respond(method: string, path: string): unknown {
   }
   switch (path) {
     case "/admin/whoami":
-      return { operator: "ops@aitranslator.io.vn" };
+      return { operator: "ops@aitranslator.vn" };
     case "/admin/summary":
       return { revenue_today: 550000, currency: "VND", paid_orders_7d: 12, active_licenses: 87 };
     case "/admin/queue":

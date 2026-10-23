@@ -1,7 +1,7 @@
 {
- "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server api.aitranslator.io.vn và bucket R2 releases.aitranslator.io.vn (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng. Báo cáo lỗi tự động (spec 2026-10-17): POST /v1/diagnostics chỉ được gọi KHI KHÔNG đang dịch (during_session false), thân tối đa 64 KB (giới hạn riêng của đường dẫn); từ mồi vẫn được quét trong thân báo cáo.",
+ "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server api.aitranslator.vn và bucket R2 releases.aitranslator.vn (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng. Báo cáo lỗi tự động (spec 2026-10-17): POST /v1/diagnostics chỉ được gọi KHI KHÔNG đang dịch (during_session false), thân tối đa 64 KB (giới hạn riêng của đường dẫn); từ mồi vẫn được quét trong thân báo cáo.",
  "hosts": {
-  "api.aitranslator.io.vn": [
+  "api.aitranslator.vn": [
    {
     "path": "/v1/licenses/validate",
     "during_session": true
@@ -36,7 +36,7 @@
     "max_body_bytes": 65536
    }
   ],
-  "releases.aitranslator.io.vn": [
+  "releases.aitranslator.vn": [
    {
     "path": "/",
     "during_session": false

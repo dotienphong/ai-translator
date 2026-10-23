@@ -117,7 +117,7 @@ Phải sửa cùng đợt, vì CLAUDE.md yêu cầu nội dung chỉ nói điề
 - **Web Admin (vitest):** trang danh sách, chi tiết (văn bản thuần, không HTML), tìm theo mã, xóa.
 - **App (vitest):** ô tick onboarding (tích sẵn, lưu đúng), công tắc cài đặt, nút Giới thiệu và mã báo cáo, `dictionaries.test.ts`.
 - **Website và pháp lý:** test website hiện có (114 test, gồm test chặn công nghệ lõi), `legal.test.ts`.
-- **Nghiệm thu A7 lại** bằng proxy mạng: lúc dịch không có request nào, kể cả khi có báo cáo đang xếp hàng; báo cáo chỉ đi tới `api.aitranslator.io.vn` và chỉ sau khi phiên dừng.
+- **Nghiệm thu A7 lại** bằng proxy mạng: lúc dịch không có request nào, kể cả khi có báo cáo đang xếp hàng; báo cáo chỉ đi tới `api.aitranslator.vn` và chỉ sau khi phiên dừng.
 - Cuối cùng: build lại toàn bộ và chạy mọi bộ test (CLAUDE.md, spec §6.12).
 
 ## 8. Triển khai và kế hoạch

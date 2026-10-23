@@ -24,7 +24,7 @@ Như mục "Quy tắc chung cho mọi kế hoạch" của kế hoạch 00, cộn
 
 ## Hợp đồng và quyết định dùng trong kế hoạch này
 
-**Dữ kiện trích từ spec (không thêm, không bớt):** tin khách đi qua `api.aitranslator.io.vn` (D1) tới Zalo của chủ dự án qua Zalo Bot; câu trả lời về qua webhook. Dữ liệu tới Zalo chỉ gồm nội dung tin, mã cuộc chat (3 ký tự), nguồn, ngôn ngữ, trang (web), dòng thông tin máy (app, khi khách để tích) và thông báo "khách đã để lại email" (không kèm địa chỉ) hay "khách đã xóa cuộc chat"; **email không bao giờ tới Zalo**. Máy chủ lưu nội dung tin, email tự nguyện, nguồn, ngôn ngữ, trang (chỉ path, tối đa 200 ký tự, web), dòng thông tin máy (tối đa 300 ký tự, app), **mã băm SHA-256 của token** (không lưu token gốc). IP chỉ ở dạng HMAC trong bộ đếm `rate_limits`. Cuộc chat **tự xóa 90 ngày sau tin cuối** (`last_activity_at`); khách tự xóa bằng nút trong khung chat. Thư trả lời gửi qua Resend khi khách để lại email (cron, sau 2 phút, tối đa mỗi giờ một thư). Dòng thông tin máy: phiên bản app, hệ điều hành và phiên bản, chip hay CPU, RAM, card đồ họa (Windows), gói bản quyền, gói model, ngôn ngữ giao diện; **không bao giờ** có key, email của license, mã máy, tên máy hay tên người dùng; ô gửi kèm tích sẵn, chỉ hiện và chỉ gửi kèm tin đầu tiên. Nhịp hỏi tin của app (hợp đồng phía khách ở kế hoạch 00): màn hình Hỗ trợ đang mở thì 3 giây rồi 15 giây; đang chờ trả lời (tin cuối là của khách, trong 24 giờ qua) và **không đang dịch** thì 60 giây; còn lại, kể cả khi chưa từng chat, không kết nối. Spec mục 5: "trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi". Bên xử lý: **Zalo, Công ty Cổ phần VNG, máy chủ ở Việt Nam**. EULA giữ bản 1.3. App có chat là **0.2.4**.
+**Dữ kiện trích từ spec (không thêm, không bớt):** tin khách đi qua `api.aitranslator.vn` (D1) tới Zalo của chủ dự án qua Zalo Bot; câu trả lời về qua webhook. Dữ liệu tới Zalo chỉ gồm nội dung tin, mã cuộc chat (3 ký tự), nguồn, ngôn ngữ, trang (web), dòng thông tin máy (app, khi khách để tích) và thông báo "khách đã để lại email" (không kèm địa chỉ) hay "khách đã xóa cuộc chat"; **email không bao giờ tới Zalo**. Máy chủ lưu nội dung tin, email tự nguyện, nguồn, ngôn ngữ, trang (chỉ path, tối đa 200 ký tự, web), dòng thông tin máy (tối đa 300 ký tự, app), **mã băm SHA-256 của token** (không lưu token gốc). IP chỉ ở dạng HMAC trong bộ đếm `rate_limits`. Cuộc chat **tự xóa 90 ngày sau tin cuối** (`last_activity_at`); khách tự xóa bằng nút trong khung chat. Thư trả lời gửi qua Resend khi khách để lại email (cron, sau 2 phút, tối đa mỗi giờ một thư). Dòng thông tin máy: phiên bản app, hệ điều hành và phiên bản, chip hay CPU, RAM, card đồ họa (Windows), gói bản quyền, gói model, ngôn ngữ giao diện; **không bao giờ** có key, email của license, mã máy, tên máy hay tên người dùng; ô gửi kèm tích sẵn, chỉ hiện và chỉ gửi kèm tin đầu tiên. Nhịp hỏi tin của app (hợp đồng phía khách ở kế hoạch 00): màn hình Hỗ trợ đang mở thì 3 giây rồi 15 giây; đang chờ trả lời (tin cuối là của khách, trong 24 giờ qua) và **không đang dịch** thì 60 giây; còn lại, kể cả khi chưa từng chat, không kết nối. Spec mục 5: "trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi". Bên xử lý: **Zalo, Công ty Cổ phần VNG, máy chủ ở Việt Nam**. EULA giữ bản 1.3. App có chat là **0.2.4**.
 
 **Nhãn trong app** (kế hoạch 03 đặt; app là nguồn đúng). Kế hoạch này viết theo nhãn dự kiến dưới đây; Task 0 Step 3 kiểm và nếu app dùng nhãn khác thì thay trước khi làm Task 2–5.
 
@@ -38,7 +38,7 @@ Như mục "Quy tắc chung cho mọi kế hoạch" của kế hoạch 00, cộn
 
 **Quyết định của kế hoạch này (chủ dự án cần biết):**
 
-1. **Mục 4 của chính sách không thêm mục số 6.** Chat đi tới đúng host `api.aitranslator.io.vn` nên được gộp vào mục số 3 ("Làm việc với license server"), kèm nhịp kết nối. Lý do: trang Dữ liệu và bảo mật đếm "năm nơi" theo nơi nhận và có test giữ số dòng bảng bằng số mục ở mục 4 của chính sách.
+1. **Mục 4 của chính sách không thêm mục số 6.** Chat đi tới đúng host `api.aitranslator.vn` nên được gộp vào mục số 3 ("Làm việc với license server"), kèm nhịp kết nối. Lý do: trang Dữ liệu và bảo mật đếm "năm nơi" theo nơi nhận và có test giữ số dòng bảng bằng số mục ở mục 4 của chính sách.
 2. **Chính sách nói thẳng rằng bản sao tin đã chuyển sang Zalo không tự xóa** theo 90 ngày hay theo nút xóa của khách, và hứa người vận hành xóa bản đó khi khách yêu cầu (mục 7, mục 11). Spec không nói gì về bản trong Zalo; viết khác đi thì chính sách sai sự thật. Nếu chủ dự án không muốn nhận việc xóa tay trong Zalo, sửa hai câu đó (Task 2 Step 5, Step 6, Step 9, Step 10) trước khi phát hành.
 3. **Trang Dữ liệu và bảo mật không nêu tên Zalo** (theo spec mục 5) mà ghi "một dịch vụ nhắn tin đặt máy chủ ở Việt Nam", dẫn tới mục 6 của chính sách.
 4. **Câu "máy chủ chỉ lưu …" ở Trang chủ và Hỏi đáp được sửa** (năm ngôn ngữ) vì là danh sách đóng: thêm chat thì câu cũ thành sai. Các câu "mạng chỉ cần để tải model, mua, kiểm tra bản quyền…" (Về chúng tôi, Hỏi đáp, So sánh, Trang chủ) **giữ nguyên**: chúng nói việc dịch cần mạng khi nào, không phải danh sách mọi kết nối (đợt báo cáo lỗi cũng giữ nguyên các câu này).
@@ -102,9 +102,9 @@ Expected: `main`. Có thể có file của phiên khác đang làm (thư mục d
 Task 1, 2 và 7 không phụ thuộc mã, làm được ngay. Task 3–6 cần nhãn của app (kế hoạch 03) và bong bóng chat trên website (kế hoạch 02). Task 8 cần mục 11 của runbook (kế hoạch 01).
 
 ```bash
-cd /Users/dtphong/Desktop/software_business/ai-translator && ls -d server/src/support src-tauri/src/support; grep -c '^## 11\. Đợt thêm chat hỗ trợ' docs/release/phat-hanh.md; grep -c '<!-- kế hoạch 04: các bước app, website, bật chat và thử tay -->' docs/release/phat-hanh.md; grep -rln 'https://api.aitranslator.io.vn' website/src | head -3
+cd /Users/dtphong/Desktop/software_business/ai-translator && ls -d server/src/support src-tauri/src/support; grep -c '^## 11\. Đợt thêm chat hỗ trợ' docs/release/phat-hanh.md; grep -c '<!-- kế hoạch 04: các bước app, website, bật chat và thử tay -->' docs/release/phat-hanh.md; grep -rln 'https://api.aitranslator.vn' website/src | head -3
 ```
-Expected: hai thư mục được liệt kê; `1`; `1`; ít nhất một file trong `website/src` (CSP `connect-src` hay mã khung chat của kế hoạch 02; trang nội dung hiện chỉ ghi `api.aitranslator.io.vn` không có `https://`, nên không khớp). Thiếu cái nào thì làm các task không phụ thuộc nó trước và báo.
+Expected: hai thư mục được liệt kê; `1`; `1`; ít nhất một file trong `website/src` (CSP `connect-src` hay mã khung chat của kế hoạch 02; trang nội dung hiện chỉ ghi `api.aitranslator.vn` không có `https://`, nên không khớp). Thiếu cái nào thì làm các task không phụ thuộc nó trước và báo.
 
 - [ ] **Step 3: Nhãn màn hình Hỗ trợ trong app**
 
@@ -145,10 +145,10 @@ Expected: `15` (danh sách ở mục "Cấu trúc file"). Task 9 Step 1 phải r
 
 Tệp: `docs/superpowers/specs/2026-09-29-desktop-meeting-translator-design.md`
 ```old
-kiểm tra cập nhật app và manifest model, và gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.io.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7). Không request nào chứa âm thanh hay nội dung chép lời. |
+kiểm tra cập nhật app và manifest model, và gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7). Không request nào chứa âm thanh hay nội dung chép lời. |
 ```
 ```new
-kiểm tra cập nhật app và manifest model, gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.io.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng), và gửi và nhận tin chat hỗ trợ (`/v1/support/*`, chỉ tới `api.aitranslator.io.vn`, chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi; không request nào chứa âm thanh hay nội dung chép lời; spec 2026-10-22-chat-ho-tro-zalo-design §4, §5). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7), và sau khi có chat hỗ trợ: chưa dùng chat thì không có kết nối mới nào, dùng chat thì chỉ tới `api.`, đang dịch mà màn hình Hỗ trợ đóng thì không có request chat (spec 2026-10-22-chat-ho-tro-zalo-design §6). Không request nào chứa âm thanh hay nội dung chép lời. |
+kiểm tra cập nhật app và manifest model, gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng), và gửi và nhận tin chat hỗ trợ (`/v1/support/*`, chỉ tới `api.aitranslator.vn`, chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi; không request nào chứa âm thanh hay nội dung chép lời; spec 2026-10-22-chat-ho-tro-zalo-design §4, §5). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7), và sau khi có chat hỗ trợ: chưa dùng chat thì không có kết nối mới nào, dùng chat thì chỉ tới `api.`, đang dịch mà màn hình Hỗ trợ đóng thì không có request chat (spec 2026-10-22-chat-ho-tro-zalo-design §6). Không request nào chứa âm thanh hay nội dung chép lời. |
 ```
 
 - [ ] **Step 2: §10.1: app còn kết nối cho chat**
@@ -478,7 +478,7 @@ Tệp: `docs/legal/privacy.vi.md`
 ```new
 ## 11. Chat hỗ trợ
 
-Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở góc mỗi trang của website `aitranslator.io.vn`, hoặc màn hình **Hỗ trợ** trong ứng dụng. Không cần tài khoản, và mọi người dùng đều chat được, kể cả gói Free. Người trả lời là người vận hành ứng dụng, không phải bot. Tin của bạn đi qua máy chủ của chúng tôi (`api.aitranslator.io.vn`) tới tài khoản Zalo của người vận hành; người vận hành trả lời trong Zalo và câu trả lời hiện trong khung chat của bạn. Bạn không cần có Zalo.
+Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở góc mỗi trang của website `aitranslator.vn`, hoặc màn hình **Hỗ trợ** trong ứng dụng. Không cần tài khoản, và mọi người dùng đều chat được, kể cả gói Free. Người trả lời là người vận hành ứng dụng, không phải bot. Tin của bạn đi qua máy chủ của chúng tôi (`api.aitranslator.vn`) tới tài khoản Zalo của người vận hành; người vận hành trả lời trong Zalo và câu trả lời hiện trong khung chat của bạn. Bạn không cần có Zalo.
 
 | Nội dung | Chi tiết |
 |---|---|
@@ -495,7 +495,7 @@ Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở g�
 - Việc tự xóa sau 90 ngày và nút xóa chỉ xóa dữ liệu trên máy chủ của chúng tôi (nút xóa còn xóa mã trên máy bạn). Bản sao các tin đã chuyển sang Zalo vẫn nằm trong cuộc trò chuyện Zalo của người vận hành, và trên hệ thống của Zalo theo chính sách của Zalo, cho tới khi người vận hành xóa; muốn xóa cả bản đó, hãy yêu cầu theo mục 7. Thư trả lời đã gửi tới email của bạn thì nằm trong hộp thư của bạn và nhật ký thư của Resend.
 - Chúng tôi dùng chat chỉ để trả lời bạn; không dùng cho quảng cáo, không bán và không chia sẻ cho bên nào ngoài các bên xử lý ở mục 6.
 - Nếu trong ứng dụng bạn chọn đính kèm log, ứng dụng gửi một báo cáo lỗi như nút **Gửi log cho hỗ trợ** (mục 10) rồi gửi mã báo cáo vào cuộc chat.
-- Đừng gửi mật khẩu, số thẻ hay số tài khoản ngân hàng qua chat; chúng tôi không cần những thông tin đó. Chat có thể tạm tắt; khi đó khung chat hiện địa chỉ support@aitranslator.io.vn.
+- Đừng gửi mật khẩu, số thẻ hay số tài khoản ngân hàng qua chat; chúng tôi không cần những thông tin đó. Chat có thể tạm tắt; khi đó khung chat hiện địa chỉ support@aitranslator.vn.
 
 ## 12. Thay đổi chính sách
 ```
@@ -617,7 +617,7 @@ Tệp: `docs/legal/privacy.en.md`
 ```new
 ## 11. Support chat
 
-You can write to us in the **support chat**: the chat button in the corner of every page of the `aitranslator.io.vn` website, or the **Support** screen in the app. No account is needed, and everyone can use it, including on the Free plan. Replies come from the operator of the app, not from a bot. Your messages go through our server (`api.aitranslator.io.vn`) to the operator's Zalo account; the operator replies in Zalo and the reply appears in your chat. You do not need Zalo.
+You can write to us in the **support chat**: the chat button in the corner of every page of the `aitranslator.vn` website, or the **Support** screen in the app. No account is needed, and everyone can use it, including on the Free plan. Replies come from the operator of the app, not from a bot. Your messages go through our server (`api.aitranslator.vn`) to the operator's Zalo account; the operator replies in Zalo and the reply appears in your chat. You do not need Zalo.
 
 | What | Details |
 |---|---|
@@ -634,7 +634,7 @@ You can write to us in the **support chat**: the chat button in the corner of ev
 - The 90-day deletion and the delete button remove only the data on our server (the delete button also removes the code on your computer). Copies of the messages forwarded to Zalo stay in the operator's Zalo conversation, and on Zalo's systems under Zalo's policy, until the operator deletes them; to have those deleted too, ask under section 7. Reply emails we sent you stay in your mailbox and in Resend's mail logs.
 - We use the chat only to reply to you; we do not use it for advertising, sell it or share it with anyone other than the processors in section 6.
 - If you choose to attach logs in the app's chat, the app sends an error report like the **Send log to support** button (section 10) and then posts the report code in the chat.
-- Do not send passwords, card numbers or bank account numbers in the chat; we do not need them. The chat may be turned off temporarily; the chat then shows the address support@aitranslator.io.vn.
+- Do not send passwords, card numbers or bank account numbers in the chat; we do not need them. The chat may be turned off temporarily; the chat then shows the address support@aitranslator.vn.
 
 ## 12. Changes to this policy
 ```
@@ -708,10 +708,10 @@ const STALE_SUPPORT = [
 ];
 // Câu cũ nguyên văn (trang Liên hệ trước khi có chat) mà luật phải bắt.
 const STALE_SUPPORT_MUST_CATCH = [
-  "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
+  "Cách liên hệ AI Translator là gửi email tới support@aitranslator.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
   "Không có form trên web, không có điện thoại",
   "Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email ở trên.",
-  "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
+  "The way to reach AI Translator is to email support@aitranslator.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
   "No web form, no phone",
   "We have not published an address, phone number or tax code on this website; all contact goes through the email above.",
   "これが唯一のサポート窓口で、このウェブサイトにはお問い合わせフォームもサポート用の電話もありません。",
@@ -726,7 +726,7 @@ const STALE_SUPPORT_MUST_CATCH = [
 ];
 // Câu đúng của bản mới (và câu khác đang có trên site) mà luật KHÔNG được bắt.
 const STALE_SUPPORT_MUST_KEEP = [
-  "Bạn liên hệ AI Translator bằng email tới support@aitranslator.io.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
+  "Bạn liên hệ AI Translator bằng email tới support@aitranslator.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
   "Ngoài email và chat, chúng tôi không có điện thoại hay kênh hỗ trợ nào khác",
   "Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email hoặc chat hỗ trợ ở trên.",
   "Apart from email and chat, we have no phone line or other support channel",
@@ -753,11 +753,11 @@ test("không nguồn chữ nào của site còn câu nói email là kênh hỗ t
 
 test("Liên hệ (năm ngôn ngữ): chat hỗ trợ cạnh email, ô Kênh khác chỉ nói không có điện thoại, mô tả trang nêu chat", () => {
   const need = {
-    "/lien-he/": ["support@aitranslator.io.vn", "chat hỗ trợ", "góc dưới bên phải", "mục Hỗ trợ trong app", "Người thật trả lời, không phải bot", "Tin nhắn được lưu 90 ngày", "Ngoài email và chat", "email hoặc chat hỗ trợ ở trên"],
-    "/en/contact/": ["support@aitranslator.io.vn", "support chat", "bottom right", "Support screen in the app", "A real person replies, not a bot", "Messages are kept for 90 days", "Apart from email and chat", "the email or the support chat above"],
-    "/ja/contact/": ["support@aitranslator.io.vn", "サポートチャット", "右下", "「サポート」画面", "90 日間", "メールとチャットのほかに", "上のメールアドレスかサポートチャット"],
-    "/zh/contact/": ["support@aitranslator.io.vn", "客服聊天", "右下角", "“客服”页面", "90 天", "除邮件和聊天外", "上面的邮箱或客服聊天"],
-    "/ko/contact/": ["support@aitranslator.io.vn", "지원 채팅", "오른쪽 아래", "'지원' 화면", "90일간", "이메일과 채팅 외에", "위 이메일이나 지원 채팅"],
+    "/lien-he/": ["support@aitranslator.vn", "chat hỗ trợ", "góc dưới bên phải", "mục Hỗ trợ trong app", "Người thật trả lời, không phải bot", "Tin nhắn được lưu 90 ngày", "Ngoài email và chat", "email hoặc chat hỗ trợ ở trên"],
+    "/en/contact/": ["support@aitranslator.vn", "support chat", "bottom right", "Support screen in the app", "A real person replies, not a bot", "Messages are kept for 90 days", "Apart from email and chat", "the email or the support chat above"],
+    "/ja/contact/": ["support@aitranslator.vn", "サポートチャット", "右下", "「サポート」画面", "90 日間", "メールとチャットのほかに", "上のメールアドレスかサポートチャット"],
+    "/zh/contact/": ["support@aitranslator.vn", "客服聊天", "右下角", "“客服”页面", "90 天", "除邮件和聊天外", "上面的邮箱或客服聊天"],
+    "/ko/contact/": ["support@aitranslator.vn", "지원 채팅", "오른쪽 아래", "'지원' 화면", "90일간", "이메일과 채팅 외에", "위 이메일이나 지원 채팅"],
   };
   const errors = Object.entries(need).flatMap(([p, needles]) => needsIn(p, textOf(htmlByPath.get(p) ?? ""), needles));
   for (const [p, word] of [["/lien-he/", "chat hỗ trợ"], ["/en/contact/", "support chat"], ["/ja/contact/", "サポートチャット"], ["/zh/contact/", "客服聊天"], ["/ko/contact/", "지원 채팅"]]) {
@@ -780,26 +780,26 @@ Expected: `ℹ tests 3`, `ℹ pass 1` (luật là hàm thuần nên xanh ngay), 
 
 Tệp: `website/src/content/vi/contact.mjs`
 ```old
-    "Liên hệ AI Translator qua email support@aitranslator.io.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
+    "Liên hệ AI Translator qua email support@aitranslator.vn: nhận bản cài, hỗ trợ kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu và báo lỗi bảo mật.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-15",
-  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
+  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.vn, việc nên gửi tới đó (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
 ```
 ```new
-    "Liên hệ AI Translator qua email support@aitranslator.io.vn hoặc chat hỗ trợ trên web và trong app: kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật.",
+    "Liên hệ AI Translator qua email support@aitranslator.vn hoặc chat hỗ trợ trên web và trong app: kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
-  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn hoặc chat hỗ trợ (nút chat ở góc dưới bên phải mỗi trang, mục Hỗ trợ trong app), việc nên gửi (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
+  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.vn hoặc chat hỗ trợ (nút chat ở góc dưới bên phải mỗi trang, mục Hỗ trợ trong app), việc nên gửi (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
 ```
 
 Tệp: `website/src/content/vi/contact.mjs`
 ```old
-  lead: "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
+  lead: "Cách liên hệ AI Translator là gửi email tới support@aitranslator.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
 ```
 ```new
-  lead: "Bạn liên hệ AI Translator bằng email tới support@aitranslator.io.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
+  lead: "Bạn liên hệ AI Translator bằng email tới support@aitranslator.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
 ```
 
 Tệp: `website/src/content/vi/contact.mjs`
@@ -823,26 +823,26 @@ mọi liên hệ đi qua email hoặc chat hỗ trợ ở trên.
 
 Tệp: `website/src/content/en/contact.mjs`
 ```old
-    "Contact AI Translator at support@aitranslator.io.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
+    "Contact AI Translator at support@aitranslator.vn: installer, technical support, lost keys, payment issues, refunds, data deletion and security reports.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-15",
-  llm: "How to reach us and get support: email support@aitranslator.io.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
+  llm: "How to reach us and get support: email support@aitranslator.vn, what to send there (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
 ```
 ```new
-    "Reach AI Translator at support@aitranslator.io.vn or in the support chat on this site and in the app: technical help, lost keys, payments, refunds, data deletion.",
+    "Reach AI Translator at support@aitranslator.vn or in the support chat on this site and in the app: technical help, lost keys, payments, refunds, data deletion.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
-  llm: "How to reach us and get support: email support@aitranslator.io.vn or the support chat (the chat button at the bottom right of every page, the Support screen in the app), what to send (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
+  llm: "How to reach us and get support: email support@aitranslator.vn or the support chat (the chat button at the bottom right of every page, the Support screen in the app), what to send (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
 ```
 
 Tệp: `website/src/content/en/contact.mjs`
 ```old
-  lead: "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
+  lead: "The way to reach AI Translator is to email support@aitranslator.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
 ```
 ```new
-  lead: "You can reach AI Translator by email at support@aitranslator.io.vn, or in the support chat: the chat button at the bottom right of every page of this website, or the Support screen in the app. We have no support phone line.",
+  lead: "You can reach AI Translator by email at support@aitranslator.vn, or in the support chat: the chat button at the bottom right of every page of this website, or the Support screen in the app. We have no support phone line.",
 ```
 
 Tệp: `website/src/content/en/contact.mjs`
@@ -866,18 +866,18 @@ all contact goes through the email or the support chat above.
 
 Tệp: `website/src/content/ja/contact.mjs`
 ```old
-    "AI Translator へのお問い合わせは support@aitranslator.io.vn まで。インストーラー、技術サポート、キーの紛失、支払い、返金、データ削除、セキュリティ報告。",
+    "AI Translator へのお問い合わせは support@aitranslator.vn まで。インストーラー、技術サポート、キーの紛失、支払い、返金、データ削除、セキュリティ報告。",
 ```
 ```new
-    "AI Translator へのお問い合わせは support@aitranslator.io.vn へのメール、またはサイトとアプリのサポートチャットで。技術サポート、キーの紛失、支払い、返金、データ削除。",
+    "AI Translator へのお問い合わせは support@aitranslator.vn へのメール、またはサイトとアプリのサポートチャットで。技術サポート、キーの紛失、支払い、返金、データ削除。",
 ```
 
 Tệp: `website/src/content/ja/contact.mjs`
 ```old
-  lead: "AI Translator へのご連絡は support@aitranslator.io.vn へのメールでお願いします。これが唯一のサポート窓口で、このウェブサイトにはお問い合わせフォームもサポート用の電話もありません。",
+  lead: "AI Translator へのご連絡は support@aitranslator.vn へのメールでお願いします。これが唯一のサポート窓口で、このウェブサイトにはお問い合わせフォームもサポート用の電話もありません。",
 ```
 ```new
-  lead: "AI Translator へのご連絡は、support@aitranslator.io.vn へのメールか、サポートチャット（このウェブサイトの各ページ右下にあるチャットボタン、またはアプリの「サポート」画面）でお願いします。サポート用の電話はありません。",
+  lead: "AI Translator へのご連絡は、support@aitranslator.vn へのメールか、サポートチャット（このウェブサイトの各ページ右下にあるチャットボタン、またはアプリの「サポート」画面）でお願いします。サポート用の電話はありません。",
 ```
 
 Tệp: `website/src/content/ja/contact.mjs`
@@ -901,18 +901,18 @@ Tệp: `website/src/content/ja/contact.mjs`
 
 Tệp: `website/src/content/zh/contact.mjs`
 ```old
-    "通过 support@aitranslator.io.vn 联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
+    "通过 support@aitranslator.vn 联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
 ```
 ```new
-    "通过 support@aitranslator.io.vn 或网站和应用中的客服聊天联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
+    "通过 support@aitranslator.vn 或网站和应用中的客服聊天联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
 ```
 
 Tệp: `website/src/content/zh/contact.mjs`
 ```old
-  lead: "联系 AI Translator 的方式是发邮件到 support@aitranslator.io.vn。这是我们唯一的支持渠道：本网站没有联系表单，我们也没有客服电话。",
+  lead: "联系 AI Translator 的方式是发邮件到 support@aitranslator.vn。这是我们唯一的支持渠道：本网站没有联系表单，我们也没有客服电话。",
 ```
 ```new
-  lead: "你可以发邮件到 support@aitranslator.io.vn 联系 AI Translator，也可以使用客服聊天：本网站每个页面右下角的聊天按钮，或应用中的“客服”页面。我们没有客服电话。",
+  lead: "你可以发邮件到 support@aitranslator.vn 联系 AI Translator，也可以使用客服聊天：本网站每个页面右下角的聊天按钮，或应用中的“客服”页面。我们没有客服电话。",
 ```
 
 Tệp: `website/src/content/zh/contact.mjs`
@@ -936,18 +936,18 @@ Tệp: `website/src/content/zh/contact.mjs`
 
 Tệp: `website/src/content/ko/contact.mjs`
 ```old
-    "support@aitranslator.io.vn으로 AI Translator에 문의하세요: 설치 파일, 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
+    "support@aitranslator.vn으로 AI Translator에 문의하세요: 설치 파일, 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
 ```
 ```new
-    "support@aitranslator.io.vn 이메일이나 웹사이트와 앱의 지원 채팅으로 AI Translator에 문의하세요: 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
+    "support@aitranslator.vn 이메일이나 웹사이트와 앱의 지원 채팅으로 AI Translator에 문의하세요: 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
 ```
 
 Tệp: `website/src/content/ko/contact.mjs`
 ```old
-  lead: "AI Translator에 연락하는 방법은 support@aitranslator.io.vn으로 이메일을 보내는 것입니다. 이것이 유일한 지원 창구이며, 이 웹사이트에는 문의 양식이 없고 지원 전화도 없습니다.",
+  lead: "AI Translator에 연락하는 방법은 support@aitranslator.vn으로 이메일을 보내는 것입니다. 이것이 유일한 지원 창구이며, 이 웹사이트에는 문의 양식이 없고 지원 전화도 없습니다.",
 ```
 ```new
-  lead: "AI Translator에는 support@aitranslator.io.vn으로 이메일을 보내거나, 지원 채팅(이 웹사이트 모든 페이지 오른쪽 아래의 채팅 버튼, 또는 앱의 '지원' 화면)으로 연락할 수 있습니다. 지원 전화는 없습니다.",
+  lead: "AI Translator에는 support@aitranslator.vn으로 이메일을 보내거나, 지원 채팅(이 웹사이트 모든 페이지 오른쪽 아래의 채팅 버튼, 또는 앱의 '지원' 화면)으로 연락할 수 있습니다. 지원 전화는 없습니다.",
 ```
 
 Tệp: `website/src/content/ko/contact.mjs`
@@ -988,7 +988,7 @@ cd /Users/dtphong/Desktop/software_business/ai-translator && git branch --show-c
 - Modify: `website/src/content/{vi,en,ja,zh,ko}/data-security.mjs`
 - Test: `website/test/site.test.mjs`
 
-Mục mới có `id` là `chat-ho-tro` (vi) và `support-chat` (en, ja, zh, ko), đặt ngay sau mục Báo cáo lỗi. Bảng "nơi app kết nối" vẫn năm dòng (chat đi tới `api.aitranslator.io.vn`, đã có dòng): test `số nơi app kết nối…` vẫn đúng.
+Mục mới có `id` là `chat-ho-tro` (vi) và `support-chat` (en, ja, zh, ko), đặt ngay sau mục Báo cáo lỗi. Bảng "nơi app kết nối" vẫn năm dòng (chat đi tới `api.aitranslator.vn`, đã có dòng): test `số nơi app kết nối…` vẫn đúng.
 
 - [ ] **Step 1: Thêm test (cuối file)**
 
@@ -1101,10 +1101,10 @@ Tệp: `website/src/content/vi/data-security.mjs`
 
 Tệp: `website/src/content/vi/data-security.mjs`
 ```old
-<tr><th scope="row">api.aitranslator.io.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch)</td></tr>
 ```
 ```new
-<tr><th scope="row">api.aitranslator.io.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi, chat hỗ trợ; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch); tin chat hỗ trợ bạn gửi, kèm dòng thông tin máy nếu bạn để tích và email nếu bạn tự để lại (chỉ khi bạn dùng chat)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi, chat hỗ trợ; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch); tin chat hỗ trợ bạn gửi, kèm dòng thông tin máy nếu bạn để tích và email nếu bạn tự để lại (chỉ khi bạn dùng chat)</td></tr>
 ```
 
 Tệp: `website/src/content/vi/data-security.mjs`
@@ -1243,10 +1243,10 @@ To exactly five places, and none of them receives audio, transcript content or t
 
 Tệp: `website/src/content/en/data-security.mjs`
 ```old
-<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating)</td></tr>
 ```
 ```new
-<tr><th scope="row">api.aitranslator.io.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports, the support chat; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating); support chat messages you send, with the machine details line if you leave it ticked and your email if you choose to leave it (only if you use the chat)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>License server: Free trial registration, buying, activating, deactivating, recovering keys, license checks, receiving error reports, the support chat; occasionally asks the server for the time</td><td>Hashed machine ID, device name, key; plus your email when you buy or recover a key; error reports with personal data scrubbed out (only while the app is not translating); support chat messages you send, with the machine details line if you leave it ticked and your email if you choose to leave it (only if you use the chat)</td></tr>
 ```
 
 Tệp: `website/src/content/en/data-security.mjs`
@@ -1375,10 +1375,10 @@ Tệp: `website/src/content/ja/data-security.mjs`
 
 Tệp: `website/src/content/ja/data-security.mjs`
 ```old
-<tr><th scope="row">api.aitranslator.io.vn</th><td>ライセンスサーバー：Free お試しの登録、購入、有効化、無効化、キーの再送、ライセンスの確認、エラーレポートの受信。ときどきサーバーに時刻を問い合わせます</td><td>ハッシュ化したマシン ID、デバイス名、キー。購入時とキーの再送時にはメールアドレスも。個人情報を除いたエラーレポート（アプリが翻訳していないときだけ）</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>ライセンスサーバー：Free お試しの登録、購入、有効化、無効化、キーの再送、ライセンスの確認、エラーレポートの受信。ときどきサーバーに時刻を問い合わせます</td><td>ハッシュ化したマシン ID、デバイス名、キー。購入時とキーの再送時にはメールアドレスも。個人情報を除いたエラーレポート（アプリが翻訳していないときだけ）</td></tr>
 ```
 ```new
-<tr><th scope="row">api.aitranslator.io.vn</th><td>ライセンスサーバー：Free お試しの登録、購入、有効化、無効化、キーの再送、ライセンスの確認、エラーレポートの受信、サポートチャット。ときどきサーバーに時刻を問い合わせます</td><td>ハッシュ化したマシン ID、デバイス名、キー。購入時とキーの再送時にはメールアドレスも。個人情報を除いたエラーレポート（アプリが翻訳していないときだけ）。送信したサポートチャットのメッセージと、チェックを残した場合のマシン情報の行、残した場合のメールアドレス（チャットを使ったときだけ）</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>ライセンスサーバー：Free お試しの登録、購入、有効化、無効化、キーの再送、ライセンスの確認、エラーレポートの受信、サポートチャット。ときどきサーバーに時刻を問い合わせます</td><td>ハッシュ化したマシン ID、デバイス名、キー。購入時とキーの再送時にはメールアドレスも。個人情報を除いたエラーレポート（アプリが翻訳していないときだけ）。送信したサポートチャットのメッセージと、チェックを残した場合のマシン情報の行、残した場合のメールアドレス（チャットを使ったときだけ）</td></tr>
 ```
 
 Tệp: `website/src/content/ja/data-security.mjs`
@@ -1507,10 +1507,10 @@ Tệp: `website/src/content/zh/data-security.mjs`
 
 Tệp: `website/src/content/zh/data-security.mjs`
 ```old
-<tr><th scope="row">api.aitranslator.io.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱；已去除个人数据的错误报告（只在应用没有翻译时发送）</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱；已去除个人数据的错误报告（只在应用没有翻译时发送）</td></tr>
 ```
 ```new
-<tr><th scope="row">api.aitranslator.io.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
 ```
 
 Tệp: `website/src/content/zh/data-security.mjs`
@@ -1639,10 +1639,10 @@ Tệp: `website/src/content/ko/data-security.mjs`
 
 Tệp: `website/src/content/ko/data-security.mjs`
 ```old
-<tr><th scope="row">api.aitranslator.io.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만)</td></tr>
 ```
 ```new
-<tr><th scope="row">api.aitranslator.io.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신, 지원 채팅. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만). 보낸 지원 채팅 메시지와, 체크를 남겨 둔 경우의 기기 정보 줄, 직접 남긴 경우의 이메일(채팅을 쓸 때만)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>라이선스 서버: Free 체험 등록, 구매, 활성화, 비활성화, 키 다시 받기, 라이선스 확인, 오류 보고서 수신, 지원 채팅. 가끔 서버에 시간을 묻습니다</td><td>해시 처리한 기기 ID, 기기 이름, 키. 구매하거나 키를 다시 받을 때는 이메일도. 개인정보를 지운 오류 보고서(앱이 번역하지 않을 때만). 보낸 지원 채팅 메시지와, 체크를 남겨 둔 경우의 기기 정보 줄, 직접 남긴 경우의 이메일(채팅을 쓸 때만)</td></tr>
 ```
 
 Tệp: `website/src/content/ko/data-security.mjs`
@@ -2019,7 +2019,7 @@ Tệp: `docs/legal/README.md`
 > **Chưa được luật sư hay kế toán xem.**
 ```
 ```new
-**Chính sách 1.5 thêm chat hỗ trợ** theo spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 0, 2 và 5): khách chat trên website (bong bóng ở mọi trang) và trong app (màn hình Hỗ trợ); tin đi qua `api.aitranslator.io.vn` (D1) tới Zalo cá nhân của người vận hành qua Zalo Bot, câu trả lời đi ngược lại qua webhook (chính sách mục 11; tóm tắt ở mục 2, kết nối mạng ở mục 4, dữ liệu máy chủ ở mục 5, bên xử lý ở mục 6, thời gian lưu và yêu cầu xóa ở mục 7). Cuộc chat tự xóa sau 90 ngày kể từ tin cuối, khách tự xóa được; email không bắt buộc, chỉ để gửi câu trả lời qua Resend, **không bao giờ gửi sang Zalo**; IP chỉ ở dạng băm trong bộ đếm giới hạn tần suất; máy chủ chỉ lưu mã băm của token. Bản sao tin đã chuyển vào Zalo **không** tự xóa: chính sách nói thẳng điều này và hứa người vận hành xóa khi khách yêu cầu. Bên xử lý mới: Zalo (Công ty Cổ phần VNG, máy chủ ở Việt Nam), nên không thêm việc chuyển dữ liệu ra nước ngoài; thư trả lời đi qua Resend (ngoài Việt Nam) như thư chứa key. **EULA không đổi** (giữ bản 1.3): EULA không nói về kênh hỗ trợ hay danh sách kết nối và không dẫn số mục nào của chính sách. Mục "Chat hỗ trợ" là mục 11, nên "Thay đổi chính sách" và "Liên hệ" thành mục 12 và 13; mục 1 đến 10 giữ số. Ngày hiệu lực của chính sách 1.5 đặt theo mục "Đổi ngày hiệu lực" lúc phát hành bản app có chat (0.2.4). Website (trang Liên hệ, Dữ liệu và bảo mật, Trang chủ, Hỏi đáp) nói cùng các điều đó nhưng không nêu tên Zalo (spec mục 5).
+**Chính sách 1.5 thêm chat hỗ trợ** theo spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 0, 2 và 5): khách chat trên website (bong bóng ở mọi trang) và trong app (màn hình Hỗ trợ); tin đi qua `api.aitranslator.vn` (D1) tới Zalo cá nhân của người vận hành qua Zalo Bot, câu trả lời đi ngược lại qua webhook (chính sách mục 11; tóm tắt ở mục 2, kết nối mạng ở mục 4, dữ liệu máy chủ ở mục 5, bên xử lý ở mục 6, thời gian lưu và yêu cầu xóa ở mục 7). Cuộc chat tự xóa sau 90 ngày kể từ tin cuối, khách tự xóa được; email không bắt buộc, chỉ để gửi câu trả lời qua Resend, **không bao giờ gửi sang Zalo**; IP chỉ ở dạng băm trong bộ đếm giới hạn tần suất; máy chủ chỉ lưu mã băm của token. Bản sao tin đã chuyển vào Zalo **không** tự xóa: chính sách nói thẳng điều này và hứa người vận hành xóa khi khách yêu cầu. Bên xử lý mới: Zalo (Công ty Cổ phần VNG, máy chủ ở Việt Nam), nên không thêm việc chuyển dữ liệu ra nước ngoài; thư trả lời đi qua Resend (ngoài Việt Nam) như thư chứa key. **EULA không đổi** (giữ bản 1.3): EULA không nói về kênh hỗ trợ hay danh sách kết nối và không dẫn số mục nào của chính sách. Mục "Chat hỗ trợ" là mục 11, nên "Thay đổi chính sách" và "Liên hệ" thành mục 12 và 13; mục 1 đến 10 giữ số. Ngày hiệu lực của chính sách 1.5 đặt theo mục "Đổi ngày hiệu lực" lúc phát hành bản app có chat (0.2.4). Website (trang Liên hệ, Dữ liệu và bảo mật, Trang chủ, Hỏi đáp) nói cùng các điều đó nhưng không nêu tên Zalo (spec mục 5).
 
 > **Chưa được luật sư hay kế toán xem.**
 ```
@@ -2125,19 +2125,19 @@ Tệp: `docs/release/phat-hanh.md`
 
     Expected: hai dòng phiên bản `1.5` cùng một ngày (vi dạng `dd/mm/yyyy`, en dạng `d Month yyyy`).
 
-11. **Phát hành app 0.2.4** theo mục 2 (nâng phiên bản ở đó; mỗi lần một tag). Chat vẫn tắt từ bước 9: màn hình Hỗ trợ của bản mới hiện "Chat đang tạm tắt…" kèm email support@ cho tới bước 13, đó là đúng. Kiểm R2 như mục 2 bước 5 (`latest.json` của kênh stable ra `0.2.4`, SHA-256 khớp). Job đăng R2 đỏ vì không phân giải được `*.io.vn` thì chạy `dig @8.8.8.8 releases.aitranslator.io.vn` trước khi chạy lại (sự cố DNSSEC của vùng io.vn ngày 2026-10-22).
+11. **Phát hành app 0.2.4** theo mục 2 (nâng phiên bản ở đó; mỗi lần một tag). Chat vẫn tắt từ bước 9: màn hình Hỗ trợ của bản mới hiện "Chat đang tạm tắt…" kèm email support@ cho tới bước 13, đó là đúng. Kiểm R2 như mục 2 bước 5 (`latest.json` của kênh stable ra `0.2.4`, SHA-256 khớp). Job đăng R2 đỏ vì không phân giải được `*.io.vn` thì chạy `dig @8.8.8.8 releases.aitranslator.vn` trước khi chạy lại (sự cố DNSSEC của vùng io.vn ngày 2026-10-22).
 
 12. **Deploy website** sau khi 0.2.4 đã lên R2. Nếu A7 có chat đã đo (spec mục 6, "A7 bằng proxy") thì trước khi deploy sửa câu "chat hỗ trợ chưa được đo bằng proxy" trong callout "Giới hạn của phép đo" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en,ja,zh,ko}/data-security.mjs`) và đoạn "Chat hỗ trợ, chưa đối chiếu hết" của `docs/legal/README.md` cho khớp số đo (ngày, máy, bản dựng), rồi commit.
 
     ```bash
-    curl -s https://releases.aitranslator.io.vn/stable/latest.json | grep -o '"version":"[^"]*"'
+    curl -s https://releases.aitranslator.vn/stable/latest.json | grep -o '"version":"[^"]*"'
     cd ../website && pnpm test 2>&1 | grep -E 'ℹ (pass|fail)' && pnpm deploy
-    curl -sI https://aitranslator.io.vn/ | grep -i '^content-security-policy' | grep -o "connect-src[^;]*"
-    curl -s https://aitranslator.io.vn/chinh-sach-quyen-rieng-tu/ | grep -o 'Phiên bản 1\.5[^<]*' | head -1
-    curl -s https://aitranslator.io.vn/lien-he/ | grep -c 'kênh hỗ trợ duy nhất'
+    curl -sI https://aitranslator.vn/ | grep -i '^content-security-policy' | grep -o "connect-src[^;]*"
+    curl -s https://aitranslator.vn/chinh-sach-quyen-rieng-tu/ | grep -o 'Phiên bản 1\.5[^<]*' | head -1
+    curl -s https://aitranslator.vn/lien-he/ | grep -c 'kênh hỗ trợ duy nhất'
     ```
 
-    Expected: `"version":"0.2.4"`; `ℹ fail 0` rồi deploy xong (lệnh `pnpm deploy` tự dừng nếu R2 cao hơn repo); `connect-src 'self' https://api.aitranslator.io.vn`; `Phiên bản 1.5, hiệu lực từ <ngày ở bước 10>`; `0`. Mở `https://aitranslator.io.vn/` trong trình duyệt: bong bóng ở góc dưới phải; bấm vào thấy khung chat với dòng "Chat đang tạm tắt…" (chat còn tắt). Các lệnh sau chạy lại trong `server/` (`cd ../server`).
+    Expected: `"version":"0.2.4"`; `ℹ fail 0` rồi deploy xong (lệnh `pnpm deploy` tự dừng nếu R2 cao hơn repo); `connect-src 'self' https://api.aitranslator.vn`; `Phiên bản 1.5, hiệu lực từ <ngày ở bước 10>`; `0`. Mở `https://aitranslator.vn/` trong trình duyệt: bong bóng ở góc dưới phải; bấm vào thấy khung chat với dòng "Chat đang tạm tắt…" (chat còn tắt). Các lệnh sau chạy lại trong `server/` (`cd ../server`).
 
 13. **Bật chat.** Chủ dự án nhắn `/bat` cho bot trong Zalo.
 
@@ -2148,11 +2148,11 @@ Tệp: `docs/release/phat-hanh.md`
     Expected: bot trả lời xác nhận chat đã bật; lệnh in `{"enabled":true}`.
 
 14. **Thử tay** (spec mục 6, "Thử tay sau deploy"), bằng trình duyệt thường và app 0.2.4 vừa phát hành:
-    a. **Website:** mở bong bóng ở `https://aitranslator.io.vn/lien-he/`, gửi một tin. Zalo nhận dòng `🆕 #XXX · web · vi · /lien-he/` và nội dung tin. Trả lời trong Zalo **không ghi mã** (chỉ một cuộc chat nhắn trong 30 phút): bot báo "✓ đã gửi tới #XXX", câu trả lời hiện trong khung chat trong vài giây. Đóng khung, trả lời thêm một tin: trong khoảng một phút bong bóng hiện chấm đỏ.
+    a. **Website:** mở bong bóng ở `https://aitranslator.vn/lien-he/`, gửi một tin. Zalo nhận dòng `🆕 #XXX · web · vi · /lien-he/` và nội dung tin. Trả lời trong Zalo **không ghi mã** (chỉ một cuộc chat nhắn trong 30 phút): bot báo "✓ đã gửi tới #XXX", câu trả lời hiện trong khung chat trong vài giây. Đóng khung, trả lời thêm một tin: trong khoảng một phút bong bóng hiện chấm đỏ.
     b. **App:** mục Hỗ trợ, để tích "Gửi kèm thông tin máy", gửi một tin. Zalo nhận dòng `🆕 #YYY · app · …` có phiên bản 0.2.4, hệ điều hành, chip, RAM, gói, gói model; **không có** key, email, mã máy, tên máy. Trả lời **có mã** (`#YYY nội dung`): câu trả lời hiện trong app. Bấm đính kèm log: Zalo nhận `#YYY 📎 Mã báo cáo log: R-…`, và tìm được báo cáo đó ở Web Admin › Báo cáo lỗi.
     c. **Hai cuộc chat cùng lúc:** nhắn ở cả website và app trong 30 phút, rồi trả lời không ghi mã: bot báo "⚠️ Có 2 cuộc chat vừa nhắn trong 30 phút qua (#…, #…)…" và không gửi cho ai.
-    d. **Email khi rời trang:** ở website, để lại email ở thẻ email, đóng tab. Zalo nhận `#XXX ✉️ khách đã để lại email` **không kèm địa chỉ**. Trả lời trong Zalo; trong khoảng 2–7 phút (tin phải cũ hơn 2 phút, cron 5 phút) thư tới hộp thư đó, song ngữ vi/en, `Reply-To: support@aitranslator.io.vn`.
-    e. **Tắt, bật:** nhắn `/tat`; website và app hiện "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn", lịch sử cũ vẫn hiện; nhắn `/bat` lại.
+    d. **Email khi rời trang:** ở website, để lại email ở thẻ email, đóng tab. Zalo nhận `#XXX ✉️ khách đã để lại email` **không kèm địa chỉ**. Trả lời trong Zalo; trong khoảng 2–7 phút (tin phải cũ hơn 2 phút, cron 5 phút) thư tới hộp thư đó, song ngữ vi/en, `Reply-To: support@aitranslator.vn`.
+    e. **Tắt, bật:** nhắn `/tat`; website và app hiện "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.vn", lịch sử cũ vẫn hiện; nhắn `/bat` lại.
     f. **Xóa:** ở website, menu ⋯ › Xóa cuộc trò chuyện. Bot báo "🗑 khách đã xóa cuộc chat"; kiểm D1 (thay `XXX` bằng mã thật):
 
        ```bash

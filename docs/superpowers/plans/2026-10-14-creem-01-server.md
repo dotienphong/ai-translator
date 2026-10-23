@@ -1633,9 +1633,9 @@ Expected: FAIL: `TypeError: parseProductIds is not a function` (16 test đỏ).
 +    // currency USD trả 503. Điền mã thật trước khi deploy bản có Creem (cùng hai secret CREEM_*).
 +    "CREEM_BASE_URL": "https://api.creem.io",
 +    "CREEM_PRODUCT_IDS": { "monthly": "", "six_months": "", "yearly": "" },
-     // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
-     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
-     "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
+     // Tên miền gửi mail.aitranslator.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
+     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
+     "EMAIL_REPLY_TO": "support@aitranslator.vn",
      // Giá chính thức (spec 2026-10-07 §2.1; thay bốn gói chốt 2026-10-01). six_months thêm theo spec 2026-10-13 §1:
      // 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn. Thứ tự các gói là thứ tự trong màn hình Nâng cấp (theo thời hạn).
 +    // Giá USD (cent, bán qua Creem) thêm theo spec 2026-10-14 D2: giữ tỉ lệ giá mỗi ngày giữa các gói gần bảng VND (sai số 3%,

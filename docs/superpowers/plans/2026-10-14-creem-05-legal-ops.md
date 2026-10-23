@@ -151,8 +151,8 @@ Expected: FAIL một test: `điều khoản (EULA) 1.3 nêu bốn gói với gi�
 +- **Thanh toán bằng thẻ quốc tế do Creem xử lý.** Creem (Armitage Labs OÜ, Estonia) xử lý khoản trả và thuế bán hàng của khoản đó, ghi tên Creem trên sao kê thẻ của bạn và gửi biên lai tới email bạn nhập; điều khoản và chính sách của Creem áp dụng cho phần thanh toán đó. Chúng tôi không nhận số thẻ của bạn.
  - **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 180 ngày với 6 Months, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
  - Hạn mức tính **riêng cho từng máy**, đếm theo thời gian dịch thực tế. Hết hạn mức thì dừng dịch cho tới kỳ reset hoặc khi bạn mua thêm.
--- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn.
-+- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.io.vn kèm mã đơn. Khoản trả bằng thẻ quốc tế do Creem xử lý, nên Creem cũng có thể hoàn tiền theo điều khoản của họ; đơn đã được hoàn tiền thì license của đơn đó có thể bị thu hồi.
+-- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.vn kèm mã đơn.
++- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu trong **7 ngày** kể từ ngày thanh toán tới support@aitranslator.vn kèm mã đơn. Khoản trả bằng thẻ quốc tế do Creem xử lý, nên Creem cũng có thể hoàn tiền theo điều khoản của họ; đơn đã được hoàn tiền thì license của đơn đó có thể bị thu hồi.
  - Chúng tôi có thể cấp hoặc gia hạn license thủ công (ví dụ khi bạn chuyển thiếu rồi chuyển bù).
  
  ## 4. License key và kích hoạt
@@ -192,8 +192,8 @@ Expected: FAIL một test: `điều khoản (EULA) 1.3 nêu bốn gói với gi�
 +- **International card payments are processed by Creem.** Creem (Armitage Labs OÜ, Estonia) handles the payment and the sales tax on it, shows its own name on your card statement and emails you a receipt at the address you entered; Creem's terms and policies apply to that payment. We do not receive your card number.
  - **Buying more of the same plan** adds the plan's days (30 days for Monthly, 180 days for 6 Months, 365 days for Yearly). **Changing plan** while you still have time: the remaining days of the old plan are converted by price per day into days of the new plan (rounded down), and the new plan starts immediately with a new cycle; the app shows the converted days and the new expiry date beforehand. **Plan changes are not refunded.**
  - Quota is counted **per machine**, by actual translation time. When quota runs out, translation stops until the next reset or until you buy more.
--- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **7 days** of payment to support@aitranslator.io.vn with your order code.
-+- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **7 days** of payment to support@aitranslator.io.vn with your order code. Card payments are processed by Creem, so Creem may also refund them under its own terms; the license of a refunded order may be revoked.
+-- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **7 days** of payment to support@aitranslator.vn with your order code.
++- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send a request within **7 days** of payment to support@aitranslator.vn with your order code. Card payments are processed by Creem, so Creem may also refund them under its own terms; the license of a refunded order may be revoked.
  - We may issue or extend licenses manually (for example when you transferred too little and then topped up).
  
  ## 4. License keys and activation
@@ -268,9 +268,9 @@ Expected: FAIL một test: `chính sách quyền riêng tư 1.2 nêu Creem là b
  ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
  
 @@ -32,7 +32,7 @@
- 1. **Tải model** và kiểm tra bản mới của model (từ `releases.aitranslator.io.vn`).
- 2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.io.vn`).
- 3. **Làm việc với license server** của chúng tôi (`api.aitranslator.io.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn.
+ 1. **Tải model** và kiểm tra bản mới của model (từ `releases.aitranslator.vn`).
+ 2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.vn`).
+ 3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn.
 -4. **Trang thanh toán** do PayOS cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
 +4. **Trang thanh toán** do PayOS (chuyển khoản VietQR) hoặc Creem (thẻ quốc tế) cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
  
@@ -330,9 +330,9 @@ Expected: FAIL một test: `chính sách quyền riêng tư 1.2 nêu Creem là b
  ## 1. Who is responsible for your data
  
 @@ -32,7 +32,7 @@
- 1. **Download models** and check for new model versions (from `releases.aitranslator.io.vn`).
- 2. **Check for app updates** (from `releases.aitranslator.io.vn`).
- 3. **Talk to our license server** (`api.aitranslator.io.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate, recover a key, check your license periodically, and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data.
+ 1. **Download models** and check for new model versions (from `releases.aitranslator.vn`).
+ 2. **Check for app updates** (from `releases.aitranslator.vn`).
+ 3. **Talk to our license server** (`api.aitranslator.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate, recover a key, check your license periodically, and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data.
 -4. **The payment page** provided by PayOS, opened in your browser when you buy a plan.
 +4. **The payment page** provided by PayOS (VietQR bank transfer) or Creem (international card), opened in your browser when you buy a plan.
  
@@ -560,7 +560,7 @@ README của thư mục pháp lý ghi phiên bản đang dùng, thông tin đã 
  
 @@ -14,21 +14,23 @@
  ## Thông tin đã chốt và đã dùng trong văn bản
- - Bên cung cấp: **Đỗ Tiến Phong** (cá nhân), email **support@aitranslator.io.vn**, thương hiệu hiển thị "AI Translator". Không công bố địa chỉ liên hệ.
+ - Bên cung cấp: **Đỗ Tiến Phong** (cá nhân), email **support@aitranslator.vn**, thương hiệu hiển thị "AI Translator". Không công bố địa chỉ liên hệ.
  - Dữ liệu cá nhân trên máy chủ giữ không thời hạn, chỉ xóa khi khách yêu cầu (chốt 2026-10-01); sau khi xóa vẫn giữ mã băm ID máy, thời điểm đồng ý, và dòng đơn hàng mức kế toán (spec §10.1).
 -- Bốn gói (từ 2026-10-13; ba gói từ 2026-10-07): Free dùng thử 10 ngày mỗi máy, 30 phút mỗi ngày; Monthly 50.000 đ, 50 giờ mỗi chu kỳ 30 ngày; 6 Months 269.000 đ, 100 giờ mỗi chu kỳ 30 ngày, 180 ngày; Yearly 500.000 đ, không giới hạn, 365 ngày. Đơn trả trước, không tự gia hạn; đổi gói quy đổi theo giá mỗi ngày, không hoàn tiền; mỗi key một máy, trùng máy thì tạm khóa cả hai; khóa tạm khi đổi máy quá nhiều; ngoại tuyến 14 ngày.
 -- Bên xử lý dữ liệu: PayOS (Việt Nam), Cloudflare, Resend (ngoài Việt Nam).
@@ -582,8 +582,8 @@ README của thư mục pháp lý ghi phiên bản đang dùng, thông tin đã 
  - **Thời hạn lưu log thư của Resend**: spec yêu cầu ghi vào chính sách; **chưa kiểm**. Hiện chính sách ghi "theo chính sách lưu của Resend".
  
  ## Đã đối chiếu với sản phẩm thật
--Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.io.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); mỗi key một máy và khóa tạm (§6.8, §10.2); bảng `trials` của dùng thử Free (§10.1); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1).
-+Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.io.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); mỗi key một máy và khóa tạm (§6.8, §10.2); bảng `trials` của dùng thử Free (§10.1); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1); giá USD và hạn mức (spec `2026-10-14-creem-international-payment-design.md`, D2); email điền sẵn trang Creem (`CreemProvider.createCheckout` gửi `customer.email`); điều khoản và tài liệu của Creem đọc ngày 2026-10-14 (Merchant of Record, tên Creem trên sao kê thẻ, biên lai gửi khách, Creem có thể hoàn tiền; pháp nhân Armitage Labs OÜ, Estonia).
+-Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); mỗi key một máy và khóa tạm (§6.8, §10.2); bảng `trials` của dùng thử Free (§10.1); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1).
++Âm thanh chỉ trong RAM và không gửi đi (kiểm A7: HAR và `nettop` không có luồng ngoài lúc dịch, log không chứa chữ chép lời); danh sách kết nối mạng của app (A7: chỉ `api.` và `releases.aitranslator.vn`); server chỉ lưu email, đơn, license, mã băm máy, `device_label`, thời điểm kiểm tra (spec §10.1); bảng giá và hạn mức (spec §2); luật quy đổi khi đổi gói (§6.8); mỗi key một máy và khóa tạm (§6.8, §10.2); bảng `trials` của dùng thử Free (§10.1); token ngoại tuyến 14 ngày (`refresh_before - issued_at = 1 209 600 s` ở bản triển khai); giấy phép Hy-MT2 Apache 2.0, Whisper và Silero MIT (§10.1); giá USD và hạn mức (spec `2026-10-14-creem-international-payment-design.md`, D2); email điền sẵn trang Creem (`CreemProvider.createCheckout` gửi `customer.email`); điều khoản và tài liệu của Creem đọc ngày 2026-10-14 (Merchant of Record, tên Creem trên sao kê thẻ, biên lai gửi khách, Creem có thể hoàn tiền; pháp nhân Armitage Labs OÜ, Estonia).
  
  ## Cài vào sản phẩm
  - **Đã làm (kế hoạch `2026-10-06-dieu-khoan-trong-app.md`):** app đóng gói bốn file; bước "Điều khoản" ở onboarding (ô tick bắt buộc); thẻ "Điều khoản và quyền riêng tư" ở màn hình Giới thiệu; mục gập "Chính sách quyền riêng tư" dưới ô đồng ý email ở màn hình mua.
@@ -630,8 +630,8 @@ Test đòi runbook nêu mọi tên trong `secrets.required` của hai Worker:
 +  assert.deepEqual(missing, []);
 +});
 +
- test("tên miền riêng aitranslator.io.vn (spec 2026-10-06): route, email gửi và origin của Worker admin, tên miền của admin", () => {
-   assert.deepEqual(api.routes, [{ pattern: "api.aitranslator.io.vn", custom_domain: true }]);
+ test("tên miền riêng aitranslator.vn (spec 2026-10-06): route, email gửi và origin của Worker admin, tên miền của admin", () => {
+   assert.deepEqual(api.routes, [{ pattern: "api.aitranslator.vn", custom_domain: true }]);
    for (const config of [api, admin]) {
 ```
 
@@ -687,7 +687,7 @@ Expected: FAIL một test: `runbook docs/release/phat-hanh.md nêu mọi secret 
 +- Website và văn bản pháp lý sau cùng: trang nói "có thẻ quốc tế" khi chưa có là lời hứa sai.
 +- **Hai Worker lên liền nhau** (bước 7 rồi bước 8): cả hai cùng đọc `PLANS` (có giá USD) và cổng Creem. Trong khoảng giữa hai bước đừng dùng thao tác cấp license và xem đơn Creem ở Web Admin.
 +
-+1. **Tài khoản Creem** (chủ dự án; agent không đăng ký thay). Đăng ký ở creem.io, làm KYC cá nhân (tên thụ hưởng của tài khoản ngân hàng phải khớp tên KYC), thêm tài khoản ngân hàng nhận chi trả (VND), chờ Creem duyệt (1 đến 2 ngày làm việc, tối đa 3). Creem xét website: có Chính sách quyền riêng tư và Điều khoản, giá hiển thị, email hỗ trợ khớp (`aitranslator.io.vn` có đủ); Creem có thể mua thử bằng mã giảm giá 100%. Creem chi trả theo tiền tệ của tài khoản ngân hàng; khác tiền tệ bán (USD) thì ngân hàng nhận tự quy đổi và thu phí (đo ở lần rút đầu, điểm S8 của spec).
++1. **Tài khoản Creem** (chủ dự án; agent không đăng ký thay). Đăng ký ở creem.io, làm KYC cá nhân (tên thụ hưởng của tài khoản ngân hàng phải khớp tên KYC), thêm tài khoản ngân hàng nhận chi trả (VND), chờ Creem duyệt (1 đến 2 ngày làm việc, tối đa 3). Creem xét website: có Chính sách quyền riêng tư và Điều khoản, giá hiển thị, email hỗ trợ khớp (`aitranslator.vn` có đủ); Creem có thể mua thử bằng mã giảm giá 100%. Creem chi trả theo tiền tệ của tài khoản ngân hàng; khác tiền tệ bán (USD) thì ngân hàng nhận tự quy đổi và thu phí (đo ở lần rút đầu, điểm S8 của spec).
 +
 +2. **Spike ở test mode** (S1 đến S7 của spec mục 11), trước khi deploy. Bật **Test Mode** ở dashboard (nút ở cuối thanh bên trái), vào Developers, chép **khóa test** vào một file chỉ mình đọc được (không dán vào chat, không để trong repo). Tạo một sản phẩm thử: loại một lần, USD, 3,99, **Tax mode: exclusive**; chép mã `prod_…` của nó.
 +
@@ -696,7 +696,7 @@ Expected: FAIL một test: `runbook docs/release/phat-hanh.md nêu mọi secret 
 +   . "$HOME/.creem-test.env"
 +   TP=prod_...   # mã sản phẩm thử vừa tạo
 +   curl -s -X POST https://test-api.creem.io/v1/checkouts -H "x-api-key: $CREEM_TEST_KEY" -H 'content-type: application/json' \
-+     -d "{\"product_id\":\"$TP\",\"request_id\":\"9000001\",\"custom_price\":399,\"success_url\":\"https://api.aitranslator.io.vn/v1/pay/return\",\"customer\":{\"email\":\"<email của bạn>\"},\"metadata\":{\"order_code\":\"9000001\",\"plan\":\"monthly\"}}" | tee "$TMPDIR/creem-checkout.json"; echo
++     -d "{\"product_id\":\"$TP\",\"request_id\":\"9000001\",\"custom_price\":399,\"success_url\":\"https://api.aitranslator.vn/v1/pay/return\",\"customer\":{\"email\":\"<email của bạn>\"},\"metadata\":{\"order_code\":\"9000001\",\"plan\":\"monthly\"}}" | tee "$TMPDIR/creem-checkout.json"; echo
 +   ```
 +
 +   Expected (S2): JSON có `id` (`ch_…`), `status` `pending`, `checkout_url` (trang `checkout.creem.io`), `request_id` `9000001`; không lỗi vì `custom_price` (399 cent, thấp hơn mọi giá catalog). Mở `checkout_url`, ghi lại: có ô mã giảm giá không (S7). Trả bằng thẻ thử `4111 1111 1111 1111` (ngày hết hạn bất kỳ ở tương lai, CVV bất kỳ), rồi:
@@ -716,7 +716,7 @@ Expected: FAIL một test: `runbook docs/release/phat-hanh.md nêu mọi secret 
 +
 +   Expected: `pnpm check` đạt (test `wrangler-config` đòi `CREEM_PRODUCT_IDS` có đúng ba khóa `monthly`, `six_months`, `yearly`, mỗi giá trị rỗng hay `prod_…`).
 +
-+4. **Webhook** ở dashboard (Test Mode tắt): Developers > Webhooks > thêm endpoint `https://api.aitranslator.io.vn/v1/webhooks/creem`, chỉ bật ba sự kiện `checkout.completed`, `refund.created`, `dispute.created`. Chép **secret ký** của endpoint (hiện khi tạo, xem lại được ở dashboard). Đừng bật sự kiện nào khác: server trả `200` và bỏ qua, nhưng không cần.
++4. **Webhook** ở dashboard (Test Mode tắt): Developers > Webhooks > thêm endpoint `https://api.aitranslator.vn/v1/webhooks/creem`, chỉ bật ba sự kiện `checkout.completed`, `refund.created`, `dispute.created`. Chép **secret ký** của endpoint (hiện khi tạo, xem lại được ở dashboard). Đừng bật sự kiện nào khác: server trả `200` và bỏ qua, nhưng không cần.
 +
 +5. **Secret** (khóa **production** của Creem, ở Developers khi Test Mode tắt; không phải khóa test). Mỗi lệnh hỏi giá trị, không hiện ra màn hình:
 +
@@ -772,11 +772,11 @@ Expected: FAIL một test: `runbook docs/release/phat-hanh.md nêu mọi secret 
 +   curl -s "$PROD/v1/orders/$CODE" -H "authorization: Bearer $TOK" | node -e 'const d = JSON.parse(require("fs").readFileSync(0, "utf8")); console.log(JSON.stringify({ status: d.status, amount: d.amount, currency: d.currency, license_plan: d.license_plan, has_key: Boolean(d.license_key) }))'
 +   ```
 +
-+   Expected: vài giây sau khi trả: `{"status":"paid","amount":399,"currency":"USD","license_plan":"monthly","has_key":true}`; thư chứa key tới `$EM` (từ `no-reply@mail.aitranslator.io.vn`); Web Admin > Đơn hiện đơn này với `$3.99` và cổng Creem; `pnpm exec wrangler tail mt-license --format pretty` không có `webhook_bad_signature`. Chưa `paid` sau vài phút thì cron đối soát (mỗi 5 phút) sẽ cấp; đơn vẫn `pending` sau mười phút nghĩa là webhook và đối soát đều không chạm được Creem: xem `provider_auth_failed` (khóa API sai) và bước 10.
++   Expected: vài giây sau khi trả: `{"status":"paid","amount":399,"currency":"USD","license_plan":"monthly","has_key":true}`; thư chứa key tới `$EM` (từ `no-reply@mail.aitranslator.vn`); Web Admin > Đơn hiện đơn này với `$3.99` và cổng Creem; `pnpm exec wrangler tail mt-license --format pretty` không có `webhook_bad_signature`. Chưa `paid` sau vài phút thì cron đối soát (mỗi 5 phút) sẽ cấp; đơn vẫn `pending` sau mười phút nghĩa là webhook và đối soát đều không chạm được Creem: xem `provider_auth_failed` (khóa API sai) và bước 10.
 +
 +   Rồi **hoàn tiền đơn này ở dashboard Creem** (Transactions, hoàn đủ). Expected: vài giây đến vài phút sau `GET /v1/orders/$CODE` báo `"status":"refunded"`, Web Admin hiện đơn `refunded` kèm thẻ cảnh báo (license còn hoạt động, spec D5), và trong khoảng một giờ có thư cảnh báo `order_refunded` tới `ops@`. License của đơn thử vẫn dùng được: thu hồi nó ở trang License của Web Admin nếu không giữ.
 +
-+10. **Kiểm cron và luật WAF.** Cron: như mục 4 bước 9 (`wrangler tail mt-license`, một sự kiện `*/5 * * * *` có `{"event":"reconcile",…}`; không thấy thì `pnpm exec wrangler triggers deploy`). Webhook của Creem không có IP cố định nên không allowlist theo IP được: luật WAF `webhook-rate-limit` (5 request mỗi 10 giây mỗi IP, đường dẫn `/v1/webhooks/`) áp cho cả Creem; sau đơn ở bước 9 xem Cloudflare > Security > Events xem có request tới `/v1/webhooks/creem` bị chặn (429) không, và nới luật riêng cho `/v1/webhooks/creem` nếu có. Kiểm **Bot Fight Mode** của zone `aitranslator.io.vn` (Security > Bots): Creem ghi rõ nó có thể chặn webhook và **không bỏ qua được bằng luật tùy chỉnh**; thấy webhook Creem bị chặn thì cân nhắc tắt Bot Fight Mode cho zone. Dù webhook bị chặn, cron đối soát vẫn cấp license trong vài phút (đơn pending được hỏi lại bằng API mỗi 4 phút trong giờ đầu); webhook chỉ làm việc đó nhanh hơn.
++10. **Kiểm cron và luật WAF.** Cron: như mục 4 bước 9 (`wrangler tail mt-license`, một sự kiện `*/5 * * * *` có `{"event":"reconcile",…}`; không thấy thì `pnpm exec wrangler triggers deploy`). Webhook của Creem không có IP cố định nên không allowlist theo IP được: luật WAF `webhook-rate-limit` (5 request mỗi 10 giây mỗi IP, đường dẫn `/v1/webhooks/`) áp cho cả Creem; sau đơn ở bước 9 xem Cloudflare > Security > Events xem có request tới `/v1/webhooks/creem` bị chặn (429) không, và nới luật riêng cho `/v1/webhooks/creem` nếu có. Kiểm **Bot Fight Mode** của zone `aitranslator.vn` (Security > Bots): Creem ghi rõ nó có thể chặn webhook và **không bỏ qua được bằng luật tùy chỉnh**; thấy webhook Creem bị chặn thì cân nhắc tắt Bot Fight Mode cho zone. Dù webhook bị chặn, cron đối soát vẫn cấp license trong vài phút (đơn pending được hỏi lại bằng API mỗi 4 phút trong giờ đầu); webhook chỉ làm việc đó nhanh hơn.
 +
 +11. **Phát hành app, rồi website và pháp lý.** App theo mục 2 (nâng phiên bản ở đó). Văn bản pháp lý nằm **trong app** (`docs/legal/*.md` được đóng gói): bản app có Creem là bản mang EULA 1.3 và chính sách 1.2; người đã đồng ý EULA cũ không bị hỏi lại (chưa có cơ chế). Sau khi bản app đã đăng lên R2 (kiểm R2 ở mục 2): nếu ngày deploy thật khác 2026-10-14 thì sửa ngày hiệu lực trước (`docs/legal/eula.vi.md`, `eula.en.md`, `privacy.vi.md`, `privacy.en.md`, `docs/legal/README.md`, và `modified` của `website/src/content/{vi,en}/{terms,privacy}.mjs`), chụp lại ảnh `app-upgrade*.webp` nếu giao diện Nâng cấp còn đổi (`website/README.md`), rồi `cd website && pnpm deploy`.
 +

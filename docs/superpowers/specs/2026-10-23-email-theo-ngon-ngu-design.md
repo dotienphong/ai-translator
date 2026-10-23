@@ -63,12 +63,12 @@ Bản mẫu đã duyệt: https://claude.ai/artifact/TkNhF57MUGmb6DctvdMKCj. Ch�
   - `ko`: `'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`, và thẻ thư thêm `word-break: keep-all; overflow-wrap: break-word` (ngắt dòng theo từ, như website).
 
   Chuỗi font dùng cho cả thẻ thư lẫn bảng chân thư. Key dùng font đơn cách `'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace`.
-- Đầu thư: ô vuông xanh 10 px và chữ "AI Translator" đậm. Chân thư (ngoài thẻ): "AI Translator · aitranslator.io.vn" (link tới trang chủ).
+- Đầu thư: ô vuông xanh 10 px và chữ "AI Translator" đậm. Chân thư (ngoài thẻ): "AI Translator · aitranslator.vn" (link tới trang chủ).
 - Màn hình hẹp (≤ 600 px): thẻ bỏ bo góc và viền hai bên, lề trong 20 px, key cỡ 14 px không giãn chữ (key 34 ký tự vừa một dòng ở 375 px).
 - Hộp thư tối: khai báo `color-scheme: light dark`; khối `@media (prefers-color-scheme: dark)` đổi màu theo bộ màu tối của website (nền `#080d18`, thẻ `#111a2d`, chữ `#eef3fb`, ô key `#12274a`, key `#8fc0ff`). Gmail dùng khối `<style>` trong `<head>` (kể cả media query `max-width` của màn hình hẹp) nhưng bỏ phần `prefers-color-scheme` và tự đảo màu theo cách riêng; thiết kế sáng vẫn đọc được khi bị đảo.
 - `<html lang>` theo ngôn ngữ của khách, tiếng Trung là `zh-Hans` (chữ giản thể, như app `htmlLang` và website); phần tiếng Anh nằm trong khối có `lang="en"`.
 - Dòng xem trước ẩn (preheader) đặt ngay đầu `<body>`: thư key ghi gói và ngày hết hạn của key đầu tiên (không ghi key, vì dòng này hiện ở thông báo của điện thoại); thư hỗ trợ ghi câu dẫn. Hộp thư nối chữ thân thư vào sau preheader cho đủ dòng xem trước, mà key nằm gần đầu thân thư; nên ngay sau chữ preheader, trong cùng khối ẩn, có 100 lần `&zwnj;&nbsp;` (không hiện) để dòng xem trước hết chỗ trước khi tới key.
-- Mọi chuỗi động (key, tên gói, ngày, câu trả lời hỗ trợ) đều qua hàm escape HTML. Link chỉ trỏ tới `https://aitranslator.io.vn` (đường cố định trong mã), không thêm tham số theo dõi. Không bật theo dõi mở thư hay bấm link của Resend.
+- Mọi chuỗi động (key, tên gói, ngày, câu trả lời hỗ trợ) đều qua hàm escape HTML. Link chỉ trỏ tới `https://aitranslator.vn` (đường cố định trong mã), không thêm tham số theo dõi. Không bật theo dõi mở thư hay bấm link của Resend.
 
 ### Thư license key
 
@@ -90,7 +90,7 @@ Phần ngôn ngữ của khách: nhãn "Hỗ trợ", tiêu đề "Hỗ trợ đ�
 
 ### Bản chữ thuần
 
-Cùng nội dung, cùng thứ tự: dòng "AI Translator", tiêu đề, câu dẫn, key thụt 4 dấu cách kèm dòng gói và hạn, các bước "  1. …", lưu ý, "Hướng dẫn chi tiết: <URL đầy đủ>", câu cần giúp; rồi một dòng `────────────────────────────`, chữ "English" và phần tiếng Anh; cuối thư `--` và "AI Translator · aitranslator.io.vn". Câu trả lời hỗ trợ thụt 2 dấu cách mỗi dòng. Không quá hai dòng trống liền nhau.
+Cùng nội dung, cùng thứ tự: dòng "AI Translator", tiêu đề, câu dẫn, key thụt 4 dấu cách kèm dòng gói và hạn, các bước "  1. …", lưu ý, "Hướng dẫn chi tiết: <URL đầy đủ>", câu cần giúp; rồi một dòng `────────────────────────────`, chữ "English" và phần tiếng Anh; cuối thư `--` và "AI Translator · aitranslator.vn". Câu trả lời hỗ trợ thụt 2 dấu cách mỗi dòng. Không quá hai dòng trống liền nhau.
 
 ### Ngày
 
@@ -201,7 +201,7 @@ Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn
 - Các bước: "Kích hoạt trên máy của bạn": "Mở AI Translator." / "Vào Cài đặt › Bản quyền." / "Dán key rồi bấm Kích hoạt."
 - Lưu ý: "Mỗi key dùng trên 1 máy. Hãy giữ thư này để kích hoạt lại khi cài lại máy hay chuyển sang máy khác."
 - Link: "Hướng dẫn chi tiết" → `/huong-dan/mua-va-kich-hoat-key/`. Cần giúp: "Cần giúp? Trả lời thư này, chúng tôi sẽ hồi âm."
-- Hỗ trợ, câu cuối: "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat trên aitranslator.io.vn hay mục Hỗ trợ trong app."
+- Hỗ trợ, câu cuối: "Trả lời thư này để nhắn tiếp, hoặc mở lại khung chat trên aitranslator.vn hay mục Hỗ trợ trong app."
 
 ### en
 - Tiêu đề: purchase "Your AI Translator license key"; renewal "Your AI Translator plan is renewed"; plan_change "Your AI Translator plan has changed"; recover, resend "Your AI Translator license key" (2 key trở lên: "license keys"); support "Reply from AI Translator support".
@@ -212,7 +212,7 @@ Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn
 - Các bước: "Activate on your computer": "Open AI Translator." / "Go to Settings › License." / "Paste the key and click Activate."
 - Lưu ý: "Each key works on 1 computer. Keep this email to activate again after reinstalling or moving to another computer."
 - Link: "Step-by-step guide" → `/en/guide/buy-and-activate/`. Cần giúp: "Need help? Reply to this email."
-- Hỗ trợ, câu cuối: "Reply to this email to continue, or reopen the chat on aitranslator.io.vn or in the app's Support screen."
+- Hỗ trợ, câu cuối: "Reply to this email to continue, or reopen the chat on aitranslator.vn or in the app's Support screen."
 
 ### ja
 - Tiêu đề: purchase, recover, resend "AI Translator のライセンスキー"; renewal "AI Translator のプランを更新しました"; plan_change "AI Translator のプランを変更しました"; support "AI Translator サポートからの返信".
@@ -222,7 +222,7 @@ Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn
 - Các bước: "お使いのパソコンで有効化": "AI Translator を開きます。" / "設定 › ライセンス を開きます。" / "キーを貼り付けて「有効化」をクリックします。"
 - Lưu ý: "1 つのキーは 1 台のパソコンで使えます。再インストールやパソコンの買い替えのときに有効化し直せるよう、このメールを保管してください。"
 - Link: "詳しい手順" → `/ja/guide/buy-and-activate/`. Cần giúp: "ご不明な点は、このメールに返信してください。"
-- Hỗ trợ, câu cuối: "このメールに返信して続けるか、aitranslator.io.vn またはアプリの「サポート」画面からチャットを再開できます。"
+- Hỗ trợ, câu cuối: "このメールに返信して続けるか、aitranslator.vn またはアプリの「サポート」画面からチャットを再開できます。"
 
 ### zh
 - Tiêu đề: purchase, recover, resend "你的 AI Translator 许可证密钥"; renewal "你的 AI Translator 套餐已续期"; plan_change "你的 AI Translator 套餐已更改"; support "AI Translator 客服的回复".
@@ -232,7 +232,7 @@ Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn
 - Các bước: "在你的电脑上激活": "打开 AI Translator。" / "进入“设置 › 许可证”。" / "粘贴密钥，然后点击“激活”。"
 - Lưu ý: "每个密钥只能在 1 台电脑上使用。请保留此邮件，以便重装系统或更换电脑后重新激活。"
 - Link: "详细步骤" → `/zh/guide/buy-and-activate/`. Cần giúp: "需要帮助？直接回复此邮件即可。"
-- Hỗ trợ, câu cuối: "你可以直接回复此邮件，或在 aitranslator.io.vn 或应用的“客服”页面重新打开聊天。"
+- Hỗ trợ, câu cuối: "你可以直接回复此邮件，或在 aitranslator.vn 或应用的“客服”页面重新打开聊天。"
 
 ### ko
 - Tiêu đề: purchase, recover, resend "AI Translator 라이선스 키"; renewal "AI Translator 플랜이 갱신되었습니다"; plan_change "AI Translator 플랜이 변경되었습니다"; support "AI Translator 지원팀의 답변".
@@ -242,4 +242,4 @@ Thử tay sau bước 1 và 2: đổi giao diện app lần lượt sang 5 ngôn
 - Các bước: "컴퓨터에서 활성화하기": "AI Translator를 엽니다." / "설정 › 라이선스로 이동합니다." / "키를 붙여 넣고 활성화를 클릭합니다."
 - Lưu ý: "키 하나는 컴퓨터 1대에서 사용할 수 있습니다. 다시 설치하거나 컴퓨터를 바꿀 때 다시 활성화할 수 있도록 이 이메일을 보관하세요."
 - Link: "자세한 안내" → `/ko/guide/buy-and-activate/`. Cần giúp: "도움이 필요하면 이 이메일에 회신하세요."
-- Hỗ trợ, câu cuối: "이 이메일에 회신하거나, aitranslator.io.vn 또는 앱의 지원 화면에서 채팅을 다시 열 수 있습니다."
+- Hỗ trợ, câu cuối: "이 이메일에 회신하거나, aitranslator.vn 또는 앱의 지원 화면에서 채팅을 다시 열 수 있습니다."

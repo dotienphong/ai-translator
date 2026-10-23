@@ -8,7 +8,7 @@ Thuộc phần 3 của lộ trình `2026-10-07-web-admin-design.md`. Phần 3b (
 Một trang `/system` ("Hệ thống") chỉ đọc, hai nguồn:
 
 1. **Cảnh báo vận hành:** toàn bộ bảng D1 `ops_alerts` (trang "Việc cần xử lý" chỉ hiện nhóm chưa báo hết, tối đa 20).
-2. **Bản phát hành và model:** đọc từ bucket R2 công khai `https://releases.aitranslator.io.vn` qua URL (không thêm binding R2, không secret): `stable/latest.json`, `beta/latest.json`, `models/models.json`.
+2. **Bản phát hành và model:** đọc từ bucket R2 công khai `https://releases.aitranslator.vn` qua URL (không thêm binding R2, không secret): `stable/latest.json`, `beta/latest.json`, `models/models.json`.
 
 Không làm: sửa hay xóa gì, xác minh chữ ký (app mới là nơi kiểm chữ ký), liệt kê mọi phiên bản cũ (cần binding R2; hoãn), tải file về.
 
@@ -24,7 +24,7 @@ Không làm: sửa hay xóa gì, xác minh chữ ký (app mới là nơi kiểm 
 - Giới hạn: mỗi lần gọi có hạn 5 giây, không theo chuyển hướng, phản hồi tối đa 1 MiB; ba lần gọi chạy song song; một nguồn lỗi không làm hỏng nguồn khác. `reason` chỉ là mã cố định (`timeout`, `http_<mã>`, `too_large`, `invalid_json`, `invalid_shape`), không chép nội dung do bucket trả về.
 - Lấy dữ liệu qua `AdminDeps.fetchPublic(url)` (tiêm được trong test); mặc định gọi `fetch` với hạn 5 giây và `redirect: "manual"`.
 
-Cấu hình: biến `RELEASES_BASE_URL` trong `wrangler.admin.jsonc` (`https://releases.aitranslator.io.vn`, không có `/` cuối); test cấu hình khóa định dạng và khớp `RELEASES_BASE_URL` đã nằm trong `src-tauri/src/updater/source.rs`. Thiếu biến thì `/admin/releases` trả `503 releases_not_configured`.
+Cấu hình: biến `RELEASES_BASE_URL` trong `wrangler.admin.jsonc` (`https://releases.aitranslator.vn`, không có `/` cuối); test cấu hình khóa định dạng và khớp `RELEASES_BASE_URL` đã nằm trong `src-tauri/src/updater/source.rs`. Thiếu biến thì `/admin/releases` trả `503 releases_not_configured`.
 
 `alerts_viewed` và `releases_viewed` vào `VIEW_ACTIONS` (ẩn mặc định ở Nhật ký).
 

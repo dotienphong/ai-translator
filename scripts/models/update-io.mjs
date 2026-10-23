@@ -166,7 +166,7 @@ export async function checkLiveManifest(io, releasedDir, keys) {
   } catch (e) {
     // Nội dung không phải JSON thì lỗi đã nêu URL; chỉ lỗi tải mới gợi ý kiểm mạng, DNS.
     if (e.invalidJson) throw e;
-    throw new Error(`${e.message} (lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.io.vn)`);
+    throw new Error(`${e.message} (lỗi mạng hay DNS: thử dig @8.8.8.8 releases.aitranslator.vn)`);
   }
   if (envelope.format !== FORMAT) throw new Error(`Manifest đang chạy có format ${envelope.format}, cần ${FORMAT}.`);
   if (envelope.version !== VERSION) throw new Error(`Manifest đang chạy có version ${envelope.version}, cần ${VERSION}.`);

@@ -1808,9 +1808,9 @@ và thay bằng:
   "error.composeUnavailable": "The translator stopped working. Restart AI Translator; if it keeps failing, send the logs to support.",
   "error.supportOffline": "Could not reach support. Check your internet connection and try again.",
   "error.supportRateLimited": "You are sending messages too quickly. Please try again in a few minutes.",
-  "error.supportBusy": "Support is very busy right now. Please email support@aitranslator.io.vn",
-  "error.supportDisabled": "Chat is temporarily off. Please email support@aitranslator.io.vn",
-  "error.supportClosed": "This conversation has been closed. Please email support@aitranslator.io.vn",
+  "error.supportBusy": "Support is very busy right now. Please email support@aitranslator.vn",
+  "error.supportDisabled": "Chat is temporarily off. Please email support@aitranslator.vn",
+  "error.supportClosed": "This conversation has been closed. Please email support@aitranslator.vn",
   "error.supportExpired": "The earlier conversation is gone (deleted or expired). Send again to start a new one.",
   "error.supportInvalid": "Could not send this. Check the message (1 to 1,000 characters) or the email address.",
 ```
@@ -1827,9 +1827,9 @@ và thay bằng:
   "error.composeUnavailable": "Bộ dịch ngừng chạy. Hãy khởi động lại AI Translator; nếu vẫn lỗi, hãy gửi log cho bộ phận hỗ trợ.",
   "error.supportOffline": "Không kết nối được bộ phận hỗ trợ. Kiểm tra kết nối mạng rồi thử lại.",
   "error.supportRateLimited": "Bạn gửi tin quá nhanh. Vui lòng thử lại sau ít phút.",
-  "error.supportBusy": "Bộ phận hỗ trợ đang quá tải. Hãy gửi email tới support@aitranslator.io.vn",
-  "error.supportDisabled": "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn",
-  "error.supportClosed": "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.io.vn",
+  "error.supportBusy": "Bộ phận hỗ trợ đang quá tải. Hãy gửi email tới support@aitranslator.vn",
+  "error.supportDisabled": "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.vn",
+  "error.supportClosed": "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.vn",
   "error.supportExpired": "Cuộc trò chuyện cũ không còn (đã xóa hay hết hạn). Gửi lại để bắt đầu cuộc mới.",
   "error.supportInvalid": "Không gửi được. Kiểm tra lại tin nhắn (1 tới 1.000 ký tự) hay địa chỉ email.",
 ```
@@ -1846,9 +1846,9 @@ và thay bằng:
   "error.composeUnavailable": "翻訳エンジンが停止しました。AI Translator を再起動してください。それでも改善しない場合は、ログをサポートに送ってください。",
   "error.supportOffline": "サポートに接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
   "error.supportRateLimited": "メッセージの送信が速すぎます。数分後にもう一度お試しください。",
-  "error.supportBusy": "サポートは現在たいへん混み合っています。support@aitranslator.io.vn までメールでお問い合わせください",
-  "error.supportDisabled": "チャットは一時的に停止しています。support@aitranslator.io.vn までメールでお問い合わせください",
-  "error.supportClosed": "この会話は終了しました。support@aitranslator.io.vn までメールでお問い合わせください",
+  "error.supportBusy": "サポートは現在たいへん混み合っています。support@aitranslator.vn までメールでお問い合わせください",
+  "error.supportDisabled": "チャットは一時的に停止しています。support@aitranslator.vn までメールでお問い合わせください",
+  "error.supportClosed": "この会話は終了しました。support@aitranslator.vn までメールでお問い合わせください",
   "error.supportExpired": "以前の会話はもうありません（削除されたか期限切れです）。もう一度送信すると新しい会話が始まります。",
   "error.supportInvalid": "送信できませんでした。メッセージ（1〜1,000 文字）またはメールアドレスを確認してください。",
 ```
@@ -1865,9 +1865,9 @@ và thay bằng:
   "error.composeUnavailable": "翻译引擎已停止工作。请重新启动 AI Translator；如果仍然失败，请把日志发给客服。",
   "error.supportOffline": "无法连接客服。请检查网络连接后重试。",
   "error.supportRateLimited": "发送消息过于频繁。请几分钟后重试。",
-  "error.supportBusy": "客服当前非常繁忙。请发送邮件至 support@aitranslator.io.vn",
-  "error.supportDisabled": "聊天暂时关闭。请发送邮件至 support@aitranslator.io.vn",
-  "error.supportClosed": "此对话已关闭。请发送邮件至 support@aitranslator.io.vn",
+  "error.supportBusy": "客服当前非常繁忙。请发送邮件至 support@aitranslator.vn",
+  "error.supportDisabled": "聊天暂时关闭。请发送邮件至 support@aitranslator.vn",
+  "error.supportClosed": "此对话已关闭。请发送邮件至 support@aitranslator.vn",
   "error.supportExpired": "之前的对话已不存在（已删除或已过期）。重新发送即可开始新的对话。",
   "error.supportInvalid": "无法发送。请检查消息（1 到 1,000 个字符）或邮箱地址。",
 ```
@@ -1884,9 +1884,9 @@ và thay bằng:
   "error.composeUnavailable": "번역기가 작동을 멈췄습니다. AI Translator를 다시 시작하세요. 계속 실패하면 로그를 지원팀에 보내 주세요.",
   "error.supportOffline": "지원팀에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.",
   "error.supportRateLimited": "메시지를 너무 빨리 보내고 있습니다. 몇 분 후에 다시 시도하세요.",
-  "error.supportBusy": "지금은 지원팀이 매우 바쁩니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
-  "error.supportDisabled": "채팅이 잠시 꺼져 있습니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
-  "error.supportClosed": "이 대화는 종료되었습니다. support@aitranslator.io.vn 으로 이메일을 보내 주세요",
+  "error.supportBusy": "지금은 지원팀이 매우 바쁩니다. support@aitranslator.vn 으로 이메일을 보내 주세요",
+  "error.supportDisabled": "채팅이 잠시 꺼져 있습니다. support@aitranslator.vn 으로 이메일을 보내 주세요",
+  "error.supportClosed": "이 대화는 종료되었습니다. support@aitranslator.vn 으로 이메일을 보내 주세요",
   "error.supportExpired": "이전 대화가 더 이상 없습니다(삭제되었거나 만료됨). 다시 보내면 새 대화가 시작됩니다.",
   "error.supportInvalid": "보내지 못했습니다. 메시지(1~1,000자) 또는 이메일 주소를 확인하세요.",
 ```
@@ -4905,7 +4905,7 @@ describe("SupportChat: thẻ email, chế độ tắt và đóng", () => {
     const markup = html({ view: { ...withConversation, enabled: false }, emailCard: "asking" });
     expect(markup).not.toContain("<textarea");
     expect(markup).toContain(text("error.supportDisabled"));
-    expect(markup).toContain("support@aitranslator.io.vn");
+    expect(markup).toContain("support@aitranslator.vn");
     expect(markup).toContain("Phụ đề không hiện khi họp Teams");
     expect(markup).not.toContain("support-email");
   });

@@ -492,7 +492,7 @@ test("checkLiveManifest: manifest đang chạy phải là body mới nhất, ký
       throw new Error("curl thoát mã 6");
     },
   });
-  await assert.rejects(checkLiveManifest(offline, dir, keys), /curl thoát mã 6[\s\S]*dig @8\.8\.8\.8 releases\.aitranslator\.io\.vn/);
+  await assert.rejects(checkLiveManifest(offline, dir, keys), /curl thoát mã 6[\s\S]*dig @8\.8\.8\.8 releases\.aitranslator\.vn/);
 });
 
 test("checkLiveManifest: body-N.json phải có sequence đúng N", async (t) => {
@@ -660,7 +660,7 @@ test("fetchPublished tải file đang phát hành qua tên miền công khai và
   const io = fakeIo({ download: () => "cũ" });
   const path = await fetchPublished(io, work, file);
   assert.equal(readFileSync(path, "utf8"), "cũ");
-  assert.ok(io.calls.includes("download https://releases.aitranslator.io.vn/models/hy-mt2/m.gguf"));
+  assert.ok(io.calls.includes("download https://releases.aitranslator.vn/models/hy-mt2/m.gguf"));
   const bad = fakeIo({ download: () => "khác" });
   await assert.rejects(fetchPublished(bad, temp(t), file), /manifest ghi/);
 });
@@ -1256,7 +1256,7 @@ test("uploadR2: chưa có thì tải lên rồi kiểm lại; đã có cùng n�
   assert.equal(await uploadR2(io, u, scratch), "đã tải lên");
   assert.ok(io.calls.includes(`rclone copyto ${file} r2:ai-translator-releases/models/hy-mt2/bbbbbbbbbbbb/f.gguf --s3-no-check-bucket --immutable`));
   assert.ok(
-    io.calls.some((c) => c.startsWith("curl -sI -o /dev/null -w %{http_code} --connect-timeout 20 --max-time 60 https://releases.aitranslator.io.vn/models/hy-mt2/")),
+    io.calls.some((c) => c.startsWith("curl -sI -o /dev/null -w %{http_code} --connect-timeout 20 --max-time 60 https://releases.aitranslator.vn/models/hy-mt2/")),
     "kiểm có không bằng HEAD, có hạn chờ",
   );
   const present = fakeIo({ run: (cmd) => (cmd === "curl" ? "200" : ""), download: () => "noi dung" });
@@ -1271,7 +1271,7 @@ test("uploadR2: chưa có thì tải lên rồi kiểm lại; đã có cùng n�
 
 test("publicMatches: lỗi mạng của curl (mã 6, 7, 28) kèm gợi ý DNS; mã HTTP lạ cũng vậy", async (t) => {
   const scratch = join(temp(t), "scratch");
-  const url = "https://releases.aitranslator.io.vn/models/x";
+  const url = "https://releases.aitranslator.vn/models/x";
   for (const status of [6, 7, 28]) {
     const io = fakeIo({ run: (cmd) => (cmd === "curl" ? Object.assign(new Error(`curl thoát mã ${status}`), { status }) : "") });
     await assert.rejects(publicMatches(io, url, SHA("1"), scratch), /dig @8\.8\.8\.8/, `mã ${status}`);
@@ -1725,7 +1725,7 @@ async function flowRig(
     ],
   };
   const uploaded = new Map(); // khóa R2 -> nội dung đã chép lên (r2: "upload")
-  const keyOf = (url) => url.split("?")[0].replace("https://releases.aitranslator.io.vn/models/", "");
+  const keyOf = (url) => url.split("?")[0].replace("https://releases.aitranslator.vn/models/", "");
   let liveText = JSON.stringify(envelope);
   const io = fakeIo({
     run(cmd, args) {
@@ -2005,7 +2005,7 @@ test("luồng cập nhật: đường chỉ ghi nhận cũng dừng khi main đ�
 
 test("luồng quay lại có NOTICE đổi: tải lại bằng ?t= và phải đúng SHA-256 của manifest; sai thì dừng trước khi hỏi", async (t) => {
   quiet(t);
-  const noticeUrl = (rig) => `https://releases.aitranslator.io.vn/models/${rig.b3.files.find((f) => f.id === "notice").url}`;
+  const noticeUrl = (rig) => `https://releases.aitranslator.vn/models/${rig.b3.files.find((f) => f.id === "notice").url}`;
   const wrong = await flowRig(t, { notice: true, noticeServed: "NOTICE khác hẳn" });
   await assert.rejects(run({ mode: "rollback", sequence: 3 }, wrong.ctx), /không khớp SHA-256 của manifest số 3: không quay lại được/);
   assert.deepEqual(wrong.asked, []);

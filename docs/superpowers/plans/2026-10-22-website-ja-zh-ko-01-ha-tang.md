@@ -466,7 +466,7 @@ export const S = {
       memory: "RAM tối thiểu 8 GB, khuyến nghị 16 GB",
       storage: "1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn) cho model, cộng 1 GB trống khi tải",
       description: "App desktop hiện phụ đề dịch trực tiếp cho mọi âm thanh cuộc họp hoặc video trên máy tính; nhận dạng giọng nói và dịch chạy trên máy nên âm thanh không rời khỏi máy.",
-      disambiguating: "AI Translator (aitranslator.io.vn), app phụ đề dịch cuộc họp chạy trên máy của Đỗ Tiến Phong; không liên quan tới các sản phẩm khác có tên tương tự.",
+      disambiguating: "AI Translator (aitranslator.vn), app phụ đề dịch cuộc họp chạy trên máy của Đỗ Tiến Phong; không liên quan tới các sản phẩm khác có tên tương tự.",
       shots: ["Thanh phụ đề của AI Translator hiện câu gốc và bản dịch", "Màn hình chính của AI Translator khi đang dịch"],
       featureList: SITE.featureListVi,
     },
@@ -500,7 +500,7 @@ export const S = {
       memory: "8 GB RAM minimum, 16 GB recommended",
       storage: "1.3 GB (Lite pack) or 2.5 GB (Standard pack) for models, plus 1 GB free while downloading",
       description: "Desktop app that shows live translated subtitles for any meeting or video audio on your computer; speech recognition and translation run on-device, so audio never leaves your machine.",
-      disambiguating: "AI Translator (aitranslator.io.vn), an on-device meeting subtitle translator by Đỗ Tiến Phong; not related to other products with similar names.",
+      disambiguating: "AI Translator (aitranslator.vn), an on-device meeting subtitle translator by Đỗ Tiến Phong; not related to other products with similar names.",
       shots: ["The AI Translator subtitle bar showing the original sentence and its translation", "The AI Translator Home screen while translating"],
       featureList: SITE.featureListEn,
     },
@@ -534,7 +534,7 @@ export const S = {
       memory: "RAM 8 GB 以上（16 GB 推奨）",
       storage: "モデル用に 1.3 GB（Lite モデルパック）または 2.5 GB（Standard モデルパック）、ダウンロード中はさらに 1 GB の空き容量",
       description: "パソコンで再生される会議や動画の音声に、リアルタイムの翻訳字幕を表示するデスクトップアプリ。音声認識と翻訳はデバイス上で動作するため、音声がパソコンの外に出ることはありません。",
-      disambiguating: "AI Translator（aitranslator.io.vn）は Đỗ Tiến Phong が提供する、デバイス上で動く会議字幕翻訳アプリです。似た名前の他の製品とは関係ありません。",
+      disambiguating: "AI Translator（aitranslator.vn）は Đỗ Tiến Phong が提供する、デバイス上で動く会議字幕翻訳アプリです。似た名前の他の製品とは関係ありません。",
       shots: ["原文と翻訳を表示する AI Translator の字幕バー", "翻訳中の AI Translator のホーム画面"],
       featureList: [
         "システム音声のリアルタイム翻訳字幕、5 言語（英語、中国語（中文）、日本語、韓国語（한국어）、ベトナム語（Tiếng Việt））",
@@ -575,7 +575,7 @@ export const S = {
       memory: "内存至少 8 GB，建议 16 GB",
       storage: "模型需要 1.3 GB（Lite 模型包）或 2.5 GB（Standard 模型包），下载时另需 1 GB 可用空间",
       description: "为电脑上播放的任何会议或视频音频显示实时翻译字幕的桌面应用；语音识别和翻译都在设备上运行，音频不会离开你的电脑。",
-      disambiguating: "AI Translator（aitranslator.io.vn）是 Đỗ Tiến Phong 开发的本地运行会议字幕翻译应用，与名称相似的其他产品无关。",
+      disambiguating: "AI Translator（aitranslator.vn）是 Đỗ Tiến Phong 开发的本地运行会议字幕翻译应用，与名称相似的其他产品无关。",
       shots: ["显示原句和译文的 AI Translator 字幕栏", "正在翻译时的 AI Translator 主页"],
       featureList: [
         "为系统音频提供实时翻译字幕，支持 5 种语言（英语、中文、日语（日本語）、韩语（한국어）、越南语（Tiếng Việt））",
@@ -616,7 +616,7 @@ export const S = {
       memory: "RAM 최소 8GB, 권장 16GB",
       storage: "모델용 1.3GB(Lite 모델 팩) 또는 2.5GB(Standard 모델 팩), 다운로드 중에는 1GB 여유 공간이 더 필요",
       description: "컴퓨터에서 재생되는 회의나 동영상 음성에 실시간 번역 자막을 보여 주는 데스크톱 앱입니다. 음성 인식과 번역이 기기에서 실행되므로 음성이 컴퓨터 밖으로 나가지 않습니다.",
-      disambiguating: "AI Translator(aitranslator.io.vn)는 Đỗ Tiến Phong이 만든 기기 내 실행 회의 자막 번역 앱이며, 이름이 비슷한 다른 제품과는 관련이 없습니다.",
+      disambiguating: "AI Translator(aitranslator.vn)는 Đỗ Tiến Phong이 만든 기기 내 실행 회의 자막 번역 앱이며, 이름이 비슷한 다른 제품과는 관련이 없습니다.",
       shots: ["원문과 번역을 보여 주는 AI Translator 자막 바", "번역 중인 AI Translator 홈 화면"],
       featureList: [
         "시스템 오디오의 실시간 번역 자막, 5개 언어(영어, 중국어(中文), 일본어(日本語), 한국어, 베트남어(Tiếng Việt))",
@@ -899,7 +899,7 @@ test("renderPage của trang tiếng Trung: lang zh-Hans, hreflang theo thẻ, o
   const html = renderPage(page("zh"), ctx);
   assert.match(html, /^<!doctype html>\n<html lang="zh-Hans">/);
   for (const [tag, href] of [["vi", "/tinh-nang/"], ["en", "/en/features/"], ["ja", "/ja/features/"], ["zh-Hans", "/zh/features/"], ["ko", "/ko/features/"]]) {
-    assert.ok(html.includes(`<link rel="alternate" hreflang="${tag}" href="https://aitranslator.io.vn${href}">`), `thiếu hreflang ${tag}`);
+    assert.ok(html.includes(`<link rel="alternate" hreflang="${tag}" href="https://aitranslator.vn${href}">`), `thiếu hreflang ${tag}`);
     assert.ok(html.includes(`<a href="${href}" hreflang="${tag}" lang="${tag}"`), `menu thiếu ${tag}`);
   }
   assert.ok(html.includes('<meta property="og:locale" content="zh_CN">'));
@@ -1022,18 +1022,18 @@ test("dataFlow và softwareApplication đọc chuỗi theo ngôn ngữ; app nêu
   assert.ok(dataFlow("ko").includes("내 컴퓨터에서 실행되는 AI"));
   const ctx = { byId: new Map([["pricing", [{ lang: "ja", path: "/ja/pricing/" }]], ["download", [{ lang: "ja", path: "/ja/download/" }]], ["guide", [{ lang: "ja", path: "/ja/guide/" }]]]) };
   const app = softwareApplication("ja", ctx);
-  assert.equal(app["@id"], "https://aitranslator.io.vn/ja/#software");
-  assert.equal(app.url, "https://aitranslator.io.vn/ja/");
-  assert.equal(app.installUrl, "https://aitranslator.io.vn/ja/download/");
+  assert.equal(app["@id"], "https://aitranslator.vn/ja/#software");
+  assert.equal(app.url, "https://aitranslator.vn/ja/");
+  assert.equal(app.installUrl, "https://aitranslator.vn/ja/download/");
   assert.deepEqual(app.inLanguage, ["vi", "en", "ja", "zh-Hans", "ko"]);
   assert.ok(app.offers.some((o) => o.priceCurrency === "USD" && o.description.includes("税抜")));
-  assert.equal(app.screenshot[0].url, "https://aitranslator.io.vn/assets/img/app/overlay-default.ja.webp");
+  assert.equal(app.screenshot[0].url, "https://aitranslator.vn/assets/img/app/overlay-default.ja.webp");
 });
 
 test("videoObject tự lấy thời lượng từ file; demoVideo có nút phát ẩn sẵn kèm nhãn và thời lượng", () => {
   const v = videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "2026-10-21" });
   assert.equal(v.duration, "PT40S");
-  assert.equal(v["@id"], "https://aitranslator.io.vn/#demo-video");
+  assert.equal(v["@id"], "https://aitranslator.vn/#demo-video");
   assert.equal(v.inLanguage, "vi");
   const html = demoVideo({ lang: "en", label: "Demo", fallback: "Download" });
   assert.match(html, /<figure class="shot video reveal" data-video>/);
@@ -1064,7 +1064,7 @@ import { videoMeta } from "./mp4.mjs";
 3b. Thay hai dòng `siteId`, `appId` (và chú thích ngay trên chúng giữ nguyên) bằng:
 
 ```js
-// Gốc của từng ngôn ngữ: "https://aitranslator.io.vn/" (vi), "…/en/", "…/ja/"…
+// Gốc của từng ngôn ngữ: "https://aitranslator.vn/" (vi), "…/en/", "…/ja/"…
 const base = (lang) => SITE.origin + LANGS[lang].prefix;
 const siteId = (lang) => `${base(lang)}#website`;
 const appId = (lang) => `${base(lang)}#software`;

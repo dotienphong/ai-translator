@@ -6,9 +6,9 @@ import { basename, join } from "node:path";
 import { sha256hex } from "./lib.mjs";
 
 /** URL của models.json đang phát hành; trùng `PRODUCTION_URL` của `src-tauri/src/models/source.rs` (có test). */
-export const MANIFEST_URL = "https://releases.aitranslator.io.vn/models/models.json";
+export const MANIFEST_URL = "https://releases.aitranslator.vn/models/models.json";
 /** `url` trong manifest là tương đối so với thư mục này. */
-export const PUBLIC_BASE = "https://releases.aitranslator.io.vn/models/";
+export const PUBLIC_BASE = "https://releases.aitranslator.vn/models/";
 
 export const USAGE = `Dùng:
   pnpm models:update                     kiểm nguồn, chuẩn bị, cổng kiểm, hỏi y/N rồi đăng

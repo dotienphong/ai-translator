@@ -894,9 +894,9 @@ index 66117de..93b6731 100644
 --- a/server/wrangler.jsonc
 +++ b/server/wrangler.jsonc
 @@ -22,13 +22,12 @@
-     // Tên miền gửi mail.aitranslator.io.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
-     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.io.vn>",
-     "EMAIL_REPLY_TO": "support@aitranslator.io.vn",
+     // Tên miền gửi mail.aitranslator.vn đã xác thực ở Resend (SPF, DKIM); khách trả lời thư thì về EMAIL_REPLY_TO.
+     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
+     "EMAIL_REPLY_TO": "support@aitranslator.vn",
 -    // Giá chính thức (spec §2, chốt 2026-10-01).
 +    // Giá chính thức (spec 2026-10-07 §2.1; thay bốn gói chốt 2026-10-01).
      // Không hạ hạn mức của một gói đang bán (spec §6.8, QĐ17): token lấy hạn mức từ bảng hiện hành, nên hạ ở đây là

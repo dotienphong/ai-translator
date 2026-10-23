@@ -16,8 +16,8 @@ Hệ quả: một script PowerShell tải bộ cài bằng `Invoke-WebRequest` v
 
 ## 2. Thiết kế
 
-- `website/src/public/install.ps1` (Worker website phục vụ `/install.ps1`, `text/plain`, cache 5 phút, `noindex`). Lệnh: `irm https://aitranslator.io.vn/install.ps1 | iex`; kênh beta: `& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta`.
-- Các bước: kiểm máy (Windows ≥ 10, x64; RAM dưới 8 GB chỉ cảnh báo); TLS 1.2; đọc `<kênh>/latest.json` (`version` phải khớp `^\d+\.\d+\.\d+(-beta\.\d+)?$`); tải `AI Translator_<version>_x64-setup.exe` và `SHA256SUMS-windows.txt` từ R2 (`releases.aitranslator.io.vn`), đối chiếu SHA-256 (`Get-FileHash`); `Unblock-File` phòng hờ; chạy `setup.exe /S` (`-Wait`, kiểm mã thoát); tìm thư mục cài qua `HKCU:\...\Uninstall\AI Translator\InstallLocation` (mặc định `%LOCALAPPDATA%\AI Translator`); mở `meeting-translator.exe`; xóa thư mục tạm.
+- `website/src/public/install.ps1` (Worker website phục vụ `/install.ps1`, `text/plain`, cache 5 phút, `noindex`). Lệnh: `irm https://aitranslator.vn/install.ps1 | iex`; kênh beta: `& ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta`.
+- Các bước: kiểm máy (Windows ≥ 10, x64; RAM dưới 8 GB chỉ cảnh báo); TLS 1.2; đọc `<kênh>/latest.json` (`version` phải khớp `^\d+\.\d+\.\d+(-beta\.\d+)?$`); tải `AI Translator_<version>_x64-setup.exe` và `SHA256SUMS-windows.txt` từ R2 (`releases.aitranslator.vn`), đối chiếu SHA-256 (`Get-FileHash`); `Unblock-File` phòng hờ; chạy `setup.exe /S` (`-Wait`, kiểm mã thoát); tìm thư mục cài qua `HKCU:\...\Uninstall\AI Translator\InstallLocation` (mặc định `%LOCALAPPDATA%\AI Translator`); mở `meeting-translator.exe`; xóa thư mục tạm.
 - Không dùng `/R`: `Start-Process -Wait` đợi cả tiến trình con, nên sẽ treo tới khi người dùng thoát app. Script tự mở app sau khi bộ cài xong.
 - Không quyền quản trị, không UAC, không `exit`, toàn bộ nằm trong hàm gọi ở dòng cuối (văn bản đứt giữa chừng thì lỗi cú pháp, không chạy nửa script). Console PowerShell 5.1 không in tiếng Việt có dấu mặc định nên script tạm đặt `[Console]::OutputEncoding` sang UTF-8 rồi khôi phục. Ngôn ngữ thông báo theo `Get-UICulture`/vùng (Việt Nam là tiếng Việt), ép được bằng `AI_TRANSLATOR_LANG`.
 - Không có biến ghi đè URL máy chủ (spec 2026-10-04). Biến tùy chọn: `AI_TRANSLATOR_CHANNEL`, `AI_TRANSLATOR_NO_OPEN`, `AI_TRANSLATOR_LANG`.
@@ -25,7 +25,7 @@ Hệ quả: một script PowerShell tải bộ cài bằng `Invoke-WebRequest` v
 
 ## 3. Giới hạn nói thẳng với người dùng (đã đưa lên website)
 
-- Chạy lệnh dán từ internet là tin nguồn `aitranslator.io.vn`; SHA-256 nằm cùng máy chủ nên chỉ chống file hỏng. Có lệnh "in script ra đọc rồi mới chạy".
+- Chạy lệnh dán từ internet là tin nguồn `aitranslator.vn`; SHA-256 nằm cùng máy chủ nên chỉ chống file hỏng. Có lệnh "in script ra đọc rồi mới chạy".
 - Smart App Control chế độ chặn vẫn chặn bản chưa ký, kể cả cách này. Hướng dẫn tắt SAC có trong trang cài đặt Windows, kèm lưu ý ở bản Windows 11 cũ tắt rồi không bật lại được.
 - Máy công ty có Constrained Language Mode không chạy được script: dùng file .exe hoặc hỏi quản trị.
 - File .exe tải bằng trình duyệt vẫn có thể bị SmartScreen cảnh báo (More info › Run anyway).
@@ -46,6 +46,6 @@ Máy Windows 10 hoặc 11 x64 sạch, một tài khoản thường:
 4. Kiểm có lối tắt Start Menu và mục trong Settings › Apps; gỡ bằng Uninstall.
 5. Máy Windows 11 bật Smart App Control ở chế độ chặn: ghi lại hành vi thật (có chặn bộ cài, hay chặn app sau khi cài).
 6. Máy tiếng Việt: thông báo tiếng Việt, không lỗi hiển thị dấu.
-7. Sau khi trang web được deploy: `irm https://aitranslator.io.vn/install.ps1 | iex` từ URL công khai; `curl.exe -sI https://aitranslator.io.vn/install.ps1` trả `content-type: text/plain`.
+7. Sau khi trang web được deploy: `irm https://aitranslator.vn/install.ps1 | iex` từ URL công khai; `curl.exe -sI https://aitranslator.vn/install.ps1` trả `content-type: text/plain`.
 
 Kết quả (2026-10-09): chủ dự án chạy lệnh trên máy Windows thật và báo chạy ổn. Một khách Windows gặp lỗi `Cannot find drive '"C'` ở bước tìm file chạy sau khi cài (InstallLocation trong registry có nháy kép); đã sửa ở commit e309441 kèm test hồi quy. Chưa ghi nhận riêng: cài đè khi app đang chạy, máy bật Smart App Control chế độ chặn, máy tiếng Việt.

@@ -166,7 +166,7 @@ nên đã lỗi thời; có errata ngay dưới tiêu đề hai task đó).
 
 Ký hiệu: `PROD` là origin của Worker API và `PADMIN` là origin của Worker admin. Khi chưa có tên miền thì
 `PROD=https://mt-license.<subdomain>.workers.dev` và `PADMIN=https://mt-license-admin.<subdomain>.workers.dev`
-(`<subdomain>` là subdomain workers.dev của tài khoản). **Từ 2026-10-08 `PADMIN=https://admin.aitranslator.io.vn`** (custom domain của Worker admin; địa chỉ `workers.dev` của admin đã tắt). Có tên miền (Q1) thì `PROD=https://<tên miền license>`: thêm
+(`<subdomain>` là subdomain workers.dev của tài khoản). **Từ 2026-10-08 `PADMIN=https://admin.aitranslator.vn`** (custom domain của Worker admin; địa chỉ `workers.dev` của admin đã tắt). Có tên miền (Q1) thì `PROD=https://<tên miền license>`: thêm
 `"routes": [{ "pattern": "<tên miền license>", "custom_domain": true }]` và đặt `"workers_dev": false` trong `wrangler.jsonc`,
 rồi làm bước 1 và bước 9a của Task 21 cũ (tên miền gửi email trên Resend, luật rate limit cho webhook; luật WAF cần zone nên
 không đặt được trên `*.workers.dev`). Khi `EMAIL_FROM` còn là `onboarding@resend.dev` thì Resend chỉ gửi được tới email của
@@ -340,11 +340,11 @@ chủ tài khoản Resend: chưa đủ để bán.
       khi deploy Web Admin lần đầu: trang chỉ hiện `{"error":"forbidden"}`). Chẩn đoán: `pnpm exec wrangler tail mt-license-admin`,
       mỗi lần từ chối có một dòng `{"event":"admin_denied","reason":…}` (`no_access`, `aud_unset`, `team_unset`, `aud_mismatch`,
       `jwt_*` gồm `jwt_type` cho token org, `jwks_unavailable`, `no_email`, `cross_site`); phản hồi cho trình duyệt vẫn chỉ là `forbidden`.
-    - **Tên miền riêng của admin** (`admin.aitranslator.io.vn`, khối `routes` trong `wrangler.admin.jsonc`): deploy xong, Cloudflare
-      tự tạo bản ghi DNS và chứng chỉ (1 đến 2 phút). Kiểm từ ngoài: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://admin.aitranslator.io.vn/`
-      phải in `302` tới `<team>.cloudflareaccess.com/cdn-cgi/access/login/admin.aitranslator.io.vn?kid=<AUD>` với `kid` bằng
+    - **Tên miền riêng của admin** (`admin.aitranslator.vn`, khối `routes` trong `wrangler.admin.jsonc`): deploy xong, Cloudflare
+      tự tạo bản ghi DNS và chứng chỉ (1 đến 2 phút). Kiểm từ ngoài: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://admin.aitranslator.vn/`
+      phải in `302` tới `<team>.cloudflareaccess.com/cdn-cgi/access/login/admin.aitranslator.vn?kid=<AUD>` với `kid` bằng
       `ACCESS_AUD`. In `403` (JSON `forbidden`) nghĩa là ứng dụng Access chưa phủ hostname này: Zero Trust > Access controls >
-      Applications > ứng dụng của `mt-license-admin` > thêm hostname `admin.aitranslator.io.vn` vào ứng dụng (giữ cùng AUD), hoặc
+      Applications > ứng dụng của `mt-license-admin` > thêm hostname `admin.aitranslator.vn` vào ứng dụng (giữ cùng AUD), hoặc
       nếu ứng dụng không cho sửa thì tạo ứng dụng Self-hosted mới cho hostname đó với cùng policy và cùng Cookie settings
       (SameSite Lax, HttpOnly, Binding Cookie tắt), rồi đặt `ACCESS_AUD` bằng AUD tag của nó và deploy lại. Worker chặn mọi
       request không có JWT hợp lệ (không lộ dữ liệu), nên thứ tự làm không gây rủi ro. Khi tên miền mới chạy ổn: đặt
@@ -353,7 +353,7 @@ chủ tài khoản Resend: chưa đủ để bán.
       `mt-license-admin` > Configure > Destinations; nút "Protect this Worker behind Access" đã tạo sẵn các destination đó). Nếu còn,
       Access chuyển về địa chỉ đó sau khi đăng nhập (`/cdn-cgi/access/authorized`) và trình duyệt hiện "There is nothing here yet"
       khi phiên 24 giờ hết hạn (gặp 2026-10-09, sửa bằng cách xóa destination, giữ AUD, không phải deploy lại). Kiểm bằng cửa sổ ẩn
-      danh: đăng nhập xong địa chỉ cuối phải vẫn là `admin.aitranslator.io.vn`.
+      danh: đăng nhập xong địa chỉ cuối phải vẫn là `admin.aitranslator.vn`.
 
     ```bash
     pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
@@ -403,7 +403,7 @@ Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** v
 "Bản macOS ký ad-hoc, chưa notarize" vào tóm tắt của lần chạy.
 
 - App ở chế độ này chỉ kiểm chữ ký còn nguyên vẹn và bundle id; gói trả phí chạy được. Lỗi `NotGenuine` thì xem log của app.
-- **Cách cài khuyến nghị cho khách: một dòng lệnh** `curl -fsSL https://aitranslator.io.vn/install.sh | bash` (spec `2026-10-09-macos-curl-install-design.md`, script `website/src/public/install.sh`). File tải bằng `curl` không mang cờ quarantine nên app mở thẳng, không cần Open Anyway. Script đọc `<kênh>/latest.json` rồi tải `<version>/AI Translator_<version>_aarch64.dmg` và `<version>/SHA256SUMS-macos.txt` từ R2, nên **một bản phát hành phải đăng đủ ba thứ đó** (job `publish` đã làm vậy) và không được đổi tên file; `website/test/install-script.test.mjs` khóa hợp đồng này. Sau mỗi lần đăng bản mới, kiểm: `curl -fsSL https://aitranslator.io.vn/install.sh | AI_TRANSLATOR_NO_OPEN=1 bash` trên một Mac sạch (hay chạy với `AI_TRANSLATOR_INSTALL_DIR=/tmp/x`). Có Developer ID + notarize thì lệnh vẫn chạy, nhưng có thể thêm nút tải .dmg trực tiếp.
+- **Cách cài khuyến nghị cho khách: một dòng lệnh** `curl -fsSL https://aitranslator.vn/install.sh | bash` (spec `2026-10-09-macos-curl-install-design.md`, script `website/src/public/install.sh`). File tải bằng `curl` không mang cờ quarantine nên app mở thẳng, không cần Open Anyway. Script đọc `<kênh>/latest.json` rồi tải `<version>/AI Translator_<version>_aarch64.dmg` và `<version>/SHA256SUMS-macos.txt` từ R2, nên **một bản phát hành phải đăng đủ ba thứ đó** (job `publish` đã làm vậy) và không được đổi tên file; `website/test/install-script.test.mjs` khóa hợp đồng này. Sau mỗi lần đăng bản mới, kiểm: `curl -fsSL https://aitranslator.vn/install.sh | AI_TRANSLATOR_NO_OPEN=1 bash` trên một Mac sạch (hay chạy với `AI_TRANSLATOR_INSTALL_DIR=/tmp/x`). Có Developer ID + notarize thì lệnh vẫn chạy, nhưng có thể thêm nút tải .dmg trực tiếp.
 - File .dmg tải bằng trình duyệt (hay gửi qua email) vẫn bị Gatekeeper chặn lần mở đầu. Hướng dẫn cho khách: kéo app vào Applications, mở một lần (sẽ bị chặn), rồi vào System Settings ›
   Privacy & Security, cuối trang, bấm "Open Anyway" cạnh tên app. Từ macOS 15, bấm chuột phải › Open không còn dùng được.
 - **Từ bản có kho khóa qua `/usr/bin/security` (spec `2026-10-20-macos-keychain-security-cli-design.md`) cập nhật không còn hộp thoại Keychain**; còn 1 hộp thoại quyền thu âm (quyền Trợ năng của Gõ dịch vẫn phải bật lại). Riêng lần cập nhật đầu tiên từ bản cũ lên bản có kho này còn 1 hộp thoại Keychain (app đọc mục `vault` cũ để chép sang), các lần sau không hỏi. **Cơ chế đã đo (`bench/2026-10-20-keychain-security-cli/`, mới trên macOS 26.6.2: chạy lại bộ đo ở macOS 14.x trước khi phát hành) nhưng chưa đo trên hai bản phát hành thật**: sau bản đầu tiên có thay đổi này, cập nhật bản cũ → bản đó rồi → bản kế tiếp và đếm hộp thoại; chỉ sau số đo đó mới sửa lời trên website (spec mục 7). Gạch đầu dòng ngay bên dưới mô tả các bản cũ hơn.
@@ -416,23 +416,23 @@ Chưa có Developer ID thì để biến `APPLE_TEAM_ID` của repo **rỗng** v
   bị coi là không chính hãng và chỉ chạy Free**, nên đặt cùng lúc với secret chứng thư.
 - Tạm đặt `APPLE_TEAM_ID` sai dạng cũng khóa (không tự hạ xuống chế độ ad-hoc), để lỗi cấu hình lộ ra ngay.
 
-## 6. Tên miền riêng `aitranslator.io.vn`
+## 6. Tên miền riêng `aitranslator.vn`
 
-Thiết kế: `docs/superpowers/specs/2026-10-06-custom-domain-design.md`. Kế hoạch: `docs/superpowers/plans/2026-10-06-chuyen-ten-mien.md`.
+Thiết kế: `docs/superpowers/specs/2026-10-06-custom-domain-design.md`. Kế hoạch: `docs/superpowers/plans/2026-10-06-chuyen-ten-mien.md`. Từ 2026-10-23 tên chính thức là `aitranslator.vn` (spec `2026-10-23-ten-mien-aitranslator-vn-design.md`; các bước chuyển ở mục 14). Tên cũ `aitranslator.io.vn`: website, `www.` và `admin.` chuyển hướng 301 về tên mới (Worker `ai-translator-redirect`, `website/wrangler.redirect.jsonc`); `api.` (route thứ hai của `mt-license`) và `releases.` (custom domain thứ hai của bucket) **chạy song song** cho app ≤ 0.2.6; `support@`, `ops@` vẫn chuyển thư về Gmail. Trước khi để tên cũ hết hạn (khoảng 2027-10-06): xem spec 2026-10-23 mục 5.
 
 | Mục đích | Tên | Gắn với |
 |---|---|---|
-| License server (app gọi) | `api.aitranslator.io.vn` | Worker `mt-license`, route `custom_domain` trong `server/wrangler.jsonc` |
-| Bản cập nhật và model | `releases.aitranslator.io.vn` | Bucket R2 `ai-translator-releases`, custom domain |
-| Gửi email | `mail.aitranslator.io.vn` | Resend; From `no-reply@mail…`, Reply-To `support@aitranslator.io.vn` |
-| Nhận email hỗ trợ | `support@aitranslator.io.vn` | Cloudflare Email Routing, chuyển về Gmail |
-| Admin | `admin.aitranslator.io.vn` | Worker `mt-license-admin`, route `custom_domain` trong `server/wrangler.admin.jsonc`, sau Cloudflare Access; từ 2026-10-08 `workers_dev: false` nên không còn địa chỉ `workers.dev` |
+| License server (app gọi) | `api.aitranslator.vn` | Worker `mt-license`, route `custom_domain` trong `server/wrangler.jsonc` |
+| Bản cập nhật và model | `releases.aitranslator.vn` | Bucket R2 `ai-translator-releases`, custom domain |
+| Gửi email | `mail.aitranslator.vn` | Resend; From `no-reply@mail…`, Reply-To `support@aitranslator.vn` |
+| Nhận email hỗ trợ | `support@aitranslator.vn` | Cloudflare Email Routing, chuyển về Gmail |
+| Admin | `admin.aitranslator.vn` | Worker `mt-license-admin`, route `custom_domain` trong `server/wrangler.admin.jsonc`, sau Cloudflare Access; từ 2026-10-08 `workers_dev: false` nên không còn địa chỉ `workers.dev` |
 
-- Biến GitHub `RELEASES_BASE_URL` = `https://releases.aitranslator.io.vn` (Settings › Secrets and variables › Actions › Variables); `release-ready.mjs` kiểm khớp với `updater/source.rs`.
+- Biến GitHub `RELEASES_BASE_URL` = `https://releases.aitranslator.vn` (Settings › Secrets and variables › Actions › Variables); `release-ready.mjs` kiểm khớp với `updater/source.rs`.
 - Luật WAF `webhook-rate-limit` cho `/v1/webhooks/` đặt ở zone này (5 request mỗi 10 giây mỗi IP, 429). Ngoại lệ: webhook Zalo (`/v1/webhooks/zalo`) đến từ rất ít IP nên luật này chặn được tin của chủ dự án; mục 11 bước 8 hướng dẫn miễn đường này khỏi luật (hay nâng ngưỡng riêng).
-- Webhook PayOS: `https://api.aitranslator.io.vn/v1/webhooks/payos` (đăng ký bằng `confirm-webhook`; `API_ORIGIN` của Worker admin phải là `https://api.aitranslator.io.vn`).
+- Webhook PayOS: `https://api.aitranslator.vn/v1/webhooks/payos` (đăng ký bằng `confirm-webhook`; `API_ORIGIN` của Worker admin phải là `https://api.aitranslator.vn`).
 - Thư mới từ tên miền mới dễ vào spam lúc đầu: kiểm hộp thư thật sau mỗi thay đổi nội dung thư; DMARC đang `p=none`, siết `quarantine` sau vài tuần báo cáo sạch.
-- Còn giữ `workers_dev` của Worker API và `r2.dev` của bucket làm đường lui cho bản cài cũ. Chỉ tắt khi không còn bản cài nào dùng URL cũ. Worker admin không có đường lui này: `workers_dev` của nó đã tắt từ 2026-10-08 và `preview_urls` là `false` (`server/wrangler.admin.jsonc`), chỉ còn `admin.aitranslator.io.vn`.
+- Còn giữ `workers_dev` của Worker API và `r2.dev` của bucket làm đường lui cho bản cài cũ. Chỉ tắt khi không còn bản cài nào dùng URL cũ. Worker admin không có đường lui này: `workers_dev` của nó đã tắt từ 2026-10-08 và `preview_urls` là `false` (`server/wrangler.admin.jsonc`), chỉ còn `admin.aitranslator.vn`.
 
 ## 7. Bản Windows chưa ký (chưa có chứng thư ký mã)
 
@@ -447,7 +447,7 @@ và ghi dòng "Bản Windows chưa ký" vào tóm tắt của lần chạy. Ch�
   **Run anyway**. Trình duyệt có thể cảnh báo file ít người tải (Edge: Keep › Show more › Keep anyway). Luôn gửi kèm mã
   SHA-256 (`SHA256SUMS-windows.txt`) vì khách không có tên nhà phát hành để kiểm.
 - Bộ cài cài theo từng người dùng, không hỏi quyền admin.
-- **Cách cài khuyến nghị cho khách: một dòng lệnh** `irm https://aitranslator.io.vn/install.ps1 | iex` (spec `2026-10-09-windows-iwr-install-design.md`, script `website/src/public/install.ps1`). File tải bằng PowerShell không mang dấu "tải từ internet" (Mark of the Web) và bộ cài được chạy từ PowerShell nên SmartScreen không kiểm. Script đọc `<kênh>/latest.json`, tải `<version>/AI Translator_<version>_x64-setup.exe` và `<version>/SHA256SUMS-windows.txt` từ R2, đối chiếu SHA-256, chạy `setup.exe /S` rồi mở app: **một bản phát hành phải đăng đủ các file đó và không đổi tên**; `website/test/install-ps1.test.mjs` khóa hợp đồng này. **Giới hạn:** Smart App Control (Windows 11) ở chế độ chặn vẫn chặn mọi bản chưa ký, không có cách bỏ qua ngoài việc tắt nó hoặc ký mã (trang cài đặt Windows có mục hướng dẫn). Sau mỗi lần đăng bản mới, kiểm trên một máy Windows sạch: `irm https://aitranslator.io.vn/install.ps1 | iex`.
+- **Cách cài khuyến nghị cho khách: một dòng lệnh** `irm https://aitranslator.vn/install.ps1 | iex` (spec `2026-10-09-windows-iwr-install-design.md`, script `website/src/public/install.ps1`). File tải bằng PowerShell không mang dấu "tải từ internet" (Mark of the Web) và bộ cài được chạy từ PowerShell nên SmartScreen không kiểm. Script đọc `<kênh>/latest.json`, tải `<version>/AI Translator_<version>_x64-setup.exe` và `<version>/SHA256SUMS-windows.txt` từ R2, đối chiếu SHA-256, chạy `setup.exe /S` rồi mở app: **một bản phát hành phải đăng đủ các file đó và không đổi tên**; `website/test/install-ps1.test.mjs` khóa hợp đồng này. **Giới hạn:** Smart App Control (Windows 11) ở chế độ chặn vẫn chặn mọi bản chưa ký, không có cách bỏ qua ngoài việc tắt nó hoặc ký mã (trang cài đặt Windows có mục hướng dẫn). Sau mỗi lần đăng bản mới, kiểm trên một máy Windows sạch: `irm https://aitranslator.vn/install.ps1 | iex`.
 - Có chứng thư thì đặt cùng lúc `WINDOWS_SIGNER` (tên chủ chứng thư, đúng như Windows hiển thị) và `MT_WINDOWS_SIGN_CMD`
   (mục 3, "Chứng thư ký mã"); không phải sửa code. `WINDOWS_SIGNER` có giá trị thì app về chế độ chặt (yêu cầu đúng người
   ký). **Đặt `WINDOWS_SIGNER` mà không có `MT_WINDOWS_SIGN_CMD` thì job bộ cài dừng**, vì bản đó sẽ bị coi là không chính
@@ -572,7 +572,7 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
 - Website và văn bản pháp lý sau cùng: trang nói "có thẻ quốc tế" khi chưa có là lời hứa sai.
 - **Hai Worker lên liền nhau** (bước 7 rồi bước 8): cả hai cùng đọc `PLANS` (có giá USD) và cổng Creem. Trong khoảng giữa hai bước đừng dùng thao tác cấp license và xem đơn Creem ở Web Admin.
 
-1. **Tài khoản Creem** (chủ dự án; agent không đăng ký thay). Đăng ký ở creem.io. Chủ dự án đã đăng ký hộ kinh doanh cá nhân (`docs/legal/README.md`): nếu Creem hỏi loại người bán thì khai theo hộ kinh doanh, vì điều 3.4.9 của điều khoản người bán Creem đòi người bán đăng ký kinh doanh (hay làm nghề tự do) hợp lệ; hồ sơ KYC theo hộ hay theo cá nhân chủ hộ là câu hỏi cho kế toán ở README đó. Làm KYC (tên thụ hưởng của tài khoản ngân hàng phải khớp tên KYC), thêm tài khoản ngân hàng nhận chi trả (VND), chờ Creem duyệt (1 đến 2 ngày làm việc, tối đa 3). Creem xét website: có Chính sách quyền riêng tư và Điều khoản, giá hiển thị, email hỗ trợ khớp (`aitranslator.io.vn` có đủ); Creem có thể mua thử bằng mã giảm giá 100%. Lúc Creem duyệt, website có thể còn ghi chưa nhận thẻ quốc tế (website chỉ đổi ở bước 11): người duyệt có thể hỏi, cứ trả lời là đang chờ duyệt để bật thẻ. Creem có thể xếp sản phẩm vào nhóm "Generative AI" (nhóm phải xét kỹ, kèm hồ sơ bộ xử lý thanh toán trước đó), nên chuẩn bị sẵn câu trả lời: bộ xử lý trước là PayOS (VietQR, chỉ VND, chỉ trong Việt Nam); tỉ lệ hoàn tiền và chargeback đến nay (ghi số thật); lý do chuyển (bán cho khách ngoài Việt Nam bằng thẻ, USD); sản phẩm là app desktop phụ đề dịch trực tiếp, chạy offline trên máy người dùng. Creem chi trả theo tiền tệ của tài khoản ngân hàng; khác tiền tệ bán (USD) thì đối tác ngân hàng của Creem tự quy đổi và thu phí quy đổi (ngoài tầm Creem), ngân hàng nhận có thể thu thêm (đo ở lần rút đầu, điểm S8 của spec).
+1. **Tài khoản Creem** (chủ dự án; agent không đăng ký thay). Đăng ký ở creem.io. Chủ dự án đã đăng ký hộ kinh doanh cá nhân (`docs/legal/README.md`): nếu Creem hỏi loại người bán thì khai theo hộ kinh doanh, vì điều 3.4.9 của điều khoản người bán Creem đòi người bán đăng ký kinh doanh (hay làm nghề tự do) hợp lệ; hồ sơ KYC theo hộ hay theo cá nhân chủ hộ là câu hỏi cho kế toán ở README đó. Làm KYC (tên thụ hưởng của tài khoản ngân hàng phải khớp tên KYC), thêm tài khoản ngân hàng nhận chi trả (VND), chờ Creem duyệt (1 đến 2 ngày làm việc, tối đa 3). Creem xét website: có Chính sách quyền riêng tư và Điều khoản, giá hiển thị, email hỗ trợ khớp (`aitranslator.vn` có đủ); Creem có thể mua thử bằng mã giảm giá 100%. Lúc Creem duyệt, website có thể còn ghi chưa nhận thẻ quốc tế (website chỉ đổi ở bước 11): người duyệt có thể hỏi, cứ trả lời là đang chờ duyệt để bật thẻ. Creem có thể xếp sản phẩm vào nhóm "Generative AI" (nhóm phải xét kỹ, kèm hồ sơ bộ xử lý thanh toán trước đó), nên chuẩn bị sẵn câu trả lời: bộ xử lý trước là PayOS (VietQR, chỉ VND, chỉ trong Việt Nam); tỉ lệ hoàn tiền và chargeback đến nay (ghi số thật); lý do chuyển (bán cho khách ngoài Việt Nam bằng thẻ, USD); sản phẩm là app desktop phụ đề dịch trực tiếp, chạy offline trên máy người dùng. Creem chi trả theo tiền tệ của tài khoản ngân hàng; khác tiền tệ bán (USD) thì đối tác ngân hàng của Creem tự quy đổi và thu phí quy đổi (ngoài tầm Creem), ngân hàng nhận có thể thu thêm (đo ở lần rút đầu, điểm S8 của spec).
 
 2. **Spike ở test mode** (S1 đến S7 của spec mục 11, cộng các phép đo thêm S10 đến S14), **trước khi deploy**. Spike đo những điều server **đang giả định** về Creem; ghi từng kết quả vào bảng "Kết quả spike → việc tiếp theo" ở cuối bước này. Một phép đo làm sai điều kiện (ví dụ trả bằng địa chỉ không có thuế rồi ghi "đạt") là phép đo chưa làm. Test Mode không tính tiền thật. Dành khoảng một giờ: S6 phải chờ hơn 35 phút, nên làm 2a và 2b trước, rồi làm 2c đến 2f trong lúc chờ. Các khối lệnh dưới không có chú thích `#` (zsh không bật `interactivecomments` sẽ báo `command not found: #`) và mỗi khối dùng khóa tự nạp lại file khóa, nên chạy được ở terminal mới.
 
@@ -620,7 +620,7 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
    TP=prod_...
    ( umask 077
      curl -s -X POST https://test-api.creem.io/v1/checkouts -H "x-api-key: $CREEM_TEST_KEY" -H 'content-type: application/json' \
-       -d "{\"product_id\":\"$TP\",\"request_id\":\"9000001\",\"custom_price\":399,\"success_url\":\"https://api.aitranslator.io.vn/v1/pay/return\",\"customer\":{\"email\":\"<email>\"},\"metadata\":{\"order_code\":\"9000001\",\"plan\":\"monthly\"}}" | tee "$TMPDIR/creem-checkout.json"; echo )
+       -d "{\"product_id\":\"$TP\",\"request_id\":\"9000001\",\"custom_price\":399,\"success_url\":\"https://api.aitranslator.vn/v1/pay/return\",\"customer\":{\"email\":\"<email>\"},\"metadata\":{\"order_code\":\"9000001\",\"plan\":\"monthly\"}}" | tee "$TMPDIR/creem-checkout.json"; echo )
    ```
 
    Expected (S2): JSON có `id` (`ch_…`), `status` `pending`, `checkout_url`, `request_id` `9000001` và **`custom_price` `399`**; không lỗi vì `custom_price` (tài liệu: từ 100 cent, chỉ cho sản phẩm một lần; 399 khác giá catalog 9,99 của sản phẩm thử, và đó là điểm cần đo). Ghi host và đầu đường dẫn của `checkout_url` (host test có thể khác production; host production đo lại ở bước 9):
@@ -638,7 +638,7 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
    : "${TP:?Chưa đặt TP: đặt lại TP=prod_... như khối tạo phiên 9000001}"
    ( umask 077
      curl -s -X POST https://test-api.creem.io/v1/checkouts -H "x-api-key: $CREEM_TEST_KEY" -H 'content-type: application/json' \
-       -d "{\"product_id\":\"$TP\",\"request_id\":\"9000002\",\"custom_price\":399,\"success_url\":\"https://api.aitranslator.io.vn/v1/pay/return\",\"customer\":{\"email\":\"<email>\"},\"metadata\":{\"order_code\":\"9000002\",\"plan\":\"monthly\"}}" | tee "$TMPDIR/creem-checkout-2.json"; echo )
+       -d "{\"product_id\":\"$TP\",\"request_id\":\"9000002\",\"custom_price\":399,\"success_url\":\"https://api.aitranslator.vn/v1/pay/return\",\"customer\":{\"email\":\"<email>\"},\"metadata\":{\"order_code\":\"9000002\",\"plan\":\"monthly\"}}" | tee "$TMPDIR/creem-checkout-2.json"; echo )
    date '+%F %T'
    ```
 
@@ -803,7 +803,7 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
 
    Expected: `main`; `pnpm check` đạt (test `wrangler-config` đòi `CREEM_PRODUCT_IDS` có đúng ba khóa `monthly`, `six_months`, `yearly`, cả ba rỗng hay cả ba `prod_…` khác nhau; điền dở hay hai gói trùng mã thì đỏ). Rồi commit riêng file `server/wrangler.jsonc` (`chore(server): mã sản phẩm Creem production`), push lên `main`, chờ CI xanh.
 
-4. **Webhook** ở dashboard (Test Mode tắt): Developers > Webhooks > thêm endpoint `https://api.aitranslator.io.vn/v1/webhooks/creem`, chỉ bật ba sự kiện `checkout.completed`, `refund.created`, `dispute.created`. Chép **secret ký** của endpoint (hiện khi tạo, xem lại được ở dashboard). Đừng bật sự kiện nào khác: server trả `200` và bỏ qua (log `webhook_ignored`), nhưng không cần. Sau bước 7, một sự kiện thử gửi từ dashboard (nếu bạn bấm) đúng chữ ký mà không thuộc đơn nào nên có thể thành cảnh báo `payment_unmatched`: bình thường, không cấp gì.
+4. **Webhook** ở dashboard (Test Mode tắt): Developers > Webhooks > thêm endpoint `https://api.aitranslator.vn/v1/webhooks/creem`, chỉ bật ba sự kiện `checkout.completed`, `refund.created`, `dispute.created`. Chép **secret ký** của endpoint (hiện khi tạo, xem lại được ở dashboard). Đừng bật sự kiện nào khác: server trả `200` và bỏ qua (log `webhook_ignored`), nhưng không cần. Sau bước 7, một sự kiện thử gửi từ dashboard (nếu bạn bấm) đúng chữ ký mà không thuộc đơn nào nên có thể thành cảnh báo `payment_unmatched`: bình thường, không cấp gì.
 
 5. **Secret** (khóa **production** của Creem, ở Developers khi Test Mode tắt; không phải khóa test). Mỗi lệnh hỏi giá trị, không hiện ra màn hình. Đã đặt giá trị giữ chỗ (mục 4 bước 5 cho hai secret của Worker API, bước 8 cho `CREEM_API_KEY` của Worker admin) thì ba lệnh này ghi đè bằng giá trị thật:
 
@@ -879,7 +879,7 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
 
    Lệnh `curl` chạy lại bao nhiêu lần cũng được. Expected, theo `status`:
 
-   - **`paid` vài giây sau khi trả:** `{"status":"paid","amount":399,"currency":"USD","license_plan":"monthly","has_key":true}`; thư chứa key tới `$EM` (từ `no-reply@mail.aitranslator.io.vn`); Web Admin > Đơn hiện đơn này với `$3,99` và cổng Creem; cửa sổ `wrangler tail` có `POST /v1/webhooks/creem` và không có `webhook_bad_signature`. Thành `paid` chỉ sau vài phút (ở lượt cron kế tiếp) mà không thấy `POST /v1/webhooks/creem` thì webhook bị chặn: làm bước 10 trước khi đi tiếp.
+   - **`paid` vài giây sau khi trả:** `{"status":"paid","amount":399,"currency":"USD","license_plan":"monthly","has_key":true}`; thư chứa key tới `$EM` (từ `no-reply@mail.aitranslator.vn`); Web Admin > Đơn hiện đơn này với `$3,99` và cổng Creem; cửa sổ `wrangler tail` có `POST /v1/webhooks/creem` và không có `webhook_bad_signature`. Thành `paid` chỉ sau vài phút (ở lượt cron kế tiếp) mà không thấy `POST /v1/webhooks/creem` thì webhook bị chặn: làm bước 10 trước khi đi tiếp.
    - **Còn `pending` hay `processing`:** đối soát hỏi lại mỗi 5 phút. Vẫn vậy sau mười phút nghĩa là cả webhook lẫn đối soát đều không cấp được: đọc log `reconcile_failed` và `webhook_fulfil_failed` trong `wrangler tail` (có mã đơn và câu lỗi), xem có cảnh báo `creem_auth_failed` (khóa API bị từ chối: đặt lại như bước 5) hay `order_check_failed` (Creem trả dữ liệu server không đọc được: so với SP13 và SP2), rồi bước 10.
    - **`underpaid` hay `failed`: dừng, chưa phát hành app.** Creem báo đã thu tiền mà số tiền không như đơn (giảm giá, trả thấp hơn giá, giá gồm thuế khác giả định, hay dữ liệu tiền không đọc được): server giữ đơn, không cấp key, và có cảnh báo `order_payment_review` (thư tới `ops@` trong vòng một giờ). Xem trang Nhật ký của Web Admin, lọc theo hành động `order_underpaid` hay `order_amount_mismatch`: `detail` có `amount`, `provider_amount`, `amount_paid`, `currency` và, với Creem, `has_discount`, `provider_discount_amount`, `provider_amount_paid`, `provider_tax_amount`, `provider_malformed_fields`; trong `wrangler tail` có log `creem_malformed_paid_session` nếu có trường hỏng. Đối chiếu với S1 và các hàng SP1, SP7, SP13 của bảng spike, hoàn tiền đơn này ở dashboard Creem, báo lại để sửa mã, rồi làm lại bước 9 bằng một đơn mới.
 
@@ -920,7 +920,7 @@ Thứ tự không đổi được: tài khoản, spike, sản phẩm, webhook, s
     - cửa sổ `pnpm exec wrangler tail mt-license --format pretty` có các request `POST /v1/webhooks/creem`;
     - nhật ký giao webhook của endpoint ở dashboard Creem (Developers > Webhooks) báo các lần giao thành công (HTTP `200`).
 
-    Rồi xem Cloudflare > Security > Events, lọc theo đường dẫn `/v1/webhooks/creem`, với **mọi** hành động (block, managed challenge, JS challenge, rate limit `429`), không chỉ `429`. Webhook của Creem không có IP cố định nên không allowlist theo IP được: luật WAF `webhook-rate-limit` (5 request mỗi 10 giây mỗi IP, đường dẫn `/v1/webhooks/`) áp cho cả Creem; thấy bị chặn thì nới luật riêng cho `/v1/webhooks/creem`. Kiểm **Bot Fight Mode** của zone `aitranslator.io.vn` (Security > Bots): Creem ghi rõ nó có thể chặn webhook và **không bỏ qua được bằng luật tùy chỉnh**; webhook Creem bị chặn thì tắt Bot Fight Mode cho zone. Sửa xong thì gửi lại các sự kiện bị lỡ từ dashboard Creem (Developers). Chưa đủ ba bằng chứng thì chưa sang bước 11.
+    Rồi xem Cloudflare > Security > Events, lọc theo đường dẫn `/v1/webhooks/creem`, với **mọi** hành động (block, managed challenge, JS challenge, rate limit `429`), không chỉ `429`. Webhook của Creem không có IP cố định nên không allowlist theo IP được: luật WAF `webhook-rate-limit` (5 request mỗi 10 giây mỗi IP, đường dẫn `/v1/webhooks/`) áp cho cả Creem; thấy bị chặn thì nới luật riêng cho `/v1/webhooks/creem`. Kiểm **Bot Fight Mode** của zone `aitranslator.vn` (Security > Bots): Creem ghi rõ nó có thể chặn webhook và **không bỏ qua được bằng luật tùy chỉnh**; webhook Creem bị chặn thì tắt Bot Fight Mode cho zone. Sửa xong thì gửi lại các sự kiện bị lỡ từ dashboard Creem (Developers). Chưa đủ ba bằng chứng thì chưa sang bước 11.
 
 11. **Pháp lý, app, rồi website.**
     - **Sửa ngày hiệu lực trước khi build app.** EULA 1.3 và chính sách 1.2 đang ghi hiệu lực 16/10/2026 (ngày chủ dự án chốt khi gộp nhánh `payment`). Ngày này hợp lệ nếu app và website phát hành từ hôm đó trở đi; chỉ đổi, trước khi nâng phiên bản app, nếu muốn khớp đúng ngày phát hành thật, theo mục "Đổi ngày hiệu lực" của `docs/legal/README.md` (dòng phiên bản ở đầu bốn file `docs/legal/{eula,privacy}.{vi,en}.md` và hai chỗ trong README đó; trang pháp lý của website tự lấy ngày cập nhật theo dòng phiên bản, không phải sửa tay), rồi commit lên `main`. Lý do: app đóng gói bốn file đó lúc build (`src/lib/legal.ts`), đổi sau thì app và website mang hai ngày khác nhau cho cùng một phiên bản. Ngày này **không được muộn hơn ngày deploy website**: trang pháp lý lấy ngày hiệu lực làm `lastmod` của sitemap, và test website ("`lastmod` không ở tương lai") đỏ khi ngày ở tương lai.
@@ -1014,7 +1014,7 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
 **Điều kiện trước khi bắt đầu.** Chỉ làm khi đủ cả bốn điều:
 
 - **Mã xong và đã gộp.** Kế hoạch 01 đến 05 đã làm và đã rà, đã gộp vào `main` (chủ dự án quyết lúc nào), CI xanh, `pnpm check` trong `server/` xanh trên `main`.
-- **A7 đã chạy lại (XONG 2026-10-17, đạt: `bench/phase1/results/acceptance/a7-mac-reports.md`; trang Dữ liệu và bảo mật và `docs/legal/README.md` đã sửa theo số đo)** bằng proxy trên macOS với một bản build có tính năng này (cách build: `docs/huong-dan-build/build-dmg-macos.md`), có một báo cáo đang xếp hàng trên đĩa: trong lúc dịch không có request nào, và báo cáo chỉ đi tới `api.aitranslator.io.vn` sau khi phiên dừng. Ghi số đo (ngày, máy, bản dựng). Rồi sửa câu "chúng tôi chưa đo lại điều này bằng proxy" ở mục "Chúng tôi đã kiểm tra điều đó thế nào?" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en}/data-security.mjs`) và đoạn "Báo cáo lỗi, chưa đối chiếu bằng số đo thật" của `docs/legal/README.md` cho khớp số đo.
+- **A7 đã chạy lại (XONG 2026-10-17, đạt: `bench/phase1/results/acceptance/a7-mac-reports.md`; trang Dữ liệu và bảo mật và `docs/legal/README.md` đã sửa theo số đo)** bằng proxy trên macOS với một bản build có tính năng này (cách build: `docs/huong-dan-build/build-dmg-macos.md`), có một báo cáo đang xếp hàng trên đĩa: trong lúc dịch không có request nào, và báo cáo chỉ đi tới `api.aitranslator.vn` sau khi phiên dừng. Ghi số đo (ngày, máy, bản dựng). Rồi sửa câu "chúng tôi chưa đo lại điều này bằng proxy" ở mục "Chúng tôi đã kiểm tra điều đó thế nào?" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en}/data-security.mjs`) và đoạn "Báo cáo lỗi, chưa đối chiếu bằng số đo thật" của `docs/legal/README.md` cho khớp số đo.
 - **Ngày hiệu lực chính sách 1.3 đã đặt** theo `docs/legal/README.md`, mục "Đổi ngày hiệu lực" (kế hoạch 05, Task 8), **trước khi build app**: app đóng gói chính sách lúc build.
 - **Ảnh chụp của website đã được chụp lại** theo giao diện của bản app sắp phát hành (kế hoạch 05, Task 5).
 
@@ -1080,7 +1080,7 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
    curl -s -o /dev/null -w '%{http_code}\n' -H 'content-type: text/plain' --data-binary @"$W/ok.json" "$PROD/v1/diagnostics"
    ```
 
-   Expected: `{"id":"R-ZZZZ-0001"}` rồi `202`; `{"error":"rejected_sensitive","rule":"license_key"}` rồi `422`; `415`. Ở Web Admin › Báo cáo lỗi có **một nhóm** (`session_error`, `sidecarFailed`, phiên bản `0.0.0`, 1 máy, 1 báo cáo); mở báo cáo thấy dòng log thử ở dạng văn bản. Báo cáo `R-ZZZZ-0002` **không** có (bị từ chối, không lưu). Kiểm cảnh báo: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT kind, count FROM ops_alerts WHERE kind = 'error_report_new'"` ra một dòng; thư cảnh báo tới `ops@aitranslator.io.vn` trong vòng khoảng một giờ (gộp theo giờ) với tiêu đề `[license production] Cảnh báo: error_report_new (1)` và **chỉ có số lượng**, không có nội dung log hay mã máy. Dọn báo cáo thử (bằng nút xóa ở Web Admin, hoặc hai lệnh dưới, bảng log trước), rồi kiểm lại:
+   Expected: `{"id":"R-ZZZZ-0001"}` rồi `202`; `{"error":"rejected_sensitive","rule":"license_key"}` rồi `422`; `415`. Ở Web Admin › Báo cáo lỗi có **một nhóm** (`session_error`, `sidecarFailed`, phiên bản `0.0.0`, 1 máy, 1 báo cáo); mở báo cáo thấy dòng log thử ở dạng văn bản. Báo cáo `R-ZZZZ-0002` **không** có (bị từ chối, không lưu). Kiểm cảnh báo: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT kind, count FROM ops_alerts WHERE kind = 'error_report_new'"` ra một dòng; thư cảnh báo tới `ops@aitranslator.vn` trong vòng khoảng một giờ (gộp theo giờ) với tiêu đề `[license production] Cảnh báo: error_report_new (1)` và **chỉ có số lượng**, không có nội dung log hay mã máy. Dọn báo cáo thử (bằng nút xóa ở Web Admin, hoặc hai lệnh dưới, bảng log trước), rồi kiểm lại:
 
    ```bash
    pnpm exec wrangler d1 execute mt-license-production --remote --command "DELETE FROM error_report_logs WHERE id = 'R-ZZZZ-0001'"
@@ -1100,7 +1100,7 @@ Vì sao thứ tự này: migration 0004 chỉ **thêm** hai bảng (`error_repor
 
 ## 11. Đợt thêm chat hỗ trợ (migration D1 0005)
 
-Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.io.vn`, `PADMIN=https://admin.aitranslator.io.vn`.
+Spec `2026-10-22-chat-ho-tro-zalo-design.md` (mục 1, 2, 7 và 8), kế hoạch `2026-10-22-chat-ho-tro-00-tong-quan.md` đến `2026-10-22-chat-ho-tro-04-phap-ly-noi-dung.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production và mọi lệnh có token Zalo do chủ dự án chạy (Claude không đặt secret). Thứ tự: Zalo Bot, secret, migration, Worker API (chat còn tắt), webhook, thử hai chiều, app, website, bật chat. Chạy trong `server/`; `PROD=https://api.aitranslator.vn`, `PADMIN=https://admin.aitranslator.vn`.
 
 Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn index), không đổi bảng nào đã có, nên Worker cũ chạy đúng trên schema mới; Worker mới cần bốn bảng và ba secret Zalo (thiếu secret thì `wrangler deploy` từ chối); `setWebhook` cần route đã có (Zalo thử URL ngay khi lưu); chat mặc định **tắt** (`support_settings.enabled = '0'`), nên trong lúc chờ app và website, không ai gửi được tin; app và website chỉ nói điều đã thật nên đi sau; bật chat là bước cuối, bằng lệnh `/bat` gửi cho bot.
 
@@ -1183,16 +1183,16 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
 
    Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`). Đăng nhập Web Admin, mở Công cụ: trang tải bình thường.
 
-8. **Đặt webhook.** Trước tiên `dig @8.8.8.8 api.aitranslator.io.vn +short` phải in địa chỉ IP (sự cố DNSSEC của `io.vn` ngày 2026-10-22: `SERVFAIL` thì Zalo cũng không gọi được webhook; đợi rồi làm lại).
+8. **Đặt webhook.** Trước tiên `dig @8.8.8.8 api.aitranslator.vn +short` phải in địa chỉ IP (sự cố DNSSEC của `io.vn` ngày 2026-10-22: `SERVFAIL` thì Zalo cũng không gọi được webhook; đợi rồi làm lại).
 
-   **Tắt Browser Integrity Check cho webhook Zalo (bắt buộc, đo 2026-10-22):** Zalo gọi webhook từ máy chủ với User-Agent `Java/…`, bị Browser Integrity Check chặn (403 ở rìa, Worker không thấy gì; `verification` báo `webhook.http.403`). Ở zone `aitranslator.io.vn` › Rules › Configuration Rules, tạo luật `zalo-webhook-no-bic` với biểu thức `(http.host eq "api.aitranslator.io.vn" and http.request.uri.path eq "/v1/webhooks/zalo")`, đặt Browser Integrity Check = Off (đã làm 2026-10-22). **Kiểm luật WAF của zone trước khi đặt webhook** (Cloudflare dashboard, zone `aitranslator.io.vn`). Luật rate limit `webhook-rate-limit` (mục 6) đang giới hạn 5 request mỗi 10 giây mỗi IP cho `/v1/webhooks/*`. Zalo gửi webhook từ ít IP, nên bạn nhắn liền vài tin cho bot là gặp `429` ở rìa Cloudflare, và `wrangler tail` **không thấy** gì vì request chưa tới Worker. Vào Security › WAF › Rate limiting rules › `webhook-rate-limit`: thêm điều kiện loại trừ `URI Path` khác `/v1/webhooks/zalo` (hay nâng ngưỡng riêng cho đường này, ví dụ 60 request mỗi 10 giây). Header secret đã bảo vệ webhook này, nên miễn luật không mở thêm lỗ hổng. Kiểm thêm **Bot Fight Mode** (Security › Bots) không chặn đường này. Rồi:
+   **Tắt Browser Integrity Check cho webhook Zalo (bắt buộc, đo 2026-10-22):** Zalo gọi webhook từ máy chủ với User-Agent `Java/…`, bị Browser Integrity Check chặn (403 ở rìa, Worker không thấy gì; `verification` báo `webhook.http.403`). Ở zone `aitranslator.vn` › Rules › Configuration Rules, tạo luật `zalo-webhook-no-bic` với biểu thức `(http.host eq "api.aitranslator.vn" and http.request.uri.path eq "/v1/webhooks/zalo")`, đặt Browser Integrity Check = Off (đã làm 2026-10-22). **Kiểm luật WAF của zone trước khi đặt webhook** (Cloudflare dashboard, zone `aitranslator.vn`). Luật rate limit `webhook-rate-limit` (mục 6) đang giới hạn 5 request mỗi 10 giây mỗi IP cho `/v1/webhooks/*`. Zalo gửi webhook từ ít IP, nên bạn nhắn liền vài tin cho bot là gặp `429` ở rìa Cloudflare, và `wrangler tail` **không thấy** gì vì request chưa tới Worker. Vào Security › WAF › Rate limiting rules › `webhook-rate-limit`: thêm điều kiện loại trừ `URI Path` khác `/v1/webhooks/zalo` (hay nâng ngưỡng riêng cho đường này, ví dụ 60 request mỗi 10 giây). Header secret đã bảo vệ webhook này, nên miễn luật không mở thêm lỗ hổng. Kiểm thêm **Bot Fight Mode** (Security › Bots) không chặn đường này. Rồi:
 
    ```bash
    curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/setWebhook" -H 'content-type: application/json' -d "{\"url\":\"$PROD/v1/webhooks/zalo\",\"secret_token\":\"$ZALO_HOOK\"}"; echo
    curl -s -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_TOKEN}/getWebhookInfo" -H 'content-type: application/json' -d '{}'; echo
    ```
 
-   Expected: lệnh đầu `"ok":true` và `"verification":{"ok":true,…,"outcome":"webhook.ok",…}`; lệnh sau có `"url":"https://api.aitranslator.io.vn/v1/webhooks/zalo"`. `verification` không `ok` thì xem `hint`, sửa, chạy lại. Riêng trường hợp `verification` báo không `ok` kiểu `403` (hay `outcome` là lỗi xác thực): lời gọi thử của Zalo lúc lưu URL có thể không mang header secret, và route của ta trả `403` khi thiếu header đó. Theo tài liệu Zalo, URL vẫn được lưu; khi đó đừng sửa gì vội, dựa vào bước 9 (tin thật có vào cuộc chat không). Nếu tin thật cũng bị `403` (tail có sự kiện `zalo_webhook_bad_secret`) thì **dừng**, báo để sửa mã (không đoán sửa secret).
+   Expected: lệnh đầu `"ok":true` và `"verification":{"ok":true,…,"outcome":"webhook.ok",…}`; lệnh sau có `"url":"https://api.aitranslator.vn/v1/webhooks/zalo"`. `verification` không `ok` thì xem `hint`, sửa, chạy lại. Riêng trường hợp `verification` báo không `ok` kiểu `403` (hay `outcome` là lỗi xác thực): lời gọi thử của Zalo lúc lưu URL có thể không mang header secret, và route của ta trả `403` khi thiếu header đó. Theo tài liệu Zalo, URL vẫn được lưu; khi đó đừng sửa gì vội, dựa vào bước 9 (tin thật có vào cuộc chat không). Nếu tin thật cũng bị `403` (tail có sự kiện `zalo_webhook_bad_secret`) thì **dừng**, báo để sửa mã (không đoán sửa secret).
 
 9. **Thử hai chiều, rồi tắt lại.** Nhắn `/bat` cho bot (bot trả `Đã BẬT chat trên website và app.`), rồi gửi một tin như khách:
 
@@ -1218,24 +1218,24 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
 
     Expected: hai dòng phiên bản `1.5` cùng một ngày (vi dạng `dd/mm/yyyy`, en dạng `d Month yyyy`).
 
-11. **Phát hành app 0.2.4** theo mục 2 (nâng phiên bản ở đó; mỗi lần một tag). Chat vẫn tắt từ bước 9: app chưa có cuộc chat thì **không gọi mạng** nên chưa biết chat tắt, màn hình Hỗ trợ của bản mới vẫn hiện ô nhập; chỉ khi tin đầu nhận `503` (`support_disabled`) thì ô nhập mới được thay bằng dòng "Chat đang tạm tắt…" kèm email support@ (và không lưu gì), đó là đúng cho tới bước 13. Kiểm R2 như mục 2 bước 5 (`latest.json` của kênh stable ra `0.2.4`, SHA-256 khớp). Job đăng R2 đỏ vì không phân giải được `*.io.vn` thì chạy `dig @8.8.8.8 releases.aitranslator.io.vn` trước khi chạy lại (sự cố DNSSEC của vùng io.vn ngày 2026-10-22).
+11. **Phát hành app 0.2.4** theo mục 2 (nâng phiên bản ở đó; mỗi lần một tag). Chat vẫn tắt từ bước 9: app chưa có cuộc chat thì **không gọi mạng** nên chưa biết chat tắt, màn hình Hỗ trợ của bản mới vẫn hiện ô nhập; chỉ khi tin đầu nhận `503` (`support_disabled`) thì ô nhập mới được thay bằng dòng "Chat đang tạm tắt…" kèm email support@ (và không lưu gì), đó là đúng cho tới bước 13. Kiểm R2 như mục 2 bước 5 (`latest.json` của kênh stable ra `0.2.4`, SHA-256 khớp). Job đăng R2 đỏ vì không phân giải được `*.io.vn` thì chạy `dig @8.8.8.8 releases.aitranslator.vn` trước khi chạy lại (sự cố DNSSEC của vùng io.vn ngày 2026-10-22).
 
 12. **Deploy website** sau khi 0.2.4 đã lên R2. Nếu A7 có chat đã đo (spec mục 6, "A7 bằng proxy") thì trước khi deploy sửa câu "chat hỗ trợ chưa được đo bằng proxy" trong callout "Giới hạn của phép đo" của trang Dữ liệu và bảo mật (`website/src/content/{vi,en,ja,zh,ko}/data-security.mjs`) và đoạn "Chat hỗ trợ, chưa đối chiếu hết" của `docs/legal/README.md` cho khớp số đo (ngày, máy, bản dựng), rồi commit.
 
     ```bash
-    curl -s https://releases.aitranslator.io.vn/stable/latest.json | grep -o '"version":"[^"]*"'
+    curl -s https://releases.aitranslator.vn/stable/latest.json | grep -o '"version":"[^"]*"'
     cd ../website && pnpm test && pnpm deploy
-    curl -sI https://aitranslator.io.vn/ | grep -i '^content-security-policy' | grep -o "connect-src[^;]*"
-    curl -s https://aitranslator.io.vn/chinh-sach-quyen-rieng-tu/ | grep -o 'Phiên bản 1\.5[^<]*' | head -1
-    curl -s https://aitranslator.io.vn/lien-he/ | grep -c 'kênh hỗ trợ duy nhất'
+    curl -sI https://aitranslator.vn/ | grep -i '^content-security-policy' | grep -o "connect-src[^;]*"
+    curl -s https://aitranslator.vn/chinh-sach-quyen-rieng-tu/ | grep -o 'Phiên bản 1\.5[^<]*' | head -1
+    curl -s https://aitranslator.vn/lien-he/ | grep -c 'kênh hỗ trợ duy nhất'
     ```
 
-    Expected: `"version":"0.2.4"`; test thoát `0` (cuối đầu ra có `ℹ fail 0`; `&&` bảo đảm deploy chỉ chạy khi test đạt) rồi deploy xong (lệnh `pnpm deploy` tự dừng nếu R2 cao hơn repo); `connect-src 'self' https://api.aitranslator.io.vn`; `Phiên bản 1.5, hiệu lực từ <ngày ở bước 10>`; `0`. Mở `https://aitranslator.io.vn/` trong trình duyệt: bong bóng ở góc dưới phải; bấm vào thấy khung chat với dòng "Chat đang tạm tắt…" (chat còn tắt). Các lệnh sau chạy lại trong `server/` (`cd ../server`).
+    Expected: `"version":"0.2.4"`; test thoát `0` (cuối đầu ra có `ℹ fail 0`; `&&` bảo đảm deploy chỉ chạy khi test đạt) rồi deploy xong (lệnh `pnpm deploy` tự dừng nếu R2 cao hơn repo); `connect-src 'self' https://api.aitranslator.vn`; `Phiên bản 1.5, hiệu lực từ <ngày ở bước 10>`; `0`. Mở `https://aitranslator.vn/` trong trình duyệt: bong bóng ở góc dưới phải; bấm vào thấy khung chat với dòng "Chat đang tạm tắt…" (chat còn tắt). Các lệnh sau chạy lại trong `server/` (`cd ../server`).
 
 13. **Bật chat.** Chủ dự án nhắn `/bat` cho bot trong Zalo. (Terminal của bước 9 đã đóng nên đặt lại `PROD`.)
 
     ```bash
-    PROD=https://api.aitranslator.io.vn
+    PROD=https://api.aitranslator.vn
     curl -s "$PROD/v1/support/status"; echo
     ```
 
@@ -1244,14 +1244,14 @@ Vì sao thứ tự này: migration 0005 chỉ **thêm** bốn bảng (và bốn 
 14. **Thử tay** (spec mục 6, "Thử tay sau deploy"), bằng trình duyệt thường và app 0.2.4 vừa phát hành. Các lệnh trong bước này chạy trong `server/`; terminal mới thì đặt lại:
 
     ```bash
-    PROD=https://api.aitranslator.io.vn
+    PROD=https://api.aitranslator.vn
     ```
 
-    a. **Website:** mở bong bóng ở `https://aitranslator.io.vn/lien-he/`, gửi một tin. Zalo nhận dòng `🆕 #XXX · web · vi · /lien-he/` và nội dung tin. Trả lời trong Zalo **không ghi mã** (chỉ một cuộc chat nhắn trong 30 phút): bot báo "✓ đã gửi tới #XXX", câu trả lời hiện trong khung chat trong vài giây. Đóng khung, trả lời thêm một tin: trong khoảng một phút bong bóng hiện chấm đỏ.
+    a. **Website:** mở bong bóng ở `https://aitranslator.vn/lien-he/`, gửi một tin. Zalo nhận dòng `🆕 #XXX · web · vi · /lien-he/` và nội dung tin. Trả lời trong Zalo **không ghi mã** (chỉ một cuộc chat nhắn trong 30 phút): bot báo "✓ đã gửi tới #XXX", câu trả lời hiện trong khung chat trong vài giây. Đóng khung, trả lời thêm một tin: trong khoảng một phút bong bóng hiện chấm đỏ.
     b. **App:** mục Hỗ trợ, để tích "Gửi kèm thông tin máy", gửi một tin. Zalo nhận dòng `🆕 #YYY · app · …` có phiên bản 0.2.4, hệ điều hành, chip, RAM, gói, gói model; **không có** key, email, mã máy, tên máy. Trả lời **có mã** (`#YYY nội dung`): câu trả lời hiện trong app. Bấm đính kèm log: Zalo nhận `#YYY 📎 Mã báo cáo log: R-…`, và tìm được báo cáo đó ở Web Admin › Báo cáo lỗi.
     c. **Hai cuộc chat cùng lúc:** nhắn ở cả website và app trong 30 phút, rồi trả lời không ghi mã: bot báo "⚠️ Có 2 cuộc chat vừa nhắn trong 30 phút qua (#…, #…)…" và không gửi cho ai.
-    d. **Email khi rời trang:** ở website, để lại email ở thẻ email, đóng tab. Zalo nhận `#XXX ✉️ khách đã để lại email` **không kèm địa chỉ**. Trả lời trong Zalo; trong khoảng 2–7 phút (tin phải cũ hơn 2 phút, cron 5 phút) thư tới hộp thư đó, song ngữ vi/en, `Reply-To: support@aitranslator.io.vn`.
-    e. **Tắt, bật:** nhắn `/tat`; website và app hiện "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn", lịch sử cũ vẫn hiện; nhắn `/bat` lại.
+    d. **Email khi rời trang:** ở website, để lại email ở thẻ email, đóng tab. Zalo nhận `#XXX ✉️ khách đã để lại email` **không kèm địa chỉ**. Trả lời trong Zalo; trong khoảng 2–7 phút (tin phải cũ hơn 2 phút, cron 5 phút) thư tới hộp thư đó, song ngữ vi/en, `Reply-To: support@aitranslator.vn`.
+    e. **Tắt, bật:** nhắn `/tat`; website và app hiện "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.vn", lịch sử cũ vẫn hiện; nhắn `/bat` lại.
     f. **Xóa:** ở website, menu ⋯ › Xóa cuộc trò chuyện. Bot báo "🗑 khách đã xóa cuộc chat"; kiểm D1 (thay `XXX` bằng mã thật):
 
        ```bash
@@ -1275,7 +1275,7 @@ Expected: câu đầu liệt kê các cuộc chat (ghi lại mã để xóa tron
 **Đường lui.** Terminal mới thì đặt lại (trong `server/`):
 
 ```bash
-PROD=https://api.aitranslator.io.vn
+PROD=https://api.aitranslator.vn
 ```
 
 - **Tắt chat ngay, không deploy:** nhắn `/tat` cho bot. Website và app thay ô nhập bằng email support@; tin cũ vẫn hiện; app 0.2.4 không cần rút. Bot không nhận lệnh (Zalo lỗi, webhook hỏng) thì đặt thẳng trong D1. Bảng `support_settings` có hai cột `key` và `value` (`server/migrations/0005_support_chat.sql`): `pnpm exec wrangler d1 execute mt-license-production --remote --command "UPDATE support_settings SET value = '0' WHERE key = 'enabled'"`, rồi `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT key, value FROM support_settings ORDER BY key"` thấy `enabled` là `0` (và `curl -s "$PROD/v1/support/status"` in `{"enabled":false}`).
@@ -1337,7 +1337,7 @@ Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho
 
    Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`).
 
-6. **Thử thư thật, trước khi phát hành app.** Dùng email của chủ dự án đang có key còn hạn. Trước khi thử, **kiểm (chỉ đọc)** ở Dashboard Resend › Domains › `mail.aitranslator.io.vn`: Open Tracking và Click Tracking đều **tắt**. Thư giờ có HTML; bật theo dõi thì Resend chèn ảnh 1×1 và đổi các link qua tên miền theo dõi, trái spec mục 2 và chính sách mục 6. Đang bật thì tắt rồi mới thử.
+6. **Thử thư thật, trước khi phát hành app.** Dùng email của chủ dự án đang có key còn hạn. Trước khi thử, **kiểm (chỉ đọc)** ở Dashboard Resend › Domains › `mail.aitranslator.vn`: Open Tracking và Click Tracking đều **tắt**. Thư giờ có HTML; bật theo dõi thì Resend chèn ảnh 1×1 và đổi các link qua tên miền theo dõi, trái spec mục 2 và chính sách mục 6. Đang bật thì tắt rồi mới thử.
 
    Mỗi email chỉ được lấy lại key 3 lần mỗi giờ, nên chạy ba ngôn ngữ trước, hai ngôn ngữ sau ít nhất một giờ:
 
@@ -1350,7 +1350,7 @@ Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho
 
    Expected: mỗi lệnh in `{"ok":true}`; tới hộp thư năm thư. Xem ở Gmail (web và điện thoại), Apple Mail (sáng và tối) và Outlook cho Windows: tiêu đề `<ngôn ngữ> / <tiếng Anh>` (thư `en` chỉ tiếng Anh); phần tiếng Anh ở dưới đường kẻ (trừ thư `en`); key nằm trong ô xanh, chạm một lần chọn được cả key; "Hướng dẫn chi tiết" mở đúng trang của ngôn ngữ đó; không có ảnh bị chặn hay chữ vỡ; ở Outlook cho Windows thẻ thư rộng khoảng 560 px, không giãn hết cửa sổ, và câu trả lời hỗ trợ nhiều dòng vẫn xuống dòng. Thư hiện như chữ thuần ở hộp thư nào thì ghi lại tên hộp thư đó.
 
-   **Thêm một ca thử thư trả lời hỗ trợ** (đường gửi khác với thư key; chat đã bật từ đợt mục 11): mở chat trên trang tiếng Nhật của website (`https://aitranslator.io.vn/ja/`), gửi một tin, để lại email của chủ dự án ở thẻ email, rồi đóng trang. Trong Zalo, trả lời bằng `#<mã> ` (mã trong dòng `🆕 #<mã> · web · ja · …` bot vừa gửi, như mục 11) rồi câu trả lời **hai dòng**. Sau khoảng 2 phút tới vài phút (tin phải cũ hơn 2 phút, cron `*/5`), thư tới với tiêu đề `AI Translator サポートからの返信 / Reply from AI Translator support`, phần tiếng Anh ở dưới đường kẻ, và câu trả lời xuống dòng đúng hai dòng ở cả Gmail và Outlook cho Windows. Xong thì xóa cuộc chat bằng nút xóa trong khung chat.
+   **Thêm một ca thử thư trả lời hỗ trợ** (đường gửi khác với thư key; chat đã bật từ đợt mục 11): mở chat trên trang tiếng Nhật của website (`https://aitranslator.vn/ja/`), gửi một tin, để lại email của chủ dự án ở thẻ email, rồi đóng trang. Trong Zalo, trả lời bằng `#<mã> ` (mã trong dòng `🆕 #<mã> · web · ja · …` bot vừa gửi, như mục 11) rồi câu trả lời **hai dòng**. Sau khoảng 2 phút tới vài phút (tin phải cũ hơn 2 phút, cron `*/5`), thư tới với tiêu đề `AI Translator サポートからの返信 / Reply from AI Translator support`, phần tiếng Anh ở dưới đường kẻ, và câu trả lời xuống dòng đúng hai dòng ở cả Gmail và Outlook cho Windows. Xong thì xóa cuộc chat bằng nút xóa trong khung chat.
 
 7. **Đặt ngày chính sách 1.6** theo kế hoạch `2026-10-23-email-theo-ngon-ngu.md`, Task 12, **trước khi build app**, rồi **phát hành app 0.2.5** theo mục 2.
 
@@ -1415,7 +1415,7 @@ Nếu một lượt chạy cổng kiểm hỏng giữa chừng, trước khi k�
 
 Lỗi "Bản đã ký không khớp phần thân": dừng hẳn, không đăng tay; xem lượt chạy CI và phần thân trong repo. Lỗi "manifest đang chạy là số X, không phải số <base>": có ai đăng manifest khác từ lúc gõ y; không đăng, xem lại rồi xóa lượt dở nếu bỏ.
 
-Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.io.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `.models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`. Lệnh cũng cảnh báo (không dừng) nếu URL app tải (không tham số) còn trả bản cũ: chờ cache Cloudflare hết hạn rồi kiểm lại.
+Lỗi sau khi đã đăng ("chưa trả đúng bản đã ký"): kiểm `dig @8.8.8.8 releases.aitranslator.vn` (sự cố DNSSEC io.vn 2026-10-22), rồi chạy lại lệnh đăng mà thông báo in ra. Không đăng lại bản sao lưu trong `.models-update/backup/`: app từ chối manifest có số nhỏ hơn bản đã nhận; muốn quay lại thì dùng `--rollback-to`. Lệnh cũng cảnh báo (không dừng) nếu URL app tải (không tham số) còn trả bản cũ: chờ cache Cloudflare hết hạn rồi kiểm lại.
 
 ### 13.4. Quay lại bản trước
 
@@ -1434,3 +1434,86 @@ Bản silero-vad mới chỉ được báo ("có bản mới (chỉ báo)"): đ�
 ### 13.6. Giới hạn đã biết: cổng kiểm chỉ thử với engine hiện tại
 
 Cổng kiểm chạy model mới bằng engine của app lúc này (llama.cpp b11146 trong `tools/`, `asr-worker` build từ `main`). Các mục trong manifest giữ `min_app_version` của chúng. Nếu sau này engine trong app được nâng, phải cân nhắc lại `min_app_version` của các model trước khi đăng (model được thử bằng engine mới có thể không chạy trên app cũ), vì lệnh chưa tự xử lý chuyện này.
+
+## 14. Chuyển sang tên miền `aitranslator.vn`
+
+Spec `docs/superpowers/specs/2026-10-23-ten-mien-aitranslator-vn-design.md` (mục 3 là thứ tự, mục 4 là nghiệm thu), kế hoạch `docs/superpowers/plans/2026-10-23-ten-mien-aitranslator-vn.md`. Code đã nằm trên `main`. **Mỗi bước deploy, push, đẩy tag chỉ làm khi chủ dự án cho phép.** Tên cũ không bị đụng tới cho tới bước 5: trước đó app 0.2.6, website và webhook cũ chạy như thường, nên dừng giữa chừng không làm gãy gì.
+
+```bash
+PROD=https://api.aitranslator.vn
+PADMIN=https://admin.aitranslator.vn
+```
+
+0. **Đưa `aitranslator.vn` vào Cloudflare** (chủ dự án). Dashboard › Add a site › `aitranslator.vn` › gói Free, **trong cùng tài khoản** đang giữ zone `aitranslator.io.vn` (Worker chỉ gắn custom domain vào zone cùng tài khoản). Cloudflare đưa hai nameserver: vào trang quản lý tên miền ở Mắt Bão, thay `ns1.matbao.vn`, `ns2.matbao.vn` bằng hai tên đó. Chờ zone **Active**. Rồi DNS › Settings › DNSSEC › Enable, chép bản ghi DS sang Mắt Bão. Kiểm:
+
+   ```bash
+   dig +short NS aitranslator.vn @8.8.8.8
+   dig +dnssec +short SOA aitranslator.vn @1.1.1.1
+   ```
+
+   Expected: hai nameserver `*.ns.cloudflare.com`; lệnh sau có dòng `RRSIG` (sau khi DS đã lan). Chưa Active thì dừng ở đây.
+
+1. **Email** (chủ dự án, dashboard).
+   - Zone `aitranslator.vn` › Email › Email Routing › bật (Cloudflare tự thêm MX và SPF ở gốc); tạo `support@aitranslator.vn` và `ops@aitranslator.vn` chuyển về Gmail đang dùng cho hai địa chỉ cũ.
+   - Resend › Domains › Add `mail.aitranslator.vn` (cùng vùng như domain cũ), thêm các bản ghi DNS Resend đưa (có nút kết nối Cloudflare), chờ **Verified**; tắt Open Tracking và Click Tracking như domain cũ. Giữ domain cũ `mail.aitranslator.io.vn` tới khi server mới chạy ổn.
+   - DNS › thêm TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:support@aitranslator.vn`.
+
+   Kiểm: gửi một thư từ Gmail khác tới `support@aitranslator.vn` và `ops@aitranslator.vn`, cả hai về hộp thư; `dig +short TXT _dmarc.aitranslator.vn @8.8.8.8` in bản ghi DMARC.
+
+2. **API, bản phát hành, luật của zone.**
+   - R2 custom domain (chủ dự án lấy Zone ID ở trang Overview của zone mới):
+
+     ```bash
+     cd /Users/dtphong/Desktop/software_business/ai-translator/server
+     pnpm exec wrangler r2 bucket domain add ai-translator-releases --domain releases.aitranslator.vn --zone-id <ZONE_ID>
+     ```
+
+     Giữ nguyên domain cũ `releases.aitranslator.io.vn` của bucket. Nếu zone cũ có Cache Rules cho `releases.` thì chép sang zone mới cho `releases.aitranslator.vn`.
+   - Luật của zone mới, chép từ zone cũ: Security › WAF › Rate limiting rules › `webhook-rate-limit` cho `/v1/webhooks/` (5 request mỗi 10 giây mỗi IP, trừ `/v1/webhooks/zalo`, mục 11 bước 8); Rules › Configuration Rules › `zalo-webhook-no-bic` với `(http.host eq "api.aitranslator.vn" and http.request.uri.path eq "/v1/webhooks/zalo")`, Browser Integrity Check = Off. Giữ nguyên các luật của zone cũ (webhook cũ vẫn chạy tới bước 4).
+   - Deploy Worker API (hai tên, `server/wrangler.jsonc`; chỉ sau khi Resend đã Verified ở bước 1, vì `EMAIL_FROM` mới), rồi secret `OPERATOR_EMAIL`:
+
+     ```bash
+     cd /Users/dtphong/Desktop/software_business/ai-translator/server && git branch --show-current && pnpm check && pnpm exec wrangler deploy && pnpm exec wrangler triggers deploy
+     pnpm exec wrangler secret put OPERATOR_EMAIL    # nhập ops@aitranslator.vn
+     curl -s https://api.aitranslator.vn/v1/health; echo; curl -s https://api.aitranslator.io.vn/v1/health; echo
+     curl -sI https://releases.aitranslator.vn/stable/latest.json | head -1; curl -s https://releases.aitranslator.vn/stable/latest.json | head -c 120; echo
+     ```
+
+     Expected: `main`; check đạt; hai dòng `{"ok":true}`; `HTTP/2 200` và JSON có `"version"`. Kiểm cron chạy (sự cố 2026-10-07): Workers › `mt-license` › Triggers còn lịch `*/5`.
+
+3. **Admin.** Zero Trust › Access › Applications › ứng dụng của `mt-license-admin` › thêm hostname `admin.aitranslator.vn` (giữ ứng dụng, nên giữ AUD; `ACCESS_AUD` không đổi). Rồi:
+
+   ```bash
+   cd /Users/dtphong/Desktop/software_business/ai-translator/server && pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
+   curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' "$PADMIN/"
+   ```
+
+   Expected: `302` tới `<team>.cloudflareaccess.com/cdn-cgi/access/login/admin.aitranslator.vn?kid=<AUD>`. Đăng nhập Web Admin, trang Hệ thống đọc được `releases.aitranslator.vn`. Deploy này làm `admin.aitranslator.io.vn` rời Worker admin; tên cũ có lại ở bước 5 (chuyển hướng).
+
+4. **Webhook sang tên mới.**
+   - PayOS (Web Admin › Công cụ › Đăng ký webhook, hay lệnh của mục 4 bước 11 với `$PADMIN`, `$PROD` ở trên). Expected `{"ok":true,"webhook_url":"https://api.aitranslator.vn/v1/webhooks/payos"}`, my.payos.vn hiện URL mới.
+   - Creem › Developers › Webhooks: sửa URL endpoint thành `https://api.aitranslator.vn/v1/webhooks/creem` (giữ ba sự kiện). Nếu Creem cấp **secret ký mới** (tạo endpoint mới thay vì sửa) thì `pnpm exec wrangler secret put CREEM_WEBHOOK_SECRET` ngay, rồi mới xóa endpoint cũ.
+   - Zalo: `dig @8.8.8.8 api.aitranslator.vn +short` in IP, rồi hai lệnh `setWebhook`, `getWebhookInfo` ở mục 11 bước 8 (với `$PROD` mới). Expected `"url":"https://api.aitranslator.vn/v1/webhooks/zalo"`, `verification.ok`.
+   - Thử thật: một đơn VietQR nhỏ và một đơn thẻ 3,99 USD (tự hoàn tiền), như mục 9; thư chứa key đến từ `no-reply@mail.aitranslator.vn`, vào hộp thư đến, SPF/DKIM/DMARC `pass`, `Reply-To: support@aitranslator.vn`. Nhắn bot Zalo một tin trả lời một cuộc chat thử trên app: câu trả lời tới.
+
+5. **Website và chuyển hướng** (cùng ngày với bước 6).
+   - Đặt ngày hiệu lực của EULA 1.4 và chính sách 1.7 là hôm nay theo `docs/legal/README.md` mục "Đổi ngày hiệu lực" (bốn dòng đầu file, README), `pnpm test` ở `website/`, commit.
+   - Deploy: `cd /Users/dtphong/Desktop/software_business/ai-translator/website && git branch --show-current && pnpm test && pnpm deploy`. Lệnh deploy site (chỉ `aitranslator.vn`, tên cũ rời Worker site) rồi Worker `ai-translator-redirect`. Wrangler hỏi "Update them to point to this script instead?" cho `aitranslator.io.vn`, `www.aitranslator.io.vn` (và `admin.aitranslator.io.vn` nếu còn gắn đâu đó): trả lời **có**.
+   - Xóa Worker cũ không còn tên nào: `pnpm exec wrangler delete --name ai-translator-www`.
+   - Kiểm:
+
+     ```bash
+     curl -sI https://aitranslator.vn/ | head -1
+     for u in https://aitranslator.io.vn/tai-xuong/?a=1 https://www.aitranslator.io.vn/en/ https://www.aitranslator.vn/ja/ https://admin.aitranslator.io.vn/; do curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "$u"; done
+     curl -fsSL https://aitranslator.io.vn/install.sh | head -2
+     curl -sI https://aitranslator.vn/ | grep -i '^content-security-policy' | grep -o "connect-src[^;]*"
+     ```
+
+     Expected: `HTTP/2 200`; bốn dòng `301` tới `https://aitranslator.vn/tai-xuong/?a=1`, `https://aitranslator.vn/en/`, `https://aitranslator.vn/ja/`, `https://admin.aitranslator.vn/`; hai dòng đầu của `install.sh` mới; `connect-src 'self' https://api.aitranslator.vn`. Mở bong bóng chat ở `https://aitranslator.vn/lien-he/`, gửi một tin: Zalo nhận.
+   - Công cụ tìm kiếm (chủ dự án): Google Search Console thêm property `aitranslator.vn` (xác minh bằng DNS TXT), gửi `https://aitranslator.vn/sitemap.xml`, rồi ở property cũ dùng **Settings › Change of address** sang `aitranslator.vn`. Bing Webmaster Tools: thêm site mới, dùng **Site Move**. IndexNow đã chạy trong `pnpm deploy`.
+
+6. **App 0.2.7.** Biến GitHub `RELEASES_BASE_URL` = `https://releases.aitranslator.vn` (Settings › Secrets and variables › Actions › Variables) **trước** khi đẩy tag (`release-ready.mjs` so với `updater/source.rs`). Rồi phát hành theo mục 2 (nâng 4 file lên 0.2.7, đợi CI, hỏi rồi đẩy tag, kiểm R2 và SHA, GitHub Release). Kiểm `curl -s https://releases.aitranslator.vn/stable/latest.json` và tên cũ cùng `"version":"0.2.7"`, URL bộ cài trong đó ở `releases.aitranslator.vn`. Trên máy chủ dự án: app 0.2.6 tự cập nhật lên 0.2.7; sau đó kích hoạt, kiểm tra cập nhật, chat, Gửi log cho hỗ trợ đều chạy, `grep -c "io\.vn" ~/Library/Logs/com.aitranslator.desktop/app.log` không tăng sau lần khởi động mới. `pnpm deploy` lại website để trang Tải xuống ghi 0.2.7.
+
+7. **Thông tin bên ngoài** (chủ dự án): website cửa hàng ở Creem (Store settings) và PayOS (thông tin kênh) đổi sang `https://aitranslator.vn` (Creem có thể duyệt lại; link cũ vẫn chuyển hướng nên không gãy); mọi tài khoản đăng ký bằng email `@aitranslator.io.vn` đổi sang email khác; hồ sơ Zalo Bot, GitHub repo (About › Website), mạng xã hội, Claude for Startups ghi tên mới. Sau vài ngày ổn định: xóa domain `mail.aitranslator.io.vn` ở Resend (thư cũ đã gửi xong).
+
+Đường lui: tới hết bước 4, tên cũ chạy nguyên vẹn; webhook lỗi thì đăng ký lại về `https://api.aitranslator.io.vn/…`. Ở bước 5, `pnpm exec wrangler rollback` cho Worker site không trả tên cũ về (custom domain không đi theo bản rollback): muốn bỏ chuyển hướng thì sửa `routes` của `website/wrangler.jsonc` thêm lại `aitranslator.io.vn` và deploy site (trả lời có khi wrangler hỏi).

@@ -22,14 +22,14 @@ Ngày: 2026-10-08 (giờ GMT+7). Chủ dự án chạy lệnh deploy bằng `!` 
 
 ## Deploy `mt-license-admin`
 - Lệnh: `pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc` từ `server/` của thư mục chính (nhánh `main`).
-- Kết quả: `Uploaded mt-license-admin`, 4 tệp tĩnh mới (`index.html`, `index-*.css`, `index-*.js`, `OverviewPage-DJRNS2t6.js`), binding `ASSETS`, `API (mt-license#AdminRpc)`, `DB`; `admin.aitranslator.io.vn (custom domain)`.
+- Kết quả: `Uploaded mt-license-admin`, 4 tệp tĩnh mới (`index.html`, `index-*.css`, `index-*.js`, `OverviewPage-DJRNS2t6.js`), binding `ASSETS`, `API (mt-license#AdminRpc)`, `DB`; `admin.aitranslator.vn (custom domain)`.
 - **Current Version ID: `596d98e8-ab15-493d-9237-2d722ec419c4`** (deploy sau 11:46 giờ VN, lúc chủ dự án chạy `pnpm check` ngay trước đó). Bản liền trước (đường lui): `5c6e9b38-19d0-42fe-9bc9-aa8cd3fb9acc`.
 
 ## Kiểm từ ngoài, không đăng nhập (sau deploy)
-`https://admin.aitranslator.io.vn` các đường `/`, `/overview`, `/admin/stats`, `/admin/whoami` và `/assets/OverviewPage-DJRNS2t6.js`: cả năm `302` sang trang đăng nhập Access; mã audience trong địa chỉ đăng nhập khớp `ACCESS_AUD`. Không có đường nào trả `200`.
+`https://admin.aitranslator.vn` các đường `/`, `/overview`, `/admin/stats`, `/admin/whoami` và `/assets/OverviewPage-DJRNS2t6.js`: cả năm `302` sang trang đăng nhập Access; mã audience trong địa chỉ đăng nhập khớp `ACCESS_AUD`. Không có đường nào trả `200`.
 
 ## Nghiệm thu (kế hoạch 03, Task 3)
-Chủ dự án nghiệm thu trên `https://admin.aitranslator.io.vn/overview` và báo "ok", không có lỗi nào được nêu. Kết quả ghi theo lời báo chung; không có chi tiết từng mục nên không ghi mục nào là agent đã tận mắt thấy.
+Chủ dự án nghiệm thu trên `https://admin.aitranslator.vn/overview` và báo "ok", không có lỗi nào được nêu. Kết quả ghi theo lời báo chung; không có chi tiết từng mục nên không ghi mục nào là agent đã tận mắt thấy.
 
 | Bước | Kết quả |
 |---|---|

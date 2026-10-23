@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Website `aitranslator.io.vn` (tiếng Việt và tiếng Anh) giới thiệu đúng tính năng Gõ dịch: có trang hướng dẫn riêng, có mặt ở Trang chủ, Tính năng, Bảng giá, Hỏi đáp, Dữ liệu và bảo mật, Khắc phục sự cố, bảng phím tắt; không còn câu nào trở thành sai khi có Gõ dịch ("năm phím tắt", "cần đúng một quyền trên macOS", "dịch một chiều" nói chung). Chính sách quyền riêng tư lên bản 1.4, nói chữ gõ ở lại trên máy, việc ghi clipboard và quyền Trợ năng. Có test chặn câu cũ quay lại.
+**Goal:** Website `aitranslator.vn` (tiếng Việt và tiếng Anh) giới thiệu đúng tính năng Gõ dịch: có trang hướng dẫn riêng, có mặt ở Trang chủ, Tính năng, Bảng giá, Hỏi đáp, Dữ liệu và bảo mật, Khắc phục sự cố, bảng phím tắt; không còn câu nào trở thành sai khi có Gõ dịch ("năm phím tắt", "cần đúng một quyền trên macOS", "dịch một chiều" nói chung). Chính sách quyền riêng tư lên bản 1.4, nói chữ gõ ở lại trên máy, việc ghi clipboard và quyền Trợ năng. Có test chặn câu cũ quay lại.
 
 **Architecture:** Website tĩnh sinh bằng Node thuần (`website/`, đọc `website/README.md` trước). Văn bản pháp lý là nguồn duy nhất: `docs/legal/privacy.{vi,en}.md` vừa được app đóng gói lúc build, vừa sinh hai trang chính sách của website. Ảnh giao diện chụp từ giao diện thật của app chạy với IPC giả (`scripts/ui-preview/`). Chính sách đổi nội dung trước (dòng phiên bản vẫn 1.3), rồi lên 1.4 kèm ngày hiệu lực bằng một lệnh **vào ngày phát hành, trước khi build app** (`docs/legal/README.md`, "Đổi ngày hiệu lực").
 
@@ -2032,7 +2032,7 @@ Cùng file, tìm đoạn (duy nhất):
 </tbody></table></div>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng năm nơi, và không nơi nào nhận âm thanh hay nội dung chép lời. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
+<p>Đúng năm nơi, và không nơi nào nhận âm thanh hay nội dung chép lời. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 ```
 
@@ -2043,7 +2043,7 @@ thay bằng:
 <p>Trên macOS, Gõ dịch xin quyền Trợ năng (Accessibility) chỉ để gửi tổ hợp dán ⌘V vào ô chat bạn đang gõ. App không đọc chữ, nội dung hay clipboard của app khác; không cấp quyền thì app chỉ chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>).</p>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.io.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
+<p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn). Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 ```
 
@@ -2116,7 +2116,7 @@ Cùng file, tìm đoạn (duy nhất):
 </tbody></table></div>
 
 <h2 id="network">Where does the app connect?</h2>
-<p>To exactly five places, and none of them receives audio or transcript content. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
+<p>To exactly five places, and none of them receives audio or transcript content. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 ```
 
@@ -2127,7 +2127,7 @@ thay bằng:
 <p>On macOS, Type &amp; Translate asks for the Accessibility permission only to send the ⌘V paste keys to the chat box you are typing in. The app does not read text, content or the clipboard of other apps; without the permission it only copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>).</p>
 
 <h2 id="network">Where does the app connect?</h2>
-<p>To exactly five places, and none of them receives audio, transcript content or the text you type. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.io.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
+<p>To exactly five places, and none of them receives audio, transcript content or the text you type. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due). Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 ```
 

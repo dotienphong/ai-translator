@@ -43,10 +43,10 @@ Commit: `git commit -am "chore(release): 0.1.0-beta.1"`. Kiểm cấu hình phá
 
 ```bash
 node scripts/release/release-ready.mjs --tag v0.1.0-beta.1
-node scripts/release/release-ready.mjs --base-url https://releases.aitranslator.io.vn
+node scripts/release/release-ready.mjs --base-url https://releases.aitranslator.vn
 ```
 
-Phải in `tag v0.1.0-beta.1 khớp tauri.conf.json` và `đủ cấu hình production`. Lệnh thứ hai kiểm `src-tauri/src/updater/source.rs` trỏ đúng `https://releases.aitranslator.io.vn`.
+Phải in `tag v0.1.0-beta.1 khớp tauri.conf.json` và `đủ cấu hình production`. Lệnh thứ hai kiểm `src-tauri/src/updater/source.rs` trỏ đúng `https://releases.aitranslator.vn`.
 
 ## 4. Chuẩn bị hai file mà bước build cần
 
@@ -137,7 +137,7 @@ pnpm -C server exec wrangler r2 object put "ai-translator-releases/${VERSION}/SH
   --file target/release-out/SHA256SUMS-macos.txt --content-type text/plain --remote
 ```
 
-Địa chỉ tải: `https://releases.aitranslator.io.vn/<version>/AI%20Translator_<version>_aarch64.dmg` (khoảng trắng là `%20`). Nếu `wrangler` báo thiếu quyền R2 thì dùng `rclone` với token R2 của bucket như lúc đăng model.
+Địa chỉ tải: `https://releases.aitranslator.vn/<version>/AI%20Translator_<version>_aarch64.dmg` (khoảng trắng là `%20`). Nếu `wrangler` báo thiếu quyền R2 thì dùng `rclone` với token R2 của bucket như lúc đăng model.
 
 Trang tải nên có: tên và số phiên bản, yêu cầu máy (Apple Silicon, macOS 14.2+), **mã SHA-256**, và hướng dẫn mục 8. Đừng tạo file `<version>/published.json`: đó là dấu của job `publish` trong CI báo "bản này đã đăng"; tạo tay thì CI sẽ bỏ qua bản đó.
 
@@ -158,7 +158,7 @@ Sau khi đăng, tải thử file từ chính địa chỉ đó rồi `shasum -a 
 | `thiếu THIRD_PARTY_NOTICES.txt: chạy scripts/release/notices.mjs trước` | Làm mục 4b |
 | Lệnh `notices.mjs` báo `thiếu --out <file>` | Phải truyền `--out THIRD_PARTY_NOTICES.txt` như mục 4b |
 | App chạy nhưng chỉ có gói Free, báo "bản cài không chính hãng" | Quên `AI_TRANSLATOR_MAC_SIGNING=adhoc` ở mục 5: build lại |
-| `release-ready` báo `EXTERNAL_HOSTS chưa có tên miền website` | Thiếu `"aitranslator.io.vn"` trong `src-tauri/src/navigation.rs` (đã có từ commit `88a9749`; `git pull`) |
+| `release-ready` báo `EXTERNAL_HOSTS chưa có tên miền website` | Thiếu `"aitranslator.vn"` trong `src-tauri/src/navigation.rs` (đã có từ commit `88a9749`; `git pull`) |
 | `release-ready` báo tag không khớp | Số `version` trong `tauri.conf.json` phải đúng `v<version>` của tag, kể cả đuôi `-beta.N` |
 | Hết chỗ trống đĩa giữa chừng | Xóa `target/debug/incremental` và các `target/*/incremental` khác, build lại |
 | Build chạy nền báo thất bại giả | Công cụ chạy nền đôi khi báo lỗi dù tiến trình vẫn chạy: xem `pgrep -fl package-macos` và tệp log trước khi kết luận |

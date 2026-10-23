@@ -392,8 +392,8 @@ Tạo `server/test/vectors/scrub-v1.json`:
     { "name": "email", "input": "liên hệ an.nguyen+test@example.co.uk ngay", "expected": "liên hệ <email> ngay" },
     {
       "name": "query của URL",
-      "input": "GET https://api.aitranslator.io.vn/v1/orders/1000013?token=abc123&x=1 200",
-      "expected": "GET https://api.aitranslator.io.vn/v1/orders/1000013?<query> 200"
+      "input": "GET https://api.aitranslator.vn/v1/orders/1000013?token=abc123&x=1 200",
+      "expected": "GET https://api.aitranslator.vn/v1/orders/1000013?<query> 200"
     },
     {
       "name": "dòng thường không đổi",

@@ -1,6 +1,8 @@
-# Tên miền riêng `aitranslator.io.vn` cho hệ thống
+# Tên miền riêng `aitranslator.vn` cho hệ thống
 
-Ngày 2026-10-06. Chủ dự án mua tên miền riêng `aitranslator.io.vn` cho sản phẩm và chọn chuyển URL ngay, trước khi phát bản beta cho người khác. Bản này thay bản cùng tên viết sớm hơn trong ngày (dùng `ai-solutions.io.vn`, tên miền của mapsLibVN; bỏ vì chưa triển khai và nay có tên miền riêng). Thay các chỗ "chưa có tên miền" của spec gốc §15 (Q1, T7), kế hoạch 05 (Task 19–21) và spec 2026-10-04 (§1). Khớp yêu cầu D2 của spec gốc: sản phẩm tách hẳn khỏi dự án khác, kể cả tên miền.
+> **Ghi chú 2026-10-23:** tên miền trong file này đã được thay bằng tên chính thức `aitranslator.vn` theo yêu cầu của chủ dự án. Đợt 2026-10-06 thật ra làm trên `aitranslator.io.vn`; việc chuyển sang `aitranslator.vn` và vai trò còn lại của tên cũ ở spec `2026-10-23-ten-mien-aitranslator-vn-design.md`.
+
+Ngày 2026-10-06. Chủ dự án mua tên miền riêng `aitranslator.vn` cho sản phẩm và chọn chuyển URL ngay, trước khi phát bản beta cho người khác. Bản này thay bản cùng tên viết sớm hơn trong ngày (dùng `ai-solutions.io.vn`, tên miền của mapsLibVN; bỏ vì chưa triển khai và nay có tên miền riêng). Thay các chỗ "chưa có tên miền" của spec gốc §15 (Q1, T7), kế hoạch 05 (Task 19–21) và spec 2026-10-04 (§1). Khớp yêu cầu D2 của spec gốc: sản phẩm tách hẳn khỏi dự án khác, kể cả tên miền.
 
 ## 1. Vì sao làm bây giờ
 
@@ -11,46 +13,46 @@ Ngày 2026-10-06. Chủ dự án mua tên miền riêng `aitranslator.io.vn` cho
 
 ## 2. Hiện trạng (2026-10-06)
 
-- `aitranslator.io.vn` **chưa được ủy quyền**: máy chủ gốc của `.vn` trả `NXDOMAIN`, không có NS. Phải hoàn tất đăng ký (xác minh danh tính với `.vn` nếu còn chờ) và đặt nameserver về Cloudflare trước (bước 0 ở mục 6).
+- `aitranslator.vn` **chưa được ủy quyền**: máy chủ gốc của `.vn` trả `NXDOMAIN`, không có NS. Phải hoàn tất đăng ký (xác minh danh tính với `.vn` nếu còn chờ) và đặt nameserver về Cloudflare trước (bước 0 ở mục 6).
 - Tài khoản Cloudflare dùng chung với mapsLibVN (chủ dự án chấp nhận, 2026-10-05); **zone là zone mới, riêng**, nên luật WAF, Email Routing và bản ghi DNS của sản phẩm này không lẫn với dự án kia. Worker custom domain bắt buộc zone nằm cùng tài khoản với Worker.
 - Chưa có bản cài nào ngoài máy của chủ dự án.
 
 ## 3. Quyết định
 
-Chỉ dùng subdomain **một cấp** dưới `aitranslator.io.vn` (chứng chỉ Universal SSL miễn phí của Cloudflare phủ gốc và một cấp subdomain; hai cấp thì cần gói trả phí).
+Chỉ dùng subdomain **một cấp** dưới `aitranslator.vn` (chứng chỉ Universal SSL miễn phí của Cloudflare phủ gốc và một cấp subdomain; hai cấp thì cần gói trả phí).
 
 | Mục đích | Tên | Gắn với | Ghi chú |
 |---|---|---|---|
-| License server (API công khai) | `api.aitranslator.io.vn` | Worker `mt-license`, route `custom_domain` | App gọi tên này |
-| Bản cập nhật và model | `releases.aitranslator.io.vn` | R2 bucket `ai-translator-releases`, custom domain | Thay `r2.dev` |
-| Gửi email (Resend) | `mail.aitranslator.io.vn` | Resend: SPF, DKIM, bản ghi bounce | From: `AI Translator <no-reply@mail.aitranslator.io.vn>`; Reply-To: `support@aitranslator.io.vn` |
-| Nhận email hỗ trợ | `support@aitranslator.io.vn` | Cloudflare Email Routing (MX và SPF ở gốc) | Chuyển tiếp tới Gmail của chủ dự án |
-| Website, trang chính sách | `aitranslator.io.vn` (gốc) và `www` | để dành | Website có spec riêng; chưa tạo bản ghi |
-| Admin | `admin.aitranslator.io.vn` (từ 2026-10-08; trước đó `mt-license-admin.dotienphong1993.workers.dev`, `workers.dev` đã tắt) | Worker admin sau Cloudflare Access, custom domain | Xem dưới |
+| License server (API công khai) | `api.aitranslator.vn` | Worker `mt-license`, route `custom_domain` | App gọi tên này |
+| Bản cập nhật và model | `releases.aitranslator.vn` | R2 bucket `ai-translator-releases`, custom domain | Thay `r2.dev` |
+| Gửi email (Resend) | `mail.aitranslator.vn` | Resend: SPF, DKIM, bản ghi bounce | From: `AI Translator <no-reply@mail.aitranslator.vn>`; Reply-To: `support@aitranslator.vn` |
+| Nhận email hỗ trợ | `support@aitranslator.vn` | Cloudflare Email Routing (MX và SPF ở gốc) | Chuyển tiếp tới Gmail của chủ dự án |
+| Website, trang chính sách | `aitranslator.vn` (gốc) và `www` | để dành | Website có spec riêng; chưa tạo bản ghi |
+| Admin | `admin.aitranslator.vn` (từ 2026-10-08; trước đó `mt-license-admin.dotienphong1993.workers.dev`, `workers.dev` đã tắt) | Worker admin sau Cloudflare Access, custom domain | Xem dưới |
 
-Vì sao tách email gửi ra `mail.`: gốc dùng cho **nhận** thư (Email Routing đặt MX và SPF ở gốc); Resend gửi từ subdomain riêng để không phải gộp SPF của hai hệ thống vào một bản ghi và để uy tín gửi thư không ảnh hưởng thư nhận. Bản ghi DMARC đặt ở gốc: `v=DMARC1; p=none; rua=mailto:support@aitranslator.io.vn`, siết lên `quarantine` sau vài tuần báo cáo sạch.
+Vì sao tách email gửi ra `mail.`: gốc dùng cho **nhận** thư (Email Routing đặt MX và SPF ở gốc); Resend gửi từ subdomain riêng để không phải gộp SPF của hai hệ thống vào một bản ghi và để uy tín gửi thư không ảnh hưởng thư nhận. Bản ghi DMARC đặt ở gốc: `v=DMARC1; p=none; rua=mailto:support@aitranslator.vn`, siết lên `quarantine` sau vài tuần báo cáo sạch.
 
-**Cập nhật 2026-10-08: admin đã chuyển sang `admin.aitranslator.io.vn`** (chủ dự án yêu cầu để địa chỉ gọn; `routes` custom domain trong `wrangler.admin.jsonc`; `workers_dev` của admin tắt cùng ngày sau khi tên miền chạy ổn). Đoạn dưới là lập luận của đợt đầu.
+**Cập nhật 2026-10-08: admin đã chuyển sang `admin.aitranslator.vn`** (chủ dự án yêu cầu để địa chỉ gọn; `routes` custom domain trong `wrangler.admin.jsonc`; `workers_dev` của admin tắt cùng ngày sau khi tên miền chạy ổn). Đoạn dưới là lập luận của đợt đầu.
 
 **Admin không chuyển sang tên miền ở đợt này.** Chỉ chủ dự án dùng; chuyển nó buộc tạo lại ứng dụng Access (làm tay trên dashboard) và đổi `ACCESS_AUD`, mà không mang lại gì cho khách. Chỉ đổi biến `API_ORIGIN` của Worker admin sang origin mới, vì lệnh `confirm-webhook` kiểm URL webhook theo origin đó. Chuyển admin là việc riêng, làm sau nếu cần (khi đó tắt luôn `workers_dev` của admin).
 
 **Giữ tạm `workers_dev` và `r2.dev`** cho tới khi mọi bản cài (hiện chỉ máy chủ dự án) đã chuyển sang bản mới: bản cài cũ vẫn gọi được, và có đường lui. Tắt chúng là việc riêng, làm sau.
 
-Thông tin pháp lý ghi vào EULA, chính sách quyền riêng tư, `copyright`: **Đỗ Tiến Phong**; email hỗ trợ `support@aitranslator.io.vn`; thương hiệu hiển thị "AI Translator". Mọi chỗ trong tài liệu trước nhắc `support@ai-solutions.io.vn` thì thay bằng địa chỉ này.
+Thông tin pháp lý ghi vào EULA, chính sách quyền riêng tư, `copyright`: **Đỗ Tiến Phong**; email hỗ trợ `support@aitranslator.vn`; thương hiệu hiển thị "AI Translator". Mọi chỗ trong tài liệu trước nhắc `support@ai-solutions.io.vn` thì thay bằng địa chỉ này.
 
 ## 4. Thay đổi trong repo
 
 | File | Thay đổi |
 |---|---|
-| `src-tauri/src/license/client.rs` | `PRODUCTION_URL` = `https://api.aitranslator.io.vn` |
-| `src-tauri/src/updater/source.rs` | `PRODUCTION_URL` = `https://releases.aitranslator.io.vn` |
-| `src-tauri/src/models/source.rs` | `PRODUCTION_URL` = `https://releases.aitranslator.io.vn/models/models.json` |
-| `server/wrangler.jsonc` | thêm `routes` với `custom_domain: true` cho `api.aitranslator.io.vn`; giữ `workers_dev: true` tạm; `EMAIL_FROM` mới; biến `EMAIL_REPLY_TO` |
-| `server/wrangler.admin.jsonc` | `API_ORIGIN` = `https://api.aitranslator.io.vn` |
+| `src-tauri/src/license/client.rs` | `PRODUCTION_URL` = `https://api.aitranslator.vn` |
+| `src-tauri/src/updater/source.rs` | `PRODUCTION_URL` = `https://releases.aitranslator.vn` |
+| `src-tauri/src/models/source.rs` | `PRODUCTION_URL` = `https://releases.aitranslator.vn/models/models.json` |
+| `server/wrangler.jsonc` | thêm `routes` với `custom_domain: true` cho `api.aitranslator.vn`; giữ `workers_dev: true` tạm; `EMAIL_FROM` mới; biến `EMAIL_REPLY_TO` |
+| `server/wrangler.admin.jsonc` | `API_ORIGIN` = `https://api.aitranslator.vn` |
 | `server/src` (email) | `ResendEmailProvider` gửi thêm `reply_to` từ `EMAIL_REPLY_TO` (có test) |
 | `bench/phase1/results/acceptance/a7-allow.json` | thay hai máy chủ cũ bằng hai tên mới |
 | `docs/release/phat-hanh.md` | `PROD`, `RELEASES_BASE_URL`, mục tên miền, Resend, Email Routing, WAF |
-| Biến repo GitHub | `RELEASES_BASE_URL` = `https://releases.aitranslator.io.vn` (đặt trên GitHub, không phải file); `release-ready.mjs` đã tự kiểm khớp với `source.rs` |
+| Biến repo GitHub | `RELEASES_BASE_URL` = `https://releases.aitranslator.vn` (đặt trên GitHub, không phải file); `release-ready.mjs` đã tự kiểm khớp với `source.rs` |
 
 Test hiện có khóa các giá trị này (`release-ready.test.mjs`, test cấu hình Worker, test Rust) phải cập nhật cùng lúc.
 
@@ -64,10 +66,10 @@ Manifest model (`models.json`) dùng đường dẫn tương đối (`whisper/�
 | Worker `mt-license` ra tên mới | agent soạn lệnh, chủ dự án chạy `wrangler deploy` | `custom_domain` tự tạo bản ghi DNS và chứng chỉ |
 | R2 custom domain | chủ dự án | Dashboard: R2 › bucket › Settings › Custom Domains, hoặc `wrangler r2 bucket domain add` (cần Zone ID) |
 | Email Routing: bật, tạo `support@`, xác thực địa chỉ đích | chủ dự án | Cloudflare › Email › Email Routing; Cloudflare tự thêm MX và SPF ở gốc |
-| Resend: thêm domain `mail.aitranslator.io.vn`, thêm bản ghi DNS, chờ xác thực | chủ dự án | Dashboard Resend; thêm bản ghi ở Cloudflare DNS (Resend có nút kết nối Cloudflare) |
+| Resend: thêm domain `mail.aitranslator.vn`, thêm bản ghi DNS, chờ xác thực | chủ dự án | Dashboard Resend; thêm bản ghi ở Cloudflare DNS (Resend có nút kết nối Cloudflare) |
 | Bản ghi DMARC ở gốc | chủ dự án | Cloudflare DNS, TXT `_dmarc` |
 | Đăng ký lại webhook PayOS | chủ dự án chạy lệnh, agent soạn | `POST /admin/payos/confirm-webhook` với URL mới; phải đúng `API_ORIGIN` mới |
-| Luật WAF rate limit `/v1/webhooks/` | chủ dự án | Dashboard, theo kế hoạch 05 Task 21 Step 9a, cho zone mới (`api.aitranslator.io.vn`) |
+| Luật WAF rate limit `/v1/webhooks/` | chủ dự án | Dashboard, theo kế hoạch 05 Task 21 Step 9a, cho zone mới (`api.aitranslator.vn`) |
 | Biến GitHub `RELEASES_BASE_URL` | chủ dự án | Settings › Secrets and variables › Actions › Variables |
 | Cập nhật cấu hình kênh PayOS nếu có trường tên miền hay website | chủ dự án | Dashboard my.payos.vn |
 
@@ -83,9 +85,9 @@ Manifest model (`models.json`) dùng đường dẫn tương đối (`whisper/�
 
 ## 7. Nghiệm thu
 
-- `curl https://api.aitranslator.io.vn/v1/health` trả `{"ok":true}` qua TLS hợp lệ; `POST /v1/licenses/validate` trả đúng như `workers.dev`.
-- `curl -I https://releases.aitranslator.io.vn/models/models.json` trả 200, `Range` trả 206, `Cache-Control` đúng; `latest.json` mới nhất không bị cache cũ.
-- Email thử gửi tới một địa chỉ ngoài chủ tài khoản Resend, vào hộp thư đến (không spam), SPF, DKIM, DMARC "pass", có `Reply-To` là `support@aitranslator.io.vn`; thư gửi `support@aitranslator.io.vn` về tới Gmail.
+- `curl https://api.aitranslator.vn/v1/health` trả `{"ok":true}` qua TLS hợp lệ; `POST /v1/licenses/validate` trả đúng như `workers.dev`.
+- `curl -I https://releases.aitranslator.vn/models/models.json` trả 200, `Range` trả 206, `Cache-Control` đúng; `latest.json` mới nhất không bị cache cũ.
+- Email thử gửi tới một địa chỉ ngoài chủ tài khoản Resend, vào hộp thư đến (không spam), SPF, DKIM, DMARC "pass", có `Reply-To` là `support@aitranslator.vn`; thư gửi `support@aitranslator.vn` về tới Gmail.
 - Luật WAF chặn khi gửi quá 5 request mỗi 10 giây tới `/v1/webhooks/` (trả `429 rate_limited`).
 - Bản app mới: kích hoạt key, nhập Pro, kiểm tra cập nhật không lỗi chứng chỉ, tải manifest model; log không còn nhắc `workers.dev` hay `r2.dev`.
 - A7 chạy lại một lượt ngắn trên bản mới: mọi request ra ngoài tới hai tên mới, nằm trong `a7-allow.json` đã cập nhật.
@@ -102,4 +104,4 @@ Manifest model (`models.json`) dùng đường dẫn tương đối (`whisper/�
 
 ## 9. Ngoài phạm vi
 
-Website (`aitranslator.io.vn` gốc), tắt `workers.dev` và `r2.dev`, đưa admin sang tên miền (cần ứng dụng Access mới), nội dung EULA và chính sách quyền riêng tư (Q8; tên pháp lý và email đã chốt), Windows.
+Website (`aitranslator.vn` gốc), tắt `workers.dev` và `r2.dev`, đưa admin sang tên miền (cần ứng dụng Access mới), nội dung EULA và chính sách quyền riêng tư (Q8; tên pháp lý và email đã chốt), Windows.
