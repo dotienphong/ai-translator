@@ -148,19 +148,19 @@ for (const page of PAGES) {
     const sel = `#${page.win} .cmd-copy`;
     const label = await p.eval(`document.querySelector(${JSON.stringify(sel)}).querySelector("span").textContent`);
     await p.click(sel);
-    assert.deepEqual(await p.eval("window.__copied"), ["irm https://aitranslator.io.vn/install.ps1 | iex"]);
+    assert.deepEqual(await p.eval("window.__copied"), ["irm https://aitranslator.vn/install.ps1 | iex"]);
     assert.equal(await p.eval(`document.querySelector(${JSON.stringify(sel)}).querySelector("span").textContent`), page.copy);
     assert.equal(await p.eval(`document.querySelector(${JSON.stringify(sel)}).classList.contains("is-copied")`), true);
     assert.ok(label.length > 0);
     // Nội dung khối lệnh hiển thị đúng bằng nội dung chép (không lẫn dấu nhắc)
-    assert.equal(await p.eval(`document.querySelector("#${page.win} .cmd code").textContent`), "irm https://aitranslator.io.vn/install.ps1 | iex");
+    assert.equal(await p.eval(`document.querySelector("#${page.win} .cmd code").textContent`), "irm https://aitranslator.vn/install.ps1 | iex");
     await p.click(`#${page.win} [data-copy-link]`).catch(() => {}); // không có nút này trên máy tính: bỏ qua
     await p.close();
   });
 
   test(`${page.lang}: macOS: lệnh trong khối lệnh đúng, và có ba bước đánh số`, { skip }, async () => {
     const p = await open(page, { ua: UA.mac });
-    assert.equal(await p.eval(`document.querySelector("#${page.mac} .cmd code").textContent`), "curl -fsSL https://aitranslator.io.vn/install.sh | bash");
+    assert.equal(await p.eval(`document.querySelector("#${page.mac} .cmd code").textContent`), "curl -fsSL https://aitranslator.vn/install.sh | bash");
     assert.equal(await p.eval(`document.querySelectorAll("#${page.mac} > .flow > li").length`), 3);
     await p.close();
   });

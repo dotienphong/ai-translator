@@ -1,0 +1,20 @@
+// Worker nhỏ chuyển hướng về tên miền chính thức (spec 2026-10-23-ten-mien-aitranslator-vn §2.3), thay Worker ai-translator-www:
+// www.aitranslator.vn, tên cũ aitranslator.io.vn và www của nó → https://aitranslator.vn; admin.aitranslator.io.vn →
+// https://admin.aitranslator.vn. 301, giữ đường dẫn và query (src/redirect.mjs). Triển khai trong `pnpm deploy`, sau site.
+// Tên đang gắn với Worker khác (lần đầu: aitranslator.io.vn của ai-translator-site, www.aitranslator.io.vn của ai-translator-www,
+// admin.aitranslator.io.vn của mt-license-admin) thì wrangler hỏi "Update them to point to this script instead?": trả lời có.
+// Sau lần đầu, Worker ai-translator-www không còn tên nào: xóa bằng `pnpm exec wrangler delete --name ai-translator-www`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-translator-redirect",
+  "main": "src/redirect.mjs",
+  "compatibility_date": "2026-09-26",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "www.aitranslator.vn", "custom_domain": true },
+    { "pattern": "aitranslator.io.vn", "custom_domain": true },
+    { "pattern": "www.aitranslator.io.vn", "custom_domain": true },
+    { "pattern": "admin.aitranslator.io.vn", "custom_domain": true }
+  ]
+}

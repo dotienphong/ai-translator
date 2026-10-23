@@ -94,11 +94,11 @@ const SET = [
     ko: { t: "자주 묻는 질문", s: "오프라인, 개인정보, 언어, 요금, 설치, 문제 해결." },
   }],
   ["contact", {
-    vi: { t: "Liên hệ và hỗ trợ", s: "support@aitranslator.io.vn" },
-    en: { t: "Contact and support", s: "support@aitranslator.io.vn" },
-    ja: { t: "お問い合わせとサポート", s: "support@aitranslator.io.vn" },
-    zh: { t: "联系与支持", s: "support@aitranslator.io.vn" },
-    ko: { t: "문의 및 지원", s: "support@aitranslator.io.vn" },
+    vi: { t: "Liên hệ và hỗ trợ", s: "support@aitranslator.vn" },
+    en: { t: "Contact and support", s: "support@aitranslator.vn" },
+    ja: { t: "お問い合わせとサポート", s: "support@aitranslator.vn" },
+    zh: { t: "联系与支持", s: "support@aitranslator.vn" },
+    ko: { t: "문의 및 지원", s: "support@aitranslator.vn" },
   }],
   ["legal", {
     vi: { t: "Điều khoản và quyền riêng tư", s: "Văn bản đầy đủ của AI Translator." },

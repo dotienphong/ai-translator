@@ -20,11 +20,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "インストールでよくある問題" },
 ];
 
-const INSTALL_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
+const INSTALL_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
 
 const HOWTO_STEPS = [
   { name: "PowerShell を開く", text: "Windows キーを押し、PowerShell と入力して Enter を押します。管理者として実行する必要はありません。" },
-  { name: "インストールのコマンドを貼り付けて Enter を押す", text: "irm https://aitranslator.io.vn/install.ps1 | iex を PowerShell に貼り付けて Enter を押します。" },
+  { name: "インストールのコマンドを貼り付けて Enter を押す", text: "irm https://aitranslator.vn/install.ps1 | iex を PowerShell に貼り付けて Enter を押します。" },
   { name: "アプリが開くのを待つ", text: "コマンドが最新版をダウンロードし、SHA-256 を確認し、あなたのアカウントだけにインストーラーを画面表示なしで実行して、AI Translator を開きます。" },
 ];
 
@@ -83,14 +83,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "コマンドをコピー", copied: "コピ
 <li>続きは<a href="/ja/guide/quick-start/">クイックスタートガイド</a>をご覧ください。</li>
 </ol>
 <p><strong>なぜ SmartScreen の画面が出ないのですか？</strong>SmartScreen が確認するのは、「インターネットからダウンロードした」という印（ブラウザーが付けます）が付いたファイルを、エクスプローラーから開いたときだけです。PowerShell でダウンロードしたファイルにはこの印がなく、インストーラーも PowerShell から実行されるため、このビルドがコード署名されていなくても警告は出ません。</p>
-${callout({ kind: "warn", title: "このコマンドが何をするのかを理解しておいてください。", text: "コマンドは <strong>aitranslator.io.vn</strong> からスクリプトをダウンロードし、そのスクリプトが <strong>releases.aitranslator.io.vn</strong> からインストーラーをダウンロードして、SHA-256 を照合してからインストールします。管理者権限は不要で、データを送ることもありません。SHA-256 はファイルと同じ場所から配信されるので、おもに壊れたダウンロードを防ぐためのものです。<strong>aitranslator.io.vn</strong> を信頼していることに変わりはありません。先にスクリプトを読むには、表示してから実行するコマンドを使います：<code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>。同じコマンドをいつでももう一度実行すれば更新できます。インストーラーは実行中のアプリを自分で閉じます。" })}
+${callout({ kind: "warn", title: "このコマンドが何をするのかを理解しておいてください。", text: "コマンドは <strong>aitranslator.vn</strong> からスクリプトをダウンロードし、そのスクリプトが <strong>releases.aitranslator.vn</strong> からインストーラーをダウンロードして、SHA-256 を照合してからインストールします。管理者権限は不要で、データを送ることもありません。SHA-256 はファイルと同じ場所から配信されるので、おもに壊れたダウンロードを防ぐためのものです。<strong>aitranslator.vn</strong> を信頼していることに変わりはありません。先にスクリプトを読むには、表示してから実行するコマンドを使います：<code>$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s</code>。同じコマンドをいつでももう一度実行すれば更新できます。インストーラーは実行中のアプリを自分で閉じます。" })}
 <p>うまくいきませんでしたか？スクリプトは止まって理由を表示します（対応していない PC、ネットワークがない、SHA-256 が一致しない…）。<a href="#common-problems">インストールでよくある問題</a>をご覧ください。</p>
 
 <h2 id="install-exe">別の方法：.exe ファイルからインストール</h2>
 <p>.exe をメールで受け取った場合や、PowerShell を使いたくない場合はこの方法を使います。ブラウザーでダウンロードしたファイルには「インターネットからダウンロードした」という印が付くため、SmartScreen が警告することがあります。</p>
 
 <h3 id="verify-the-file">インストーラーを確認する（SHA-256）</h3>
-${callout({ kind: "warn", title: "インストーラーは公式の入手先からだけダウンロードしてください。", text: "本物の .exe は、私たちが <strong>support@aitranslator.io.vn</strong> からお送りするもの、または <strong>aitranslator.io.vn</strong> にリンクがあるものです。それ以外の場所から入手したファイルは偽物や改ざんされたものの可能性があります。名前が AI Translator でも実行しないでください。" })}
+${callout({ kind: "warn", title: "インストーラーは公式の入手先からだけダウンロードしてください。", text: "本物の .exe は、私たちが <strong>support@aitranslator.vn</strong> からお送りするもの、または <strong>aitranslator.vn</strong> にリンクがあるものです。それ以外の場所から入手したファイルは偽物や改ざんされたものの可能性があります。名前が AI Translator でも実行しないでください。" })}
 <p>メールでお送りするインストーラーには、すべて SHA-256 チェックサムを添えています。Windows 版はコード署名されていないため、これを照合することがファイルが改ざんされていないことを確かめる方法になります。インストールする前に行ってください：</p>
 <ol>
 <li><strong>PowerShell</strong> を開きます：スタートを押し、<code>PowerShell</code> と入力して <strong>Windows PowerShell</strong> を開きます。</li>
@@ -146,7 +146,7 @@ ${callout({ kind: "warn", title: "なぜ Windows は警告するのですか？"
 
 <h2 id="common-problems">インストールでよくある問題</h2>
 <ul>
-<li><strong>インストールのコマンドが https://releases.aitranslator.io.vn/stable/latest.json を読み取れないと表示する。</strong>PC がネットワークにつながっていないか、プロキシや VPN が <code>releases.aitranslator.io.vn</code> をブロックしています。接続を確認して、もう一度実行してください。</li>
+<li><strong>インストールのコマンドが https://releases.aitranslator.vn/stable/latest.json を読み取れないと表示する。</strong>PC がネットワークにつながっていないか、プロキシや VPN が <code>releases.aitranslator.vn</code> をブロックしています。接続を確認して、もう一度実行してください。</li>
 <li><strong>インストールのコマンドが SHA-256 が一致しないと表示する。</strong>ダウンロードが途中で壊れたか、改ざんされました。スクリプトは何もインストールしません。もう一度実行し、それでも一致しない場合は<a href="/ja/contact/">サポート</a>にご連絡ください。</li>
 <li><strong>インストールのコマンドが実行できない（制約付き言語モードと表示される）。</strong>会社が管理している PC では、スクリプトがブロックされることがあります。.exe での方法を使うか、管理者にお問い合わせください。</li>
 <li><strong>アプリがブロックされ、先に進む方法がない。</strong>上のスマート アプリ コントロールの節をご覧ください。</li>

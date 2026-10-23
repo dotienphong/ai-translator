@@ -8,7 +8,7 @@ const crumbs = [
 ];
 
 const mailto = (subject, body) =>
-  `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
+  `mailto:support@aitranslator.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
 // サポートは英語またはベトナム語で返信するため、項目名には英語を併記します。
 const MAILTO_MAC = mailto("AI Translator installer request (macOS)", [
@@ -42,19 +42,19 @@ const MAILTO_WIN = mailto("AI Translator installer request (Windows)", [
   "よろしくお願いいたします。(Thank you!)",
 ]);
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
-const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
-const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
-const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
-const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
-const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
+const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.vn/install.sh | bash -s -- --beta";
+const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh";
+const WIN_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s";
 
 const COPY = { copy: "コピー", copied: "コピーしました" };
 
 const DL_FAQ = [
   {
     q: "1 行のコマンドは何をするのですか？安全ですか？",
-    a: `<p>コマンドは <strong>aitranslator.io.vn</strong> から小さなスクリプトをダウンロードします。スクリプトはパソコンを確認し、最新のバージョン番号を読み取り、<strong>releases.aitranslator.io.vn</strong> からインストーラーとその SHA-256 チェックサムをダウンロードし、チェックサムを照合してからアプリをインストールして開きます。データを送信することはなく、管理者権限も必要ありません。</p><p>インターネットから貼り付けたコマンドを実行するということは、常にその提供元を信頼するということです。実行する前にスクリプトを読みたい場合は、お使いの OS のガイドにある「先にスクリプトを読みたい」を開いてください。SHA-256 チェックサムはファイルと同じ場所から配信されるため、主に壊れたダウンロードから守るためのもので、提供元を信頼することの代わりにはなりません。</p>`,
+    a: `<p>コマンドは <strong>aitranslator.vn</strong> から小さなスクリプトをダウンロードします。スクリプトはパソコンを確認し、最新のバージョン番号を読み取り、<strong>releases.aitranslator.vn</strong> からインストーラーとその SHA-256 チェックサムをダウンロードし、チェックサムを照合してからアプリをインストールして開きます。データを送信することはなく、管理者権限も必要ありません。</p><p>インターネットから貼り付けたコマンドを実行するということは、常にその提供元を信頼するということです。実行する前にスクリプトを読みたい場合は、お使いの OS のガイドにある「先にスクリプトを読みたい」を開いてください。SHA-256 チェックサムはファイルと同じ場所から配信されるため、主に壊れたダウンロードから守るためのもので、提供元を信頼することの代わりにはなりません。</p>`,
   },
   {
     q: "なぜ .dmg や .exe のダウンロードボタンがないのですか？",
@@ -98,7 +98,7 @@ ${faq(
     },
     {
       q: "先にスクリプトを読みたい",
-      a: `<p>スクリプトは <a href="/install.sh">aitranslator.io.vn/install.sh</a> にあります（約 200 行、コメント付き）。次のコマンドはスクリプトをダウンロードして読めるようにし、そのあとで実行します：</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "実行前に確認できるようにスクリプトをダウンロードするコマンド", term: "Terminal" })}`,
+      a: `<p>スクリプトは <a href="/install.sh">aitranslator.vn/install.sh</a> にあります（約 200 行、コメント付き）。次のコマンドはスクリプトをダウンロードして読めるようにし、そのあとで実行します：</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "実行前に確認できるようにスクリプトをダウンロードするコマンド", term: "Terminal" })}`,
     },
     {
       q: "新しいビルドを早めに試す（Beta チャンネル）",
@@ -114,7 +114,7 @@ ${faq(
     },
     {
       q: ".dmg をメールで受け取りたい",
-      a: `<p><a href="${MAILTO_MAC}">support@aitranslator.io.vn</a> に短いメールをお送りください。.dmg とその SHA-256 チェックサムを返信でお送りします。ブラウザーでダウンロードした .dmg は、初回起動時に「このまま開く」の手順が必要です。</p>`,
+      a: `<p><a href="${MAILTO_MAC}">support@aitranslator.vn</a> に短いメールをお送りください。.dmg とその SHA-256 チェックサムを返信でお送りします。ブラウザーでダウンロードした .dmg は、初回起動時に「このまま開く」の手順が必要です。</p>`,
     },
   ],
   { open: false },
@@ -143,7 +143,7 @@ ${faq(
     },
     {
       q: "先にスクリプトを読みたい",
-      a: `<p>スクリプトは <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> にあります（コメント付き）。次のコマンドはスクリプトを表示して読めるようにし、そのあとで実行します：</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "実行前に確認できるようにスクリプトを表示するコマンド", term: "Windows PowerShell", prompt: "PS>" })}`,
+      a: `<p>スクリプトは <a href="/install.ps1">aitranslator.vn/install.ps1</a> にあります（コメント付き）。次のコマンドはスクリプトを表示して読めるようにし、そのあとで実行します：</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "実行前に確認できるようにスクリプトを表示するコマンド", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "新しいビルドを早めに試す（Beta チャンネル）",
@@ -163,7 +163,7 @@ ${faq(
     },
     {
       q: ".exe をメールで受け取りたい",
-      a: `<p><a href="${MAILTO_WIN}">support@aitranslator.io.vn</a> に短いメールをお送りください。.exe とその SHA-256 チェックサムを返信でお送りします。ブラウザーでダウンロードした .exe は SmartScreen の警告が出ることがあります。</p>`,
+      a: `<p><a href="${MAILTO_WIN}">support@aitranslator.vn</a> に短いメールをお送りください。.exe とその SHA-256 チェックサムを返信でお送りします。ブラウザーでダウンロードした .exe は SmartScreen の警告が出ることがあります。</p>`,
     },
   ],
   { open: false },
@@ -218,7 +218,7 @@ ${sectionHead({ eyebrow: "概要", title: "無料お試しと料金", center: tr
   ["その後の料金", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR（VND）または国際カード（USD）で前払い、自動更新なし。Creem の一覧にある一部の国ではカードを利用できません。</small>"],
   ["モデル", "1.3 GB または 2.5 GB を一度だけダウンロード<small>そのあとは、認識と翻訳がパソコン上でオフラインで動きます</small>"],
 ])}</div>
-${callout({ kind: "ok", title: "インストーラーは私たちからだけ入手してください", text: "AI Translator は、このページのコマンドか、<strong>support@aitranslator.io.vn</strong> から送られたリンク、またはウェブサイト <strong>aitranslator.io.vn</strong> からだけインストールしてください。ほかの入手元のインストーラーは偽物の可能性があります。" })}
+${callout({ kind: "ok", title: "インストーラーは私たちからだけ入手してください", text: "AI Translator は、このページのコマンドか、<strong>support@aitranslator.vn</strong> から送られたリンク、またはウェブサイト <strong>aitranslator.vn</strong> からだけインストールしてください。ほかの入手元のインストーラーは偽物の可能性があります。" })}
 </div></section>
 
 <section class="section"><div class="container">

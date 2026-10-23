@@ -169,7 +169,7 @@ test("sitemap liệt kê mọi trang chỉ mục, có hreflang; robots trỏ t�
   assert.ok(robots.includes(`Sitemap: ${SITE.origin}/sitemap.xml`));
   for (const bot of ["GPTBot", "ClaudeBot", "PerplexityBot", "OAI-SearchBot", "Google-Extended"]) assert.ok(robots.includes(`User-agent: ${bot}`), `robots thiếu ${bot}`);
   const llms = await readFile(path.join(DIST, "llms.txt"), "utf8");
-  for (const m of llms.matchAll(/\]\((https:\/\/aitranslator\.io\.vn[^)]*)\)/g)) {
+  for (const m of llms.matchAll(/\]\((https:\/\/aitranslator\.vn[^)]*)\)/g)) {
     const u = new URL(m[1]);
     assert.ok(htmlByPath.has(u.pathname) || (await exists(path.join(DIST, u.pathname))), `llms.txt: liên kết hỏng ${m[1]}`);
   }
@@ -258,7 +258,7 @@ test("robots.txt: Content-Signal nằm trong nhóm User-agent: *, sitemap khai b
   assert.match(r, /User-agent: \*\nContent-Signal: [^\n]+\nAllow: \//);
   assert.ok(!/^Content-Signal/m.test(r.split("User-agent: *")[0]), "Content-Signal không được đứng ngoài nhóm");
   for (const bot of ["OAI-SearchBot", "Claude-SearchBot", "PerplexityBot", "Bingbot", "Google-Extended"]) assert.ok(r.includes(`User-agent: ${bot}`), bot);
-  assert.ok(r.includes("Sitemap: https://aitranslator.io.vn/sitemap.xml"));
+  assert.ok(r.includes("Sitemap: https://aitranslator.vn/sitemap.xml"));
 });
 
 test("_redirects: mỗi trang có quy tắc 301 cho URL thiếu dấu / cuối, đích là trang có thật", async () => {
@@ -1112,7 +1112,7 @@ test("mock IPC của trang xem trước (nguồn ảnh app-upgrade*): giá VND, 
 });
 
 /** Các mục `## N. …` của một trang pháp lý đã dựng: Map số mục → { html, text }. Kiểm cụm theo đúng mục, không theo cả trang
- *  (cụm như "aitranslator.io.vn" hay "thu hồi" có sẵn ở mục khác thì test theo cả trang vẫn xanh khi câu cần kiểm bị xóa). */
+ *  (cụm như "aitranslator.vn" hay "thu hồi" có sẵn ở mục khác thì test theo cả trang vẫn xanh khi câu cần kiểm bị xóa). */
 function legalSections(urlPath) {
   const body = /<div class="legal">([\s\S]*?)<\/div><\/article>/.exec(htmlByPath.get(urlPath))?.[1] ?? "";
   const sections = new Map();
@@ -1149,8 +1149,8 @@ function sectionErrors(urlPath, wants, forbids = {}) {
 test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng hàng, hai cách trả, Creem là bên bán lại (merchant of record) và đơn hoàn tiền thì rút ngắn hạn hay thu hồi", () => {
   const vi = textOf(htmlByPath.get("/dieu-khoan/"));
   const en = textOf(htmlByPath.get("/en/terms/"));
-  const viNeeds = ["Phiên bản 1.3", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
-  const enNeeds = ["Version 1.3", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
+  const viNeeds = ["Phiên bản 1.4", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
+  const enNeeds = ["Version 1.4", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/dieu-khoan/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/terms/: thiếu "${n}"`),
@@ -1230,8 +1230,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.6", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.6", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.7", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.7", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1282,7 +1282,7 @@ test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (mercha
     ...sectionErrors(
       "/chinh-sach-quyen-rieng-tu/",
       {
-        4: ["Website aitranslator.io.vn", "Không có kết nối nào khác"],
+        4: ["Website aitranslator.vn", "Không có kết nối nào khác"],
         5: ["đoán nước của bạn từ địa chỉ IP", "nước đoán được không được lưu"],
         6: ["còn Creem là pháp nhân Estonia"],
         7: ["mã đơn, ngày, số tiền (và loại tiền), mã phiên thanh toán của cổng", "hồ sơ giao dịch do Creem giữ", "nằm ngoài yêu cầu xóa gửi chúng tôi", "hãy liên hệ Creem"],
@@ -1292,7 +1292,7 @@ test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (mercha
     ...sectionErrors(
       "/en/privacy/",
       {
-        4: ["website aitranslator.io.vn", "There are no other connections"],
+        4: ["website aitranslator.vn", "There are no other connections"],
         5: ["guesses your country from your IP address", "the guessed country is not stored"],
         6: ["Creem is an Estonian company"],
         7: ["order code, date, amount (and currency), the payment gateway", "transaction records kept by Creem", "are outside a deletion request sent to us", "contact Creem"],
@@ -1411,12 +1411,14 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA giữ bản 1.3, ngày 2026-10-16; chính sách lên 1.6 (ngôn ngữ của thư) với ngày hiệu lực không sớm hơn ngày của bản 1.5
-  // (2026-10-23). Đặt bản và ngày bằng lệnh ở kế hoạch 2026-10-23-email-theo-ngon-ngu, Task 12, trước khi build app.
+  // EULA lên 1.4 và chính sách lên 1.7 (tên miền aitranslator.vn, spec 2026-10-23-ten-mien-aitranslator-vn §2.7), cùng một ngày
+  // hiệu lực, không sớm hơn ngày của chính sách 1.6 (2026-10-23). Đặt ngày ở mục "Chuyển sang aitranslator.vn" của
+  // docs/release/phat-hanh.md, vào ngày deploy website và phát hành 0.2.7, trước khi build app.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
-  if (!/^\*\*Phiên bản 1\.3,/m.test(docs["eula.vi.md"]) || privacyHead?.version !== "1.6") errors.push("giữ EULA 1.3 và chính sách 1.6");
-  if (!privacyHead || privacyHead.iso < "2026-10-23") {
-    errors.push(`chính sách 1.6 phải có ngày hiệu lực từ 2026-10-23 (ngày của bản 1.5) trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
+  const eulaHead = docHeader(docs["eula.vi.md"]);
+  if (eulaHead?.version !== "1.4" || privacyHead?.version !== "1.7") errors.push("EULA 1.4 và chính sách 1.7");
+  if (!privacyHead || privacyHead.iso < "2026-10-23" || eulaHead?.iso !== privacyHead.iso) {
+    errors.push(`EULA 1.4 và chính sách 1.7 phải cùng ngày hiệu lực, từ 2026-10-23 trở đi, đang ghi ${eulaHead?.iso} và ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   }
   assert.deepEqual(errors, []);
 });
@@ -1560,7 +1562,7 @@ test("trang pháp lý: `modified` do chính trang khai báo bằng ngày hiệu 
   assert.deepEqual(errors, []);
 });
 
-test("Dữ liệu và bảo mật khớp Chính sách quyền riêng tư 1.6: dòng phiên bản lấy từ docs/legal, hàng Creem, mục xóa dữ liệu, email gửi Creem viết chủ động, dấu phẩy", () => {
+test("Dữ liệu và bảo mật khớp Chính sách quyền riêng tư 1.7: dòng phiên bản lấy từ docs/legal, hàng Creem, mục xóa dữ liệu, email gửi Creem viết chủ động, dấu phẩy", () => {
   const errors = [];
   const cfg = {
     vi: {
@@ -2203,7 +2205,7 @@ test("CSP: connect-src chỉ thêm API của chat hỗ trợ; script-src, style-
   const h = await readFile(path.join(DIST, "_headers"), "utf8");
   const csp = /Content-Security-Policy: (.+)/.exec(h)?.[1] ?? "";
   const dir = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1).join(" ")]));
-  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.io.vn");
+  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.vn");
   assert.match(dir["script-src"], /^'self' 'sha256-[A-Za-z0-9+/=]+'$/);
   assert.equal(dir["style-src"], "'self'");
   assert.equal(dir["font-src"], "'self'");
@@ -2337,10 +2339,10 @@ const STALE_SUPPORT = [
 ];
 // Câu cũ nguyên văn (trang Liên hệ trước khi có chat) mà luật phải bắt.
 const STALE_SUPPORT_MUST_CATCH = [
-  "Cách liên hệ AI Translator là gửi email tới support@aitranslator.io.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
+  "Cách liên hệ AI Translator là gửi email tới support@aitranslator.vn. Đây là kênh hỗ trợ duy nhất: website này không có form liên hệ và chúng tôi không có số điện thoại hỗ trợ.",
   "Không có form trên web, không có điện thoại",
   "Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email ở trên.",
-  "The way to reach AI Translator is to email support@aitranslator.io.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
+  "The way to reach AI Translator is to email support@aitranslator.vn. It is our only support channel: this website has no contact form, and we have no support phone line.",
   "No web form, no phone",
   "We have not published an address, phone number or tax code on this website; all contact goes through the email above.",
   "これが唯一のサポート窓口で、このウェブサイトにはお問い合わせフォームもサポート用の電話もありません。",
@@ -2355,7 +2357,7 @@ const STALE_SUPPORT_MUST_CATCH = [
 ];
 // Câu đúng của bản mới (và câu khác đang có trên site) mà luật KHÔNG được bắt.
 const STALE_SUPPORT_MUST_KEEP = [
-  "Bạn liên hệ AI Translator bằng email tới support@aitranslator.io.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
+  "Bạn liên hệ AI Translator bằng email tới support@aitranslator.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
   "Ngoài email và chat, chúng tôi không có điện thoại hay kênh hỗ trợ nào khác",
   "Chúng tôi chưa công bố địa chỉ, số điện thoại hay mã số thuế trên website này; mọi liên hệ đi qua email hoặc chat hỗ trợ ở trên.",
   "Apart from email and chat, we have no phone line or other support channel",
@@ -2382,11 +2384,11 @@ test("không nguồn chữ nào của site còn câu nói email là kênh hỗ t
 
 test("Liên hệ (năm ngôn ngữ): chat hỗ trợ cạnh email, ô Kênh khác chỉ nói không có điện thoại, mô tả trang nêu chat", () => {
   const need = {
-    "/lien-he/": ["support@aitranslator.io.vn", "chat hỗ trợ", "góc dưới bên phải", "mục Hỗ trợ trong app", "Người thật trả lời, không phải bot", "Tin nhắn được lưu 90 ngày", "Ngoài email và chat", "email hoặc chat hỗ trợ ở trên"],
-    "/en/contact/": ["support@aitranslator.io.vn", "support chat", "bottom right", "Support screen in the app", "A real person replies, not a bot", "Messages are kept for 90 days", "Apart from email and chat", "the email or the support chat above"],
-    "/ja/contact/": ["support@aitranslator.io.vn", "サポートチャット", "右下", "「サポート」画面", "90 日間", "メールとチャットのほかに", "上のメールアドレスかサポートチャット"],
-    "/zh/contact/": ["support@aitranslator.io.vn", "客服聊天", "右下角", "“客服”页面", "90 天", "除邮件和聊天外", "上面的邮箱或客服聊天"],
-    "/ko/contact/": ["support@aitranslator.io.vn", "지원 채팅", "오른쪽 아래", "'지원' 화면", "90일간", "이메일과 채팅 외에", "위 이메일이나 지원 채팅"],
+    "/lien-he/": ["support@aitranslator.vn", "chat hỗ trợ", "góc dưới bên phải", "mục Hỗ trợ trong app", "Người thật trả lời, không phải bot", "Tin nhắn được lưu 90 ngày", "Ngoài email và chat", "email hoặc chat hỗ trợ ở trên"],
+    "/en/contact/": ["support@aitranslator.vn", "support chat", "bottom right", "Support screen in the app", "A real person replies, not a bot", "Messages are kept for 90 days", "Apart from email and chat", "the email or the support chat above"],
+    "/ja/contact/": ["support@aitranslator.vn", "サポートチャット", "右下", "「サポート」画面", "90 日間", "メールとチャットのほかに", "上のメールアドレスかサポートチャット"],
+    "/zh/contact/": ["support@aitranslator.vn", "客服聊天", "右下角", "“客服”页面", "90 天", "除邮件和聊天外", "上面的邮箱或客服聊天"],
+    "/ko/contact/": ["support@aitranslator.vn", "지원 채팅", "오른쪽 아래", "'지원' 화면", "90일간", "이메일과 채팅 외에", "위 이메일이나 지원 채팅"],
   };
   const errors = Object.entries(need).flatMap(([p, needles]) => needsIn(p, textOf(htmlByPath.get(p) ?? ""), needles));
   for (const [p, word] of [["/lien-he/", "chat hỗ trợ"], ["/en/contact/", "support chat"], ["/ja/contact/", "サポートチャット"], ["/zh/contact/", "客服聊天"], ["/ko/contact/", "지원 채팅"]]) {

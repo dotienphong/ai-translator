@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Có app nào dịch phụ đề cuộc họp offline, chạy ngay trên máy không?",
-        a: `<p>Có. AI Translator (aitranslator.io.vn) là app desktop cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64), hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy. Nhận dạng giọng nói và dịch đều chạy trên máy, nên khi dịch không cần internet và âm thanh không rời máy. Hỗ trợ tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn và tiếng Việt; dùng thử Free 10 ngày.</p>`,
+        a: `<p>Có. AI Translator (aitranslator.vn) là app desktop cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64), hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy. Nhận dạng giọng nói và dịch đều chạy trên máy, nên khi dịch không cần internet và âm thanh không rời máy. Hỗ trợ tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn và tiếng Việt; dùng thử Free 10 ngày.</p>`,
       },
       {
         q: "Làm sao dịch cuộc họp Zoom sang tiếng Việt mà không cần bot?",
@@ -118,7 +118,7 @@ const GROUPS = [
       },
       {
         q: "Làm sao để xóa dữ liệu của tôi?",
-        a: `<p>Trên máy: Cài đặt › Quyền riêng tư › Xóa toàn bộ dữ liệu (lịch sử và từ điển), hoặc Xóa model và dữ liệu. Trên máy chủ: gửi email tới support@aitranslator.io.vn từ chính email đã dùng khi mua để yêu cầu xóa hoặc ẩn danh. Chúng tôi bỏ email và tên máy của bạn, và vẫn giữ mã băm ID máy, thời điểm đồng ý và dòng đơn hàng mức kế toán. Xem <a href="/bao-mat-du-lieu/#xoa-du-lieu">cách yêu cầu xóa dữ liệu</a>.</p>`,
+        a: `<p>Trên máy: Cài đặt › Quyền riêng tư › Xóa toàn bộ dữ liệu (lịch sử và từ điển), hoặc Xóa model và dữ liệu. Trên máy chủ: gửi email tới support@aitranslator.vn từ chính email đã dùng khi mua để yêu cầu xóa hoặc ẩn danh. Chúng tôi bỏ email và tên máy của bạn, và vẫn giữ mã băm ID máy, thời điểm đồng ý và dòng đơn hàng mức kế toán. Xem <a href="/bao-mat-du-lieu/#xoa-du-lieu">cách yêu cầu xóa dữ liệu</a>.</p>`,
       },
     ],
   },
@@ -174,7 +174,7 @@ const GROUPS = [
       },
       {
         q: "Có hoàn tiền không?",
-        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
+        a: `<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.vn kèm mã đơn. Đổi gói không được hoàn tiền. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a>.</p>`,
       },
       {
         q: "Tôi dùng được key trên mấy máy? Chuyển sang máy khác thế nào?",
@@ -182,7 +182,7 @@ const GROUPS = [
       },
       {
         q: "Tôi bị mất key thì làm sao?",
-        a: `<p>Vào Cài đặt › Bản quyền › Mất key?, nhập email đã dùng khi mua rồi bấm Gửi lại key: mọi key còn hiệu lực của email đó được gửi vào chính email đó. Nếu vẫn không được, hãy gửi email tới support@aitranslator.io.vn từ email đã dùng khi mua.</p>`,
+        a: `<p>Vào Cài đặt › Bản quyền › Mất key?, nhập email đã dùng khi mua rồi bấm Gửi lại key: mọi key còn hiệu lực của email đó được gửi vào chính email đó. Nếu vẫn không được, hãy gửi email tới support@aitranslator.vn từ email đã dùng khi mua.</p>`,
       },
     ],
   },
@@ -253,7 +253,7 @@ ${docLayout({
   tocTitle: "Các nhóm câu hỏi",
   body: `<p>Chọn một nhóm trong mục lục, hoặc cuộn xuống và mở từng câu hỏi.</p>
 ${GROUPS.map((g) => `<h2 id="${g.id}">${g.title}</h2>\n${faq(g.items)}`).join("\n")}
-${callout({ title: "Chưa thấy câu trả lời?", text: `Hãy gửi email tới <a href="mailto:support@aitranslator.io.vn">support@aitranslator.io.vn</a> hoặc xem <a href="/lien-he/">trang Liên hệ</a> để biết nên kèm thông tin gì.` })}`,
+${callout({ title: "Chưa thấy câu trả lời?", text: `Hãy gửi email tới <a href="mailto:support@aitranslator.vn">support@aitranslator.vn</a> hoặc xem <a href="/lien-he/">trang Liên hệ</a> để biết nên kèm thông tin gì.` })}`,
 })}
 </div></section>
 

@@ -1,13 +1,13 @@
 # Cài AI Translator trên Windows bằng một dòng lệnh (mở PowerShell, dán, Enter):
 #
-#   irm https://aitranslator.io.vn/install.ps1 | iex
+#   irm https://aitranslator.vn/install.ps1 | iex
 #
-# Kênh beta:  & ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta
-# Xem trước khi chạy (in script ra, đọc, rồi mới chạy):  $s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s
+# Kênh beta:  & ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta
+# Xem trước khi chạy (in script ra, đọc, rồi mới chạy):  $s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s
 #
 # Script làm gì (và chỉ làm vậy):
 #   1. Kiểm máy: Windows 10/11 bản 64-bit (x64).
-#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.io.vn/<kênh>/latest.json.
+#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.vn/<kênh>/latest.json.
 #   3. Tải bộ cài .exe của phiên bản đó và mã SHA-256 của nó từ cùng nơi, rồi đối chiếu.
 #   4. Chạy bộ cài ở chế độ im lặng (cài cho riêng tài khoản của bạn, không cần quyền quản trị, không UAC).
 #   5. Mở AI Translator, rồi xóa file tải về.
@@ -16,7 +16,7 @@
 # Vì sao không bị SmartScreen chặn: SmartScreen chỉ kiểm file mang dấu "tải từ internet" (Mark of the Web) khi mở từ
 # Explorer. File tải bằng PowerShell không mang dấu đó, và bộ cài được chạy từ PowerShell. Script cũng gỡ dấu đó khỏi
 # file tải về phòng khi môi trường của bạn có gắn. Lưu ý: nếu máy bật Smart App Control (Windows 11) ở chế độ chặn, nó
-# vẫn chặn mọi bộ cài chưa ký mã; xem aitranslator.io.vn/huong-dan/cai-dat-windows/.
+# vẫn chặn mọi bộ cài chưa ký mã; xem aitranslator.vn/huong-dan/cai-dat-windows/.
 #
 # Biến môi trường (không bắt buộc):
 #   AI_TRANSLATOR_CHANNEL    stable (mặc định) hoặc beta; -Beta cũng được
@@ -35,7 +35,7 @@ function Install-AiTranslator {
     param([switch]$Beta, [switch]$NoOpen)
 
     $ErrorActionPreference = 'Stop'
-    $BaseUrl = 'https://releases.aitranslator.io.vn'
+    $BaseUrl = 'https://releases.aitranslator.vn'
     $Product = 'AI Translator'
     $MainExe = 'meeting-translator.exe'
 
@@ -100,7 +100,7 @@ function Install-AiTranslator {
         # --- 1. Kiểm máy ---
         $isCore = $PSVersionTable.PSEdition -eq 'Core'
         if ($isCore -and -not $IsWindows) {
-            Fail 'script này chỉ dành cho Windows. macOS: xem aitranslator.io.vn/tai-xuong/' 'this script is for Windows only. macOS: see aitranslator.io.vn/en/download/'
+            Fail 'script này chỉ dành cho Windows. macOS: xem aitranslator.vn/tai-xuong/' 'this script is for Windows only. macOS: see aitranslator.vn/en/download/'
         }
         if ([Environment]::OSVersion.Version.Major -lt 10) { Fail 'AI Translator cần Windows 10 hoặc 11.' 'AI Translator needs Windows 10 or 11.' }
         $arch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
@@ -147,8 +147,8 @@ function Install-AiTranslator {
         if (-not $expected) { Fail "SHA256SUMS-windows.txt không có mã của $setupName." "SHA256SUMS-windows.txt has no checksum for $setupName." }
         $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $setup).Hash.ToLowerInvariant()
         if ($actual -ne $expected) {
-            Fail "SHA-256 của file tải về không khớp (mong đợi $expected, nhận $actual). Không cài; thử lại, nếu vẫn lệch thì báo support@aitranslator.io.vn." `
-                "the downloaded file's SHA-256 does not match (expected $expected, got $actual). Nothing was installed; retry, and if it still differs write to support@aitranslator.io.vn."
+            Fail "SHA-256 của file tải về không khớp (mong đợi $expected, nhận $actual). Không cài; thử lại, nếu vẫn lệch thì báo support@aitranslator.vn." `
+                "the downloaded file's SHA-256 does not match (expected $expected, got $actual). Nothing was installed; retry, and if it still differs write to support@aitranslator.vn."
         }
         Say 'Đã kiểm SHA-256: khớp.' 'SHA-256 checked: it matches.'
         try { Unblock-File -LiteralPath $setup } catch { }

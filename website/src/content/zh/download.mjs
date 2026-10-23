@@ -8,7 +8,7 @@ const crumbs = [
 ];
 
 const mailto = (subject, body) =>
-  `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
+  `mailto:support@aitranslator.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
 // 客服用英语或越南语回复，所以各项名称附上英文。
 const MAILTO_MAC = mailto("AI Translator installer request (macOS)", [
@@ -42,19 +42,19 @@ const MAILTO_WIN = mailto("AI Translator installer request (Windows)", [
   "谢谢！(Thank you!)",
 ]);
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
-const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
-const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
-const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
-const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
-const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
+const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.vn/install.sh | bash -s -- --beta";
+const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh";
+const WIN_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s";
 
 const COPY = { copy: "复制", copied: "已复制" };
 
 const DL_FAQ = [
   {
     q: "这一行命令做了什么？安全吗？",
-    a: `<p>命令会从 <strong>aitranslator.io.vn</strong> 下载一个小脚本。脚本会检查你的电脑，读取最新版本号，从 <strong>releases.aitranslator.io.vn</strong> 下载安装包及其 SHA-256 校验值，核对校验值，然后安装并打开应用。它不发送任何数据，也不需要管理员权限。</p><p>运行从网上粘贴来的命令，总是意味着信任它的来源。如果你想在运行前先读一下脚本，请在你所用系统的指南中打开“我想先看看脚本”。SHA-256 校验值和文件来自同一个地方，所以它主要防止下载损坏，并不能代替对来源的信任。</p>`,
+    a: `<p>命令会从 <strong>aitranslator.vn</strong> 下载一个小脚本。脚本会检查你的电脑，读取最新版本号，从 <strong>releases.aitranslator.vn</strong> 下载安装包及其 SHA-256 校验值，核对校验值，然后安装并打开应用。它不发送任何数据，也不需要管理员权限。</p><p>运行从网上粘贴来的命令，总是意味着信任它的来源。如果你想在运行前先读一下脚本，请在你所用系统的指南中打开“我想先看看脚本”。SHA-256 校验值和文件来自同一个地方，所以它主要防止下载损坏，并不能代替对来源的信任。</p>`,
   },
   {
     q: "为什么没有 .dmg 或 .exe 下载按钮？",
@@ -98,7 +98,7 @@ ${faq(
     },
     {
       q: "我想先看看脚本",
-      a: `<p>脚本在 <a href="/install.sh">aitranslator.io.vn/install.sh</a>（约 200 行，带注释）。下面这条命令会先下载脚本让你阅读，然后才运行它：</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "下载脚本以便运行前查看的命令", term: "Terminal" })}`,
+      a: `<p>脚本在 <a href="/install.sh">aitranslator.vn/install.sh</a>（约 200 行，带注释）。下面这条命令会先下载脚本让你阅读，然后才运行它：</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "下载脚本以便运行前查看的命令", term: "Terminal" })}`,
     },
     {
       q: "提前试用新版本（Beta 通道）",
@@ -114,7 +114,7 @@ ${faq(
     },
     {
       q: "我想通过邮件获取 .dmg",
-      a: `<p>给 <a href="${MAILTO_MAC}">support@aitranslator.io.vn</a> 发一封简短的邮件；我们会回复 .dmg 及其 SHA-256 校验值。用浏览器下载的 .dmg 在首次启动时需要“仍要打开”这一步。</p>`,
+      a: `<p>给 <a href="${MAILTO_MAC}">support@aitranslator.vn</a> 发一封简短的邮件；我们会回复 .dmg 及其 SHA-256 校验值。用浏览器下载的 .dmg 在首次启动时需要“仍要打开”这一步。</p>`,
     },
   ],
   { open: false },
@@ -143,7 +143,7 @@ ${faq(
     },
     {
       q: "我想先看看脚本",
-      a: `<p>脚本在 <a href="/install.ps1">aitranslator.io.vn/install.ps1</a>（带注释）。下面这条命令会先把脚本显示出来让你阅读，然后才运行它：</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "显示脚本以便运行前查看的命令", term: "Windows PowerShell", prompt: "PS>" })}`,
+      a: `<p>脚本在 <a href="/install.ps1">aitranslator.vn/install.ps1</a>（带注释）。下面这条命令会先把脚本显示出来让你阅读，然后才运行它：</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "显示脚本以便运行前查看的命令", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "提前试用新版本（Beta 通道）",
@@ -163,7 +163,7 @@ ${faq(
     },
     {
       q: "我想通过邮件获取 .exe",
-      a: `<p>给 <a href="${MAILTO_WIN}">support@aitranslator.io.vn</a> 发一封简短的邮件；我们会回复 .exe 及其 SHA-256 校验值。用浏览器下载的 .exe 可能会触发 SmartScreen 警告。</p>`,
+      a: `<p>给 <a href="${MAILTO_WIN}">support@aitranslator.vn</a> 发一封简短的邮件；我们会回复 .exe 及其 SHA-256 校验值。用浏览器下载的 .exe 可能会触发 SmartScreen 警告。</p>`,
     },
   ],
   { open: false },
@@ -218,7 +218,7 @@ ${sectionHead({ eyebrow: "概览", title: "免费试用和价格", center: true 
   ["之后的价格", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>通过 VietQR（VND）或国际银行卡（USD）预付，不自动续费。根据 Creem 的名单，部分国家不支持银行卡付款。</small>"],
   ["模型", "只需下载一次，1.3 GB 或 2.5 GB<small>之后识别和翻译都在你的电脑上离线运行</small>"],
 ])}</div>
-${callout({ kind: "ok", title: "只从我们这里获取安装包", text: "请只用本页面上的命令，或通过 <strong>support@aitranslator.io.vn</strong> 发送的链接、网站 <strong>aitranslator.io.vn</strong> 安装 AI Translator。来自其他渠道的安装包可能是假的。" })}
+${callout({ kind: "ok", title: "只从我们这里获取安装包", text: "请只用本页面上的命令，或通过 <strong>support@aitranslator.vn</strong> 发送的链接、网站 <strong>aitranslator.vn</strong> 安装 AI Translator。来自其他渠道的安装包可能是假的。" })}
 </div></section>
 
 <section class="section"><div class="container">

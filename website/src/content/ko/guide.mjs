@@ -73,7 +73,7 @@ ${facts([
 <section class="section-tight"><div class="container narrow">
 <div class="card reveal">
 <h2>도움이 필요하신가요?</h2>
-<p>가이드에서 답을 찾지 못했나요? <a href="/ko/faq/">자주 묻는 질문</a>을 읽거나 <a href="/ko/contact/">문의</a> 페이지로 연락해 주세요. <strong>support@aitranslator.io.vn</strong>으로 메일을 보내실 수 있습니다.</p>
+<p>가이드에서 답을 찾지 못했나요? <a href="/ko/faq/">자주 묻는 질문</a>을 읽거나 <a href="/ko/contact/">문의</a> 페이지로 연락해 주세요. <strong>support@aitranslator.vn</strong>으로 메일을 보내실 수 있습니다.</p>
 <p class="more-link"><a class="btn btn-secondary" href="/ko/contact/">지원팀에 문의 ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/ko/faq/">자주 묻는 질문</a></p>
 </div>
 </div></section>

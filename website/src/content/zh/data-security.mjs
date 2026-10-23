@@ -70,15 +70,15 @@ ${facts([
 <p>在 macOS 上，输入翻译请求辅助功能权限，只是为了向你正在输入的聊天框发送粘贴键 ⌘V。应用不会读取其他应用的文字、内容或剪贴板；没有这项权限时，应用只会复制译文，由你自己粘贴（见<a href="/zh/guide/type-and-translate/#accessibility">输入翻译</a>）。</p>
 
 <h2 id="network">应用会连接到哪里？</h2>
-<p>恰好 5 个地方，都不会收到音频、转写内容或你在输入翻译中输入的文字。语音识别和翻译不需要网络。翻译过程中，应用只可能向我们自己的服务器发送定期请求（检查更新，以及到期时的许可证检查），以及你打开“客服”页面或点击发送时的客服聊天消息。<a href="/en/privacy/">隐私政策（英文）</a>第 4 节同样列出了 5 个连接，但它是按用途计数的（模型下载和检查更新都连到 releases.aitranslator.io.vn；PayOS 和 Creem 的付款页面算作一项），而下表按目的地计数。</p>
+<p>恰好 5 个地方，都不会收到音频、转写内容或你在输入翻译中输入的文字。语音识别和翻译不需要网络。翻译过程中，应用只可能向我们自己的服务器发送定期请求（检查更新，以及到期时的许可证检查），以及你打开“客服”页面或点击发送时的客服聊天消息。<a href="/en/privacy/">隐私政策（英文）</a>第 4 节同样列出了 5 个连接，但它是按用途计数的（模型下载和检查更新都连到 releases.aitranslator.vn；PayOS 和 Creem 的付款页面算作一项），而下表按目的地计数。</p>
 <div class="table-wrap" role="region" aria-label="应用连接的地方" tabindex="0"><table>
 <thead><tr><th scope="col">连接到</th><th scope="col">用途</th><th scope="col">发送的内容</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.io.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱和应用的界面语言；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
-<tr><th scope="row">releases.aitranslator.io.vn</th><td>下载模型，检查并下载应用更新</td><td>只有文件下载请求</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱和应用的界面语言；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
+<tr><th scope="row">releases.aitranslator.vn</th><td>下载模型，检查并下载应用更新</td><td>只有文件下载请求</td></tr>
 <tr><th scope="row">PayOS 付款页面（pay.payos.vn）</th><td>购买套餐时用 VietQR 付款</td><td>在你的浏览器中打开，而不是在应用内</td></tr>
 <tr><th scope="row">Creem 付款页面（www.creem.io）</th><td>购买套餐时用国际银行卡付款</td><td>在你的浏览器中打开，而不是在应用内。你的邮箱由我们的服务器发送给 Creem，而不是由应用发送（见“还有谁处理数据？”）</td></tr>
-<tr><th scope="row">aitranslator.io.vn（本网站）</th><td>外部链接（政策、支持、下载页面）在系统浏览器中打开</td><td>应用不发送任何内容</td></tr>
+<tr><th scope="row">aitranslator.vn（本网站）</th><td>外部链接（政策、支持、下载页面）在系统浏览器中打开</td><td>应用不发送任何内容</td></tr>
 </tbody></table></div>
 
 <h2 id="verified">我们是如何核实的？</h2>

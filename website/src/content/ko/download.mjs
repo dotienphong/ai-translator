@@ -8,7 +8,7 @@ const crumbs = [
 ];
 
 const mailto = (subject, body) =>
-  `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
+  `mailto:support@aitranslator.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
 // 지원팀은 영어나 베트남어로 답하므로 항목 이름에 영어를 함께 적습니다.
 const MAILTO_MAC = mailto("AI Translator installer request (macOS)", [
@@ -42,19 +42,19 @@ const MAILTO_WIN = mailto("AI Translator installer request (Windows)", [
   "감사합니다! (Thank you!)",
 ]);
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
-const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
-const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
-const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
-const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
-const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
+const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.vn/install.sh | bash -s -- --beta";
+const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh";
+const WIN_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s";
 
 const COPY = { copy: "복사", copied: "복사됨" };
 
 const DL_FAQ = [
   {
     q: "명령 한 줄은 무엇을 하나요? 안전한가요?",
-    a: `<p>명령은 <strong>aitranslator.io.vn</strong>에서 작은 스크립트를 내려받습니다. 스크립트는 컴퓨터를 확인하고, 최신 버전 번호를 읽고, <strong>releases.aitranslator.io.vn</strong>에서 설치 파일과 SHA-256 체크섬을 내려받아 체크섬을 비교한 다음, 앱을 설치하고 엽니다. 데이터를 보내지 않으며 관리자 권한도 필요 없습니다.</p><p>인터넷에서 붙여 넣은 명령을 실행한다는 것은 언제나 그 출처를 믿는다는 뜻입니다. 실행하기 전에 스크립트를 읽어 보고 싶다면 사용하는 운영체제 가이드의 '먼저 스크립트를 읽고 싶어요'를 여세요. SHA-256 체크섬은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줄 뿐, 출처에 대한 신뢰를 대신하지는 않습니다.</p>`,
+    a: `<p>명령은 <strong>aitranslator.vn</strong>에서 작은 스크립트를 내려받습니다. 스크립트는 컴퓨터를 확인하고, 최신 버전 번호를 읽고, <strong>releases.aitranslator.vn</strong>에서 설치 파일과 SHA-256 체크섬을 내려받아 체크섬을 비교한 다음, 앱을 설치하고 엽니다. 데이터를 보내지 않으며 관리자 권한도 필요 없습니다.</p><p>인터넷에서 붙여 넣은 명령을 실행한다는 것은 언제나 그 출처를 믿는다는 뜻입니다. 실행하기 전에 스크립트를 읽어 보고 싶다면 사용하는 운영체제 가이드의 '먼저 스크립트를 읽고 싶어요'를 여세요. SHA-256 체크섬은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줄 뿐, 출처에 대한 신뢰를 대신하지는 않습니다.</p>`,
   },
   {
     q: "왜 .dmg나 .exe 다운로드 버튼이 없나요?",
@@ -98,7 +98,7 @@ ${faq(
     },
     {
       q: "먼저 스크립트를 읽고 싶어요",
-      a: `<p>스크립트는 <a href="/install.sh">aitranslator.io.vn/install.sh</a>에 있습니다(약 200줄, 주석 포함). 다음 명령은 스크립트를 내려받아 읽을 수 있게 한 다음에야 실행합니다:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "실행 전에 검토할 수 있도록 스크립트를 내려받는 명령", term: "Terminal" })}`,
+      a: `<p>스크립트는 <a href="/install.sh">aitranslator.vn/install.sh</a>에 있습니다(약 200줄, 주석 포함). 다음 명령은 스크립트를 내려받아 읽을 수 있게 한 다음에야 실행합니다:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "실행 전에 검토할 수 있도록 스크립트를 내려받는 명령", term: "Terminal" })}`,
     },
     {
       q: "새 빌드를 먼저 써 보기(Beta 채널)",
@@ -114,7 +114,7 @@ ${faq(
     },
     {
       q: ".dmg를 이메일로 받고 싶어요",
-      a: `<p><a href="${MAILTO_MAC}">support@aitranslator.io.vn</a>으로 짧은 이메일을 보내 주세요. .dmg와 SHA-256 체크섬을 답장으로 보내 드립니다. 브라우저로 내려받은 .dmg는 처음 실행할 때 '확인 없이 열기' 단계가 필요합니다.</p>`,
+      a: `<p><a href="${MAILTO_MAC}">support@aitranslator.vn</a>으로 짧은 이메일을 보내 주세요. .dmg와 SHA-256 체크섬을 답장으로 보내 드립니다. 브라우저로 내려받은 .dmg는 처음 실행할 때 '확인 없이 열기' 단계가 필요합니다.</p>`,
     },
   ],
   { open: false },
@@ -143,7 +143,7 @@ ${faq(
     },
     {
       q: "먼저 스크립트를 읽고 싶어요",
-      a: `<p>스크립트는 <a href="/install.ps1">aitranslator.io.vn/install.ps1</a>에 있습니다(주석 포함). 다음 명령은 스크립트를 출력해 읽을 수 있게 한 다음에야 실행합니다:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "실행 전에 검토할 수 있도록 스크립트를 출력하는 명령", term: "Windows PowerShell", prompt: "PS>" })}`,
+      a: `<p>스크립트는 <a href="/install.ps1">aitranslator.vn/install.ps1</a>에 있습니다(주석 포함). 다음 명령은 스크립트를 출력해 읽을 수 있게 한 다음에야 실행합니다:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "실행 전에 검토할 수 있도록 스크립트를 출력하는 명령", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "새 빌드를 먼저 써 보기(Beta 채널)",
@@ -163,7 +163,7 @@ ${faq(
     },
     {
       q: ".exe를 이메일로 받고 싶어요",
-      a: `<p><a href="${MAILTO_WIN}">support@aitranslator.io.vn</a>으로 짧은 이메일을 보내 주세요. .exe와 SHA-256 체크섬을 답장으로 보내 드립니다. 브라우저로 내려받은 .exe는 SmartScreen 경고가 나올 수 있습니다.</p>`,
+      a: `<p><a href="${MAILTO_WIN}">support@aitranslator.vn</a>으로 짧은 이메일을 보내 주세요. .exe와 SHA-256 체크섬을 답장으로 보내 드립니다. 브라우저로 내려받은 .exe는 SmartScreen 경고가 나올 수 있습니다.</p>`,
     },
   ],
   { open: false },
@@ -218,7 +218,7 @@ ${sectionHead({ eyebrow: "한눈에 보기", title: "무료 체험과 요금", c
   ["체험 후 요금", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR(VND) 또는 해외 카드(USD)로 선불, 자동 갱신 없음. Creem 목록에 있는 일부 국가에서는 카드를 사용할 수 없습니다.</small>"],
   ["모델", "한 번만 내려받기, 1.3GB 또는 2.5GB<small>그 후에는 인식과 번역이 내 컴퓨터에서 오프라인으로 실행</small>"],
 ])}</div>
-${callout({ kind: "ok", title: "설치 파일은 저희에게서만 받으세요", text: "AI Translator는 이 페이지의 명령, <strong>support@aitranslator.io.vn</strong>에서 보낸 링크, 또는 웹사이트 <strong>aitranslator.io.vn</strong>에서만 설치하세요. 다른 곳에서 받은 설치 파일은 가짜일 수 있습니다." })}
+${callout({ kind: "ok", title: "설치 파일은 저희에게서만 받으세요", text: "AI Translator는 이 페이지의 명령, <strong>support@aitranslator.vn</strong>에서 보낸 링크, 또는 웹사이트 <strong>aitranslator.vn</strong>에서만 설치하세요. 다른 곳에서 받은 설치 파일은 가짜일 수 있습니다." })}
 </div></section>
 
 <section class="section"><div class="container">

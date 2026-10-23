@@ -20,12 +20,12 @@ const toc = [
   { level: 2, id: "loi-thuong-gap", text: "Lỗi thường gặp khi cài" },
 ];
 
-const INSTALL_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
-const REVIEW_CMD = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
+const INSTALL_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
+const REVIEW_CMD = "$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s";
 
 const HOWTO_STEPS = [
   { name: "Mở PowerShell", text: "Nhấn phím Windows, gõ PowerShell rồi nhấn Enter. Không cần chạy bằng quyền quản trị." },
-  { name: "Dán lệnh cài và nhấn Enter", text: "Dán lệnh irm https://aitranslator.io.vn/install.ps1 | iex vào PowerShell rồi nhấn Enter." },
+  { name: "Dán lệnh cài và nhấn Enter", text: "Dán lệnh irm https://aitranslator.vn/install.ps1 | iex vào PowerShell rồi nhấn Enter." },
   { name: "Chờ app mở", text: "Lệnh tải bản mới nhất, kiểm SHA-256, chạy bộ cài im lặng cho riêng tài khoản của bạn rồi mở AI Translator." },
 ];
 
@@ -86,14 +86,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", l
 <li>Làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
 </ol>
 <p><strong>Vì sao không qua màn hình SmartScreen?</strong> SmartScreen chỉ kiểm file mang dấu “tải từ internet” (do trình duyệt gắn) khi bạn mở nó từ File Explorer. File tải bằng PowerShell không có dấu đó và bộ cài được chạy từ PowerShell, nên không có cảnh báo, dù bản này chưa được ký mã.</p>
-${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.io.vn</strong>, script tải bộ cài từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu SHA-256 rồi cài. Không cần quyền quản trị, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>. Muốn đọc script trước, dùng lệnh in script ra rồi mới chạy: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật; bộ cài tự đóng app đang chạy." })}
+${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.vn</strong>, script tải bộ cài từ <strong>releases.aitranslator.vn</strong>, đối chiếu SHA-256 rồi cài. Không cần quyền quản trị, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.vn</strong>. Muốn đọc script trước, dùng lệnh in script ra rồi mới chạy: <code>$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật; bộ cài tự đóng app đang chạy." })}
 <p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt, hoặc tiếng Anh nếu máy không đặt tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
 
 <h2 id="cai-bang-exe">Cách khác: cài từ file .exe</h2>
 <p>Dùng cách này nếu bạn nhận file .exe qua email hoặc không muốn dùng PowerShell. File tải bằng trình duyệt mang dấu “tải từ internet” nên SmartScreen có thể cảnh báo.</p>
 
 <h3 id="kiem-tra-file">Kiểm tra file cài đặt (SHA-256)</h3>
-${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính thức.", text: "File .exe đúng là file chúng tôi gửi từ <strong>support@aitranslator.io.vn</strong> hoặc liên kết trên <strong>aitranslator.io.vn</strong>. File từ nơi khác có thể là bản giả hoặc bị sửa đổi. Đừng chạy nó, dù nó mang tên AI Translator." })}
+${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính thức.", text: "File .exe đúng là file chúng tôi gửi từ <strong>support@aitranslator.vn</strong> hoặc liên kết trên <strong>aitranslator.vn</strong>. File từ nơi khác có thể là bản giả hoặc bị sửa đổi. Đừng chạy nó, dù nó mang tên AI Translator." })}
 <p>Mỗi bản cài gửi qua email đi kèm một mã SHA-256 do chúng tôi gửi. Vì bản Windows chưa được ký mã, đối chiếu mã này là cách để bạn chắc file không bị thay đổi. Làm trước khi cài:</p>
 <ol>
 <li>Mở <strong>PowerShell</strong>: bấm Start, gõ <code>PowerShell</code> rồi mở <strong>Windows PowerShell</strong>.</li>
@@ -149,7 +149,7 @@ ${callout({ kind: "warn", title: "Vì sao Windows cảnh báo?", text: "SmartScr
 
 <h2 id="loi-thuong-gap">Lỗi thường gặp khi cài</h2>
 <ul>
-<li><strong>Lệnh cài báo “không đọc được https://releases.aitranslator.io.vn/stable/latest.json…”.</strong> Máy mất mạng, hoặc proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
+<li><strong>Lệnh cài báo “không đọc được https://releases.aitranslator.vn/stable/latest.json…”.</strong> Máy mất mạng, hoặc proxy/VPN chặn <code>releases.aitranslator.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
 <li><strong>Lệnh cài báo “SHA-256 của file tải về không khớp”.</strong> File tải bị lỗi hoặc bị can thiệp trên đường truyền. Script không cài gì; chạy lại, nếu vẫn lệch thì báo <a href="/lien-he/">hỗ trợ</a>.</li>
 <li><strong>Lệnh cài không chạy và báo ngôn ngữ bị giới hạn (Constrained Language Mode).</strong> Máy do công ty quản lý có thể chặn script. Dùng cách cài từ file .exe hoặc hỏi quản trị viên.</li>
 <li><strong>Ứng dụng bị chặn, không có nút bỏ qua.</strong> Xem mục Smart App Control ở trên.</li>

@@ -29,11 +29,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "Can I get a refund?",
-    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request to us first, within 7 days of the payment date, to support@aitranslator.io.vn, with your order number. Changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
+    a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and it cannot be fixed within a reasonable time, or when the law says otherwise. Send your request to us first, within 7 days of the payment date, to support@aitranslator.vn, with your order number. Changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
   },
   {
     q: "Can I get an e-invoice for my company?",
-    a: `<p>For VietQR orders we do not issue electronic invoices yet. For orders paid by international card, Creem emails a receipt to the address you entered. If you need other paperwork, contact support@aitranslator.io.vn and we will talk it through.</p>`,
+    a: `<p>For VietQR orders we do not issue electronic invoices yet. For orders paid by international card, Creem emails a receipt to the address you entered. If you need other paperwork, contact support@aitranslator.vn and we will talk it through.</p>`,
   },
   {
     q: "How is translation time counted?",
@@ -41,7 +41,7 @@ export const PRICING_FAQ = [
   },
   {
     q: "I lost my key. What do I do?",
-    a: `<p>Open Settings › License › Lost your key?, enter the email you used to buy and choose Send my keys. Every valid key for that email is sent to that same address. You can also contact support@aitranslator.io.vn.</p>`,
+    a: `<p>Open Settings › License › Lost your key?, enter the email you used to buy and choose Send my keys. Every valid key for that email is sent to that same address. You can also contact support@aitranslator.vn.</p>`,
   },
 ];
 

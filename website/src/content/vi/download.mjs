@@ -8,7 +8,7 @@ const crumbs = [
 ];
 
 const mailto = (subject, body) =>
-  `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
+  `mailto:support@aitranslator.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
 const MAILTO_MAC = mailto("Nhận bản cài AI Translator (macOS)", [
   "Xin chào AI Translator,",
@@ -41,19 +41,19 @@ const MAILTO_WIN = mailto("Nhận bản cài AI Translator (Windows)", [
   "Cảm ơn!",
 ]);
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
-const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
-const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
-const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
-const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
-const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
+const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.vn/install.sh | bash -s -- --beta";
+const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh";
+const WIN_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s";
 
 const COPY = { copy: "Sao chép", copied: "Đã chép" };
 
 const DL_FAQ = [
   {
     q: "Lệnh một dòng làm gì, và có an toàn không?",
-    a: "<p>Lệnh tải một script nhỏ từ <strong>aitranslator.io.vn</strong>. Script kiểm máy của bạn, đọc số phiên bản mới nhất, tải bộ cài và mã SHA-256 từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu mã, cài rồi mở app. Script không gửi dữ liệu đi và không cần quyền quản trị.</p><p>Chạy một lệnh dán từ internet luôn cần tin nguồn của nó. Nếu muốn đọc script trước khi chạy, mở mục “Tôi muốn đọc script trước khi chạy” trong hướng dẫn của hệ điều hành bạn. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu bảo vệ bạn khỏi file tải lỗi, không thay được việc tin nguồn.</p>",
+    a: "<p>Lệnh tải một script nhỏ từ <strong>aitranslator.vn</strong>. Script kiểm máy của bạn, đọc số phiên bản mới nhất, tải bộ cài và mã SHA-256 từ <strong>releases.aitranslator.vn</strong>, đối chiếu mã, cài rồi mở app. Script không gửi dữ liệu đi và không cần quyền quản trị.</p><p>Chạy một lệnh dán từ internet luôn cần tin nguồn của nó. Nếu muốn đọc script trước khi chạy, mở mục “Tôi muốn đọc script trước khi chạy” trong hướng dẫn của hệ điều hành bạn. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu bảo vệ bạn khỏi file tải lỗi, không thay được việc tin nguồn.</p>",
   },
   {
     q: "Vì sao không có nút tải file .dmg hay .exe?",
@@ -97,7 +97,7 @@ ${faq(
     },
     {
       q: "Tôi muốn đọc script trước khi chạy",
-      a: `<p>Script nằm ở <a href="/install.sh">aitranslator.io.vn/install.sh</a> (khoảng 200 dòng, có chú thích). Lệnh sau tải về, cho bạn đọc, rồi mới chạy:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "Lệnh tải script về đọc trước khi chạy", term: "Terminal" })}`,
+      a: `<p>Script nằm ở <a href="/install.sh">aitranslator.vn/install.sh</a> (khoảng 200 dòng, có chú thích). Lệnh sau tải về, cho bạn đọc, rồi mới chạy:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "Lệnh tải script về đọc trước khi chạy", term: "Terminal" })}`,
     },
     {
       q: "Thử các bản mới sớm hơn (kênh Beta)",
@@ -113,7 +113,7 @@ ${faq(
     },
     {
       q: "Tôi muốn nhận file .dmg qua email",
-      a: `<p>Gửi cho chúng tôi một email ngắn tại <a href="${MAILTO_MAC}">support@aitranslator.io.vn</a>; chúng tôi trả lời kèm file .dmg và mã SHA-256. File .dmg tải bằng trình duyệt cần bước Open Anyway ở lần mở đầu.</p>`,
+      a: `<p>Gửi cho chúng tôi một email ngắn tại <a href="${MAILTO_MAC}">support@aitranslator.vn</a>; chúng tôi trả lời kèm file .dmg và mã SHA-256. File .dmg tải bằng trình duyệt cần bước Open Anyway ở lần mở đầu.</p>`,
     },
   ],
   { open: false },
@@ -142,7 +142,7 @@ ${faq(
     },
     {
       q: "Tôi muốn đọc script trước khi chạy",
-      a: `<p>Script nằm ở <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> (có chú thích). Lệnh sau in script ra để bạn đọc rồi mới chạy:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "Lệnh in script ra đọc trước khi chạy", term: "Windows PowerShell", prompt: "PS>" })}`,
+      a: `<p>Script nằm ở <a href="/install.ps1">aitranslator.vn/install.ps1</a> (có chú thích). Lệnh sau in script ra để bạn đọc rồi mới chạy:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "Lệnh in script ra đọc trước khi chạy", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "Thử các bản mới sớm hơn (kênh Beta)",
@@ -162,7 +162,7 @@ ${faq(
     },
     {
       q: "Tôi muốn nhận file .exe qua email",
-      a: `<p>Gửi cho chúng tôi một email ngắn tại <a href="${MAILTO_WIN}">support@aitranslator.io.vn</a>; chúng tôi trả lời kèm file .exe và mã SHA-256. File .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo.</p>`,
+      a: `<p>Gửi cho chúng tôi một email ngắn tại <a href="${MAILTO_WIN}">support@aitranslator.vn</a>; chúng tôi trả lời kèm file .exe và mã SHA-256. File .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo.</p>`,
     },
   ],
   { open: false },
@@ -219,7 +219,7 @@ ${sectionHead({ eyebrow: "Thông tin nhanh", title: "Dùng thử và giá", cent
   ["Giá sau đó", "Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR (VND) hoặc thẻ quốc tế (USD), không tự gia hạn. Thẻ không nhận được ở một số nước, theo danh sách của Creem.</small>"],
   ["Model", "Tải một lần, 1,3 hoặc 2,5 GB<small>Sau đó nhận dạng và dịch chạy offline trên máy bạn</small>"],
 ])}</div>
-${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: "Chỉ cài AI Translator bằng lệnh trên trang này, hoặc từ liên kết do <strong>support@aitranslator.io.vn</strong> hay website <strong>aitranslator.io.vn</strong> gửi cho bạn. Các bản cài từ nguồn khác có thể là bản giả." })}
+${callout({ kind: "ok", title: "Chỉ lấy bản cài từ chúng tôi", text: "Chỉ cài AI Translator bằng lệnh trên trang này, hoặc từ liên kết do <strong>support@aitranslator.vn</strong> hay website <strong>aitranslator.vn</strong> gửi cho bạn. Các bản cài từ nguồn khác có thể là bản giả." })}
 </div></section>
 
 <section class="section"><div class="container">

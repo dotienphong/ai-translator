@@ -37,17 +37,17 @@ export default {
   path: "/lien-he/",
   title: "Liên hệ và hỗ trợ AI Translator",
   description:
-    "Liên hệ AI Translator qua email support@aitranslator.io.vn hoặc chat hỗ trợ trên web và trong app: kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật.",
+    "Liên hệ AI Translator qua email support@aitranslator.vn hoặc chat hỗ trợ trên web và trong app: kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
-  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.io.vn hoặc chat hỗ trợ (nút chat ở góc dưới bên phải mỗi trang, mục Hỗ trợ trong app), việc nên gửi (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
+  llm: "Cách liên hệ và nhận hỗ trợ: email support@aitranslator.vn hoặc chat hỗ trợ (nút chat ở góc dưới bên phải mỗi trang, mục Hỗ trợ trong app), việc nên gửi (nhận bản cài, kỹ thuật, mất key, thanh toán, hoàn tiền, xóa dữ liệu, bảo mật) và nên kèm thông tin gì.",
   llmTitle: "Liên hệ và hỗ trợ AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Liên hệ và hỗ trợ",
-  lead: "Bạn liên hệ AI Translator bằng email tới support@aitranslator.io.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
+  lead: "Bạn liên hệ AI Translator bằng email tới support@aitranslator.vn, hoặc nhắn ở chat hỗ trợ: nút chat ở góc dưới bên phải mỗi trang của website này, hay mục Hỗ trợ trong app. Chúng tôi không có số điện thoại hỗ trợ.",
 })}
 
 <section class="section-tight"><div class="container narrow">
@@ -81,7 +81,7 @@ ${btn(M.support, "Gửi thư hỗ trợ kỹ thuật")}
 
 <div class="card reveal" id="mat-key">
 <h3>Mất license key</h3>
-<p>Bạn tự khôi phục được: vào Cài đặt › Bản quyền › Mất key?, nhập email đã dùng khi mua rồi bấm Gửi lại key. Thư gửi từ no-reply@mail.aitranslator.io.vn, hãy kiểm cả thư mục thư rác. Nếu vẫn không nhận được, hãy gửi email cho chúng tôi từ chính email đã dùng khi mua. Xem thêm <a href="/huong-dan/mua-va-kich-hoat-key/">hướng dẫn mua và kích hoạt key</a>.</p>
+<p>Bạn tự khôi phục được: vào Cài đặt › Bản quyền › Mất key?, nhập email đã dùng khi mua rồi bấm Gửi lại key. Thư gửi từ no-reply@mail.aitranslator.vn, hãy kiểm cả thư mục thư rác. Nếu vẫn không nhận được, hãy gửi email cho chúng tôi từ chính email đã dùng khi mua. Xem thêm <a href="/huong-dan/mua-va-kich-hoat-key/">hướng dẫn mua và kích hoạt key</a>.</p>
 ${btn(M.key, "Gửi thư về key bị mất")}
 </div>
 

@@ -19,11 +19,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "Common installation problems" },
 ];
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
 
 const HOWTO_STEPS = [
   { name: "Open Terminal", text: "Press Command + Space, type Terminal and press Enter." },
-  { name: "Paste the install command and press Enter", text: "Paste curl -fsSL https://aitranslator.io.vn/install.sh | bash into Terminal and press Enter. No password is needed." },
+  { name: "Paste the install command and press Enter", text: "Paste curl -fsSL https://aitranslator.vn/install.sh | bash into Terminal and press Enter. No password is needed." },
   { name: "Wait for the app to open", text: "The command downloads the latest version, checks its SHA-256, copies AI Translator to Applications and opens it. When macOS asks for system audio recording permission, choose Allow." },
 ];
 
@@ -83,14 +83,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "Copy command", copied: "Copied", label: "C
 <li>When macOS asks for <strong>system audio recording</strong> permission, choose Allow. Then continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
 </ol>
 <p><strong>Why is there no Open Anyway step?</strong> macOS only blocks an app whose file carries the “downloaded from the internet” tag (which browsers add). A file downloaded by <code>curl</code> in Terminal has no such tag, so the app opens directly even though Apple has not notarized it.</p>
-${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.io.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.io.vn</strong>, compares its SHA-256 and installs it. It does not use sudo and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.io.vn</strong>. To read the script first: <code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Run the same command again at any time to update to the latest version; the script quits the running app itself." })}
+${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.vn</strong>, compares its SHA-256 and installs it. It does not use sudo and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.vn</strong>. To read the script first: <code>curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Run the same command again at any time to update to the latest version; the script quits the running app itself." })}
 <p>Something went wrong? The script stops and says why (Mac not supported, no network, SHA-256 mismatch…). See <a href="#common-problems">common installation problems</a>.</p>
 
 <h2 id="install-dmg">Alternative: install from the .dmg file</h2>
 <p>Use this if you received the .dmg by email or prefer not to use Terminal. A file downloaded in a browser gets the “downloaded from the internet” tag from macOS, so the first launch needs the extra Open Anyway step.</p>
 
 <h3 id="verify-the-file">Verify the installer (SHA-256)</h3>
-${callout({ kind: "warn", title: "Only download the installer from an official source.", text: "The genuine .dmg is the one we send from <strong>support@aitranslator.io.vn</strong> or link to on <strong>aitranslator.io.vn</strong>. A file from anywhere else could be fake or tampered with. Do not open it, even if it is named AI Translator." })}
+${callout({ kind: "warn", title: "Only download the installer from an official source.", text: "The genuine .dmg is the one we send from <strong>support@aitranslator.vn</strong> or link to on <strong>aitranslator.vn</strong>. A file from anywhere else could be fake or tampered with. Do not open it, even if it is named AI Translator." })}
 <p>Every installer we send by email comes with a SHA-256 checksum. Compare it before installing:</p>
 <ol>
 <li>Open <strong>Terminal</strong> (Applications › Utilities).</li>
@@ -142,7 +142,7 @@ ${callout({ kind: "warn", title: "From macOS 15, the right-click › Open trick 
 
 <h2 id="common-problems">Common installation problems</h2>
 <ul>
-<li><strong>The install command says it could not read https://releases.aitranslator.io.vn/stable/latest.json….</strong> Your Mac has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
+<li><strong>The install command says it could not read https://releases.aitranslator.vn/stable/latest.json….</strong> Your Mac has no network, or a proxy/VPN is blocking <code>releases.aitranslator.vn</code>. Check your connection and run it again.</li>
 <li><strong>The install command says the SHA-256 does not match.</strong> The download was corrupted or tampered with on the way. The script installs nothing; run it again, and if it still differs write to <a href="/en/contact/">support</a>.</li>
 <li><strong>The install command says the app is still running.</strong> Quit AI Translator completely (AI Translator menu in the menu bar › Quit) and run the command again.</li>
 <li><strong>The install command says it needs Apple Silicon or macOS 14.2.</strong> Your Mac does not meet the requirements; there is no build for Intel Macs.</li>

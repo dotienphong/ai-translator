@@ -1,10 +1,10 @@
 # AI Translator Privacy Policy
 
-**Version 1.6, effective 23 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.7, effective 23 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 ## 1. Who is responsible for your data
 
-AI Translator (the "app") is developed and operated by **Do Tien Phong** (an individual) ("we", "us"). Contact for privacy and personal-data matters: **support@aitranslator.io.vn**.
+AI Translator (the "app") is developed and operated by **Do Tien Phong** (an individual) ("we", "us"). Contact for privacy and personal-data matters: **support@aitranslator.vn**.
 
 ## 2. Summary
 
@@ -34,11 +34,13 @@ On macOS, Type & Translate can ask for the **Accessibility** permission to paste
 ## 4. When the app uses the network
 
 The app connects to the network only to:
-1. **Download models** and check for new model versions (from `releases.aitranslator.io.vn`).
-2. **Check for app updates** (from `releases.aitranslator.io.vn`).
-3. **Talk to our license server** (`api.aitranslator.io.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate, recover a key, check your license periodically, send error reports (section 10) and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data. When you use the **support chat**, the app also sends and receives chat messages through this server (section 11): only while the Support screen is open, or while you are waiting for a reply to a message you sent in the last 24 hours and the app is not translating; if you have never used the chat, the app makes no connection for it. While translating, the app sends or receives chat messages only when the Support screen is open or when you press send.
+1. **Download models** and check for new model versions (from `releases.aitranslator.vn`).
+2. **Check for app updates** (from `releases.aitranslator.vn`).
+3. **Talk to our license server** (`api.aitranslator.vn`): when registering the Free trial (the first time you open the app, right after you accept the terms; this sends a hash of the machine ID), when you buy a plan, activate or deactivate, recover a key, check your license periodically, send error reports (section 10) and (rarely) ask for the server's time when your computer's clock looks wrong. Asking for the time sends none of your data. When you use the **support chat**, the app also sends and receives chat messages through this server (section 11): only while the Support screen is open, or while you are waiting for a reply to a message you sent in the last 24 hours and the app is not translating; if you have never used the chat, the app makes no connection for it. While translating, the app sends or receives chat messages only when the Support screen is open or when you press send.
 4. **The payment page** provided by PayOS (VietQR bank transfer) or Creem (international card), opened in your browser when you buy a plan.
-5. **Our website** `aitranslator.io.vn`, opened in your browser when you click a link in the app.
+5. **Our website** `aitranslator.vn`, opened in your browser when you click a link in the app.
+
+App versions before 0.2.7 connect to the same servers under our former domain `aitranslator.io.vn`; the website at the former domain redirects to `aitranslator.vn`.
 
 There are no other connections, and none carries audio, transcript text or text you type in Type & Translate.
 
@@ -77,7 +79,7 @@ Cloudflare and Resend operate servers outside Vietnam and Creem is an Estonian c
 
 **Personal data on our servers is kept until you ask us to delete it.** We do not delete it automatically, except error reports (deleted after 30 days, section 10) and the support chat (deleted 90 days after the last message, section 11).
 
-You have the right to know what is stored, to request **deletion** or **anonymization**, to withdraw consent, and to complain under Vietnam's **Law on Personal Data Protection**. Send requests to **support@aitranslator.io.vn** from the email you used when buying, or the email you left in the support chat (so we can confirm it is you). We respond within the period required by law.
+You have the right to know what is stored, to request **deletion** or **anonymization**, to withdraw consent, and to complain under Vietnam's **Law on Personal Data Protection**. Send requests to **support@aitranslator.vn** from the email you used when buying, or the email you left in the support chat (so we can confirm it is you). We respond within the period required by law.
 
 When you ask for deletion we will:
 - **remove** your email and computer name, and the interface language stored on your orders;
@@ -101,7 +103,7 @@ Token-signing and payment keys live only on our servers (as secrets) and are not
 
 ## 10. Error reports
 
-When the app hits an error, it **automatically sends us an error report** through our license server (`api.aitranslator.io.vn`) so we can find and fix the problem. This is **on by default**: the Terms step the first time you open the app has a pre-ticked box you can untick, and people who installed the app earlier have it on after updating to a version that includes this feature. You can turn it off or on again at any time in **Settings › Privacy › Send error reports automatically**; turning it off deletes any reports still waiting to be sent. You can also send a report yourself at any time with the **Send log to support** button on the About screen: it sends immediately, even if you turned automatic sending off, and gives you a **report code** to hand to support.
+When the app hits an error, it **automatically sends us an error report** through our license server (`api.aitranslator.vn`) so we can find and fix the problem. This is **on by default**: the Terms step the first time you open the app has a pre-ticked box you can untick, and people who installed the app earlier have it on after updating to a version that includes this feature. You can turn it off or on again at any time in **Settings › Privacy › Send error reports automatically**; turning it off deletes any reports still waiting to be sent. You can also send a report yourself at any time with the **Send log to support** button on the About screen: it sends immediately, even if you turned automatic sending off, and gives you a **report code** to hand to support.
 
 | What | Details |
 |---|---|
@@ -119,7 +121,7 @@ When the app hits an error, it **automatically sends us an error report** throug
 
 ## 11. Support chat
 
-You can write to us in the **support chat**: the chat button in the corner of every page of the `aitranslator.io.vn` website, or the **Support** screen in the app. No account is needed, and everyone can use it, including on the Free plan. Replies come from the operator of the app, not from a bot. Your messages go through our server (`api.aitranslator.io.vn`) to the operator's Zalo account; the operator replies in Zalo and the reply appears in your chat. You do not need Zalo.
+You can write to us in the **support chat**: the chat button in the corner of every page of the `aitranslator.vn` website, or the **Support** screen in the app. No account is needed, and everyone can use it, including on the Free plan. Replies come from the operator of the app, not from a bot. Your messages go through our server (`api.aitranslator.vn`) to the operator's Zalo account; the operator replies in Zalo and the reply appears in your chat. You do not need Zalo.
 
 | What | Details |
 |---|---|
@@ -136,7 +138,7 @@ You can write to us in the **support chat**: the chat button in the corner of ev
 - The 90-day deletion and the delete button remove only the data on our server (the delete button also removes the code on your computer). Copies of the messages forwarded to Zalo stay in the operator's Zalo conversation, and on Zalo's systems under Zalo's policy, until the operator deletes them; to have those deleted too, ask under section 7. Reply emails we sent you stay in your mailbox and in Resend's mail logs.
 - We use the chat only to reply to you; we do not use it for advertising, sell it or share it with anyone other than the processors in section 6.
 - If you choose to attach logs in the app's chat, the app sends an error report like the **Send log to support** button (section 10) and then posts the report code in the chat.
-- Do not send passwords, card numbers or bank account numbers in the chat; we do not need them. The chat may be turned off temporarily; the chat then shows the address support@aitranslator.io.vn.
+- Do not send passwords, card numbers or bank account numbers in the chat; we do not need them. The chat may be turned off temporarily; the chat then shows the address support@aitranslator.vn.
 
 ## 12. Changes to this policy
 
@@ -144,4 +146,4 @@ When the policy changes we update this text and the effective date, and announce
 
 ## 13. Contact
 
-**Do Tien Phong**, support@aitranslator.io.vn.
+**Do Tien Phong**, support@aitranslator.vn.

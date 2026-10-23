@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
-const host = "aitranslator.io.vn";
+const host = "aitranslator.vn";
 const files = await readdir(path.join(root, "src/public"));
 const keyFile = files.find((f) => /^[0-9a-f]{32}\.txt$/.test(f));
 if (!keyFile) {

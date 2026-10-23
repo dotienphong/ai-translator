@@ -92,7 +92,7 @@ ${docLayout({
 <div class="card"><span class="card-title">「無料お試しを開始するには、一度インターネットに接続してください」または「14 日間プランを確認できなかったため、Free を使用しています。インターネットに接続してください。」</span><p><strong>原因：</strong>接続がなくお試しを登録できなかった、または有料プランでライセンスの確認がないまま 14 日を過ぎました。</p><p><strong>直し方：</strong>インターネットに接続します。このパソコンでまだお試しを登録していない場合は、もう一度<strong>開始</strong>を押すとアプリが登録します。有料プランの場合は、「設定 › ライセンス」で<strong>今すぐ確認</strong>を押します。</p></div>
 <div class="card"><span class="card-title">「このキーは 2 台のコンピューターで使用されているため、ロックされています。…」</span><p><strong>原因：</strong>キーを 2 台のパソコンが使っています。</p><p><strong>直し方：</strong>どちらか 1 台からキーを削除してから<strong>再試行</strong>を押します：<a href="/ja/guide/buy-and-activate/#switch-computers">パソコンの変更の方法</a>をご覧ください。</p></div>
 <div class="card"><span class="card-title">「コンピューターの時計が正しくないようです。正しい時刻に設定して、もう一度お試しください。」または「このコンピューターの時計が戻されています。…」</span><p><strong>原因：</strong>システムの時計が過去に戻されました。</p><p><strong>直し方：</strong>正しい時刻に設定し（できれば自動設定）、アプリが確認できるようインターネットに接続してください。</p></div>
-<div class="card"><span class="card-title">「このキーは無効です。…」、「コンピューターの変更が頻繁すぎたため、このキーは一時的にロックされています。…」、「この AI Translator は正規品ではないため、…」</span><p><strong>原因：</strong>キーの入力ミス、パソコンの変更が多すぎる、または公式ではないインストーラー。</p><p><strong>直し方：</strong>メールのキーをもう一度貼り付けます。キーがロックされた場合はサポートにご連絡ください。私たちがお送りしたリンクか aitranslator.io.vn から、公式のビルドをもう一度ダウンロードしてください。</p></div>
+<div class="card"><span class="card-title">「このキーは無効です。…」、「コンピューターの変更が頻繁すぎたため、このキーは一時的にロックされています。…」、「この AI Translator は正規品ではないため、…」</span><p><strong>原因：</strong>キーの入力ミス、パソコンの変更が多すぎる、または公式ではないインストーラー。</p><p><strong>直し方：</strong>メールのキーをもう一度貼り付けます。キーがロックされた場合はサポートにご連絡ください。私たちがお送りしたリンクか aitranslator.vn から、公式のビルドをもう一度ダウンロードしてください。</p></div>
 </div>
 
 <h2 id="type-and-translate">入力翻訳</h2>
@@ -105,7 +105,7 @@ ${docLayout({
 
 <h2 id="send-logs">ログを送って問題を報告する</h2>
 <p>アプリでエラーが起きると（突然停止した、アプリのエラーで翻訳のセッションが止まった、補助プログラムが停止して再起動した）、アプリは<strong>エラーレポートを自動で私たちに送ります</strong>：マシンの情報とログの関係する部分で、個人フォルダーのパス、キー、トークン、メールアドレスは取り除かれ、音声や文字起こしのテキストは含みません。レポートはアプリが翻訳していないときだけ送られます。これは初期設定でオンで、<strong>設定 › プライバシー › エラーレポートを自動送信</strong>でオフにできます。<a href="/ja/data-security/#error-reports">レポートに含まれるものと保存期間</a>をご覧ください。</p>
-<p>アプリが止まらない問題（字幕が間違っている、遅いなど）の場合は、<strong>このアプリについて › ログをサポートに送信</strong>を選びます。自動送信をオフにしていてもすぐにレポートが送られ、<strong>レポートコード</strong>（<code>R-XXXX-XXXX</code> のような形式）が表示されます。私たちがレポートを見つけられるよう、そのコードを<a href="/ja/contact/">サポート</a>（support@aitranslator.io.vn）へのメールに書いてください。</p>
+<p>アプリが止まらない問題（字幕が間違っている、遅いなど）の場合は、<strong>このアプリについて › ログをサポートに送信</strong>を選びます。自動送信をオフにしていてもすぐにレポートが送られ、<strong>レポートコード</strong>（<code>R-XXXX-XXXX</code> のような形式）が表示されます。私たちがレポートを見つけられるよう、そのコードを<a href="/ja/contact/">サポート</a>（support@aitranslator.vn）へのメールに書いてください。</p>
 <p>ログを自分で見たり添付したりするには、<strong>このアプリについて › ログフォルダーを開く</strong>を選んで <code>app.log</code> を探します（macOS：<code>~/Library/Logs/</code> の中の <code>com.aitranslator.desktop</code> フォルダー。Windows：<code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>）。このファイルはパソコンに残り、音声、文字起こしのテキスト、完全なライセンスキーは含みません。</p>
 ${appShot({
   slug: "app-about",

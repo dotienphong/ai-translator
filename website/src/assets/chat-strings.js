@@ -4,7 +4,7 @@
 // (trình duyệt) và layout.mjs (nhãn bong bóng, lúc dựng) cùng nhập file này. `{email}` được thay bằng liên kết mailto.
 // Không nhắc tên dịch vụ chuyển tin ở đây (quy tắc "không công bố công nghệ lõi" của website/README.md; có test chặn).
 
-export const SUPPORT_EMAIL = "support@aitranslator.io.vn";
+export const SUPPORT_EMAIL = "support@aitranslator.vn";
 
 export const CHAT = {
   vi: {

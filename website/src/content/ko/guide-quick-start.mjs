@@ -17,7 +17,7 @@ const toc = [
 
 // HowTo 구조화 데이터용 일반 텍스트. 화면에 보이는 내용은 body에 있습니다.
 const HOWTO_STEPS = [
-  { name: "앱을 설치하고 열기", text: "macOS에서는 설치 명령(curl -fsSL https://aitranslator.io.vn/install.sh | bash)을 터미널에 붙여 넣습니다. 앱이 다운로드되고 확인된 뒤 바로 열리며, ‘그래도 열기’가 필요 없습니다. Windows에서는 설치 명령(irm https://aitranslator.io.vn/install.ps1 | iex)을 PowerShell에 붙여 넣습니다. 브라우저로 내려받은 .exe를 쓰는데 SmartScreen이 경고하면 ‘추가 정보’를 누른 뒤 ‘실행’을 누릅니다." },
+  { name: "앱을 설치하고 열기", text: "macOS에서는 설치 명령(curl -fsSL https://aitranslator.vn/install.sh | bash)을 터미널에 붙여 넣습니다. 앱이 다운로드되고 확인된 뒤 바로 열리며, ‘그래도 열기’가 필요 없습니다. Windows에서는 설치 명령(irm https://aitranslator.vn/install.ps1 | iex)을 PowerShell에 붙여 넣습니다. 브라우저로 내려받은 .exe를 쓰는데 SmartScreen이 경고하면 ‘추가 정보’를 누른 뒤 ‘실행’을 누릅니다." },
   { name: "인터페이스 언어 고르기", text: "컴퓨터의 언어가 미리 선택되어 있습니다. 필요하면 바꾸고 ‘다음’을 누릅니다. 이것이 기본 번역 언어도 정합니다." },
   { name: "약관에 동의하기", text: "사용권 계약(EULA)과 개인정보 처리방침을 읽고 체크한 뒤 ‘다음’을 누릅니다. Free 체험을 시작하려면 인터넷 연결이 한 번 필요합니다." },
   { name: "모델을 골라 내려받기", text: "앱의 추천에 따라 Standard 팩(약 2.5GB) 또는 Lite 팩(약 1.3GB)을 고르고 다운로드를 기다립니다." },
@@ -75,14 +75,14 @@ ${callout({ title: "Windows를 쓰시나요?", text: "아래 단계는 Windows�
 <p><strong>macOS에서:</strong></p>
 <ol>
 <li><strong>터미널</strong>을 엽니다(<kbd>⌘</kbd> + <kbd>Space</kbd>를 누르고 ‘터미널’을 입력한 뒤 Enter).</li>
-<li><a href="/ko/download/#install-macos">다운로드</a> 페이지의 설치 명령을 붙여 넣고 Enter를 누릅니다: <code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>.</li>
+<li><a href="/ko/download/#install-macos">다운로드</a> 페이지의 설치 명령을 붙여 넣고 Enter를 누릅니다: <code>curl -fsSL https://aitranslator.vn/install.sh | bash</code>.</li>
 <li>1분 정도 기다립니다. 앱이 다운로드되고, 확인되고, 응용 프로그램 폴더에 복사된 뒤 바로 열립니다. macOS가 시스템 오디오 녹음 권한을 요청하면 ‘허용’을 고릅니다.</li>
 </ol>
 <p>이미 브라우저로 <code>.dmg</code>를 내려받았다면: <strong>AI Translator</strong>를 <strong>응용 프로그램</strong>으로 끌어 놓고 엽니다(현재 빌드는 애드혹 서명이고 아직 Apple의 공증을 받지 않아 macOS가 첫 실행을 차단합니다). <strong>완료</strong>를 누르고, <strong>시스템 설정 › 개인정보 보호 및 보안</strong>으로 가서 맨 아래로 스크롤한 뒤 <strong>그래도 열기</strong>를 누르고 암호나 Touch ID로 확인합니다.</p>
 <p><strong>Windows에서:</strong></p>
 <ol>
 <li><strong>PowerShell</strong>을 엽니다(<kbd>Windows</kbd> 키를 누르고 PowerShell을 입력한 뒤 Enter).</li>
-<li><a href="/ko/download/#install-windows">다운로드</a> 페이지의 설치 명령을 붙여 넣고 Enter를 누릅니다: <code>irm https://aitranslator.io.vn/install.ps1 | iex</code>. 관리자 권한은 필요 없습니다.</li>
+<li><a href="/ko/download/#install-windows">다운로드</a> 페이지의 설치 명령을 붙여 넣고 Enter를 누릅니다: <code>irm https://aitranslator.vn/install.ps1 | iex</code>. 관리자 권한은 필요 없습니다.</li>
 <li>1분 정도 기다립니다. 설치 프로그램이 화면 표시 없이 실행되고 AI Translator가 저절로 열립니다.</li>
 </ol>
 <p>이미 브라우저로 <code>.exe</code>를 내려받았다면: 두 번 클릭합니다. Windows가 파란색 ‘Windows의 PC 보호’ 화면을 보여 주면 <strong>추가 정보</strong>를 누르고, ‘앱’ 줄에 설치 프로그램의 파일 이름이 보이는지 확인한 뒤 <strong>실행</strong>을 누릅니다.</p>

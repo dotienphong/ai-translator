@@ -7,10 +7,10 @@ import { formatDate } from "./langs.mjs";
 const release = await resolveRelease();
 
 export const SITE = {
-  origin: "https://aitranslator.io.vn",
+  origin: "https://aitranslator.vn",
   name: "AI Translator",
   owner: "Đỗ Tiến Phong",
-  email: "support@aitranslator.io.vn",
+  email: "support@aitranslator.vn",
   defaultLang: "vi",
   year: 2026,
   updated: "2026-10-13",

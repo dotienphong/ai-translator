@@ -1,10 +1,10 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.6, hiệu lực từ 23/10/2026.**
+**Phiên bản 1.7, hiệu lực từ 23/10/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
-AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát triển và vận hành ("chúng tôi"). Liên hệ về quyền riêng tư và dữ liệu cá nhân: **support@aitranslator.io.vn**.
+AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát triển và vận hành ("chúng tôi"). Liên hệ về quyền riêng tư và dữ liệu cá nhân: **support@aitranslator.vn**.
 
 ## 2. Tóm tắt
 
@@ -34,11 +34,13 @@ Trên macOS, Gõ dịch có thể xin quyền **Trợ năng** (Accessibility) đ
 ## 4. Khi nào ứng dụng kết nối mạng
 
 Ứng dụng chỉ kết nối mạng để:
-1. **Tải model** và kiểm tra bản mới của model (từ `releases.aitranslator.io.vn`).
-2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.io.vn`).
-3. **Làm việc với license server** của chúng tôi (`api.aitranslator.io.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
+1. **Tải model** và kiểm tra bản mới của model (từ `releases.aitranslator.vn`).
+2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.vn`).
+3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
 4. **Trang thanh toán** do PayOS (chuyển khoản VietQR) hoặc Creem (thẻ quốc tế) cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
-5. **Website** `aitranslator.io.vn` của chúng tôi, mở bằng trình duyệt của bạn khi bạn bấm liên kết trong ứng dụng.
+5. **Website** `aitranslator.vn` của chúng tôi, mở bằng trình duyệt của bạn khi bạn bấm liên kết trong ứng dụng.
+
+Các bản ứng dụng trước 0.2.7 kết nối tới cùng các máy chủ trên dưới tên miền cũ `aitranslator.io.vn` của chúng tôi; website ở tên cũ tự chuyển sang `aitranslator.vn`.
 
 Không có kết nối nào khác, và không có kết nối nào mang âm thanh, nội dung chép lời hay chữ bạn gõ ở Gõ dịch.
 
@@ -77,7 +79,7 @@ Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp 
 
 **Dữ liệu cá nhân trên máy chủ được giữ cho tới khi bạn yêu cầu xóa.** Chúng tôi không tự xóa, trừ báo cáo lỗi (tự xóa sau 30 ngày, mục 10) và cuộc chat hỗ trợ (tự xóa sau 90 ngày kể từ tin cuối, mục 11).
 
-Bạn có quyền: biết dữ liệu nào đang được lưu, yêu cầu **xóa** hoặc **ẩn danh**, rút lại sự đồng ý, và khiếu nại theo quy định của **Luật Bảo vệ dữ liệu cá nhân** của Việt Nam. Gửi yêu cầu tới **support@aitranslator.io.vn** từ email đã dùng khi mua, hay email bạn đã để lại trong chat hỗ trợ (để chúng tôi xác nhận là bạn). Chúng tôi xử lý trong thời hạn pháp luật quy định.
+Bạn có quyền: biết dữ liệu nào đang được lưu, yêu cầu **xóa** hoặc **ẩn danh**, rút lại sự đồng ý, và khiếu nại theo quy định của **Luật Bảo vệ dữ liệu cá nhân** của Việt Nam. Gửi yêu cầu tới **support@aitranslator.vn** từ email đã dùng khi mua, hay email bạn đã để lại trong chat hỗ trợ (để chúng tôi xác nhận là bạn). Chúng tôi xử lý trong thời hạn pháp luật quy định.
 
 Khi bạn yêu cầu xóa, chúng tôi sẽ:
 - **bỏ** email và tên máy của bạn, cùng ngôn ngữ giao diện lưu trên đơn hàng;
@@ -101,7 +103,7 @@ Khóa ký token và khóa thanh toán chỉ nằm trên máy chủ (dưới dạ
 
 ## 10. Báo cáo lỗi
 
-Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chúng tôi qua license server (`api.aitranslator.io.vn`) để chúng tôi biết và sửa lỗi. Tính năng này **bật mặc định**: ở bước Điều khoản khi mở ứng dụng lần đầu có một ô đã tích sẵn mà bạn bỏ tích được, và người dùng đã cài từ trước cũng được bật sau khi cập nhật lên bản có tính năng này. Bạn tắt hay bật lại bất cứ lúc nào ở **Cài đặt › Quyền riêng tư › Gửi báo cáo lỗi tự động**; tắt thì các báo cáo đang chờ gửi bị xóa. Bạn cũng tự gửi được một báo cáo bất cứ lúc nào bằng nút **Gửi log cho hỗ trợ** ở màn hình Giới thiệu: nút này gửi ngay, kể cả khi bạn đã tắt gửi tự động, và cho bạn một **mã báo cáo** để đưa cho bộ phận hỗ trợ.
+Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chúng tôi qua license server (`api.aitranslator.vn`) để chúng tôi biết và sửa lỗi. Tính năng này **bật mặc định**: ở bước Điều khoản khi mở ứng dụng lần đầu có một ô đã tích sẵn mà bạn bỏ tích được, và người dùng đã cài từ trước cũng được bật sau khi cập nhật lên bản có tính năng này. Bạn tắt hay bật lại bất cứ lúc nào ở **Cài đặt › Quyền riêng tư › Gửi báo cáo lỗi tự động**; tắt thì các báo cáo đang chờ gửi bị xóa. Bạn cũng tự gửi được một báo cáo bất cứ lúc nào bằng nút **Gửi log cho hỗ trợ** ở màn hình Giới thiệu: nút này gửi ngay, kể cả khi bạn đã tắt gửi tự động, và cho bạn một **mã báo cáo** để đưa cho bộ phận hỗ trợ.
 
 | Nội dung | Chi tiết |
 |---|---|
@@ -119,7 +121,7 @@ Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chún
 
 ## 11. Chat hỗ trợ
 
-Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở góc mỗi trang của website `aitranslator.io.vn`, hoặc màn hình **Hỗ trợ** trong ứng dụng. Không cần tài khoản, và mọi người dùng đều chat được, kể cả gói Free. Người trả lời là người vận hành ứng dụng, không phải bot. Tin của bạn đi qua máy chủ của chúng tôi (`api.aitranslator.io.vn`) tới tài khoản Zalo của người vận hành; người vận hành trả lời trong Zalo và câu trả lời hiện trong khung chat của bạn. Bạn không cần có Zalo.
+Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở góc mỗi trang của website `aitranslator.vn`, hoặc màn hình **Hỗ trợ** trong ứng dụng. Không cần tài khoản, và mọi người dùng đều chat được, kể cả gói Free. Người trả lời là người vận hành ứng dụng, không phải bot. Tin của bạn đi qua máy chủ của chúng tôi (`api.aitranslator.vn`) tới tài khoản Zalo của người vận hành; người vận hành trả lời trong Zalo và câu trả lời hiện trong khung chat của bạn. Bạn không cần có Zalo.
 
 | Nội dung | Chi tiết |
 |---|---|
@@ -136,7 +138,7 @@ Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở g�
 - Việc tự xóa sau 90 ngày và nút xóa chỉ xóa dữ liệu trên máy chủ của chúng tôi (nút xóa còn xóa mã trên máy bạn). Bản sao các tin đã chuyển sang Zalo vẫn nằm trong cuộc trò chuyện Zalo của người vận hành, và trên hệ thống của Zalo theo chính sách của Zalo, cho tới khi người vận hành xóa; muốn xóa cả bản đó, hãy yêu cầu theo mục 7. Thư trả lời đã gửi tới email của bạn thì nằm trong hộp thư của bạn và nhật ký thư của Resend.
 - Chúng tôi dùng chat chỉ để trả lời bạn; không dùng cho quảng cáo, không bán và không chia sẻ cho bên nào ngoài các bên xử lý ở mục 6.
 - Nếu trong ứng dụng bạn chọn đính kèm log, ứng dụng gửi một báo cáo lỗi như nút **Gửi log cho hỗ trợ** (mục 10) rồi gửi mã báo cáo vào cuộc chat.
-- Đừng gửi mật khẩu, số thẻ hay số tài khoản ngân hàng qua chat; chúng tôi không cần những thông tin đó. Chat có thể tạm tắt; khi đó khung chat hiện địa chỉ support@aitranslator.io.vn.
+- Đừng gửi mật khẩu, số thẻ hay số tài khoản ngân hàng qua chat; chúng tôi không cần những thông tin đó. Chat có thể tạm tắt; khi đó khung chat hiện địa chỉ support@aitranslator.vn.
 
 ## 12. Thay đổi chính sách
 
@@ -144,4 +146,4 @@ Khi chính sách thay đổi, chúng tôi cập nhật văn bản này và ngày
 
 ## 13. Liên hệ
 
-**Đỗ Tiến Phong**, support@aitranslator.io.vn.
+**Đỗ Tiến Phong**, support@aitranslator.vn.

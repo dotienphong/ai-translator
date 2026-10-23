@@ -17,7 +17,7 @@ const SCRIPT = join(ROOT, "website/src/public/install.sh");
 const script = readFileSync(SCRIPT, "utf8");
 const conf = JSON.parse(readFileSync(join(ROOT, "src-tauri/tauri.conf.json"), "utf8"));
 const macConf = JSON.parse(readFileSync(join(ROOT, "src-tauri/release/tauri.macos.json"), "utf8"));
-const CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+const CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
 
 const shVar = (name) => script.match(new RegExp(`^\\s*${name}="([^"]*)"`, "m"))?.[1];
 
@@ -31,7 +31,7 @@ test("cú pháp bash hợp lệ, toàn bộ script nằm trong hàm main chỉ g
 });
 
 test("hợp đồng với release: URL, tên file bộ cài, SHA256SUMS, mã định danh, tên sản phẩm", () => {
-  assert.equal(shVar("BASE_URL"), "https://releases.aitranslator.io.vn");
+  assert.equal(shVar("BASE_URL"), "https://releases.aitranslator.vn");
   assert.match(readFileSync(join(ROOT, "src-tauri/src/updater/source.rs"), "utf8"), new RegExp(`Some\\("${shVar("BASE_URL")}"\\)`), "BASE_URL phải bằng PRODUCTION_URL của updater");
   assert.equal(shVar("PRODUCT"), conf.productName);
   assert.equal(shVar("BUNDLE_ID"), conf.identifier);
@@ -94,7 +94,7 @@ while [ $# -gt 0 ]; do
   case "$1" in -o) out="$2"; shift ;; https://*) url="$1" ;; esac
   shift
 done
-path=$(printf '%s' "\${url#https://releases.aitranslator.io.vn/}" | sed 's/%20/ /g')
+path=$(printf '%s' "\${url#https://releases.aitranslator.vn/}" | sed 's/%20/ /g')
 [ -f "${site}/$path" ] || exit 22
 if [ -n "$out" ]; then cp "${site}/$path" "$out"; else cat "${site}/$path"; fi
 `);

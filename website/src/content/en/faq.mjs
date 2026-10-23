@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Is there an offline app that translates meeting subtitles on my computer?",
-        a: `<p>Yes. AI Translator (aitranslator.io.vn) is a desktop app for macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit (x64) that shows live translated subtitles for any audio playing on your computer. Speech recognition and translation run on the device, so no internet is needed while translating and the audio never leaves your machine. It supports English, Chinese, Japanese, Korean and Vietnamese, with a 10-day free trial.</p>`,
+        a: `<p>Yes. AI Translator (aitranslator.vn) is a desktop app for macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit (x64) that shows live translated subtitles for any audio playing on your computer. Speech recognition and translation run on the device, so no internet is needed while translating and the audio never leaves your machine. It supports English, Chinese, Japanese, Korean and Vietnamese, with a 10-day free trial.</p>`,
       },
       {
         q: "How do I translate a Zoom meeting into my language without a bot?",
@@ -118,7 +118,7 @@ const GROUPS = [
       },
       {
         q: "How do I delete my data?",
-        a: `<p>On your computer: Settings › Privacy › Delete all data (history and glossary), or Delete models and data. On our servers: email support@aitranslator.io.vn from the email you used to buy and ask for deletion or anonymization. We remove your email and device name, and still keep the hashed machine ID, the time of consent and the accounting-level order row. See <a href="/en/data-security/#delete-data">how to request deletion</a>.</p>`,
+        a: `<p>On your computer: Settings › Privacy › Delete all data (history and glossary), or Delete models and data. On our servers: email support@aitranslator.vn from the email you used to buy and ask for deletion or anonymization. We remove your email and device name, and still keep the hashed machine ID, the time of consent and the accounting-level order row. See <a href="/en/data-security/#delete-data">how to request deletion</a>.</p>`,
       },
     ],
   },
@@ -174,7 +174,7 @@ const GROUPS = [
       },
       {
         q: "Can I get a refund?",
-        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request to us first, within 7 days of the payment date, to support@aitranslator.io.vn with the order code. Changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
+        a: `<p>Payments are not refundable, except when a fault on our side stops you from using the plan you bought and we cannot fix it within a reasonable time, or when the law says otherwise. Send the request to us first, within 7 days of the payment date, to support@aitranslator.vn with the order code. Changing plans is not refundable. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case. Details are in the <a href="/en/terms/">Terms of use</a>.</p>`,
       },
       {
         q: "How many devices can I use a key on? How do I move to another one?",
@@ -182,7 +182,7 @@ const GROUPS = [
       },
       {
         q: "I lost my key. What do I do?",
-        a: `<p>Go to Settings › License › Lost your key?, enter the email you used to buy and choose Send my keys: every valid key for that email is sent to that same email. If that does not work, email support@aitranslator.io.vn from the email you used to buy.</p>`,
+        a: `<p>Go to Settings › License › Lost your key?, enter the email you used to buy and choose Send my keys: every valid key for that email is sent to that same email. If that does not work, email support@aitranslator.vn from the email you used to buy.</p>`,
       },
     ],
   },
@@ -253,7 +253,7 @@ ${docLayout({
   tocTitle: "Question groups",
   body: `<p>Pick a group from the contents, or scroll down and open any question.</p>
 ${GROUPS.map((g) => `<h2 id="${g.id}">${g.title}</h2>\n${faq(g.items)}`).join("\n")}
-${callout({ title: "Did not find your answer?", text: `Email <a href="mailto:support@aitranslator.io.vn">support@aitranslator.io.vn</a> or see the <a href="/en/contact/">Contact page</a> for what to include.` })}`,
+${callout({ title: "Did not find your answer?", text: `Email <a href="mailto:support@aitranslator.vn">support@aitranslator.vn</a> or see the <a href="/en/contact/">Contact page</a> for what to include.` })}`,
 })}
 </div></section>
 

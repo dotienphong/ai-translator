@@ -8,7 +8,7 @@ const crumbs = [
 ];
 
 const mailto = (subject, body) =>
-  `mailto:support@aitranslator.io.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
+  `mailto:support@aitranslator.vn?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body.join("\n"))}`;
 
 const MAILTO_MAC = mailto("AI Translator installer request (macOS)", [
   "Hello AI Translator team,",
@@ -43,19 +43,19 @@ const MAILTO_WIN = mailto("AI Translator installer request (Windows)", [
 
 const plain = (html) => html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
-const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta";
-const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh";
-const WIN_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
-const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.io.vn/install.ps1))) -Beta";
-const WIN_CMD_REVIEW = "$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
+const INSTALL_CMD_BETA = "curl -fsSL https://aitranslator.vn/install.sh | bash -s -- --beta";
+const INSTALL_CMD_REVIEW = "curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh";
+const WIN_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
+const WIN_CMD_BETA = "& ([scriptblock]::Create((irm https://aitranslator.vn/install.ps1))) -Beta";
+const WIN_CMD_REVIEW = "$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s";
 
 const COPY = { copy: "Copy", copied: "Copied" };
 
 const DL_FAQ = [
   {
     q: "What does the one-line command do, and is it safe?",
-    a: `<p>The command downloads a small script from <strong>aitranslator.io.vn</strong>. The script checks your computer, reads the latest version number, downloads the installer and its SHA-256 checksum from <strong>releases.aitranslator.io.vn</strong>, compares the checksum, installs the app and opens it. It sends no data and needs no administrator rights.</p><p>Running a command you paste from the internet always means trusting its source. If you would rather read the script before running it, open “I want to read the script first” in the guide for your operating system. The SHA-256 checksum is served from the same place as the file, so it mainly protects you from a corrupted download; it does not replace trusting the source.</p>`,
+    a: `<p>The command downloads a small script from <strong>aitranslator.vn</strong>. The script checks your computer, reads the latest version number, downloads the installer and its SHA-256 checksum from <strong>releases.aitranslator.vn</strong>, compares the checksum, installs the app and opens it. It sends no data and needs no administrator rights.</p><p>Running a command you paste from the internet always means trusting its source. If you would rather read the script before running it, open “I want to read the script first” in the guide for your operating system. The SHA-256 checksum is served from the same place as the file, so it mainly protects you from a corrupted download; it does not replace trusting the source.</p>`,
   },
   {
     q: "Why is there no .dmg or .exe download button?",
@@ -99,7 +99,7 @@ ${faq(
     },
     {
       q: "I want to read the script first",
-      a: `<p>The script is at <a href="/install.sh">aitranslator.io.vn/install.sh</a> (about 200 lines, commented). This command downloads it, lets you read it, and only then runs it:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "Command that downloads the script for review before running it", term: "Terminal" })}`,
+      a: `<p>The script is at <a href="/install.sh">aitranslator.vn/install.sh</a> (about 200 lines, commented). This command downloads it, lets you read it, and only then runs it:</p>${cmdBlock({ cmd: INSTALL_CMD_REVIEW, ...COPY, label: "Command that downloads the script for review before running it", term: "Terminal" })}`,
     },
     {
       q: "Try newer builds early (Beta channel)",
@@ -115,7 +115,7 @@ ${faq(
     },
     {
       q: "I would like the .dmg by email",
-      a: `<p>Send us a short email at <a href="${MAILTO_MAC}">support@aitranslator.io.vn</a>; we reply with the .dmg and its SHA-256 checksum. A .dmg downloaded in a browser needs the Open Anyway step on first launch.</p>`,
+      a: `<p>Send us a short email at <a href="${MAILTO_MAC}">support@aitranslator.vn</a>; we reply with the .dmg and its SHA-256 checksum. A .dmg downloaded in a browser needs the Open Anyway step on first launch.</p>`,
     },
   ],
   { open: false },
@@ -144,7 +144,7 @@ ${faq(
     },
     {
       q: "I want to read the script first",
-      a: `<p>The script is at <a href="/install.ps1">aitranslator.io.vn/install.ps1</a> (commented). This command prints it so you can read it, and only then runs it:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "Command that prints the script for review before running it", term: "Windows PowerShell", prompt: "PS>" })}`,
+      a: `<p>The script is at <a href="/install.ps1">aitranslator.vn/install.ps1</a> (commented). This command prints it so you can read it, and only then runs it:</p>${cmdBlock({ cmd: WIN_CMD_REVIEW, ...COPY, label: "Command that prints the script for review before running it", term: "Windows PowerShell", prompt: "PS>" })}`,
     },
     {
       q: "Try newer builds early (Beta channel)",
@@ -164,7 +164,7 @@ ${faq(
     },
     {
       q: "I would like the .exe by email",
-      a: `<p>Send us a short email at <a href="${MAILTO_WIN}">support@aitranslator.io.vn</a>; we reply with the .exe and its SHA-256 checksum. An .exe downloaded in a browser may trigger a SmartScreen warning.</p>`,
+      a: `<p>Send us a short email at <a href="${MAILTO_WIN}">support@aitranslator.vn</a>; we reply with the .exe and its SHA-256 checksum. An .exe downloaded in a browser may trigger a SmartScreen warning.</p>`,
     },
   ],
   { open: false },
@@ -221,7 +221,7 @@ ${sectionHead({ eyebrow: "At a glance", title: "Free trial and pricing", center:
   ["Price afterwards", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR (VND) or international card (USD), no automatic renewal. Cards are not accepted in some countries, per Creem's list.</small>"],
   ["Models", "Downloaded once, 1.3 or 2.5 GB<small>After that, recognition and translation run offline on your machine</small>"],
 ])}</div>
-${callout({ kind: "ok", title: "Only get the installer from us", text: "Install AI Translator only with the command on this page, or from a link sent by <strong>support@aitranslator.io.vn</strong> or from the website <strong>aitranslator.io.vn</strong>. Installers from any other source may be fake." })}
+${callout({ kind: "ok", title: "Only get the installer from us", text: "Install AI Translator only with the command on this page, or from a link sent by <strong>support@aitranslator.vn</strong> or from the website <strong>aitranslator.vn</strong>. Installers from any other source may be fake." })}
 </div></section>
 
 <section class="section"><div class="container">

@@ -75,7 +75,7 @@ ${facts([
 <section class="section-tight"><div class="container narrow">
 <div class="card reveal">
 <h2>Cần trợ giúp?</h2>
-<p>Không thấy câu trả lời trong các bài trên? Xem <a href="/cau-hoi-thuong-gap/">câu hỏi thường gặp</a> hoặc nhắn cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>. Bạn có thể gửi thư tới <strong>support@aitranslator.io.vn</strong>.</p>
+<p>Không thấy câu trả lời trong các bài trên? Xem <a href="/cau-hoi-thuong-gap/">câu hỏi thường gặp</a> hoặc nhắn cho chúng tôi ở trang <a href="/lien-he/">liên hệ</a>. Bạn có thể gửi thư tới <strong>support@aitranslator.vn</strong>.</p>
 <p class="more-link"><a class="btn btn-secondary" href="/lien-he/">Liên hệ hỗ trợ ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/cau-hoi-thuong-gap/">Câu hỏi thường gặp</a></p>
 </div>
 </div></section>

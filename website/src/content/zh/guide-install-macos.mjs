@@ -19,11 +19,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "常见安装问题" },
 ];
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
 
 const HOWTO_STEPS = [
   { name: "打开终端", text: "按 Command + Space，输入“终端”，然后按 Enter。" },
-  { name: "粘贴安装命令并按 Enter", text: "把 curl -fsSL https://aitranslator.io.vn/install.sh | bash 粘贴到终端并按 Enter。不需要输入密码。" },
+  { name: "粘贴安装命令并按 Enter", text: "把 curl -fsSL https://aitranslator.vn/install.sh | bash 粘贴到终端并按 Enter。不需要输入密码。" },
   { name: "等待应用打开", text: "命令会下载最新版本，核对 SHA-256，把 AI Translator 复制到“应用程序”并打开它。当 macOS 请求系统音频录制权限时，请选择“允许”。" },
 ];
 
@@ -81,14 +81,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "复制命令", copied: "已复制", label:
 <li>当 macOS 请求<strong>系统音频录制</strong>权限时，请选择“允许”。然后继续阅读<a href="/zh/guide/quick-start/">快速入门指南</a>。</li>
 </ol>
 <p><strong>为什么没有“仍要打开”这一步？</strong>macOS 只会阻止带有“从互联网下载”标记（由浏览器添加）的文件中的应用。用终端里的 <code>curl</code> 下载的文件没有这个标记，所以即使 Apple 没有公证，应用也会直接打开。</p>
-${callout({ kind: "warn", title: "请了解这条命令会做什么。", text: "这条命令会从 <strong>aitranslator.io.vn</strong> 下载一个脚本；脚本从 <strong>releases.aitranslator.io.vn</strong> 下载安装包，核对其 SHA-256 后再安装。它不使用 sudo，也不发送任何数据。SHA-256 与文件来自同一个地方，所以主要是防止下载损坏；你仍然是在信任 <strong>aitranslator.io.vn</strong>。如果想先阅读脚本：<code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>。随时再次运行同一条命令即可更新到最新版本；脚本会自行退出正在运行的应用。" })}
+${callout({ kind: "warn", title: "请了解这条命令会做什么。", text: "这条命令会从 <strong>aitranslator.vn</strong> 下载一个脚本；脚本从 <strong>releases.aitranslator.vn</strong> 下载安装包，核对其 SHA-256 后再安装。它不使用 sudo，也不发送任何数据。SHA-256 与文件来自同一个地方，所以主要是防止下载损坏；你仍然是在信任 <strong>aitranslator.vn</strong>。如果想先阅读脚本：<code>curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>。随时再次运行同一条命令即可更新到最新版本；脚本会自行退出正在运行的应用。" })}
 <p>出了问题？脚本会停下来并说明原因（不支持的 Mac、没有网络、SHA-256 不匹配……）。请参阅<a href="#common-problems">常见安装问题</a>。</p>
 
 <h2 id="install-dmg">另一种方式：用 .dmg 文件安装</h2>
 <p>如果你是通过邮件收到的 .dmg，或者不想使用终端，可以用这种方式。在浏览器中下载的文件会被 macOS 加上“从互联网下载”的标记，所以第一次打开时需要额外的“仍要打开”步骤。</p>
 
 <h3 id="verify-the-file">核对安装包（SHA-256）</h3>
-${callout({ kind: "warn", title: "只从官方渠道下载安装包。", text: "正版的 .dmg 是我们从 <strong>support@aitranslator.io.vn</strong> 发送的，或在 <strong>aitranslator.io.vn</strong> 上提供链接的。来自其他地方的文件可能是伪造或被篡改的。即使名字叫 AI Translator，也不要打开。" })}
+${callout({ kind: "warn", title: "只从官方渠道下载安装包。", text: "正版的 .dmg 是我们从 <strong>support@aitranslator.vn</strong> 发送的，或在 <strong>aitranslator.vn</strong> 上提供链接的。来自其他地方的文件可能是伪造或被篡改的。即使名字叫 AI Translator，也不要打开。" })}
 <p>我们通过邮件发送的每个安装包都附有 SHA-256 校验值。安装前请核对：</p>
 <ol>
 <li>打开<strong>终端</strong>（应用程序 › 实用工具）。</li>
@@ -140,7 +140,7 @@ ${callout({ kind: "warn", title: "从 macOS 15 开始，右键 › 打开的方�
 
 <h2 id="common-problems">常见安装问题</h2>
 <ul>
-<li><strong>安装命令提示无法读取 https://releases.aitranslator.io.vn/stable/latest.json。</strong>你的 Mac 没有联网，或者代理/VPN 阻止了 <code>releases.aitranslator.io.vn</code>。请检查网络连接后再运行一次。</li>
+<li><strong>安装命令提示无法读取 https://releases.aitranslator.vn/stable/latest.json。</strong>你的 Mac 没有联网，或者代理/VPN 阻止了 <code>releases.aitranslator.vn</code>。请检查网络连接后再运行一次。</li>
 <li><strong>安装命令提示 SHA-256 不匹配。</strong>下载过程中文件损坏或被篡改。脚本不会安装任何东西；请再运行一次，如果仍然不同，请写信给<a href="/zh/contact/">客服</a>。</li>
 <li><strong>安装命令提示应用仍在运行。</strong>请完全退出 AI Translator（菜单栏中的 AI Translator 菜单 › 退出），然后再运行一次命令。</li>
 <li><strong>安装命令提示需要 Apple 芯片或 macOS 14.2。</strong>你的 Mac 不满足要求；没有适用于 Intel Mac 的版本。</li>

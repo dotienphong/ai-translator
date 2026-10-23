@@ -92,7 +92,7 @@ ${docLayout({
 <div class="card"><span class="card-title">‘무료 체험을 시작하려면 인터넷에 한 번 연결하세요’ 또는 ‘플랜을 14일 동안 확인하지 못해 Free를 사용 중입니다. 인터넷에 연결하세요.’</span><p><strong>원인:</strong> 연결이 없어 체험을 등록하지 못했거나, 유료 요금제가 라이선스 확인 없이 14일을 넘겼습니다.</p><p><strong>해결:</strong> 인터넷에 연결하세요. 이 컴퓨터가 아직 체험을 등록하지 않았다면 다시 <strong>시작</strong>을 눌러 앱이 등록하게 하세요. 유료 요금제라면 ‘설정 › 라이선스’에서 <strong>지금 확인</strong>을 누르세요.</p></div>
 <div class="card"><span class="card-title">‘이 키는 컴퓨터 2대에서 사용 중이어서 잠겼습니다. …’</span><p><strong>원인:</strong> 키를 컴퓨터 두 대가 쓰고 있습니다.</p><p><strong>해결:</strong> 한 컴퓨터에서 키를 제거한 뒤 <strong>다시 시도</strong>를 누르세요. <a href="/ko/guide/buy-and-activate/#switch-computers">컴퓨터 바꾸는 방법</a>을 참고하세요.</p></div>
 <div class="card"><span class="card-title">‘컴퓨터 시계가 잘못된 것 같습니다. 올바른 시간으로 설정한 다음 다시 시도하세요.’ 또는 ‘이 컴퓨터의 시계가 과거로 돌려졌습니다. …’</span><p><strong>원인:</strong> 시스템 시계가 과거로 돌려졌습니다.</p><p><strong>해결:</strong> 올바른 시간으로 설정하고(가능하면 자동), 앱이 확인할 수 있도록 인터넷에 연결하세요.</p></div>
-<div class="card"><span class="card-title">‘이 키는 올바르지 않습니다. …’, ‘컴퓨터를 너무 자주 바꿔서 이 키가 일시적으로 잠겼습니다. …’, ‘이 AI Translator는 정품이 아니므로 …’</span><p><strong>원인:</strong> 키를 잘못 입력했거나, 컴퓨터를 너무 많이 바꿨거나, 공식이 아닌 설치 파일입니다.</p><p><strong>해결:</strong> 이메일의 키를 다시 붙여 넣으세요. 키가 잠겼다면 지원팀에 문의하세요. 저희가 보내 드린 링크나 aitranslator.io.vn에서 공식 빌드를 다시 내려받으세요.</p></div>
+<div class="card"><span class="card-title">‘이 키는 올바르지 않습니다. …’, ‘컴퓨터를 너무 자주 바꿔서 이 키가 일시적으로 잠겼습니다. …’, ‘이 AI Translator는 정품이 아니므로 …’</span><p><strong>원인:</strong> 키를 잘못 입력했거나, 컴퓨터를 너무 많이 바꿨거나, 공식이 아닌 설치 파일입니다.</p><p><strong>해결:</strong> 이메일의 키를 다시 붙여 넣으세요. 키가 잠겼다면 지원팀에 문의하세요. 저희가 보내 드린 링크나 aitranslator.vn에서 공식 빌드를 다시 내려받으세요.</p></div>
 </div>
 
 <h2 id="type-and-translate">입력 번역</h2>
@@ -105,7 +105,7 @@ ${docLayout({
 
 <h2 id="send-logs">로그 보내고 문제 알리기</h2>
 <p>앱에 오류가 생기면(갑자기 멈춤, 앱 오류로 번역 세션이 멈춤, 보조 프로그램이 멈췄다가 다시 시작됨) 앱이 <strong>오류 보고서를 저희에게 자동으로 보냅니다</strong>. 기기 정보와 로그의 관련 부분이며, 개인 폴더 경로, 키, 토큰, 이메일 주소는 지워지고 오디오나 받아쓰기 텍스트는 들어 있지 않습니다. 보고서는 앱이 번역하지 않을 때만 보냅니다. 기본적으로 켜져 있으며, <strong>설정 › 개인정보 보호 › 오류 보고서 자동 전송</strong>에서 끌 수 있습니다. <a href="/ko/data-security/#error-reports">보고서에 들어가는 것과 보관 기간</a>을 참고하세요.</p>
-<p>앱이 멈추지 않는 문제(예: 자막이 틀리거나 느림)는 <strong>정보 › 지원팀에 로그 보내기</strong>로 가세요. 자동 전송을 꺼 두었더라도 보고서를 바로 보내고 <strong>보고서 코드</strong>(<code>R-XXXX-XXXX</code> 형식)를 보여 줍니다. 저희가 보고서를 찾을 수 있도록 그 코드를 <a href="/ko/contact/">지원팀</a>(support@aitranslator.io.vn)에 보내는 메일에 적어 주세요.</p>
+<p>앱이 멈추지 않는 문제(예: 자막이 틀리거나 느림)는 <strong>정보 › 지원팀에 로그 보내기</strong>로 가세요. 자동 전송을 꺼 두었더라도 보고서를 바로 보내고 <strong>보고서 코드</strong>(<code>R-XXXX-XXXX</code> 형식)를 보여 줍니다. 저희가 보고서를 찾을 수 있도록 그 코드를 <a href="/ko/contact/">지원팀</a>(support@aitranslator.vn)에 보내는 메일에 적어 주세요.</p>
 <p>로그를 직접 보거나 첨부하려면 <strong>정보 › 로그 폴더 열기</strong>를 열어 <code>app.log</code>를 찾으세요(macOS: <code>~/Library/Logs/</code> 안의 <code>com.aitranslator.desktop</code> 폴더, Windows: <code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>). 이 파일은 컴퓨터에 남아 있으며 오디오, 받아쓰기 텍스트, 전체 라이선스 키는 들어 있지 않습니다.</p>
 ${appShot({
   slug: "app-about",

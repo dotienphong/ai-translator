@@ -74,7 +74,7 @@ Sitemap: ${abs("/sitemap.xml")}
 function keyFacts() {
   const [free, monthly, sixMonths, yearly] = ["free", "monthly", "six_months", "yearly"].map((code) => PLANS.find((p) => p.code === code));
   return [
-    `- Product: ${SITE.name} (aitranslator.io.vn), desktop app that shows live translated subtitles for meeting audio; speech recognition and translation run on the device`,
+    `- Product: ${SITE.name} (aitranslator.vn), desktop app that shows live translated subtitles for meeting audio; speech recognition and translation run on the device`,
     `- Provider: ${SITE.owner} (independent developer, Vietnam); ${SITE.email}`,
     `- Current version: ${SITE.version} (released ${SITE.releaseDate}), official release for macOS and Windows`,
     `- Platforms: macOS 14.2+ on Apple Silicon (M1 or later); Windows 10/11 64-bit (x64) with AVX2. Not supported: Intel Macs, Windows ARM64`,

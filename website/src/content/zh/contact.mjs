@@ -37,7 +37,7 @@ export default {
   path: "/zh/contact/",
   title: "AI Translator 联系与支持",
   description:
-    "通过 support@aitranslator.io.vn 或网站和应用中的客服聊天联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
+    "通过 support@aitranslator.vn 或网站和应用中的客服聊天联系 AI Translator：安装包、技术支持、密钥丢失、付款问题、退款、数据删除和安全报告。",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -45,7 +45,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "联系与支持",
-  lead: "你可以发邮件到 support@aitranslator.io.vn 联系 AI Translator，也可以使用客服聊天：本网站每个页面右下角的聊天按钮，或应用中的“客服”页面。我们没有客服电话。",
+  lead: "你可以发邮件到 support@aitranslator.vn 联系 AI Translator，也可以使用客服聊天：本网站每个页面右下角的聊天按钮，或应用中的“客服”页面。我们没有客服电话。",
 })}
 
 <section class="section-tight"><div class="container narrow">
@@ -79,7 +79,7 @@ ${btn(M.support, "发邮件给技术支持")}
 
 <div class="card reveal" id="lost-key">
 <h3>许可证密钥丢失</h3>
-<p>你可以自己找回：进入“设置 › 许可证 › 丢了密钥？”，输入购买时使用的邮箱，然后选择“发送我的密钥”。邮件来自 no-reply@mail.aitranslator.io.vn，所以也请检查垃圾邮件文件夹。如果仍然没有收到，请用购买时使用的邮箱给我们发邮件。也可以参阅<a href="/zh/guide/buy-and-activate/">购买和激活密钥指南</a>。</p>
+<p>你可以自己找回：进入“设置 › 许可证 › 丢了密钥？”，输入购买时使用的邮箱，然后选择“发送我的密钥”。邮件来自 no-reply@mail.aitranslator.vn，所以也请检查垃圾邮件文件夹。如果仍然没有收到，请用购买时使用的邮箱给我们发邮件。也可以参阅<a href="/zh/guide/buy-and-activate/">购买和激活密钥指南</a>。</p>
 ${btn(M.key, "就密钥丢失发邮件")}
 </div>
 

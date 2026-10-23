@@ -1,6 +1,6 @@
 # Thỏa thuận cấp phép người dùng cuối (EULA) của AI Translator
 
-**Phiên bản 1.3, hiệu lực từ 16/10/2026.**
+**Phiên bản 1.4, hiệu lực từ 23/10/2026.**
 
 Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("chúng tôi") về việc dùng ứng dụng **AI Translator** ("ứng dụng"). Bằng việc cài đặt hoặc dùng ứng dụng, bạn đồng ý với thỏa thuận này. Nếu không đồng ý, xin đừng cài đặt hay dùng.
 
@@ -29,7 +29,7 @@ Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không c
 - **Thanh toán bằng thẻ quốc tế do Creem bán lại.** Creem (Armitage Labs OÜ, Estonia) là bên bán lại (merchant of record) của đơn trả bằng thẻ và xử lý thanh toán, thuế (VAT, GST hay thuế bán hàng, nếu có) của khoản đó; sao kê thẻ thường ghi "CREEM.IO* STORE" và Creem gửi biên lai tới email bạn nhập. Điều khoản người mua của Creem (https://www.creem.io/buyer-terms) và chính sách quyền riêng tư của Creem (https://www.creem.io/privacy) áp dụng cho giao dịch mua bằng thẻ đó; điểm nào điều khoản người mua của Creem khác thỏa thuận này thì điều khoản của Creem được ưu tiên với giao dịch đó. Chúng tôi không nhận số thẻ của bạn.
 - **Mua thêm cùng gói** cộng thêm số ngày của gói (30 ngày với Monthly, 180 ngày với 6 Months, 365 ngày với Yearly). **Đổi gói** khi còn hạn: số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày (giá bằng loại tiền bạn dùng để trả đơn đổi gói) sang ngày của gói mới (làm tròn xuống), gói mới bắt đầu ngay với chu kỳ mới; ứng dụng hiện trước số ngày quy đổi và ngày hết hạn mới. **Đổi gói không được hoàn tiền.**
 - Hạn mức tính **riêng cho từng máy**, đếm theo thời gian dịch thực tế. Hết hạn mức thì dừng dịch cho tới kỳ reset hoặc khi bạn mua thêm.
-- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu cho chúng tôi trước, trong **7 ngày** kể từ ngày thanh toán, tới support@aitranslator.io.vn kèm mã đơn. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp.
+- **Hoàn tiền:** các khoản đã thanh toán **không được hoàn lại**, trừ khi (a) lỗi do chúng tôi khiến bạn không dùng được gói đã mua và chúng tôi không khắc phục được trong thời gian hợp lý, hoặc (b) pháp luật quy định khác. Gửi yêu cầu cho chúng tôi trước, trong **7 ngày** kể từ ngày thanh toán, tới support@aitranslator.vn kèm mã đơn. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp.
 - Chúng tôi có thể cấp hoặc gia hạn license thủ công (ví dụ khi bạn chuyển thiếu rồi chuyển bù).
 
 ## 4. License key và kích hoạt
@@ -92,4 +92,4 @@ Chúng tôi có thể cập nhật thỏa thuận này; bản mới ghi ngày hi
 
 ## 16. Liên hệ
 
-**Đỗ Tiến Phong**, support@aitranslator.io.vn.
+**Đỗ Tiến Phong**, support@aitranslator.vn.

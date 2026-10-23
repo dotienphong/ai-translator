@@ -92,7 +92,7 @@ ${docLayout({
 <div class="card"><span class="card-title">“请联网一次以开始免费试用”或“套餐已有 14 天无法检查，因此使用 Free。请联网。”</span><p><strong>原因：</strong>没有网络，无法登记试用；或者付费套餐超过 14 天没有进行许可证检查。</p><p><strong>解决方法：</strong>联网。如果这台电脑还没有登记试用，请再次点击<strong>开始</strong>，让应用完成登记。如果是付费套餐，请在“设置 › 许可证”中点击<strong>立即检查</strong>。</p></div>
 <div class="card"><span class="card-title">“此密钥正在 2 台电脑上使用，因此已被锁定。…”</span><p><strong>原因：</strong>这个密钥被两台电脑占用。</p><p><strong>解决方法：</strong>从其中一台电脑上移除密钥，然后点击<strong>重试</strong>：请参阅<a href="/zh/guide/buy-and-activate/#switch-computers">如何更换电脑</a>。</p></div>
 <div class="card"><span class="card-title">“电脑时钟似乎不对。请设置正确的时间后重试。”或“这台电脑的时钟被调回过。…”</span><p><strong>原因：</strong>系统时钟被往回调了。</p><p><strong>解决方法：</strong>设置正确的时间（最好设为自动），并联网让应用检查。</p></div>
-<div class="card"><span class="card-title">“此密钥无效。…”；“由于更换电脑过于频繁，此密钥被暂时锁定。…”；“这份 AI Translator 不是正版，…”</span><p><strong>原因：</strong>密钥输错；更换电脑次数过多；或者使用的不是官方安装包。</p><p><strong>解决方法：</strong>重新粘贴邮件中的密钥；密钥被锁定时请联系客服；从我们发给你的链接或 aitranslator.io.vn 重新下载官方版本。</p></div>
+<div class="card"><span class="card-title">“此密钥无效。…”；“由于更换电脑过于频繁，此密钥被暂时锁定。…”；“这份 AI Translator 不是正版，…”</span><p><strong>原因：</strong>密钥输错；更换电脑次数过多；或者使用的不是官方安装包。</p><p><strong>解决方法：</strong>重新粘贴邮件中的密钥；密钥被锁定时请联系客服；从我们发给你的链接或 aitranslator.vn 重新下载官方版本。</p></div>
 </div>
 
 <h2 id="type-and-translate">输入翻译</h2>
@@ -105,7 +105,7 @@ ${docLayout({
 
 <h2 id="send-logs">发送日志并报告问题</h2>
 <p>当应用出错时（突然停止、翻译会话因应用内部错误而停止，或者某个辅助程序停止并重启），它会<strong>自动向我们发送错误报告</strong>：机器信息和日志中相关的部分，其中已去除个人文件夹路径、密钥、令牌和邮箱地址，不含音频或转写文字。报告只在应用没有翻译时发送。这项功能默认开启；你可以在<strong>设置 › 隐私 › 自动发送错误报告</strong>中关闭。请参阅<a href="/zh/data-security/#error-reports">报告包含什么以及保存多久</a>。</p>
-<p>对于不会让应用停止的问题（例如字幕错误或很慢），请进入<strong>关于 › 向客服发送日志</strong>：即使你已关闭自动发送，应用也会立即发送一份报告，并显示一个<strong>报告编号</strong>（形如 <code>R-XXXX-XXXX</code>）。请把这个编号写进发给<a href="/zh/contact/">客服</a>（support@aitranslator.io.vn）的邮件中，方便我们找到你的报告。</p>
+<p>对于不会让应用停止的问题（例如字幕错误或很慢），请进入<strong>关于 › 向客服发送日志</strong>：即使你已关闭自动发送，应用也会立即发送一份报告，并显示一个<strong>报告编号</strong>（形如 <code>R-XXXX-XXXX</code>）。请把这个编号写进发给<a href="/zh/contact/">客服</a>（support@aitranslator.vn）的邮件中，方便我们找到你的报告。</p>
 <p>如果想自己查看或附上日志，请打开<strong>关于 › 打开日志文件夹</strong>，找到 <code>app.log</code>（macOS：<code>~/Library/Logs/</code> 中的 <code>com.aitranslator.desktop</code> 文件夹；Windows：<code>%LOCALAPPDATA%\\com.aitranslator.desktop\\logs\\</code>）。这个文件保留在你的电脑上，不含音频、转写文字或完整的许可证密钥。</p>
 ${appShot({
   slug: "app-about",

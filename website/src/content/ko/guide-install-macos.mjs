@@ -19,11 +19,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "설치할 때 흔한 문제" },
 ];
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
 
 const HOWTO_STEPS = [
   { name: "터미널 열기", text: "Command + Space를 누르고 ‘터미널’을 입력한 뒤 Enter를 누릅니다." },
-  { name: "설치 명령을 붙여 넣고 Enter 누르기", text: "curl -fsSL https://aitranslator.io.vn/install.sh | bash를 터미널에 붙여 넣고 Enter를 누릅니다. 암호는 필요 없습니다." },
+  { name: "설치 명령을 붙여 넣고 Enter 누르기", text: "curl -fsSL https://aitranslator.vn/install.sh | bash를 터미널에 붙여 넣고 Enter를 누릅니다. 암호는 필요 없습니다." },
   { name: "앱이 열릴 때까지 기다리기", text: "명령이 최신 버전을 내려받고, SHA-256을 확인하고, AI Translator를 응용 프로그램에 복사한 뒤 엽니다. macOS가 시스템 오디오 녹음 권한을 요청하면 ‘허용’을 고릅니다." },
 ];
 
@@ -81,14 +81,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "명령 복사", copied: "복사됨", label
 <li>macOS가 <strong>시스템 오디오 녹음</strong> 권한을 요청하면 ‘허용’을 고릅니다. 이어서 <a href="/ko/guide/quick-start/">빠른 시작 가이드</a>를 따르세요.</li>
 </ol>
 <p><strong>왜 ‘그래도 열기’ 단계가 없나요?</strong> macOS는 ‘인터넷에서 다운로드함’ 표시(브라우저가 붙임)가 있는 파일의 앱만 차단합니다. 터미널의 <code>curl</code>로 내려받은 파일에는 이 표시가 없으므로, Apple이 공증하지 않았어도 앱이 바로 열립니다.</p>
-${callout({ kind: "warn", title: "이 명령이 무엇을 하는지 알아 두세요.", text: "이 명령은 <strong>aitranslator.io.vn</strong>에서 스크립트를 내려받고, 스크립트는 <strong>releases.aitranslator.io.vn</strong>에서 설치 파일을 내려받아 SHA-256을 대조한 뒤 설치합니다. sudo를 쓰지 않고 데이터도 보내지 않습니다. SHA-256은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줍니다. 여전히 <strong>aitranslator.io.vn</strong>을 신뢰하는 것입니다. 스크립트를 먼저 읽으려면: <code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. 같은 명령을 언제든 다시 실행하면 최신 버전으로 업데이트되며, 스크립트가 실행 중인 앱을 스스로 종료합니다." })}
+${callout({ kind: "warn", title: "이 명령이 무엇을 하는지 알아 두세요.", text: "이 명령은 <strong>aitranslator.vn</strong>에서 스크립트를 내려받고, 스크립트는 <strong>releases.aitranslator.vn</strong>에서 설치 파일을 내려받아 SHA-256을 대조한 뒤 설치합니다. sudo를 쓰지 않고 데이터도 보내지 않습니다. SHA-256은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줍니다. 여전히 <strong>aitranslator.vn</strong>을 신뢰하는 것입니다. 스크립트를 먼저 읽으려면: <code>curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. 같은 명령을 언제든 다시 실행하면 최신 버전으로 업데이트되며, 스크립트가 실행 중인 앱을 스스로 종료합니다." })}
 <p>문제가 생겼나요? 스크립트가 멈추고 이유를 알려 줍니다(지원하지 않는 Mac, 네트워크 없음, SHA-256 불일치 등). <a href="#common-problems">설치할 때 흔한 문제</a>를 참고하세요.</p>
 
 <h2 id="install-dmg">다른 방법: .dmg 파일로 설치</h2>
 <p>.dmg를 이메일로 받았거나 터미널을 쓰고 싶지 않다면 이 방법을 쓰세요. 브라우저로 내려받은 파일에는 macOS가 ‘인터넷에서 다운로드함’ 표시를 붙이므로, 첫 실행에 ‘그래도 열기’ 단계가 추가로 필요합니다.</p>
 
 <h3 id="verify-the-file">설치 파일 확인(SHA-256)</h3>
-${callout({ kind: "warn", title: "설치 파일은 공식 출처에서만 내려받으세요.", text: "진짜 .dmg는 저희가 <strong>support@aitranslator.io.vn</strong>에서 보내 드리는 것이나 <strong>aitranslator.io.vn</strong>에 링크된 것입니다. 다른 곳에서 받은 파일은 가짜이거나 변조되었을 수 있습니다. 이름이 AI Translator라도 열지 마세요." })}
+${callout({ kind: "warn", title: "설치 파일은 공식 출처에서만 내려받으세요.", text: "진짜 .dmg는 저희가 <strong>support@aitranslator.vn</strong>에서 보내 드리는 것이나 <strong>aitranslator.vn</strong>에 링크된 것입니다. 다른 곳에서 받은 파일은 가짜이거나 변조되었을 수 있습니다. 이름이 AI Translator라도 열지 마세요." })}
 <p>이메일로 보내 드리는 설치 파일에는 모두 SHA-256 체크섬이 함께 있습니다. 설치하기 전에 대조하세요:</p>
 <ol>
 <li><strong>터미널</strong>을 엽니다(응용 프로그램 › 유틸리티).</li>
@@ -140,7 +140,7 @@ ${callout({ kind: "warn", title: "macOS 15부터는 오른쪽 클릭 › 열기 
 
 <h2 id="common-problems">설치할 때 흔한 문제</h2>
 <ul>
-<li><strong>설치 명령이 https://releases.aitranslator.io.vn/stable/latest.json을 읽지 못했다고 합니다.</strong> Mac이 네트워크에 연결되어 있지 않거나, 프록시/VPN이 <code>releases.aitranslator.io.vn</code>을 막고 있습니다. 연결을 확인하고 다시 실행하세요.</li>
+<li><strong>설치 명령이 https://releases.aitranslator.vn/stable/latest.json을 읽지 못했다고 합니다.</strong> Mac이 네트워크에 연결되어 있지 않거나, 프록시/VPN이 <code>releases.aitranslator.vn</code>을 막고 있습니다. 연결을 확인하고 다시 실행하세요.</li>
 <li><strong>설치 명령이 SHA-256이 일치하지 않는다고 합니다.</strong> 내려받는 도중 파일이 손상되었거나 변조되었습니다. 스크립트는 아무것도 설치하지 않습니다. 다시 실행하고, 그래도 다르면 <a href="/ko/contact/">지원팀</a>에 메일을 보내 주세요.</li>
 <li><strong>설치 명령이 앱이 아직 실행 중이라고 합니다.</strong> AI Translator를 완전히 종료하고(메뉴 막대의 AI Translator 메뉴 › 종료) 명령을 다시 실행하세요.</li>
 <li><strong>설치 명령이 Apple 실리콘이나 macOS 14.2가 필요하다고 합니다.</strong> Mac이 요구 사항을 충족하지 않습니다. Intel Mac용 빌드는 없습니다.</li>

@@ -73,7 +73,7 @@ ${facts([
 <section class="section-tight"><div class="container narrow">
 <div class="card reveal">
 <h2>需要帮助？</h2>
-<p>在指南中没有找到答案？请阅读<a href="/zh/faq/">常见问题</a>，或者通过<a href="/zh/contact/">联系</a>页面给我们写信。你可以发邮件到 <strong>support@aitranslator.io.vn</strong>。</p>
+<p>在指南中没有找到答案？请阅读<a href="/zh/faq/">常见问题</a>，或者通过<a href="/zh/contact/">联系</a>页面给我们写信。你可以发邮件到 <strong>support@aitranslator.vn</strong>。</p>
 <p class="more-link"><a class="btn btn-secondary" href="/zh/contact/">联系客服 ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/zh/faq/">常见问题</a></p>
 </div>
 </div></section>

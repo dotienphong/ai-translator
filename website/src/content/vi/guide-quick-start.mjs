@@ -17,7 +17,7 @@ const toc = [
 
 // Văn bản thuần cho dữ liệu có cấu trúc HowTo; phần hiển thị nằm trong body.
 const HOWTO_STEPS = [
-  { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.io.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, dán lệnh cài (irm https://aitranslator.io.vn/install.ps1 | iex) vào PowerShell; nếu bạn dùng file .exe tải bằng trình duyệt và SmartScreen cảnh báo, bấm More info rồi Run anyway." },
+  { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, dán lệnh cài (irm https://aitranslator.vn/install.ps1 | iex) vào PowerShell; nếu bạn dùng file .exe tải bằng trình duyệt và SmartScreen cảnh báo, bấm More info rồi Run anyway." },
   { name: "Chọn ngôn ngữ giao diện", text: "Ô chọn sẵn ngôn ngữ của máy bạn; đổi nếu muốn rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
@@ -77,14 +77,14 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 <p><strong>Trên macOS:</strong></p>
 <ol>
 <li>Mở <strong>Terminal</strong> (nhấn <kbd>⌘</kbd> + <kbd>Space</kbd>, gõ Terminal, nhấn Enter).</li>
-<li>Dán lệnh cài ở trang <a href="/tai-xuong/#cai-macos">Tải xuống</a> rồi nhấn Enter: <code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>.</li>
+<li>Dán lệnh cài ở trang <a href="/tai-xuong/#cai-macos">Tải xuống</a> rồi nhấn Enter: <code>curl -fsSL https://aitranslator.vn/install.sh | bash</code>.</li>
 <li>Chờ khoảng một phút. App được tải, kiểm tra, chép vào Applications và mở thẳng. Nếu macOS hỏi quyền ghi âm thanh hệ thống, chọn cho phép.</li>
 </ol>
 <p>Nếu bạn đã tải file <code>.dmg</code> bằng trình duyệt: kéo <strong>AI Translator</strong> vào <strong>Applications</strong>, mở app (macOS sẽ chặn lần đầu vì bản hiện tại ký ad-hoc và chưa được Apple notarize), bấm <strong>Done</strong>, rồi vào <strong>System Settings › Privacy &amp; Security</strong>, kéo xuống cuối, bấm <strong>Open Anyway</strong> và xác nhận bằng mật khẩu hoặc Touch ID.</p>
 <p><strong>Trên Windows:</strong></p>
 <ol>
 <li>Mở <strong>PowerShell</strong> (nhấn phím <kbd>Windows</kbd>, gõ PowerShell, nhấn Enter).</li>
-<li>Dán lệnh cài ở trang <a href="/tai-xuong/#cai-windows">Tải xuống</a> rồi nhấn Enter: <code>irm https://aitranslator.io.vn/install.ps1 | iex</code>. Không cần quyền quản trị.</li>
+<li>Dán lệnh cài ở trang <a href="/tai-xuong/#cai-windows">Tải xuống</a> rồi nhấn Enter: <code>irm https://aitranslator.vn/install.ps1 | iex</code>. Không cần quyền quản trị.</li>
 <li>Chờ khoảng một phút. Bộ cài chạy im lặng rồi AI Translator tự mở.</li>
 </ol>
 <p>Nếu bạn đã tải file <code>.exe</code> bằng trình duyệt: nhấp đúp để chạy; nếu Windows hiện màn hình xanh “Windows protected your PC”, bấm <strong>More info</strong>, kiểm dòng App là đúng tên file cài, rồi bấm <strong>Run anyway</strong>.</p>

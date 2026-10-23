@@ -37,17 +37,17 @@ export default {
   path: "/en/contact/",
   title: "Contact and support for AI Translator",
   description:
-    "Reach AI Translator at support@aitranslator.io.vn or in the support chat on this site and in the app: technical help, lost keys, payments, refunds, data deletion.",
+    "Reach AI Translator at support@aitranslator.vn or in the support chat on this site and in the app: technical help, lost keys, payments, refunds, data deletion.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
-  llm: "How to reach us and get support: email support@aitranslator.io.vn or the support chat (the chat button at the bottom right of every page, the Support screen in the app), what to send (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
+  llm: "How to reach us and get support: email support@aitranslator.vn or the support chat (the chat button at the bottom right of every page, the Support screen in the app), what to send (installer, technical help, lost key, payments, refunds, data deletion, security) and what to include.",
   llmTitle: "Contact and support for AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Contact and support",
-  lead: "You can reach AI Translator by email at support@aitranslator.io.vn, or in the support chat: the chat button at the bottom right of every page of this website, or the Support screen in the app. We have no support phone line.",
+  lead: "You can reach AI Translator by email at support@aitranslator.vn, or in the support chat: the chat button at the bottom right of every page of this website, or the Support screen in the app. We have no support phone line.",
 })}
 
 <section class="section-tight"><div class="container narrow">
@@ -81,7 +81,7 @@ ${btn(M.support, "Email technical support")}
 
 <div class="card reveal" id="lost-key">
 <h3>Lost license key</h3>
-<p>You can recover it yourself: go to Settings › License › Lost your key?, enter the email you used to buy and choose Send my keys. The message comes from no-reply@mail.aitranslator.io.vn, so check your spam folder too. If it still does not arrive, email us from the address you used to buy. See also the <a href="/en/guide/buy-and-activate/">guide to buying and activating a key</a>.</p>
+<p>You can recover it yourself: go to Settings › License › Lost your key?, enter the email you used to buy and choose Send my keys. The message comes from no-reply@mail.aitranslator.vn, so check your spam folder too. If it still does not arrive, email us from the address you used to buy. See also the <a href="/en/guide/buy-and-activate/">guide to buying and activating a key</a>.</p>
 ${btn(M.key, "Email about a lost key")}
 </div>
 

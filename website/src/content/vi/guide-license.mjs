@@ -97,7 +97,7 @@ ${appShot({
 <p>VietQR chỉ dùng được với tài khoản ngân hàng Việt Nam, bằng VND, qua PayOS; nếu thẻ quốc tế chưa được bán lúc này mà bạn không có tài khoản đó, hãy liên hệ hỗ trợ. Giá thẻ quốc tế tính bằng USD, chưa gồm thuế (nếu có thì Creem cộng thêm ở trang thanh toán). Creem là bên bán lại (merchant of record) của đơn thẻ và xử lý thanh toán, thuế, biên lai; sao kê thẻ thường ghi “CREEM.IO* STORE”. Giá và hạn mức xem ở <a href="/bang-gia/">bảng giá</a>.</p>
 
 <h2 id="nhap-key">Nhận key qua email và nhập key</h2>
-<p>Key được gửi từ no-reply@mail.aitranslator.io.vn tới email bạn đã nhập. Hãy giữ thư này để cài lại hoặc kích hoạt máy khác; không thấy thư thì kiểm hộp thư rác. Key gồm 7 nhóm 4 ký tự: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
+<p>Key được gửi từ no-reply@mail.aitranslator.vn tới email bạn đã nhập. Hãy giữ thư này để cài lại hoặc kích hoạt máy khác; không thấy thư thì kiểm hộp thư rác. Key gồm 7 nhóm 4 ký tự: <code>XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>.</p>
 <ol>
 <li>Mở <strong>Cài đặt › Bản quyền</strong>.</li>
 <li>Ở mục <strong>Kích hoạt key</strong>, dán key vào ô <strong>Nhập license key</strong> (dấu gạch, khoảng trắng, chữ hoa hay thường đều không quan trọng).</li>
@@ -111,7 +111,7 @@ ${appShot({
   caption: "Cài đặt › Bản quyền sau khi kích hoạt.",
 })}
 <h3 id="mat-key">Mất key</h3>
-<p>Vào <strong>Cài đặt › Bản quyền › Mất key?</strong>, nhập <strong>Email đã dùng để mua</strong> rồi bấm <strong>Gửi lại key</strong>. Mọi key còn hiệu lực của email đó được gửi vào chính email đó. App luôn hiện “Nếu email này có key, thư đang được gửi.”, dù email có key hay không. Vẫn không thấy thì viết tới support@aitranslator.io.vn.</p>
+<p>Vào <strong>Cài đặt › Bản quyền › Mất key?</strong>, nhập <strong>Email đã dùng để mua</strong> rồi bấm <strong>Gửi lại key</strong>. Mọi key còn hiệu lực của email đó được gửi vào chính email đó. App luôn hiện “Nếu email này có key, thư đang được gửi.”, dù email có key hay không. Vẫn không thấy thì viết tới support@aitranslator.vn.</p>
 
 <h2 id="doi-may">Mỗi key một máy: cách đổi máy</h2>
 <p>Cài lại app trên cùng một máy không tính là máy mới. Hạn mức tính riêng từng máy: lượng đã dùng ở lại máy cũ.</p>
@@ -150,7 +150,7 @@ ${callout({
 <li><strong>Đơn thẻ báo không thành hay quá giờ hẹn.</strong> App ghi “Đơn … không thành. Nếu bạn đã trả, key sẽ gửi qua email; đừng trả lại. Cần thì liên hệ hỗ trợ kèm mã đơn này.” hoặc “Đã quá giờ hẹn trả. Nếu bạn đã trả, app vẫn tự kích hoạt khi Creem xác nhận và key cũng gửi qua email; đừng trả lại.” Nếu bạn đã trả bằng thẻ thì đừng trả lại: key vẫn gửi qua email; nhập key ở Cài đặt › Bản quyền, hoặc liên hệ hỗ trợ kèm mã đơn và biên lai của Creem (sao kê thẻ thường ghi “CREEM.IO* STORE”; tra đơn ở creem.io/my-orders/login). Nếu bạn chưa trả thì tạo đơn mới là được.</li>
 <li><strong>Hủy đơn thẻ.</strong> Khi đơn đang chờ, dưới hai nút app ghi “Đã trả ở trang thanh toán thì đừng hủy hay tạo đơn mới: key sẽ gửi qua email. Đã hủy đơn này thì đừng trả ở trang cũ.” Nghĩa là: đã trả thì đừng bấm Hủy; đã bấm Hủy thì đừng trả ở trang thanh toán của đơn đó, hãy tạo đơn mới.</li>
 </ul>
-<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.io.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Đơn thẻ: Creem là bên bán lại và gửi biên lai tới email bạn nhập; Creem cũng có thể hoàn tiền theo điều khoản của Creem (nếu chúng tôi không trả lời quá 7 ngày, bạn có thể liên hệ Creem; tra đơn ở creem.io/my-orders/login). Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Đơn VietQR chưa có hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
+<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi từ phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.vn kèm <strong>mã đơn</strong> (hiện ở màn hình Nâng cấp dạng “Đơn …”); đổi gói không được hoàn tiền. Đơn thẻ: Creem là bên bán lại và gửi biên lai tới email bạn nhập; Creem cũng có thể hoàn tiền theo điều khoản của Creem (nếu chúng tôi không trả lời quá 7 ngày, bạn có thể liên hệ Creem; tra đơn ở creem.io/my-orders/login). Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Đơn VietQR chưa có hóa đơn điện tử; nếu bạn cần chứng từ, hãy liên hệ hỗ trợ để trao đổi. Chi tiết trong <a href="/dieu-khoan/">Điều khoản sử dụng</a> và <a href="/lien-he/">trang liên hệ</a>.</p>
 `,
 })}
 ${docNav(

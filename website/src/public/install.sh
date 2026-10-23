@@ -1,14 +1,14 @@
 #!/bin/bash
 # Cài AI Translator trên macOS bằng một dòng lệnh:
 #
-#   curl -fsSL https://aitranslator.io.vn/install.sh | bash
+#   curl -fsSL https://aitranslator.vn/install.sh | bash
 #
-# Kênh beta:      curl -fsSL https://aitranslator.io.vn/install.sh | bash -s -- --beta
+# Kênh beta:      curl -fsSL https://aitranslator.vn/install.sh | bash -s -- --beta
 # Xem trước khi chạy: tải file này về, đọc, rồi `bash install.sh`.
 #
 # Script làm gì (và chỉ làm vậy):
 #   1. Kiểm máy: macOS 14.2 trở lên, chip Apple Silicon.
-#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.io.vn/<kênh>/latest.json.
+#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.vn/<kênh>/latest.json.
 #   3. Tải file .dmg của phiên bản đó và mã SHA-256 của nó từ cùng nơi, rồi đối chiếu.
 #   4. Mở .dmg, kiểm app trong đó (đúng mã định danh, chữ ký còn nguyên), chép vào /Applications
 #      (không có quyền ghi thì vào ~/Applications), đóng .dmg, xóa file tải về.
@@ -30,7 +30,7 @@
 main() {
   set -eu
 
-  BASE_URL="https://releases.aitranslator.io.vn"
+  BASE_URL="https://releases.aitranslator.vn"
   PRODUCT="AI Translator"
   BUNDLE_ID="com.aitranslator.desktop"
 
@@ -49,8 +49,8 @@ main() {
       --beta) channel=beta ;;
       --stable) channel=stable ;;
       -h | --help)
-        say "Dùng: curl -fsSL https://aitranslator.io.vn/install.sh | bash [-s -- --beta]" \
-          "Usage: curl -fsSL https://aitranslator.io.vn/install.sh | bash [-s -- --beta]"
+        say "Dùng: curl -fsSL https://aitranslator.vn/install.sh | bash [-s -- --beta]" \
+          "Usage: curl -fsSL https://aitranslator.vn/install.sh | bash [-s -- --beta]"
         return 0
         ;;
       *) fail "tham số không hiểu: $arg" "unknown option: $arg" ;;
@@ -59,8 +59,8 @@ main() {
   case "$channel" in stable | beta) ;; *) fail "kênh phải là stable hoặc beta" "channel must be stable or beta" ;; esac
 
   # --- 1. Kiểm máy ---
-  [ "$(uname -s)" = Darwin ] || fail "script này chỉ dành cho macOS. Windows: xem aitranslator.io.vn/tai-xuong/" \
-    "this script is for macOS only. Windows: see aitranslator.io.vn/en/download/"
+  [ "$(uname -s)" = Darwin ] || fail "script này chỉ dành cho macOS. Windows: xem aitranslator.vn/tai-xuong/" \
+    "this script is for macOS only. Windows: see aitranslator.vn/en/download/"
   [ "$(id -u)" -ne 0 ] || fail "đừng chạy bằng sudo hay root; chạy lại bằng tài khoản thường của bạn." \
     "do not run this with sudo or as root; run it again as your normal user."
   [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = 1 ] || fail \
@@ -114,8 +114,8 @@ main() {
   printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || fail "SHA256SUMS-macos.txt không có mã của $dmg_name." \
     "SHA256SUMS-macos.txt has no checksum for $dmg_name."
   actual=$(shasum -a 256 "$work/$dmg_name" | awk '{print $1}')
-  [ "$actual" = "$expected" ] || fail "SHA-256 của file tải về không khớp (mong đợi $expected, nhận $actual). Không cài; thử lại, nếu vẫn lệch thì báo support@aitranslator.io.vn." \
-    "the downloaded file's SHA-256 does not match (expected $expected, got $actual). Nothing was installed; retry, and if it still differs write to support@aitranslator.io.vn."
+  [ "$actual" = "$expected" ] || fail "SHA-256 của file tải về không khớp (mong đợi $expected, nhận $actual). Không cài; thử lại, nếu vẫn lệch thì báo support@aitranslator.vn." \
+    "the downloaded file's SHA-256 does not match (expected $expected, got $actual). Nothing was installed; retry, and if it still differs write to support@aitranslator.vn."
   say "Đã kiểm SHA-256: khớp." "SHA-256 checked: it matches."
 
   # --- 4. Mở .dmg, kiểm app, cài ---

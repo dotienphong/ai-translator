@@ -1,6 +1,6 @@
 # AI Translator End User License Agreement (EULA)
 
-**Version 1.3, effective 16 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.4, effective 23 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 This is an agreement between you and **Do Tien Phong** ("we", "us") for your use of the **AI Translator** application (the "app"). By installing or using the app you agree to it. If you do not agree, please do not install or use the app.
 
@@ -29,7 +29,7 @@ We grant you a **personal, non-exclusive, non-transferable, revocable** right to
 - **Orders paid by international card are resold by Creem.** Creem (Armitage Labs OÜ, Estonia) is the merchant of record (reseller) for orders paid by card and handles the payment and the tax (VAT, GST or sales tax, if any) on it; your card statement usually shows "CREEM.IO* STORE" and Creem emails a receipt to the address you entered. Creem's Buyer Terms (https://www.creem.io/buyer-terms) and Creem's Privacy Notice (https://www.creem.io/privacy) apply to that card purchase; where Creem's Buyer Terms differ from this agreement, Creem's terms prevail for that purchase. We do not receive your card number.
 - **Buying more of the same plan** adds the plan's days (30 days for Monthly, 180 days for 6 Months, 365 days for Yearly). **Changing plan** while you still have time: the remaining days of the old plan are converted by price per day (prices in the currency you use to pay for the change) into days of the new plan (rounded down), and the new plan starts immediately with a new cycle; the app shows the converted days and the new expiry date beforehand. **Plan changes are not refunded.**
 - Quota is counted **per machine**, by actual translation time. When quota runs out, translation stops until the next reset or until you buy more.
-- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send your request to us first, within **7 days** of payment, to support@aitranslator.io.vn with your order code. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case.
+- **Refunds:** amounts paid are **not refundable**, except (a) where our fault prevents you from using the plan you bought and we cannot fix it within a reasonable time, or (b) where the law requires otherwise. Send your request to us first, within **7 days** of payment, to support@aitranslator.vn with your order code. For card payments Creem is the merchant of record, so Creem may also refund them under Creem's terms. When an order is refunded (in full or in part, including through a card dispute), we may shorten the time that order added to your license, or revoke the license if it consists only of that order; this is not automatic: the operator decides case by case.
 - We may issue or extend licenses manually (for example when you transferred too little and then topped up).
 
 ## 4. License keys and activation
@@ -92,4 +92,4 @@ We may update this agreement; the new version states its effective date and is a
 
 ## 16. Contact
 
-**Do Tien Phong**, support@aitranslator.io.vn.
+**Do Tien Phong**, support@aitranslator.vn.

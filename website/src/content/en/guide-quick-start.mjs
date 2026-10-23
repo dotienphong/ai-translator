@@ -17,7 +17,7 @@ const toc = [
 
 // Plain text for the HowTo structured data; the visible version is in body.
 const HOWTO_STEPS = [
-  { name: "Install the app and open it", text: "On macOS, paste the install command (curl -fsSL https://aitranslator.io.vn/install.sh | bash) into Terminal: the app is downloaded, verified and opened directly, with no Open Anyway. On Windows, paste the install command (irm https://aitranslator.io.vn/install.ps1 | iex) into PowerShell; if you use an .exe downloaded in a browser and SmartScreen warns you, click More info, then Run anyway." },
+  { name: "Install the app and open it", text: "On macOS, paste the install command (curl -fsSL https://aitranslator.vn/install.sh | bash) into Terminal: the app is downloaded, verified and opened directly, with no Open Anyway. On Windows, paste the install command (irm https://aitranslator.vn/install.ps1 | iex) into PowerShell; if you use an .exe downloaded in a browser and SmartScreen warns you, click More info, then Run anyway." },
   { name: "Choose the interface language", text: "The choice is preselected to your computer's language; change it if you like and click Next. This also sets your default translation language." },
   { name: "Accept the terms", text: "Read the License Agreement (EULA) and the Privacy Policy, tick the box and click Next. One internet connection is needed to start the Free trial." },
   { name: "Choose and download a model", text: "Pick the Standard pack (about 2.5 GB) or the Lite pack (about 1.3 GB) as the app recommends, and wait for the download." },
@@ -77,14 +77,14 @@ ${callout({ title: "Using Windows?", text: "The steps below are the same on Wind
 <p><strong>On macOS:</strong></p>
 <ol>
 <li>Open <strong>Terminal</strong> (press <kbd>⌘</kbd> + <kbd>Space</kbd>, type Terminal, press Enter).</li>
-<li>Paste the install command from the <a href="/en/download/#install-macos">Download</a> page and press Enter: <code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>.</li>
+<li>Paste the install command from the <a href="/en/download/#install-macos">Download</a> page and press Enter: <code>curl -fsSL https://aitranslator.vn/install.sh | bash</code>.</li>
 <li>Wait about a minute. The app is downloaded, verified, copied to Applications and opened directly. If macOS asks for system audio recording permission, choose Allow.</li>
 </ol>
 <p>If you already downloaded the <code>.dmg</code> in a browser: drag <strong>AI Translator</strong> into <strong>Applications</strong>, open it (macOS blocks the first launch because the current build is ad-hoc signed and not yet notarized by Apple), click <strong>Done</strong>, then go to <strong>System Settings › Privacy &amp; Security</strong>, scroll to the bottom, click <strong>Open Anyway</strong> and confirm with your password or Touch ID.</p>
 <p><strong>On Windows:</strong></p>
 <ol>
 <li>Open <strong>PowerShell</strong> (press the <kbd>Windows</kbd> key, type PowerShell, press Enter).</li>
-<li>Paste the install command from the <a href="/en/download/#install-windows">Download</a> page and press Enter: <code>irm https://aitranslator.io.vn/install.ps1 | iex</code>. No administrator rights are needed.</li>
+<li>Paste the install command from the <a href="/en/download/#install-windows">Download</a> page and press Enter: <code>irm https://aitranslator.vn/install.ps1 | iex</code>. No administrator rights are needed.</li>
 <li>Wait about a minute. The installer runs silently and AI Translator opens by itself.</li>
 </ol>
 <p>If you already downloaded the <code>.exe</code> in a browser: double-click it; if Windows shows the blue “Windows protected your PC” screen, click <strong>More info</strong>, check that the App line shows the installer's file name, then click <strong>Run anyway</strong>.</p>

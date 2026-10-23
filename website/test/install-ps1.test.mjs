@@ -17,14 +17,14 @@ const HELPERS = join(ROOT, "website/test/install-ps1.helpers.ps1");
 const script = readFileSync(SCRIPT, "utf8");
 const conf = JSON.parse(readFileSync(join(ROOT, "src-tauri/tauri.conf.json"), "utf8"));
 const cargo = readFileSync(join(ROOT, "src-tauri/Cargo.toml"), "utf8");
-const CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
+const CMD = "irm https://aitranslator.vn/install.ps1 | iex";
 
 const psVar = (name) => script.match(new RegExp(`^\\s*\\$${name}\\s*=\\s*'([^']*)'`, "m"))?.[1];
 const pwsh = process.env.PWSH || (spawnSync("pwsh", ["-NoProfile", "-Command", "1"]).status === 0 ? "pwsh" : null);
 const skip = pwsh ? false : "cần pwsh (PowerShell 7)";
 
 test("hợp đồng với release và app: URL, tên bộ cài, SHA256SUMS, tên file chạy, tên sản phẩm", () => {
-  assert.equal(psVar("BaseUrl"), "https://releases.aitranslator.io.vn");
+  assert.equal(psVar("BaseUrl"), "https://releases.aitranslator.vn");
   assert.match(readFileSync(join(ROOT, "src-tauri/src/updater/source.rs"), "utf8"), new RegExp(`Some\\("${psVar("BaseUrl")}"\\)`), "BaseUrl phải bằng PRODUCTION_URL của updater");
   assert.equal(psVar("Product"), conf.productName);
   const bin = cargo.match(/^\[package\][\s\S]*?^name = "([^"]+)"/m)?.[1];

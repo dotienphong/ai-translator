@@ -38,7 +38,7 @@ export default {
   path: "/ko/contact/",
   title: "AI Translator 문의 및 지원",
   description:
-    "support@aitranslator.io.vn 이메일이나 웹사이트와 앱의 지원 채팅으로 AI Translator에 문의하세요: 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
+    "support@aitranslator.vn 이메일이나 웹사이트와 앱의 지원 채팅으로 AI Translator에 문의하세요: 기술 지원, 키 분실, 결제 문제, 환불, 데이터 삭제, 보안 신고.",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -46,7 +46,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "문의 및 지원",
-  lead: "AI Translator에는 support@aitranslator.io.vn으로 이메일을 보내거나, 지원 채팅(이 웹사이트 모든 페이지 오른쪽 아래의 채팅 버튼, 또는 앱의 '지원' 화면)으로 연락할 수 있습니다. 지원 전화는 없습니다.",
+  lead: "AI Translator에는 support@aitranslator.vn으로 이메일을 보내거나, 지원 채팅(이 웹사이트 모든 페이지 오른쪽 아래의 채팅 버튼, 또는 앱의 '지원' 화면)으로 연락할 수 있습니다. 지원 전화는 없습니다.",
 })}
 
 <section class="section-tight"><div class="container narrow">
@@ -80,7 +80,7 @@ ${btn(M.support, "기술 지원에 이메일 보내기")}
 
 <div class="card reveal" id="lost-key">
 <h3>라이선스 키 분실</h3>
-<p>직접 되찾을 수 있습니다: '설정 › 라이선스 › 키를 잃어버렸나요?'로 가서 구매할 때 쓴 이메일을 입력하고 '내 키 보내기'를 고르세요. 메일은 no-reply@mail.aitranslator.io.vn에서 오니 스팸 폴더도 확인하세요. 그래도 오지 않으면 구매할 때 쓴 주소로 저희에게 이메일을 보내 주세요. <a href="/ko/guide/buy-and-activate/">키 구매와 활성화 가이드</a>도 참조하세요.</p>
+<p>직접 되찾을 수 있습니다: '설정 › 라이선스 › 키를 잃어버렸나요?'로 가서 구매할 때 쓴 이메일을 입력하고 '내 키 보내기'를 고르세요. 메일은 no-reply@mail.aitranslator.vn에서 오니 스팸 폴더도 확인하세요. 그래도 오지 않으면 구매할 때 쓴 주소로 저희에게 이메일을 보내 주세요. <a href="/ko/guide/buy-and-activate/">키 구매와 활성화 가이드</a>도 참조하세요.</p>
 ${btn(M.key, "키 분실 문의 보내기")}
 </div>
 

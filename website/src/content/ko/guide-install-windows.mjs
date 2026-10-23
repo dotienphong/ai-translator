@@ -20,11 +20,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "설치할 때 흔한 문제" },
 ];
 
-const INSTALL_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
+const INSTALL_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
 
 const HOWTO_STEPS = [
   { name: "PowerShell 열기", text: "Windows 키를 누르고 PowerShell을 입력한 뒤 Enter를 누릅니다. 관리자 권한으로 실행할 필요는 없습니다." },
-  { name: "설치 명령을 붙여 넣고 Enter 누르기", text: "irm https://aitranslator.io.vn/install.ps1 | iex를 PowerShell에 붙여 넣고 Enter를 누릅니다." },
+  { name: "설치 명령을 붙여 넣고 Enter 누르기", text: "irm https://aitranslator.vn/install.ps1 | iex를 PowerShell에 붙여 넣고 Enter를 누릅니다." },
   { name: "앱이 열릴 때까지 기다리기", text: "명령이 최신 버전을 내려받고, SHA-256을 확인하고, 내 계정에만 설치 프로그램을 화면 표시 없이 실행한 뒤 AI Translator를 엽니다." },
 ];
 
@@ -83,14 +83,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "명령 복사", copied: "복사됨", label
 <li>이어서 <a href="/ko/guide/quick-start/">빠른 시작 가이드</a>를 따르세요.</li>
 </ol>
 <p><strong>왜 SmartScreen 화면이 나오지 않나요?</strong> SmartScreen은 ‘인터넷에서 다운로드함’ 표시(브라우저가 붙임)가 있는 파일을 파일 탐색기에서 열 때만 검사합니다. PowerShell로 내려받은 파일에는 이 표시가 없고 설치 프로그램도 PowerShell에서 실행되므로, 이 빌드가 코드 서명되지 않았어도 경고가 나오지 않습니다.</p>
-${callout({ kind: "warn", title: "이 명령이 무엇을 하는지 알아 두세요.", text: "이 명령은 <strong>aitranslator.io.vn</strong>에서 스크립트를 내려받고, 스크립트는 <strong>releases.aitranslator.io.vn</strong>에서 설치 프로그램을 내려받아 SHA-256을 대조한 뒤 설치합니다. 관리자 권한이 필요 없고 데이터도 보내지 않습니다. SHA-256은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줍니다. 여전히 <strong>aitranslator.io.vn</strong>을 신뢰하는 것입니다. 스크립트를 먼저 읽으려면, 보여 준 다음에 실행하는 명령을 쓰세요: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. 같은 명령을 언제든 다시 실행하면 업데이트되며, 설치 프로그램이 실행 중인 앱을 스스로 닫습니다." })}
+${callout({ kind: "warn", title: "이 명령이 무엇을 하는지 알아 두세요.", text: "이 명령은 <strong>aitranslator.vn</strong>에서 스크립트를 내려받고, 스크립트는 <strong>releases.aitranslator.vn</strong>에서 설치 프로그램을 내려받아 SHA-256을 대조한 뒤 설치합니다. 관리자 권한이 필요 없고 데이터도 보내지 않습니다. SHA-256은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줍니다. 여전히 <strong>aitranslator.vn</strong>을 신뢰하는 것입니다. 스크립트를 먼저 읽으려면, 보여 준 다음에 실행하는 명령을 쓰세요: <code>$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s</code>. 같은 명령을 언제든 다시 실행하면 업데이트되며, 설치 프로그램이 실행 중인 앱을 스스로 닫습니다." })}
 <p>문제가 생겼나요? 스크립트가 멈추고 이유를 알려 줍니다(지원하지 않는 PC, 네트워크 없음, SHA-256 불일치 등). <a href="#common-problems">설치할 때 흔한 문제</a>를 참고하세요.</p>
 
 <h2 id="install-exe">다른 방법: .exe 파일로 설치</h2>
 <p>.exe를 이메일로 받았거나 PowerShell을 쓰고 싶지 않다면 이 방법을 쓰세요. 브라우저로 내려받은 파일에는 ‘인터넷에서 다운로드함’ 표시가 붙으므로 SmartScreen이 경고할 수 있습니다.</p>
 
 <h3 id="verify-the-file">설치 파일 확인(SHA-256)</h3>
-${callout({ kind: "warn", title: "설치 파일은 공식 출처에서만 내려받으세요.", text: "진짜 .exe는 저희가 <strong>support@aitranslator.io.vn</strong>에서 보내 드리는 것이나 <strong>aitranslator.io.vn</strong>에 링크된 것입니다. 다른 곳에서 받은 파일은 가짜이거나 변조되었을 수 있습니다. 이름이 AI Translator라도 실행하지 마세요." })}
+${callout({ kind: "warn", title: "설치 파일은 공식 출처에서만 내려받으세요.", text: "진짜 .exe는 저희가 <strong>support@aitranslator.vn</strong>에서 보내 드리는 것이나 <strong>aitranslator.vn</strong>에 링크된 것입니다. 다른 곳에서 받은 파일은 가짜이거나 변조되었을 수 있습니다. 이름이 AI Translator라도 실행하지 마세요." })}
 <p>이메일로 보내 드리는 설치 파일에는 모두 SHA-256 체크섬이 함께 있습니다. Windows 버전은 코드 서명되지 않았으므로, 이를 대조하는 것이 파일이 바뀌지 않았음을 확인하는 방법입니다. 설치하기 전에 하세요:</p>
 <ol>
 <li><strong>PowerShell</strong>을 엽니다: 시작을 누르고 <code>PowerShell</code>을 입력한 뒤 <strong>Windows PowerShell</strong>을 엽니다.</li>
@@ -146,7 +146,7 @@ ${callout({ kind: "warn", title: "Windows는 왜 경고하나요?", text: "Smart
 
 <h2 id="common-problems">설치할 때 흔한 문제</h2>
 <ul>
-<li><strong>설치 명령이 https://releases.aitranslator.io.vn/stable/latest.json을 읽지 못했다고 합니다.</strong> PC가 네트워크에 연결되어 있지 않거나, 프록시/VPN이 <code>releases.aitranslator.io.vn</code>을 막고 있습니다. 연결을 확인하고 다시 실행하세요.</li>
+<li><strong>설치 명령이 https://releases.aitranslator.vn/stable/latest.json을 읽지 못했다고 합니다.</strong> PC가 네트워크에 연결되어 있지 않거나, 프록시/VPN이 <code>releases.aitranslator.vn</code>을 막고 있습니다. 연결을 확인하고 다시 실행하세요.</li>
 <li><strong>설치 명령이 SHA-256이 일치하지 않는다고 합니다.</strong> 내려받는 도중 파일이 손상되었거나 변조되었습니다. 스크립트는 아무것도 설치하지 않습니다. 다시 실행하고, 그래도 다르면 <a href="/ko/contact/">지원팀</a>에 메일을 보내 주세요.</li>
 <li><strong>설치 명령이 실행되지 않습니다(제한된 언어 모드라고 표시됨).</strong> 회사가 관리하는 PC는 스크립트를 막을 수 있습니다. .exe 방법을 쓰거나 관리자에게 문의하세요.</li>
 <li><strong>앱이 차단되고 넘어갈 방법이 없습니다.</strong> 위의 스마트 앱 컨트롤 절을 참고하세요.</li>

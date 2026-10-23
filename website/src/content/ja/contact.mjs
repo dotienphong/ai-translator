@@ -38,7 +38,7 @@ export default {
   path: "/ja/contact/",
   title: "お問い合わせとサポート",
   description:
-    "AI Translator へのお問い合わせは support@aitranslator.io.vn へのメール、またはサイトとアプリのサポートチャットで。技術サポート、キーの紛失、支払い、返金、データ削除。",
+    "AI Translator へのお問い合わせは support@aitranslator.vn へのメール、またはサイトとアプリのサポートチャットで。技術サポート、キーの紛失、支払い、返金、データ削除。",
   schemaType: "ContactPage",
   breadcrumbs: crumbs,
   modified: "2026-10-22",
@@ -46,7 +46,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "お問い合わせとサポート",
-  lead: "AI Translator へのご連絡は、support@aitranslator.io.vn へのメールか、サポートチャット（このウェブサイトの各ページ右下にあるチャットボタン、またはアプリの「サポート」画面）でお願いします。サポート用の電話はありません。",
+  lead: "AI Translator へのご連絡は、support@aitranslator.vn へのメールか、サポートチャット（このウェブサイトの各ページ右下にあるチャットボタン、またはアプリの「サポート」画面）でお願いします。サポート用の電話はありません。",
 })}
 
 <section class="section-tight"><div class="container narrow">
@@ -80,7 +80,7 @@ ${btn(M.support, "技術サポートにメールする")}
 
 <div class="card reveal" id="lost-key">
 <h3>ライセンスキーの紛失</h3>
-<p>ご自身で取り戻せます：「設定 › ライセンス › キーをなくしましたか？」で購入に使ったメールアドレスを入力し、「キーを送信」を選んでください。メールは no-reply@mail.aitranslator.io.vn から届くので、迷惑メールのフォルダーも確認してください。それでも届かない場合は、購入に使ったアドレスからメールをお送りください。<a href="/ja/guide/buy-and-activate/">キーの購入と有効化のガイド</a>もご覧ください。</p>
+<p>ご自身で取り戻せます：「設定 › ライセンス › キーをなくしましたか？」で購入に使ったメールアドレスを入力し、「キーを送信」を選んでください。メールは no-reply@mail.aitranslator.vn から届くので、迷惑メールのフォルダーも確認してください。それでも届かない場合は、購入に使ったアドレスからメールをお送りください。<a href="/ja/guide/buy-and-activate/">キーの購入と有効化のガイド</a>もご覧ください。</p>
 ${btn(M.key, "キーの紛失についてメールする")}
 </div>
 

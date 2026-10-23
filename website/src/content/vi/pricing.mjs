@@ -29,11 +29,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "Có hoàn tiền không?",
-    a: "<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.io.vn kèm mã đơn. Đổi gói không được hoàn tiền. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Chi tiết trong <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a>.</p>",
+    a: "<p>Đã thanh toán thì không hoàn lại, trừ khi lỗi do phía chúng tôi khiến bạn không dùng được gói đã mua và không khắc phục được trong thời gian hợp lý, hoặc khi pháp luật quy định khác. Hãy gửi yêu cầu cho chúng tôi trước, trong 7 ngày kể từ ngày thanh toán, tới support@aitranslator.vn kèm mã đơn. Đổi gói không được hoàn tiền. Với khoản trả bằng thẻ quốc tế, Creem là bên bán lại nên Creem cũng có thể hoàn tiền theo điều khoản của Creem. Khi một đơn được hoàn tiền (toàn bộ hay một phần, kể cả qua tranh chấp thẻ), chúng tôi có thể rút ngắn thời hạn mà đơn đó đã cộng vào license, hoặc thu hồi license nếu license chỉ gồm đơn đó; việc này không tự động: người vận hành quyết định theo từng trường hợp. Chi tiết trong <a href=\"/dieu-khoan/\">Điều khoản sử dụng</a>.</p>",
   },
   {
     q: "Tôi cần hóa đơn điện tử cho doanh nghiệp?",
-    a: "<p>Với đơn VietQR, hiện chúng tôi chưa xuất hóa đơn điện tử. Với đơn trả bằng thẻ quốc tế, Creem gửi biên lai tới email bạn nhập. Nếu bạn cần chứng từ khác, hãy liên hệ support@aitranslator.io.vn để trao đổi.</p>",
+    a: "<p>Với đơn VietQR, hiện chúng tôi chưa xuất hóa đơn điện tử. Với đơn trả bằng thẻ quốc tế, Creem gửi biên lai tới email bạn nhập. Nếu bạn cần chứng từ khác, hãy liên hệ support@aitranslator.vn để trao đổi.</p>",
   },
   {
     q: "Thời lượng dịch được tính thế nào?",
@@ -41,7 +41,7 @@ export const PRICING_FAQ = [
   },
   {
     q: "Tôi bị mất key, làm sao?",
-    a: "<p>Vào Cài đặt › Bản quyền › Mất key?, nhập email đã dùng khi mua và chọn Gửi lại key. Key còn hiệu lực của email đó sẽ được gửi vào chính email đó. Hoặc liên hệ support@aitranslator.io.vn.</p>",
+    a: "<p>Vào Cài đặt › Bản quyền › Mất key?, nhập email đã dùng khi mua và chọn Gửi lại key. Key còn hiệu lực của email đó sẽ được gửi vào chính email đó. Hoặc liên hệ support@aitranslator.vn.</p>",
   },
 ];
 

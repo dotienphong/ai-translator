@@ -17,7 +17,7 @@ const toc = [
 
 // 用于 HowTo 结构化数据的纯文本；页面上显示的内容在 body 中。
 const HOWTO_STEPS = [
-  { name: "安装并打开应用", text: "在 macOS 上，把安装命令（curl -fsSL https://aitranslator.io.vn/install.sh | bash）粘贴到终端：应用会被下载、校验并直接打开，不需要“仍要打开”。在 Windows 上，把安装命令（irm https://aitranslator.io.vn/install.ps1 | iex）粘贴到 PowerShell；如果你用的是在浏览器中下载的 .exe，而 SmartScreen 发出警告，请点击“更多信息”，然后点击“仍要运行”。" },
+  { name: "安装并打开应用", text: "在 macOS 上，把安装命令（curl -fsSL https://aitranslator.vn/install.sh | bash）粘贴到终端：应用会被下载、校验并直接打开，不需要“仍要打开”。在 Windows 上，把安装命令（irm https://aitranslator.vn/install.ps1 | iex）粘贴到 PowerShell；如果你用的是在浏览器中下载的 .exe，而 SmartScreen 发出警告，请点击“更多信息”，然后点击“仍要运行”。" },
   { name: "选择界面语言", text: "已预先选中你电脑的语言；如有需要可以更改，然后点击“下一步”。这也会设置默认的目标语言。" },
   { name: "接受条款", text: "阅读最终用户许可协议（EULA）和隐私政策，勾选复选框，然后点击“下一步”。开始 Free 试用需要联网一次。" },
   { name: "选择并下载模型", text: "按照应用的推荐选择 Standard 模型包（约 2.5 GB）或 Lite 模型包（约 1.3 GB），然后等待下载完成。" },
@@ -75,14 +75,14 @@ ${callout({ title: "使用 Windows？", text: "以下步骤在 Windows 上基本
 <p><strong>在 macOS 上：</strong></p>
 <ol>
 <li>打开<strong>终端</strong>（按 <kbd>⌘</kbd> + <kbd>Space</kbd>，输入“终端”，按 Enter）。</li>
-<li>粘贴<a href="/zh/download/#install-macos">下载</a>页面上的安装命令并按 Enter：<code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>。</li>
+<li>粘贴<a href="/zh/download/#install-macos">下载</a>页面上的安装命令并按 Enter：<code>curl -fsSL https://aitranslator.vn/install.sh | bash</code>。</li>
 <li>等待大约一分钟。应用会被下载、校验、复制到“应用程序”文件夹并直接打开。如果 macOS 请求系统音频录制权限，请选择“允许”。</li>
 </ol>
 <p>如果你已经在浏览器中下载了 <code>.dmg</code>：把 <strong>AI Translator</strong> 拖到<strong>应用程序</strong>中，然后打开它（由于当前版本是临时签名，还没有经过 Apple 公证，macOS 会阻止第一次打开），点击<strong>完成</strong>，然后进入<strong>系统设置 › 隐私与安全性</strong>，滚动到底部，点击<strong>仍要打开</strong>，并用密码或触控 ID 确认。</p>
 <p><strong>在 Windows 上：</strong></p>
 <ol>
 <li>打开 <strong>PowerShell</strong>（按 <kbd>Windows</kbd> 键，输入 PowerShell，按 Enter）。</li>
-<li>粘贴<a href="/zh/download/#install-windows">下载</a>页面上的安装命令并按 Enter：<code>irm https://aitranslator.io.vn/install.ps1 | iex</code>。不需要管理员权限。</li>
+<li>粘贴<a href="/zh/download/#install-windows">下载</a>页面上的安装命令并按 Enter：<code>irm https://aitranslator.vn/install.ps1 | iex</code>。不需要管理员权限。</li>
 <li>等待大约一分钟。安装程序会静默运行，AI Translator 会自动打开。</li>
 </ol>
 <p>如果你已经在浏览器中下载了 <code>.exe</code>：双击它；如果 Windows 显示蓝色的“Windows 已保护你的电脑”界面，请点击<strong>更多信息</strong>，确认“应用”一行显示的是安装程序的文件名，然后点击<strong>仍要运行</strong>。</p>

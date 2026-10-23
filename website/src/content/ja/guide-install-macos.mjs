@@ -19,11 +19,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "インストールでよくある問題" },
 ];
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
 
 const HOWTO_STEPS = [
   { name: "ターミナルを開く", text: "Command + Space を押し、「ターミナル」と入力して Enter を押します。" },
-  { name: "インストールのコマンドを貼り付けて Enter を押す", text: "curl -fsSL https://aitranslator.io.vn/install.sh | bash をターミナルに貼り付けて Enter を押します。パスワードは不要です。" },
+  { name: "インストールのコマンドを貼り付けて Enter を押す", text: "curl -fsSL https://aitranslator.vn/install.sh | bash をターミナルに貼り付けて Enter を押します。パスワードは不要です。" },
   { name: "アプリが開くのを待つ", text: "コマンドが最新版をダウンロードし、SHA-256 を確認して、AI Translator をアプリケーションにコピーして開きます。macOS がシステムオーディオの録音の許可を求めたら、「許可」を選びます。" },
 ];
 
@@ -81,14 +81,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "コマンドをコピー", copied: "コピ
 <li>macOS が<strong>システムオーディオの録音</strong>の許可を求めたら、「許可」を選びます。続きは<a href="/ja/guide/quick-start/">クイックスタートガイド</a>をご覧ください。</li>
 </ol>
 <p><strong>なぜ「このまま開く」の手順がないのですか？</strong>macOS がブロックするのは、「インターネットからダウンロードした」という印（ブラウザーが付けます）が付いたファイルのアプリだけです。ターミナルの <code>curl</code> でダウンロードしたファイルにはこの印がないため、Apple の公証がなくてもアプリはそのまま開きます。</p>
-${callout({ kind: "warn", title: "このコマンドが何をするのかを理解しておいてください。", text: "コマンドは <strong>aitranslator.io.vn</strong> からスクリプトをダウンロードし、そのスクリプトが <strong>releases.aitranslator.io.vn</strong> からインストーラーをダウンロードして、SHA-256 を照合してからインストールします。sudo は使わず、データを送ることもありません。SHA-256 はファイルと同じ場所から配信されるので、おもに壊れたダウンロードを防ぐためのものです。<strong>aitranslator.io.vn</strong> を信頼していることに変わりはありません。先にスクリプトを読むには：<code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>。同じコマンドをいつでももう一度実行すれば、最新版に更新できます。スクリプトは実行中のアプリを自分で終了させます。" })}
+${callout({ kind: "warn", title: "このコマンドが何をするのかを理解しておいてください。", text: "コマンドは <strong>aitranslator.vn</strong> からスクリプトをダウンロードし、そのスクリプトが <strong>releases.aitranslator.vn</strong> からインストーラーをダウンロードして、SHA-256 を照合してからインストールします。sudo は使わず、データを送ることもありません。SHA-256 はファイルと同じ場所から配信されるので、おもに壊れたダウンロードを防ぐためのものです。<strong>aitranslator.vn</strong> を信頼していることに変わりはありません。先にスクリプトを読むには：<code>curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>。同じコマンドをいつでももう一度実行すれば、最新版に更新できます。スクリプトは実行中のアプリを自分で終了させます。" })}
 <p>うまくいきませんでしたか？スクリプトは止まって理由を表示します（対応していない Mac、ネットワークがない、SHA-256 が一致しない…）。<a href="#common-problems">インストールでよくある問題</a>をご覧ください。</p>
 
 <h2 id="install-dmg">別の方法：.dmg ファイルからインストール</h2>
 <p>.dmg をメールで受け取った場合や、ターミナルを使いたくない場合はこの方法を使います。ブラウザーでダウンロードしたファイルには macOS が「インターネットからダウンロードした」という印を付けるため、初回起動には「このまま開く」の手順が追加で必要です。</p>
 
 <h3 id="verify-the-file">インストーラーを確認する（SHA-256）</h3>
-${callout({ kind: "warn", title: "インストーラーは公式の入手先からだけダウンロードしてください。", text: "本物の .dmg は、私たちが <strong>support@aitranslator.io.vn</strong> からお送りするもの、または <strong>aitranslator.io.vn</strong> にリンクがあるものです。それ以外の場所から入手したファイルは偽物や改ざんされたものの可能性があります。名前が AI Translator でも開かないでください。" })}
+${callout({ kind: "warn", title: "インストーラーは公式の入手先からだけダウンロードしてください。", text: "本物の .dmg は、私たちが <strong>support@aitranslator.vn</strong> からお送りするもの、または <strong>aitranslator.vn</strong> にリンクがあるものです。それ以外の場所から入手したファイルは偽物や改ざんされたものの可能性があります。名前が AI Translator でも開かないでください。" })}
 <p>メールでお送りするインストーラーには、すべて SHA-256 チェックサムを添えています。インストールする前に照合してください：</p>
 <ol>
 <li><strong>ターミナル</strong>を開きます（アプリケーション › ユーティリティ）。</li>
@@ -140,7 +140,7 @@ ${callout({ kind: "warn", title: "macOS 15 からは、右クリック › 開�
 
 <h2 id="common-problems">インストールでよくある問題</h2>
 <ul>
-<li><strong>インストールのコマンドが https://releases.aitranslator.io.vn/stable/latest.json を読み取れないと表示する。</strong>Mac がネットワークにつながっていないか、プロキシや VPN が <code>releases.aitranslator.io.vn</code> をブロックしています。接続を確認して、もう一度実行してください。</li>
+<li><strong>インストールのコマンドが https://releases.aitranslator.vn/stable/latest.json を読み取れないと表示する。</strong>Mac がネットワークにつながっていないか、プロキシや VPN が <code>releases.aitranslator.vn</code> をブロックしています。接続を確認して、もう一度実行してください。</li>
 <li><strong>インストールのコマンドが SHA-256 が一致しないと表示する。</strong>ダウンロードが途中で壊れたか、改ざんされました。スクリプトは何もインストールしません。もう一度実行し、それでも一致しない場合は<a href="/ja/contact/">サポート</a>にご連絡ください。</li>
 <li><strong>インストールのコマンドがアプリがまだ実行中だと表示する。</strong>AI Translator を完全に終了し（メニューバーの AI Translator のメニュー › 終了）、もう一度コマンドを実行してください。</li>
 <li><strong>インストールのコマンドが Apple シリコンか macOS 14.2 が必要だと表示する。</strong>お使いの Mac は要件を満たしていません。Intel Mac 向けのビルドはありません。</li>

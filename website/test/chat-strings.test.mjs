@@ -35,7 +35,7 @@ test("chat-strings: tiêu đề, dòng phụ, lời chào và chân khung trích
     assert.equal(CHAT[l].greeting, greeting, `${l}: lời chào`);
     assert.equal(`${CHAT[l].keep} · ${CHAT[l].privacy}`, foot, `${l}: chân khung`);
   }
-  const off = { vi: "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.io.vn", closed: "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.io.vn" };
+  const off = { vi: "Chat đang tạm tắt. Hãy gửi email tới support@aitranslator.vn", closed: "Cuộc trò chuyện đã đóng. Hãy gửi email tới support@aitranslator.vn" };
   assert.equal(CHAT.vi.off.replace("{email}", SUPPORT_EMAIL), off.vi);
   assert.equal(CHAT.vi.closed.replace("{email}", SUPPORT_EMAIL), off.closed);
 });

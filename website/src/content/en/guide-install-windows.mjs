@@ -20,11 +20,11 @@ const toc = [
   { level: 2, id: "common-problems", text: "Common installation problems" },
 ];
 
-const INSTALL_CMD = "irm https://aitranslator.io.vn/install.ps1 | iex";
+const INSTALL_CMD = "irm https://aitranslator.vn/install.ps1 | iex";
 
 const HOWTO_STEPS = [
   { name: "Open PowerShell", text: "Press the Windows key, type PowerShell and press Enter. You do not need to run it as administrator." },
-  { name: "Paste the install command and press Enter", text: "Paste irm https://aitranslator.io.vn/install.ps1 | iex into PowerShell and press Enter." },
+  { name: "Paste the install command and press Enter", text: "Paste irm https://aitranslator.vn/install.ps1 | iex into PowerShell and press Enter." },
   { name: "Wait for the app to open", text: "The command downloads the latest version, checks its SHA-256, runs the installer silently for your account only and opens AI Translator." },
 ];
 
@@ -85,14 +85,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "Copy command", copied: "Copied", label: "C
 <li>Continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
 </ol>
 <p><strong>Why no SmartScreen screen?</strong> SmartScreen only checks a file that carries the “downloaded from the internet” tag (added by browsers) when you open it from File Explorer. A file downloaded by PowerShell has no such tag and the installer is run from PowerShell, so there is no warning even though this build is not code-signed.</p>
-${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.io.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.io.vn</strong>, compares its SHA-256 and installs it. It needs no administrator rights and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.io.vn</strong>. To read the script first, use the command that prints it and only then runs it: <code>$s = irm https://aitranslator.io.vn/install.ps1; $s | more; iex $s</code>. Run the same command again at any time to update; the installer closes a running app itself." })}
+${callout({ kind: "warn", title: "Understand what this command does.", text: "The command downloads a script from <strong>aitranslator.vn</strong>; the script downloads the installer from <strong>releases.aitranslator.vn</strong>, compares its SHA-256 and installs it. It needs no administrator rights and sends no data. The SHA-256 is served from the same place as the file, so it mainly protects against a corrupted download; you are still trusting <strong>aitranslator.vn</strong>. To read the script first, use the command that prints it and only then runs it: <code>$s = irm https://aitranslator.vn/install.ps1; $s | more; iex $s</code>. Run the same command again at any time to update; the installer closes a running app itself." })}
 <p>Something went wrong? The script stops and says why (PC not supported, no network, SHA-256 mismatch…). See <a href="#common-problems">common installation problems</a>.</p>
 
 <h2 id="install-exe">Alternative: install from the .exe file</h2>
 <p>Use this if you received the .exe by email or prefer not to use PowerShell. A file downloaded in a browser carries the “downloaded from the internet” tag, so SmartScreen may warn.</p>
 
 <h3 id="verify-the-file">Verify the installer (SHA-256)</h3>
-${callout({ kind: "warn", title: "Only download the installer from an official source.", text: "The genuine .exe is the one we send from <strong>support@aitranslator.io.vn</strong> or link to on <strong>aitranslator.io.vn</strong>. A file from anywhere else could be fake or tampered with. Do not run it, even if it is named AI Translator." })}
+${callout({ kind: "warn", title: "Only download the installer from an official source.", text: "The genuine .exe is the one we send from <strong>support@aitranslator.vn</strong> or link to on <strong>aitranslator.vn</strong>. A file from anywhere else could be fake or tampered with. Do not run it, even if it is named AI Translator." })}
 <p>Every installer we send by email comes with a SHA-256 checksum. Because the Windows build is not code-signed, comparing it is how you make sure the file has not been altered. Do this before installing:</p>
 <ol>
 <li>Open <strong>PowerShell</strong>: click Start, type <code>PowerShell</code> and open <strong>Windows PowerShell</strong>.</li>
@@ -148,7 +148,7 @@ ${callout({ kind: "warn", title: "Why does Windows warn you?", text: "SmartScree
 
 <h2 id="common-problems">Common installation problems</h2>
 <ul>
-<li><strong>The install command says it could not read https://releases.aitranslator.io.vn/stable/latest.json….</strong> Your PC has no network, or a proxy/VPN is blocking <code>releases.aitranslator.io.vn</code>. Check your connection and run it again.</li>
+<li><strong>The install command says it could not read https://releases.aitranslator.vn/stable/latest.json….</strong> Your PC has no network, or a proxy/VPN is blocking <code>releases.aitranslator.vn</code>. Check your connection and run it again.</li>
 <li><strong>The install command says the SHA-256 does not match.</strong> The download was corrupted or tampered with on the way. The script installs nothing; run it again, and if it still differs write to <a href="/en/contact/">support</a>.</li>
 <li><strong>The install command will not run (it reports Constrained Language mode).</strong> A company-managed PC may block scripts. Use the .exe route or ask the administrator.</li>
 <li><strong>The app is blocked with no way past it.</strong> See the Smart App Control section above.</li>

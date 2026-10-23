@@ -120,7 +120,7 @@ test("renderPage của trang tiếng Trung: lang zh-Hans, hreflang theo thẻ, o
   const html = renderPage(page("zh"), ctx);
   assert.match(html, /^<!doctype html>\n<html lang="zh-Hans">/);
   for (const [tag, href] of [["vi", "/tinh-nang/"], ["en", "/en/features/"], ["ja", "/ja/features/"], ["zh-Hans", "/zh/features/"], ["ko", "/ko/features/"]]) {
-    assert.ok(html.includes(`<link rel="alternate" hreflang="${tag}" href="https://aitranslator.io.vn${href}">`), `thiếu hreflang ${tag}`);
+    assert.ok(html.includes(`<link rel="alternate" hreflang="${tag}" href="https://aitranslator.vn${href}">`), `thiếu hreflang ${tag}`);
     assert.ok(html.includes(`<a href="${href}" hreflang="${tag}" lang="${tag}"`), `menu thiếu ${tag}`);
   }
   assert.ok(html.includes('<meta property="og:locale" content="zh_CN">'));
@@ -149,18 +149,18 @@ test("dataFlow và softwareApplication đọc chuỗi theo ngôn ngữ; app nêu
   assert.ok(dataFlow("ko").includes("내 컴퓨터에서 실행되는 AI"));
   const ctx = { byId: new Map([["pricing", [{ lang: "ja", path: "/ja/pricing/" }]], ["download", [{ lang: "ja", path: "/ja/download/" }]], ["guide", [{ lang: "ja", path: "/ja/guide/" }]]]) };
   const app = softwareApplication("ja", ctx);
-  assert.equal(app["@id"], "https://aitranslator.io.vn/ja/#software");
-  assert.equal(app.url, "https://aitranslator.io.vn/ja/");
-  assert.equal(app.installUrl, "https://aitranslator.io.vn/ja/download/");
+  assert.equal(app["@id"], "https://aitranslator.vn/ja/#software");
+  assert.equal(app.url, "https://aitranslator.vn/ja/");
+  assert.equal(app.installUrl, "https://aitranslator.vn/ja/download/");
   assert.deepEqual(app.inLanguage, ["vi", "en", "ja", "zh-Hans", "ko"]);
   assert.ok(app.offers.some((o) => o.priceCurrency === "USD" && o.description.includes("税抜")));
-  assert.equal(app.screenshot[0].url, "https://aitranslator.io.vn/assets/img/app/overlay-default.ja.webp");
+  assert.equal(app.screenshot[0].url, "https://aitranslator.vn/assets/img/app/overlay-default.ja.webp");
 });
 
 test("videoObject tự lấy thời lượng từ file; demoVideo có nút phát ẩn sẵn kèm nhãn và thời lượng", () => {
   const v = videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "2026-10-21" });
   assert.equal(v.duration, "PT40S");
-  assert.equal(v["@id"], "https://aitranslator.io.vn/#demo-video");
+  assert.equal(v["@id"], "https://aitranslator.vn/#demo-video");
   assert.equal(v.inLanguage, "vi");
   assert.equal(v.uploadDate, "2026-10-21T00:00:00+07:00");
   assert.throws(() => videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "21/10/2026" }), /uploadDate/);

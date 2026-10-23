@@ -10,7 +10,7 @@ const abs = (p) => (p.startsWith("http") ? p : SITE.origin + p);
 const ORG_ID = `${SITE.origin}/#organization`;
 const PERSON_ID = `${SITE.origin}/ve-chung-toi/#person`;
 // Mỗi ngôn ngữ một WebSite và một SoftwareApplication (cùng @id thì giá trị inLanguage/url/description lệch nhau).
-// Gốc của từng ngôn ngữ: "https://aitranslator.io.vn/" (vi), "…/en/", "…/ja/"…
+// Gốc của từng ngôn ngữ: "https://aitranslator.vn/" (vi), "…/en/", "…/ja/"…
 const base = (lang) => SITE.origin + LANGS[lang].prefix;
 const siteId = (lang) => `${base(lang)}#website`;
 const appId = (lang) => `${base(lang)}#software`;
@@ -33,15 +33,15 @@ const organization = () => ({
   "@type": "Organization",
   "@id": ORG_ID,
   name: SITE.name,
-  alternateName: ["AI Translator app", "aitranslator.io.vn"],
+  alternateName: ["AI Translator app", "aitranslator.vn"],
   url: SITE.origin + "/",
   description: lm(
     "AI Translator là app desktop hiện phụ đề dịch trực tiếp cho âm thanh cuộc họp trên máy tính, xử lý trên máy. Do Đỗ Tiến Phong cung cấp.",
     "AI Translator is a desktop app that shows live translated subtitles for meeting audio on your computer, processed on-device. Provided by Đỗ Tiến Phong.",
   ),
   disambiguatingDescription: lm(
-    "App dịch phụ đề cuộc họp offline của Đỗ Tiến Phong (aitranslator.io.vn); không liên quan tới các sản phẩm khác có tên tương tự.",
-    "Offline live-subtitle translation app for meetings by Đỗ Tiến Phong (aitranslator.io.vn); not related to other products with similar names.",
+    "App dịch phụ đề cuộc họp offline của Đỗ Tiến Phong (aitranslator.vn); không liên quan tới các sản phẩm khác có tên tương tự.",
+    "Offline live-subtitle translation app for meetings by Đỗ Tiến Phong (aitranslator.vn); not related to other products with similar names.",
   ),
   logo: { "@type": "ImageObject", url: abs("/assets/img/logo-512.png"), width: 512, height: 512 },
   email: SITE.email,
@@ -63,7 +63,7 @@ const website = (lang) => ({
   "@id": siteId(lang),
   url: base(lang),
   name: SITE.name,
-  alternateName: ["aitranslator.io.vn"],
+  alternateName: ["aitranslator.vn"],
   inLanguage: tagOf(lang),
   publisher: { "@id": ORG_ID },
 });

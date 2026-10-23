@@ -75,7 +75,7 @@ ${facts([
 <section class="section-tight"><div class="container narrow">
 <div class="card reveal">
 <h2>Need help?</h2>
-<p>Did not find your answer in the guides? Read the <a href="/en/faq/">frequently asked questions</a> or write to us on the <a href="/en/contact/">contact</a> page. You can write to <strong>support@aitranslator.io.vn</strong>.</p>
+<p>Did not find your answer in the guides? Read the <a href="/en/faq/">frequently asked questions</a> or write to us on the <a href="/en/contact/">contact</a> page. You can write to <strong>support@aitranslator.vn</strong>.</p>
 <p class="more-link"><a class="btn btn-secondary" href="/en/contact/">Contact support ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/en/faq/">FAQ</a></p>
 </div>
 </div></section>

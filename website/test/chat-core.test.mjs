@@ -115,7 +115,7 @@ function fakeFetch(replies) {
   return { fn, calls };
 }
 
-test("createApi: đúng đường dẫn, phương thức, header và thân của hợp đồng; chỉ gọi api.aitranslator.io.vn", async () => {
+test("createApi: đúng đường dẫn, phương thức, header và thân của hợp đồng; chỉ gọi api.aitranslator.vn", async () => {
   const { fn, calls } = fakeFetch([
     { status: 200, body: { enabled: true } },
     { status: 201, body: { token: TOKEN, message: { id: 5, sender: "customer", text: "hi", created_at: 1 } } },
@@ -142,7 +142,7 @@ test("createApi: đúng đường dẫn, phương thức, header và thân của
     { url: `${API}/v1/support/email`, method: "PUT", headers: { ...auth, ...json }, body: { email: "a@b.vn" }, credentials: "omit" },
     { url: `${API}/v1/support/conversation`, method: "DELETE", headers: { ...auth, ...json }, body: {}, credentials: "omit" },
   ]);
-  assert.equal(API, "https://api.aitranslator.io.vn");
+  assert.equal(API, "https://api.aitranslator.vn");
 });
 
 test("createApi: GET không dùng bộ nhớ đệm của trình duyệt (cache: no-store); mọi request có signal để hủy khi quá giờ", async () => {

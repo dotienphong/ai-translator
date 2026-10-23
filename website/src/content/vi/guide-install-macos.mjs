@@ -19,11 +19,11 @@ const toc = [
   { level: 2, id: "loi-thuong-gap", text: "Lỗi thường gặp khi cài" },
 ];
 
-const INSTALL_CMD = "curl -fsSL https://aitranslator.io.vn/install.sh | bash";
+const INSTALL_CMD = "curl -fsSL https://aitranslator.vn/install.sh | bash";
 
 const HOWTO_STEPS = [
   { name: "Mở Terminal", text: "Nhấn Command + Space, gõ Terminal rồi nhấn Enter." },
-  { name: "Dán lệnh cài và nhấn Enter", text: "Dán lệnh curl -fsSL https://aitranslator.io.vn/install.sh | bash vào Terminal rồi nhấn Enter. Không cần mật khẩu." },
+  { name: "Dán lệnh cài và nhấn Enter", text: "Dán lệnh curl -fsSL https://aitranslator.vn/install.sh | bash vào Terminal rồi nhấn Enter. Không cần mật khẩu." },
   { name: "Chờ app mở", text: "Lệnh tải bản mới nhất, kiểm SHA-256, chép AI Translator vào Applications và mở app. Khi macOS hỏi quyền ghi âm thanh hệ thống, chọn cho phép." },
 ];
 
@@ -83,14 +83,14 @@ ${cmdBlock({ cmd: INSTALL_CMD, copy: "Sao chép lệnh", copied: "Đã chép", l
 <li>Khi macOS hỏi quyền <strong>ghi âm thanh hệ thống</strong>, chọn cho phép. Rồi làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
 </ol>
 <p><strong>Vì sao không phải bấm Open Anyway?</strong> macOS chỉ chặn app khi file mang nhãn “tải từ internet” (do trình duyệt gắn). File tải bằng <code>curl</code> trong Terminal không có nhãn đó, nên app mở thẳng dù chưa được Apple notarize.</p>
-${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.io.vn</strong>, script tải bản cài từ <strong>releases.aitranslator.io.vn</strong>, đối chiếu SHA-256 rồi cài. Không dùng sudo, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.io.vn</strong>. Muốn đọc script trước: <code>curl -fsSL https://aitranslator.io.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật lên bản mới nhất; script tự đóng app đang chạy." })}
+${callout({ kind: "warn", title: "Hãy hiểu những gì lệnh này làm.", text: "Lệnh tải một script từ <strong>aitranslator.vn</strong>, script tải bản cài từ <strong>releases.aitranslator.vn</strong>, đối chiếu SHA-256 rồi cài. Không dùng sudo, không gửi dữ liệu đi. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu chống file hỏng; bạn vẫn đang tin nguồn <strong>aitranslator.vn</strong>. Muốn đọc script trước: <code>curl -fsSL https://aitranslator.vn/install.sh -o install.sh && less install.sh && bash install.sh</code>. Chạy lại đúng lệnh cài bất cứ lúc nào để cập nhật lên bản mới nhất; script tự đóng app đang chạy." })}
 <p>Gặp lỗi? Script dừng và báo lý do bằng tiếng Việt, hoặc tiếng Anh nếu máy không đặt tiếng Việt (máy không đạt yêu cầu, mất mạng, SHA-256 không khớp…). Xem thêm ở <a href="#loi-thuong-gap">lỗi thường gặp khi cài</a>.</p>
 
 <h2 id="cai-bang-dmg">Cách khác: cài từ file .dmg</h2>
 <p>Dùng cách này nếu bạn nhận file .dmg qua email hoặc không muốn dùng Terminal. File tải bằng trình duyệt bị macOS gắn nhãn “tải từ internet”, nên lần mở đầu cần thêm bước Open Anyway.</p>
 
 <h3 id="kiem-tra-file">Kiểm tra file cài đặt (SHA-256)</h3>
-${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính thức.", text: "File .dmg đúng là file chúng tôi gửi từ <strong>support@aitranslator.io.vn</strong> hoặc liên kết trên <strong>aitranslator.io.vn</strong>. File từ nơi khác có thể là bản giả hoặc bị sửa đổi. Đừng mở nó, dù nó mang tên AI Translator." })}
+${callout({ kind: "warn", title: "Chỉ tải bản cài từ nguồn chính thức.", text: "File .dmg đúng là file chúng tôi gửi từ <strong>support@aitranslator.vn</strong> hoặc liên kết trên <strong>aitranslator.vn</strong>. File từ nơi khác có thể là bản giả hoặc bị sửa đổi. Đừng mở nó, dù nó mang tên AI Translator." })}
 <p>Mỗi bản cài gửi qua email đi kèm một mã SHA-256 do chúng tôi gửi. Đối chiếu mã đó trước khi cài:</p>
 <ol>
 <li>Mở <strong>Terminal</strong> (trong Applications › Utilities).</li>
@@ -142,7 +142,7 @@ ${callout({ kind: "warn", title: "Từ macOS 15, mẹo bấm chuột phải › 
 
 <h2 id="loi-thuong-gap">Lỗi thường gặp khi cài</h2>
 <ul>
-<li><strong>Lệnh cài báo “không đọc được https://releases.aitranslator.io.vn/stable/latest.json…”.</strong> Máy mất mạng, hoặc đang đặt proxy/VPN chặn <code>releases.aitranslator.io.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
+<li><strong>Lệnh cài báo “không đọc được https://releases.aitranslator.vn/stable/latest.json…”.</strong> Máy mất mạng, hoặc đang đặt proxy/VPN chặn <code>releases.aitranslator.vn</code>. Kiểm tra mạng rồi chạy lại.</li>
 <li><strong>Lệnh cài báo “SHA-256 của file tải về không khớp”.</strong> File tải bị lỗi hoặc bị can thiệp trên đường truyền. Script không cài gì; chạy lại, nếu vẫn lệch thì báo <a href="/lien-he/">hỗ trợ</a>.</li>
 <li><strong>Lệnh cài báo “vẫn đang chạy”.</strong> Thoát hẳn AI Translator (menu AI Translator trên thanh menu › Thoát) rồi chạy lại lệnh.</li>
 <li><strong>Lệnh cài báo cần Apple Silicon hoặc macOS 14.2.</strong> Máy chưa đạt yêu cầu; không có bản cho Mac Intel.</li>

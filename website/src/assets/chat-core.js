@@ -2,7 +2,7 @@
 // 2026-10-22-chat-ho-tro-00-tong-quan). Không đụng DOM: khung chat (chat.js) và site.js (hỏi tin khi khung đóng, chấm đỏ) cùng
 // dùng; test đơn vị ở test/chat-core.test.mjs. Chỉ gọi đúng máy chủ production, không có cách ghi đè URL (CLAUDE.md).
 
-export const API = "https://api.aitranslator.io.vn";
+export const API = "https://api.aitranslator.vn";
 export const STORE_KEY = "support.v1";
 export const MAX_CHARS = 1000;
 /** Hiện bộ đếm ký tự từ mức này (spec: "đếm ký tự khi gần 1000"). */

@@ -17,7 +17,7 @@ const toc = [
 
 // HowTo の構造化データ用のプレーンテキスト。画面に表示する内容は body にあります。
 const HOWTO_STEPS = [
-  { name: "アプリをインストールして開く", text: "macOS では、インストールのコマンド（curl -fsSL https://aitranslator.io.vn/install.sh | bash）をターミナルに貼り付けます。アプリがダウンロードされ、確認されて、そのまま開きます。「このまま開く」は不要です。Windows では、インストールのコマンド（irm https://aitranslator.io.vn/install.ps1 | iex）を PowerShell に貼り付けます。ブラウザーでダウンロードした .exe を使い、SmartScreen が警告した場合は、「詳細情報」を押してから「実行」を押します。" },
+  { name: "アプリをインストールして開く", text: "macOS では、インストールのコマンド（curl -fsSL https://aitranslator.vn/install.sh | bash）をターミナルに貼り付けます。アプリがダウンロードされ、確認されて、そのまま開きます。「このまま開く」は不要です。Windows では、インストールのコマンド（irm https://aitranslator.vn/install.ps1 | iex）を PowerShell に貼り付けます。ブラウザーでダウンロードした .exe を使い、SmartScreen が警告した場合は、「詳細情報」を押してから「実行」を押します。" },
   { name: "表示言語を選ぶ", text: "パソコンの言語が最初から選ばれています。必要なら変更して「次へ」を押します。これは翻訳先の言語の初期値にもなります。" },
   { name: "利用条件に同意する", text: "使用許諾契約（EULA）とプライバシーポリシーを読み、チェックを入れて「次へ」を押します。Free お試しを始めるために、一度だけインターネット接続が必要です。" },
   { name: "モデルを選んでダウンロードする", text: "アプリのおすすめに従って Standard パック（約 2.5 GB）か Lite パック（約 1.3 GB）を選び、ダウンロードを待ちます。" },
@@ -75,14 +75,14 @@ ${callout({ title: "Windows をお使いですか？", text: "以下の手順は
 <p><strong>macOS の場合：</strong></p>
 <ol>
 <li><strong>ターミナル</strong>を開きます（<kbd>⌘</kbd> + <kbd>Space</kbd> を押し、「ターミナル」と入力して Enter を押します）。</li>
-<li><a href="/ja/download/#install-macos">ダウンロード</a>ページのインストールのコマンドを貼り付けて Enter を押します：<code>curl -fsSL https://aitranslator.io.vn/install.sh | bash</code>。</li>
+<li><a href="/ja/download/#install-macos">ダウンロード</a>ページのインストールのコマンドを貼り付けて Enter を押します：<code>curl -fsSL https://aitranslator.vn/install.sh | bash</code>。</li>
 <li>1 分ほど待ちます。アプリがダウンロードされ、確認され、アプリケーションフォルダーにコピーされて、そのまま開きます。macOS がシステムオーディオの録音の許可を求めたら、「許可」を選びます。</li>
 </ol>
 <p>すでにブラウザーで <code>.dmg</code> をダウンロードしている場合：<strong>AI Translator</strong> を<strong>アプリケーション</strong>にドラッグして開きます（現在のビルドはアドホック署名でまだ Apple の公証を受けていないため、初回起動は macOS にブロックされます）。<strong>完了</strong>を押し、<strong>システム設定 › プライバシーとセキュリティ</strong>を開いていちばん下までスクロールし、<strong>このまま開く</strong>を押して、パスワードか Touch ID で確定します。</p>
 <p><strong>Windows の場合：</strong></p>
 <ol>
 <li><strong>PowerShell</strong> を開きます（<kbd>Windows</kbd> キーを押し、「PowerShell」と入力して Enter を押します）。</li>
-<li><a href="/ja/download/#install-windows">ダウンロード</a>ページのインストールのコマンドを貼り付けて Enter を押します：<code>irm https://aitranslator.io.vn/install.ps1 | iex</code>。管理者権限は不要です。</li>
+<li><a href="/ja/download/#install-windows">ダウンロード</a>ページのインストールのコマンドを貼り付けて Enter を押します：<code>irm https://aitranslator.vn/install.ps1 | iex</code>。管理者権限は不要です。</li>
 <li>1 分ほど待ちます。インストーラーが画面に何も出さずに実行され、AI Translator が自動で開きます。</li>
 </ol>
 <p>すでにブラウザーで <code>.exe</code> をダウンロードしている場合：ダブルクリックします。Windows に青い「Windows によって PC が保護されました」の画面が表示されたら、<strong>詳細情報</strong>を押し、「アプリ」の行にインストーラーのファイル名が表示されていることを確かめてから、<strong>実行</strong>を押します。</p>

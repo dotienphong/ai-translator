@@ -1,6 +1,6 @@
 // Kiểm chat hỗ trợ của website trong Chrome không đầu (spec chat hỗ trợ 2026-10-22, mục 3; hợp đồng ở kế hoạch
-// 2026-10-22-chat-ho-tro-00-tong-quan), qua tools/browser/cdp.mjs. Máy chủ thật chỉ cho origin https://aitranslator.io.vn nên
-// test dùng API giả: chặn mọi request tới https://api.aitranslator.io.vn (cả preflight OPTIONS) bằng Fetch domain của CDP.
+// 2026-10-22-chat-ho-tro-00-tong-quan), qua tools/browser/cdp.mjs. Máy chủ thật chỉ cho origin https://aitranslator.vn nên
+// test dùng API giả: chặn mọi request tới https://api.aitranslator.vn (cả preflight OPTIONS) bằng Fetch domain của CDP.
 // CSP của trang vẫn áp như thật (serve.mjs đọc _headers), nên request tới nơi khác hay script lạ đều lộ ra ở p.errors.
 //   node --test test/chat-widget.test.mjs        (không có Chrome: bỏ qua; đặt CHROME=<đường dẫn> nếu Chrome ở chỗ khác)
 import { test, before, after } from "node:test";
@@ -15,7 +15,7 @@ import { CHAT } from "../src/assets/chat-strings.js";
 const skip = findChrome() ? false : "cần Google Chrome (hoặc biến CHROME)";
 const DIST = mkdtempSync(join(tmpdir(), "chat-dist-"));
 process.env.WEBSITE_DIST = DIST;
-const API = "https://api.aitranslator.io.vn";
+const API = "https://api.aitranslator.vn";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let server;
@@ -39,7 +39,7 @@ after(async () => {
 });
 
 /**
- * API chat giả theo hợp đồng, gắn vào một trang: chặn request tới api.aitranslator.io.vn bằng Fetch domain (kể cả preflight
+ * API chat giả theo hợp đồng, gắn vào một trang: chặn request tới api.aitranslator.vn bằng Fetch domain (kể cả preflight
  * OPTIONS) và trả lời như server. `fail` chen lỗi cho các request kế tiếp: `{ status, error, retryAfter }` hay "network".
  */
 async function fakeApi(page) {
@@ -445,7 +445,7 @@ test("chat tắt: ô nhập thay bằng dòng email support@; cuộc chat bị c
   await openChat(p);
   await until(p, `!document.querySelector(".chat-off").hidden`);
   const off = await p.eval(`(() => { const o = document.querySelector(".chat-off"); return { text: o.textContent, href: o.querySelector("a").getAttribute("href"), compose: document.querySelector(".chat-compose").hidden }; })()`);
-  assert.deepEqual(off, { text: CHAT.vi.off.replace("{email}", "support@aitranslator.io.vn"), href: "mailto:support@aitranslator.io.vn", compose: true });
+  assert.deepEqual(off, { text: CHAT.vi.off.replace("{email}", "support@aitranslator.vn"), href: "mailto:support@aitranslator.vn", compose: true });
   await p.close();
 
   const p2 = await browser.newPage({ width: 1280, height: 900 });
@@ -458,7 +458,7 @@ test("chat tắt: ô nhập thay bằng dòng email support@; cuộc chat bị c
   await p2.goto(base + "/");
   await openChat(p2);
   await until(p2, `!document.querySelector(".chat-off").hidden`);
-  assert.equal(await p2.eval(`document.querySelector(".chat-off").textContent`), CHAT.vi.closed.replace("{email}", "support@aitranslator.io.vn"));
+  assert.equal(await p2.eval(`document.querySelector(".chat-off").textContent`), CHAT.vi.closed.replace("{email}", "support@aitranslator.vn"));
   assert.equal(await p2.eval(`document.querySelector(".chat-compose").hidden`), true);
   assert.deepEqual((await msgs(p2)).map((x) => x[1]), [CHAT.vi.greeting, m.text]);
   assert.deepEqual(realErrors(p2), []);
@@ -483,8 +483,8 @@ test("lỗi khi gửi: 429 thì 'Không gửi được, thử lại' và báo g�
   await type(p, "#chat-input", "Tin hai");
   await p.press("Enter");
   await until(p, `[...document.querySelectorAll('.chat-msg.is-customer')].at(-1).dataset.state === "failed"`);
-  assert.equal(await p.eval(`document.querySelector(".chat-note").textContent`), CHAT.vi.busy.replace("{email}", "support@aitranslator.io.vn"));
-  assert.equal(await p.eval(`document.querySelector(".chat-note a").getAttribute("href")`), "mailto:support@aitranslator.io.vn");
+  assert.equal(await p.eval(`document.querySelector(".chat-note").textContent`), CHAT.vi.busy.replace("{email}", "support@aitranslator.vn"));
+  assert.equal(await p.eval(`document.querySelector(".chat-note a").getAttribute("href")`), "mailto:support@aitranslator.vn");
   api.fail.push("network");
   await type(p, "#chat-input", "Tin ba");
   await p.press("Enter");
