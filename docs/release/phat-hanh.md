@@ -1283,3 +1283,75 @@ PROD=https://api.aitranslator.io.vn
 - **Worker admin lỗi:** `pnpm exec wrangler rollback -c wrangler.admin.jsonc` về bản trước đợt này; khi đó "Ẩn danh dữ liệu theo email" **không** xóa cuộc chat nữa, nên xóa cuộc chat theo yêu cầu bằng các lệnh D1 ở trên.
 - **Dữ liệu:** migration 0005 chỉ **thêm** bảng, không đổi bảng cũ, nên Worker cũ chạy đúng trên schema mới; không cần lùi migration hay Time Travel. Xóa toàn bộ dữ liệu chat nếu cần: `DELETE FROM support_messages` rồi `DELETE FROM support_conversations` (hai lệnh `wrangler d1 execute --remote --command`, bảng tin trước).
 - **Nội dung website:** nếu chat bị bỏ lâu dài thì phải sửa lại trang Liên hệ, Dữ liệu và bảo mật, Trang chủ, Hỏi đáp và chính sách (bản mới, ngày hiệu lực mới); `/tat` không đổi chữ trên website.
+
+## 12. Đợt email theo ngôn ngữ app (migration D1 0006)
+
+Spec `2026-10-23-email-theo-ngon-ngu-design.md` (mục 6), kế hoạch `2026-10-23-email-theo-ngon-ngu.md`. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production do chủ dự án chạy. Thứ tự: migration, Worker API, Worker admin, thử thư thật, app 0.2.5 cùng chính sách 1.6, website. Chạy trong `server/`; `PROD` và `PADMIN` như mục 4.
+
+Vì sao thứ tự này: migration 0006 chỉ **thêm** cột `orders.lang` (cho phép NULL, không dựng lại bảng), Worker cũ không đọc cột này nên chạy đúng trên schema mới; Worker API mới ghi và đọc `orders.lang`, Worker admin mới đọc nó (Gửi lại key) và xóa nó (ẩn danh theo email), nên cả hai chỉ lên sau migration. Server cũ bỏ qua trường `lang` lạ, nên app 0.2.5 lên trước server cũng không lỗi, nhưng chỉ server mới lưu được. Chính sách 1.6 nói máy chủ lưu ngôn ngữ trên đơn: máy chủ chỉ lưu khi app 0.2.5 gửi lên, nên app phát hành cùng chính sách 1.6; website nói điều đã thật nên đi sau.
+
+**Điều kiện trước khi bắt đầu:** mã của kế hoạch đã gộp vào `main` (chủ dự án quyết lúc nào), CI xanh, `pnpm check` trong `server/` xanh trên `main`.
+
+1. **Kiểm trước khi áp (chỉ đọc), ghi lại kết quả để so sau.**
+
+   ```bash
+   pnpm exec wrangler d1 time-travel info mt-license-production
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA table_info(orders)"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM orders) AS orders, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq"
+   ```
+
+   Expected: `time-travel info` in mốc hiện tại (chép lại); `table_info` **không** có dòng `lang` (có rồi thì dừng và báo: ai đó đã áp tay); chép lại `orders` và `orders_seq`.
+
+2. **Áp migration lên production:**
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: chỉ liệt kê `0006_order_lang.sql`, hỏi xác nhận (trả lời `y`), rồi `✅`. Lỗi thì dừng, không deploy Worker, báo chủ dự án.
+
+3. **Kiểm sau khi áp:**
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA table_info(orders)"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT (SELECT COUNT(*) FROM orders) AS orders, (SELECT seq FROM sqlite_sequence WHERE name = 'orders') AS orders_seq, (SELECT COUNT(*) FROM orders WHERE lang IS NOT NULL) AS with_lang"
+   ```
+
+   Expected: `table_info` có dòng `lang` (`TEXT`, `notnull` 0); `orders` và `orders_seq` **bằng đúng** bước 1 (số đơn không được lùi: PayOS nhớ mọi `orderCode` đã dùng); `with_lang` bằng `0`. Lệch thì dừng, không deploy.
+
+4. **Deploy Worker API:**
+
+   ```bash
+   pnpm check && pnpm exec wrangler deploy
+   curl -s "$PROD/v1/health"; echo
+   ```
+
+   Expected: như mục 4 bước 9 (`Uploaded mt-license`, `schedule: */5 * * * *`, `{"ok":true}`). **Kiểm cron chạy thật** như mục 4 bước 9 (`pnpm exec wrangler tail mt-license --format pretty` qua một mốc 5 phút, thấy log `{"event":"reconcile",…}`); không thấy cron thì `pnpm exec wrangler triggers deploy` rồi kiểm lại (sự cố 2026-10-07).
+
+5. **Deploy Worker admin** (ngay sau bước 4):
+
+   ```bash
+   pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc
+   curl -s -o /dev/null -w '%{http_code}\n' "$PADMIN/admin/whoami"
+   ```
+
+   Expected: như mục 4 bước 10 (khi chưa đăng nhập Access thì không phải `5xx`).
+
+6. **Thử thư thật, trước khi phát hành app.** Dùng email của chủ dự án đang có key còn hạn. Mỗi email chỉ được lấy lại key 3 lần mỗi giờ, nên chạy ba ngôn ngữ trước, hai ngôn ngữ sau ít nhất một giờ:
+
+   ```bash
+   E='<email của chủ dự án>'
+   for L in vi ja en; do curl -s -H 'content-type: application/json' -d "{\"email\":\"$E\",\"lang\":\"$L\"}" "$PROD/v1/licenses/recover"; echo; done
+   # sau ít nhất một giờ:
+   for L in zh ko; do curl -s -H 'content-type: application/json' -d "{\"email\":\"$E\",\"lang\":\"$L\"}" "$PROD/v1/licenses/recover"; echo; done
+   ```
+
+   Expected: mỗi lệnh in `{"ok":true}`; tới hộp thư năm thư. Xem ở Gmail (web và điện thoại), Apple Mail (sáng và tối) và Outlook cho Windows: tiêu đề `<ngôn ngữ> / <tiếng Anh>` (thư `en` chỉ tiếng Anh); phần tiếng Anh ở dưới đường kẻ (trừ thư `en`); key nằm trong ô xanh, chạm một lần chọn được cả key; "Hướng dẫn chi tiết" mở đúng trang của ngôn ngữ đó; không có ảnh bị chặn hay chữ vỡ; ở Outlook cho Windows thẻ thư rộng khoảng 560 px, không giãn hết cửa sổ, và câu trả lời hỗ trợ nhiều dòng vẫn xuống dòng. Thư hiện như chữ thuần ở hộp thư nào thì ghi lại tên hộp thư đó.
+
+7. **Đặt ngày chính sách 1.6** theo kế hoạch `2026-10-23-email-theo-ngon-ngu.md`, Task 12, **trước khi build app**, rồi **phát hành app 0.2.5** theo mục 2.
+
+8. **Deploy website** sau khi bản app đã lên R2 (kiểm R2 ở mục 2): `cd ../website && pnpm deploy`. Ngày hiệu lực chính sách 1.6 không được muộn hơn ngày deploy.
+
+9. **Thử tay với app 0.2.5:** đổi giao diện sang tiếng Nhật, Cài đặt › Bản quyền › "Mất key?" › gửi lại key: thư tiếng Nhật, tiếng Anh ở dưới. Khi có đơn thật đầu tiên từ app 0.2.5, kiểm D1: `pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT order_code, lang, currency, status FROM orders ORDER BY order_code DESC LIMIT 5"`: đơn mới có `lang` đúng ngôn ngữ giao diện của người mua.
+
+**Đường lui.** Thư lỗi hay xấu ở hộp thư nào đó: `pnpm exec wrangler rollback` (Worker API) về bản trước đợt này, thư quay về chữ thuần Việt trên, Anh dưới; cột `orders.lang` ở lại (Worker cũ không đọc), app 0.2.5 vẫn gửi `lang` và server cũ bỏ qua. Worker admin lỗi: `pnpm exec wrangler rollback -c wrangler.admin.jsonc`; sau khi lùi Worker admin, ẩn danh theo email **không** xóa `orders.lang`, nên chạy thêm `UPDATE orders SET lang = NULL WHERE email IS NULL AND lang IS NOT NULL` (đơn có email NULL là đơn đã ẩn danh). Migration 0006 không cần lùi: chỉ thêm một cột cho phép NULL.
