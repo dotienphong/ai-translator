@@ -24,7 +24,7 @@ import {
 import { checkLiveManifest, checkSources, fetchPublished } from "./update-io.mjs";
 import { buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
-import { GH_REPO, commitRecord, ghEnv, publicMatches, publish, writeFiles } from "./update-publish.mjs";
+import { GH_REPO, commitRecord, ghEnv, publicMatches, publish, recordHead } from "./update-publish.mjs";
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
@@ -92,6 +92,7 @@ async function confirmAndPublish(ctx, plan, question) {
     console.log("Không đăng.");
     return 0;
   }
+  plan.head = recordHead(io); // từ đây main phải đứng yên tới khi đẩy xong (repoStage)
   saveState(ctx, plan);
   await publish(io, plan, { save: (p) => saveState(ctx, p), work: paths.work, repo: paths.repo });
   clearState(ctx);
@@ -194,8 +195,7 @@ async function update(ctx) {
       console.log("Không ghi nhận.");
       return 0;
     }
-    writeFiles(plan, paths.repo);
-    commitRecord(io, plan);
+    commitRecord(io, plan, paths.repo);
     console.log("Đã ghi nhận và đẩy main.");
     return 0;
   }

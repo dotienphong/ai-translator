@@ -43,7 +43,18 @@ import {
 import { checkLiveManifest, checkSources, createIo, exec, fetchFile, fetchPublished, gitBlobId } from "./update-io.mjs";
 import { ASR_FEATURES, GATE_PATHS, buildTools, checkGateInputs, runGate } from "./update-gate.mjs";
 import { prepare } from "./update-prepare.mjs";
-import { commitAndPush, commitRecord, publicMatches, publishManifest, signInCi, uploadR2, verifySigned } from "./update-publish.mjs";
+import {
+  commitAndPush,
+  commitRecord,
+  publicMatches,
+  publish,
+  publishManifest,
+  recordHead,
+  repoStage,
+  signInCi,
+  uploadR2,
+  verifySigned,
+} from "./update-publish.mjs";
 
 /** Thư mục tạm của một test, xóa khi test xong. */
 const temp = (t) => {
@@ -1222,11 +1233,14 @@ test("planTable in mỗi mục một dòng", () => {
 });
 
 test("uploadR2: chưa có thì tải lên rồi kiểm lại; đã có cùng nội dung thì bỏ qua; khác nội dung thì dừng", async (t) => {
-  const scratch = join(temp(t), "scratch");
-  const u = { key: "models/hy-mt2/bbbbbbbbbbbb/f.gguf", path: "/w/f.gguf", sha256: sha256("noi dung") };
+  const dir = temp(t);
+  const scratch = join(dir, "scratch");
+  const file = join(dir, "f.gguf");
+  writeFileSync(file, "noi dung");
+  const u = { key: "models/hy-mt2/bbbbbbbbbbbb/f.gguf", path: file, sha256: sha256("noi dung") };
   let uploaded = false;
   const io = fakeIo({
-    run(cmd, args) {
+    run(cmd) {
       if (cmd === "curl") return uploaded ? "200" : "404";
       if (cmd === "rclone") uploaded = true;
       return "";
@@ -1234,125 +1248,228 @@ test("uploadR2: chưa có thì tải lên rồi kiểm lại; đã có cùng n�
     download: () => "noi dung",
   });
   assert.equal(await uploadR2(io, u, scratch), "đã tải lên");
-  assert.ok(io.calls.includes("rclone copyto /w/f.gguf r2:ai-translator-releases/models/hy-mt2/bbbbbbbbbbbb/f.gguf --s3-no-check-bucket"));
+  assert.ok(io.calls.includes(`rclone copyto ${file} r2:ai-translator-releases/models/hy-mt2/bbbbbbbbbbbb/f.gguf --s3-no-check-bucket --immutable`));
+  assert.ok(
+    io.calls.some((c) => c.startsWith("curl -sI -o /dev/null -w %{http_code} --connect-timeout 20 --max-time 60 https://releases.aitranslator.io.vn/models/hy-mt2/")),
+    "kiểm có không bằng HEAD, có hạn chờ",
+  );
   const present = fakeIo({ run: (cmd) => (cmd === "curl" ? "200" : ""), download: () => "noi dung" });
   assert.equal(await uploadR2(present, u, scratch), "đã có");
   assert.ok(!present.calls.some((c) => c.startsWith("rclone")));
   const other = fakeIo({ run: (cmd) => (cmd === "curl" ? "200" : ""), download: () => "khac" });
   await assert.rejects(uploadR2(other, u, scratch), /nội dung khác/);
-  const offline = fakeIo({ run: (cmd) => (cmd === "curl" ? "000" : "") });
-  await assert.rejects(publicMatches(offline, "https://releases.aitranslator.io.vn/models/x", u.sha256, scratch), /dig @8\.8\.8\.8/);
+  const edited = fakeIo({ run: (cmd) => (cmd === "curl" ? "404" : "") });
+  await assert.rejects(uploadR2(edited, { ...u, sha256: sha256("noi dung cu") }, scratch), /không còn đúng SHA-256 của kế hoạch/);
+  assert.ok(!edited.calls.some((c) => c.startsWith("rclone")), "file đã đổi trên đĩa thì không tải lên");
+});
+
+test("publicMatches: lỗi mạng của curl (mã 6, 7, 28) kèm gợi ý DNS; mã HTTP lạ cũng vậy", async (t) => {
+  const scratch = join(temp(t), "scratch");
+  const url = "https://releases.aitranslator.io.vn/models/x";
+  for (const status of [6, 7, 28]) {
+    const io = fakeIo({ run: (cmd) => (cmd === "curl" ? Object.assign(new Error(`curl thoát mã ${status}`), { status }) : "") });
+    await assert.rejects(publicMatches(io, url, SHA("1"), scratch), /dig @8\.8\.8\.8/, `mã ${status}`);
+  }
+  const broken = fakeIo({ run: (cmd) => (cmd === "curl" ? "200" : ""), download: () => Object.assign(new Error("curl thoát mã 28"), { status: 28 }) });
+  await assert.rejects(publicMatches(broken, url, SHA("1"), scratch), /dig @8\.8\.8\.8/, "lỗi lúc tải về");
+  await assert.rejects(publicMatches(fakeIo({ run: (cmd) => (cmd === "curl" ? "503" : "") }), url, SHA("1"), scratch), /HTTP 503.*dig/s);
+  const other = fakeIo({ run: (cmd) => (cmd === "curl" ? Object.assign(new Error("curl thoát mã 22"), { status: 22 }) : "") });
+  await assert.rejects(publicMatches(other, url, SHA("1"), scratch), (e) => !/dig/.test(e.message), "lỗi khác giữ nguyên");
 });
 
 /** Kế hoạch tối giản cho các bước git, CI. */
 const smallPlan = () => ({
+  base: 3,
   target: 4,
+  head: "h0",
   bodyRel: "scripts/models/released/body-4.json",
   prevRel: "scripts/models/released/body-3.json",
   files: { "scripts/models/released/body-4.json": "{}", "scripts/models/upstream.json": "{}" },
   bench: [{ from: "/w/gate", to: "bench/model-updates/x" }],
+  uploads: [],
   message: "chore(models): thử (manifest số 4)",
 });
 
-test("commitRecord chỉ commit upstream.json rồi đẩy", () => {
-  const io = fakeIo();
-  commitRecord(io, { files: { "scripts/models/upstream.json": "{}" }, message: "chore(models): ghi nhận" });
-  assert.deepEqual(io.calls, [
+/** Trả lời các lệnh git của `repoStage`, `recordHead`, `commitAndPush` theo trạng thái `s`. */
+function gitAnswers(s) {
+  return (args) => {
+    const key = args.join(" ");
+    if (key === "branch --show-current") return `${s.branch}\n`;
+    if (args[0] === "cat-file") return s.pushed ? "" : new Error("không có");
+    if (key === "rev-parse HEAD") return `${s.head}\n`;
+    if (key === "rev-parse origin/main") return `${s.origin}\n`;
+    if (key === "rev-parse HEAD^") return s.parent instanceof Error ? s.parent : `${s.parent}\n`;
+    if (args[0] === "status") return s.status;
+    if (args[0] === "log") return `${s.subject}\n`;
+    return "";
+  };
+}
+const gitState = (over = {}) => ({
+  branch: "main",
+  head: "h0",
+  origin: "h0",
+  pushed: false,
+  status: "",
+  parent: "h0",
+  subject: "chore(models): thử (manifest số 4)",
+  ...over,
+});
+const gitFake = (over) => fakeIo({ run: (cmd, args) => (cmd === "git" ? gitAnswers(gitState(over))(args) : "") });
+
+test("recordHead: phải ở main và HEAD đúng origin/main", () => {
+  assert.equal(recordHead(gitFake()), "h0");
+  assert.throws(() => recordHead(gitFake({ branch: "cap-nhat-model" })), /Phải ở nhánh main/);
+  assert.throws(() => recordHead(gitFake({ head: "h1" })), /khác origin\/main/);
+});
+
+test("repoStage: pushed, fresh, committed; main đổi, cây có file lạ hay sai nhánh thì dừng", () => {
+  const plan = smallPlan();
+  assert.equal(repoStage(gitFake({ pushed: true, head: "h9", origin: "h9" }), plan), "pushed");
+  assert.equal(repoStage(gitFake(), plan), "fresh");
+  const own = " M scripts/models/upstream.json\0?? bench/model-updates/x/s7.json\0?? scripts/models/released/body-4.json\0";
+  assert.equal(repoStage(gitFake({ status: own }), plan), "fresh", "chỉ có file của kế hoạch và thư mục kết quả đo");
+  assert.throws(() => repoStage(gitFake({ status: `${own}?? ghi-chu.txt\0` }), plan), /file ngoài kế hoạch \(ghi-chu\.txt\)/);
+  assert.throws(() => repoStage(gitFake({ status: " M src-tauri/x.rs\0" }), plan), /file ngoài kế hoạch/);
+  assert.throws(() => repoStage(gitFake({ status: "?? bench/model-updates/xx/a\0" }), plan), /file ngoài kế hoạch/, "tên thư mục chỉ trùng tiền tố");
+  assert.throws(() => repoStage(gitFake({ branch: "cap-nhat-model" }), plan), /Phải ở nhánh main/);
+  assert.throws(() => repoStage(gitFake({ head: "h1", origin: "h1" }), plan), /main đã đổi từ lúc gõ y.*runbook mục 13\.3/s);
+  assert.throws(() => repoStage(gitFake({ origin: "h1" }), plan), /main đã đổi/, "origin/main tiến lên");
+  assert.equal(repoStage(gitFake({ head: "h1", origin: "h0", parent: "h0" }), plan), "committed");
+  assert.throws(() => repoStage(gitFake({ head: "h1", parent: "h0", subject: "commit khác" }), plan), /main đã đổi/);
+  assert.throws(() => repoStage(gitFake({ head: "h1", parent: "h7" }), plan), /main đã đổi/, "commit không nằm ngay trên plan.head");
+  assert.throws(() => repoStage(gitFake({ head: "h1", parent: new Error("không có cha") }), plan), /main đã đổi/);
+  assert.throws(() => repoStage(gitFake(), { ...plan, head: undefined }), /main đã đổi/, "kế hoạch chưa ghi head thì không đăng");
+});
+
+test("commitRecord: chỉ ở main sạch khớp origin; ghi file, commit đúng đường dẫn rồi đẩy", (t) => {
+  const repo = temp(t);
+  const plan = { files: { "scripts/models/upstream.json": "{}\n" }, bench: [], message: "chore(models): ghi nhận" };
+  const io = gitFake();
+  commitRecord(io, plan, repo);
+  assert.equal(readFileSync(join(repo, "scripts/models/upstream.json"), "utf8"), "{}\n");
+  assert.deepEqual(io.calls.slice(-3), [
     "git add -- scripts/models/upstream.json",
-    "git commit -m chore(models): ghi nhận",
+    "git commit -m chore(models): ghi nhận -- scripts/models/upstream.json",
     "git push origin HEAD:main",
   ]);
+  const wrong = gitFake({ branch: "x" });
+  assert.throws(() => commitRecord(wrong, plan, repo), /Phải ở nhánh main/);
+  assert.throws(() => commitRecord(gitFake({ head: "h1" }), plan, repo), /khác origin\/main/);
+  assert.throws(() => commitRecord(gitFake(), { ...plan, head: "h5" }, repo), /main đã đổi/);
 });
 
-test("commitAndPush: đã có trên origin thì thôi; đã commit thì chỉ đẩy; chưa thì add, commit, đẩy", () => {
+test("commitAndPush: fresh thì add và commit theo đường dẫn rồi đẩy; committed chỉ đẩy", () => {
   const plan = smallPlan();
-  const missing = new Error("không có");
-  const onOrigin = fakeIo({ run: (cmd, args) => (args[0] === "log" ? "abc\n" : "") });
-  assert.equal(commitAndPush(onOrigin, plan), "abc");
-  assert.ok(!onOrigin.calls.some((c) => c.startsWith("git commit") || c.startsWith("git push")));
-  const committed = fakeIo({
-    run: (cmd, args) => (args[2]?.startsWith("origin/main:") ? missing : args[0] === "rev-parse" ? "def\n" : ""),
-  });
-  assert.equal(commitAndPush(committed, plan), "def");
-  assert.ok(committed.calls.includes("git push origin HEAD:main"));
-  assert.ok(!committed.calls.some((c) => c.startsWith("git commit")));
-  const fresh = fakeIo({ run: (cmd, args) => (args[0] === "cat-file" ? missing : args[0] === "rev-parse" ? "ghi\n" : "") });
-  assert.equal(commitAndPush(fresh, plan), "ghi");
-  assert.ok(
-    fresh.calls.includes(
-      "git add -- scripts/models/released/body-4.json scripts/models/upstream.json bench/model-updates/x",
-    ),
-  );
-  assert.ok(fresh.calls.includes("git commit -m chore(models): thử (manifest số 4)"));
-  assert.ok(fresh.calls.includes("git push origin HEAD:main"));
+  const fresh = gitFake();
+  assert.equal(commitAndPush(fresh, plan, "fresh"), "h0");
+  const paths = "scripts/models/released/body-4.json scripts/models/upstream.json bench/model-updates/x";
+  assert.deepEqual(fresh.calls, [`git add -- ${paths}`, `git commit -m chore(models): thử (manifest số 4) -- ${paths}`, "git push origin HEAD:main", "git rev-parse HEAD"]);
+  const committed = gitFake();
+  commitAndPush(committed, plan, "committed");
+  assert.deepEqual(committed.calls, ["git push origin HEAD:main", "git rev-parse HEAD"]);
 });
 
-/** `gh` giả: `runs` là kết quả của `gh run list`; `view` là `{ status, conclusion }` của lượt cũ. */
-function ghIo(runs, view) {
+/**
+ * `io` giả cho cả git, gh, curl: `git` theo `gitState`; `gh run list` trả `before` trước khi kích workflow, `after` sau đó;
+ * `view` là `{ status, conclusion }` của lượt cũ. `extra(cmd, args)` xử lý lệnh khác.
+ */
+function ciIo({ git = {}, before = [], after = [], view, extra } = {}) {
+  let dispatched = false;
+  const answers = gitAnswers(gitState({ origin: "abc", head: "abc", ...git }));
   return fakeIo({
-    run(cmd, args) {
-      if (cmd !== "gh") return "";
-      if (args[0] === "auth") return "token-thu\n";
-      if (args[0] === "run" && args[1] === "list") return JSON.stringify(runs);
-      if (args[0] === "run" && args[1] === "view") return JSON.stringify(view);
-      if (args[0] === "run" && args[1] === "download") {
-        const dir = args[args.indexOf("-D") + 1];
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, "models.json"), "{}");
+    download: () => "noi dung",
+    run(cmd, args, opts) {
+      if (cmd === "git") return answers(args);
+      if (cmd === "gh") {
+        if (args[0] === "auth") return "token-thu\n";
+        if (args[0] === "workflow") dispatched = true;
+        if (args[0] === "run" && args[1] === "list") return JSON.stringify(dispatched ? after : before);
+        if (args[0] === "run" && args[1] === "view") return JSON.stringify(view);
+        if (args[0] === "run" && args[1] === "download") {
+          const dir = args[args.indexOf("-D") + 1];
+          mkdirSync(dir, { recursive: true });
+          writeFileSync(join(dir, "models.json"), "{}");
+        }
+        return "";
       }
-      return "";
+      return extra?.(cmd, args, opts) ?? "";
     },
   });
 }
 
-test("signInCi: kích workflow, tìm đúng lượt theo commit, đợi xong, tải bản đã ký", (t) => {
+test("signInCi: kích workflow, chỉ nhận lượt mới có đúng commit của origin/main, đợi xong, tải bản đã ký", (t) => {
   const work = temp(t);
   const plan = smallPlan();
   const saved = [];
-  const io = ghIo([{ databaseId: 7, headSha: "abc", createdAt: new Date().toISOString() }]);
-  const path = signInCi(io, plan, "abc", { save: (p) => saved.push(p.run), work });
+  const old = { databaseId: 3, headSha: "abc" };
+  const io = ciIo({ before: [old], after: [old, { databaseId: 8, headSha: "abc" }] });
+  const path = signInCi(io, plan, { save: (p) => saved.push(p.run), work });
   assert.equal(path, join(work, "signed", "4", "models.json"));
-  assert.equal(plan.run, 7);
-  assert.deepEqual(saved, [7]);
+  assert.equal(plan.run, 8, "lượt cũ cùng commit bị bỏ qua");
+  assert.deepEqual(saved, [8]);
   assert.ok(io.calls.some((c) => c.startsWith(`gh workflow run sign-manifest.yml --ref main -f body=${plan.bodyRel} -f previous=${plan.prevRel}`)));
-  assert.ok(io.calls.some((c) => c.startsWith("gh run watch 7 --exit-status")));
+  assert.ok(io.calls.some((c) => c.startsWith("gh run watch 8 --exit-status")));
+  assert.ok(io.calls.indexOf("git fetch --quiet origin main") < io.calls.findIndex((c) => c.startsWith("gh workflow run")), "lấy origin/main trước khi kích");
+});
+
+test("signInCi: lượt mới nhưng sai commit, hay chỉ có lượt cũ, thì không nhận", (t) => {
+  const work = temp(t);
+  const old = { databaseId: 3, headSha: "abc" };
+  const wrongSha = ciIo({ before: [old], after: [old, { databaseId: 9, headSha: "khac" }] });
+  assert.throws(() => signInCi(wrongSha, smallPlan(), { save() {}, work }), /Không tìm thấy lượt chạy sign-manifest\.yml/);
+  const onlyOld = ciIo({ before: [old], after: [old] });
+  assert.throws(() => signInCi(onlyOld, smallPlan(), { save() {}, work }), /Không tìm thấy lượt chạy/);
 });
 
 test("signInCi chạy lại: lượt cũ hỏng thì kích lượt mới; lượt cũ còn chạy thì đợi tiếp", (t) => {
   const work = temp(t);
   const failed = { ...smallPlan(), run: 5 };
-  const io = ghIo([{ databaseId: 9, headSha: "abc", createdAt: new Date().toISOString() }], { status: "completed", conclusion: "failure" });
-  signInCi(io, failed, "abc", { save() {}, work });
+  const io = ciIo({ before: [{ databaseId: 5, headSha: "abc" }], after: [{ databaseId: 5, headSha: "abc" }, { databaseId: 9, headSha: "abc" }], view: { status: "completed", conclusion: "failure" } });
+  signInCi(io, failed, { save() {}, work });
   assert.equal(failed.run, 9);
   const running = { ...smallPlan(), run: 5 };
-  const again = ghIo([], { status: "in_progress", conclusion: "" });
-  signInCi(again, running, "abc", { save() {}, work });
+  const again = ciIo({ view: { status: "in_progress", conclusion: "" } });
+  signInCi(again, running, { save() {}, work });
   assert.equal(running.run, 5);
   assert.ok(!again.calls.some((c) => c.startsWith("gh workflow run")));
 });
 
-test("verifySigned: đúng khóa và trùng phần thân thì qua; khác phần thân hay khóa lạ thì dừng", async (t) => {
+test("verifySigned: đúng khóa và trùng phần thân thì qua; khác phần thân, khóa lạ, chữ ký sửa hay sai định dạng thì dừng", async (t) => {
   const dir = temp(t);
   const key = await testKey("test-u3", "ai-translator update test key 3");
   const keys = [{ kid: key.kid, x: key.x }];
   const bodyText = serializeJson({ schema: 1, sequence: 4 });
   const path = join(dir, "models.json");
-  writeFileSync(path, JSON.stringify(await signBody(key.privateKey, key.kid, JSON.stringify(JSON.parse(bodyText)))));
+  const envelope = await signBody(key.privateKey, key.kid, JSON.stringify(JSON.parse(bodyText)));
+  writeFileSync(path, JSON.stringify(envelope));
   await verifySigned(path, bodyText, keys);
   await assert.rejects(verifySigned(path, serializeJson({ schema: 1, sequence: 5 }), keys), /không khớp phần thân/);
   await assert.rejects(verifySigned(path, bodyText, []), /Không có khóa công khai/);
+  const sig = Buffer.from(envelope.sig, "base64url");
+  sig[0] ^= 1;
+  writeFileSync(path, JSON.stringify({ ...envelope, sig: sig.toString("base64url") }));
+  await assert.rejects(verifySigned(path, bodyText, keys), /Chữ ký không đúng/);
+  writeFileSync(path, JSON.stringify({ ...envelope, format: "khac" }));
+  await assert.rejects(verifySigned(path, bodyText, keys), /sai định dạng phong bì/);
+  writeFileSync(path, JSON.stringify({ ...envelope, version: 2 }));
+  await assert.rejects(verifySigned(path, bodyText, keys), /sai định dạng phong bì/);
 });
+
+/** Phong bì `{ body }` của manifest số `sequence` (đủ cho `publishManifest`, không cần chữ ký). */
+const liveManifest = (sequence) => JSON.stringify({ body: Buffer.from(JSON.stringify({ sequence })).toString("base64url") });
 
 test("publishManifest: đã đăng thì thôi; chưa thì sao lưu, đăng bằng wrangler, kiểm lại", (t) => {
   const work = temp(t);
   const signedPath = join(work, "models.json");
   const signed = '{"body":"bmV3"}\n';
   writeFileSync(signedPath, signed);
-  const old = JSON.stringify({ body: Buffer.from(JSON.stringify({ sequence: 3 })).toString("base64url") });
+  const plan = smallPlan();
+  const old = liveManifest(3);
   const done = fakeIo({ text: () => signed });
-  assert.match(publishManifest(done, signedPath, work), /đã được đăng từ trước/);
+  assert.match(publishManifest(done, signedPath, work, plan), /đã được đăng từ trước/);
   assert.ok(!done.calls.some((c) => c.startsWith("pnpm")));
   let live = old;
+  const warn = t.mock.method(console, "warn", () => {});
   const io = fakeIo({
     text: () => live,
     run(cmd) {
@@ -1360,13 +1477,103 @@ test("publishManifest: đã đăng thì thôi; chưa thì sao lưu, đăng bằn
       return "";
     },
   });
-  assert.match(publishManifest(io, signedPath, work), /đã đăng models\.json/);
+  assert.match(publishManifest(io, signedPath, work, plan), /đã đăng models\.json/);
   assert.equal(readFileSync(join(work, "backup", "models-seq-3.json"), "utf8"), old);
   assert.ok(
     io.calls.includes(
       `pnpm --dir server exec wrangler r2 object put ai-translator-releases/models/models.json --file ${signedPath} --content-type application/json --cache-control no-cache --remote`,
     ),
   );
+  assert.equal(warn.mock.callCount(), 0, "URL không tham số trả đúng bản mới thì không cảnh báo");
   const stuck = fakeIo({ text: () => old });
-  assert.throws(() => publishManifest(stuck, signedPath, work), /Đăng lại: pnpm --dir server exec wrangler/);
+  assert.throws(() => publishManifest(stuck, signedPath, work, plan), /Đăng lại: pnpm --dir server exec wrangler/);
+});
+
+test("publishManifest: URL app tải còn trả bản cũ (cache) thì cảnh báo, không lỗi", (t) => {
+  const work = temp(t);
+  const signedPath = join(work, "models.json");
+  const signed = '{"body":"bmV3"}\n';
+  writeFileSync(signedPath, signed);
+  const old = liveManifest(3);
+  let live = old;
+  const warn = t.mock.method(console, "warn", () => {});
+  const io = fakeIo({ text: (url) => (url.includes("?t=") ? live : old), run: (cmd) => (cmd === "pnpm" ? ((live = signed), "") : "") });
+  assert.match(publishManifest(io, signedPath, work, smallPlan()), /đã đăng models\.json/);
+  assert.equal(warn.mock.callCount(), 1);
+  assert.match(warn.mock.calls[0].arguments[0], /URL app tải .* chưa trả bản mới \(cache\?\)/);
+});
+
+test("publishManifest: manifest đang chạy không phải số base của kế hoạch thì không sao lưu, không đăng", (t) => {
+  const work = temp(t);
+  const signedPath = join(work, "models.json");
+  writeFileSync(signedPath, '{"body":"bmV3"}\n');
+  const io = fakeIo({ text: () => liveManifest(7) });
+  assert.throws(() => publishManifest(io, signedPath, work, smallPlan()), /manifest đang chạy là số 7, không phải số 3: không đăng/);
+  assert.ok(!io.calls.some((c) => c.startsWith("pnpm")));
+  assert.ok(!existsSync(join(work, "backup")), "không sao lưu");
+});
+
+/** Kế hoạch đủ cho `publish`: một file tải lên, một file ghi vào repo `repo`. */
+function publishPlan(repo) {
+  const file = join(repo, "model.gguf");
+  writeFileSync(file, "noi dung");
+  return {
+    ...smallPlan(),
+    uploads: [{ key: "models/hy-mt2/bbbbbbbbbbbb/f.gguf", path: file, sha256: sha256("noi dung") }],
+  };
+}
+
+test("publish fresh: ghi file, kiểm phần thân, tải lên, commit, đẩy, ký; ký sai thì wrangler không bao giờ được gọi", async (t) => {
+  const repo = temp(t);
+  const plan = publishPlan(repo);
+  const work = temp(t);
+  let uploaded = false;
+  const io = ciIo({
+    before: [],
+    after: [{ databaseId: 8, headSha: "h0" }],
+    git: { head: "h0", origin: "h0" },
+    extra(cmd) {
+      if (cmd === "curl") return uploaded ? "200" : "404";
+      if (cmd === "rclone") uploaded = true;
+      return "";
+    },
+  });
+  await assert.rejects(publish(io, plan, { save() {}, work, repo }), /sai định dạng phong bì/, "models.json giả không có chữ ký hợp lệ");
+  const at = (prefix) => io.calls.findIndex((c) => c.startsWith(prefix));
+  assert.ok(existsSync(join(repo, plan.bodyRel)), "đã ghi file kế hoạch");
+  assert.ok(at("pnpm build") >= 0 && at("cargo test") > at("pnpm build"));
+  assert.ok(at("rclone copyto") > at("cargo test"), "kiểm phần thân trước khi tải lên");
+  assert.ok(at("git commit") > at("rclone copyto"), "tải lên trước khi commit");
+  assert.ok(at("git push") > at("git commit"));
+  assert.ok(at("gh workflow run") > at("git push"));
+  assert.ok(!io.calls.some((c) => c.startsWith("pnpm --dir server exec wrangler")), "ký sai thì không đăng");
+});
+
+test("publish pushed: không ghi file, không tải lên, không commit; committed: chỉ tải lên rồi đẩy", async (t) => {
+  const work = temp(t);
+  const repo = temp(t);
+  const plan = publishPlan(repo);
+  const pushed = ciIo({ git: { pushed: true, head: "h9", origin: "h9" }, after: [{ databaseId: 8, headSha: "h9" }] });
+  await assert.rejects(publish(pushed, plan, { save() {}, work, repo }), /sai định dạng phong bì/);
+  assert.ok(!existsSync(join(repo, plan.bodyRel)), "không ghi lại file");
+  for (const prefix of ["rclone", "pnpm build", "cargo", "git add", "git commit", "git push"]) {
+    assert.ok(!pushed.calls.some((c) => c.startsWith(prefix)), prefix);
+  }
+  assert.ok(pushed.calls.some((c) => c.startsWith("gh workflow run")), "vẫn ký");
+  let uploaded = false;
+  const committed = ciIo({
+    git: { head: "h1", origin: "h0", parent: "h0" },
+    after: [{ databaseId: 8, headSha: "h0" }],
+    extra(cmd) {
+      if (cmd === "curl") return uploaded ? "200" : "404";
+      if (cmd === "rclone") uploaded = true;
+      return "";
+    },
+  });
+  await assert.rejects(publish(committed, publishPlan(repo), { save() {}, work, repo }), /sai định dạng phong bì/);
+  assert.ok(committed.calls.some((c) => c.startsWith("rclone copyto")));
+  assert.ok(committed.calls.includes("git push origin HEAD:main"));
+  for (const prefix of ["pnpm build", "cargo", "git add", "git commit"]) {
+    assert.ok(!committed.calls.some((c) => c.startsWith(prefix)), prefix);
+  }
 });
