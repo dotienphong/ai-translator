@@ -1,7 +1,7 @@
 // Cổng kiểm của `pnpm models:update` (spec docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md mục 4.4):
 // chạy model bằng đúng engine của app (llama-server b11146 của tools/, asr-worker build từ workspace), chấm A3 (dịch) hay
 // A4 (nhận dạng), so với mốc của model đang phát hành.
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { REPO } from "./lib.mjs";
 import { gateAsr, gateMt, gateTable, mtRunName } from "./update-lib.mjs";
@@ -57,16 +57,16 @@ export function runGate(io, entry, model, label, outDir, paths = GATE_PATHS) {
 
 function engineFailed(engine, log, error) {
   return new Error(
-    `Model không chạy được bằng ${engine} của app (thường do model cần llama.cpp/whisper.cpp mới hơn bản đóng trong app; không đăng). Xem log: ${log}: ${error.message}`,
+    `Model không chạy được bằng ${engine} của app (thường do model cần llama.cpp/whisper.cpp mới hơn bản đóng trong app; không đăng). Xem log ${log}. Lỗi: ${error.message}`,
   );
 }
 
 /**
  * `latency-bench mt-eval` ghi `<out-dir>/<tên model>-plain.meta.json` (git_head, git_dirty, ...) và từ chối dịch tiếp vào
- * thư mục có meta khác. Kết quả dịch cũ làm bằng code khác bản hiện tại (HEAD khác, hay trạng thái sửa dở khác) thì xóa
- * để dịch lại từ đầu; cùng trạng thái thì giữ, để dịch tiếp lượt dở.
+ * thư mục có meta khác. Kết quả dịch cũ làm bằng code khác bản hiện tại (HEAD khác, hay trạng thái sửa dở khác), bằng
+ * llama-server khác hay model có dung lượng khác thì xóa để dịch lại từ đầu; cùng điều kiện thì giữ, để dịch tiếp lượt dở.
  */
-function dropStaleOutputs(io, outputs, stem, repo) {
+function dropStaleOutputs(io, outputs, stem, paths, model) {
   const metaPath = join(outputs, `${stem}-plain.meta.json`);
   if (!existsSync(metaPath)) return;
   let old = {};
@@ -76,10 +76,13 @@ function dropStaleOutputs(io, outputs, stem, repo) {
     // meta hỏng: coi như khác, xóa.
   }
   // Như `git_state` của mt_eval.rs: HEAD và `status --porcelain --untracked-files=no`.
-  const head = io.run("git", ["rev-parse", "HEAD"], { cwd: repo }).trim();
-  const dirty = io.run("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: repo }).trim() !== "";
-  if (old.git_head === head && old.git_dirty === dirty) return;
-  console.log("Kết quả dịch cũ khác bản code hiện tại: dịch lại từ đầu.");
+  const head = io.run("git", ["rev-parse", "HEAD"], { cwd: paths.repo }).trim();
+  const dirty = io.run("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: paths.repo }).trim() !== "";
+  // Như `meta_diff` của mt_eval.rs: llama-server (đường dẫn) và model_bytes cũng phải trùng, không thì nó từ chối dịch tiếp.
+  const same =
+    old.git_head === head && old.git_dirty === dirty && old.llama_server === paths.llamaServer && old.model_bytes === statSync(model).size;
+  if (same) return;
+  console.log("Kết quả dịch cũ khác điều kiện chạy hiện tại (code, llama-server hay model): dịch lại từ đầu.");
   rmSync(outputs, { recursive: true, force: true });
 }
 
@@ -100,7 +103,7 @@ function mtGate(io, entry, model, label, outDir, paths) {
     throw engineFailed("llama-server", join(smoke, `${stem}.llama.log`), e);
   }
   const outputs = join(paths.mtOutputs, `outputs-${label}`);
-  dropStaleOutputs(io, outputs, stem, paths.repo);
+  dropStaleOutputs(io, outputs, stem, paths, model);
   evaluate(outputs);
   io.run("uv", uvPython(COMET, ["bench/phase0/mt/score_mt.py", "--outputs", outputs, "--label", label]), { cwd: paths.repo, inherit: true });
   const result = moveResults(`s7_mt-${label}`, outDir, paths);

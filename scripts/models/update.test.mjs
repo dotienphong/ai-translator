@@ -702,8 +702,8 @@ test("runGate: model không chạy được bằng engine của app thì báo c�
   assert.throws(
     () => runGate(io, entry, "/x/m.gguf", "nhan", out, paths),
     (e) => {
-      assert.match(e.message, /^Model không chạy được bằng llama-server của app \(thường do model cần llama\.cpp\/whisper\.cpp mới hơn bản đóng trong app; không đăng\)\. Xem log: /);
-      assert.ok(e.message.includes(`${join(out, "chay-thu", "m.llama.log")}: llama-server thoát mã 1`), e.message);
+      assert.match(e.message, /^Model không chạy được bằng llama-server của app \(thường do model cần llama\.cpp\/whisper\.cpp mới hơn bản đóng trong app; không đăng\)\. Xem log /);
+      assert.ok(e.message.includes(`${join(out, "chay-thu", "m.llama.log")}. Lỗi: llama-server thoát mã 1`), e.message);
       return true;
     },
   );
@@ -822,9 +822,11 @@ function mtRig(t, { meta, head = "aaa", dirty = "" }) {
   const out = join(root, "out");
   const outputs = join(paths.mtOutputs, "outputs-nhan");
   const metaFile = join(outputs, "m-Q8_0-plain.meta.json");
+  const model = join(root, "m-Q8_0.gguf");
+  writeFileSync(model, "abcd");
   if (meta) {
     mkdirSync(outputs, { recursive: true });
-    writeFileSync(metaFile, JSON.stringify(meta));
+    writeFileSync(metaFile, JSON.stringify({ llama_server: paths.llamaServer, model_bytes: 4, ...meta }));
     writeFileSync(join(outputs, "m-Q8_0-plain.jsonl"), "{}\n");
   }
   const runs = JSON.stringify({ runs: { "m-Q8_0-plain": { "en->vi": { n: 2, comet: 0.86, failed: 0, leaked: 0 } } } });
@@ -845,7 +847,7 @@ function mtRig(t, { meta, head = "aaa", dirty = "" }) {
     },
   });
   const entry = { gate: { kind: "mt", prompt: "hy-mt2", baseline: "base.json" } };
-  const run = () => runGate(io, entry, "/x/m-Q8_0.gguf", "nhan", out, paths);
+  const run = () => runGate(io, entry, model, "nhan", out, paths);
   return { io, seen, run, outputs, metaFile, root };
 }
 
@@ -868,6 +870,17 @@ test("runGate dịch: kết quả dịch cũ khác git HEAD hay git_dirty thì x
   const dirty = mtRig(t, { meta: { git_head: "aaa", git_dirty: false }, dirty: " M crates/x.rs\n" });
   dirty.run();
   assert.equal(dirty.seen.fullSawOutputs, false, "cây làm việc đang sửa dở mà meta ghi sạch");
+});
+
+test("runGate dịch: kết quả dịch cũ làm bằng llama-server khác hay model khác dung lượng thì xóa, dịch lại từ đầu", (t) => {
+  for (const meta of [
+    { git_head: "aaa", git_dirty: false, llama_server: "/bản/khác/llama-server" },
+    { git_head: "aaa", git_dirty: false, model_bytes: 5 },
+  ]) {
+    const rig = mtRig(t, { meta });
+    rig.run();
+    assert.equal(rig.seen.fullSawOutputs, false, JSON.stringify(meta));
+  }
 });
 
 test("runGate dịch: cùng trạng thái code thì giữ kết quả cũ để dịch tiếp; không có meta cũng không gọi git", (t) => {
@@ -910,7 +923,7 @@ test("runGate nhận dạng: xóa kết quả và log chạy thử cũ; lỗi en
     () => runGate(io, entry, "/x/ggml.bin", "nhan", out, paths),
     (e) => {
       assert.match(e.message, /^Model không chạy được bằng asr-worker của app \(thường do model cần llama\.cpp\/whisper\.cpp mới hơn/);
-      assert.ok(e.message.includes(`Xem log: ${join(paths.asrData, "logs", "chay-thu.log")}: asr-worker thoát mã 1`), e.message);
+      assert.ok(e.message.includes(`Xem log ${join(paths.asrData, "logs", "chay-thu.log")}. Lỗi: asr-worker thoát mã 1`), e.message);
       return true;
     },
   );
