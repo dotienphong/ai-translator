@@ -141,7 +141,7 @@ export function supportReplyEmail(lang: Lang, replies: readonly string[]): Email
   const text = ["AI Translator", "", pick(s.heading.support, 1), pick(s.lead.support, 1), ""];
   replies.forEach((r, i) => {
     if (i > 0) text.push("");
-    text.push(...r.split("\n").map((l) => (l ? `  ${l}` : "")));
+    text.push(...r.split(/\r\n?|\n/).map((l) => (l ? `  ${l}` : "")));
   });
   text.push("", s.supportOutro);
   if (below) text.push("", RULE_TEXT, "English", "", pick(en.heading.support, 1), pick(EN_BELOW.support, 1), en.supportOutro);

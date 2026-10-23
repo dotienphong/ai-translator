@@ -268,6 +268,12 @@ describe("nội dung email (spec 2026-10-23)", () => {
     expect(html.indexOf("Bộ phận hỗ trợ AI Translator đã trả lời tin nhắn của bạn.")).toBeLessThan(html.indexOf("(above)"));
   });
 
+  it("thư trả lời hỗ trợ: bản chữ thuần tách dòng cả \\r\\n và \\r như bản HTML, không để sót CR", () => {
+    const { text } = supportReplyEmail("vi", ["A\r\nB\rC"]);
+    expect(text).toContain("  A\n  B\n  C");
+    expect(text).not.toContain("\r");
+  });
+
   it("mỗi key một máy (spec 2026-10-07 §1); không còn tên tạm; không lộ công nghệ lõi hay dịch vụ gửi thư; không ảnh, không script", () => {
     for (const lang of LANGS) {
       const mails = [...KINDS.map((kind) => licenseEmail(lang, kind, [yearly])), supportReplyEmail(lang, ["x"])];
