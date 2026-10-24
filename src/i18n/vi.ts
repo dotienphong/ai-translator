@@ -512,6 +512,8 @@ export const vi: Record<MessageKey, string> = {
   "error.sidecarFailed": "Phần nhận dạng giọng nói ngừng chạy. Bấm Bắt đầu để thử lại; nếu vẫn lỗi, hãy gửi log cho bộ phận hỗ trợ.",
   "error.modelMissing": "Chưa tải model.",
   "error.audioPermission": "AI Translator chưa được phép ghi âm thanh hệ thống.",
+  "error.micPermission": "AI Translator chưa được phép dùng micro.",
+  "error.micUnavailable": "Không mở được micro. Kiểm tra micro đã chọn còn cắm và không bị app khác giữ riêng.",
   "error.captureFailed": "Không thu được âm thanh.",
   "error.appNotPlaying": "App đã chọn không phát tiếng. Hãy bật âm thanh cuộc họp, hoặc chọn toàn hệ thống.",
   "error.vadFailed": "Không nạp được bộ nhận biết tiếng nói. Hãy cài lại AI Translator.",

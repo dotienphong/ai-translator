@@ -9,6 +9,9 @@ const settings: Settings = {
   sourceLanguages: ["en", "zh", "ja", "ko", "vi"],
   sourceLock: null,
   audioSource: { kind: "system" },
+  captureMode: "playback",
+  micDevice: null,
+  micNoiseFilter: true,
   vadEndSilenceMs: 50,
   overlay: {
     fontSize: 22,
@@ -53,6 +56,7 @@ const status: AppStatus = {
   streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
+  micIssue: null,
   pro: true,
   quotaWarning: false,
   quotaResetAt: null,
@@ -107,6 +111,10 @@ function setup() {
       return { ...status, session: "running", overlayVisible: true, rev: 2 };
     },
     list_audio_sources: () => [{ kind: "app", bundleId: "us.zoom.xos", name: "zoom.us" }],
+    list_input_devices: () => [{ id: "BuiltIn", name: "MacBook Pro Microphone", isDefault: true }],
+    get_mic_permission: () => "undetermined",
+    request_mic_permission: () => "granted",
+    open_mic_settings: () => null,
     start_listen_test: () => ({ ...status, session: "running", overlayVisible: true, rev: 4 }),
     clear_all_data: () => null,
     get_debug_sessions: () => [],
@@ -299,6 +307,20 @@ describe("app store", () => {
     const store = createAppStore(fake.ipc);
     await store.getState().init();
     expect(store.getState().settings).toEqual(settings);
+  });
+
+  it("đọc danh sách micro và quyền micro; xin quyền thì cập nhật trạng thái; mở trang quyền micro", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    expect(store.getState().inputDevices).toBeNull();
+    await store.getState().loadInputDevices();
+    expect(store.getState().inputDevices).toEqual([{ id: "BuiltIn", name: "MacBook Pro Microphone", isDefault: true }]);
+    await store.getState().loadMicPermission();
+    expect(store.getState().micPermission).toBe("undetermined");
+    await store.getState().requestMicPermission();
+    expect(store.getState().micPermission).toBe("granted");
+    await store.getState().openMicSettings();
+    expect(fake.calls.at(-1)?.cmd).toBe("open_mic_settings");
   });
 
   it("đọc danh sách nguồn âm thanh và mở trang quyền ghi âm thanh", async () => {

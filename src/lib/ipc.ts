@@ -12,6 +12,14 @@ export type Lang = "en" | "zh" | "ja" | "ko" | "vi";
 export const LANGS: readonly Lang[] = ["en", "zh", "ja", "ko", "vi"];
 
 export type AudioSource = { kind: "system" } | { kind: "device"; id: string } | { kind: "app"; bundleId: string };
+// Thu gì (`settings::CaptureMode`, spec 2026-10-24-nguon-micro §3.1).
+export type CaptureMode = "playback" | "mic";
+// Một micro ở Cài đặt › Âm thanh (`actions::InputDeviceOption`).
+export type InputDevice = { id: string; name: string; isDefault: boolean };
+// Quyền micro (`get_mic_permission`); Windows không có "undetermined".
+export type MicPermission = "granted" | "denied" | "undetermined";
+// Vấn đề của micro trong phiên đang chạy (`state::MicIssue`).
+export type MicIssue = "suspected";
 export type Theme = "system" | "light" | "dark";
 export type UpdateChannel = "stable" | "beta";
 // Lần kiểm tra cập nhật do người dùng bấm (`state::UpdateCheck`): bản mới tải xong thì báo qua `updateReady`;
@@ -54,6 +62,9 @@ export interface Settings {
   sourceLanguages: Lang[];
   sourceLock: Lang | null;
   audioSource: AudioSource;
+  captureMode: CaptureMode;
+  micDevice: string | null;
+  micNoiseFilter: boolean;
   vadEndSilenceMs: number;
   overlay: {
     fontSize: number;
@@ -129,6 +140,8 @@ export interface AppStatus {
   permissionSuspected: boolean;
   // macOS, nguồn một app: app đã chọn không phát tiếng nữa; phiên vẫn chạy, đang chờ app phát lại.
   waitingForApp: boolean;
+  // Micro trả toàn số 0 từ đầu phiên (spec 2026-10-24-nguon-micro §7): thiếu quyền hay micro đang tắt tiếng.
+  micIssue: MicIssue | null;
   // Đang có gói trả phí còn hạn: tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) mở; không thì khóa.
   pro: boolean;
   // Hạn mức còn từ 5 phút trở xuống (§4.2 bước 2): nhắc trên thanh phụ đề và cửa sổ chính.
@@ -494,6 +507,11 @@ export interface Commands {
   open_login_items_settings: { args: undefined; result: null };
   list_audio_sources: { args: undefined; result: AudioSourceOption[] };
   open_audio_permission_settings: { args: undefined; result: null };
+  // Nguồn micro (spec 2026-10-24-nguon-micro §4): danh sách micro, quyền micro, trang quyền micro của hệ điều hành.
+  list_input_devices: { args: undefined; result: InputDevice[] };
+  get_mic_permission: { args: undefined; result: MicPermission };
+  request_mic_permission: { args: undefined; result: MicPermission };
+  open_mic_settings: { args: undefined; result: null };
   // Cài đặt › Gõ dịch (macOS): đã có quyền Trợ năng chưa (Windows luôn `true`); mở trang Trợ năng của System Settings.
   get_accessibility_trusted: { args: undefined; result: boolean };
   open_accessibility_settings: { args: undefined; result: null };

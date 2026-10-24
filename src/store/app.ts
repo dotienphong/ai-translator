@@ -7,8 +7,10 @@ import type {
   CommandError,
   DebugSession,
   HotkeyAction,
+  InputDevice,
   Ipc,
   Lang,
+  MicPermission,
   Navigate,
   Screen,
   Settings,
@@ -63,6 +65,10 @@ export interface AppStoreState {
   level: number;
   // Nguồn chọn được ở Cài đặt › Âm thanh; `null` là chưa đọc.
   audioSources: AudioSourceOption[] | null;
+  // Micro chọn được ở Cài đặt › Âm thanh (spec 2026-10-24-nguon-micro §3.2); `null` là chưa đọc.
+  inputDevices: InputDevice[] | null;
+  // Quyền micro; `null` là chưa đọc.
+  micPermission: MicPermission | null;
   // Số đo của các phiên gần nhất cho bảng debug ẩn (§7); `null` là chưa đọc.
   debugSessions: DebugSession[] | null;
   // Vừa xóa xong toàn bộ dữ liệu (Cài đặt › Quyền riêng tư), để báo lại.
@@ -96,6 +102,12 @@ export interface AppStoreState {
   loadAccessibility(): Promise<void>;
   openAccessibilitySettings(): Promise<void>;
   loadAudioSources(): Promise<void>;
+  loadInputDevices(): Promise<void>;
+  // Đọc quyền micro (lúc chọn hay mở chế độ Micro). Lặng lẽ: lỗi thì giữ trạng thái cũ.
+  loadMicPermission(): Promise<void>;
+  // Hỏi quyền micro (spec 2026-10-24-nguon-micro §3.4): lúc chọn chế độ có micro, khi quyền chưa hỏi.
+  requestMicPermission(): Promise<void>;
+  openMicSettings(): Promise<void>;
   // Màn hình chính: đọc danh sách nguồn một lần mỗi lần mở app, chỉ để có tên hiển thị của nguồn đang chọn (tên app,
   // tên thiết bị). Lặng lẽ: lỗi không hiện ở thanh báo lỗi, thành công không xóa lỗi đang hiện.
   loadAudioSourceNames(): Promise<void>;
@@ -192,6 +204,8 @@ export function createAppStore(ipc: Ipc) {
       sessionPending: false,
       level: 0,
       audioSources: null,
+      inputDevices: null,
+      micPermission: null,
       debugSessions: null,
       dataCleared: false,
       updateDismissed: null,
@@ -377,6 +391,35 @@ export function createAppStore(ipc: Ipc) {
         } catch {
           // Không có tên thì màn hình chính hiện mã nguồn; Cài đặt › Âm thanh vẫn đọc lại và báo lỗi như cũ.
         }
+      },
+
+      async loadInputDevices() {
+        await run(
+          () => ipc.invoke("list_input_devices"),
+          (inputDevices) => set({ inputDevices }),
+        );
+      },
+
+      async loadMicPermission() {
+        try {
+          set({ micPermission: await ipc.invoke("get_mic_permission") });
+        } catch {
+          // Giữ trạng thái cũ; Cài đặt › Âm thanh vẫn có nút mở trang quyền micro.
+        }
+      },
+
+      async requestMicPermission() {
+        await run(
+          () => ipc.invoke("request_mic_permission"),
+          (micPermission) => set({ micPermission }),
+        );
+      },
+
+      async openMicSettings() {
+        await run(
+          () => ipc.invoke("open_mic_settings"),
+          () => {},
+        );
       },
 
       async loadAudioSources() {

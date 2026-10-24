@@ -87,6 +87,9 @@ let settings: Settings = {
   sourceLanguages: ["en", "zh", "ja", "ko", "vi"],
   sourceLock: null,
   audioSource: platform === "macos" ? { kind: "app", bundleId: "us.zoom.xos" } : { kind: "system" },
+  captureMode: "playback",
+  micDevice: null,
+  micNoiseFilter: true,
   vadEndSilenceMs: 300,
   overlay: {
     fontSize: Number(param("size", "28")),
@@ -132,6 +135,7 @@ let status: AppStatus = {
   streamingTooSlow: param("slow") === "1",
   permissionSuspected: false,
   waitingForApp: false,
+  micIssue: null,
   pro: plan !== "free",
   quotaWarning: false,
   quotaResetAt: sec(now + 20 * DAY),
@@ -695,6 +699,17 @@ const handlers = {
   compose_open_accessibility: () => null,
   compose_copy_only: () => null,
   compose_open_main: () => null,
+  list_input_devices: () => [
+    {
+      id: "BuiltInMicrophoneDevice",
+      name: platform === "macos" ? "MacBook Pro Microphone" : "Microphone Array",
+      isDefault: true,
+    },
+    { id: "usb-1", name: "Jabra Speak 510", isDefault: false },
+  ],
+  get_mic_permission: () => "granted",
+  request_mic_permission: () => "granted",
+  open_mic_settings: () => null,
   list_audio_sources: () =>
     platform === "macos"
       ? [

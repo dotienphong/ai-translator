@@ -513,6 +513,8 @@ export const ja: Record<MessageKey, string> = {
   "error.sidecarFailed": "音声認識が停止しました。「開始」を押して再試行してください。それでも改善しない場合は、ログをサポートに送ってください。",
   "error.modelMissing": "モデルがまだダウンロードされていません。",
   "error.audioPermission": "AI Translator にシステムオーディオの録音が許可されていません。",
+  "error.micPermission": "AI Translator にマイクの使用が許可されていません。",
+  "error.micUnavailable": "マイクを開けませんでした。選択したマイクが接続されていて、ほかのアプリに占有されていないか確認してください。",
   "error.captureFailed": "音声を取得できませんでした。",
   "error.appNotPlaying": "選択したアプリから音が出ていません。会議の音声を開始するか、システム全体を選んでください。",
   "error.vadFailed": "音声検出器を読み込めませんでした。AI Translator を再インストールしてください。",

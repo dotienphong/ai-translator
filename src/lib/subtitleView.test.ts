@@ -38,6 +38,7 @@ const status = (patch: Partial<AppStatus>): AppStatus => ({
   streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
+  micIssue: null,
   pro: true,
   quotaWarning: false,
   quotaResetAt: null,

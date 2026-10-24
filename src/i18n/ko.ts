@@ -513,6 +513,8 @@ export const ko: Record<MessageKey, string> = {
   "error.sidecarFailed": "음성 인식이 작동을 멈췄습니다. 시작을 눌러 다시 시도하세요. 계속 실패하면 로그를 지원팀에 보내 주세요.",
   "error.modelMissing": "모델을 아직 다운로드하지 않았습니다.",
   "error.audioPermission": "AI Translator가 시스템 오디오를 녹음하도록 허용되지 않았습니다.",
+  "error.micPermission": "AI Translator에 마이크 사용 권한이 없습니다.",
+  "error.micUnavailable": "마이크를 열 수 없습니다. 선택한 마이크가 연결되어 있고 다른 앱이 독점하고 있지 않은지 확인하세요.",
   "error.captureFailed": "오디오를 캡처하지 못했습니다.",
   "error.appNotPlaying": "선택한 앱에서 소리가 나지 않습니다. 회의 소리를 시작하거나 시스템 전체를 선택하세요.",
   "error.vadFailed": "음성 감지기를 불러오지 못했습니다. AI Translator를 다시 설치하세요.",

@@ -513,6 +513,8 @@ export const zh: Record<MessageKey, string> = {
   "error.sidecarFailed": "语音识别已停止工作。请点击“开始”重试；如果仍然失败，请把日志发给客服。",
   "error.modelMissing": "模型还没有下载。",
   "error.audioPermission": "AI Translator 没有被允许录制系统音频。",
+  "error.micPermission": "AI Translator 未获准使用麦克风。",
+  "error.micUnavailable": "无法打开麦克风。请检查所选麦克风是否已连接，且未被其他应用独占。",
   "error.captureFailed": "无法采集音频。",
   "error.appNotPlaying": "所选应用没有发声。请开始播放会议声音，或选择整个系统。",
   "error.vadFailed": "无法加载语音检测器。请重新安装 AI Translator。",
