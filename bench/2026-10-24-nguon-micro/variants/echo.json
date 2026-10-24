@@ -1,0 +1,451 @@
+[
+ {
+  "name": "doi-chung-playback",
+  "mode": "playback"
+ },
+ {
+  "name": "doi-chung-mic",
+  "mode": "mic"
+ },
+ {
+  "name": "A",
+  "mode": "both"
+ },
+ {
+  "name": "C",
+  "mode": "both",
+  "mic": "mic-aec.wav"
+ },
+ {
+  "name": "B-t55-d12-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -12,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t55-d12-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -12,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t55-d12-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -12,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t55-d12-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -12,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t55-d20-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -20,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t55-d20-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -20,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t55-d20-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -20,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t55-d20-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -20,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t55-d30-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t55-d30-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t55-d30-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t55-d30-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t55-dtat-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": null,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t55-dtat-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": null,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t55-dtat-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": null,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t55-dtat-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": null,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t45-d12-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -12,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t45-d12-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -12,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t45-d12-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -12,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t45-d12-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -12,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t45-d20-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -20,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t45-d20-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -20,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t45-d20-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -20,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t45-d20-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -20,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t45-d30-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -30,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t45-d30-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -30,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t45-d30-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -30,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t45-d30-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": -30,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t45-dtat-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": null,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t45-dtat-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": null,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t45-dtat-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": null,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t45-dtat-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -45,
+   "duck_db": null,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t35-d12-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -12,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t35-d12-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -12,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t35-d12-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -12,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t35-d12-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -12,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t35-d20-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -20,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t35-d20-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -20,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t35-d20-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -20,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t35-d20-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -20,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t35-d30-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -30,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t35-d30-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -30,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t35-d30-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -30,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t35-d30-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": -30,
+   "hold_ms": 800
+  }
+ },
+ {
+  "name": "B-t35-dtat-h150",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": null,
+   "hold_ms": 150
+  }
+ },
+ {
+  "name": "B-t35-dtat-h300",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": null,
+   "hold_ms": 300
+  }
+ },
+ {
+  "name": "B-t35-dtat-h500",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": null,
+   "hold_ms": 500
+  }
+ },
+ {
+  "name": "B-t35-dtat-h800",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -35,
+   "duck_db": null,
+   "hold_ms": 800
+  }
+ }
+]

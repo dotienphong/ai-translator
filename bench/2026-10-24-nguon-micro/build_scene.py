@@ -17,6 +17,8 @@ Cảnh (mỗi track có 2 giây im lặng ở đầu):
 - `s4-phong`: chỉ room (cảnh 4: điện thoại ở 1 m, rồi 3 m).
 - `s7-phong-ngan`: room gồm câu FLEURS xen câu trả lời rất ngắn dựng bằng `say` (cảnh 7).
 Clip FLEURS: băng rộng, dài 4–12 giây, chọn cố định theo seed. Năm tiếng: en, zh, ja, ko, vi.
+Mọi clip (cả câu ngắn dựng bằng `say`) được đưa về cùng mức RMS −26 dBFS, đỉnh không quá −1 dBFS: âm lượng gốc của FLEURS
+chênh nhau rất xa (có clip chỉ khoảng −63 dBFS), phát ra loa thì clip nhỏ gần như không nghe thấy.
 """
 import argparse
 import json
@@ -42,6 +44,22 @@ SHORT = {
     "ja": ["はい。", "そうです。", "いいえ。", "了解です。", "大丈夫です。", "なるほど。", "賛成です。", "分かりました。"],
     "ko": ["네.", "맞아요.", "아니요.", "좋아요.", "알겠습니다.", "그래요.", "동의해요.", "괜찮아요."],
 }
+
+
+TARGET_RMS = 10 ** (-26 / 20)
+PEAK = 10 ** (-1 / 20)
+
+
+def level(audio):
+    """Đưa một clip về RMS −26 dBFS, rồi hạ thêm nếu đỉnh vượt −1 dBFS."""
+    x = audio.astype(np.float64) / 32768
+    rms = np.sqrt(np.mean(x**2))
+    if rms > 0:
+        x *= TARGET_RMS / rms
+    peak = np.max(np.abs(x))
+    if peak > PEAK:
+        x *= PEAK / peak
+    return np.round(x * 32767).astype(np.int16)
 
 
 def read_wav(path):
@@ -104,6 +122,7 @@ class Track:
         self.items = []
 
     def place(self, source, audio, start_ms, meta):
+        audio = level(audio)
         self.parts[source].append((start_ms, audio))
         end_ms = start_ms + len(audio) * 1000 // RATE
         self.items.append({"source": source, **meta, "start_ms": start_ms, "end_ms": end_ms})
