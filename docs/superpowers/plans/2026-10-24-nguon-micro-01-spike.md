@@ -4177,6 +4177,8 @@ cd $W && git add bench/2026-10-24-nguon-micro/results/s-m4-windows.md bench/2026
 
 **Files:** Tạo `bench/2026-10-24-nguon-micro/results/tieng-vong.md`
 
+Build `asr-worker` có Metal như bản phát hành (không có feature thì chạy CPU, chậm khoảng 4 lần): `cd $W && MACOSX_DEPLOYMENT_TARGET=14.2 cargo build --release --locked -p asr-worker --features metal,shared-encode`.
+
 Đặt `D=$W/bench/2026-10-24-nguon-micro/data`, `B=$W/bench/2026-10-24-nguon-micro`, `LB=$W/target/release/latency-bench`, và `ASR="--asr-worker $W/target/release/asr-worker --asr-model $M/models/ggml-large-v3-turbo-q5_0.bin --vad-model $M/models/silero_vad_v6.2.3.onnx"`. Hàm chấm: `score() { uv run --no-project --python 3.12 --with "numpy==2.5.4" --with "jiwer==4.0.0" --with "opencc==1.4.2" python $B/score_mix.py "$@"; }`.
 
 - [ ] **Step 1: Độ trễ vọng.** Với `s1-loa`, `s2-loa`, `s1w-loa-win`: `score --scene $D/scenes/<cảnh> --echo-delay`. Ghi số ms; đây là căn cứ cho thời gian giữ của B và `--delay-ms` của C.
