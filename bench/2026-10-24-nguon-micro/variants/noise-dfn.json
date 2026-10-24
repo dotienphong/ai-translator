@@ -1,0 +1,596 @@
+[
+ {
+  "name": "N-dfn-g0-v5-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v5-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v5-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v6-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v6-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v6-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v7-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v7-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g0-v7-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v5-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v5-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v5-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v6-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 250
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v6-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 400
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v6-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 600
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v7-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 250
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v7-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 400
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g10-v7-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 600
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v5-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v5-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v5-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v6-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 250
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v6-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v6-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v7-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 250
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v7-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-g20-v7-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": false
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v5-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v5-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v5-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v6-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v6-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v6-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v7-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v7-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g0-v7-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v5-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v5-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v5-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v6-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 250
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v6-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 400
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v6-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 600
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v7-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 250
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v7-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 400
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g10-v7-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 600
+  },
+  "gain_db": 10,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v5-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v5-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v5-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v6-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 250
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v6-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v6-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.6,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v7-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 250
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v7-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ },
+ {
+  "name": "N-dfn-ca-hai-g20-v7-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.7,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-dfn.wav",
+  "whisper_hears_vad": true
+ }
+]
