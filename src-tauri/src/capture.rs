@@ -135,30 +135,34 @@ const GATE: GateParams = GateParams {
     speech_prob: 0.5,
 };
 
-/// Số khung Silero giữa hai dòng log thời gian: 1 875 khung × 32 ms = 60 giây.
-const SPEECH_LOG_EVERY: u32 = 1_875;
+/// Chu kỳ ghi log thời gian Silero của bộ nhường lời.
+const SPEECH_LOG_EVERY: Duration = Duration::from_secs(60);
 
-/// Đo thời gian mỗi lần Silero của bộ nhường lời chạy (chi phí trên luồng VAD, ngân sách ở spec mục 17), để ghi log mỗi phút:
-/// người dùng và người kiểm đọc được số thật trên máy của mình, kể cả máy Windows yếu.
+/// Đo thời gian mỗi lần Silero của bộ nhường lời chạy (chi phí trên luồng VAD, ngân sách ở spec mục 17), để ghi log mỗi phút
+/// có lần chạy: người dùng và người kiểm đọc được số thật trên máy của mình, kể cả máy Windows yếu. Silero chỉ chạy ở khung
+/// có thể là giọng nhỏ (`duck.rs`), nên số lần có thể ít hơn nhiều so với số khung.
 #[derive(Default)]
 struct SpeechTimer {
+    since: Option<Instant>,
     calls: u32,
     total: Duration,
     max: Duration,
 }
 
 impl SpeechTimer {
-    /// Ghi một lần chạy; đủ `SPEECH_LOG_EVERY` lần thì trả dòng log và đếm lại.
-    fn record(&mut self, took: Duration) -> Option<String> {
+    /// Ghi một lần chạy xong lúc `now`; qua `SPEECH_LOG_EVERY` từ lần đầu của cửa sổ thì trả dòng log và đếm lại.
+    fn record(&mut self, took: Duration, now: Instant) -> Option<String> {
+        let since = *self.since.get_or_insert(now);
         self.calls += 1;
         self.total += took;
         self.max = self.max.max(took);
-        if self.calls < SPEECH_LOG_EVERY {
+        if now.duration_since(since) < SPEECH_LOG_EVERY {
             return None;
         }
         let line = format!(
-            "nhường lời: Silero {} khung, trung bình {} µs, lớn nhất {} µs",
+            "nhường lời: Silero {} lần trong {} giây, trung bình {} µs, lớn nhất {} µs",
             self.calls,
+            now.duration_since(since).as_secs(),
             (self.total / self.calls).as_micros(),
             self.max.as_micros()
         );
@@ -186,7 +190,7 @@ impl SpeechDetector for SileroSpeech {
     fn prob(&mut self, frame: &[f32]) -> anyhow::Result<f32> {
         let started = Instant::now();
         let prob = self.vad.prob(frame);
-        if let Some(line) = self.timer.record(started.elapsed()) {
+        if let Some(line) = self.timer.record(started.elapsed(), Instant::now()) {
             log::info!("{line}");
         }
         prob
@@ -1669,17 +1673,34 @@ mod tests {
         assert!(slot.get().is_none());
     }
 
-    /// Bộ đo thời gian Silero của bộ nhường lời: báo một dòng log mỗi `SPEECH_LOG_EVERY` khung (60 giây) rồi đếm lại.
+    /// Bộ đo thời gian Silero của bộ nhường lời: báo một dòng log mỗi `SPEECH_LOG_EVERY` (60 giây) khi có lần chạy, rồi đếm lại.
     #[test]
-    fn the_speech_timer_reports_once_per_window_and_starts_over() {
+    fn the_speech_timer_reports_once_per_minute_and_starts_over() {
+        let t0 = Instant::now();
         let mut t = SpeechTimer::default();
-        for i in 0..SPEECH_LOG_EVERY - 1 {
-            assert!(t.record(Duration::from_micros(200)).is_none(), "khung {i}");
-        }
-        let line = t.record(Duration::from_micros(1_800)).unwrap();
-        assert!(line.contains("1875 khung"), "{line}");
-        assert!(line.contains("trung bình 200 µs"), "{line}");
+        assert!(t.record(Duration::from_micros(200), t0).is_none());
+        assert!(
+            t.record(Duration::from_micros(1_800), t0 + Duration::from_secs(30))
+                .is_none()
+        );
+        let line = t.record(Duration::from_micros(400), t0 + SPEECH_LOG_EVERY).unwrap();
+        assert!(line.contains("3 lần"), "{line}");
+        assert!(line.contains("trung bình 800 µs"), "{line}");
         assert!(line.contains("lớn nhất 1800 µs"), "{line}");
-        assert!(t.record(Duration::from_micros(200)).is_none(), "đã đếm lại");
+        // Đếm lại: lần chạy kế tiếp mở cửa sổ mới.
+        assert!(
+            t.record(
+                Duration::from_micros(200),
+                t0 + SPEECH_LOG_EVERY + Duration::from_secs(1)
+            )
+            .is_none()
+        );
+        assert!(
+            t.record(
+                Duration::from_micros(200),
+                t0 + SPEECH_LOG_EVERY + Duration::from_secs(70)
+            )
+            .is_some()
+        );
     }
 }

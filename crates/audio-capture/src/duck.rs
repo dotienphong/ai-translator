@@ -20,6 +20,14 @@ pub const GATE_FRAME: usize = 160;
 const RELEASE_SAMPLES: f32 = 800.0;
 /// Khung của bộ phát hiện tiếng nói: 512 mẫu (32 ms), như Silero VAD.
 pub const SPEECH_FRAME: usize = 512;
+/// Khung Playback có bình phương trung bình dưới mức này (−80 dBFS) là im lặng số: không thể có giọng nghe được, nên khỏi hỏi
+/// bộ phát hiện. Khung từ ngưỡng năng lượng của cổng trở lên cũng khỏi hỏi (cổng đã hạ micro rồi). Trong cuộc họp thật phần
+/// lớn khung thuộc một trong hai loại, nên bộ phát hiện (tốn khoảng 1,7 ms mỗi khung trong app) hầu như chỉ chạy khi có thể là
+/// giọng nhỏ.
+const SPEECH_FLOOR_SQ: f32 = 1e-8;
+/// Không hỏi bộ phát hiện liền chừng này khung (0,5 giây) thì xóa state của nó trước lần hỏi kế tiếp: state cũ không còn đại
+/// diện cho âm thanh vừa qua.
+const SPEECH_RESET_GAP: u32 = 16;
 
 /// Bộ phát hiện tiếng nói trên Playback cho cổng (spec mục 17). Crate này không phụ thuộc `pipeline`: app và
 /// `latency-bench` bọc Silero VAD bằng trait này.
@@ -132,6 +140,11 @@ impl MicGate {
     pub fn speech_prob(&self) -> f32 {
         self.speech_prob
     }
+
+    /// Ngưỡng năng lượng của cổng, dạng bình phương trung bình.
+    fn loud_sq(&self) -> f32 {
+        self.threshold_sq
+    }
 }
 
 pub struct DuckingMixer {
@@ -146,6 +159,8 @@ pub struct DuckingMixer {
     speech_buf: Vec<f32>,
     /// Đã reset bộ phát hiện cho bộ trộn này chưa.
     speech_started: bool,
+    /// Số khung liền nhau gần nhất không hỏi bộ phát hiện (khung to hay im lặng số).
+    speech_skipped: u32,
     /// Bộ phát hiện đã lỗi: từ đó cổng chỉ còn theo năng lượng.
     speech_failed: bool,
     speech_error: Option<String>,
@@ -165,6 +180,7 @@ impl DuckingMixer {
             ducked_samples: 0,
             speech_buf: Vec::with_capacity(SPEECH_FRAME),
             speech_started: false,
+            speech_skipped: 0,
             speech_failed: false,
             speech_error: None,
         }
@@ -247,17 +263,25 @@ impl DuckingMixer {
         if self.speech_failed || self.gate.speech_prob() == f32::INFINITY {
             return;
         }
-        if !self.speech_started {
-            self.speech_started = true;
-            if let Err(e) = detector.reset() {
-                self.speech_fail(e);
-                return;
-            }
-        }
         self.speech_buf.push(p);
         if self.speech_buf.len() < SPEECH_FRAME {
             return;
         }
+        let mean_sq = self.speech_buf.iter().map(|v| v * v).sum::<f32>() / SPEECH_FRAME as f32;
+        if mean_sq >= self.gate.loud_sq() || mean_sq < SPEECH_FLOOR_SQ {
+            self.speech_skipped = self.speech_skipped.saturating_add(1);
+            self.speech_buf.clear();
+            return;
+        }
+        if !self.speech_started || self.speech_skipped >= SPEECH_RESET_GAP {
+            self.speech_started = true;
+            if let Err(e) = detector.reset() {
+                self.speech_buf.clear();
+                self.speech_fail(e);
+                return;
+            }
+        }
+        self.speech_skipped = 0;
         match detector.prob(&self.speech_buf) {
             Ok(prob) if prob >= self.gate.speech_prob() => self.gate.hold(),
             Ok(_) => {}
@@ -616,5 +640,37 @@ mod tests {
         let (out, _) = mix_with(params, &[QUIET; 4_000], &[0.3; 4_000], &mut s);
         assert_eq!((s.calls, s.resets), (0, 0));
         assert!(out.iter().all(|&v| (v - (QUIET + 0.3)).abs() < 1e-6));
+    }
+
+    /// Chỉ gửi cho bộ phát hiện những khung có thể là giọng nhỏ: khung to (cổng năng lượng đã hạ) và khung im lặng số thì bỏ qua.
+    #[test]
+    fn only_quiet_frames_reach_the_detector() {
+        let mut playback = vec![0.1; SPEECH_FRAME * 2];
+        playback.extend(vec![0.0; SPEECH_FRAME * 2]);
+        playback.extend(vec![0.00005; SPEECH_FRAME * 2]);
+        playback.extend(vec![QUIET; SPEECH_FRAME * 3]);
+        let mut s = FakeSpeech::default();
+        let (_, _) = mix_with(APP, &playback, &vec![0.3; playback.len()], &mut s);
+        assert_eq!(
+            s.calls, 3,
+            "chỉ ba khung −62 dBFS, không phải khung to (−20), im lặng số, hay −86 dBFS"
+        );
+    }
+
+    /// Sau khoảng nghỉ dài (≥ 16 khung, 0,5 giây) bộ phát hiện được xóa state; nghỉ ngắn thì giữ.
+    #[test]
+    fn the_detector_state_is_cleared_only_after_a_long_gap() {
+        let frames = |n: usize, v: f32| vec![v; SPEECH_FRAME * n];
+        let run = |gap: usize| {
+            let mut playback = frames(2, QUIET);
+            playback.extend(frames(gap, 0.0));
+            playback.extend(frames(2, QUIET));
+            let mut s = FakeSpeech::default();
+            mix_with(APP, &playback, &vec![0.0; playback.len()], &mut s);
+            (s.calls, s.resets)
+        };
+        assert_eq!(run(3), (4, 1), "nghỉ 3 khung: giữ state");
+        assert_eq!(run(16), (4, 2), "nghỉ 16 khung: xóa state");
+        assert_eq!(run(40), (4, 2), "nghỉ rất dài: chỉ xóa một lần");
     }
 }
