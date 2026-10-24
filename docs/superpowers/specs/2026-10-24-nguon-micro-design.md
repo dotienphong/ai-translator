@@ -1,0 +1,393 @@
+# Nguồn micro: dịch giọng trong phòng, riêng hay cùng âm thanh máy (thiết kế)
+
+Ngày 2026-10-24. Nhánh `nguon-micro` (worktree `meeting-translator-work/nguon-micro`). Phạm vi: `crates/audio-capture`
+(nguồn micro, `Preprocessor`, bộ trộn có nhường lời, công cụ `capture`), `crates/latency-bench` (lệnh `mix-eval`),
+`src-tauri/src/capture.rs`, `src-tauri/src/settings/mod.rs`, `src-tauri/src/session.rs`, `src-tauri/src/errors.rs`,
+`src-tauri/src/system.rs`, `src-tauri/src/actions.rs`, `src-tauri/Info.plist`, `src-tauri/macos/*.lproj/InfoPlist.strings`,
+`src/lib/ipc.ts`, `src/lib/audioSource.ts`, `src/lib/subtitleView.ts`, `src/windows/main/settings/AudioSettings.tsx`,
+`src/windows/main/screens/Home.tsx`, `src/i18n/*.ts`, `docs/legal/{privacy,eula}.{vi,en}.md`, `website/src/content/*`,
+`bench/2026-10-24-nguon-micro/`, spec chính §2 (D1, D9), §3.1–§3.3, §4.3, §6.1, §6.2, §9, §10.1.
+
+## 1. Mục tiêu
+
+Chủ dự án muốn app lấy tiếng từ micro để dịch giọng nói ngoài đời, và dịch được cùng lúc cả giọng ngoài đời lẫn giọng
+trong app họp. Ví dụ: họp lai, một số người ngồi cùng phòng, một số người họp online.
+
+Hiện trạng (đọc code ngày 2026-10-24):
+
+- Spec chính §3.2 xếp "Thu âm từ micro" vào ngoài phạm vi MVP. D1 nói app dịch "mọi âm thanh máy tính đang phát".
+- Pipeline chỉ nhận **một luồng 16 kHz mono** (`pipeline::engine::FrameSource`): một VAD, rồi whisper, rồi dịch. Câu
+  không mang thông tin "đến từ nguồn nào".
+- `audio_capture::preprocess::Preprocessor` đã nhận được hai nguồn. Nó resample từng nguồn về 16 kHz rồi trộn bằng
+  `Mixer2`, bù lệch đồng hồ bằng cách phát riêng phần dư quá 100 ms. Windows dùng cách này để trộn thiết bị Console với
+  thiết bị Communications.
+- macOS đã khai entitlement `com.apple.security.device.audio-input` (`src-tauri/release/entitlements.plist`). Còn thiếu
+  `NSMicrophoneUsageDescription`.
+
+Chủ dự án chọn (2026-10-24):
+
+1. **Micro dùng để thu người khác trong phòng.** Giọng thu được dịch sang ngôn ngữ của người dùng, cùng chiều với tiếng
+   cuộc họp online.
+2. **Không cần nhãn nguồn.** Ở chế độ âm thanh máy + micro, hai luồng được trộn thành một trước VAD. Pipeline giữ nguyên.
+3. **Mọi gói đều dùng được** (kể cả Free dùng thử). Phút vẫn trừ theo hạn mức như cũ.
+4. **Xử lý tiếng vọng bằng cách nhường lời** (mục 5.4), kèm một spike so ba cách (trộn thẳng, nhường lời, khử vọng AEC3)
+   trên bản thu thật rồi mới chốt (mục 6).
+
+## 2. Ngoài phạm vi
+
+- Nhãn nguồn trên phụ đề ("Trong phòng" / "Cuộc họp"), tách hai làn VAD. Nếu sau này cần thì làm spec riêng; nhánh này
+  để sẵn chỗ nối (mục 5.5).
+- Dịch giọng của chính người dùng sang tiếng người bên kia (dịch hai chiều), micro ảo, phát giọng dịch vào cuộc họp.
+- Lọc riêng giọng của chính người dùng. Câu tiếng Việt của người dùng hiện câu gốc, không dịch, theo luật F2 hiện có.
+- Khử vọng của hệ điều hành:
+  - macOS Voice Processing (`kAudioUnitSubType_VoiceProcessingIO`) làm nhỏ tiếng các app khác khoảng 8 dB ngay cả ở mức
+    thấp nhất. Nó cũng lỗi (−10875) khi micro và loa là hai thiết bị khác nhau.
+  - Windows chỉ cho chọn tham chiếu AEC (`IAcousticEchoCancellationControl`) từ build 22621, tùy driver; Windows 10
+    không có.
+- Tự cân mức micro (AGC). Chỉ thêm nếu spike cho thấy VAD bỏ sót giọng ở xa (mục 6.3).
+- Phân biệt người nói, ghi âm.
+
+## 3. Trải nghiệm người dùng
+
+### 3.1. Ba chế độ
+
+| Chế độ | Thu gì | Dùng khi |
+|---|---|---|
+| Âm thanh máy (mặc định, như hiện nay) | Như `audioSource` hiện có: toàn hệ thống hay một app (macOS), tự động hay một thiết bị phát (Windows) | Họp online, xem video |
+| Micro | Chỉ micro | Nói chuyện trực tiếp, nghe giảng, họp tại chỗ |
+| Âm thanh máy + Micro | Trộn hai luồng thành một (mục 5.3, 5.4) | Họp lai: người trong phòng và người online |
+
+### 3.2. Cài đặt › Âm thanh
+
+- **Dòng mới "Nguồn"** (ba lựa chọn ở mục 3.1), đặt trên bộ chọn nguồn hiện có.
+- **Bộ chọn âm thanh máy** (đang có): hiện ở chế độ Âm thanh máy và Âm thanh máy + Micro.
+- **Bộ chọn micro** (mới): hiện ở chế độ Micro và Âm thanh máy + Micro.
+  - Mặc định "Micro mặc định của hệ thống", tự theo khi người dùng đổi micro mặc định (cắm tai nghe). Có thể chọn một
+    micro cụ thể.
+  - Ghi chú dưới bộ chọn: "Dùng micro của tai nghe Bluetooth làm tai nghe chuyển sang chế độ gọi: tiếng nghe kém đi."
+- **Ở chế độ Âm thanh máy + Micro**, có ghi chú: "Khi người online đang nói, micro được hạ xuống để không dịch hai lần.
+  Người trong phòng nói chen lúc đó có thể bị bỏ sót. Đeo tai nghe cho kết quả tốt nhất."
+- Đổi chế độ hay đổi micro giữa phiên thì có tác dụng ở lần bắt đầu phiên sau, giống `audioSource` hiện nay.
+
+### 3.3. Màn hình chính và thanh phụ đề
+
+- Nhãn nguồn ghi đúng chế độ: "Toàn hệ thống", "Micro: {tên}", "Toàn hệ thống + Micro: {tên}" (tên micro do hệ điều
+  hành báo). Áp cho cả nhãn của nguồn một app và thiết bị phát hiện có.
+- Mức âm lượng vào đo trên luồng đã trộn.
+- Ghi chú trạng thái mới (ở `Home.tsx` và `subtitleView.ts`, như `waitingForApp`), xem mục 7.
+
+### 3.4. Quyền micro
+
+- **Chỉ hỏi khi người dùng chọn chế độ có micro:** lúc chọn trong Cài đặt, và lúc bắt đầu phiên nếu quyền vẫn ở trạng
+  thái chưa hỏi (ví dụ sau một bản cập nhật). Đã bị từ chối thì không hỏi lại mà xử lý theo mục 7. Không thêm bước vào
+  màn hình chào lần đầu (§4.1 của spec chính không đổi).
+  - Lý do: app ký ad-hoc nên macOS hỏi lại quyền sau mỗi bản cập nhật. Hỏi theo cách này thì chỉ người thật sự dùng micro
+    mới bị hỏi lại.
+- **macOS:**
+  - Thêm `NSMicrophoneUsageDescription` vào `Info.plist`, và vào `InfoPlist.strings` của năm ngôn ngữ (en, vi, ja,
+    zh-Hans, ko).
+  - Đọc trạng thái quyền bằng `AVCaptureDevice.authorizationStatus(for: .audio)`, xin quyền bằng `requestAccess`.
+  - Có nút mở `x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone` (hằng mới trong `system.rs`,
+    cạnh `AUDIO_PERMISSION_URL`).
+- **Windows:**
+  - Phát hiện công tắc "Let desktop apps access your microphone" đang tắt. Cách phát hiện chốt ở spike: mã lỗi WASAPI hay
+    khóa `ConsentStore\microphone` (mục 6.4).
+  - Báo kèm nút mở `ms-settings:privacy-microphone`.
+
+### 3.5. Gói và hạn mức
+
+- Mọi gói đều dùng được ba chế độ.
+- Phút vẫn tính bằng `speech_ms` của luồng đưa vào VAD (luồng đã trộn). Tiếng nói trong phòng cũng trừ phút. Hai người
+  nói chồng nhau chỉ tính một lần vì chỉ có một VAD.
+
+### 3.6. Hệ quả cần biết (ghi vào hướng dẫn trên website)
+
+- Micro thu cả giọng của chính người dùng.
+- App vẫn thu micro dù người dùng đã tắt mic trong app họp: đây là hai việc độc lập. macOS hiện chấm cam, Windows hiện
+  biểu tượng micro trên khay trong lúc app thu.
+- Tai nghe Bluetooth: mở micro của tai nghe làm tai nghe chuyển sang chế độ gọi (băng hẹp).
+
+## 4. Settings và IPC
+
+- **Settings** (serde camelCase, đọc settings cũ không có hai trường này thì lấy mặc định, người dùng cũ không đổi gì):
+  - `captureMode: "playback" | "mic" | "both"`, mặc định `"playback"`.
+  - `micDevice: string | null`, mặc định `null` (micro mặc định). Nếu có giá trị thì kiểm bằng `check_id` như
+    `audioSource`.
+  - `audioSource` giữ nguyên ý nghĩa: là phần "âm thanh máy" của chế độ `playback` và `both`.
+- **Lệnh IPC mới:**
+  - `list_input_devices` → `{ id, name, isDefault }[]`.
+  - `mic_permission` → `"granted" | "denied" | "undetermined"`. Windows chỉ có `granted` hay `denied`.
+  - `request_mic_permission` (macOS; Windows trả trạng thái hiện có).
+  - `open_mic_settings`.
+- **Trạng thái phiên** (`AppStatus`): thêm `micIssue: null | "permission" | "unavailable" | "suspected"` (mục 7).
+- **Log và báo cáo lỗi:** ghi chế độ và loại micro (tích hợp, USB, Bluetooth, khác), **không ghi tên micro**, vì tên có
+  thể chứa tên người ("AirPods của …").
+
+## 5. Thu âm thanh
+
+### 5.1. Nguồn micro trên macOS: `MacInputSource`
+
+- Cài `trait AudioSource`. Chạy IOProc (`AudioDeviceCreateIOProcIDWithBlock`) thẳng trên thiết bị vào. Đây là cùng cơ chế
+  đang dùng để đọc aggregate device của tap, nhưng không có tap. Code tap hiện có không bị sửa.
+- Thiết bị: `kAudioHardwarePropertyDefaultInputDevice`, hoặc thiết bị có UID bằng `micDevice`. Không tìm thấy micro đã
+  chọn thì báo `micUnavailable`, không tự rơi về micro mặc định.
+- Bố cục buffer đọc từ cấu hình luồng vào của thiết bị (dùng lại `input_layout`). `MonoResampler` gộp nhiều kênh về mono.
+- **Phương án dự phòng:** nếu spike thấy micro và tap lệch đồng hồ đến mức `Mixer2` phải phát riêng phần dư thường xuyên
+  (mục 6.4), thì thêm micro làm sub-device của chính aggregate device của tap, để aggregate bù lệch.
+- Thêm `list_capture_devices()` (thiết bị có luồng vào: UID, tên, loại kết nối) và `default_input_signature()`
+  (`<id>@<Hz>` của micro mặc định, giống `default_output_signature`).
+
+### 5.2. Nguồn micro trên Windows: `InputSource`
+
+- Cài `trait AudioSource`. WASAPI shared mode trên endpoint `eCapture`, không bật `AUDCLNT_STREAMFLAGS_LOOPBACK`. Dùng
+  lại khung đọc của `LoopbackSource` (đọc theo timer).
+- Micro mặc định là endpoint `eCapture` mặc định của vai trò Console (thiết bị mà Settings › Sound › Input đang chọn).
+  Hoặc dùng endpoint có ID bằng `micDevice`.
+- Thêm `list_capture_devices()`, và đưa ID micro mặc định vào `default_input_signature()`.
+- Thiết bị đang bị app khác giữ ở exclusive mode (`AUDCLNT_E_DEVICE_IN_USE`) thì báo `micUnavailable`.
+
+### 5.3. `Preprocessor` có gắn vai
+
+- `Preprocessor::new` nhận các đầu vào kèm vai `Playback` hay `Mic`, tối đa ba đầu vào (Windows tự động: Console,
+  Communications, Mic). Phải có ít nhất một đầu vào.
+- Các đầu vào `Playback` trộn với nhau bằng `Mixer2` như bây giờ.
+- Chế độ `mic`: chỉ một đầu vào `Mic`, đi thẳng ra như nguồn đơn hiện nay.
+- Chế độ `both`: luồng Playback (đã trộn) và luồng Mic đi vào `DuckingMixer` (mục 5.4).
+
+### 5.4. `DuckingMixer` và `MicGate`
+
+- **`DuckingMixer`:** ghép cặp mẫu Playback với mẫu Mic và bù lệch giống `Mixer2` (phần dư quá 100 ms phát riêng). Mẫu
+  Mic nhân với hệ số của `MicGate` trước khi cộng. Kết quả kẹp trong [−1, 1].
+- **`MicGate`** (hàm thuần, không cấp phát trong vòng xử lý):
+  - Đo RMS của luồng Playback theo khung 10 ms (160 mẫu).
+  - RMS từ ngưỡng trở lên: hạ micro ngay. Hệ số giảm tức thì xuống mức hạ.
+  - RMS dưới ngưỡng: giữ mức hạ thêm một khoảng **giữ**, rồi mở dần về 1 trong 50 ms.
+  - Tham số ban đầu: ngưỡng −45 dBFS, mức hạ −20 dB (hệ số 0,1), giữ 300 ms. Spike chọn giá trị chốt (mục 6.3).
+- **Vì sao không cần đọc trước:** tiếng vọng luôn tới micro sau tín hiệu số, trễ bằng độ trễ phát ra loa cộng đường
+  truyền trong không khí. Vì vậy cổng đóng kịp.
+- **Giới hạn đã biết:** cách ghép cặp có thể lệch tới 100 ms giữa hai luồng. Loa Bluetooth trễ thêm 150–300 ms. Thời gian
+  giữ phải phủ cả hai cộng đuôi vang của phòng; spike đo độ trễ vọng thật để chọn.
+
+### 5.5. Chỗ nối khử vọng
+
+`DuckingMixer` nhận một bước xử lý micro tùy chọn, `trait EchoCanceller { fn process(&mut self, reference: &[f32], mic:
+&mut [f32]); }`, chạy trên luồng Mic trước cổng, với Playback làm tham chiếu. Bản đầu không có bước này. Nếu spike chốt
+dùng AEC3 (mục 6.3), chỉ cần cài trait bằng `sonora`; phần còn lại không đổi.
+
+### 5.6. `capture_loop`
+
+- **`open_sources`** dựng nguồn theo `captureMode`:
+  - `playback`: như hiện nay.
+  - `mic`: chỉ nguồn micro.
+  - `both`: nguồn Playback như hiện nay, cộng nguồn micro.
+- **Bộ canh tách theo nguồn.** Không sửa thì hỏng, vì micro luôn có khung và luôn có tiếng ồn nền:
+  - `Watch`/`StallWatch` (canh tap chết, macOS) chỉ đếm khung của các nguồn Playback.
+  - `ZeroWatch` chạy riêng cho từng loại nguồn trên mẫu chưa trộn. Bản cho Playback giữ luật cũ (nghi thiếu quyền "Ghi
+    âm thanh hệ thống"). Bản cho Mic dùng cùng luật: toàn số 0 tuyệt đối suốt 3 giây mà từ đầu phiên chưa có mẫu nào
+    khác 0 thì báo micro không có tín hiệu, nhưng không hỏi "có app đang phát" (micro đang chạy luôn có tiếng ồn nền).
+    Nguyên nhân có thể là thiếu quyền hoặc micro đang tắt tiếng bằng phím cứng, nên ghi chú nêu cả hai.
+- **Mở lại nguồn:** khi `default_input_signature()` đổi (chỉ khi dùng micro mặc định), hoặc khi nguồn micro `failed()`.
+- **Micro lỗi mà Playback vẫn chạy (chế độ `both`):** không dừng phiên. Chạy tiếp với Playback, đặt `micIssue`, thử mở
+  lại micro mỗi 2 giây; mở được thì xóa `micIssue`. Chế độ `mic`: áp `FailurePolicy` như nguồn đơn hiện nay.
+- **Log số liệu** mỗi 60 giây (như `STATS_EVERY`): thêm số khung của Mic, số lần phát riêng phần dư, tỉ lệ thời gian cổng
+  đang hạ.
+
+### 5.7. Không đổi
+
+- Pipeline (VAD, ghép câu, nhận dạng, dịch, phụ đề, đếm phút).
+- Chỉ báo "không có âm thanh" vẫn theo ngưỡng RMS hiện có (`SilenceMonitor`). Ở chế độ có micro, tiếng ồn nền có thể làm
+  chỉ báo này ít hiện hơn. Như vậy là đúng: micro vẫn đang nhận tiếng.
+- `ClockFiller`, `GapFiller`, bước "Nghe thử" lần đầu (luôn dùng âm thanh máy).
+
+## 6. Spike
+
+Làm trước khi viết chế độ `both`. Kết quả lưu ở `bench/2026-10-24-nguon-micro/` (README, `results/*.md`, số liệu JSON).
+Bản thu WAV chứa giọng người thật **không commit**. Chỉ commit bản thu dựng từ clip FLEURS.
+
+### 6.1. S-M1: công cụ thu
+
+- Thêm `--mic [<id>]` vào `crates/audio-capture/src/bin/capture.rs`. Công cụ ghi hai file WAV 16 kHz mono chưa trộn
+  (`*-playback.wav`, `*-mic.wav`) cùng mốc thời gian, và ghi số liệu lệch đồng hồ.
+- Thêm `--play-room <danh sách clip>` (macOS): công cụ tự phát các clip "người trong phòng" ra loa. Tap đã loại trừ chính
+  tiến trình công cụ nên tiếng này chỉ vào micro. Clip "người online" do một app khác phát (ví dụ `afplay`), nên tap thu
+  được.
+- Clip lấy từ FLEURS (có bản chép chuẩn). Công cụ ghi lịch phát (clip, nguồn, giờ bắt đầu, giờ kết thúc) ra JSON, để
+  chấm riêng từng nguồn.
+
+### 6.2. S-M2: các cảnh thu
+
+Máy M4 Pro. Mỗi cảnh khoảng 3–5 phút, các tiếng en, zh, ja, ko, vi.
+
+| # | Cảnh | Để đo |
+|---|---|---|
+| 1 | Loa laptop, hai bên nói lần lượt | Tiếng vọng hại giọng online tới đâu; nhường lời có giữ đủ câu trong phòng không |
+| 2 | Loa laptop, khoảng 30% thời gian nói chồng | Nhường lời mất bao nhiêu câu so với AEC3 |
+| 3 | Tai nghe có dây | Đối chứng không có tiếng vọng |
+| 4 | Chỉ micro: điện thoại phát ở 1 m và 3 m; micro máy, micro AirPods | Mốc WER/CER của micro (A4-mic) |
+| 5 | Một buổi thật: người đọc trong phòng, một cuộc Zoom hay Meet qua loa | Kiểm lại trong điều kiện thật (chủ dự án ngồi máy) |
+| 6 | Phòng không ai nói 10 phút: quạt hay điều hòa, gõ phím, tiếng bước chân | Đếm phụ đề ảo do tiếng ồn nền |
+
+Trên máy Windows i5 của chủ dự án: cảnh 1, 4, 6. Tôi soạn sẵn lệnh, chủ dự án chạy. Trên Windows, loopback thu cả tiếng
+của chính công cụ, nên clip "trong phòng" phải phát ra một thiết bị phát khác, hoặc từ điện thoại.
+
+### 6.3. S-M3: so sánh offline, `latency-bench mix-eval`
+
+- Đầu vào: hai file WAV và lịch phát.
+- Dựng luồng trộn theo ba cách:
+  - **A:** trộn thẳng.
+  - **B:** nhường lời. Dò lưới ngưỡng {−55, −45, −35} dBFS, mức hạ {−12, −20, −30 dB, tắt hẳn}, thời gian giữ {150,
+    300, 500, 800} ms.
+  - **C:** AEC3 của `sonora` trên micro, rồi trộn.
+- Chạy `pipeline::Engine` thật (như lệnh `session`). Chấm WER/CER riêng cho câu online và câu trong phòng theo lịch phát.
+  Đo thêm độ trễ A2 và CPU.
+- **Mặc định chốt là B,** với bộ tham số tốt nhất trên cảnh 1 và 2 cộng lại. Nâng lên C chỉ khi đạt đủ bốn điều kiện:
+  - Ở cảnh 2, WER/CER câu trong phòng của C tốt hơn B ít nhất 20% (tương đối).
+  - Ở các cảnh còn lại, C không kém B quá 2% (tương đối).
+  - AEC3 tốn không quá 5% một nhân CPU trên máy i5.
+  - Chạy liền 30 phút không mất hội tụ (WER nửa sau không tệ hơn nửa đầu quá 5%).
+  Nâng lên C thì phải thêm `sonora` theo quy tắc §6.12: bản ổn định mới nhất, kiểm MSRV và xung đột.
+- **Mức đạt của B** (cũng là A-trộn ở mục 11):
+  - Ở cảnh 1, WER/CER câu online không tệ hơn cảnh 3 quá 10% (tương đối).
+  - Câu trong phòng giữ được (không bị bỏ hay cắt cụt) ít nhất 95% so với cảnh 4 ở 1 m.
+- **Độ nhạy micro:** nếu cảnh 4 ở 3 m bỏ sót trên 10% câu so với 1 m, cân nhắc AGC (mục 2) bằng một quyết định riêng.
+- **Phụ đề ảo** (cảnh 6): không quá 1 câu mỗi 5 phút. Vượt mức này thì xem lại luật lọc (`pipeline::filter`) cho nguồn
+  micro trước khi phát hành.
+- Nếu không bộ tham số nào của B đạt mức trên, dừng lại và báo chủ dự án trước khi làm tiếp chế độ `both`.
+
+### 6.4. S-M4: kiểm hành vi (làm đầu tiên)
+
+- **macOS, bản ký ad-hoc có hardened runtime và entitlement hiện có:**
+  - Có hiện hộp thoại xin quyền micro không?
+  - Bị từ chối thì Core Audio trả lỗi hay trả số 0?
+  - Ký lại (giả lập cập nhật) thì có bị hỏi lại không?
+  - `objc2-av-foundation` có cùng dòng `objc2` 0.6 / `objc2-foundation` 0.3 không? Không cùng thì gọi `AVCaptureDevice`
+    qua `msg_send!`.
+- **Windows:**
+  - Tắt công tắc quyền micro cho app desktop thì WASAPI trả mã gì (`Activate`, `Initialize`), hay trả số 0?
+  - Khóa `HKCU\…\CapabilityAccessManager\ConsentStore\microphone` (và `NonPackaged`) có phản ánh đúng công tắc không?
+- **Dùng micro chung với app họp:** Zoom, Teams, Meet (Chrome) đang dùng micro thì app vẫn đọc được. Phía người nghe trong
+  cuộc họp không bị ảnh hưởng.
+- **AirPods:** mở micro làm tai nghe chuyển chế độ ra sao, tần số mẫu thực tế, `MonoResampler` xử lý đúng.
+- **Lệch đồng hồ micro và Playback trong 30 phút:** số lần `Mixer2` phát riêng phần dư, và lượng phát riêng. Đây là căn
+  cứ cho phương án dự phòng ở mục 5.1.
+- **macOS 14.x:** không có máy để thử. Theo dõi báo cáo lỗi sau phát hành, như các bản trước.
+
+## 7. Lỗi và chỉ báo
+
+Mã lỗi mới trong `src-tauri/src/errors.rs`, chuỗi đủ năm ngôn ngữ:
+
+| Tình huống | Chế độ `mic` | Chế độ `both` |
+|---|---|---|
+| Thiếu quyền micro (`micPermission`) | Không bắt đầu phiên; nút mở trang cấp quyền | Chạy với âm thanh máy; `micIssue = "permission"`, ghi chú kèm nút |
+| Không có micro, micro đã chọn không còn, micro bị rút, thiết bị bị giữ độc quyền (`micUnavailable`) | `FailurePolicy` như nguồn đơn; báo lỗi nếu không mở lại được | Chạy với âm thanh máy; `micIssue = "unavailable"`; thử lại mỗi 2 giây |
+| Micro trả số 0 tuyệt đối 3 giây từ đầu phiên (mục 5.6) | `micIssue = "suspected"`, phiên chạy tiếp; ghi chú "Micro không có tín hiệu: kiểm quyền micro hoặc phím tắt tiếng của micro", kèm nút mở trang cấp quyền | Như cột bên trái |
+
+Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waitingForApp`. Lỗi của nguồn Playback giữ nguyên như hiện nay.
+
+## 8. Quyền riêng tư và pháp lý
+
+- **Chính sách quyền riêng tư 1.7 → 1.8** (vi, en):
+  - Bảng dữ liệu thêm dòng "Âm thanh từ micro (khi bạn chọn nguồn có micro)": chỉ nằm trong RAM trong lúc dịch, không
+    ghi xuống đĩa, không gửi qua mạng.
+  - Tóm tắt đổi "Âm thanh cuộc họp" thành "Âm thanh (âm thanh máy và, nếu bạn chọn, micro)".
+  - Nói rõ app vẫn thu micro dù người dùng đã tắt mic trong app họp.
+- **EULA 1.4 → 1.5** (vi, en): mục về trách nhiệm (hiện là "Ứng dụng thu âm thanh đang phát trên máy bạn…") thành "Ứng
+  dụng thu âm thanh đang phát trên máy bạn và, khi bạn chọn, âm thanh từ micro, có thể gồm giọng nói của người khác, kể
+  cả người ở gần bạn." Phần trách nhiệm xin phép giữ nguyên.
+- Ngày hiệu lực là ngày phát hành bản app có tính năng này. Đổi phiên bản thì người dùng đồng ý lại theo luồng hiện có
+  (spec 2026-10-06 legal-in-app).
+- A7: không thêm kết nối mạng nào. Phải kiểm lại bằng proxy với chế độ `both`.
+
+## 9. Website
+
+- Thêm phần "Dịch cả giọng trong phòng" ở trang chủ và trang tính năng. Sửa các câu "dịch mọi âm thanh máy đang phát" ở
+  những chỗ liên quan (FAQ, so sánh offline/cloud, hướng dẫn bắt đầu nhanh). Thêm mục quyền micro vào hướng dẫn quyền âm
+  thanh và hướng dẫn xử lý sự cố. Đủ năm ngôn ngữ. Trang pháp lý chỉ vi/en.
+- Chỉ nói điều có thật:
+  - Ghi giới hạn khi người trong phòng nói chen, và khuyên dùng tai nghe.
+  - Số đo nào cũng kèm điều kiện đo.
+  - Không nêu tên thư viện, không nói "AEC3" hay "WebRTC" (`website/README.md`, có test chặn).
+- Chỉ deploy sau khi bản app có tính năng này đã phát hành.
+
+## 10. Kiểm thử
+
+- **`audio-capture`:**
+  - `MicGate`: đóng ngay khi Playback vượt ngưỡng, giữ đúng thời gian, mở dần, không đóng vì tiếng dưới ngưỡng.
+  - `DuckingMixer`: ghép cặp, phát riêng phần dư, áp hệ số đúng mẫu, kẹp biên.
+  - `Preprocessor`: một, hai, ba đầu vào có vai; từ chối đầu vào rỗng.
+- **`capture.rs`:**
+  - `Watch` chỉ đếm khung Playback: micro luôn có khung mà tap đứng yên vẫn bị coi là chết.
+  - `ZeroWatch` cho Mic.
+  - Luật mở lại khi micro mặc định đổi.
+  - Micro lỗi ở chế độ `both` không dừng phiên và đặt `micIssue`.
+- **Settings:** settings cũ không có `captureMode` thì đọc ra `playback`; `micDevice` rỗng hay quá dài bị từ chối.
+- **Giao diện (Vitest, ảnh qua `scripts/ui-preview`):** bộ chọn ba chế độ hiện và ẩn đúng hai bộ chọn con; nhãn nguồn ở
+  màn hình chính; ghi chú `micIssue` trên thanh phụ đề; `check-i18n` năm ngôn ngữ.
+- **Tích hợp:** `latency-bench session` trên bản thu cảnh 1 của spike (đã trộn theo B): A2 p50 không tăng quá 100 ms so
+  với cùng bản thu chỉ lấy Playback.
+- **Bộ test hiện có** (Rust, JS, website, check-i18n) phải xanh. Website thêm câu chữ mới thì test chặn công nghệ lõi
+  phải qua.
+
+## 11. Nghiệm thu (thêm vào §3.3 của spec chính)
+
+| # | Tiêu chí |
+|---|---|
+| A1-mic | **Tương thích:** chế độ `mic` với micro máy, micro USB (nếu có), micro AirPods. Chế độ `both` với Zoom, Meet (Chrome), Teams, nghe qua loa và qua tai nghe. Trên cả hai hệ điều hành. |
+| A4-mic | **Nhận dạng qua micro:** mốc WER/CER lấy từ cảnh 4 của spike (1 m và 3 m). Chống thụt lùi 10% (tương đối), như A4. |
+| A-trộn | **Tiếng vọng:** đạt mức của B (mục 6.3) với tham số đã chốt. |
+| A-ảo | **Phụ đề ảo:** cảnh 6 không quá 1 câu mỗi 5 phút. |
+| A2 | Không tăng quá 100 ms (p50) ở chế độ `both` so với chế độ `playback` trên cùng bản thu. |
+| A7 | Kiểm lại bằng proxy ở chế độ `both`: không có kết nối mới. |
+
+## 12. Sửa spec chính
+
+- **D1:** thêm "và, nếu người dùng chọn, tiếng từ micro (họp tại chỗ, họp lai)".
+- **D9:** ghi rõ micro cũng dịch một chiều, sang ngôn ngữ của người dùng.
+- **§3.1:** thêm F12 "Nguồn micro" (ba chế độ, mọi gói), tham chiếu spec này.
+- **§3.2:** bỏ dòng "Thu âm từ micro". Giữ dòng micro ảo.
+- **§3.3:** thêm các tiêu chí ở mục 11.
+- **§4.3:** màn hình chính (nguồn âm thanh) và nhóm Cài đặt "Âm thanh".
+- **§6.1:** mục mới "Micro". **§6.2:** trộn có nhường lời.
+- **§9:** ba tình huống ở mục 7. **§10.1:** âm thanh micro chỉ nằm trong RAM.
+
+## 13. Kế hoạch và thứ tự
+
+1. **Kế hoạch 01, spike:** S-M4 trước, rồi S-M1 → S-M3. Kết thúc bằng bảng kết quả và tham số chốt. Chủ dự án duyệt
+   trước khi sang kế hoạch 03.
+2. **Kế hoạch 02, chế độ `mic`:** nguồn micro hai nền tảng, settings, IPC, quyền, giao diện, i18n. Chỉ phụ thuộc S-M4,
+   làm song song được với S-M2 và S-M3.
+3. **Kế hoạch 03, chế độ `both`:** `Preprocessor` có vai, `DuckingMixer`, bộ canh tách theo nguồn, lỗi một phần. Phụ
+   thuộc kết quả S-M3.
+4. **Kế hoạch 04, phát hành:** pháp lý 1.8/1.5, website, sửa spec chính, nghiệm thu mục 11. Phát hành theo
+   `docs/release/phat-hanh.md`.
+
+## 14. Rủi ro
+
+| Rủi ro | Cách giảm |
+|---|---|
+| macOS hỏi lại quyền micro sau mỗi bản cập nhật (ký ad-hoc) | Chỉ hỏi người dùng chọn chế độ có micro (mục 3.4); hết khi có Developer ID |
+| Tham số nhường lời không hợp mọi phòng (loa Bluetooth trễ lớn, phòng vang) | Spike đo độ trễ vọng thật; ghi chú khuyên đeo tai nghe; chỗ nối AEC3 để nâng cấp |
+| Tiếng ồn nền của micro sinh phụ đề ảo | Cảnh 6 và tiêu chí A-ảo; xem lại luật lọc nếu vượt |
+| Giọng ở xa quá nhỏ, VAD bỏ sót | Cảnh 4 ở 3 m; AGC là quyết định riêng nếu cần |
+| Micro bị app họp giữ độc quyền hay bị chặn quyền trên Windows | `micUnavailable`/`micPermission` với hướng dẫn; chế độ `both` vẫn chạy với âm thanh máy |
+| Người dùng tưởng tắt mic trong Zoom là app ngừng thu | Chính sách quyền riêng tư 1.8, hướng dẫn trên website; chỉ báo micro của hệ điều hành |
+
+## 15. Quy tắc làm việc
+
+- Làm trên nhánh `nguon-micro` (worktree riêng). Mọi lệnh gắn `cd <đường dẫn tuyệt đối của worktree> &&`.
+- **Không merge, push, deploy hay đẩy tag** khi chủ dự án chưa cho phép.
+- Spike S-M1 và S-M2 phát tiếng ra loa và mở micro trên máy của chủ dự án: hỏi trước mỗi lần chạy.
+- Thư viện mới (`objc2-av-foundation`, `sonora` nếu chốt C) theo §6.12: bản ổn định mới nhất, kiểm tương thích, build
+  lại toàn bộ và chạy test.
+
+## Tham khảo
+
+- Microsoft, `IAcousticEchoCancellationControl::SetEchoCancellationRenderEndpoint` (tối thiểu build 22621):
+  https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nf-audioclient-iacousticechocancellationcontrol-setechocancellationrenderendpoint
+- Đo Voice Processing của macOS làm nhỏ tiếng app khác khoảng 8 dB, rồi bỏ để tự khử vọng trong app:
+  https://github.com/firemonster612/speecher/pull/274, https://github.com/firemonster612/speecher/issues/236
+- Granola: nhãn "Me"/"Them" lấy từ micro và âm thanh hệ thống:
+  https://docs.granola.ai/help-center/taking-notes/transcription
+- Thu cả hai phía, tiếng vọng và câu trùng: https://docs.openwhispr.com/help/meetings/capture-both-sides
+- `sonora` (bản Rust thuần của WebRTC audio processing, có AEC3, BSD-3-Clause, 0.2.0 ngày 2026-07-29):
+  https://crates.io/crates/sonora
