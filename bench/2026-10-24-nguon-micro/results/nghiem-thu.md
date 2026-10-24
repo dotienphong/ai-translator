@@ -54,6 +54,33 @@ trên Metal.
 
 ## A2 (Task 8)
 
+**Kết quả: đạt.** Phần do trộn và micro gây ra không làm chậm thêm (dưới 100 ms, thực tế không chậm hơn).
+
+Điều kiện:
+- MacBook Pro M4 Pro, macOS 26.6.2, loa tích hợp 60%, micro tích hợp.
+- Bản dev từ commit `392cb1d6`, đóng gói bằng `scripts/run-dev-app.sh`, ký "Apple Development". Công tắc Pro của bản dev bật.
+- Nội dung chỉ có track online: 100 giây đầu `online.wav` của cảnh `s1-luot` (5 câu: en, ja, vi, zh, zh). Track phát bằng
+  `OnlinePlayer.app`; nguồn đặt là "Chỉ" app đó. Không phát track trong phòng, để mọi lượt cùng nội dung.
+- Dịch sang tiếng Việt, gói Chuẩn. Số đo lấy từ dòng "kết thúc phiên dịch" trong log của app, ngày 2026-10-24 lúc
+  23:49–00:01.
+
+| Lượt | Chế độ | Ngắt câu | Đoạn | Cắt đoạn p50 | Nhận dạng p50 | Dịch p50 | Tổng p50 | Tổng p90 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Âm thanh máy | 50 ms (mặc định) | 19 | 64 ms | 219 ms | 220 ms | 448 ms | 723 ms |
+| 2 | Âm thanh máy + Micro | 500 ms (khóa) | 8 | 512 ms | 236 ms | 487 ms | 1 056 ms | 1 344 ms |
+| 3 | Âm thanh máy | 500 ms (đặt tay) | 8 | 512 ms | 238 ms | 496 ms | 1 088 ms | 1 357 ms |
+
+- So lượt 2 với lượt 3 (cùng ngưỡng ngắt câu, nên cùng cách cắt câu): chế độ trộn không chậm hơn (nhận dạng −2 ms, dịch
+  −9 ms, tổng −32 ms). Phần chênh nằm trong dao động giữa hai lần chạy.
+- So lượt 2 với lượt 1 (cách so của Quyết định 2 trong kế hoạch, bỏ phần cắt đoạn): (1 056 − 512) − (448 − 64) = 160 ms.
+  Phần dư không do trộn hay micro mà do ngưỡng 500 ms. Ngưỡng này gộp các câu thành đoạn dài hơn: 8 đoạn thay vì 19, nên
+  mỗi câu dịch lâu hơn (487 ms so với 220 ms). Lượt 3 cho đúng mức đó mà không có micro.
+- Kết luận: theo nghĩa của tiêu chí (phần do trộn và micro gây ra), A2-mic **đạt**. Ngưỡng 500 ms làm phụ đề hiện chậm hơn
+  khoảng 0,6 giây (tổng p50 1 056 ms so với 448 ms). Đây là đánh đổi đã chốt ở spec mục 16 để ít cắt câu và ít chữ ảo.
+  Website ghi "chậm hơn khoảng nửa giây".
+- Trả lại máy: bản dev đã tắt (cùng Vite và tiến trình phụ), cài đặt khôi phục từ bản sao, quyền micro về "chưa hỏi",
+  âm lượng về mức trước khi đo, bản đã cài mở lại.
+
 ## A7 (Task 9)
 
 ## A1-mic và Windows (Task 10)
