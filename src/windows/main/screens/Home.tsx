@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
 import { errorKey, type MessageKey } from "../../../i18n";
-import { micLabel, sourceLabel } from "../../../lib/audioSource";
+import { bothLabel, micLabel, sourceLabel } from "../../../lib/audioSource";
 import type { SessionStatus } from "../../../lib/ipc";
 import { levelToMeter } from "../../../store/app";
 import { useApp, useT } from "../appStore";
@@ -57,14 +57,14 @@ export function Home() {
   // lần khi chưa có, để màn hình chính không hiện bundle ID hay id thiết bị.
   const needsNames =
     settings !== null &&
-    settings.captureMode === "playback" &&
+    settings.captureMode !== "mic" &&
     settings.audioSource.kind !== "system" &&
     audioSources === null;
   useEffect(() => {
     if (needsNames) void loadAudioSourceNames();
   }, [needsNames, loadAudioSourceNames]);
   // Chế độ micro: tên micro nằm trong danh sách micro; đọc một lần khi chưa có.
-  const needsMicNames = settings?.captureMode === "mic" && inputDevices === null;
+  const needsMicNames = settings !== null && settings.captureMode !== "playback" && inputDevices === null;
   useEffect(() => {
     if (needsMicNames) void loadInputDevices();
   }, [needsMicNames, loadInputDevices]);
@@ -84,7 +84,9 @@ export function Home() {
   const source =
     settings.captureMode === "mic"
       ? micLabel(settings.micDevice, inputDevices, t)
-      : sourceLabel(settings.audioSource, info.platform, audioSources, t);
+      : settings.captureMode === "both"
+        ? bothLabel(settings.audioSource, settings.micDevice, inputDevices, info.platform, audioSources, t)
+        : sourceLabel(settings.audioSource, info.platform, audioSources, t);
   const buttonClass = session === "running" ? "lg danger" : session === "starting" ? "lg" : "lg primary";
   return (
     <>
@@ -153,6 +155,22 @@ export function Home() {
             <Icon name="alert" />
             <span>{t("home.micSilent")}</span>
             <button onClick={() => void openMicSettings()}>{t("common.openMicSettings")}</button>
+          </div>
+        )}
+        {session === "running" && status.micIssue === "permission" && (
+          <div className="hero-alert" role="alert">
+            <Icon name="alert" />
+            <span>
+              {t("home.micIssue.permission")}
+              {info.platform === "macos" && ` ${t("settings.audio.micPermission.reopen")}`}
+            </span>
+            <button onClick={() => void openMicSettings()}>{t("common.openMicSettings")}</button>
+          </div>
+        )}
+        {session === "running" && status.micIssue === "unavailable" && (
+          <div className="hero-alert" role="alert">
+            <Icon name="alert" />
+            <span>{t("home.micIssue.unavailable")}</span>
           </div>
         )}
         {(notes.length > 0 || (session === "running" && status.quotaWarning)) && (

@@ -71,3 +71,18 @@ export function micLabel(
   const name = found?.name ?? micDevice ?? t("settings.audio.mic.default");
   return t("home.audioSource.mic", { name });
 }
+
+// Nhãn của chế độ trộn (spec 2026-10-24-nguon-micro §3.3): "<nguồn âm thanh máy> + Micro: <tên>".
+export function bothLabel(
+  source: AudioSource,
+  micDevice: string | null,
+  devices: readonly InputDevice[] | null,
+  platform: AppInfo["platform"],
+  options: readonly AudioSourceOption[] | null,
+  t: (key: MessageKey, params?: Record<string, string>) => string,
+): string {
+  return t("home.audioSource.both", {
+    source: sourceLabel(source, platform, options, t),
+    mic: micLabel(micDevice, devices, t),
+  });
+}

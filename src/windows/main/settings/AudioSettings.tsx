@@ -27,24 +27,26 @@ export function AudioSettings() {
   const openMicSettings = useApp((s) => s.openMicSettings);
   const update = useApp((s) => s.updateSettings);
   const [pause, setPause] = useState<number | null>(null);
-  const mic = settings?.captureMode === "mic";
+  const mode = settings?.captureMode ?? "playback";
+  const usesMic = mode !== "playback";
+  const usesPlayback = mode !== "mic";
   useEffect(() => {
     void load();
   }, [load]);
   useEffect(() => {
-    if (!mic) return;
+    if (!usesMic) return;
     void loadDevices();
     void loadPermission();
-  }, [mic, loadDevices, loadPermission]);
+  }, [usesMic, loadDevices, loadPermission]);
   if (!settings || !info) return null;
-  const pauseMs = mic ? MIC_PAUSE_MS : (pause ?? settings.vadEndSilenceMs);
+  const pauseMs = usesMic ? MIC_PAUSE_MS : (pause ?? settings.vadEndSilenceMs);
   const commitPause = () => {
     if (pause !== null && pause !== settings.vadEndSilenceMs) void update({ vadEndSilenceMs: pause });
     setPause(null);
   };
   // Chọn chế độ có micro: hỏi quyền ngay nếu chưa hỏi (spec §3.4), không đợi tới lúc bắt đầu phiên.
   const chooseMode = async (captureMode: CaptureMode) => {
-    if (!(await update({ captureMode })) || captureMode !== "mic") return;
+    if (!(await update({ captureMode })) || captureMode === "playback") return;
     await loadPermission();
     if (appStore.getState().micPermission === "undetermined") await requestPermission();
   };
@@ -59,9 +61,10 @@ export function AudioSettings() {
         >
           <option value="playback">{t("settings.audio.mode.playback")}</option>
           <option value="mic">{t("settings.audio.mode.mic")}</option>
+          <option value="both">{t("settings.audio.mode.both")}</option>
         </select>
       </Field>
-      {!mic && (
+      {usesPlayback && (
         <Field
           label={t("settings.audio.source")}
           htmlFor="audio-source"
@@ -85,7 +88,7 @@ export function AudioSettings() {
           </button>
         </Field>
       )}
-      {mic && (
+      {usesMic && (
         <>
           <Field label={t("settings.audio.mic")} htmlFor="mic-device" hint={t("settings.audio.mic.hint")} wide>
             <select
@@ -108,6 +111,11 @@ export function AudioSettings() {
               {t("settings.audio.refresh")}
             </button>
           </Field>
+          {mode === "both" && (
+            <p className="field-note" role="note">
+              {t("settings.audio.both.hint")}
+            </p>
+          )}
           {permission === "denied" && (
             <p className="note error" role="status">
               <Icon name="alert" size={16} />
@@ -143,7 +151,7 @@ export function AudioSettings() {
       <Field
         label={t("settings.audio.pause")}
         htmlFor="vad-end-silence"
-        hint={t(mic ? "settings.audio.pause.micNote" : "settings.audio.pause.hint")}
+        hint={t(usesMic ? "settings.audio.pause.micNote" : "settings.audio.pause.hint")}
         wide
       >
         <span className="range">
@@ -154,7 +162,7 @@ export function AudioSettings() {
             max={800}
             step={50}
             value={pauseMs}
-            disabled={mic}
+            disabled={usesMic}
             onChange={(e) => setPause(Number(e.target.value))}
             onPointerUp={commitPause}
             onKeyUp={commitPause}

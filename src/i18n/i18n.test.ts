@@ -45,6 +45,8 @@ describe("từ điển giao diện", () => {
         "plan.six_months",
         "plan.yearly",
         "license.standing.free",
+        // Mẫu ghép hai nhãn đã dịch ("{source} + {mic}"): không có chữ nào để dịch.
+        "home.audioSource.both",
       ].sort(),
     );
   });

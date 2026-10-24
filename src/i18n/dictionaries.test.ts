@@ -36,6 +36,8 @@ const SAME_AS_EN: MessageKey[] = [
   "lang.ja",
   "lang.ko",
   "lang.vi",
+  // Mẫu ghép hai nhãn đã dịch ("{source} + {mic}", chế độ âm thanh máy + micro): không có chữ nào để dịch.
+  "home.audioSource.both",
 ];
 
 // Câu mẫu xem trước phụ đề: câu gốc là English, giống hệt vi.ts (câu dịch mới là ngôn ngữ giao diện).

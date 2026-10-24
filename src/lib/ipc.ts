@@ -13,13 +13,13 @@ export const LANGS: readonly Lang[] = ["en", "zh", "ja", "ko", "vi"];
 
 export type AudioSource = { kind: "system" } | { kind: "device"; id: string } | { kind: "app"; bundleId: string };
 // Thu gì (`settings::CaptureMode`, spec 2026-10-24-nguon-micro §3.1).
-export type CaptureMode = "playback" | "mic";
+export type CaptureMode = "playback" | "mic" | "both";
 // Một micro ở Cài đặt › Âm thanh (`actions::InputDeviceOption`).
 export type InputDevice = { id: string; name: string; isDefault: boolean };
 // Quyền micro (`get_mic_permission`); Windows không có "undetermined".
 export type MicPermission = "granted" | "denied" | "undetermined";
 // Vấn đề của micro trong phiên đang chạy (`state::MicIssue`).
-export type MicIssue = "suspected";
+export type MicIssue = "suspected" | "permission" | "unavailable";
 export type Theme = "system" | "light" | "dark";
 export type UpdateChannel = "stable" | "beta";
 // Lần kiểm tra cập nhật do người dùng bấm (`state::UpdateCheck`): bản mới tải xong thì báo qua `updateReady`;

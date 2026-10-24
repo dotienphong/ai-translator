@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { translate } from "../i18n";
-import { micLabel, sourceChoices, sourceFromKey, sourceKey, sourceLabel } from "./audioSource";
+import { bothLabel, micLabel, sourceChoices, sourceFromKey, sourceKey, sourceLabel } from "./audioSource";
 import type { AudioSource, AudioSourceOption, InputDevice } from "./ipc";
 
 const t = (key: Parameters<typeof translate>[1], params?: Record<string, string>) => translate("vi", key, params);
@@ -54,5 +54,11 @@ describe("nhãn micro", () => {
   it("micro đã chọn: tên của nó, không còn trong danh sách thì id", () => {
     expect(micLabel("b", devices, t)).toBe("Micro: Jabra");
     expect(micLabel("gone", devices, t)).toBe("Micro: gone");
+  });
+
+  it("chế độ trộn: nguồn âm thanh máy + micro", () => {
+    expect(bothLabel({ kind: "system" }, null, devices, "macos", null, t)).toBe(
+      "Toàn hệ thống, trừ app này + Micro: MacBook Pro Microphone",
+    );
   });
 });
