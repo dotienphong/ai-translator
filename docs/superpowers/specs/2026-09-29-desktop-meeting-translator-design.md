@@ -46,7 +46,7 @@
 
 | # | Hạng mục | Quyết định |
 |---|---|---|
-| D1 | Sản phẩm | App desktop hiện **phụ đề dịch trực tiếp cho mọi âm thanh máy tính đang phát**: Teams, Zoom, Meet, Zalo PC, webinar, video. Không cần bot, plugin hay tài khoản trên các nền tảng họp. |
+| D1 | Sản phẩm | App desktop hiện **phụ đề dịch trực tiếp cho mọi âm thanh máy tính đang phát**: Teams, Zoom, Meet, Zalo PC, webinar, video; và, nếu người dùng chọn, cho tiếng từ micro (họp tại chỗ, họp lai; F12). Không cần bot, plugin hay tài khoản trên các nền tảng họp. |
 | D2 | Quan hệ với AI Live Translator | Sản phẩm hoàn toàn riêng |
 | D3 | Nền tảng MVP | macOS 14.2+ trên Apple Silicon; Windows 10/11 64-bit (x64). Windows 10 đã hết hỗ trợ chính thức từ 14/10/2025 (gói ESU cho người dùng cá nhân kết thúc 13/10/2026), nhưng MVP vẫn hỗ trợ. |
 | D4 | Công nghệ | **Tauri 2**: lõi Rust, giao diện React 19, TypeScript, Vite, Zustand. Engine là whisper.cpp và llama.cpp, mỗi engine chạy trong một tiến trình phụ riêng (§5). |
@@ -54,7 +54,7 @@
 | D6 | Model nhận dạng giọng nói | Whisper (MIT) chạy qua whisper.cpp |
 | D7 | Nơi xử lý | 100% trên máy, âm thanh không rời khỏi máy |
 | D8 | Ngôn ngữ giao diện | Tiếng Việt, English, 日本語, 中文 (giản thể), 한국어; đổi được trong Cài đặt (spec 2026-10-12-ui-ja-zh-ko-design.md) |
-| D9 | Chiều dịch | MVP chỉ dịch một chiều: âm thanh máy đang phát → phụ đề ngôn ngữ của người dùng. Nếu cả hai bên cùng cài app thì mỗi bên đều thấy phụ đề của phía kia. |
+| D9 | Chiều dịch | MVP chỉ dịch một chiều: âm thanh máy đang phát (và micro, nếu người dùng chọn; F12) → phụ đề ngôn ngữ của người dùng. Micro cũng chỉ dịch sang ngôn ngữ của người dùng; app không phát gì vào cuộc họp. Nếu cả hai bên cùng cài app thì mỗi bên đều thấy phụ đề của phía kia. |
 | D10 | Phân phối | Tải từ website của sản phẩm: Windows dùng bộ cài **`.exe`** (NSIS, đã ký số), macOS dùng **`.dmg`** (đã ký và notarize). Chưa lên Microsoft Store hay Mac App Store. Microsoft Store có thể xem xét sau; các điều kiện của Store đã được ghi nhận ngày 2026-09-29. |
 | D11 | Thanh toán | **MVP dùng PayOS**: khách chuyển khoản ngân hàng bằng mã VietQR, trả bằng VND. Khi bán ra nước ngoài thì thêm một cổng thanh toán quốc tế (§13). |
 | D12 | Độ trễ mục tiêu | Trên máy khuyến nghị, **p50 ≤ 2,0 giây** (xem A2 và §8) |
@@ -94,6 +94,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F9 | Tự cập nhật app |
 | F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4), `Ctrl+Alt+G` / `⌃⌥G` để mở ô soạn Gõ dịch (F11; chỉ đăng ký khi bật Gõ dịch). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
 | F11 | **Gõ dịch** (spec `2026-10-17-go-dich-design.md`, §4.6): ở ô nhập của app bất kỳ, bấm phím tắt (F10) để mở ô soạn nổi, gõ tin nhắn bằng tiếng của mình; bản dịch hiện dần. Enter dán bản dịch vào ô nhập cũ (macOS cần quyền Trợ năng, thiếu thì chỉ chép vào clipboard), Enter lần nữa (của app chat) thì gửi. Ngôn ngữ đích mặc định là tiếng người bên kia, tính từ cài đặt phụ đề. Dùng được ở mọi gói còn hiệu lực, không trừ phút; dịch trên máy, không gửi chữ đi đâu. |
+| F12 | **Nguồn micro** (spec `2026-10-24-nguon-micro-design.md`): Cài đặt › Âm thanh › Thu từ chọn Âm thanh máy (mặc định), Micro (người nói trong phòng), hay Âm thanh máy + Micro (họp lai; micro được hạ khi âm thanh máy có tiếng, để không dịch hai lần). Chọn micro, công tắc "Lọc tiếng ồn micro" (bật sẵn), quyền micro hỏi ngay khi chọn chế độ có micro. Mọi gói |
 
 ### 3.2 Ngoài phạm vi MVP
 
@@ -102,7 +103,6 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 - Tóm tắt hoặc biên bản cuộc họp
 - Phân biệt ai đang nói
 - Ghi âm cuộc họp
-- Thu âm từ micro
 - Linux, Mac chip Intel, Windows ARM64
 - Phát hành qua các kho ứng dụng
 - App mobile
@@ -119,6 +119,12 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A5 | **Ổn định:** một phiên dịch liên tục 2 giờ không crash. RAM sau giờ đầu không tăng quá 10%. |
 | A6 | **Cài đặt:** bộ cài ký số hợp lệ. Bản macOS đã notarize, mở không bị Gatekeeper chặn. **Gỡ app sạch, người dùng chọn giữ hay xóa model:** trên Windows, bộ gỡ cài đặt có ô "xóa dữ liệu app", xóa được cả model (§6.7). Trên macOS, gỡ app chỉ là kéo vào Thùng rác, không có bước nào để hỏi; vì vậy trong app có nút "Xóa model và dữ liệu" (§4.3), và trang hỗ trợ hướng dẫn bấm nút này trước khi gỡ. |
 | A7 | **Quyền riêng tư:** kiểm tra qua proxy mạng, trong lúc dịch không có request mạng nào, trừ các việc chạy theo lịch: kiểm tra bản quyền (kể cả lần kiểm nhanh lúc bắt đầu phiên, §6.8), đăng ký dùng thử Free khi máy chưa có token dùng thử (§6.8), hỏi giờ của license server khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước (§6.8, §10.2), kiểm tra cập nhật app và manifest model, gửi báo cáo lỗi (§10.1; `POST /v1/diagnostics`, chỉ tới `api.aitranslator.vn`, chỉ khi app không đang dịch: báo cáo xếp hàng trên đĩa và gửi sau khi phiên dừng), và gửi và nhận tin chat hỗ trợ (`/v1/support/*`, chỉ tới `api.aitranslator.vn`, chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi; không request nào chứa âm thanh hay nội dung chép lời; spec 2026-10-22-chat-ho-tro-zalo-design §4, §5). Phải kiểm lại bằng proxy sau khi có tính năng báo cáo lỗi, kể cả lúc có báo cáo đang xếp hàng (spec 2026-10-17-diagnostics-reports-design §7), và sau khi có chat hỗ trợ: chưa dùng chat thì không có kết nối mới nào, dùng chat thì chỉ tới `api.`, đang dịch mà màn hình Hỗ trợ đóng thì không có request chat (spec 2026-10-22-chat-ho-tro-zalo-design §6). Không request nào chứa âm thanh hay nội dung chép lời. |
+| A1-mic | **Tương thích micro** (F12; spec nguồn micro §11): chế độ Micro với micro máy, micro USB (nếu có), micro AirPods; chế độ Âm thanh máy + Micro với Zoom, Meet (Chrome), Teams, nghe qua loa và qua tai nghe; trên cả hai hệ điều hành. |
+| A4-mic | **Nhận dạng qua micro** (spec nguồn micro §16; `latency-bench mix-eval` trên bản thu của spike). Gói Chuẩn: giọng thật tiếng Việt 1 m lỗi 44,7%; điện thoại 1 m lỗi 30,0%, giữ 84%; điện thoại 3 m lỗi 54,9%, giữ 44%; phòng ồn giữ câu ngắn 39,5%, lỗi 69,9%. Gói Nhẹ: 52,0%; 39,3% / 76%; 62,4% / 40%; 42,1% / 73,5%. Chống thụt lùi: mỗi số không xấu hơn quá 10% (tương đối). |
+| A-trộn | **Tiếng vọng** (chế độ Âm thanh máy + Micro, cảnh 1 của spike: nói lần lượt qua loa): lỗi câu online ≤ 9,8% × 1,10, lỗi câu trong phòng ≤ 5,2% × 1,10. |
+| A-ảo | **Chữ ảo** (cảnh 6 của spike: gõ phím, bút, gõ bàn, lật giấy, đặt cốc, kéo ghế, quạt; "Lọc tiếng ồn micro" bật): không quá 1 câu ảo mỗi 10 phút. |
+| A2-mic | Chế độ Âm thanh máy + Micro, cùng nội dung: p50 của phần nhận dạng + dịch không tăng quá 100 ms so với chế độ Âm thanh máy. Không tính phần chờ ngắt câu 500 ms đã chủ ý của chế độ có micro (§6.3). |
+| A7-mic | Kiểm lại A7 bằng proxy ở chế độ Âm thanh máy + Micro: không có kết nối mới. |
 
 **Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §10.2; công cụ đo `latency-bench session` chạy engine thật): trên máy khuyến nghị, chữ tạm p50 ≤ 1,2 s và chữ ổn định p50 ≤ 2,0 s (en, vi, ko) hay ≤ 3,0 s (zh, ja) sau lời nói; chữ dịch đầu tiên tính từ lúc bắt đầu nói p90 ≤ 2,0 s; độ nháy tầng ổn định ≤ 10%. A2 tính như cũ. Đo ngày 2026-10-12 trên M4 Pro: KHÔNG đạt toàn bộ — nhóm Chuẩn đạt hết 6/6 tiêu chí tổng hợp (đầu câu → chữ dịch p90 1415 ms, nháy tầng ổn định 6,3%, A2 p50 802 ms, A2 p90 1141 ms, A2 chữ đầu p50 578 ms, CPU 10,5%) và đạt chữ tạm p50 ở cả 5 tiếng; riêng chữ ổn định p50 chỉ đạt ở 3/5 tiếng (en 1961 ms, vi 1183 ms, zh 2883 ms), còn tiếng Nhật (3675 ms, mục tiêu ≤ 3000 ms) và tiếng Hàn (3212 ms, mục tiêu ≤ 2000 ms) chưa đạt; không session nào tự tắt. Hai tiếng này cũng chưa đạt khi đo ở cổng Task 20 của kế hoạch 02 (ja 3671 ms, ko 3216 ms) dù đã thử cả (n, k) thận trọng lẫn mạnh hơn mặc định — chủ dự án đã chấp nhận số hiện có tại cổng đó (2026-10-12), không quay lại thiết kế hay đo thêm (n, k) trung gian cho hai tiếng này.
 
@@ -195,7 +201,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
   - Trạng thái: Sẵn sàng, Đang dịch hoặc Lỗi.
   - Nút Bắt đầu/Dừng.
   - Ngôn ngữ đích và tập ngôn ngữ nguồn.
-  - Nguồn âm thanh: trên Windows là thiết bị phát; trên macOS là toàn hệ thống hoặc một app cụ thể.
+  - Nguồn âm thanh: trên Windows là thiết bị phát; trên macOS là toàn hệ thống hoặc một app cụ thể. Chế độ Micro ghi "Micro: <tên>", chế độ Âm thanh máy + Micro ghi cả hai (F12). Ghi chú khi micro không có tín hiệu, chưa được phép hay không mở được (§9).
   - Mức âm lượng vào.
   - Hạn mức còn lại: số phút còn lại hôm nay (Free) hoặc trong chu kỳ (Monthly), kèm thời điểm reset. Yearly ghi "Không giới hạn".
   - Ở Free: số ngày dùng thử còn lại, dạng "Dùng thử: còn N ngày · Hôm nay còn X phút" (N = số ngày tới `ends_at`, làm tròn lên). Hết dùng thử thì báo đã hết 10 ngày dùng thử, kèm nút Nâng cấp.
@@ -207,7 +213,7 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
   - **Chung:** ngôn ngữ giao diện, khởi động cùng hệ thống, giao diện sáng/tối, kênh cập nhật (stable hoặc beta).
   - **Phụ đề:** cỡ chữ, màu chữ, màu nền, độ mờ nền, có hiện câu gốc hay không. Màu chọn từ bảng màu có sẵn (chữ: trắng, vàng, xanh lá, xanh dương nhạt, cam; nền: đen, xám đậm, xanh navy, nâu đậm, tím đậm); mặc định chữ trắng trên nền đen, cỡ chữ 20 px, bật hiện câu gốc. Đổi là thấy ngay trên thanh phụ đề, và trên khung xem trước ở đầu nhóm (một câu mẫu vẽ theo đúng cài đặt, đổi ngay cả khi đang kéo thanh trượt; thêm 2026-10-10); công tắc "Dịch trong lúc người nói chưa dừng" (mặc định tắt, có tác dụng từ đoạn kế tiếp), kèm ghi chú "Máy này chưa đủ nhanh, app đang dịch sau mỗi câu." khi máy bị tắt chế độ này (spec 2026-10-10 §6.3).
   - **Gõ dịch** (F11): bật/tắt (tắt thì gỡ phím tắt của nó, phím vẫn giữ); "Dịch sang": Tự động (tiếng người bên kia, ghi rõ đang là ngôn ngữ nào) hay một trong năm ngôn ngữ; chỉ macOS: "Tự dán vào ô đang gõ", kèm trạng thái quyền Trợ năng và nút mở trang Trợ năng (spec 2026-10-17-go-dich §1.4). Phím tắt đổi ở nhóm Phím tắt.
-  - **Âm thanh:** nguồn âm thanh, độ nhạy ngắt câu.
+  - **Âm thanh:** thu từ (Âm thanh máy, Micro, Âm thanh máy + Micro; F12), nguồn âm thanh máy, micro, lọc tiếng ồn micro, quyền micro, độ nhạy ngắt câu (khóa ở 500 ms khi có micro, §6.3).
   - **Model:** gói đang dùng, dung lượng, tải lại hoặc xóa.
   - **Phím tắt.**
   - **Bản quyền:** nhập key; gói đang dùng, trạng thái và ngày hết hạn; hạn mức còn lại của chu kỳ; gia hạn hoặc đổi gói (mở màn hình Nâng cấp); gỡ kích hoạt. Kích hoạt mà key đang giữ ở máy khác thì hiện hộp thoại "Gỡ máy kia và dùng máy này" hoặc "Vẫn kích hoạt trên máy này" (§6.8, "Mỗi key một máy"). Key đang xung đột thì liệt kê hai máy (tên máy, lần dùng gần nhất), kèm nút "Gỡ key khỏi máy này", "Gỡ máy kia", "Thử lại".
@@ -343,11 +349,14 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
 - **Khi thiết bị phát đổi** (cắm tai nghe, kết nối Bluetooth), trên cả hai hệ điều hành:
   - App hỏi định kỳ mỗi 500 ms chữ ký của thiết bị phát mặc định (`audio_capture::default_output_signature`). Chữ ký đổi, hoặc luồng thu chết (`failed()`), thì mở lại nguồn, trong ≤ 2 giây (§9).
   - Không dùng `IMMNotificationClient` trên Windows hay listener của Core Audio trên macOS. Cách hỏi định kỳ cho cùng kết quả, mà không có callback chạy trên luồng của hệ thống (chốt ở kế hoạch Phase 1 · 02a, QĐ16).
+- **Micro** (F12; spec nguồn micro §5.1, §5.2, §16): macOS `MacInputSource` (AUHAL trên thiết bị vào; trạng thái quyền đọc bằng `AVCaptureDevice`, hỏi quyền trước khi `start` vì Core Audio tự hỏi thì `start` chặn suốt lúc hộp thoại mở); Windows `InputSource` (WASAPI capture). Micro mặc định đổi thì mở lại như thiết bị phát. Chế độ Âm thanh máy + Micro chạy hai nguồn song song, canh theo nguồn; micro lỗi không dừng phiên (`micIssue`, §9).
 - **Ràng buộc realtime:** callback thu âm không cấp phát bộ nhớ và không lock; chỉ ghi vào ring buffer lock-free (crate `rtrb`). Ring buffer chứa được 30 giây âm thanh.
 
 ### 6.2 Tiền xử lý
 
 Gộp về một kênh (mono), rồi resample từ tần số của thiết bị (thường 48 kHz) xuống 16 kHz bằng crate `rubato`. Sau đó chia thành khung 512 mẫu (32 ms) để đưa vào VAD.
+
+**Khi có micro** (F12; spec nguồn micro §5.3–§5.8, §16): micro qua lọc thông cao 80 Hz rồi khuếch đại tới +20 dB. Bản cho whisper qua bộ giới hạn mức (trần 0,9, không méo); bản cho VAD qua `tanh` và, khi bật "Lọc tiếng ồn micro", qua RNNoise (`nnnoiseless`). Whisper không nghe bản đã lọc ồn. Chế độ Âm thanh máy + Micro trộn trước VAD bằng `DuckingMixer`: âm thanh máy vượt −55 dBFS thì micro bị hạ −30 dB, giữ 300 ms. Không khử vọng (AEC).
 
 ### 6.3 VAD và cắt câu
 
@@ -379,6 +388,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Bản debug cần khoảng 1 MiB stack cho mỗi lần suy luận, mà luồng chính của Windows chỉ có 1 MiB. Vì vậy VAD được tạo và chạy trên luồng riêng, có stack từ 4 MiB.
   - Test `vad_reference` so kết quả với onnxruntime, rồi chạy thêm 4 000 khung để bắt rò bộ nhớ (§6.12).
 - **Việc cho MVP:** chọn luật ghép câu tốt hơn cho zh và ja, ví dụ coi khoảng nghỉ đủ dài là hết câu. Cần dữ liệu hội thoại thật, không phải câu đọc của FLEURS.
+- **Khi có micro** (F12; spec nguồn micro §16): VAD nghe bản đã qua chuỗi micro (§6.2). Chế độ Micro: ngưỡng 0,5, đoạn ngắn nhất 400 ms (250 ms khi tắt "Lọc tiếng ồn micro"), im lặng 500 ms thì chốt đoạn. Chế độ Âm thanh máy + Micro: 0,5 / 600 ms / 500 ms. Các giá trị này thay `vadEndSilenceMs` của người dùng, nên phụ đề hiện chậm hơn khoảng 0,45 s so với mặc định 50 ms. Luật `ShortUnsure` của spec nguồn micro bị bỏ.
 
 ### 6.4 Nhận dạng giọng nói
 
@@ -474,7 +484,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
     - Trên A4, luật bỏ đúng 1 clip, là một bản chép ảo giác của small; với turbo, luật không bỏ clip nào. Trên S6, luật bỏ 1 đoạn: câu ảo giác "Thank you." dài 256 ms, ở gói Nhẹ.
     - Với turbo, `no_speech_prob` luôn khoảng 1e-11 trên đoạn có tiếng nói, nên luật gần như không bao giờ bỏ đoạn nào.
   - Vòng lặp token được gom ngay lúc giải mã ("Dừng khi lặp" ở trên).
-  - Bỏ các câu hay bị bịa ra khi chỉ có nhạc hoặc im lặng, ví dụ "Thank you for watching", "Hãy subscribe cho kênh", "[Music]", "ご視聴ありがとうございました", "请不吝点赞…". Các câu này có `avg_logprob` cao, nên luật `no_speech` ở trên không bắt được.
+  - Bỏ các câu hay bị bịa ra khi chỉ có nhạc hoặc im lặng, ví dụ "Thank you for watching", "Hãy subscribe cho kênh", "[Music]", "ご視聴ありがとうございました", "请不吝点赞…". Các câu này có `avg_logprob` cao, nên luật `no_speech` ở trên không bắt được. Câu **chứa** cụm quảng cáo kênh rõ ràng (ví dụ "subscribe cho kênh") cũng bị bỏ, kể cả khi dài hơn cụm đó (spec nguồn micro §16: hai lần lọt qua khi khuếch đại micro).
 - **Việc cho MVP:**
   - Thử `no_speech_prob` trên im lặng, nhiễu và nhạc, nhất là với turbo, trước khi dựa vào bộ lọc này.
   - Luật lặp: khi prompt dài (đoạn trước cùng ngôn ngữ, tới 100 token), trần token còn khoảng 119, nên câu chép đôi dài từ khoảng 60 token không bị bắt. Xem lại.
@@ -1097,6 +1107,9 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 | Tải model thất bại | Lỗi HTTP hoặc sai SHA-256 | Thử lại 3 lần (chờ 1, 5, 15 giây), cho phép tải tiếp sau. Rớt mạng mà phần đã tải dài hơn mọi lần trước thì đếm lại từ đầu |
 | Máy chưa được hỗ trợ, hoặc ổ không đủ chỗ | Cấu hình máy (§8), dung lượng trống so với phần còn phải tải cộng 1 GB (§6.7) | Không cho tải model: báo lý do và cấu hình tối thiểu, khóa nút tải; lệnh tải bị từ chối cả ở phía Rust |
 | Bản dịch lỗi (quá dài, có kèm lời giải thích) | Tỉ lệ token theo từng cặp ngôn ngữ (§6.5), mẫu nhận dạng | Cắt stream, thử lại một lần với repeat penalty cao hơn, sau đó hiện câu gốc |
+| Thiếu quyền micro (`micPermission`; F12) | macOS: `AVCaptureDevice` báo bị từ chối (Core Audio khi đó trả toàn số 0, không báo lỗi) | Chế độ Micro: không bắt đầu phiên, nút mở trang cấp quyền. Chế độ Âm thanh máy + Micro: chạy với âm thanh máy, `micIssue = "permission"`, ghi chú kèm nút. macOS chỉ áp quyền mới sau khi app mở lại ("Quit & Reopen" gửi lý do `rlgo`, app cho thoát) |
+| Không có micro, micro đã chọn không còn, bị rút, bị giữ độc quyền (`micUnavailable`) | Mở nguồn lỗi; `failed()` | Chế độ Micro: như nguồn đơn, báo lỗi nếu không mở lại được. Chế độ Âm thanh máy + Micro: chạy với âm thanh máy, `micIssue = "unavailable"`, thử lại mỗi 2 giây; log chỉ cảnh báo khi mã lỗi đổi |
+| Micro trả số 0 tuyệt đối 3 giây từ đầu phiên | `ZeroWatch` của micro | `micIssue = "suspected"`, phiên chạy tiếp; ghi chú "Micro không có tín hiệu: kiểm tra quyền micro hoặc phím tắt tiếng của micro" kèm nút mở trang cấp quyền |
 
 **Lịch đối soát đơn** (Cron Trigger chạy mỗi 5 phút):
 - Xét các đơn `pending`, `processing` và `underpaid` (khách có thể chuyển bù) tạo trong 24 giờ qua.
@@ -1110,7 +1123,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 
 ### 10.1 Quyền riêng tư và pháp lý
 
-- **Âm thanh** chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng.
+- **Âm thanh**, kể cả âm thanh micro (F12), chỉ nằm trong RAM: không ghi xuống đĩa, không gửi qua mạng. Log ghi loại kết nối của micro (`builtin`, `usb`, `bluetooth`, `virtual`, `other`), không ghi tên micro. App thu micro suốt phiên kể cả khi người dùng đã tắt mic trong app họp; chính sách quyền riêng tư (từ 1.8) nói rõ điều này.
 - **App chỉ kết nối mạng để:** tải manifest và model, kiểm tra cập nhật, gọi license server của sản phẩm (khi mua, kích hoạt, kiểm tra bản quyền, đăng ký dùng thử Free; và hỏi giờ của server bằng `GET /v1/plans`, không gửi dữ liệu gì của người dùng, tối đa 5 phút một lần, khi giờ máy bị coi là chỉnh lùi hay bộ đếm Free vừa được kéo về sau khi giờ máy đặt nhầm tới trước). MVP **không có analytics**. App **tự gửi báo cáo lỗi** tới `POST /v1/diagnostics` của license server (cùng host `api.`, không thêm host nào; mục "Báo cáo lỗi" ngay dưới), không bao giờ trong lúc đang dịch. Phần log liên quan, đã che dữ liệu cá nhân, là thứ duy nhất của log rời máy; log vẫn nằm trên máy, và người dùng cũng bấm gửi tay được ở màn hình Giới thiệu. App còn gửi và nhận tin **chat hỗ trợ** qua `/v1/support/*` của license server (cùng host `api.`, không thêm host nào; mục "Chat hỗ trợ" ngay dưới), chỉ khi người dùng đã dùng chat; trong lúc dịch chỉ khi màn hình Hỗ trợ đang mở hay người dùng bấm gửi.
 - **Báo cáo lỗi** (spec `2026-10-17-diagnostics-reports-design.md`; đổi cam kết "không gửi báo cáo crash" cũ):
   - **Khi nào:** `crash` (lần chạy trước chết: panic hook ghi file trước khi abort, hay file "đang chạy" còn sót), `session_error` (phiên dừng vì lỗi của app: `sidecarFailed`, `sidecarMissing`, `sidecarTampered`, `modelBroken`, `vadFailed`, `captureFailed`, `dataUnavailable`, `unknown`; không gồm lỗi do môi trường hay người dùng), `sidecar_died` (tiến trình phụ chết rồi được khởi động lại) và `manual` (nút "Gửi log cho hỗ trợ" ở Giới thiệu, §4.3). Báo cáo tự động xếp hàng trên đĩa và **chỉ gửi khi không đang dịch**; mỗi máy tối đa 1 báo cáo mỗi dấu vân tay mỗi 24 giờ và 5 báo cáo mỗi ngày.
