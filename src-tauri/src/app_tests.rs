@@ -612,6 +612,58 @@ fn the_main_window_reads_and_requests_the_mic_permission() {
     assert_eq!(*requests.lock().unwrap(), 1);
 }
 
+/// Spec 2026-10-24-nguon-micro §7, QĐ1, QĐ2 của kế hoạch 03: chế độ trộn mà quyền bị từ chối vẫn bắt đầu phiên; quyền chưa
+/// hỏi thì hỏi trước khi nạp model.
+#[test]
+fn the_both_mode_starts_without_the_mic_permission_and_asks_when_undetermined() {
+    use crate::capture::CapturePlan;
+    use audio_capture::MicPermission;
+    let deps = FakeDeps::default();
+    let (plans, permission, requests) = (
+        deps.capture_plans.clone(),
+        deps.mic_permission.clone(),
+        deps.mic_requests.clone(),
+    );
+    *permission.lock().unwrap() = Some(MicPermission::Denied);
+    let app = mock_app_with(deps);
+    let main = window(&app, "main");
+    invoke(&main, "update_settings", json!({ "patch": { "captureMode": "both" } })).unwrap();
+    let status = invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(status["session"], "running");
+    assert_eq!(*requests.lock().unwrap(), 0, "đã từ chối thì không hỏi lại");
+    assert!(matches!(plans.lock().unwrap()[0], CapturePlan::Both { .. }));
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    *permission.lock().unwrap() = Some(MicPermission::Undetermined);
+    invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(*requests.lock().unwrap(), 1, "chưa hỏi thì hỏi lúc bắt đầu");
+}
+
+/// Micro của chế độ trộn lỗi (QĐ7 của kế hoạch 03): `micIssue` theo mã; mở lại được thì xóa; `MicSilent(false)` không xóa
+/// lỗi quyền.
+#[test]
+fn mic_issue_events_set_and_clear_only_their_own_kind() {
+    use crate::capture::CaptureEvent;
+    use crate::state::MicIssue;
+    let deps = FakeDeps::default();
+    let events = deps.capture_events.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    session::start(app.handle()).unwrap();
+    let current = events.lock().unwrap().remove(0);
+    let issue = || app.state::<AppState>().status().mic_issue;
+    current(CaptureEvent::MicIssue(Some(errors::MIC_PERMISSION)));
+    assert_eq!(issue(), Some(MicIssue::Permission));
+    current(CaptureEvent::MicSilent(false));
+    assert_eq!(issue(), Some(MicIssue::Permission));
+    current(CaptureEvent::MicIssue(Some(errors::MIC_UNAVAILABLE)));
+    assert_eq!(issue(), Some(MicIssue::Unavailable));
+    current(CaptureEvent::MicIssue(None));
+    assert_eq!(issue(), None);
+    current(CaptureEvent::MicSilent(true));
+    current(CaptureEvent::MicIssue(None));
+    assert_eq!(issue(), Some(MicIssue::Suspected));
+}
+
 /// Micro không có tín hiệu (spec §5.6, §7): phiên chạy tiếp, `micIssue` là `suspected`; có tín hiệu lại hay dừng phiên thì
 /// xóa.
 #[test]

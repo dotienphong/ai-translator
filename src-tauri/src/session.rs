@@ -187,6 +187,9 @@ const MIC_MIN_SPEECH_MS: u64 = 400;
 /// Tắt "Lọc tiếng ồn micro" thì tiếng nói ngắn nhất như chế độ âm thanh máy: người dùng chọn tắt khi phòng yên tĩnh, để giữ
 /// câu một hai chữ ("OK", "Vâng" chỉ khoảng 0,3 giây; thử tay 2026-10-24, `results/thu-tay-mac.md`).
 const MIC_MIN_SPEECH_MS_UNFILTERED: u64 = 250;
+/// Chế độ trộn (spec mục 16, `results/tron-moi.md`): tiếng nói ngắn nhất dài hơn chế độ micro, vì bản trộn đã khuếch đại làm
+/// VAD mở đoạn vì tiếng vọng còn sót; 400 không tốt hơn khi đo.
+const BOTH_MIN_SPEECH_MS: u64 = 600;
 const MIC_END_SILENCE_MS: u64 = 500;
 /// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
 const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
@@ -208,7 +211,11 @@ pub fn plan_for(settings: &Settings, options: StartOptions) -> CapturePlan {
             device: settings.mic_device.clone(),
             noise_filter: settings.mic_noise_filter,
         },
-        CaptureMode::Both => todo!("Task 4"),
+        CaptureMode::Both => CapturePlan::Both {
+            source: settings.audio_source.clone(),
+            device: settings.mic_device.clone(),
+            noise_filter: settings.mic_noise_filter,
+        },
     }
 }
 
@@ -225,13 +232,17 @@ pub fn engine_config(
     streaming_supported: bool,
 ) -> EngineConfig {
     pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
-    if let CapturePlan::Mic { noise_filter, .. } = plan {
+    let mic_speech_ms = match plan {
+        CapturePlan::Playback { .. } => None,
+        CapturePlan::Mic { noise_filter: true, .. } => Some(MIC_MIN_SPEECH_MS),
+        CapturePlan::Mic {
+            noise_filter: false, ..
+        } => Some(MIC_MIN_SPEECH_MS_UNFILTERED),
+        CapturePlan::Both { .. } => Some(BOTH_MIN_SPEECH_MS),
+    };
+    if let Some(min_speech_ms) = mic_speech_ms {
         pipeline.segmenter.threshold = MIC_VAD_THRESHOLD;
-        pipeline.segmenter.min_speech_ms = if *noise_filter {
-            MIC_MIN_SPEECH_MS
-        } else {
-            MIC_MIN_SPEECH_MS_UNFILTERED
-        };
+        pipeline.segmenter.min_speech_ms = min_speech_ms;
         pipeline.segmenter.end_silence_ms = MIC_END_SILENCE_MS;
     }
     let languages = match settings.source_lock {
@@ -357,14 +368,21 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     // chuẩn bị dùng.
     let settings = state.settings();
     let plan = plan_for(&settings, options);
-    // Chế độ micro mà quyền đã bị từ chối: không nạp model, báo ngay (spec 2026-10-24-nguon-micro §7). Quyền chưa hỏi thì
-    // luồng thu hỏi trước khi mở micro.
-    if plan.has_mic() && session.deps.mic_permission() == MicPermission::Denied {
-        return refuse(CommandError::new(
-            errors::MIC_PERMISSION,
-            None,
-            "chưa được phép dùng micro",
-        ));
+    // Quyền micro (spec 2026-10-24-nguon-micro §3.4, §7; QĐ1, QĐ2 của kế hoạch 03): chưa hỏi thì hỏi ở đây, trước khi nạp
+    // model (ở chế độ trộn, hỏi trên luồng thu sẽ chặn cả âm thanh máy). Chế độ micro mà không có quyền thì không bắt đầu;
+    // chế độ trộn chạy với âm thanh máy và báo `micIssue`.
+    if plan.has_mic() {
+        let mut permission = session.deps.mic_permission();
+        if permission == MicPermission::Undetermined {
+            permission = session.deps.request_mic_permission();
+        }
+        if permission == MicPermission::Denied && matches!(plan, CapturePlan::Mic { .. }) {
+            return refuse(CommandError::new(
+                errors::MIC_PERMISSION,
+                None,
+                "chưa được phép dùng micro",
+            ));
+        }
     }
     let mut begin = || {
         state.update_status(|s| {
@@ -443,7 +461,11 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     let source = session.deps.capture(&plan, capture_events(app, n));
     log::info!(
         "phiên dịch {n}: nguồn {}",
-        if plan.has_mic() { "micro" } else { "âm thanh máy" }
+        match plan {
+            CapturePlan::Playback { .. } => "âm thanh máy",
+            CapturePlan::Mic { .. } => "micro",
+            CapturePlan::Both { .. } => "âm thanh máy + micro",
+        }
     );
     let sink = Arc::new(TauriSink {
         app: app.clone(),
@@ -523,12 +545,30 @@ fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
                 changed(&app);
             }
         }
-        CaptureEvent::MicIssue(_) => {}
         CaptureEvent::MicSilent(silent) => {
             let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
             if current {
-                app.state::<AppState>()
-                    .update_status(|s| s.mic_issue = silent.then_some(MicIssue::Suspected));
+                app.state::<AppState>().update_status(|s| {
+                    if silent {
+                        s.mic_issue = Some(MicIssue::Suspected);
+                    } else if s.mic_issue == Some(MicIssue::Suspected) {
+                        s.mic_issue = None;
+                    }
+                });
+                changed(&app);
+            }
+        }
+        CaptureEvent::MicIssue(code) => {
+            let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
+            if current {
+                app.state::<AppState>().update_status(|s| match code {
+                    Some(errors::MIC_PERMISSION) => s.mic_issue = Some(MicIssue::Permission),
+                    Some(_) => s.mic_issue = Some(MicIssue::Unavailable),
+                    None if matches!(s.mic_issue, Some(MicIssue::Permission | MicIssue::Unavailable)) => {
+                        s.mic_issue = None
+                    }
+                    None => {}
+                });
                 changed(&app);
             }
         }
@@ -1892,6 +1932,43 @@ mod tests {
         );
         let seg = &cfg.pipeline.segmenter;
         assert_eq!((seg.min_speech_ms, seg.end_silence_ms), (250, 100));
+    }
+
+    /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ6 của kế hoạch 03: chế độ trộn dùng VAD 0,5 / 600 / 500, cả khi tắt lọc ồn.
+    #[test]
+    fn the_both_plan_uses_the_mixed_vad_parameters() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.capture_mode = CaptureMode::Both;
+        for noise_filter in [true, false] {
+            settings.mic_noise_filter = noise_filter;
+            let plan = plan_for(&settings, StartOptions::default());
+            assert_eq!(
+                plan,
+                CapturePlan::Both {
+                    source: AudioSource::System,
+                    device: None,
+                    noise_filter
+                }
+            );
+            let cfg = engine_config(
+                &settings,
+                &plan,
+                PipelineConfig::default(),
+                0,
+                SharedGlossary::default(),
+                true,
+            );
+            let seg = cfg.pipeline.segmenter;
+            assert_eq!((seg.threshold, seg.min_speech_ms, seg.end_silence_ms), (0.5, 600, 500));
+        }
+        assert_eq!(
+            plan_for(&settings, StartOptions::LISTEN_TEST),
+            CapturePlan::Playback {
+                source: AudioSource::System,
+                include_self: true
+            },
+            "Nghe thử luôn âm thanh máy"
+        );
     }
 
     /// Chế độ micro trong cài đặt cho plan micro; bước "Nghe thử" luôn thu âm thanh máy.
