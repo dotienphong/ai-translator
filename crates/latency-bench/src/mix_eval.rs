@@ -40,6 +40,9 @@ pub struct GateSpec {
     /// Ngưỡng xác suất tiếng nói của Silero trên âm thanh máy (spec mục 17); không có thì chỉ theo năng lượng.
     #[serde(default)]
     pub speech_prob: Option<f32>,
+    /// Khung âm thanh máy dưới mức này (dBFS) khỏi hỏi Silero; không có thì hỏi cả khung im lặng.
+    #[serde(default)]
+    pub speech_floor_dbfs: Option<f32>,
 }
 
 /// Silero VAD làm bộ phát hiện tiếng nói của bộ nhường lời, như app (`src-tauri/src/capture.rs`).
@@ -230,6 +233,7 @@ pub fn build_views_with(
                 duck_db: g.duck_db.unwrap_or(f32::NEG_INFINITY),
                 hold_ms: g.hold_ms,
                 speech_prob: g.speech_prob.unwrap_or(f32::INFINITY),
+                speech_floor_dbfs: g.speech_floor_dbfs.unwrap_or(f32::NEG_INFINITY),
             });
             // Offline: ghép theo chỉ số, không phát riêng phần dư giữa chừng.
             let mut mixer = DuckingMixer::new(params, usize::MAX);
@@ -239,6 +243,10 @@ pub fn build_views_with(
             mixer.flush_into_with(&mut asr, &mut vad, speech);
             if let Some(e) = mixer.take_speech_error() {
                 eprintln!("{}: bộ phát hiện tiếng nói lỗi: {e}", v.name);
+            }
+            let (calls, skips) = mixer.speech_stats();
+            if calls + skips > 0 {
+                eprintln!("{}: Silero hỏi {calls} lần, bỏ qua {skips} khung", v.name);
             }
             (asr, vad)
         }
@@ -607,5 +615,23 @@ mod tests {
             "không có bộ phát hiện: {}",
             asr[1_000]
         );
+    }
+
+    /// Mức im lặng của Silero là tùy chọn: thiếu thì hỏi cả khung im lặng.
+    #[test]
+    fn the_detector_floor_defaults_to_asking_every_frame() {
+        let v = variant(
+            r#"{"name": "x", "mode": "both",
+                "gate": {"threshold_dbfs": -55, "duck_db": null, "hold_ms": 300, "speech_prob": 0.5}}"#,
+        );
+        let g = v.gate.unwrap();
+        assert_eq!(g.speech_floor_dbfs, None);
+        let v = variant(
+            r#"{"name": "x", "mode": "both",
+                "gate": {"threshold_dbfs": -55, "duck_db": null, "hold_ms": 300, "speech_prob": 0.5,
+                         "speech_floor_dbfs": -80}}"#,
+        );
+        let g = v.gate.unwrap();
+        assert_eq!(g.speech_floor_dbfs, Some(-80.0));
     }
 }

@@ -585,15 +585,23 @@ Số liệu: `bench/2026-10-24-nguon-micro/results/ao-tron.md`. Chủ dự án c
 - Phiên không dừng, không có mã lỗi mới.
 
 **Chi phí và ngân sách.**
-- Đo ngày 2026-10-25, bản release, M4 Pro, 3 000 khung của bản thu thật: Silero 0,22 ms mỗi khung (p95 0,23 ms, chậm nhất
-  1,9 ms), khoảng 0,7% một nhân.
-- Ngân sách:
-  - p95 ≤ 0,5 ms mỗi khung trên M4 Pro, ≤ 2 ms trên Windows i5 (máy yếu nhất đang hỗ trợ);
-  - tổng p50 của chế độ trộn (A2, cùng nội dung như lượt A2 ngày 2026-10-24) không tăng quá 20 ms so với trước khi sửa
-    (1 056 ms);
-  - nhận dạng p50 và dịch p50 giữ nguyên trong dao động đo.
-- Nếu Windows vượt ngân sách: bỏ qua Silero ở khung âm thanh máy im lặng số (RMS dưới −90 dBFS, chắc chắn không có tiếng
-  nói). Chỉ làm khi đo thấy cần.
+- Đo vi mô ngày 2026-10-25, bản release, M4 Pro, 3 000 khung của bản thu thật: Silero 0,22 ms mỗi khung (p95 0,23 ms, chậm
+  nhất 1,9 ms).
+- Đo trong app thật (cùng ngày, bản release ký ad-hoc, track 300 giây, gọi Silero ở mọi khung): trung bình khoảng 1,7 ms
+  mỗi khung, chậm nhất 5–20 ms, tức khoảng 5% một nhân. Gấp khoảng 8 lần số vi mô vì chạy xen với whisper, VAD của engine
+  và đồng hồ của app; **ngân sách p95 ≤ 0,5 ms ở bản nháp đầu chỉ đúng cho số vi mô, không phải cho app thật**. Dù vậy không
+  gây trễ đo được (xem dưới).
+- Ngân sách đo được trong app:
+  - tổng p50 của chế độ trộn không tăng quá 50 ms so với chế độ Âm thanh máy cùng ngưỡng cắt đoạn, cùng nội dung (50 ms
+    là dao động giữa hai lượt đo giống hệt nhau); lượt A2 ngày 2026-10-24 (1 056 ms) dùng ngưỡng khác nên không so được;
+  - nhận dạng p50 và dịch p50 giữ nguyên trong dao động đo;
+  - Windows i5 (máy yếu nhất đang hỗ trợ): log `nhường lời: Silero …` mỗi phút phải cho trung bình dưới 5 ms mỗi khung
+    (32 ms mỗi khung, dưới 16% một nhân); **chưa đo**.
+- **Giảm chi phí (đã làm, theo số đo offline ở `loi-noi.md`):** chỉ hỏi Silero ở khung không to (khung to đã hạ micro rồi)
+  và không im lặng số (dưới −80 dBFS, tức khung không có gì để nghe). Khung bị bỏ không đổi state của Silero. Tỉ lệ khung
+  được hỏi tùy nội dung: 6% ở bản thu thật nhiều lúc nghỉ, 18–57% ở các cảnh liên tục.
+- **Không xóa state của Silero giữa chừng** (chỉ xóa lúc mở nguồn): thử xóa sau 0,5 giây không có khung nào được hỏi thì giọng
+  −62 dBFS xấu đi (21,4% so với 12,7%), vì sau khi xóa, vài khung đầu của câu nhỏ chưa đủ chắc để vượt 0,5.
 
 **Kiểm thử.**
 - Đơn vị (`duck.rs`):
@@ -612,7 +620,7 @@ Số liệu: `bench/2026-10-24-nguon-micro/results/ao-tron.md`. Chủ dự án c
   - ở −56 và −62 dBFS, lỗi của chế độ trộn không xấu hơn chế độ Âm thanh máy (`PB-app`) quá 10% (tương đối);
   - ở −36 và −46 dBFS, không xấu hơn lúc chưa sửa quá 10%.
 - **A-ảo:** `ao-tron-can` và cảnh 6 vẫn 0 hay ≤ 1 câu ảo mỗi 10 phút.
-- **A2:** như ngân sách ở trên.
+- **A2:** như ngân sách ở trên (so với chế độ Âm thanh máy, cùng ngưỡng cắt đoạn).
 - **Thử tay:** đúng tình huống A7 (câu mẫu `listen-test-en.wav`, −65 dBFS, nguồn toàn hệ thống, chế độ trộn). Câu mẫu phải
   được nhận đúng, và log có `micro bị hạ` lớn hơn 0.
 

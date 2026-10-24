@@ -127,12 +127,13 @@ const E_ACCESSDENIED: &str = "0x80070005";
 /// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
 const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
 /// Nhường lời (spec mục 17): micro tắt hẳn khi khung âm thanh máy từ −55 dBFS, hoặc khi Silero trên âm thanh máy cho xác suất
-/// có tiếng nói từ 0,5 (người online nói nhỏ); giữ thêm 300 ms.
+/// có tiếng nói từ 0,5 (người online nói nhỏ); giữ thêm 300 ms. Khung dưới −80 dBFS (im lặng số) khỏi hỏi Silero.
 const GATE: GateParams = GateParams {
     threshold_dbfs: -55.0,
     duck_db: f32::NEG_INFINITY,
     hold_ms: 300,
     speech_prob: 0.5,
+    speech_floor_dbfs: -80.0,
 };
 
 /// Chu kỳ ghi log thời gian Silero của bộ nhường lời.

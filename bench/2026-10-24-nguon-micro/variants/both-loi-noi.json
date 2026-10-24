@@ -8,5 +8,8 @@
  {"name": "LOINOI", "mode": "both", "limiter": true, "vad_tanh": true, "mic_vad": "mic-rnnoise.wav",
   "gate": {"threshold_dbfs": -55, "duck_db": null, "hold_ms": 300, "speech_prob": 0.5},
   "vad": {"threshold": 0.5, "min_speech_ms": 600, "end_silence_ms": 500}},
+ {"name": "LOINOI-app", "mode": "both", "limiter": true, "vad_tanh": true, "mic_vad": "mic-rnnoise.wav",
+  "gate": {"threshold_dbfs": -55, "duck_db": null, "hold_ms": 300, "speech_prob": 0.5, "speech_floor_dbfs": -80},
+  "vad": {"threshold": 0.5, "min_speech_ms": 600, "end_silence_ms": 500}},
  {"name": "PB-app", "mode": "playback", "vad": {"threshold": 0.5, "min_speech_ms": 250, "end_silence_ms": 50}}
 ]

@@ -20,14 +20,6 @@ pub const GATE_FRAME: usize = 160;
 const RELEASE_SAMPLES: f32 = 800.0;
 /// Khung của bộ phát hiện tiếng nói: 512 mẫu (32 ms), như Silero VAD.
 pub const SPEECH_FRAME: usize = 512;
-/// Khung Playback có bình phương trung bình dưới mức này (−80 dBFS) là im lặng số: không thể có giọng nghe được, nên khỏi hỏi
-/// bộ phát hiện. Khung từ ngưỡng năng lượng của cổng trở lên cũng khỏi hỏi (cổng đã hạ micro rồi). Trong cuộc họp thật phần
-/// lớn khung thuộc một trong hai loại, nên bộ phát hiện (tốn khoảng 1,7 ms mỗi khung trong app) hầu như chỉ chạy khi có thể là
-/// giọng nhỏ.
-const SPEECH_FLOOR_SQ: f32 = 1e-8;
-/// Không hỏi bộ phát hiện liền chừng này khung (0,5 giây) thì xóa state của nó trước lần hỏi kế tiếp: state cũ không còn đại
-/// diện cho âm thanh vừa qua.
-const SPEECH_RESET_GAP: u32 = 16;
 
 /// Bộ phát hiện tiếng nói trên Playback cho cổng (spec mục 17). Crate này không phụ thuộc `pipeline`: app và
 /// `latency-bench` bọc Silero VAD bằng trait này.
@@ -49,6 +41,9 @@ pub struct GateParams {
     /// Bộ phát hiện tiếng nói (nếu có) cho xác suất từ mức này trở lên là "có tiếng" (spec mục 17). `f32::INFINITY`: không
     /// dùng bộ phát hiện.
     pub speech_prob: f32,
+    /// Khung Playback dưới mức này (dBFS, theo bình phương trung bình cả khung) coi là im lặng: khỏi hỏi bộ phát hiện, để tiết
+    /// kiệm CPU. Khung từ ngưỡng năng lượng trở lên cũng khỏi hỏi (cổng đã hạ micro). `f32::NEG_INFINITY`: hỏi cả khung im lặng.
+    pub speech_floor_dbfs: f32,
 }
 
 impl GateParams {
@@ -58,6 +53,7 @@ impl GateParams {
         duck_db: 0.0,
         hold_ms: 0,
         speech_prob: f32::INFINITY,
+        speech_floor_dbfs: f32::NEG_INFINITY,
     };
 }
 
@@ -69,6 +65,7 @@ impl Default for GateParams {
             duck_db: -20.0,
             hold_ms: 300,
             speech_prob: f32::INFINITY,
+            speech_floor_dbfs: f32::NEG_INFINITY,
         }
     }
 }
@@ -77,6 +74,7 @@ impl Default for GateParams {
 pub struct MicGate {
     threshold_sq: f32,
     speech_prob: f32,
+    speech_floor_sq: f32,
     duck: f32,
     hold_frames: u32,
     release_step: f32,
@@ -97,6 +95,11 @@ impl MicGate {
         Self {
             threshold_sq: threshold * threshold,
             speech_prob: p.speech_prob,
+            speech_floor_sq: if p.speech_floor_dbfs == f32::NEG_INFINITY {
+                0.0
+            } else {
+                10f32.powf(p.speech_floor_dbfs / 10.0)
+            },
             duck,
             hold_frames: p.hold_ms.div_ceil(10),
             release_step: (1.0 - duck) / RELEASE_SAMPLES,
@@ -145,6 +148,11 @@ impl MicGate {
     fn loud_sq(&self) -> f32 {
         self.threshold_sq
     }
+
+    /// Mức im lặng dưới đó khỏi hỏi bộ phát hiện, dạng bình phương trung bình (0: không bỏ khung im lặng).
+    fn floor_sq(&self) -> f32 {
+        self.speech_floor_sq
+    }
 }
 
 pub struct DuckingMixer {
@@ -159,8 +167,9 @@ pub struct DuckingMixer {
     speech_buf: Vec<f32>,
     /// Đã reset bộ phát hiện cho bộ trộn này chưa.
     speech_started: bool,
-    /// Số khung liền nhau gần nhất không hỏi bộ phát hiện (khung to hay im lặng số).
-    speech_skipped: u32,
+    /// Số lần hỏi bộ phát hiện và số khung bỏ qua, để log và đo.
+    speech_calls: u64,
+    speech_skips: u64,
     /// Bộ phát hiện đã lỗi: từ đó cổng chỉ còn theo năng lượng.
     speech_failed: bool,
     speech_error: Option<String>,
@@ -180,7 +189,8 @@ impl DuckingMixer {
             ducked_samples: 0,
             speech_buf: Vec::with_capacity(SPEECH_FRAME),
             speech_started: false,
-            speech_skipped: 0,
+            speech_calls: 0,
+            speech_skips: 0,
             speech_failed: false,
             speech_error: None,
         }
@@ -250,6 +260,11 @@ impl DuckingMixer {
         self.flush_mic(self.mic.len(), out, out_vad);
     }
 
+    /// (số lần hỏi bộ phát hiện tiếng nói, số khung bỏ qua vì to hay im lặng) từ lúc tạo bộ trộn.
+    pub fn speech_stats(&self) -> (u64, u64) {
+        (self.speech_calls, self.speech_skips)
+    }
+
     /// Lỗi của bộ phát hiện tiếng nói, nếu có, đúng một lần. Từ lúc lỗi, bộ trộn này chỉ hạ theo năng lượng.
     pub fn take_speech_error(&mut self) -> Option<String> {
         self.speech_error.take()
@@ -268,12 +283,12 @@ impl DuckingMixer {
             return;
         }
         let mean_sq = self.speech_buf.iter().map(|v| v * v).sum::<f32>() / SPEECH_FRAME as f32;
-        if mean_sq >= self.gate.loud_sq() || mean_sq < SPEECH_FLOOR_SQ {
-            self.speech_skipped = self.speech_skipped.saturating_add(1);
+        if mean_sq >= self.gate.loud_sq() || mean_sq < self.gate.floor_sq() {
+            self.speech_skips += 1;
             self.speech_buf.clear();
             return;
         }
-        if !self.speech_started || self.speech_skipped >= SPEECH_RESET_GAP {
+        if !self.speech_started {
             self.speech_started = true;
             if let Err(e) = detector.reset() {
                 self.speech_buf.clear();
@@ -281,7 +296,7 @@ impl DuckingMixer {
                 return;
             }
         }
-        self.speech_skipped = 0;
+        self.speech_calls += 1;
         match detector.prob(&self.speech_buf) {
             Ok(prob) if prob >= self.gate.speech_prob() => self.gate.hold(),
             Ok(_) => {}
@@ -532,6 +547,7 @@ mod tests {
         duck_db: f32::NEG_INFINITY,
         hold_ms: 300,
         speech_prob: 0.5,
+        speech_floor_dbfs: -80.0,
     };
     /// Biên độ hằng 0,0008: −62 dBFS, dưới ngưỡng năng lượng.
     const QUIET: f32 = 0.0008;
@@ -657,20 +673,42 @@ mod tests {
         );
     }
 
-    /// Sau khoảng nghỉ dài (≥ 16 khung, 0,5 giây) bộ phát hiện được xóa state; nghỉ ngắn thì giữ.
+    /// State của bộ phát hiện không bị xóa giữa chừng: khung im lặng bỏ qua rồi giọng nhỏ quay lại thì bộ phát hiện tiếp tục
+    /// với state cũ. (Xóa state sau 0,5 giây nghỉ làm onset giọng nhỏ bị nhận chậm: h36 21,4% so với 12,7%.)
     #[test]
-    fn the_detector_state_is_cleared_only_after_a_long_gap() {
+    fn the_detector_state_survives_gaps_of_skipped_frames() {
         let frames = |n: usize, v: f32| vec![v; SPEECH_FRAME * n];
-        let run = |gap: usize| {
-            let mut playback = frames(2, QUIET);
-            playback.extend(frames(gap, 0.0));
-            playback.extend(frames(2, QUIET));
-            let mut s = FakeSpeech::default();
-            mix_with(APP, &playback, &vec![0.0; playback.len()], &mut s);
-            (s.calls, s.resets)
+        let mut playback = frames(2, QUIET);
+        playback.extend(frames(40, 0.0));
+        playback.extend(frames(2, QUIET));
+        let mut s = FakeSpeech::default();
+        mix_with(APP, &playback, &vec![0.0; playback.len()], &mut s);
+        assert_eq!((s.calls, s.resets), (4, 1));
+    }
+
+    /// Không đặt mức im lặng (mặc định của `GateParams::OFF` và của mix-eval): mọi khung không to đều tới bộ phát hiện.
+    #[test]
+    fn without_a_floor_every_non_loud_frame_reaches_the_detector() {
+        let params = GateParams {
+            speech_floor_dbfs: f32::NEG_INFINITY,
+            ..APP
         };
-        assert_eq!(run(3), (4, 1), "nghỉ 3 khung: giữ state");
-        assert_eq!(run(16), (4, 2), "nghỉ 16 khung: xóa state");
-        assert_eq!(run(40), (4, 2), "nghỉ rất dài: chỉ xóa một lần");
+        let mut playback = vec![QUIET; SPEECH_FRAME];
+        playback.extend(vec![0.0; SPEECH_FRAME * 40]);
+        playback.extend(vec![QUIET; SPEECH_FRAME]);
+        let mut s = FakeSpeech::default();
+        mix_with(params, &playback, &vec![0.0; playback.len()], &mut s);
+        assert_eq!((s.calls, s.resets), (42, 1));
+    }
+
+    /// Thống kê số lần hỏi bộ phát hiện và số khung bỏ qua (để log và để đo).
+    #[test]
+    fn speech_stats_count_calls_and_skips() {
+        let mut playback = vec![0.1; SPEECH_FRAME];
+        playback.extend(vec![0.0; SPEECH_FRAME]);
+        playback.extend(vec![QUIET; SPEECH_FRAME * 2]);
+        let mut s = FakeSpeech::default();
+        let (_, m) = mix_with(APP, &playback, &vec![0.0; playback.len()], &mut s);
+        assert_eq!(m.speech_stats(), (2, 2));
     }
 }

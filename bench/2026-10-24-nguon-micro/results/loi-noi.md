@@ -102,8 +102,52 @@ Bộ clip mới có mức lỗi nền khác (phòng 7,5% với cả cách cũ), 
 Máy: MacBook Pro M4 Pro, macOS 26.6.2, `asr-worker` có Metal (mọi `asr-worker.log` có `Metal total size`), gói Chuẩn. Dữ liệu và
 kết quả không commit (`data/`).
 
+## Giảm chi phí Silero (2026-10-25)
+
+Trong app, Silero gọi ở mọi khung tốn trung bình 1,7 ms mỗi khung (xem "Đo trong app" ở `nghiem-thu.md`), nên thử bỏ các khung
+không cần hỏi. Hai núm, mỗi cái tắt/bật độc lập trong `variants/*.json` của `mix-eval`:
+
+- bỏ khung to (từ −55 dBFS; cổng năng lượng đã hạ micro rồi) — luôn bật;
+- bỏ khung im lặng (dưới `speech_floor_dbfs`), và (đã thử rồi gỡ) xóa state Silero sau `speech_reset_gap` khung bỏ qua.
+
+Lưới thử trên `lon-h36` (giọng −62 dBFS, cảnh khó nhất; lỗi online, 230 clip), đối chiếu `LOINOI` chưa tối ưu 15,0% và mức đạt
+≤ 17,38%:
+
+| Biến thể | Mức im lặng | Xóa state sau | Silero được hỏi | Lỗi online |
+|---|---|---|---|---|
+| V0 | −80 dBFS | 16 khung | 43 192 / 75 550 | **21,4% (trượt)** |
+| **V1** | **−80 dBFS** | **không xóa** | 43 192 / 75 550 | **12,7%** |
+| V2 | −120 dBFS | 16 khung | 58 024 / 75 550 | 15,4% |
+| V3 | −120 dBFS | không xóa | 58 024 / 75 550 | 13,7% |
+| V4 | không bỏ | không xóa | 73 559 / 75 550 | 16,7% |
+
+Đọc:
+- Lần tối ưu đầu (V0) xấu đi vì xóa state sau 0,5 giây nghỉ: câu nhỏ mở đầu sau khoảng nghỉ gặp Silero chưa "ấm", vài khung
+  đầu không vượt 0,5, nên micro (đã khuếch đại +20 dB) lọt vào đầu câu. Bỏ việc xóa (V1, V3) tốt hơn hẳn (V0 → V1: −8,7 điểm).
+- Bỏ khung im lặng (−80 dBFS, V1 so với V3) không xấu hơn: 12,7% so với 13,7%.
+- Chênh 1–2 điểm giữa V1, V3, V4, LOINOI (12,7, 13,7, 16,7, 15,0) nằm trong nhiễu của whisper tham lam; quyết định dựa trên
+  V0 (chênh lớn, có cơ chế giải thích) và V1 không kém ở bất kỳ cảnh nào.
+
+**Chọn V1** (mức im lặng −80 dBFS, không xóa state giữa chừng), chạy lại trên các cảnh còn lại với bản mã cuối
+(`variants/both-loi-noi.json`, phương án `LOINOI-app`):
+
+| Cảnh | LOINOI (Silero mọi khung) | **LOINOI-app (V1)** | Mức đạt | Silero được hỏi |
+|---|---|---|---|---|
+| `lon-h10` (−36 dBFS) | 7,7% | **7,7%** | ≤ 8,69% | 13 742 / 75 550 (18%) |
+| `lon-h20` (−46 dBFS) | 7,8% | **7,4%** | ≤ 9,46% | 21 314 / 75 550 (28%) |
+| `lon-h30` (−56 dBFS) | 9,5% | **8,9%** | ≤ 12,98% | 35 113 / 75 550 (46%) |
+| `lon-h36` (−62 dBFS) | 15,0% | **12,7%** | ≤ 17,38% | 43 192 / 75 550 (57%) |
+| `lon-thu-can` online | 8,4% | **8,1%** | ≤ 8,8% | 3 169 / 49 031 (6%) |
+| `lon-thu-can` trong phòng | 7,5% | **7,5%** | ≤ 8,25% | |
+| `lon-thu-can` giữ câu trong phòng | 100% | **100%** | 100% | |
+| Chữ ảo (mọi cảnh) | 0 | **0** | ≤ 1 mỗi 10 phút | |
+
+Ở cảnh −62 dBFS, kiểm riêng nửa chẵn / nửa lẻ của lịch clip: V1 14,9% / 11,6% (cả hai ≤ 17,38%). Số kết quả của V1 lúc
+chạy lưới và lúc chạy lại bằng mã cuối giống hệt nhau (cả năm cảnh). `asr-worker` có Metal.
+
 ## Kết luận
 
-Tất cả tiêu chí của kế hoạch 05 **đạt** khi đo trên mẫu đủ lớn (230 clip số hóa và 144 clip thu thật). Ba chỗ trượt ở lượt đo đầu
-(78 clip, trong đó chỉ 30 clip khác nhau) là nhiễu của mẫu nhỏ, không phải lỗi của thiết kế; không phải chỉnh tham số nào. Việc
-còn lại của kế hoạch 05 là Task 6 (A2 và tình huống A7 trên app thật) và Task 7.
+Tất cả tiêu chí của kế hoạch 05 **đạt** khi đo trên mẫu đủ lớn (230 clip số hóa và 144 clip thu thật), cả với cấu hình
+cuối của app (`LOINOI-app`, bỏ khung to và khung im lặng số, không xóa state Silero). Ba chỗ trượt ở lượt đo đầu
+(78 clip, trong đó chỉ 30 clip khác nhau) là nhiễu của mẫu nhỏ, không phải lỗi của thiết kế; ngưỡng và mức đạt không chỉnh. Chỉ bản tối ưu
+chi phí (V0) phải sửa. Việc còn lại của kế hoạch 05 là Task 6 (A2 và tình huống A7 trên app thật) và Task 7.
