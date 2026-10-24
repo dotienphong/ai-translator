@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from score_mix import assign, best_offset_ms, kept, score_variant  # noqa: E402
+from score_mix import assign, best_offset_ms, in_track, kept, score_variant  # noqa: E402
 
 ITEMS = [
     {"source": "online", "lang": "en", "ref": "hello world", "start_ms": 1000, "end_ms": 2000, "short": False},
@@ -40,6 +40,11 @@ class ScoreMix(unittest.TestCase):
         self.assertEqual(r["online_err"], 0.0)
         self.assertEqual(r["short_recall"], 1.0)
         self.assertEqual(r["phantoms"], 0)
+
+    def test_rows_outside_the_track_are_ignored(self):
+        rows = [row(1100, 1900, "hello world"), row(9000, 9500, "replay")]
+        self.assertEqual([r["text"] for r in in_track(rows, ITEMS)], ["hello world"])
+        self.assertEqual(len(in_track(rows, [])), 2)
 
     def test_offset(self):
         rng = np.random.default_rng(1)

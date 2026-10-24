@@ -14,7 +14,7 @@ Cách chấm:
 - Đoạn được giữ: `verdict` = Speech; phương án có hậu tố `+su<p>-<s>` bỏ thêm theo luật ShortUnsure: `short` và
   (`mean_prob` < p hoặc `speech_ms` < s).
 - Gán mỗi đoạn được giữ cho clip trùng thời gian nhiều nhất (clip nới 300 ms mỗi phía). Không trùng clip nào là câu ảo,
-  ghi kèm lời nhắc (`cues` trong meta.json) đang chạy lúc đó.
+  ghi kèm lời nhắc (`cues` trong meta.json) đang chạy lúc đó. Cảnh có track chỉ xét đoạn trong khung track (`in_track`).
 - Lỗi mỗi clip: WER (en, vi) hay CER (zh, ja, ko) trên chữ chuẩn hóa như `score_asr.py`; clip không có đoạn nào thì lỗi
   bằng độ dài ref. Tỉ lệ lỗi một nguồn là trung bình các ngôn ngữ (mỗi ngôn ngữ: tổng lỗi / tổng độ dài ref).
 - Câu trong phòng "giữ được": có chữ và lỗi của clip ≤ 50%. Câu ngắn "giữ được": có chữ.
@@ -122,8 +122,18 @@ def cue_at(cues, ms):
     return label
 
 
+def in_track(rows, items):
+    """Cảnh có track: chỉ giữ đoạn nằm trong khung track (clip đầu tới clip cuối, nới 2 giây). Ngoài khung là tiếng
+    trước khi bấm phát hay sau khi track hết (điện thoại có thể tự phát lại), không phải chữ ảo."""
+    if not items:
+        return rows
+    lo = min(it["start_ms"] for it in items) - 2_000
+    hi = max(it["end_ms"] for it in items) + 2_000
+    return [r for r in rows if r["end_ms"] > lo and r["start_ms"] < hi]
+
+
 def score_variant(rows, items, cues, minutes, short):
-    by_clip, phantoms = assign(kept(rows, short), items)
+    by_clip, phantoms = assign(in_track(kept(rows, short), items), items)
     per = {}
     room_total = room_kept = short_total = short_kept = 0
     for i, it in enumerate(items):
