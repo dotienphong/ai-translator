@@ -1,5 +1,5 @@
 import type { MessageKey } from "../i18n";
-import type { AppInfo, AudioSource, AudioSourceOption } from "./ipc";
+import type { AppInfo, AudioSource, AudioSourceOption, InputDevice } from "./ipc";
 
 // Nguồn âm thanh ở màn hình chính và Cài đặt › Âm thanh (§4.3, §6.1).
 
@@ -58,4 +58,16 @@ export function sourceLabel(
       return found?.kind === "device" ? found.name : source.id;
     }
   }
+}
+
+// Nhãn của nguồn micro ở màn hình chính (spec 2026-10-24-nguon-micro §3.3): "Micro: {tên}". Micro mặc định: tên của micro
+// mặc định lúc này nếu danh sách đã đọc; micro đã chọn mà không còn trong danh sách thì hiện id.
+export function micLabel(
+  micDevice: string | null,
+  devices: readonly InputDevice[] | null,
+  t: (key: MessageKey, params?: Record<string, string>) => string,
+): string {
+  const found = devices?.find((d) => (micDevice === null ? d.isDefault : d.id === micDevice));
+  const name = found?.name ?? micDevice ?? t("settings.audio.mic.default");
+  return t("home.audioSource.mic", { name });
 }

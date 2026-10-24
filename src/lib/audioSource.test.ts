@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { translate } from "../i18n";
-import { sourceChoices, sourceFromKey, sourceKey, sourceLabel } from "./audioSource";
-import type { AudioSource, AudioSourceOption } from "./ipc";
+import { micLabel, sourceChoices, sourceFromKey, sourceKey, sourceLabel } from "./audioSource";
+import type { AudioSource, AudioSourceOption, InputDevice } from "./ipc";
 
 const t = (key: Parameters<typeof translate>[1], params?: Record<string, string>) => translate("vi", key, params);
 
@@ -36,5 +36,23 @@ describe("nguồn âm thanh", () => {
     );
     expect(sourceLabel({ kind: "device", id: "d1" }, "windows", devices, t)).toBe("Loa (Realtek)");
     expect(sourceLabel({ kind: "device", id: "d2" }, "windows", devices, t)).toBe("d2");
+  });
+});
+
+// Spec 2026-10-24-nguon-micro §3.3: nhãn "Micro: {tên}" ở màn hình chính.
+describe("nhãn micro", () => {
+  const devices: InputDevice[] = [
+    { id: "a", name: "MacBook Pro Microphone", isDefault: true },
+    { id: "b", name: "Jabra", isDefault: false },
+  ];
+
+  it("micro mặc định: tên micro mặc định lúc này nếu biết", () => {
+    expect(micLabel(null, devices, t)).toBe("Micro: MacBook Pro Microphone");
+    expect(micLabel(null, null, t)).toBe("Micro: Micro mặc định của hệ thống");
+  });
+
+  it("micro đã chọn: tên của nó, không còn trong danh sách thì id", () => {
+    expect(micLabel("b", devices, t)).toBe("Micro: Jabra");
+    expect(micLabel("gone", devices, t)).toBe("Micro: gone");
   });
 });
