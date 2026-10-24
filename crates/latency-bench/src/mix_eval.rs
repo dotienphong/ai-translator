@@ -398,7 +398,13 @@ mod tests {
         for text in ["OK", "Đúng rồi.", "好的", "はい", "네", "Got it!"] {
             assert!(is_short(text), "{text}");
         }
-        for text in ["我们明天下午开会", "We will meet tomorrow", "내일 회의가 있어요", "...", ""] {
+        for text in [
+            "我们明天下午开会",
+            "We will meet tomorrow",
+            "내일 회의가 있어요",
+            "...",
+            "",
+        ] {
             assert!(!is_short(text), "{text}");
         }
     }

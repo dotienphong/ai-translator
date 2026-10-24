@@ -4670,7 +4670,13 @@ mod tests {
                 samples: SampleSource::new(speech_then_silence(1_500), 1_600, Duration::ZERO),
                 vad_silent,
             });
-            let (engine, _sink) = start(source, energy(), Box::new(RecordingAsr(seen.clone())), quick_mt(), cfg());
+            let (engine, _sink) = start(
+                source,
+                energy(),
+                Box::new(RecordingAsr(seen.clone())),
+                quick_mt(),
+                cfg(),
+            );
             engine.join();
             let seen = seen.lock().unwrap().clone();
             if vad_silent {
@@ -4687,7 +4693,10 @@ mod tests {
         let mut source = SampleSource::new(vec![0.1, 0.2, 0.3], 2, Duration::ZERO);
         let (mut out, mut vad) = (vec![9.0], Vec::new());
         assert!(source.read_with_vad(&mut out, &mut vad, Duration::ZERO).unwrap());
-        assert_eq!((out.as_slice(), vad.as_slice()), (&[9.0, 0.1, 0.2][..], &[0.1, 0.2][..]));
+        assert_eq!(
+            (out.as_slice(), vad.as_slice()),
+            (&[9.0, 0.1, 0.2][..], &[0.1, 0.2][..])
+        );
     }
 
     /// Chép lời mọi đoạn thành "so we went home"; ghi (id đoạn, số mẫu) của mọi yêu cầu.
