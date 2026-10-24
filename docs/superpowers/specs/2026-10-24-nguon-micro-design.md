@@ -538,6 +538,86 @@ trước ở những điểm sau.
   - dùng chung micro với app họp, AirPods, micro USB;
   - giọng thật các tiếng ngoài tiếng Việt.
 
+## 17. Nhường lời theo tiếng nói của âm thanh máy (2026-10-25)
+
+Số liệu: `bench/2026-10-24-nguon-micro/results/ao-tron.md`. Chủ dự án chọn ngày 2026-10-25 (hướng 3 trong ba hướng của
+`ao-tron.md`), kèm yêu cầu không làm chậm dịch và nhả chữ. Mục này **ghi đè** mục 16 ở phần tiếng vọng (§5.4).
+
+**Vấn đề.**
+- Bộ nhường lời của mục 16 chỉ hạ micro khi âm thanh máy vượt −55 dBFS (mức tuyệt đối).
+- Người online nói nhỏ (dưới khoảng −55 dBFS) không làm micro bị hạ.
+- Micro đã khuếch đại tới +20 dB, nên tiếng nền phòng −45 dBFS lên khoảng −25 dBFS, lấn át giọng sạch của âm thanh máy.
+- Đo được: lỗi 13,7% ở −56 dBFS và 80% ở −62 dBFS. Chế độ Âm thanh máy với cùng giọng: 9,1% và 12,5%.
+- Hạ −30 dB vẫn chưa đủ: tiếng nền còn khoảng −55 dBFS, to hơn giọng −62 dBFS.
+
+**Thiết kế: cổng kép.**
+- Micro bị hạ khi **một trong hai** điều kiện đúng:
+  - (a) khung 10 ms của âm thanh máy có RMS từ −55 dBFS trở lên, như mục 16, quyết định tức thì;
+  - (b) Silero VAD chạy trên âm thanh máy cho xác suất có tiếng nói từ 0,5 trở lên ở khung 512 mẫu (32 ms) vừa xong.
+- Hạ là **tắt hẳn micro** (thay cho −30 dB). Spike (`tieng-vong.md`) đo phương án tắt hẳn, giữ 150 ms, ngang mức −30 dB
+  giữ 300 ms: cảnh 1 7,8% so với 7,7%, cảnh 2 11,1% so với 11,0%. Tắt hẳn kèm giữ 300 ms chưa đo; đo ở nghiệm thu dưới.
+- Giữ 300 ms sau điều kiện cuối cùng, rồi mở lại dần trong 50 ms, như mục 16.
+- Nhạc hay tiếng thông báo nhỏ không phải tiếng nói thì không làm micro bị hạ; âm thanh to vẫn làm hạ như trước.
+
+**Không thêm độ trễ.**
+- Không đệm hay trễ micro để chờ VAD: kết quả của khung Silero vừa xong áp cho các mẫu kế tiếp.
+- Giọng to vẫn được (a) bắt tức thì. Với giọng nhỏ, đầu câu có thể lọt tối đa 1–2 khung (32–64 ms) tiếng micro; chấp nhận
+  điều này để không trễ.
+- Ngắt câu, nhận dạng và dịch không đổi.
+
+**Chỗ đặt.**
+- `crates/audio-capture/src/duck.rs`:
+  - `DuckingMixer` nhận một bộ phát hiện tiếng nói tùy chọn, qua trait trong crate `audio-capture`, để crate này không phụ
+    thuộc `pipeline`;
+  - mixer gom âm thanh máy đã ghép thành khung 512 mẫu và hỏi bộ phát hiện;
+  - `MicGate` có thêm cách "giữ" theo tín hiệu tiếng nói, không đổi cách đo năng lượng.
+- `src-tauri/src/capture.rs`:
+  - `BothPre` dùng bộ phát hiện bọc `pipeline::vad::SileroVad`;
+  - `LiveCapture` nhận hàm tạo VAD của session (cùng `VadFactory` engine đang dùng);
+  - Silero được nạp lười trên luồng VAD của engine (stack 8 MiB) ở lần trộn đầu tiên.
+- Silero này chỉ có ở chế độ Âm thanh máy + Micro; hai chế độ kia không tốn gì thêm. Có state riêng, không dùng chung với
+  VAD của engine.
+- Mở lại nguồn (đổi thiết bị, micro rút ra cắm lại) thì xóa state của Silero, như engine làm với VAD của nó.
+
+**Lỗi.** Silero của bộ trộn không nạp được hay chạy lỗi thì ghi cảnh báo một lần và dùng riêng điều kiện (a) cho tới hết
+phiên. Phiên không dừng, không có mã lỗi mới.
+
+**Chi phí và ngân sách.**
+- Đo ngày 2026-10-25, bản release, M4 Pro, 3 000 khung của bản thu thật: Silero 0,22 ms mỗi khung (p95 0,23 ms, chậm nhất
+  1,9 ms), khoảng 0,7% một nhân.
+- Ngân sách:
+  - p95 ≤ 0,5 ms mỗi khung trên M4 Pro, ≤ 2 ms trên Windows i5 (máy yếu nhất đang hỗ trợ);
+  - tổng p50 của chế độ trộn (A2, cùng nội dung như lượt A2 ngày 2026-10-24) không tăng quá 20 ms so với trước khi sửa
+    (1 056 ms);
+  - nhận dạng p50 và dịch p50 giữ nguyên trong dao động đo.
+- Nếu Windows vượt ngân sách: bỏ qua Silero ở khung âm thanh máy im lặng số (RMS dưới −90 dBFS, chắc chắn không có tiếng
+  nói). Chỉ làm khi đo thấy cần.
+
+**Kiểm thử.**
+- Đơn vị (`duck.rs`):
+  - giọng tổng hợp −62 dBFS kèm bộ phát hiện giả báo "có tiếng" thì micro bị tắt từ khung kế tiếp và giữ 300 ms;
+  - âm thanh máy nhỏ mà bộ phát hiện báo "không" thì micro không bị hạ;
+  - âm thanh máy to vẫn hạ ngay ở khung 10 ms kế tiếp, kể cả khi không có bộ phát hiện;
+  - bộ phát hiện lỗi thì quay về điều kiện (a).
+- `capture.rs`: `BothPre` có VAD lỗi nạp vẫn trộn được; hàm tạo VAD chỉ được gọi ở chế độ trộn.
+- `mix-eval`: phương án nhận `gate.speech_prob` (ngưỡng xác suất; không có thì như mục 16) và `gate.mute` (tắt hẳn micro
+  khi hạ; JSON không ghi được âm vô cực).
+
+**Nghiệm thu (thêm vào mục 11).**
+- **A-trộn:** cảnh 1, 2 không xấu hơn mốc mục 16 quá 10% (tương đối): online ≤ 9,8% × 1,10, trong phòng ≤ 5,2% × 1,10.
+  Cảnh 2 báo cáo để so.
+- **A-nhỏ (mới):** các cảnh `nen-h*` (giọng online nhỏ, micro chỉ có tiếng nền phòng):
+  - ở −56 và −62 dBFS, lỗi của chế độ trộn không xấu hơn chế độ Âm thanh máy (`PB-app`) quá 10% (tương đối);
+  - ở −36 và −46 dBFS, không xấu hơn lúc chưa sửa quá 10%.
+- **A-ảo:** `ao-tron-can` và cảnh 6 vẫn 0 hay ≤ 1 câu ảo mỗi 10 phút.
+- **A2:** như ngân sách ở trên.
+- **Thử tay:** đúng tình huống A7 (câu mẫu `listen-test-en.wav`, −65 dBFS, nguồn toàn hệ thống, chế độ trộn). Câu mẫu phải
+  được nhận đúng, và log có `micro bị hạ` lớn hơn 0.
+
+**Kế hoạch.** Kế hoạch 05 (`docs/superpowers/plans/2026-10-25-nguon-micro-05-nhuong-loi-theo-tieng-noi.md`) làm trước
+phần phát hành của kế hoạch 04 (Task 10–12). Website và pháp lý không đổi: câu "Khi người online đang nói, micro được hạ
+xuống" vẫn đúng.
+
 ## Tham khảo
 
 - Microsoft, `IAcousticEchoCancellationControl::SetEchoCancellationRenderEndpoint` (tối thiểu build 22621):
