@@ -520,6 +520,10 @@ const SCREENS = [
   ["settings-audio-mic-undetermined", "screen=settings&group=audio&capture=mic&micperm=undetermined"],
   // Màn hình chính chế độ Micro, phiên đang chạy mà micro không có tín hiệu (§3.3, §7).
   ["home-mic-silent", "screen=home&session=running&capture=mic&micissue=suspected"],
+  // Chế độ Âm thanh máy + Micro (kế hoạch 03): cả hai bộ chọn và ghi chú nhường lời; micro thiếu quyền, không mở được.
+  ["settings-audio-both", "screen=settings&group=audio&capture=both"],
+  ["home-both-mic-permission", "screen=home&session=running&capture=both&micissue=permission"],
+  ["home-both-mic-unavailable", "screen=home&session=running&capture=both&micissue=unavailable"],
   ["settings-model", "screen=settings&group=model"],
   ["settings-hotkeys", "screen=settings&group=hotkeys"],
   ["settings-license", "screen=settings&group=license"],
@@ -634,6 +638,7 @@ const OVERLAYS = [
   ["overlay", "session=running"],
   ["overlay-live", "session=running&live=alone"],
   ["overlay-mic-silent", "session=running&notes=micSilent"],
+  ["overlay-mic-permission", "session=running&notes=micPermission"],
 ];
 
 // Phần tử có chữ tràn khỏi ô: tối đa 8, mỗi phần tử một dòng mô tả. Dấu "…" có chủ ý (text-overflow: ellipsis) không tính.
