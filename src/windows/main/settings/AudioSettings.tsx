@@ -7,6 +7,9 @@ import { appStore, useApp, useT } from "../appStore";
 
 // Giá trị của bộ chọn micro cho micro mặc định (`micDevice: null`).
 const DEFAULT_MIC = "";
+// Ngưỡng ngắt câu app dùng khi thu từ micro, thay `vadEndSilenceMs` (khớp `MIC_END_SILENCE_MS` ở src-tauri/src/session.rs):
+// thanh trượt khóa ở giá trị này để người dùng thấy đúng mức đang dùng.
+const MIC_PAUSE_MS = 500;
 
 // Nhóm Cài đặt "Âm thanh" (§4.3): thu từ âm thanh máy hay micro (spec 2026-10-24-nguon-micro §3.2), nguồn âm thanh máy
 // (§6.1) hay micro, lọc ồn micro, quyền micro, và độ nhạy ngắt câu (50–800 ms, §6.3).
@@ -34,7 +37,7 @@ export function AudioSettings() {
     void loadPermission();
   }, [mic, loadDevices, loadPermission]);
   if (!settings || !info) return null;
-  const pauseMs = pause ?? settings.vadEndSilenceMs;
+  const pauseMs = mic ? MIC_PAUSE_MS : (pause ?? settings.vadEndSilenceMs);
   const commitPause = () => {
     if (pause !== null && pause !== settings.vadEndSilenceMs) void update({ vadEndSilenceMs: pause });
     setPause(null);
@@ -108,7 +111,10 @@ export function AudioSettings() {
           {permission === "denied" && (
             <p className="note error" role="status">
               <Icon name="alert" size={16} />
-              <span>{t("settings.audio.micPermission.denied")}</span>
+              <span>
+                {t("settings.audio.micPermission.denied")}
+                {info.platform === "macos" && ` ${t("settings.audio.micPermission.reopen")}`}
+              </span>
               <button onClick={() => void openMicSettings()}>{t("common.openMicSettings")}</button>
             </p>
           )}

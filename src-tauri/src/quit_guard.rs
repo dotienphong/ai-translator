@@ -178,6 +178,15 @@ mod tests {
         }
     }
 
+    /// Spec 2026-10-24-nguon-micro §3.4: bật hay tắt quyền (Micro, ghi âm thanh hệ thống) lúc app đang chạy thì macOS chỉ áp
+    /// dụng sau khi app mở lại, và System Settings đề nghị "Quit & Reopen". Nút đó gửi `quit` với lý do `rlgo` (đo khi thử tay
+    /// 2026-10-24, người gửi `com.apple.settings.PrivacySecurity.extension`): app thoát, macOS mở lại.
+    #[test]
+    fn quit_and_reopen_from_system_settings_is_allowed() {
+        assert_eq!(four_cc(b"rlgo"), 1_919_706_991);
+        assert!(allow_terminate(quit(Some(b"rlgo"))));
+    }
+
     #[test]
     fn cmd_q_and_dock_quit_are_cancelled() {
         // ⌘Q gọi thẳng `terminate:`, không có Apple Event.

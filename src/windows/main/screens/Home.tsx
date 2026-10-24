@@ -110,7 +110,12 @@ export function Home() {
         {session === "error" && status.sessionError && (
           <div className="hero-alert" role="alert">
             <Icon name="alert" />
-            <span>{t(errorKey(status.sessionError))}</span>
+            <span>
+              {t(errorKey(status.sessionError))}
+              {status.sessionError === "micPermission" &&
+                info.platform === "macos" &&
+                ` ${t("settings.audio.micPermission.reopen")}`}
+            </span>
             {status.sessionError === "audioPermission" && info.platform === "macos" && (
               <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
             )}

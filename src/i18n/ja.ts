@@ -217,6 +217,7 @@ export const ja: Record<MessageKey, string> = {
   "settings.audio.micPermission.denied": "AI Translator にマイクの使用が許可されていません。",
   "settings.audio.micPermission.undetermined": "AI Translator にはマイクの使用許可が必要です。",
   "settings.audio.micPermission.allow": "マイクを許可",
+  "settings.audio.micPermission.reopen": "許可したあと、macOS に表示される「終了して再度開く」を選んでください。",
   "settings.audio.pause.micNote": "マイクから取得するときは、文が途中で切れにくいよう、マイク専用の区切り設定（500 ms）を使います。",
   "settings.general.uiLanguage": "表示言語",
   "settings.general.launchAtLogin": "ログイン時に起動",

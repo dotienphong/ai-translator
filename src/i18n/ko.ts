@@ -217,6 +217,7 @@ export const ko: Record<MessageKey, string> = {
   "settings.audio.micPermission.denied": "AI Translator에 마이크 사용 권한이 없습니다.",
   "settings.audio.micPermission.undetermined": "AI Translator에 마이크 사용 권한이 필요합니다.",
   "settings.audio.micPermission.allow": "마이크 허용",
+  "settings.audio.micPermission.reopen": "허용한 뒤 macOS가 물으면 “종료 후 다시 열기”를 선택하세요.",
   "settings.audio.pause.micNote": "마이크에서 가져올 때는 문장이 덜 끊기도록 마이크 전용 끊기 설정(500ms)을 사용합니다.",
   "settings.general.uiLanguage": "표시 언어",
   "settings.general.launchAtLogin": "로그인 시 실행",

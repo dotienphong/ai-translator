@@ -216,6 +216,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.audio.micPermission.denied": "AI Translator chưa được phép dùng micro.",
   "settings.audio.micPermission.undetermined": "AI Translator cần quyền dùng micro.",
   "settings.audio.micPermission.allow": "Cho phép dùng micro",
+  "settings.audio.micPermission.reopen": "Bật quyền xong, chọn “Thoát & Mở lại” khi macOS hỏi để áp dụng.",
   "settings.audio.pause.micNote": "Khi thu từ micro, app dùng mức ngắt câu riêng cho micro (500 ms) để ít câu bị cắt.",
   "settings.general.uiLanguage": "Ngôn ngữ giao diện",
   "settings.general.launchAtLogin": "Khởi động cùng hệ thống",
