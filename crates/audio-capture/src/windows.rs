@@ -170,6 +170,49 @@ pub fn list_capture_devices() -> Result<Vec<InputDevice>> {
         .collect())
 }
 
+/// Khóa quyền micro của Windows (Settings › Privacy & security › Microphone). `Value` = "Deny" ở khóa gốc là tắt cho mọi
+/// app; ở khóa con `NonPackaged` là tắt "Let desktop apps access your microphone" (spec 2026-10-24-nguon-micro §3.4).
+const MIC_CONSENT: &str = r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone";
+
+/// Trạng thái quyền micro: "Deny" ở một trong hai khóa thì bị từ chối; không đọc được khóa thì coi là được phép (lỗi mở
+/// thật sẽ tới từ WASAPI, `E_ACCESSDENIED`).
+pub fn mic_permission() -> crate::MicPermission {
+    let denied = [MIC_CONSENT.to_string(), format!(r"{MIC_CONSENT}\NonPackaged")]
+        .iter()
+        .any(|path| consent_value(path).as_deref() == Some("Deny"));
+    if denied {
+        crate::MicPermission::Denied
+    } else {
+        crate::MicPermission::Granted
+    }
+}
+
+/// Giá trị `Value` (REG_SZ, "Allow" hay "Deny") của một khóa dưới HKCU; `None` nếu không đọc được.
+fn consent_value(path: &str) -> Option<String> {
+    use windows::Win32::Foundation::ERROR_SUCCESS;
+    use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_SZ, RegGetValueW};
+    use windows::core::w;
+    let mut buf = [0u16; 64];
+    let mut size = std::mem::size_of_val(&buf) as u32;
+    // SAFETY: `buf` và `size` sống suốt lời gọi; `size` là số byte của `buf`.
+    let rc = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            &HSTRING::from(path),
+            w!("Value"),
+            RRF_RT_REG_SZ,
+            None,
+            Some(buf.as_mut_ptr().cast()),
+            Some(&mut size),
+        )
+    };
+    if rc != ERROR_SUCCESS {
+        return None;
+    }
+    let len = (size as usize / 2).saturating_sub(1);
+    Some(String::from_utf16_lossy(&buf[..len]))
+}
+
 fn open_device(enumerator: &IMMDeviceEnumerator, endpoint: &Endpoint) -> Result<IMMDevice> {
     Ok(match endpoint {
         Endpoint::Default(role) => unsafe { enumerator.GetDefaultAudioEndpoint(eRender, role.erole())? },

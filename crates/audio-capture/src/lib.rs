@@ -111,6 +111,34 @@ pub enum MicPermission {
     Undetermined,
 }
 
+/// Trạng thái quyền micro của app (spec 2026-10-24-nguon-micro §3.4). Chỉ đọc, không hỏi người dùng. Windows không có
+/// trạng thái "chưa hỏi": công tắc quyền micro cho app desktop chỉ bật hay tắt.
+pub fn mic_permission() -> MicPermission {
+    #[cfg(target_os = "macos")]
+    return macos_input::mic_permission();
+    #[cfg(windows)]
+    return windows::mic_permission();
+    #[allow(unreachable_code)]
+    MicPermission::Denied
+}
+
+/// Xin quyền micro. macOS: hiện hộp thoại nếu chưa hỏi lần nào, chờ trả lời tối đa `wait`; đã trả lời rồi thì trả ngay kết
+/// quả cũ. Windows: không có hộp thoại, trả trạng thái hiện có. Gọi trước khi mở micro (spec mục 16: để Core Audio tự
+/// hỏi thì `start` bị chặn suốt lúc hộp thoại mở).
+pub fn request_mic_permission(wait: std::time::Duration) -> anyhow::Result<MicPermission> {
+    #[cfg(target_os = "macos")]
+    return Ok(if macos_input::request_mic_permission(wait)? {
+        MicPermission::Granted
+    } else {
+        MicPermission::Denied
+    });
+    #[allow(unreachable_code)]
+    {
+        let _ = wait;
+        Ok(mic_permission())
+    }
+}
+
 /// Nguồn micro (spec 2026-10-24-nguon-micro §5.1, §5.2). `id`: `None` là micro mặc định.
 pub fn mic_source(id: Option<String>, stats: Arc<CaptureStats>) -> anyhow::Result<Box<dyn AudioSource>> {
     #[cfg(target_os = "macos")]

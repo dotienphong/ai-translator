@@ -5,7 +5,7 @@
 //!
 //! - `devices`: liệt kê micro (tên, loại kết nối, mặc định).
 //! - `status`: trạng thái quyền micro (macOS: `AVCaptureDevice`; Windows: khóa `ConsentStore\microphone`).
-//! - `request`: macOS, xin quyền (hiện hộp thoại nếu chưa hỏi), chờ trả lời tối đa 60 giây.
+//! - `request`: macOS, xin quyền (hiện hộp thoại nếu chưa hỏi), chờ trả lời tối đa 60 giây; Windows in trạng thái hiện có.
 //! - `listen [--seconds N] [--id ID]`: mở micro N giây, in mỗi giây RMS và tỉ lệ mẫu bằng 0 tuyệt đối; mở lỗi thì in
 //!   nguyên văn lỗi (mã HRESULT hay OSStatus).
 
@@ -57,62 +57,15 @@ fn devices() -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
 fn status() -> Result<()> {
-    println!("quyền micro: {:?}", audio_capture::macos_input::mic_permission());
+    println!("quyền micro: {:?}", audio_capture::mic_permission());
     Ok(())
 }
 
-#[cfg(windows)]
-fn status() -> Result<()> {
-    const BASE: &str = r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone";
-    for path in [BASE.to_string(), format!(r"{BASE}\NonPackaged")] {
-        println!("HKCU\\{path} Value = {:?}", consent_value(&path));
-    }
+fn request() -> Result<()> {
+    let answer = audio_capture::request_mic_permission(Duration::from_secs(60))?;
+    println!("trả lời: {answer:?}");
     Ok(())
-}
-
-/// Giá trị `Value` (REG_SZ, "Allow" hay "Deny") của một khóa dưới HKCU; `None` nếu không đọc được.
-#[cfg(windows)]
-fn consent_value(path: &str) -> Option<String> {
-    use windows::Win32::Foundation::ERROR_SUCCESS;
-    use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_SZ, RegGetValueW};
-    use windows::core::{HSTRING, w};
-    let mut buf = [0u16; 64];
-    let mut size = std::mem::size_of_val(&buf) as u32;
-    let rc = unsafe {
-        RegGetValueW(
-            HKEY_CURRENT_USER,
-            &HSTRING::from(path),
-            w!("Value"),
-            RRF_RT_REG_SZ,
-            None,
-            Some(buf.as_mut_ptr().cast()),
-            Some(&mut size),
-        )
-    };
-    if rc != ERROR_SUCCESS {
-        return None;
-    }
-    let len = (size as usize / 2).saturating_sub(1);
-    Some(String::from_utf16_lossy(&buf[..len]))
-}
-
-#[cfg(not(any(target_os = "macos", windows)))]
-fn status() -> Result<()> {
-    anyhow::bail!("chỉ hỗ trợ macOS và Windows")
-}
-
-#[cfg(target_os = "macos")]
-fn request() -> Result<()> {
-    let granted = audio_capture::macos_input::request_mic_permission(Duration::from_secs(60))?;
-    println!("trả lời: {}", if granted { "cho phép" } else { "từ chối" });
-    status()
-}
-
-#[cfg(not(target_os = "macos"))]
-fn request() -> Result<()> {
-    anyhow::bail!("chỉ có trên macOS")
 }
 
 fn listen(seconds: u64, id: Option<String>) -> Result<()> {
