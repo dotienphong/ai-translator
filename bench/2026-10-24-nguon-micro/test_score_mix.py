@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from score_mix import assign, best_offset_ms, in_track, kept, score_variant  # noqa: E402
+from score_mix import assign, best_offset_ms, in_track, kept, score_variant, subset_of  # noqa: E402
 
 ITEMS = [
     {"source": "online", "lang": "en", "ref": "hello world", "start_ms": 1000, "end_ms": 2000, "short": False},
@@ -53,6 +53,27 @@ class ScoreMix(unittest.TestCase):
         self.assertEqual(best_offset_ms(track, recording, 16000), 2000)
         # Track bắt đầu trước bản thu 1,5 giây.
         self.assertEqual(best_offset_ms(track, track[24000:], 16000, min_ms=-15000), -1500)
+
+
+class Subset(unittest.TestCase):
+    def test_subset_of_splits_clips_by_index_parity(self):
+        self.assertIsNone(subset_of("all", 5))
+        self.assertEqual(subset_of("even", 5), {0, 2, 4})
+        self.assertEqual(subset_of("odd", 5), {1, 3})
+
+    def test_subset_scores_only_those_clips_but_keeps_every_phantom(self):
+        items = [
+            {"source": "online", "lang": "en", "ref": "one two three four", "start_ms": 1000, "end_ms": 2000, "short": False},
+            {"source": "online", "lang": "en", "ref": "five six seven eight", "start_ms": 4000, "end_ms": 5000, "short": False},
+        ]
+        rows = [row(1100, 1900, "one two three four"), row(4100, 4900, "five six x y"), row(6200, 6500, "ghost")]
+        whole = score_variant(rows, items, [], 1.0, None)
+        first = score_variant(rows, items, [], 1.0, None, subset={0})
+        second = score_variant(rows, items, [], 1.0, None, subset={1})
+        self.assertAlmostEqual(whole["online_err"], 0.25)
+        self.assertEqual(first["online_err"], 0.0)
+        self.assertEqual(second["online_err"], 0.5)
+        self.assertEqual((first["phantoms"], second["phantoms"]), (1, 1))
 
 
 if __name__ == "__main__":

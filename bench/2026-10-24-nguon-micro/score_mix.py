@@ -132,11 +132,22 @@ def in_track(rows, items):
     return [r for r in rows if r["end_ms"] > lo and r["start_ms"] < hi]
 
 
-def score_variant(rows, items, cues, minutes, short):
+def subset_of(name, n):
+    """Chỉ số clip của một nửa (`even`/`odd`, theo thứ tự trong lịch), hay `None` là tất cả. Dùng để chỉnh tham số trên
+    nửa này rồi kiểm trên nửa kia (kế hoạch 05)."""
+    if name == "all":
+        return None
+    return {i for i in range(n) if (i % 2 == 0) == (name == "even")}
+
+
+def score_variant(rows, items, cues, minutes, short, subset=None):
+    """`subset`: chỉ chấm lỗi của các clip có chỉ số này; đoạn vẫn gán theo mọi clip, và chữ ảo vẫn tính cho cả cảnh."""
     by_clip, phantoms = assign(in_track(kept(rows, short), items), items)
     per = {}
     room_total = room_kept = short_total = short_kept = 0
     for i, it in enumerate(items):
+        if subset is not None and i not in subset:
+            continue
         segs = by_clip[i]
         if it["short"]:
             short_total += 1
@@ -212,6 +223,7 @@ def main():
     ap.add_argument("--scene", required=True)
     ap.add_argument("--results")
     ap.add_argument("--echo-delay", action="store_true")
+    ap.add_argument("--subset", choices=["all", "even", "odd"], default="all", help="chỉ chấm lỗi của nửa số clip")
     args = ap.parse_args()
     mic, rate = read_wav(os.path.join(args.scene, "mic.wav"))
     if args.echo_delay:
@@ -222,7 +234,8 @@ def main():
         cues = json.load(f).get("cues", [])
     minutes = len(mic) / rate / 60
     items, offsets = scene_items(args.scene, rate)
-    print(f"độ lệch track: {offsets} ms; {len(items)} clip; {minutes:.1f} phút")
+    subset = subset_of(args.subset, len(items))
+    print(f"độ lệch track: {offsets} ms; {len(items)} clip ({args.subset}); {minutes:.1f} phút")
     results = {}
     for name in sorted(os.listdir(args.results)):
         if not name.endswith(".jsonl"):
@@ -230,8 +243,9 @@ def main():
         rows = load_rows(os.path.join(args.results, name))
         for short in SHORT_GRID:
             key = name[:-6] if short is None else f"{name[:-6]}+su{short[0]}-{short[1]}"
-            results[key] = score_variant(rows, items, cues, minutes, short)
-    with open(os.path.join(args.results, "score.json"), "w", encoding="utf-8") as f:
+            results[key] = score_variant(rows, items, cues, minutes, short, subset)
+    suffix = "" if args.subset == "all" else f".{args.subset}"
+    with open(os.path.join(args.results, f"score{suffix}.json"), "w", encoding="utf-8") as f:
         json.dump({"offsets_ms": offsets, "minutes": minutes, "variants": results}, f, ensure_ascii=False, indent=1)
     lines = ["| Phương án | Lỗi online | Lỗi trong phòng | Giữ câu trong phòng | Giữ câu ngắn | Câu ảo | Ảo/10 phút |",
              "|---|---|---|---|---|---|---|"]
@@ -239,7 +253,7 @@ def main():
         lines.append(f"| {key} | {fmt(r['online_err'])} | {fmt(r['room_err'])} | {fmt(r['room_kept'])} | "
                      f"{fmt(r['short_recall'])} | {r['phantoms']} | {fmt(r['phantoms_per_10min'], pct=False)} |")
     table = "\n".join(lines)
-    with open(os.path.join(args.results, "score.md"), "w", encoding="utf-8") as f:
+    with open(os.path.join(args.results, f"score{suffix}.md"), "w", encoding="utf-8") as f:
         f.write(table + "\n")
     print(table)
 
