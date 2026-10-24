@@ -56,3 +56,9 @@ Kế hoạch: `docs/superpowers/plans/2026-10-24-nguon-micro-02-che-do-micro.md`
      app đang dùng.
    - Lần bắt đầu phiên đầu tiên sau khi đổi giao diện, câu "Chào mọi người, hôm nay…" bị cắt ở dấu phẩy: "Chào mọi người" thành
      một đoạn ngắn, bị nhận thành tiếng Anh ("I'm").
+
+## Đã xử lý (2026-10-24, theo đề xuất, chủ dự án duyệt)
+
+- Phát hiện 1: bản cho whisper dùng bộ giới hạn mức thay `tanh`, lọc 80 Hz chạy trước khuếch đại; số đo ở `gioi-han-muc.md`.
+- Phát hiện 3: tắt lọc ồn thì `min_speech_ms` 250; ghi chú dưới công tắc sửa cho đúng.
+- Phát hiện 4 và 5: chưa làm.

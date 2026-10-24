@@ -487,20 +487,27 @@ trước ở những điểm sau.
 - **Tiếng vọng (§5.4):** dùng B với ngưỡng −55 dBFS, mức hạ −30 dB, giữ 300 ms. Không dùng AEC3 (§5.5 chỉ còn là chỗ nối
   để sau này).
 - **Chống tiếng ồn (§5.7, §5.8):**
-  - Lớp 1: lọc 80 Hz, giữ nguyên.
-  - **Lớp mới, trước lớp 2: khuếch đại micro cố định +20 dB**, chặn mềm `tanh`. Áp cho cả hai bản (whisper và VAD), ở cả
-    chế độ `mic` lẫn `both`.
+  - Lớp 1: lọc 80 Hz, giữ nguyên, chạy **trước** khuếch đại.
+  - **Lớp mới, sau lớp 1: khuếch đại micro +20 dB.** Áp cho cả hai bản (whisper và VAD), ở cả chế độ `mic` lẫn `both`.
+    - Bản cho whisper: qua **bộ giới hạn mức** (khuếch đại tới +20 dB, đỉnh không vượt −1 dBFS, không méo).
+    - Bản cho VAD: chặn mềm `tanh`.
+    - Sửa sau thử tay 2026-10-24 (`results/thu-tay-mac.md`, `results/gioi-han-muc.md`): ban đầu cả hai bản dùng `tanh` và lọc
+      80 Hz chạy sau. Một tiếng ù trầm −8 dBFS làm `tanh` bão hòa và nghiền giọng nói của bản cho whisper. Cách mới bằng
+      hoặc tốt hơn cách cũ ở mọi cảnh của spike.
   - Lớp 2: **RNNoise** (`nnnoiseless`), chỉ cho bản VAD. DeepFilterNet bị loại.
   - Lớp 3: whisper nghe bản chỉ lọc 80 Hz và đã khuếch đại, không nghe bản đã lọc ồn.
   - **Lớp 4 (VAD khi có micro):**
-    - chế độ `mic`: `threshold` 0,5, `min_speech_ms` 400, **`end_silence_ms` 500**;
+    - chế độ `mic`: `threshold` 0,5, `min_speech_ms` 400, **`end_silence_ms` 500**; tắt "Lọc tiếng ồn micro" thì
+      `min_speech_ms` 250 (thử tay: "OK", "Vâng" chỉ dài khoảng 0,3 giây nên bị ngưỡng 400 bỏ, cả trong phòng yên tĩnh);
     - chế độ `both`: `threshold` 0,5, `min_speech_ms` 600, **`end_silence_ms` 500**.
     - Ở chế độ có micro, giá trị này thay cho `vadEndSilenceMs` của người dùng. Phụ đề hiện chậm hơn khoảng 0,45 s.
   - **Lớp 5 (`ShortUnsure`): bỏ.** Không giảm thêm chữ ảo mà làm mất câu ngắn. Code trong `pipeline::filter` (mặc định
     tắt) bị gỡ ở kế hoạch 02.
   - **Thêm:** luật `Hallucination` bắt cả câu **chứa** cụm quảng cáo kênh rõ ràng (ví dụ "subscribe cho kênh"). Câu "Hãy
     subscribe cho kênh Ghiền Mì Gõ…" đã lọt qua hai lần khi khuếch đại.
-  - Công tắc "Lọc tiếng ồn micro" (§3.2) bật hay tắt RNNoise cho VAD. Khuếch đại và VAD khi có micro vẫn áp khi tắt.
+  - Công tắc "Lọc tiếng ồn micro" (§3.2) bật hay tắt RNNoise cho VAD, và đổi `min_speech_ms` (400 khi bật, 250 khi tắt).
+    Khuếch đại và các tham số VAD khác vẫn áp khi tắt. Tắt chỉ hợp phòng yên tĩnh: phòng ồn (cảnh 7) gần như không còn câu
+    nào.
 - **AGC (§2):** đã đo, kém khuếch đại cố định. Không làm.
 - **Quyền micro trên macOS (§3.4, §7):**
   - Bị từ chối thì Core Audio trả 100% số 0, không báo lỗi. Đọc trạng thái bằng `AVCaptureDevice`.
@@ -509,14 +516,18 @@ trước ở những điểm sau.
 - **Phương án dự phòng §5.1 (gắn micro vào aggregate của tap): không cần.** Lệch đồng hồ của micro và loa tích hợp khoảng
   0,1 ppm.
 - **Mức đạt (§6.3, §11): hạ về mức đo được, dùng làm mốc chống thụt lùi.** Với cấu hình trên:
-  - **A-trộn:** cảnh 1 (nói lần lượt), lỗi online ≤ 6,1% × 1,10, lỗi trong phòng ≤ 3,7% × 1,10.
+  - **A-trộn:** cảnh 1 (nói lần lượt), lỗi online ≤ 6,1% × 1,10, lỗi trong phòng ≤ 3,7% × 1,10. Hai số này đo với cách
+    khuếch đại cũ (`tanh` cho cả hai bản); kế hoạch 03 đo lại với bộ giới hạn mức.
   - **A-ảo:** cảnh 6, không quá 1 câu mỗi 10 phút. Giữ nguyên.
-  - **A4-mic (thay A-ồn), gói Chuẩn:**
-    - giọng thật tiếng Việt ở 1 m: lỗi 44,0%;
-    - điện thoại 1 m: lỗi 33,5%, giữ 80%;
-    - điện thoại 3 m: lỗi 55,3%, giữ 44%;
-    - phòng ồn: giữ câu ngắn 39,5%, lỗi 69,9%.
-  - **A4-mic, gói Nhẹ:** 58,0%; 40,9% / 68%; 63,2% / 36%; 42,1% / 74,2%.
+  - **A4-mic (thay A-ồn), gói Chuẩn** (đo lại với bộ giới hạn mức; số của cách cũ trong ngoặc):
+    - giọng thật tiếng Việt ở 1 m: lỗi 44,7% (44,0%);
+    - điện thoại 1 m: lỗi 30,0%, giữ 84% (33,5%, 80%);
+    - điện thoại 3 m: lỗi 54,9%, giữ 44% (55,3%, 44%);
+    - phòng ồn: giữ câu ngắn 39,5%, lỗi 69,9% (không đổi).
+  - **A4-mic, gói Nhẹ:** 52,0%; 39,3% / 76%; 62,4% / 40%; 42,1% / 73,5% (cách cũ: 58,0%; 40,9% / 68%; 63,2% / 36%;
+    42,1% / 74,2%).
+  - **Lọc ồn tắt, gói Chuẩn** (để theo dõi, không phải mức đạt): giọng thật 1 m lỗi 36,7%; điện thoại 1 m 30,4% / 76%; 3 m
+    71,2% / 36%; phòng ồn không còn câu nào.
   - Chống thụt lùi: mỗi số không được xấu hơn quá 10% (tương đối).
 - **Website (§9):** nói rõ micro của laptop hợp nhất với người nói gần (khoảng 1 m) và phòng yên tĩnh; khuyên dùng micro
   rời hay micro hội nghị cho phòng lớn; không nêu số lỗi nếu không kèm điều kiện đo.

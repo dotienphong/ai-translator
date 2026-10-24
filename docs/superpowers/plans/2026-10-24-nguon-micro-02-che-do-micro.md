@@ -48,6 +48,12 @@ React 19 + Zustand, Vitest.
   - Bản cho whisper: thiết bị → 16 kHz mono → ×10 (+20 dB) rồi `tanh` → lọc 80 Hz.
   - Bản cho VAD: thiết bị → 48 kHz mono → RNNoise → 16 kHz → ×10 rồi `tanh` → lọc 80 Hz.
   - Tắt "Lọc tiếng ồn micro" thì bản cho VAD là bản sao của bản cho whisper.
+  - **Đã sửa sau Task 17** (`results/thu-tay-mac.md`, `results/gioi-han-muc.md`):
+    - lọc 80 Hz chạy trước khuếch đại;
+    - bản cho whisper dùng `Limiter` (tới +20 dB, trần 0,9) thay `tanh`;
+    - bản cho VAD giữ `tanh`;
+    - tắt lọc ồn thì `min_speech_ms` 250.
+    Đo lại bằng `mix-eval`: mọi số bằng hoặc tốt hơn.
 - **QĐ3, hai bản lệch nhau vài ms là chấp nhận được.** Bản cho VAD đi qua thêm hai bộ đổi tần số và RNNoise, nên trễ
   hơn chừng 10–20 ms. Đoạn có phần đệm 200 ms (`pad_ms`) nên lệch này không cắt mất chữ. Test chỉ kiểm phần đổi tần số
   (lệch ≤ 20 ms); `MicChain` chỉ trả số mẫu bằng nhau ở hai bản.

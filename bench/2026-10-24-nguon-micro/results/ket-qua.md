@@ -78,6 +78,11 @@ Lỗi theo tiếng ở 1 m, gói Chuẩn: zh 13%, en 19%, vi 32%, ko 42%, ja 62%
 
 **Mốc A4-mic** (chống thụt lùi 10% tương đối): là hai dòng "Chốt" ở bảng trên.
 
+**Sửa sau thử tay** (`thu-tay-mac.md`, `gioi-han-muc.md`): bản cho whisper dùng bộ giới hạn mức thay `tanh`, lọc 80 Hz
+chạy trước khuếch đại; tắt lọc ồn thì `min_speech_ms` 250. Đo lại, mọi số bằng hoặc tốt hơn. Mốc A4-mic mới ở spec mục 16:
+- gói Chuẩn: 44,7%; 30,0% / 84%; 54,9% / 44%; 39,5% / 69,9%;
+- gói Nhẹ: 52,0%; 39,3% / 76%; 62,4% / 40%; 42,1% / 73,5%.
+
 ## So với mức đạt ban đầu của spec §6.3
 
 | Mức | Ban đầu | Đo được (chốt, gói Chuẩn) | |

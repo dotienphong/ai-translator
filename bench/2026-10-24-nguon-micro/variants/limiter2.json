@@ -1,0 +1,50 @@
+[
+ {
+  "name": "L9-mic-m400",
+  "mode": "mic",
+  "mic_vad": "mic-rnnoise.wav",
+  "limiter": true,
+  "limiter_ceiling": 0.9,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 500
+  }
+ },
+ {
+  "name": "LT-mic-m400",
+  "mode": "mic",
+  "mic_vad": "mic-rnnoise.wav",
+  "limiter": true,
+  "vad_tanh": true,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 500
+  }
+ },
+ {
+  "name": "LT9-mic-m400",
+  "mode": "mic",
+  "mic_vad": "mic-rnnoise.wav",
+  "limiter": true,
+  "limiter_ceiling": 0.9,
+  "vad_tanh": true,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 500
+  }
+ },
+ {
+  "name": "LT-khong-m250",
+  "mode": "mic",
+  "limiter": true,
+  "vad_tanh": true,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250,
+   "end_silence_ms": 500
+  }
+ }
+]
