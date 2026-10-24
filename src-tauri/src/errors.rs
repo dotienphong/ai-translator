@@ -45,6 +45,10 @@ pub const AUDIO_PERMISSION: &str = "audioPermission";
 pub const CAPTURE_FAILED: &str = "captureFailed";
 /// macOS, tap một app: app đó không phát âm thanh.
 pub const APP_NOT_PLAYING: &str = "appNotPlaying";
+/// Chế độ micro: app chưa được phép dùng micro (spec 2026-10-24-nguon-micro §7).
+pub const MIC_PERMISSION: &str = "micPermission";
+/// Chế độ micro: không có micro, micro đã chọn không còn, micro bị rút hay bị app khác giữ độc quyền.
+pub const MIC_UNAVAILABLE: &str = "micUnavailable";
 /// Model không nạp được, kể cả bằng CPU: model hỏng (§9: đề nghị tải lại, kế hoạch 04).
 pub const MODEL_BROKEN: &str = "modelBroken";
 /// Không nạp được VAD.
@@ -245,6 +249,8 @@ mod tests {
                 AUDIO_PERMISSION,
                 CAPTURE_FAILED,
                 APP_NOT_PLAYING,
+                MIC_PERMISSION,
+                MIC_UNAVAILABLE,
                 VAD_FAILED,
                 QUOTA_EXHAUSTED,
                 TRIAL_ENDED,

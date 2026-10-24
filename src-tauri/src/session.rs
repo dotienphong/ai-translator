@@ -460,6 +460,7 @@ fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
                 changed(&app);
             }
         }
+        CaptureEvent::MicSilent(_) => {}
         CaptureEvent::WaitingForApp(waiting) => {
             let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
             if current {
@@ -1118,7 +1119,13 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     }
 
     fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
-        Box::new(LiveCapture::open(source.clone(), include_self, on_event))
+        Box::new(LiveCapture::open(
+            crate::capture::CapturePlan::Playback {
+                source: source.clone(),
+                include_self,
+            },
+            on_event,
+        ))
     }
 
     fn allow_retry(&self) {

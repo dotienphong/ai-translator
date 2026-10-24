@@ -22,6 +22,10 @@
 //!   lặng sau đó không bị báo nhầm (Q-B của review 02 lần 2).
 //! - Trong lúc nguồn chưa chạy hay đang mở lại, `ClockFiller` chèn im lặng theo đồng hồ thật, để thời gian phụ đề không
 //!   lệch.
+//! - Chế độ micro (spec 2026-10-24-nguon-micro §5.6): xin quyền micro trước khi mở (Core Audio tự hỏi thì `start` bị chặn
+//!   suốt lúc hộp thoại mở), mở lại khi micro mặc định đổi, không kiểm tap chết (micro luôn có khung), `ZeroWatch` báo
+//!   [`CaptureEvent::MicSilent`] mà không hỏi có app đang phát. Nguồn micro cho hai bản: bản cho whisper và bản đã lọc ồn
+//!   cho VAD ([`FrameSource::read_with_vad`]).
 //! - Âm thanh chỉ nằm trong RAM (§10.1): không ghi xuống đĩa, không gửi đi đâu.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -29,8 +33,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use audio_capture::mic_chain::MicPreprocessor;
 use audio_capture::preprocess::{ClockFiller, Preprocessor, RING_SAMPLES, drain_when_ready};
-use audio_capture::{AudioSource as Source, CaptureStats};
+use audio_capture::{AudioSource as Source, CaptureStats, MicPermission};
 use pipeline::engine::FrameSource;
 
 use crate::errors;
@@ -71,9 +76,34 @@ pub enum CaptureEvent {
     PermissionSuspected(bool),
     /// Nguồn một app: app đã chọn không phát tiếng nữa, đang chờ nó phát lại (`true`), hoặc đã thu lại được (`false`).
     WaitingForApp(bool),
+    /// Micro trả toàn số 0 tuyệt đối 3 giây từ đầu phiên (`true`), hoặc đã có tín hiệu (`false`): thiếu quyền micro hay
+    /// micro đang tắt tiếng bằng phím cứng (spec 2026-10-24-nguon-micro §5.6, §7).
+    MicSilent(bool),
 }
 
 pub type OnEvent = Box<dyn Fn(CaptureEvent) + Send + Sync>;
+
+/// Thu gì trong một phiên (spec 2026-10-24-nguon-micro §5.6): âm thanh máy theo `audioSource`, hay micro.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CapturePlan {
+    /// `include_self`: macOS, tap toàn hệ thống thu cả âm thanh của chính app (bước "Nghe thử").
+    Playback { source: AudioSource, include_self: bool },
+    /// `device`: `None` là micro mặc định. `noise_filter`: RNNoise cho bản VAD.
+    Mic { device: Option<String>, noise_filter: bool },
+}
+
+impl CapturePlan {
+    pub fn has_mic(&self) -> bool {
+        matches!(self, CapturePlan::Mic { .. })
+    }
+}
+
+/// Lỗi khi quyền micro bị từ chối (ánh xạ ra `micPermission`).
+const MIC_DENIED: &str = "chưa được phép dùng micro";
+/// Lỗi WASAPI khi Windows tắt quyền micro cho app desktop.
+const E_ACCESSDENIED: &str = "0x80070005";
+/// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
+const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
 
 /// Việc phải làm sau một lần mở nguồn thất bại.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -407,6 +437,96 @@ struct Opened {
     tapped: Option<Vec<i32>>,
 }
 
+/// Bộ tiền xử lý của nguồn đang mở: âm thanh máy (một bản, bản VAD là bản sao) hay micro (hai bản).
+enum Pre {
+    Playback(Preprocessor),
+    /// Đóng hộp: chuỗi micro có bộ đệm khung của RNNoise, lớn hơn hẳn `Preprocessor`.
+    Mic(Box<MicPreprocessor>),
+}
+
+impl Pre {
+    fn drain(&mut self, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) -> anyhow::Result<()> {
+        match self {
+            Pre::Playback(p) => {
+                let from = out.len();
+                p.drain(out)?;
+                out_vad.extend_from_slice(&out[from..]);
+                Ok(())
+            }
+            Pre::Mic(m) => m.drain(out, out_vad),
+        }
+    }
+}
+
+/// Đã có quyền micro chưa; chưa hỏi thì hỏi (hộp thoại macOS), để Core Audio không tự hỏi trong lúc `start` (spec mục 16).
+fn ensure_mic_permission() -> anyhow::Result<()> {
+    let permission = match audio_capture::mic_permission() {
+        MicPermission::Undetermined => audio_capture::request_mic_permission(MIC_PROMPT_WAIT)?,
+        other => other,
+    };
+    if permission == MicPermission::Granted {
+        Ok(())
+    } else {
+        anyhow::bail!("{MIC_DENIED}")
+    }
+}
+
+/// Loại kết nối của micro sẽ mở, để ghi log (không ghi tên: tên có thể chứa tên người, spec §4).
+fn mic_transport(device: Option<&str>) -> &'static str {
+    audio_capture::list_input_devices()
+        .ok()
+        .and_then(|list| list.into_iter().find(|d| device.map_or(d.is_default, |id| d.id == id)))
+        .map_or("unknown", |d| d.transport.as_str())
+}
+
+/// Mở micro và chạy nó; lỗi thì dừng nguồn.
+fn start_mic(device: Option<&str>, noise_filter: bool) -> anyhow::Result<(Opened, Pre)> {
+    ensure_mic_permission()?;
+    let stats = Arc::new(CaptureStats::default());
+    let mut source = audio_capture::mic_source(device.map(str::to_string), stats.clone())?;
+    let (producer, consumer) = rtrb::RingBuffer::new(RING_SAMPLES);
+    source.start(producer)?;
+    let format = source.format();
+    match MicPreprocessor::new(consumer, format, noise_filter) {
+        Ok(p) => {
+            log::info!(
+                "đang thu micro: {} Hz, {} kênh, kết nối {}, lọc ồn {noise_filter}",
+                format.sample_rate,
+                format.channels,
+                mic_transport(device)
+            );
+            Ok((
+                Opened {
+                    sources: vec![source],
+                    stats: vec![stats],
+                    tapped: None,
+                },
+                Pre::Mic(Box::new(p)),
+            ))
+        }
+        Err(e) => {
+            source.stop();
+            Err(e)
+        }
+    }
+}
+
+fn start_plan(plan: &CapturePlan) -> anyhow::Result<(Opened, Pre)> {
+    match plan {
+        CapturePlan::Playback { source, include_self } => start_sources(source, *include_self),
+        CapturePlan::Mic { device, noise_filter } => start_mic(device.as_deref(), *noise_filter),
+    }
+}
+
+/// Dấu hiệu của thiết bị mà nguồn theo: micro mặc định, hay thiết bị phát mặc định.
+fn device_signature(plan: &CapturePlan) -> Option<String> {
+    if plan.has_mic() {
+        audio_capture::default_input_signature()
+    } else {
+        audio_capture::default_output_signature()
+    }
+}
+
 /// macOS: các tiến trình đang phát tiếng của app `bundle_id` (đã sắp xếp), `None` nếu app không phát gì.
 #[cfg(target_os = "macos")]
 fn playing_pids(bundle_id: &str) -> Option<Vec<i32>> {
@@ -432,16 +552,30 @@ fn someone_playing(source: &AudioSource) -> bool {
     }
 }
 
+/// Như [`someone_playing`], theo plan. Micro: không dùng (micro không có khái niệm "app đang phát").
+fn someone_playing_for(plan: &CapturePlan) -> bool {
+    match plan {
+        CapturePlan::Playback { source, .. } => someone_playing(source),
+        CapturePlan::Mic { .. } => false,
+    }
+}
+
 /// Mã lỗi cho một lần mở nguồn thất bại.
-fn error_code(source: &AudioSource, err: &anyhow::Error) -> &'static str {
+fn error_code(plan: &CapturePlan, err: &anyhow::Error) -> &'static str {
     let text = format!("{err:#}");
-    if matches!(source, AudioSource::App { .. }) && text.contains("không phát âm thanh") {
-        errors::APP_NOT_PLAYING
-    } else if cfg!(target_os = "macos") && text.contains("AudioHardwareCreateProcessTap") {
-        // Tạo tap lỗi: thường là chưa cấp quyền "Ghi âm thanh hệ thống" (§9; chờ C1, dòng 2 của S1).
-        errors::AUDIO_PERMISSION
-    } else {
-        errors::CAPTURE_FAILED
+    match plan {
+        CapturePlan::Mic { .. } if text.contains(MIC_DENIED) || text.contains(E_ACCESSDENIED) => errors::MIC_PERMISSION,
+        CapturePlan::Mic { .. } => errors::MIC_UNAVAILABLE,
+        CapturePlan::Playback { source, .. } => {
+            if matches!(source, AudioSource::App { .. }) && text.contains("không phát âm thanh") {
+                errors::APP_NOT_PLAYING
+            } else if cfg!(target_os = "macos") && text.contains("AudioHardwareCreateProcessTap") {
+                // Tạo tap lỗi: thường là chưa cấp quyền "Ghi âm thanh hệ thống" (§9; chờ C1, dòng 2 của S1).
+                errors::AUDIO_PERMISSION
+            } else {
+                errors::CAPTURE_FAILED
+            }
+        }
     }
 }
 
@@ -458,7 +592,7 @@ fn wait_or_stop(stop: &AtomicBool, d: Duration) -> bool {
 }
 
 /// Mở các nguồn và chạy chúng; lỗi thì dừng những nguồn đã chạy.
-fn start_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<(Opened, Preprocessor)> {
+fn start_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<(Opened, Pre)> {
     let mut opened = open_sources(source, include_self)?;
     let mut rings = Vec::new();
     for s in &mut opened.sources {
@@ -470,7 +604,7 @@ fn start_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<(Op
         rings.push((consumer, s.format()));
     }
     match Preprocessor::new(rings) {
-        Ok(p) => Ok((opened, p)),
+        Ok(p) => Ok((opened, Pre::Playback(p))),
         Err(e) => {
             opened.sources.iter_mut().for_each(|s| s.stop());
             Err(e)
@@ -479,20 +613,17 @@ fn start_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<(Op
 }
 
 /// Chạy nguồn cho tới khi `stop`, mở lại khi thiết bị đổi hay luồng thu chết.
-fn capture_loop(
-    source: AudioSource,
-    include_self: bool,
-    shared: Arc<Mutex<Option<Preprocessor>>>,
-    stop: Arc<AtomicBool>,
-    on_event: Arc<OnEvent>,
-) {
+fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<AtomicBool>, on_event: Arc<OnEvent>) {
     let mut policy = FailurePolicy::default();
     let mut watch = Watch::new(Instant::now());
-    // Thiết bị chọn tay (Windows) không theo thiết bị mặc định.
-    let follows_default = !matches!(source, AudioSource::Device { .. });
+    // Thiết bị chọn tay (Windows) hay micro chọn tay không theo thiết bị mặc định.
+    let follows_default = match &plan {
+        CapturePlan::Playback { source, .. } => !matches!(source, AudioSource::Device { .. }),
+        CapturePlan::Mic { device, .. } => device.is_none(),
+    };
     while !stop.load(Ordering::SeqCst) {
-        let signature = audio_capture::default_output_signature();
-        let mut opened = match start_sources(&source, include_self) {
+        let signature = device_signature(&plan);
+        let mut opened = match start_plan(&plan) {
             Ok((opened, preprocessor)) => {
                 *shared.lock().unwrap_or_else(|e| e.into_inner()) = Some(preprocessor);
                 if policy.on_ok() {
@@ -501,7 +632,7 @@ fn capture_loop(
                 opened
             }
             Err(e) => {
-                let code = error_code(&source, &e);
+                let code = error_code(&plan, &e);
                 log::warn!("không mở được nguồn âm thanh: {e:#}");
                 let verdict = policy.on_failure(Instant::now(), code == errors::APP_NOT_PLAYING);
                 if let Some(event) = failure_event(verdict, code, format!("{e:#}")) {
@@ -511,7 +642,9 @@ fn capture_loop(
                 continue;
             }
         };
-        log::info!("đang thu âm thanh ({} nguồn)", opened.sources.len());
+        if !plan.has_mic() {
+            log::info!("đang thu âm thanh ({} nguồn)", opened.sources.len());
+        }
         let frames = |o: &Opened| o.stats.iter().map(|s| s.frames.load(Ordering::Relaxed)).sum::<u64>();
         watch.opened(Instant::now());
         #[cfg(target_os = "macos")]
@@ -521,12 +654,18 @@ fn capture_loop(
             let now = Instant::now();
             #[cfg_attr(not(target_os = "macos"), allow(unused_mut))]
             let mut seen = Observed {
-                device_changed: follows_default && audio_capture::default_output_signature() != signature,
+                device_changed: follows_default && device_signature(&plan) != signature,
                 source_failed: opened.sources.iter().any(|s| s.failed()),
                 ..Observed::default()
             };
             #[cfg(target_os = "macos")]
-            if let (Some(tapped), AudioSource::App { bundle_id }) = (&opened.tapped, &source)
+            if let (
+                Some(tapped),
+                CapturePlan::Playback {
+                    source: AudioSource::App { bundle_id },
+                    ..
+                },
+            ) = (&opened.tapped, &plan)
                 && now.duration_since(pids_at) >= PIDS_EVERY
             {
                 pids_at = now;
@@ -536,8 +675,8 @@ fn capture_loop(
             let tick = watch.tick(
                 now,
                 frames(&opened),
-                cfg!(target_os = "macos"),
-                || someone_playing(&source),
+                cfg!(target_os = "macos") && !plan.has_mic(),
+                || someone_playing_for(&plan),
                 seen,
             );
             if let Tick::Reopen(reason) = tick {
@@ -557,8 +696,8 @@ fn capture_loop(
 
 /// Nguồn âm thanh thật của một phiên, cho `pipeline::engine`.
 pub struct LiveCapture {
-    source: AudioSource,
-    shared: Arc<Mutex<Option<Preprocessor>>>,
+    plan: CapturePlan,
+    shared: Arc<Mutex<Option<Pre>>>,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
     filler: ClockFiller,
@@ -566,22 +705,25 @@ pub struct LiveCapture {
     on_event: Arc<OnEvent>,
     started: Instant,
     buf: Vec<f32>,
+    vad_buf: Vec<f32>,
+    /// Bản VAD bỏ đi khi engine chỉ gọi `read`.
+    unused: Vec<f32>,
 }
 
 impl LiveCapture {
-    pub fn open(source: AudioSource, include_self: bool, on_event: OnEvent) -> Self {
+    pub fn open(plan: CapturePlan, on_event: OnEvent) -> Self {
         let shared = Arc::new(Mutex::new(None));
         let stop = Arc::new(AtomicBool::new(false));
         let on_event = Arc::new(on_event);
         let thread = {
-            let (shared, stop, on_event, source) = (shared.clone(), stop.clone(), on_event.clone(), source.clone());
+            let (shared, stop, on_event, plan) = (shared.clone(), stop.clone(), on_event.clone(), plan.clone());
             std::thread::Builder::new()
                 .name("capture".into())
-                .spawn(move || capture_loop(source, include_self, shared, stop, on_event))
+                .spawn(move || capture_loop(plan, shared, stop, on_event))
                 .ok()
         };
         Self {
-            source,
+            plan,
             shared,
             stop,
             thread,
@@ -590,30 +732,51 @@ impl LiveCapture {
             on_event,
             started: Instant::now(),
             buf: Vec::new(),
+            vad_buf: Vec::new(),
+            unused: Vec::new(),
         }
     }
 }
 
 impl FrameSource for LiveCapture {
     fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
+        let mut unused = std::mem::take(&mut self.unused);
+        unused.clear();
+        let more = self.read_with_vad(out, &mut unused, timeout);
+        self.unused = unused;
+        more
+    }
+
+    fn read_with_vad(&mut self, out: &mut Vec<f32>, vad_out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
         self.buf.clear();
-        let shared = &self.shared;
+        self.vad_buf.clear();
+        let (shared, vad_buf) = (&self.shared, &mut self.vad_buf);
         drain_when_ready(&mut self.buf, timeout, POLL_STEP, |buf| {
             match shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-                Some(p) => p.drain(buf),
+                Some(p) => p.drain(buf, vad_buf),
                 None => Ok(()),
             }
         })?;
-        if cfg!(target_os = "macos")
-            && let Some(suspected) = self
-                .zeros
-                .push(&self.buf, Instant::now(), || someone_playing(&self.source))
-        {
-            (self.on_event)(CaptureEvent::PermissionSuspected(suspected));
+        let now = Instant::now();
+        match &self.plan {
+            CapturePlan::Mic { .. } => {
+                if let Some(silent) = self.zeros.push(&self.buf, now, || true) {
+                    (self.on_event)(CaptureEvent::MicSilent(silent));
+                }
+            }
+            CapturePlan::Playback { source, .. } => {
+                if cfg!(target_os = "macos")
+                    && let Some(suspected) = self.zeros.push(&self.buf, now, || someone_playing(source))
+                {
+                    (self.on_event)(CaptureEvent::PermissionSuspected(suspected));
+                }
+            }
         }
         let silence = self.filler.silence_before(self.started.elapsed(), self.buf.len());
         out.extend(std::iter::repeat_n(0.0, silence));
         out.extend_from_slice(&self.buf);
+        vad_out.extend(std::iter::repeat_n(0.0, silence));
+        vad_out.extend_from_slice(&self.vad_buf);
         Ok(!self.stop.load(Ordering::SeqCst))
     }
 }
@@ -640,20 +803,68 @@ impl Drop for LiveCapture {
 mod tests {
     use super::*;
 
+    fn playback(source: AudioSource) -> CapturePlan {
+        CapturePlan::Playback {
+            source,
+            include_self: false,
+        }
+    }
+
     #[test]
     fn capture_errors_map_to_ui_codes() {
-        let app = AudioSource::App {
+        let app = playback(AudioSource::App {
             bundle_id: "us.zoom.xos".into(),
-        };
+        });
         let not_playing = anyhow::anyhow!("us.zoom.xos không phát âm thanh");
         assert_eq!(error_code(&app, &not_playing), errors::APP_NOT_PLAYING);
         let other = anyhow::anyhow!("AudioDeviceStart lỗi OSStatus 1");
-        assert_eq!(error_code(&AudioSource::System, &other), errors::CAPTURE_FAILED);
+        assert_eq!(
+            error_code(&playback(AudioSource::System), &other),
+            errors::CAPTURE_FAILED
+        );
         #[cfg(target_os = "macos")]
         {
             let tap = anyhow::anyhow!("AudioHardwareCreateProcessTap lỗi OSStatus 560947818");
-            assert_eq!(error_code(&AudioSource::System, &tap), errors::AUDIO_PERMISSION);
+            assert_eq!(
+                error_code(&playback(AudioSource::System), &tap),
+                errors::AUDIO_PERMISSION
+            );
         }
+    }
+
+    /// Spec 2026-10-24-nguon-micro §7, QĐ5, QĐ6 của kế hoạch 02: lỗi mở micro ánh xạ ra hai mã riêng.
+    #[test]
+    fn mic_errors_map_to_their_own_codes() {
+        let mic = CapturePlan::Mic {
+            device: None,
+            noise_filter: true,
+        };
+        let denied = anyhow::anyhow!("{MIC_DENIED}");
+        assert_eq!(error_code(&mic, &denied), errors::MIC_PERMISSION);
+        let wasapi = anyhow::anyhow!("Initialize: Access is denied. (0x80070005)");
+        assert_eq!(error_code(&mic, &wasapi), errors::MIC_PERMISSION);
+        let gone = anyhow::anyhow!("không tìm thấy micro usb-1");
+        assert_eq!(error_code(&mic, &gone), errors::MIC_UNAVAILABLE);
+    }
+
+    /// Micro: số 0 tuyệt đối 3 giây từ đầu phiên thì báo, không cần hỏi có app đang phát (micro thật luôn có tiếng nền).
+    #[test]
+    fn three_seconds_of_exact_zeros_from_the_mic_are_reported() {
+        let t0 = Instant::now();
+        let mut z = ZeroWatch::default();
+        assert_eq!(z.push(&[0.0; 160], t0, || true), None);
+        assert_eq!(z.push(&[0.0; 160], t0 + Duration::from_secs(3), || true), Some(true));
+        assert_eq!(z.push(&[0.001; 160], t0 + Duration::from_secs(4), || true), Some(false));
+    }
+
+    #[test]
+    fn plans_say_whether_they_use_the_mic() {
+        assert!(!playback(AudioSource::System).has_mic());
+        let mic = CapturePlan::Mic {
+            device: Some("x".into()),
+            noise_filter: false,
+        };
+        assert!(mic.has_mic());
     }
 
     /// Q2 của review 02c: lần mở đầu lỗi thì báo ngay; nguồn đã chạy rồi mà lỗi thì chỉ báo khi lỗi kéo dài 10 giây.

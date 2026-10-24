@@ -103,6 +103,9 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::MODEL_MISSING,
     errors::AUDIO_PERMISSION,
     errors::APP_NOT_PLAYING,
+    // Quyền micro, micro không có hay bị giữ (spec 2026-10-24-nguon-micro §7): do môi trường, như quyền ghi âm.
+    errors::MIC_PERMISSION,
+    errors::MIC_UNAVAILABLE,
     errors::QUOTA_EXHAUSTED,
     errors::TRIAL_ENDED,
     errors::TRIAL_NEEDS_NETWORK,

@@ -512,6 +512,8 @@ export const en = {
   "error.sidecarFailed": "Speech recognition stopped working. Press Start to try again; if it keeps failing, send the logs to support.",
   "error.modelMissing": "The model has not been downloaded yet.",
   "error.audioPermission": "AI Translator is not allowed to record system audio.",
+  "error.micPermission": "AI Translator is not allowed to use the microphone.",
+  "error.micUnavailable": "Couldn’t open the microphone. Check that the selected microphone is connected and not held exclusively by another app.",
   "error.captureFailed": "Could not capture audio.",
   "error.appNotPlaying": "The chosen app is not playing sound. Start the meeting audio, or choose the whole system.",
   "error.vadFailed": "Could not load the speech detector. Please reinstall AI Translator.",
