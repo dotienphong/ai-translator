@@ -43,6 +43,18 @@ fi
 # afplay phải đã mở đường ra âm thanh thì Core Audio mới có process object để tap theo pid.
 sleep 0.5
 echo "đang thu $seconds giây vào $out (Ctrl+C để hủy)"
+# Lời nhắc hiện thành thông báo macOS không âm thanh (Capture.app chỉ in vào log, người làm cảnh không thấy).
+if [ -n "$cues" ]; then
+  python3 - "$cues" <<'PY' &
+import json, subprocess, sys, time
+start = time.time()
+for c in json.load(open(sys.argv[1], encoding="utf-8")):
+    time.sleep(max(0, c["at_s"] - (time.time() - start)))
+    msg = c["say"].replace('"', "'")
+    subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Spike micro"'])
+PY
+  pids+=("$!")
+fi
 open -W --stdout "$PWD/$out/capture.log" --stderr "$PWD/$out/capture.err" "$app" --args "${args[@]}"
 for p in "${pids[@]+"${pids[@]}"}"; do wait "$p" || true; done
 if [ -n "$tracks" ]; then cp "$tracks/schedule.json" "$tracks/online.wav" "$tracks/room.wav" "$out/"; fi
