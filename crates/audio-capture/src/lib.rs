@@ -3,6 +3,7 @@
 pub mod duck;
 pub mod gapfill;
 pub mod highpass;
+pub mod mic_chain;
 pub mod mix;
 pub mod preprocess;
 pub mod resample;

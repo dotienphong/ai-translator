@@ -24,28 +24,12 @@ pub struct DenoiseArgs {
     write_48k: Option<PathBuf>,
 }
 
-/// RNNoise trên âm thanh 48 kHz trong [-1, 1]. Khung đầu có tiếng "fade-in" của mạng nên được thay bằng im lặng (khuyến
-/// nghị của `nnnoiseless`). Độ dài ra bằng độ dài vào.
+/// RNNoise trên âm thanh 48 kHz trong [-1, 1], bằng đúng bộ lọc của app (`audio_capture::mic_chain::Denoiser`). Khung đầu
+/// là im lặng; phần lẻ cuối (dưới 10 ms) cũng là im lặng. Độ dài ra bằng độ dài vào.
 pub fn rnnoise(input: &[f32]) -> Vec<f32> {
-    use nnnoiseless::DenoiseState;
-    const N: usize = DenoiseState::FRAME_SIZE;
-    let mut state = DenoiseState::new();
-    let mut out = Vec::with_capacity(input.len() + N);
-    let (mut frame_in, mut frame_out) = ([0f32; N], [0f32; N]);
-    for (i, chunk) in input.chunks(N).enumerate() {
-        frame_in.fill(0.0);
-        // nnnoiseless nhận mẫu theo thang 16 bit.
-        for (d, s) in frame_in.iter_mut().zip(chunk) {
-            *d = s * 32_768.0;
-        }
-        state.process_frame(&mut frame_out, &frame_in);
-        if i == 0 {
-            out.extend(std::iter::repeat_n(0.0, N));
-        } else {
-            out.extend(frame_out.iter().map(|v| (v / 32_768.0).clamp(-1.0, 1.0)));
-        }
-    }
-    out.truncate(input.len());
+    let mut out = Vec::with_capacity(input.len());
+    audio_capture::mic_chain::Denoiser::new().process(input, &mut out);
+    out.resize(input.len(), 0.0);
     out
 }
 

@@ -9,6 +9,8 @@ publish.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 hound.workspace = true
+# Lọc ồn RNNoise cho bản VAD của micro (spec 2026-10-24-nguon-micro §5.7, mục 16). Rust thuần, BSD-3-Clause.
+nnnoiseless = { version = "0.5.2", default-features = false }
 rtrb.workspace = true
 rubato.workspace = true
 serde.workspace = true

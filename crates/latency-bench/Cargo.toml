@@ -11,8 +11,6 @@ asr-protocol = { path = "../asr-protocol" }
 audio-capture = { path = "../audio-capture" }
 clap.workspace = true
 hound.workspace = true
-# RNNoise bằng Rust (BSD-3-Clause), chỉ để đo lớp 2 của spike nguồn micro; tắt feature mặc định (công cụ dòng lệnh).
-nnnoiseless = { version = "0.5.2", default-features = false }
 pipeline = { path = "../pipeline" }
 rubato.workspace = true
 serde.workspace = true
