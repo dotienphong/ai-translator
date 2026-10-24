@@ -1,0 +1,9 @@
+[
+  {"at_s": 0, "label": "bat-dau", "say": "Bấm phát room.wav trên điện thoại (đặt cách laptop 1 m)."},
+  {"at_s": 5, "label": "go-phim-laptop", "say": "Vừa nghe vừa gõ phím laptop liên tục."},
+  {"at_s": 65, "label": "bam-but", "say": "Đổi sang bấm bút bi."},
+  {"at_s": 125, "label": "go-ban", "say": "Đổi sang gõ ngón tay, gõ bút xuống bàn."},
+  {"at_s": 185, "label": "go-phim-laptop", "say": "Đổi lại gõ phím laptop."},
+  {"at_s": 245, "label": "bam-but", "say": "Đổi sang bấm bút bi."},
+  {"at_s": 305, "label": "go-ban", "say": "Đổi sang gõ bàn tới hết."}
+]

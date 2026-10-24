@@ -1,0 +1,13 @@
+[
+  {"at_s": 0, "label": "yen-lang", "say": "Chuẩn bị. Giữ phòng yên lặng 10 giây."},
+  {"at_s": 10, "label": "go-phim-laptop", "say": "Gõ phím laptop liên tục như đang soạn văn bản (2 phút)."},
+  {"at_s": 130, "label": "ban-phim-co", "say": "Gõ bàn phím cơ; không có thì gõ mạnh phím laptop (2 phút)."},
+  {"at_s": 250, "label": "bam-but", "say": "Bấm bút bi tách tách, không nói (2 phút)."},
+  {"at_s": 370, "label": "viet-but", "say": "Viết bút trên giấy, gạch, chấm câu (2 phút)."},
+  {"at_s": 490, "label": "go-ban", "say": "Gõ ngón tay, gõ bút xuống bàn (2 phút)."},
+  {"at_s": 610, "label": "lat-giay", "say": "Lật giấy, vò giấy, xếp giấy (2 phút)."},
+  {"at_s": 730, "label": "dat-coc", "say": "Đặt cốc, đặt điện thoại, đặt đồ xuống bàn (2 phút)."},
+  {"at_s": 850, "label": "keo-ghe", "say": "Kéo ghế, đứng lên ngồi xuống, bước chân (2 phút)."},
+  {"at_s": 970, "label": "quat", "say": "Bật quạt hay điều hòa, không làm gì khác (2 phút)."},
+  {"at_s": 1090, "label": "het", "say": "Xong. Chờ công cụ tự dừng."}
+]
