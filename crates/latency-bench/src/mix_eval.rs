@@ -13,7 +13,7 @@ use audio_capture::duck::{DuckingMixer, GateParams};
 use audio_capture::highpass::HighPass;
 use pipeline::asr_client::{AsrLaunch, AsrWorker};
 use pipeline::config::PipelineConfig;
-use pipeline::filter::{Evidence, Verdict, is_short, pcm_skip, verdict};
+use pipeline::filter::{Evidence, Verdict, pcm_skip, verdict};
 use pipeline::segmenter::{FRAME_SAMPLES, Segmenter, SegmenterConfig};
 use pipeline::text::display_text;
 use pipeline::vad::SileroVad;
@@ -230,11 +230,28 @@ struct Row<'a> {
     text: String,
     /// `Speech`, `NoSpeech`, `Hallucination`, `Repetition`, `Filler`, hay `TooShort` (không gửi worker).
     verdict: String,
-    /// Câu ngắn theo `filter::is_short`: `score_mix.py` dò ngưỡng `ShortUnsure` trên các dòng này mà không chép lời lại.
+    /// Câu ngắn theo [`is_short`]: `score_mix.py` đếm câu ngắn giữ được mà không chép lời lại.
     short: bool,
     no_speech_prob: f32,
     avg_logprob: f32,
     asr_ms: f32,
+}
+
+/// Chữ Hán, hiragana, katakana: tiếng Trung, Nhật viết liền nên câu ngắn được đếm theo chữ.
+fn is_cjk(c: char) -> bool {
+    matches!(c, '\u{3040}'..='\u{30FF}' | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}')
+}
+
+/// Câu ngắn (cột `short` cho `score_mix.py`): có chữ, tối đa 2 từ và tối đa 4 chữ Hán hay kana. "OK", "Đúng rồi",
+/// "好的", "はい", "네" là câu ngắn; "我们明天下午开会" thì không. Luật `ShortUnsure` của spike đã bị gỡ (spec
+/// 2026-10-24-nguon-micro mục 16); chỉ còn phép đếm này để chấm.
+fn is_short(text: &str) -> bool {
+    let words = text
+        .split_whitespace()
+        .filter(|w| w.chars().any(char::is_alphanumeric))
+        .count();
+    let cjk = text.chars().filter(|&c| is_cjk(c)).count();
+    words > 0 && words <= 2 && cjk <= 4
 }
 
 fn load(scene: &Path, name: &str) -> Result<Vec<f32>> {
@@ -353,7 +370,7 @@ pub fn run(args: MixEvalArgs) -> Result<()> {
                     prev_lang = Some(r.lang.clone());
                     kept += 1;
                 }
-                row.short = is_short(&text, &base.filter);
+                row.short = is_short(&text);
                 row.verdict = format!("{found:?}");
                 row.lang = r.lang;
                 row.lang_prob = r.lang_prob;
@@ -375,6 +392,16 @@ pub fn run(args: MixEvalArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn short_texts_are_one_or_two_words_or_up_to_four_han_or_kana() {
+        for text in ["OK", "Đúng rồi.", "好的", "はい", "네", "Got it!"] {
+            assert!(is_short(text), "{text}");
+        }
+        for text in ["我们明天下午开会", "We will meet tomorrow", "내일 회의가 있어요", "...", ""] {
+            assert!(!is_short(text), "{text}");
+        }
+    }
 
     fn variant(json: &str) -> Variant {
         serde_json::from_str(json).unwrap()

@@ -63,6 +63,10 @@ pub struct FilterConfig {
     /// Câu hay bị bịa ra khi chỉ có nhạc hoặc im lặng. Đoạn chỉ gồm các câu này (sau khi chuẩn hóa) thì bị bỏ. Cụm có
     /// ngoặc (`[music]`, `(music)`) là nhãn: so khớp nguyên dạng có ngoặc, nên câu thật "Music." không bị bỏ.
     pub hallucination_phrases: Vec<String>,
+    /// Cụm quảng cáo kênh mà model hay bịa ra khi âm thanh nhỏ được khuếch đại (spec 2026-10-24-nguon-micro mục 16):
+    /// đoạn **chứa** một cụm này thì bị bỏ, kể cả khi còn chữ khác. Chỉ gồm cụm không gặp trong cuộc họp thật, vì luật áp
+    /// cho mọi chế độ.
+    pub hallucination_markers: Vec<String>,
     /// Câu đệm ngắn mà model hay bịa ra từ tiếng ồn (Q11 của review 02b). Khác `hallucination_phrases`: đây cũng là câu
     /// thật trong cuộc họp, nên chỉ bị bỏ khi có thêm ít nhất một dấu hiệu dưới đây.
     pub filler_phrases: Vec<String>,
@@ -78,16 +82,6 @@ pub struct FilterConfig {
     pub compression_ratio_max: f32,
     /// Đổi chữ phồn thể sang giản thể cho đoạn tiếng Trung (§6.4, "Việc cho MVP"; `small` hay ra phồn thể).
     pub simplify_chinese: bool,
-    /// Luật câu ngắn không chắc (spec 2026-10-24-nguon-micro §5.7, lớp 5): chỉ bật ở chế độ có micro. Mặc định tắt.
-    pub short_unsure: bool,
-    /// Câu ngắn: có chữ, tối đa chừng này từ (đếm theo khoảng trắng)…
-    pub short_max_words: usize,
-    /// …và tối đa chừng này chữ Hán hay kana (tiếng Trung, Nhật viết liền).
-    pub short_max_cjk_chars: usize,
-    /// Câu ngắn bị bỏ khi `vad_mean_prob` dưới ngưỡng này…
-    pub short_vad_prob_min: f32,
-    /// …hoặc khi `speech_ms` dưới ngưỡng này. Hai ngưỡng do spike chọn (kế hoạch nguồn micro 01, Task 19).
-    pub short_speech_ms_min: u64,
 }
 
 /// Câu đệm mặc định, theo ngôn ngữ: en, vi, ja, zh, ko. "I" đứng một mình là chữ bịa của gói Nhẹ trên nhạc
@@ -145,12 +139,24 @@ pub const DEFAULT_HALLUCINATION_PHRASES: &[&str] = &[
     "구독과 좋아요 부탁드립니다",
 ];
 
+/// Cụm "chứa là bỏ" mặc định (`FilterConfig::hallucination_markers`). Câu "Hãy subscribe cho kênh Ghiền Mì Gõ Để không bỏ
+/// lỡ những video hấp dẫn" lọt qua hai lần ở spike nguồn micro.
+pub const DEFAULT_HALLUCINATION_MARKERS: &[&str] = &[
+    "subscribe cho kênh",
+    "ghiền mì gõ",
+    "để không bỏ lỡ những video hấp dẫn",
+    "like and subscribe",
+    "구독과 좋아요 부탁",
+    "请不吝点赞",
+];
+
 impl Default for FilterConfig {
     fn default() -> Self {
         Self {
             no_speech_prob_max: 0.6,
             avg_logprob_min: -1.0,
             hallucination_phrases: DEFAULT_HALLUCINATION_PHRASES.iter().map(|s| s.to_string()).collect(),
+            hallucination_markers: DEFAULT_HALLUCINATION_MARKERS.iter().map(|s| s.to_string()).collect(),
             filler_phrases: DEFAULT_FILLER_PHRASES.iter().map(|s| s.to_string()).collect(),
             filler_logprob_max: -0.7,
             filler_vad_prob_max: 0.7,
@@ -158,11 +164,6 @@ impl Default for FilterConfig {
             filler_long_max_words: 1,
             compression_ratio_max: 2.4,
             simplify_chinese: true,
-            short_unsure: false,
-            short_max_words: 2,
-            short_max_cjk_chars: 4,
-            short_vad_prob_min: 0.8,
-            short_speech_ms_min: 400,
         }
     }
 }
