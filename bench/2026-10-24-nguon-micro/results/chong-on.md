@@ -80,8 +80,50 @@ một nhân trên M4 Pro, gấp khoảng 10 lần RNNoise (0,27%), và thư vi�
 
 ## Giới hạn của lượt đo này
 
-- Giọng "người trong phòng" là loa điện thoại phát lại clip FLEURS, không phải người thật nói. Đã đo giọng thật của chủ
-  dự án ở 1 m: nhỏ hơn điện thoại khoảng 7–8 dB, nhưng chưa đo lỗi nhận dạng trên giọng thật.
+- Giọng "người trong phòng" là loa điện thoại phát lại clip FLEURS, không phải người thật nói. **Chưa có số đo nào trên
+  giọng người thật ở 1 m** (xem mục "Đo thêm" bên dưới).
 - Chỉ có micro MacBook, chưa thử micro USB, micro hội nghị hay AirPods.
-- Khuếch đại là mức cố định, chưa thử tự cân mức (AGC) thật.
+- Khuếch đại là mức cố định, chưa thử tự cân mức (AGC) thật. Đã thử sau, xem mục "Đo thêm".
 - Windows (Task 17) chưa đo.
+
+## Đo thêm (cùng ngày, chủ dự án chọn "đo thêm ngắn rồi quyết")
+
+**Giọng người thật ở 1 m: chưa đo được.**
+- Hai bản thu bài đọc (`doc-vi-1m`, `doc-en-1m`) không có giọng đọc: chủ dự án chưa kịp đọc trong lúc thu.
+- Mọi phương án ra 0 đoạn, kể cả khi hạ ngưỡng VAD xuống 0,15. Hai bản thu này bị bỏ.
+- Bản "hiệu chỉnh giọng 1 m" 15 giây (`thu-macos.md`) có thể cũng không có giọng, nên con số "giọng thật nhỏ hơn điện thoại
+  7–8 dB" **không đáng tin**.
+- Bài đọc vẫn còn ở `data/doc-to/` (`vi.txt`, `en.txt`, `bai-doc.json`; chấm bằng `score_doc.py`) để đo sau.
+
+**Tự cân mức (AGC)** (`agc_target_dbfs` trong `mix-eval`; theo dõi mức nền và mức tiếng nói theo khung 10 ms, khuếch đại
+tối đa +30 dB, chặn mềm):
+
+| Phương án (VAD 0,5) | Ảo trong 18 phút | 1 m: lỗi / giữ | 3 m: lỗi / giữ | Cảnh 7: câu ngắn / lỗi |
+|---|---|---|---|---|
+| App hiện nay (0 dB, 250 ms) | 1 | 74,2% / 28% | 89,4% / 8% | 10,5% / 87,8% |
+| Không lọc, AGC −23 dBFS, 600 ms | 1 | 53,8% / 48% | 82,1% / 28% | 0% / 100% |
+| RNNoise cho VAD, AGC −23, 400 ms | 1 | 47,1% / 64% | 74,4% / 28% | 42,1% / 78,3% |
+| RNNoise cho VAD, AGC −26, 400 ms | 1 | 45,2% / 60% | 71,9% / 28% | 42,1% / 80,7% |
+| Không lọc, +20 dB cố định, 600 ms | 1 | 36,3% / 68% | 68,5% / 36% | 0% / 99,2% |
+| **RNNoise cho VAD, +20 dB cố định, 400 ms** | 1 | 42,0% / 68% | **65,8% / 36%** | **42,1% / 75,9%** |
+
+Ở chế độ trộn (B đã chọn, VAD 0,5 / 600):
+
+| Phương án | Cảnh 1: lỗi online / lỗi trong phòng | Cảnh 2: lỗi online |
+|---|---|---|
+| AGC −23 | 9,0% / 7,6% | 14,1% |
+| AGC −26 | 8,8% / 6,7% | 11,7% |
+| +20 dB cố định | 7,9% / 5,4% | 11,6% |
+
+**AGC kém hơn khuếch đại cố định +20 dB ở mọi cảnh. Loại.**
+
+## Cấu hình tốt nhất đo được (đề xuất, chờ chủ dự án quyết)
+
+- **Lớp 1:** lọc 80 Hz.
+- **Khuếch đại micro cố định +20 dB**, chặn mềm `tanh`. Đây là lớp mới, spec chưa có.
+- **Lớp 2:** RNNoise chỉ cho bản VAD; whisper nghe bản chỉ lọc 80 Hz và đã khuếch đại.
+- **Lớp 4 (VAD):** 0,5 / 400 ms ở chế độ chỉ micro; 0,5 / 600 ms ở chế độ trộn (`tieng-vong.md`, bước 6).
+- **Lớp 5 (`ShortUnsure`):** không dùng.
+- **Nhường lời:** −55 dBFS / −30 dB / giữ 300 ms.
+
+Cấu hình này vẫn **không đạt** các mức câu ngắn, câu có ồn và giọng ở xa của §6.3.

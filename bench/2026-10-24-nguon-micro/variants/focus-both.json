@@ -1,0 +1,44 @@
+[
+ {
+  "name": "FB-agc23",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "agc_target_dbfs": -23
+ },
+ {
+  "name": "FB-agc26",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "agc_target_dbfs": -26
+ },
+ {
+  "name": "FB-g20",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20
+ }
+]

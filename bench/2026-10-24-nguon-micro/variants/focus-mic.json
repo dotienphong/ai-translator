@@ -1,0 +1,113 @@
+[
+ {
+  "name": "F-app-hien-nay-m250",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 250
+  },
+  "gain_db": 0
+ },
+ {
+  "name": "F-khong-g20-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20
+ },
+ {
+  "name": "F-khong-g20-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20
+ },
+ {
+  "name": "F-rnn-g20-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-rnnoise.wav"
+ },
+ {
+  "name": "F-rnn-g20-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 20,
+  "mic_vad": "mic-rnnoise.wav"
+ },
+ {
+  "name": "F-khong-agc23-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "agc_target_dbfs": -23
+ },
+ {
+  "name": "F-khong-agc23-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "agc_target_dbfs": -23
+ },
+ {
+  "name": "F-rnn-agc23-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-rnnoise.wav",
+  "agc_target_dbfs": -23
+ },
+ {
+  "name": "F-rnn-agc23-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-rnnoise.wav",
+  "agc_target_dbfs": -23
+ },
+ {
+  "name": "F-rnn-agc26-m400",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-rnnoise.wav",
+  "agc_target_dbfs": -26
+ },
+ {
+  "name": "F-rnn-agc26-m600",
+  "mode": "mic",
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600
+  },
+  "gain_db": 0,
+  "mic_vad": "mic-rnnoise.wav",
+  "agc_target_dbfs": -26
+ }
+]

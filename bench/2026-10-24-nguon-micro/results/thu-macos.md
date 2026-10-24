@@ -34,8 +34,8 @@ trong git).
   10 ms.
 - **Điện thoại 1 m (`s4-1m`, 60 giây đầu):** p50 −38,2, p90 −31,6, p99 −24,7 dBFS. Tiếng nhỏ dần sau giây 50 (p95 từ
   khoảng −30 xuống khoảng −37).
-- **Giọng thật của chủ dự án ở 1 m, nói bình thường** (`hieu-chinh-giong-1m`, 15 s): p50 −45,2, p90 −39,8, p99 −32,6
-  dBFS, nhỏ hơn điện thoại khoảng 7–8 dB.
+- **"Giọng thật ở 1 m"** (`hieu-chinh-giong-1m`, 15 s): p50 −45,2, p90 −39,8, p99 −32,6 dBFS. **Không đáng tin:** về sau
+  biết chủ dự án có thể chưa kịp nói trong lúc thu (xem `chong-on.md`, "Đo thêm"). Không dùng làm mốc.
 - **Điện thoại 3 m (`s4-3m`):** p50 −45,8, p90 −40,0, p99 −29,3 dBFS.
 - **Nền phòng:** khoảng −46 đến −48 dBFS.
 - **Tiếng ồn ở cảnh 6:** p50 của mọi loại khoảng −44 đến −46 dBFS (gần nền), nhưng đỉnh rất cao:
@@ -71,6 +71,6 @@ Chấm nhanh bằng phương án không lọc (`N-khong-v5-m250`, tham số VAD 
 - **Khuếch đại micro cố định trước VAD và whisper** (`s4-1m`):
   - +10 dB: giữ 60%, lỗi 47%.
   - +20 dB: giữ 60%, lỗi 44%.
-- Giọng người thật ở 1 m còn nhỏ hơn điện thoại khoảng 7–8 dB, nên **lớp tự cân mức (AGC) cho micro có lẽ là cần thiết**
+- Lớp khuếch đại hay tự cân mức (AGC) cho micro có lẽ là cần thiết
   (spec §2 để ngỏ, §6.3 "độ nhạy micro"). Task 19 phải đo thêm các phương án khuếch đại hay AGC trên chính các bản thu này,
   rồi đưa chủ dự án quyết.
