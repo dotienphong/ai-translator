@@ -14,7 +14,7 @@ const GROUPS = [
     items: [
       {
         q: "AI Translator는 무엇인가요?",
-        a: `<p>AI Translator는 회의, 웨비나, 동영상 등 컴퓨터에서 재생되는 모든 소리에 실시간 번역 자막을 보여 주는 데스크톱 앱입니다. 내 컴퓨터에서 음성을 인식하고 번역한 뒤, 떠 있는 자막 바에 번역을 보여 줍니다. <a href="/ko/features/">전체 기능 목록</a>을 참조하세요.</p>`,
+        a: `<p>AI Translator는 회의, 웨비나, 동영상 등 컴퓨터에서 재생되는 모든 소리에, 그리고 고른 경우 마이크로 듣는 회의실 사람의 말에도 실시간 번역 자막을 보여 주는 데스크톱 앱입니다. 내 컴퓨터에서 음성을 인식하고 번역한 뒤, 떠 있는 자막 바에 번역을 보여 줍니다. <a href="/ko/features/">전체 기능 목록</a>을 참조하세요.</p>`,
       },
       {
         q: "컴퓨터에서 회의 자막을 오프라인으로 번역하는 앱이 있나요?",
@@ -144,7 +144,7 @@ const GROUPS = [
       },
       {
         q: "macOS에서는 어떤 권한이 필요한가요?",
-        a: `<p>자막에는 시스템 오디오 녹음 권한만 필요하며, AI Translator는 마이크를 쓰지 않습니다. 처음 '시작'을 누를 때 macOS가 묻습니다. 거절해도 macOS는 오류를 보여 주지 않고 앱에는 무음만 들어오며, 앱이 다시 켜도록 안내합니다. <a href="/ko/guide/macos-audio-permission/">오디오 권한 가이드</a>를 참조하세요. 입력 번역은 번역을 채팅 입력란에 대신 붙여 넣기 위해서만 손쉬운 사용 권한을 요청할 수도 있습니다. 권한이 없으면 앱이 번역을 복사하므로 직접 붙여 넣으면 됩니다(<a href="/ko/guide/type-and-translate/#accessibility">입력 번역</a> 참조). Windows에서는 두 권한 모두 필요 없습니다.</p>`,
+        a: `<p>컴퓨터 오디오를 번역하는 데는 시스템 오디오 녹음 권한만 필요하며, 처음 '시작'을 누를 때 macOS가 묻습니다. 거절해도 macOS는 오류를 보여 주지 않고 앱에는 무음만 들어오며, 앱이 다시 켜도록 안내합니다. <a href="/ko/guide/macos-audio-permission/">오디오 권한 가이드</a>를 참조하세요. 마이크가 들어간 입력 소스(마이크, 또는 컴퓨터 오디오 + 마이크)를 고르면 macOS가 마이크 권한도 묻습니다(<a href="/ko/guide/macos-audio-permission/#microphone-permission">마이크 권한</a> 참조). 입력 번역은 번역을 채팅 입력란에 대신 붙여 넣기 위해서만 손쉬운 사용 권한을 요청할 수도 있습니다. 권한이 없으면 앱이 번역을 복사하므로 직접 붙여 넣으면 됩니다(<a href="/ko/guide/type-and-translate/#accessibility">입력 번역</a> 참조). Windows에서는 두 권한 모두 필요 없습니다.</p>`,
       },
       {
         q: "AI Translator는 어떻게 삭제하나요?",
@@ -235,7 +235,7 @@ export default {
   description:
     "AI Translator에 대한 짧은 답: Zoom, Teams, Meet에서의 사용, 언어, 오프라인 작동, 개인정보, 시스템 요구 사항, 요금제, 결제, 일상적인 사용.",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   body: () => `
 ${pageHero({

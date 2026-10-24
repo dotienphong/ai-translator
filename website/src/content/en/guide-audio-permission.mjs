@@ -35,7 +35,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-24",
   llm: "Granting the System Audio Recording permission to AI Translator on macOS, turning it back on after refusing, signs of a missing permission, and choosing whole-system or single-app audio.",
   llmTitle: "Grant system audio recording permission on macOS",
   schema: [
@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Grant system audio recording permission on macOS",
-  lead: "For subtitles, AI Translator needs exactly one macOS permission: System Audio Recording, so it can hear the audio your Mac is playing. It does not use the microphone. If you refused it by mistake, turn it back on in System Settings › Privacy & Security › Screen & System Audio Recording.",
+  lead: "To translate computer audio, AI Translator needs one macOS permission: System Audio Recording, so it can hear the audio your Mac is playing. If you choose a source with the microphone, macOS also asks for the Microphone permission. If you refused it by mistake, turn it back on in System Settings › Privacy & Security › Screen & System Audio Recording.",
   meta: "<span>macOS 14.2 or later only</span> <span>Updated {{updated}}</span>",
 })}
 
@@ -59,7 +59,7 @@ ${docLayout({
   tocTitle: "In this guide",
   body: `
 <h2 id="which-permission">Which permission does the app need?</h2>
-<p>AI Translator captures the audio playing on your computer (meeting sound, a video, a webinar) so it can recognize and translate it. That is why macOS requires the <strong>System Audio Recording</strong> permission. The app <strong>does not use the microphone</strong>, does not record your voice, and does not save the meeting to disk: audio stays in memory while it translates. Windows has no such permission step.</p>
+<p>AI Translator captures the audio playing on your computer (meeting sound, a video, a webinar) so it can recognize and translate it. That is why macOS requires the <strong>System Audio Recording</strong> permission. With the default source (<strong>Computer audio</strong>) the app does not open the microphone; it opens the microphone only when you choose <strong>Microphone</strong> or <strong>Computer audio + Microphone</strong> (see <a href="#microphone-permission">Microphone permission</a>). The app does not save the meeting to disk: audio stays in memory while it translates. Windows has no system audio permission step.</p>
 ${facts([
   ["Permission", "System Audio Recording"],
   ["Where to turn it back on", "System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only"],

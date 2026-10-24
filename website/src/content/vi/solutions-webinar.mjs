@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-24",
   llm: "Cách dùng AI Translator để đọc phụ đề dịch khi xem webinar, khóa học và video: không cần cài vào trình duyệt, phiên dài, câu gốc kèm bản dịch, xuất bản chép lời, từ điển thuật ngữ, mẹo và giới hạn.",
   llmTitle: "Phụ đề dịch cho webinar, khóa học và video",
   body: () => `
@@ -48,7 +48,7 @@ ${feature({ icon: "play", title: "Người xem video chuyên ngành", text: "Vid
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Không cần cài thêm", title: "Không phụ thuộc trình phát hay nền tảng" })}
 <p>Vì AI Translator thu âm thanh đang phát trên máy tính, nó không phụ thuộc vào trang web hay nền tảng bạn xem. Bạn bấm <strong>Bắt đầu</strong>, rồi phát video; phụ đề dịch hiện trên thanh nổi phía trên cửa sổ trình phát. Chúng tôi đã thử với video trên trình duyệt, nhưng chưa thử riêng từng nền tảng khóa học hay webinar.</p>
-<p>Trên macOS, bạn cấp quyền <em>Ghi âm thanh hệ thống</em> một lần; app không dùng micro. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cách cấp quyền ghi âm</a>.</p>
+<p>Trên macOS, bạn cấp quyền <em>Ghi âm thanh hệ thống</em> một lần; với webinar, nguồn Âm thanh máy (mặc định) là đủ. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">cách cấp quyền ghi âm</a>.</p>
 </div></section>
 
 <section class="section"><div class="container">

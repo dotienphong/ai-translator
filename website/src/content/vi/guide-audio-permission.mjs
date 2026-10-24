@@ -35,7 +35,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-24",
   llm: "Cấp quyền Ghi âm thanh hệ thống (System Audio Recording) cho AI Translator trên macOS, bật lại khi đã từ chối, dấu hiệu thiếu quyền, và chọn nguồn âm thanh toàn hệ thống hay một app.",
   llmTitle: "Cấp quyền ghi âm thanh hệ thống trên macOS",
   schema: [
@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Cấp quyền ghi âm thanh hệ thống trên macOS",
-  lead: "Để dịch phụ đề, AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống (System Audio Recording), để nghe âm thanh mà máy Mac đang phát. App không dùng micro. Nếu bạn lỡ từ chối, hãy bật lại ở System Settings › Privacy & Security › Screen & System Audio Recording.",
+  lead: "Để dịch âm thanh máy, AI Translator cần một quyền trên macOS: Ghi âm thanh hệ thống (System Audio Recording), để nghe âm thanh mà máy Mac đang phát. Khi bạn chọn nguồn có micro, macOS hỏi thêm quyền Micro. Nếu bạn lỡ từ chối, hãy bật lại ở System Settings › Privacy & Security › Screen & System Audio Recording.",
   meta: "<span>Chỉ áp dụng cho macOS 14.2 trở lên</span> <span>Cập nhật {{updated}}</span>",
 })}
 
@@ -59,7 +59,7 @@ ${docLayout({
   tocTitle: "Trong bài này",
   body: `
 <h2 id="quyen-nao">App cần quyền nào?</h2>
-<p>AI Translator thu âm thanh đang phát từ máy tính (tiếng của cuộc họp, video, webinar) để nhận dạng và dịch. Vì vậy macOS yêu cầu quyền <strong>Ghi âm thanh hệ thống</strong>. App <strong>không dùng micro</strong>, không thu tiếng nói của bạn, và không ghi âm cuộc họp xuống đĩa: âm thanh chỉ nằm trong RAM trong lúc dịch. Windows không có bước cấp quyền này.</p>
+<p>AI Translator thu âm thanh đang phát từ máy tính (tiếng của cuộc họp, video, webinar) để nhận dạng và dịch. Vì vậy macOS yêu cầu quyền <strong>Ghi âm thanh hệ thống</strong>. Với nguồn mặc định (<strong>Âm thanh máy</strong>), app không mở micro; app chỉ mở micro khi bạn chọn nguồn <strong>Micro</strong> hoặc <strong>Âm thanh máy + Micro</strong> (xem <a href="#quyen-micro">Quyền Micro</a>). App không ghi âm cuộc họp xuống đĩa: âm thanh chỉ nằm trong RAM trong lúc dịch. Windows không có bước cấp quyền ghi âm thanh hệ thống.</p>
 ${facts([
   ["Tên quyền", "Ghi âm thanh hệ thống (System Audio Recording)"],
   ["Vị trí bật lại", "System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only"],

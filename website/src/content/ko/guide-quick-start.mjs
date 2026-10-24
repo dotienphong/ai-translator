@@ -21,7 +21,7 @@ const HOWTO_STEPS = [
   { name: "인터페이스 언어 고르기", text: "컴퓨터의 언어가 미리 선택되어 있습니다. 필요하면 바꾸고 ‘다음’을 누릅니다. 이것이 기본 번역 언어도 정합니다." },
   { name: "약관에 동의하기", text: "사용권 계약(EULA)과 개인정보 처리방침을 읽고 체크한 뒤 ‘다음’을 누릅니다. Free 체험을 시작하려면 인터넷 연결이 한 번 필요합니다." },
   { name: "모델을 골라 내려받기", text: "앱의 추천에 따라 Standard 팩(약 2.5GB) 또는 Lite 팩(약 1.3GB)을 고르고 다운로드를 기다립니다." },
-  { name: "시스템 오디오 녹음 허용하기(macOS만)", text: "macOS가 시스템 오디오 녹음 권한을 요청하면 허용합니다. 앱은 마이크를 쓰지 않습니다. Windows에는 이 단계가 없습니다." },
+  { name: "시스템 오디오 녹음 허용하기(macOS만)", text: "macOS가 시스템 오디오 녹음 권한을 요청하면 허용합니다. 마이크 권한은 마이크가 들어간 입력 소스를 고를 때만 묻습니다. Windows에는 이 단계가 없습니다." },
   { name: "언어 고르기", text: "‘번역 언어’에서 읽고 싶은 언어를 고르고, 회의에서 쓸 수 있는 언어를 고릅니다." },
   { name: "사용해 보기", text: "‘샘플 문장 재생’을 누르고 자막 바에 자막이 나타나는 것을 확인합니다." },
   { name: "안내를 읽고 마치기", text: "개인정보 안내와 메뉴 막대(macOS) 또는 시스템 트레이(Windows)에 대한 안내를 읽은 뒤 ‘AI Translator 시작하기’를 누릅니다." },
@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "AI Translator를 설치하고 첫 회의 번역하기",
@@ -107,7 +107,7 @@ ${appShot({ slug: "app-onboarding-4", lang: "ko", alt: "모델 다운로드 단�
 </div>
 
 <h3>4단계. 시스템 오디오 녹음 허용하기(macOS만)</h3>
-<p>AI Translator가 처음 오디오를 캡처할 때 macOS는 <strong>시스템 오디오 녹음</strong> 권한을 요청합니다. 이 화면은 미리 알려 줄 뿐이며, macOS의 요청은 아래의 ‘사용해 보기’ 단계나 처음 ‘시작’을 누를 때 나타납니다. 허용하세요. 실수로 거부했다면 이 화면의 <strong>시스템 설정 열기</strong> 버튼으로 해당 위치로 갈 수 있습니다. 앱은 마이크를 쓰지 않습니다. 자세한 내용은 <a href="/ko/guide/macos-audio-permission/">시스템 오디오 녹음 권한 허용하기</a>를 참고하세요. Windows에는 이 단계가 없습니다.</p>
+<p>AI Translator가 처음 오디오를 캡처할 때 macOS는 <strong>시스템 오디오 녹음</strong> 권한을 요청합니다. 이 화면은 미리 알려 줄 뿐이며, macOS의 요청은 아래의 ‘사용해 보기’ 단계나 처음 ‘시작’을 누를 때 나타납니다. 허용하세요. 실수로 거부했다면 이 화면의 <strong>시스템 설정 열기</strong> 버튼으로 해당 위치로 갈 수 있습니다. 마이크 권한은 설정 › 오디오에서 마이크가 들어간 입력 소스를 고를 때만 묻습니다. 자세한 내용은 <a href="/ko/guide/macos-audio-permission/">시스템 오디오 녹음 권한 허용하기</a>를 참고하세요. Windows에는 이 단계가 없습니다.</p>
 ${appShot({ slug: "app-onboarding-5", lang: "ko", alt: "시스템 오디오 녹음 허용 단계와 시스템 설정 열기 버튼", caption: "9단계 중 5단계: 시스템 오디오 녹음 권한(macOS만)." })}
 
 <h3>5단계. 언어 고르기</h3>

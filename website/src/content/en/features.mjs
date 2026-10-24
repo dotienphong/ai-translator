@@ -14,7 +14,7 @@ export default {
     "Live translated subtitles in 5 languages, a subtitle bar, Type & Translate for chat, glossary, history and TXT/SRT/Markdown export. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
+  modified: "2026-10-24",
   llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `
@@ -105,7 +105,7 @@ ${checkList([
   "The source reopens automatically when you switch playback devices, for example when you plug in headphones or connect Bluetooth",
   "<strong>Pause that ends a sentence</strong> is adjustable from 50 to 800&nbsp;ms: shorter gives you subtitles sooner, longer cuts fewer sentences in half",
 ])}
-<p>On macOS, the first time you press Start the system asks for the <em>system audio recording</em> permission. The app does not use the microphone. <a href="/en/guide/macos-audio-permission/">See how to grant the audio permission</a>. Windows needs no such permission.</p>
+<p>On macOS, the first time you press Start the system asks for the <em>system audio recording</em> permission. If you choose a source with the microphone, macOS also asks for the <em>Microphone</em> permission. <a href="/en/guide/macos-audio-permission/">See how to grant the audio permission</a>. Windows needs no such permission.</p>
 </div>
 </div>
 </div></section>

@@ -14,7 +14,7 @@ export default {
     "5 种语言的实时翻译字幕、字幕条、聊天用的输入翻译、术语表、历史记录以及 TXT/SRT/Markdown 导出。全部在你的电脑上离线运行。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", lead: "这里介绍 AI Translator 目前能做的事，与应用中的实际表现完全一致。只有付费套餐才有的功能都会明确标出。" })}
 
@@ -103,7 +103,7 @@ ${checkList([
   "切换播放设备时（例如插上耳机或连接蓝牙），音频来源会自动重新打开",
   "<strong>结束一句话的停顿</strong>可在 50 到 800&nbsp;ms 之间调整：越短字幕出现越快，越长句子越不容易被截断",
 ])}
-<p>在 macOS 上，第一次点“开始”时，系统会请求<em>录制系统音频</em>的权限。应用不使用麦克风。<a href="/zh/guide/macos-audio-permission/">查看如何授予音频权限</a>。Windows 不需要这项权限。</p>
+<p>在 macOS 上，第一次点“开始”时，系统会请求<em>录制系统音频</em>的权限。选择含麦克风的采集来源时，还会请求<em>麦克风</em>权限。<a href="/zh/guide/macos-audio-permission/">查看如何授予音频权限</a>。Windows 不需要这项权限。</p>
 </div>
 </div>
 </div></section>

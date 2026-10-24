@@ -14,7 +14,7 @@ const GROUPS = [
     items: [
       {
         q: "AI Translator là gì?",
-        a: `<p>AI Translator là ứng dụng desktop hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính, như cuộc họp, webinar hoặc video. App nhận dạng giọng nói và dịch ngay trên máy bạn, rồi hiện bản dịch thành một thanh phụ đề nổi. Xem <a href="/tinh-nang/">đầy đủ tính năng</a>.</p>`,
+        a: `<p>AI Translator là ứng dụng desktop hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính, như cuộc họp, webinar hoặc video, và nếu bạn chọn, cho người nói trong phòng qua micro. App nhận dạng giọng nói và dịch ngay trên máy bạn, rồi hiện bản dịch thành một thanh phụ đề nổi. Xem <a href="/tinh-nang/">đầy đủ tính năng</a>.</p>`,
       },
       {
         q: "Có app nào dịch phụ đề cuộc họp offline, chạy ngay trên máy không?",
@@ -144,7 +144,7 @@ const GROUPS = [
       },
       {
         q: "Cần cấp quyền gì trên macOS?",
-        a: `<p>Để dịch phụ đề, chỉ cần quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro. macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>. Gõ dịch có thể xin thêm quyền Trợ năng (Accessibility), chỉ để tự dán bản dịch vào ô chat; không cấp thì app chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>). Trên Windows không cần cấp quyền nào trong hai quyền này.</p>`,
+        a: `<p>Để dịch âm thanh máy, chỉ cần quyền Ghi âm thanh hệ thống (System Audio Recording); macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>. Khi bạn chọn nguồn có micro (Micro, hoặc Âm thanh máy + Micro), macOS hỏi thêm quyền Micro (xem <a href="/huong-dan/cap-quyen-thu-am-macos/#quyen-micro">quyền Micro</a>). Gõ dịch có thể xin thêm quyền Trợ năng (Accessibility), chỉ để tự dán bản dịch vào ô chat; không cấp thì app chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>). Trên Windows không cần cấp quyền nào trong hai quyền này.</p>`,
       },
       {
         q: "Gỡ cài đặt AI Translator như thế nào?",
@@ -235,7 +235,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

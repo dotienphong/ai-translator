@@ -181,7 +181,7 @@ export default {
     "macOS 14.2 이상(Apple 실리콘)이나 Windows 10/11에 명령 한 줄로 AI Translator를 설치하세요. 바로 열리고 '확인 없이 열기'가 필요 없습니다. 10일 무료 체험.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({
@@ -233,7 +233,7 @@ ${sectionHead({ eyebrow: "시스템 요구 사항", title: "내 컴퓨터에서 
 <tr><th scope="row">디스크 공간</th><td>1.3GB(Lite 팩) 또는 2.5GB(Standard 팩), 내려받는 동안 1GB 추가 여유 공간</td><td>동일</td></tr>
 <tr><th scope="row">설치 파일</th><td>약 9MB의 .dmg 파일(설치 명령이 대신 내려받음)</td><td>약 22MB의 .exe 파일, 관리자 권한 없이 내 계정에만 설치</td></tr>
 <tr><th scope="row">코드 서명</th><td>애드혹 서명, 공증 없음: 명령으로 설치하면 바로 열림. 브라우저로 내려받은 .dmg는 처음 실행할 때 '확인 없이 열기' 필요</td><td>코드 서명 없음: 명령으로 설치하면 SmartScreen이 묻지 않음. 브라우저로 내려받은 .exe는 경고가 나올 수 있으며 차단 모드의 스마트 앱 컨트롤은 이를 차단</td></tr>
-<tr><th scope="row">권한</th><td>시스템 오디오 녹음(마이크는 쓰지 않음)</td><td>녹음 권한 필요 없음</td></tr>
+<tr><th scope="row">권한</th><td>시스템 오디오 녹음. 마이크가 들어간 입력 소스를 고르면 마이크 권한도 필요</td><td>녹음 권한 필요 없음. 마이크가 들어간 입력 소스는 Windows에서 앱의 마이크 사용 허용 필요</td></tr>
 </tbody></table></div>
 <p class="small muted">RAM이 8GB 미만이거나 프로세서가 AVX2를 지원하지 않으면 앱이 이유를 설명하고 모델을 내려받지 못하게 합니다. Intel Mac용 버전은 없습니다.</p>
 </div></section>

@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({
   crumbs,
@@ -48,7 +48,7 @@ ${appShot({ slug: "app-home-running", lang: "ja", alt: "翻訳中の AI Translat
 <span class="eyebrow">しくみ</span>
 <h2>AI Translator は聞く側で動きます</h2>
 ${checkList([
-  "パソコンで再生されている音を取り込みます（macOS では<em>システムオーディオの録音</em>を許可します。マイクは使いません。<a href=\"/ja/guide/macos-audio-permission/\">許可の与え方</a>をご覧ください）",
+  "パソコンで再生されている音を取り込みます（macOS では<em>システムオーディオの録音</em>を許可します。会議室の発言者にはマイクを入力元に加えます。<a href=\"/ja/guide/macos-audio-permission/\">許可の与え方</a>をご覧ください）",
   "音声を文に区切り、マシン上で動くモデルで音声を認識して翻訳します",
   "翻訳はフローティング字幕バーに表示され、会議アプリからフォーカスを奪わないので、チャットへの入力を続けられます",
   "ほかの人は何もする必要がありません：会議室にボットは入らず、主催者が字幕を有効にする必要もありません",

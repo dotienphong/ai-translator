@@ -180,7 +180,7 @@ export default {
     "Tải AI Translator: cài trên macOS 14.2+ (Apple Silicon) hoặc Windows 10/11 bằng một dòng lệnh, mở thẳng không cần Open Anyway. Dùng thử Free 10 ngày.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
+  modified: "2026-10-24",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Tải AI Translator: trang tự nhận ra hệ điều hành và mở đúng hướng dẫn. macOS cài bằng một dòng lệnh Terminal (curl ... install.sh | bash): tải bản cài, kiểm SHA-256 rồi mở app, không cần Open Anyway. Windows cài bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex); file .exe tải bằng trình duyệt có thể bị SmartScreen cảnh báo vì bản chưa ký mã, Smart App Control có thể chặn. Yêu cầu máy.",
   llmTitle: "Tải AI Translator",
@@ -234,7 +234,7 @@ ${sectionHead({ eyebrow: "Yêu cầu máy", title: "Máy của bạn có chạy 
 <tr><th scope="row">Ổ đĩa</th><td>1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn), cộng 1 GB trống khi tải</td><td>Tương tự</td></tr>
 <tr><th scope="row">Bộ cài</th><td>File .dmg khoảng 9 MB (lệnh cài tự tải)</td><td>File .exe khoảng 22 MB, cài cho riêng tài khoản của bạn, không cần quyền quản trị</td></tr>
 <tr><th scope="row">Ký mã</th><td>Ký ad-hoc, chưa notarize: cài bằng lệnh thì mở thẳng; tải .dmg bằng trình duyệt thì lần mở đầu cần bấm Open Anyway</td><td>Chưa ký mã: cài bằng lệnh thì SmartScreen không hỏi; file .exe tải bằng trình duyệt có thể bị cảnh báo; Smart App Control chế độ chặn sẽ chặn</td></tr>
-<tr><th scope="row">Quyền</th><td>Ghi âm thanh hệ thống (không dùng micro)</td><td>Không cần cấp quyền ghi âm</td></tr>
+<tr><th scope="row">Quyền</th><td>Ghi âm thanh hệ thống; thêm quyền Micro nếu bạn chọn nguồn có micro</td><td>Không cần cấp quyền ghi âm; nguồn có micro cần Windows cho phép app dùng micro</td></tr>
 </tbody></table></div>
 <p class="small muted">Máy dưới 8 GB RAM hoặc (Windows) CPU không có AVX2: app báo lý do và không cho tải model. Mac Intel không chạy được app.</p>
 </div></section>

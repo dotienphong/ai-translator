@@ -14,7 +14,7 @@ const GROUPS = [
     items: [
       {
         q: "AI Translator 是什么？",
-        a: `<p>AI Translator 是一款桌面应用，可以为电脑上播放的任何音频（例如会议、网络研讨会或视频）显示实时翻译字幕。它在你自己的电脑上识别语音并翻译，然后把译文显示在悬浮字幕条上。请查看<a href="/zh/features/">完整功能列表</a>。</p>`,
+        a: `<p>AI Translator 是一款桌面应用，可以为电脑上播放的任何音频（例如会议、网络研讨会或视频）显示实时翻译字幕；如果你选择，也可以通过麦克风翻译会议室里说话的人。它在你自己的电脑上识别语音并翻译，然后把译文显示在悬浮字幕条上。请查看<a href="/zh/features/">完整功能列表</a>。</p>`,
       },
       {
         q: "有没有能在电脑上离线翻译会议字幕的应用？",
@@ -144,7 +144,7 @@ const GROUPS = [
       },
       {
         q: "在 macOS 上需要哪些权限？",
-        a: `<p>字幕只需要录制系统音频的权限；AI Translator 不使用麦克风。第一次点“开始”时 macOS 会请求。如果你拒绝，macOS 不会显示错误，应用只会收到静音；应用会提示你重新开启。请参阅<a href="/zh/guide/macos-audio-permission/">音频权限指南</a>。输入翻译还可能请求辅助功能权限，仅用于帮你把译文粘贴到聊天框；没有该权限时，应用会复制译文让你自己粘贴（见<a href="/zh/guide/type-and-translate/#accessibility">输入翻译</a>）。Windows 两项权限都不需要。</p>`,
+        a: `<p>翻译电脑音频只需要录制系统音频的权限；第一次点“开始”时 macOS 会请求。如果你拒绝，macOS 不会显示错误，应用只会收到静音；应用会提示你重新开启。请参阅<a href="/zh/guide/macos-audio-permission/">音频权限指南</a>。选择含麦克风的采集来源（麦克风，或电脑音频 + 麦克风）时，macOS 还会请求麦克风权限（见<a href="/zh/guide/macos-audio-permission/#microphone-permission">麦克风权限</a>）。输入翻译还可能请求辅助功能权限，仅用于帮你把译文粘贴到聊天框；没有该权限时，应用会复制译文让你自己粘贴（见<a href="/zh/guide/type-and-translate/#accessibility">输入翻译</a>）。Windows 两项权限都不需要。</p>`,
       },
       {
         q: "如何卸载 AI Translator？",
@@ -235,7 +235,7 @@ export default {
   description:
     "关于 AI Translator 的简短回答：在 Zoom、Teams 和 Meet 中使用、语言、离线运行、隐私、系统要求、套餐、付款和日常使用。",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   body: () => `
 ${pageHero({

@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-09",
+  modified: "2026-10-24",
   llm: "Installing AI Translator on Windows 10/11 x64 with one PowerShell command (irm ... install.ps1 | iex), no administrator rights and no SmartScreen. Alternative: the .exe (SHA-256 check, More info › Run anyway if SmartScreen warns because the build is not code-signed). Smart App Control can block an unsigned build. Updates and uninstalling.",
   llmTitle: "Install AI Translator on Windows",
   schema: [
@@ -129,7 +129,7 @@ ${callout({ kind: "warn", title: "Why does Windows warn you?", text: "SmartScree
 <h2 id="first-launch">First launch</h2>
 <ol>
 <li>Open <strong>AI Translator</strong> from the Start menu.</li>
-<li>The app shows its first-time setup. There is no audio permission step on Windows: the app captures the sound playing on your PC without a separate permission, and it does not use the microphone.</li>
+<li>The app shows its first-time setup. There is no audio permission step on Windows: the app captures the sound playing on your PC without a separate permission. If you choose a source with the microphone, Windows must let apps use it (Settings › Privacy &amp; security › Microphone).</li>
 <li>Continue with the <a href="/en/guide/quick-start/">quick start guide</a>.</li>
 </ol>
 <p>AI Translator lives in the system tray. Closing the window only hides the app; to quit completely, choose <strong>Quit</strong> from the tray icon. Windows may hide new icons behind the <strong>^</strong> arrow on the taskbar: drag the icon onto the taskbar, or turn it on in Taskbar settings. Shortcuts on Windows use Ctrl+Alt (see <a href="/en/guide/subtitle-bar-and-shortcuts/">the subtitle bar and shortcuts</a>).</p>

@@ -14,7 +14,7 @@ export default {
     "5개 언어 실시간 번역 자막, 자막 바, 채팅용 입력 번역, 용어집, 기록, TXT/SRT/Markdown 내보내기. 모두 내 컴퓨터에서 오프라인으로 실행됩니다.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 번역 기능", lead: "AI Translator가 지금 할 수 있는 일을 앱에서 실제로 작동하는 그대로 소개합니다. 유료 요금제에만 있는 기능은 분명히 표시했습니다." })}
 
@@ -103,7 +103,7 @@ ${checkList([
   "헤드폰을 꽂거나 블루투스를 연결해 재생 장치가 바뀌면 소스가 자동으로 다시 열립니다",
   "<strong>문장을 끝내는 정지 시간</strong>은 50~800&nbsp;ms로 조절할 수 있습니다. 짧으면 자막이 빨리 나오고, 길면 문장이 덜 잘립니다",
 ])}
-<p>macOS에서는 처음 '시작'을 누를 때 시스템이 <em>시스템 오디오 녹음</em> 권한을 묻습니다. 앱은 마이크를 쓰지 않습니다. <a href="/ko/guide/macos-audio-permission/">오디오 권한을 주는 방법 보기</a>. Windows에서는 이 권한이 필요 없습니다.</p>
+<p>macOS에서는 처음 '시작'을 누를 때 시스템이 <em>시스템 오디오 녹음</em> 권한을 묻습니다. 마이크가 들어간 입력 소스를 고르면 <em>마이크</em> 권한도 묻습니다. <a href="/ko/guide/macos-audio-permission/">오디오 권한을 주는 방법 보기</a>. Windows에서는 이 권한이 필요 없습니다.</p>
 </div>
 </div>
 </div></section>

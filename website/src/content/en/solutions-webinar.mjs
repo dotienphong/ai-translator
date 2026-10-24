@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-13",
+  modified: "2026-10-24",
   llm: "How to use AI Translator to read translated subtitles while watching webinars, courses and videos: nothing to install in the browser, long sessions, original text next to the translation, transcript export, glossary, tips and limits.",
   llmTitle: "Translated subtitles for webinars, courses and videos",
   body: () => `
@@ -48,7 +48,7 @@ ${feature({ icon: "play", title: "Video watchers", text: "Technical videos, talk
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Nothing extra to install", title: "It does not depend on the player or platform" })}
 <p>Because AI Translator captures the sound playing on your computer, it does not depend on the website or platform you are watching. Press <strong>Start</strong>, then play the video; translated subtitles appear on a floating bar above the player window. We have tested it with videos in a browser, but not with each individual course or webinar platform.</p>
-<p>On macOS you grant the <em>System Audio Recording</em> permission once; the microphone is not used. See <a href="/en/guide/macos-audio-permission/">how to grant the permission</a>.</p>
+<p>On macOS you grant the <em>System Audio Recording</em> permission once; for a webinar the default Computer audio source is all you need. See <a href="/en/guide/macos-audio-permission/">how to grant the permission</a>.</p>
 </div></section>
 
 <section class="section"><div class="container">

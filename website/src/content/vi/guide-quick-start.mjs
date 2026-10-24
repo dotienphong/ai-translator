@@ -21,7 +21,7 @@ const HOWTO_STEPS = [
   { name: "Chọn ngôn ngữ giao diện", text: "Ô chọn sẵn ngôn ngữ của máy bạn; đổi nếu muốn rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
   { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
-  { name: "Cho phép ghi âm thanh hệ thống (chỉ macOS)", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. App không dùng micro. Trên Windows không có bước này." },
+  { name: "Cho phép ghi âm thanh hệ thống (chỉ macOS)", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. Quyền Micro chỉ được hỏi khi bạn chọn nguồn có micro. Trên Windows không có bước này." },
   { name: "Chọn ngôn ngữ", text: "Chọn ngôn ngữ muốn đọc ở ô Dịch sang và các ngôn ngữ có thể được nói trong cuộc họp." },
   { name: "Nghe thử", text: "Bấm Phát câu mẫu để thấy phụ đề hiện trên thanh phụ đề." },
   { name: "Đọc ghi chú và hoàn tất", text: "Đọc ghi chú quyền riêng tư và việc app chạy ở menu bar (macOS) hoặc khay hệ thống (Windows), rồi bấm Bắt đầu dùng AI Translator." },
@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-24",
   llm: "Hướng dẫn từ lúc nhận bản cài đến phụ đề đầu tiên trên macOS và Windows: cài app, bảy bước thiết lập lần đầu, bắt đầu dịch, thanh phụ đề, bản chép lời và lỗi thường gặp.",
   llmTitle: "Bắt đầu nhanh với AI Translator",
   schema: [
@@ -109,7 +109,7 @@ ${appShot({ slug: "app-onboarding-4", lang: "vi", alt: "Bước tải model vớ
 </div>
 
 <h3>Bước 4. Cho phép ghi âm thanh hệ thống (chỉ macOS)</h3>
-<p>macOS hỏi quyền <strong>Ghi âm thanh hệ thống</strong> ở lần đầu AI Translator thu âm thanh. Màn hình này chỉ nói trước: hộp thoại của macOS hiện ở bước Nghe thử bên dưới hoặc lần đầu bạn bấm Bắt đầu. Hãy chọn cho phép. Lỡ từ chối thì nút <strong>Mở System Settings</strong> ở màn hình này đưa bạn tới đúng chỗ bật lại. App không dùng micro. Chi tiết: <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm thanh hệ thống</a>. Trên Windows không có bước này.</p>
+<p>macOS hỏi quyền <strong>Ghi âm thanh hệ thống</strong> ở lần đầu AI Translator thu âm thanh. Màn hình này chỉ nói trước: hộp thoại của macOS hiện ở bước Nghe thử bên dưới hoặc lần đầu bạn bấm Bắt đầu. Hãy chọn cho phép. Lỡ từ chối thì nút <strong>Mở System Settings</strong> ở màn hình này đưa bạn tới đúng chỗ bật lại. Quyền Micro chỉ được hỏi khi bạn chọn nguồn có micro ở Cài đặt › Âm thanh. Chi tiết: <a href="/huong-dan/cap-quyen-thu-am-macos/">cấp quyền ghi âm thanh hệ thống</a>. Trên Windows không có bước này.</p>
 ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi âm thanh hệ thống kèm nút Mở System Settings", caption: "Bước 5/9: quyền ghi âm thanh hệ thống (chỉ có trên macOS)." })}
 
 <h3>Bước 5. Chọn ngôn ngữ</h3>

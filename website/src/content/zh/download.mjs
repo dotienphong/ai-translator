@@ -181,7 +181,7 @@ export default {
     "在 macOS 14.2+（Apple 芯片）或 Windows 10/11 上用一行命令安装 AI Translator，安装后直接打开，无需“仍要打开”。免费试用 10 天。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({
@@ -233,7 +233,7 @@ ${sectionHead({ eyebrow: "系统要求", title: "你的电脑能运行吗？", c
 <tr><th scope="row">磁盘空间</th><td>1.3 GB（Lite 模型包）或 2.5 GB（Standard 模型包），下载时另需 1 GB 可用空间</td><td>相同</td></tr>
 <tr><th scope="row">安装包</th><td>约 9 MB 的 .dmg 文件（安装命令会替你下载）</td><td>约 22 MB 的 .exe 文件，只为你的账户安装，无需管理员权限</td></tr>
 <tr><th scope="row">代码签名</th><td>临时签名，未经公证：用命令安装会直接打开；用浏览器下载的 .dmg 首次启动时需要“仍要打开”</td><td>没有代码签名：用命令安装时 SmartScreen 不会询问；用浏览器下载的 .exe 可能会收到警告；处于阻止模式的智能应用控制会阻止它</td></tr>
-<tr><th scope="row">权限</th><td>录制系统音频（不使用麦克风）</td><td>不需要录音权限</td></tr>
+<tr><th scope="row">权限</th><td>录制系统音频；选择含麦克风的采集来源时还需要麦克风权限</td><td>不需要录音权限；含麦克风的采集来源需要 Windows 允许应用使用麦克风</td></tr>
 </tbody></table></div>
 <p class="small muted">如果电脑内存不足 8 GB，或处理器不支持 AVX2，应用会说明原因，并且不允许下载模型。没有 Intel Mac 版本。</p>
 </div></section>

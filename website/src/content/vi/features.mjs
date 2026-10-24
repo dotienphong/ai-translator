@@ -14,7 +14,7 @@ export default {
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown. Tất cả chạy offline trên máy bạn.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
+  modified: "2026-10-24",
   llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
@@ -103,7 +103,7 @@ ${checkList([
   "Tự mở lại nguồn khi bạn đổi thiết bị phát (cắm tai nghe, kết nối Bluetooth)",
   "<strong>Độ nhạy ngắt câu</strong> chỉnh 50–800 ms: ngắn thì phụ đề sớm hơn, dài thì ít cắt câu hơn",
 ])}
-<p>Trên macOS, lần đầu bạn bấm Bắt đầu, hệ điều hành sẽ hỏi quyền <em>ghi âm thanh hệ thống</em>. App không dùng micro. <a href="/huong-dan/cap-quyen-thu-am-macos/">Xem hướng dẫn cấp quyền</a>. Trên Windows không cần cấp quyền này.</p>
+<p>Trên macOS, lần đầu bạn bấm Bắt đầu, hệ điều hành sẽ hỏi quyền <em>ghi âm thanh hệ thống</em>. Chọn nguồn có micro thì macOS hỏi thêm quyền <em>Micro</em>. <a href="/huong-dan/cap-quyen-thu-am-macos/">Xem hướng dẫn cấp quyền</a>. Trên Windows không cần cấp quyền này.</p>
 </div>
 </div>
 </div></section>

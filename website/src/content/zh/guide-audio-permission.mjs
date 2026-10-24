@@ -35,7 +35,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "为 AI Translator 重新开启系统音频录制",
@@ -47,7 +47,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "在 macOS 上授予系统音频录制权限",
-  lead: "为了显示字幕，AI Translator 只需要一项 macOS 权限：系统音频录制，这样它才能听到你的 Mac 正在播放的音频。它不使用麦克风。如果你不小心拒绝了，请在“系统设置 › 隐私与安全性 › 屏幕与系统音频录制”中重新开启。",
+  lead: "为了翻译电脑音频，AI Translator 需要一项 macOS 权限：系统音频录制，这样它才能听到你的 Mac 正在播放的音频。选择含麦克风的采集来源时，macOS 还会请求麦克风权限。如果你不小心拒绝了，请在“系统设置 › 隐私与安全性 › 屏幕与系统音频录制”中重新开启。",
   meta: "<span>仅适用于 macOS 14.2 或更高版本</span> <span>更新于 {{updated}}</span>",
 })}
 
@@ -57,7 +57,7 @@ ${docLayout({
   tocTitle: "本指南内容",
   body: `
 <h2 id="which-permission">应用需要什么权限？</h2>
-<p>AI Translator 采集电脑上正在播放的音频（会议声音、视频、网络研讨会），以便识别和翻译。所以 macOS 要求<strong>系统音频录制</strong>权限。应用<strong>不使用麦克风</strong>，不录制你的声音，也不会把会议保存到磁盘：翻译时音频只留在内存中。Windows 没有这样的权限步骤。</p>
+<p>AI Translator 采集电脑上正在播放的音频（会议声音、视频、网络研讨会），以便识别和翻译。所以 macOS 要求<strong>系统音频录制</strong>权限。使用默认来源（<strong>电脑音频</strong>）时，应用不会打开麦克风；只有在你选择<strong>麦克风</strong>或<strong>电脑音频 + 麦克风</strong>时才会打开（见<a href="#microphone-permission">麦克风权限</a>）。应用不会把会议保存到磁盘：翻译时音频只留在内存中。Windows 没有系统音频的权限步骤。</p>
 ${facts([
   ["权限", "系统音频录制"],
   ["在哪里重新开启", "系统设置 › 隐私与安全性 › 屏幕与系统音频录制 › 仅系统音频录制"],

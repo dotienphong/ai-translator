@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "用一条命令在 Windows 上安装并打开 AI Translator",
@@ -127,7 +127,7 @@ ${callout({ kind: "warn", title: "Windows 为什么会发出警告？", text: "S
 <h2 id="first-launch">首次启动</h2>
 <ol>
 <li>从“开始”菜单打开 <strong>AI Translator</strong>。</li>
-<li>应用会显示首次设置。Windows 上没有音频权限这一步：应用无需单独授权就能采集电脑上播放的声音，而且不使用麦克风。</li>
+<li>应用会显示首次设置。Windows 上没有音频权限这一步：应用无需单独授权就能采集电脑上播放的声音。如果选择含麦克风的采集来源，需要 Windows 允许应用使用麦克风（设置 › 隐私和安全性 › 麦克风）。</li>
 <li>继续阅读<a href="/zh/guide/quick-start/">快速入门指南</a>。</li>
 </ol>
 <p>AI Translator 位于系统托盘中。关闭窗口只会隐藏应用；要完全退出，请从托盘图标选择<strong>退出</strong>。Windows 可能会把新图标藏在任务栏的 <strong>^</strong> 箭头后面：把图标拖到任务栏上，或者在任务栏设置中开启它。Windows 上的快捷键使用 Ctrl+Alt（见<a href="/zh/guide/subtitle-bar-and-shortcuts/">字幕条和快捷键</a>）。</p>

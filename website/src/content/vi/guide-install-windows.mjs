@@ -40,7 +40,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-09",
+  modified: "2026-10-24",
   llm: "Cài AI Translator trên Windows 10/11 x64 bằng một dòng lệnh PowerShell (irm ... install.ps1 | iex), không cần quyền quản trị, không qua SmartScreen. Cách khác: file .exe (kiểm SHA-256, More info › Run anyway nếu SmartScreen cảnh báo vì bản chưa ký mã). Smart App Control có thể chặn bản chưa ký. Cập nhật và gỡ cài đặt.",
   llmTitle: "Cài đặt AI Translator trên Windows",
   schema: [
@@ -130,7 +130,7 @@ ${callout({ kind: "warn", title: "Vì sao Windows cảnh báo?", text: "SmartScr
 <h2 id="mo-lan-dau">Mở lần đầu</h2>
 <ol>
 <li>Mở <strong>AI Translator</strong> từ menu Start.</li>
-<li>App hiện trình hướng dẫn lần đầu. Trên Windows không có bước cấp quyền ghi âm: app thu âm thanh đang phát trên máy mà không cần quyền riêng, và không dùng micro.</li>
+<li>App hiện trình hướng dẫn lần đầu. Trên Windows không có bước cấp quyền ghi âm: app thu âm thanh đang phát trên máy mà không cần quyền riêng. Nếu bạn chọn nguồn có micro, Windows phải cho phép app dùng micro (Settings › Privacy &amp; security › Microphone).</li>
 <li>Làm tiếp theo <a href="/huong-dan/bat-dau-nhanh/">hướng dẫn bắt đầu nhanh</a>.</li>
 </ol>
 <p>AI Translator nằm ở khay hệ thống. Đóng cửa sổ chỉ ẩn app đi; muốn thoát hẳn thì chọn <strong>Thoát</strong> ở biểu tượng trong khay. Windows có thể giấu biểu tượng mới sau mũi tên <strong>^</strong> trên taskbar: kéo biểu tượng ra taskbar, hoặc bật nó trong cài đặt Taskbar. Phím tắt trên Windows dùng Ctrl+Alt (xem <a href="/huong-dan/thanh-phu-de-va-phim-tat/">thanh phụ đề và phím tắt</a>).</p>

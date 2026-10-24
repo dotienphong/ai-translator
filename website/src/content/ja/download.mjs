@@ -181,7 +181,7 @@ export default {
     "macOS 14.2 以降（Apple シリコン）や Windows 10/11 にコマンド 1 行でインストール。すぐに開き、「このまま開く」も不要です。10 日間の無料お試し付き。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({
@@ -233,7 +233,7 @@ ${sectionHead({ eyebrow: "動作環境", title: "お使いのパソコンで動�
 <tr><th scope="row">ディスクの空き容量</th><td>1.3 GB（Lite パック）または 2.5 GB（Standard パック）、ダウンロード中はさらに 1 GB</td><td>同じ</td></tr>
 <tr><th scope="row">インストーラー</th><td>約 9 MB の .dmg ファイル（インストールコマンドが自動でダウンロード）</td><td>約 22 MB の .exe ファイル。管理者権限なしで、あなたのアカウントだけにインストール</td></tr>
 <tr><th scope="row">コード署名</th><td>アドホック署名、公証なし：コマンドでインストールすれば直接開きます。ブラウザーでダウンロードした .dmg は初回起動時に「このまま開く」が必要</td><td>コード署名なし：コマンドでインストールすれば SmartScreen の確認は出ません。ブラウザーでダウンロードした .exe は警告が出ることがあり、ブロックモードのスマート アプリ コントロールではブロックされます</td></tr>
-<tr><th scope="row">許可</th><td>システムオーディオの録音（マイクは使いません）</td><td>録音の許可は不要</td></tr>
+<tr><th scope="row">許可</th><td>システムオーディオの録音。マイクを含む入力元を選ぶとマイクの許可も必要</td><td>録音の許可は不要。マイクを含む入力元では Windows でアプリのマイク使用を許可</td></tr>
 </tbody></table></div>
 <p class="small muted">RAM が 8 GB 未満のパソコンや、AVX2 に対応していないプロセッサーでは、アプリが理由を説明し、モデルをダウンロードできないようにします。Intel Mac 版はありません。</p>
 </div></section>

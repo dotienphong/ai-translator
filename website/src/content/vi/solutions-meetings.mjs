@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-09",
+  modified: "2026-10-24",
   llm: "Cách dùng AI Translator để có phụ đề dịch khi họp Zoom, Teams, Google Meet, Zalo: chuẩn bị trước họp, phím tắt khi họp, bản chép lời sau họp, app đã thử, quyền riêng tư và giới hạn.",
   llmTitle: "Phụ đề dịch cho họp trực tuyến (Zoom, Teams, Meet, Zalo)",
   body: () => `
@@ -50,7 +50,7 @@ ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính của 
 <span class="eyebrow">Cách giải</span>
 <h2>AI Translator chạy ở phía người nghe</h2>
 ${checkList([
-  "Thu âm thanh đang phát trên máy (macOS: quyền <em>Ghi âm thanh hệ thống</em>, không dùng micro; xem <a href=\"/huong-dan/cap-quyen-thu-am-macos/\">cách cấp quyền</a>)",
+  "Thu âm thanh đang phát trên máy (macOS: quyền <em>Ghi âm thanh hệ thống</em>; họp tại chỗ thì chọn thêm nguồn micro; xem <a href=\"/huong-dan/cap-quyen-thu-am-macos/\">cách cấp quyền</a>)",
   "Cắt câu, nhận dạng giọng nói và dịch bằng model chạy trên máy bạn",
   "Hiện bản dịch trên thanh phụ đề nổi, không lấy focus của app họp, nên bạn vẫn gõ chat bình thường",
   "Không ai khác phải làm gì: không bot trong phòng, không phụ đề cần chủ họp bật",

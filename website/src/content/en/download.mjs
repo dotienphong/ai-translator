@@ -182,7 +182,7 @@ export default {
     "Get AI Translator: install on macOS 14.2+ (Apple Silicon) or Windows 10/11 with one command, opens right away, no Open Anyway. 10-day free trial.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
+  modified: "2026-10-24",
   schema: [faqPage(DL_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Get AI Translator: the page detects your operating system and opens the right guide. macOS installs with one Terminal command (curl ... install.sh | bash): it downloads the installer, checks its SHA-256 and opens the app, with no Open Anyway step. Windows installs with one PowerShell command (irm ... install.ps1 | iex); an .exe downloaded in a browser may trigger a SmartScreen warning because the build is not code-signed, and Smart App Control can block it. System requirements.",
   llmTitle: "Get AI Translator",
@@ -236,7 +236,7 @@ ${sectionHead({ eyebrow: "System requirements", title: "Will it run on your comp
 <tr><th scope="row">Disk space</th><td>1.3 GB (Lite pack) or 2.5 GB (Standard pack), plus 1 GB free while downloading</td><td>The same</td></tr>
 <tr><th scope="row">Installer</th><td>A .dmg file of about 9 MB (the install command downloads it for you)</td><td>An .exe file of about 22 MB that installs for your account only, with no administrator rights</td></tr>
 <tr><th scope="row">Code signing</th><td>Ad-hoc signed, not notarized: opens directly when installed with the command; a .dmg downloaded in a browser needs Open Anyway on first launch</td><td>Not code-signed: installed with the command, SmartScreen does not ask; an .exe downloaded in a browser may be warned about; Smart App Control in blocking mode blocks it</td></tr>
-<tr><th scope="row">Permission</th><td>System audio recording (the microphone is not used)</td><td>No audio-recording permission needed</td></tr>
+<tr><th scope="row">Permission</th><td>System audio recording; plus Microphone if you choose a source with the microphone</td><td>No audio-recording permission needed; a source with the microphone needs Windows to let apps use it</td></tr>
 </tbody></table></div>
 <p class="small muted">If a computer has less than 8 GB of RAM or a processor without AVX2, the app explains why and does not let you download the models. There is no build for Intel Macs.</p>
 </div></section>

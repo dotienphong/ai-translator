@@ -14,7 +14,7 @@ const GROUPS = [
     items: [
       {
         q: "What is AI Translator?",
-        a: `<p>AI Translator is a desktop app that shows live translated subtitles for any audio playing on your computer, such as a meeting, webinar or video. It recognizes speech and translates it on your own machine, then shows the translation on a floating subtitle bar. See the <a href="/en/features/">full list of features</a>.</p>`,
+        a: `<p>AI Translator is a desktop app that shows live translated subtitles for any audio playing on your computer, such as a meeting, webinar or video, and, if you choose, for people speaking in the room through the microphone. It recognizes speech and translates it on your own machine, then shows the translation on a floating subtitle bar. See the <a href="/en/features/">full list of features</a>.</p>`,
       },
       {
         q: "Is there an offline app that translates meeting subtitles on my computer?",
@@ -144,7 +144,7 @@ const GROUPS = [
       },
       {
         q: "What permissions does it need on macOS?",
-        a: `<p>For subtitles, only System Audio Recording permission; AI Translator does not use the microphone. macOS asks the first time you press Start. If you decline, macOS shows no error and the app simply receives silence; the app will prompt you to turn it back on. See the <a href="/en/guide/macos-audio-permission/">audio permission guide</a>. Type &amp; Translate can also ask for the Accessibility permission, only to paste the translation into the chat box for you; without it, the app copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>). Windows needs neither permission.</p>`,
+        a: `<p>To translate computer audio, only System Audio Recording permission is needed; macOS asks the first time you press Start. If you decline, macOS shows no error and the app simply receives silence; the app will prompt you to turn it back on. See the <a href="/en/guide/macos-audio-permission/">audio permission guide</a>. When you choose a source with the microphone (Microphone, or Computer audio + Microphone), macOS also asks for the Microphone permission (see <a href="/en/guide/macos-audio-permission/#microphone-permission">Microphone permission</a>). Type &amp; Translate can also ask for the Accessibility permission, only to paste the translation into the chat box for you; without it, the app copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>). Windows needs neither permission.</p>`,
       },
       {
         q: "How do I uninstall AI Translator?",
@@ -235,7 +235,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

@@ -2554,3 +2554,49 @@ test("chính sách quyền riêng tư và EULA nói về micro: chỉ trong RAM,
   }
   assert.deepEqual(errors, []);
 });
+
+// Câu cũ đã gỡ khi có nguồn micro: "app không dùng micro" và "cần đúng một quyền" (giờ chọn nguồn có micro thì hỏi thêm quyền
+// Micro). Câu nói về việc chọn nguồn ("không mở micro trừ khi bạn chọn…") thì được.
+const STALE_MIC = [
+  { id: "vi: không dùng micro", re: /không\s+(?:dùng|cần)\s+micro/iu, unless: /chọn/iu },
+  { id: "vi: cần đúng một quyền", re: /cần\s+đúng\s+một\s+quyền/iu },
+  { id: "en: does not use the microphone", re: /\b(?:does\s+not|doesn't|never)\s+use\s+the\s+microphone\b|\bthe\s+microphone\s+is\s+not\s+used\b/i, unless: /\b(?:choose|select)/i },
+  { id: "en: exactly one permission", re: /\bexactly\s+one\s+(?:macOS\s+)?permission\b/i },
+  { id: "ja: マイクを使いません", re: /マイク(?:は|を)使(?:いません|わ)/u, unless: /選/u },
+  { id: "ja: 許可はちょうど 1 つ", re: /ちょうど\s*1\s*つ/u },
+  { id: "zh: 不使用麦克风", re: /不使用麦克风/u, unless: /选择/u },
+  { id: "zh: 只需要一项权限", re: /只需要一项/u },
+  { id: "ko: 마이크를 쓰지 않음", re: /마이크(?:는|를)\s*쓰지\s*않/u, unless: /고르|선택/u },
+  { id: "ko: 권한은 딱 하나", re: /딱\s*하나/u },
+];
+const STALE_MIC_MUST_CATCH = [
+  "Chỉ quyền Ghi âm thanh hệ thống (System Audio Recording); AI Translator không dùng micro.",
+  "Để dịch phụ đề, AI Translator cần đúng một quyền trên macOS: Ghi âm thanh hệ thống.",
+  "The app does not use the microphone.",
+  "System audio recording (the microphone is not used)",
+  "For subtitles, AI Translator needs exactly one macOS permission: System Audio Recording.",
+  "アプリはマイクを使いません。",
+  "アプリは<strong>マイクを使わず</strong>、あなたの声を録音せず",
+  "应用不使用麦克风。",
+  "앱은 마이크를 쓰지 않습니다.",
+  "시스템 오디오 녹음(마이크는 쓰지 않음)",
+];
+const STALE_MIC_MUST_KEEP = [
+  "Với nguồn mặc định (Âm thanh máy), app không mở micro; app chỉ mở micro khi bạn chọn nguồn Micro.",
+  "Quyền Micro chỉ được hỏi khi bạn chọn nguồn có micro.",
+  "With the default source the app does not open the microphone; it opens it only when you choose Microphone.",
+  "マイクを含む入力元を選ぶと、マイクの許可も求められます。",
+  "选择含麦克风的采集来源时，还会请求麦克风权限。",
+  "마이크가 들어간 입력 소스를 고르면 마이크 권한도 묻습니다.",
+];
+
+test("luật câu cũ về micro (STALE_MIC) bắt câu cũ và không bắt câu đúng", () => {
+  const missed = STALE_MIC_MUST_CATCH.filter((s) => staleHits(s, STALE_MIC).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_MIC_MUST_KEEP.filter((s) => staleHits(s, STALE_MIC).length > 0).map((s) => `${s} → ${staleHits(s, STALE_MIC).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site còn câu 'app không dùng micro' hay 'cần đúng một quyền trên macOS'", async () => {
+  assert.deepEqual(scanStale(await siteTexts(), STALE_MIC), []);
+});

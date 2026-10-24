@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({
   crumbs,
@@ -46,7 +46,7 @@ ${feature({ icon: "play", title: "동영상 시청자", text: "기술 동영상,
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "추가 설치 없음", title: "플레이어나 플랫폼에 좌우되지 않습니다" })}
 <p>AI Translator는 컴퓨터에서 재생되는 소리를 캡처하므로, 보고 있는 웹사이트나 플랫폼에 좌우되지 않습니다. <strong>시작</strong>을 누른 다음 동영상을 재생하면, 플레이어 창 위의 떠 있는 바에 번역 자막이 나타납니다. 브라우저의 동영상으로는 시험했지만, 강좌나 웨비나 플랫폼을 하나하나 시험하지는 않았습니다.</p>
-<p>macOS에서는 <em>시스템 오디오 녹음</em> 권한을 한 번만 허용하면 되며, 마이크는 쓰지 않습니다. <a href="/ko/guide/macos-audio-permission/">권한 허용 방법</a>을 참고하세요.</p>
+<p>macOS에서는 <em>시스템 오디오 녹음</em> 권한을 한 번만 허용하면 됩니다. 웨비나는 기본 입력 소스인 ‘컴퓨터 오디오’로 충분합니다. <a href="/ko/guide/macos-audio-permission/">권한 허용 방법</a>을 참고하세요.</p>
 </div></section>
 
 <section class="section"><div class="container">

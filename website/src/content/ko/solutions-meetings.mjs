@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({
   crumbs,
@@ -48,7 +48,7 @@ ${appShot({ slug: "app-home-running", lang: "ko", alt: "번역 중인 AI Transla
 <span class="eyebrow">작동 방식</span>
 <h2>AI Translator는 듣는 사람 쪽에서 실행됩니다</h2>
 ${checkList([
-  "컴퓨터에서 재생되는 소리를 캡처합니다(macOS에서는 <em>시스템 오디오 녹음</em>을 허용하며, 마이크는 쓰지 않습니다. <a href=\"/ko/guide/macos-audio-permission/\">권한 허용 방법</a> 참고)",
+  "컴퓨터에서 재생되는 소리를 캡처합니다(macOS에서는 <em>시스템 오디오 녹음</em>을 허용하며, 회의실에서 말하는 사람은 마이크를 입력 소스로 더하면 됩니다. <a href=\"/ko/guide/macos-audio-permission/\">권한 허용 방법</a> 참고)",
   "오디오를 문장으로 나눈 뒤, 기기에서 실행되는 모델로 음성을 인식하고 번역합니다",
   "번역은 떠 있는 자막 바에 표시되며, 자막 바는 회의 앱의 포커스를 빼앗지 않으므로 채팅 입력을 계속할 수 있습니다",
   "다른 사람은 아무것도 할 필요가 없습니다: 회의실에 봇이 들어오지 않고, 주최자가 자막을 켤 필요도 없습니다",

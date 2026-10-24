@@ -14,7 +14,7 @@ export default {
     "5 言語のリアルタイム翻訳字幕、字幕バー、チャット用の入力翻訳、用語集、履歴、TXT/SRT/Markdown 書き出し。すべてパソコン上でオフラインで動きます。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイム翻訳機能", lead: "AI Translator が今できることを、アプリでの実際の動きそのままにご紹介します。有料プランだけの機能ははっきり示しています。" })}
 
@@ -103,7 +103,7 @@ ${checkList([
   "ヘッドホンを差したり Bluetooth に接続したりして再生デバイスが切り替わると、ソースは自動で開き直されます",
   "<strong>文を区切る間の長さ</strong>は 50〜800&nbsp;ms で調整可能。短くすると字幕が早く出て、長くすると文が途中で切れにくくなります",
 ])}
-<p>macOS では、初めて「開始」を押したときにシステムから<em>システムオーディオの録音</em>の許可を求められます。アプリはマイクを使いません。<a href="/ja/guide/macos-audio-permission/">音声の許可の与え方を見る</a>。Windows ではこの許可は不要です。</p>
+<p>macOS では、初めて「開始」を押したときにシステムから<em>システムオーディオの録音</em>の許可を求められます。マイクを含む入力元を選ぶと、<em>マイク</em>の許可も求められます。<a href="/ja/guide/macos-audio-permission/">音声の許可の与え方を見る</a>。Windows ではこの許可は不要です。</p>
 </div>
 </div>
 </div></section>

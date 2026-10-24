@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "コマンド 1 つで AI Translator を Windows にインストールして開く",
@@ -127,7 +127,7 @@ ${callout({ kind: "warn", title: "なぜ Windows は警告するのですか？"
 <h2 id="first-launch">初回起動</h2>
 <ol>
 <li>スタートメニューから <strong>AI Translator</strong> を開きます。</li>
-<li>アプリに初期設定が表示されます。Windows には音声の許可の手順はありません。アプリは別の許可なしで PC で再生されている音を取り込み、マイクは使いません。</li>
+<li>アプリに初期設定が表示されます。Windows には音声の許可の手順はありません。アプリは別の許可なしで PC で再生されている音を取り込みます。マイクを含む入力元を選ぶ場合は、Windows でアプリのマイク使用を許可してください（設定 › プライバシーとセキュリティ › マイク）。</li>
 <li>続きは<a href="/ja/guide/quick-start/">クイックスタートガイド</a>をご覧ください。</li>
 </ol>
 <p>AI Translator はシステムトレイに常駐します。ウィンドウを閉じてもアプリは隠れるだけで、完全に終了するにはトレイのアイコンから<strong>終了</strong>を選びます。Windows は新しいアイコンをタスクバーの <strong>^</strong> 矢印の中に隠すことがあります。アイコンをタスクバーにドラッグするか、タスクバーの設定でオンにしてください。Windows のショートカットは Ctrl+Alt を使います（<a href="/ja/guide/subtitle-bar-and-shortcuts/">字幕バーとショートカット</a>をご覧ください）。</p>

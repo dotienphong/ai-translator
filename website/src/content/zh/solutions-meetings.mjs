@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({
   crumbs,
@@ -48,7 +48,7 @@ ${appShot({ slug: "app-home-running", lang: "zh", alt: "正在翻译时的 AI Tr
 <span class="eyebrow">工作原理</span>
 <h2>AI Translator 在听的一方运行</h2>
 ${checkList([
-  "它采集电脑上正在播放的声音（在 macOS 上需要允许<em>系统音频录制</em>；不使用麦克风；见<a href=\"/zh/guide/macos-audio-permission/\">如何授予权限</a>）",
+  "它采集电脑上正在播放的声音（在 macOS 上需要允许<em>系统音频录制</em>；会议室里的发言人可加选麦克风作为采集来源；见<a href=\"/zh/guide/macos-audio-permission/\">如何授予权限</a>）",
   "它把音频切分成句子，然后用在你电脑上运行的模型识别并翻译语音",
   "它把译文显示在悬浮字幕条上，字幕条从不抢走会议应用的焦点，所以你可以继续在聊天中输入",
   "其他人什么都不用做：会议室里没有机器人，主持人也不需要开启字幕",

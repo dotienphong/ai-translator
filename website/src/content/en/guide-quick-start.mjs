@@ -21,7 +21,7 @@ const HOWTO_STEPS = [
   { name: "Choose the interface language", text: "The choice is preselected to your computer's language; change it if you like and click Next. This also sets your default translation language." },
   { name: "Accept the terms", text: "Read the License Agreement (EULA) and the Privacy Policy, tick the box and click Next. One internet connection is needed to start the Free trial." },
   { name: "Choose and download a model", text: "Pick the Standard pack (about 2.5 GB) or the Lite pack (about 1.3 GB) as the app recommends, and wait for the download." },
-  { name: "Allow system audio recording (macOS only)", text: "When macOS asks for System Audio Recording permission, allow it. The app does not use the microphone. Windows has no such step." },
+  { name: "Allow system audio recording (macOS only)", text: "When macOS asks for System Audio Recording permission, allow it. The Microphone permission is asked only if you choose a source with the microphone. Windows has no such step." },
   { name: "Choose your languages", text: "Pick the language you want to read in Translate into, and the languages that may be spoken in the meeting." },
   { name: "Try it", text: "Click Play a sample sentence and watch the subtitle appear on the subtitle bar." },
   { name: "Read the notes and finish", text: "Read the privacy notes and the note about the menu bar (macOS) or system tray (Windows), then click Start using AI Translator." },
@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-08",
+  modified: "2026-10-24",
   llm: "From installer to first subtitles on macOS and Windows: install the app, seven first-run setup steps, start translating, the subtitle bar, the transcript and common first-run problems.",
   llmTitle: "AI Translator quick start",
   schema: [
@@ -109,7 +109,7 @@ ${appShot({ slug: "app-onboarding-4", lang: "en", alt: "Model download step with
 </div>
 
 <h3>Step 4. Allow system audio recording (macOS only)</h3>
-<p>macOS asks for <strong>System Audio Recording</strong> permission the first time AI Translator captures audio. This screen only warns you in advance: the macOS prompt appears at the Try it step below or the first time you click Start. Allow it. If you refused by mistake, the <strong>Open System Settings</strong> button on this screen takes you to the right place. The app does not use the microphone. More in <a href="/en/guide/macos-audio-permission/">granting system audio recording permission</a>. Windows has no such step.</p>
+<p>macOS asks for <strong>System Audio Recording</strong> permission the first time AI Translator captures audio. This screen only warns you in advance: the macOS prompt appears at the Try it step below or the first time you click Start. Allow it. If you refused by mistake, the <strong>Open System Settings</strong> button on this screen takes you to the right place. The Microphone permission is asked only if you choose a source with the microphone in Settings › Audio. More in <a href="/en/guide/macos-audio-permission/">granting system audio recording permission</a>. Windows has no such step.</p>
 ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recording step with an Open System Settings button", caption: "Step 5 of 9: system audio recording permission (macOS only)." })}
 
 <h3>Step 5. Choose your languages</h3>

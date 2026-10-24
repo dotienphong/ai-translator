@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "명령 하나로 Windows에 AI Translator를 설치하고 열기",
@@ -127,7 +127,7 @@ ${callout({ kind: "warn", title: "Windows는 왜 경고하나요?", text: "Smart
 <h2 id="first-launch">첫 실행</h2>
 <ol>
 <li>시작 메뉴에서 <strong>AI Translator</strong>를 엽니다.</li>
-<li>앱이 초기 설정을 보여 줍니다. Windows에는 오디오 권한 단계가 없습니다: 앱은 별도 권한 없이 PC에서 재생되는 소리를 캡처하며, 마이크는 쓰지 않습니다.</li>
+<li>앱이 초기 설정을 보여 줍니다. Windows에는 오디오 권한 단계가 없습니다: 앱은 별도 권한 없이 PC에서 재생되는 소리를 캡처합니다. 마이크가 들어간 입력 소스를 고르면 Windows에서 앱의 마이크 사용을 허용해야 합니다(설정 › 개인 정보 및 보안 › 마이크).</li>
 <li>이어서 <a href="/ko/guide/quick-start/">빠른 시작 가이드</a>를 따르세요.</li>
 </ol>
 <p>AI Translator는 시스템 트레이에 머뭅니다. 창을 닫으면 앱이 숨겨질 뿐이며, 완전히 종료하려면 트레이 아이콘에서 <strong>종료</strong>를 고릅니다. Windows는 새 아이콘을 작업 표시줄의 <strong>^</strong> 화살표 뒤에 숨길 수 있습니다. 아이콘을 작업 표시줄로 끌어 놓거나 작업 표시줄 설정에서 켜세요. Windows의 단축키는 Ctrl+Alt를 씁니다(<a href="/ko/guide/subtitle-bar-and-shortcuts/">자막 바와 단축키</a> 참고).</p>

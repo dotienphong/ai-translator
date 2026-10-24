@@ -35,7 +35,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "AI Translator의 시스템 오디오 녹음 다시 켜기",
@@ -47,7 +47,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "macOS에서 시스템 오디오 녹음 권한 허용하기",
-  lead: "자막을 보여 주기 위해 AI Translator에 필요한 macOS 권한은 딱 하나, Mac에서 재생 중인 오디오를 듣기 위한 시스템 오디오 녹음입니다. 마이크는 쓰지 않습니다. 실수로 거부했다면 ‘시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음’에서 다시 켜세요.",
+  lead: "컴퓨터 오디오를 번역하기 위해 AI Translator에 필요한 macOS 권한은 Mac에서 재생 중인 오디오를 듣기 위한 시스템 오디오 녹음입니다. 마이크가 들어간 입력 소스를 고르면 macOS가 마이크 권한도 묻습니다. 실수로 거부했다면 ‘시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음’에서 다시 켜세요.",
   meta: "<span>macOS 14.2 이상만 해당</span> <span>업데이트 {{updated}}</span>",
 })}
 
@@ -57,7 +57,7 @@ ${docLayout({
   tocTitle: "이 가이드의 내용",
   body: `
 <h2 id="which-permission">앱에 어떤 권한이 필요한가요?</h2>
-<p>AI Translator는 컴퓨터에서 재생되는 오디오(회의 소리, 동영상, 웨비나)를 캡처해 인식하고 번역합니다. 그래서 macOS는 <strong>시스템 오디오 녹음</strong> 권한을 요구합니다. 앱은 <strong>마이크를 쓰지 않고</strong>, 사용자의 목소리를 녹음하지 않으며, 회의를 디스크에 저장하지도 않습니다. 오디오는 번역하는 동안 메모리에만 머뭅니다. Windows에는 이런 권한 단계가 없습니다.</p>
+<p>AI Translator는 컴퓨터에서 재생되는 오디오(회의 소리, 동영상, 웨비나)를 캡처해 인식하고 번역합니다. 그래서 macOS는 <strong>시스템 오디오 녹음</strong> 권한을 요구합니다. 기본 입력 소스(<strong>컴퓨터 오디오</strong>)에서는 마이크를 열지 않습니다. <strong>마이크</strong>나 <strong>컴퓨터 오디오 + 마이크</strong>를 고를 때만 마이크를 엽니다(<a href="#microphone-permission">마이크 권한</a> 참조). 회의를 디스크에 저장하지 않으며, 오디오는 번역하는 동안 메모리에만 머뭅니다. Windows에는 시스템 오디오 권한 단계가 없습니다.</p>
 ${facts([
   ["권한", "시스템 오디오 녹음"],
   ["다시 켜는 곳", "시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음 › 시스템 오디오 녹음만"],

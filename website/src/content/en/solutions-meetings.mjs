@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-09",
+  modified: "2026-10-24",
   llm: "How to use AI Translator for translated subtitles in Zoom, Teams, Google Meet and Zalo calls: preparing before the call, shortcuts during it, the transcript afterwards, apps tested, privacy notes and limits.",
   llmTitle: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
   body: () => `
@@ -50,7 +50,7 @@ ${appShot({ slug: "app-home-running", lang: "en", alt: "AI Translator main scree
 <span class="eyebrow">How it works</span>
 <h2>AI Translator runs on the listener's side</h2>
 ${checkList([
-  "It captures the sound playing on your computer (on macOS you allow <em>System Audio Recording</em>; the microphone is not used; see <a href=\"/en/guide/macos-audio-permission/\">how to grant the permission</a>)",
+  "It captures the sound playing on your computer (on macOS you allow <em>System Audio Recording</em>; for people in the room, add the microphone as a source; see <a href=\"/en/guide/macos-audio-permission/\">how to grant the permission</a>)",
   "It splits the audio into sentences, then recognizes and translates the speech with models running on your machine",
   "It shows the translation on a floating subtitle bar that never takes focus from the meeting app, so you can keep typing in chat",
   "Nobody else has to do anything: no bot in the room, no captions for the host to enable",

@@ -21,7 +21,7 @@ const HOWTO_STEPS = [
   { name: "选择界面语言", text: "已预先选中你电脑的语言；如有需要可以更改，然后点击“下一步”。这也会设置默认的目标语言。" },
   { name: "接受条款", text: "阅读最终用户许可协议（EULA）和隐私政策，勾选复选框，然后点击“下一步”。开始 Free 试用需要联网一次。" },
   { name: "选择并下载模型", text: "按照应用的推荐选择 Standard 模型包（约 2.5 GB）或 Lite 模型包（约 1.3 GB），然后等待下载完成。" },
-  { name: "允许系统音频录制（仅 macOS）", text: "当 macOS 请求系统音频录制权限时，请允许。应用不使用麦克风。Windows 没有这一步。" },
+  { name: "允许系统音频录制（仅 macOS）", text: "当 macOS 请求系统音频录制权限时，请允许。只有选择含麦克风的采集来源时，才会请求麦克风权限。Windows 没有这一步。" },
   { name: "选择语言", text: "在“目标语言”中选择你想阅读的语言，并选择会议中可能使用的语言。" },
   { name: "试一试", text: "点击“播放示例句子”，看着字幕出现在字幕条上。" },
   { name: "阅读说明并完成", text: "阅读隐私说明以及关于菜单栏（macOS）或系统托盘（Windows）的说明，然后点击“开始使用 AI Translator”。" },
@@ -39,7 +39,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [
     howTo({
       name: "安装 AI Translator 并翻译你的第一场会议",
@@ -107,7 +107,7 @@ ${appShot({ slug: "app-onboarding-4", lang: "zh", alt: "下载模型的步骤，
 </div>
 
 <h3>第 4 步：允许系统音频录制（仅 macOS）</h3>
-<p>AI Translator 第一次采集音频时，macOS 会请求<strong>系统音频录制</strong>权限。这一屏只是提前提醒你：macOS 的提示会在下面的“试一试”步骤，或你第一次点击“开始”时出现。请允许。如果不小心拒绝了，这一屏上的<strong>打开系统设置</strong>按钮会带你到正确的位置。应用不使用麦克风。详见<a href="/zh/guide/macos-audio-permission/">授予系统音频录制权限</a>。Windows 没有这一步。</p>
+<p>AI Translator 第一次采集音频时，macOS 会请求<strong>系统音频录制</strong>权限。这一屏只是提前提醒你：macOS 的提示会在下面的“试一试”步骤，或你第一次点击“开始”时出现。请允许。如果不小心拒绝了，这一屏上的<strong>打开系统设置</strong>按钮会带你到正确的位置。只有在“设置 › 音频”中选择含麦克风的采集来源时，才会请求麦克风权限。详见<a href="/zh/guide/macos-audio-permission/">授予系统音频录制权限</a>。Windows 没有这一步。</p>
 ${appShot({ slug: "app-onboarding-5", lang: "zh", alt: "允许系统音频录制的步骤，有一个打开系统设置按钮", caption: "第 5 步，共 9 步：系统音频录制权限（仅 macOS）。" })}
 
 <h3>第 5 步：选择语言</h3>
