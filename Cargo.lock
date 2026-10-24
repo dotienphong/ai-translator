@@ -355,6 +355,8 @@ dependencies = [
  "objc2-foundation",
  "rtrb",
  "rubato",
+ "serde",
+ "serde_json",
  "windows",
 ]
 
