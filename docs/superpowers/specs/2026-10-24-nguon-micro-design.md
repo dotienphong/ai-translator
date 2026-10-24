@@ -516,8 +516,10 @@ trước ở những điểm sau.
 - **Phương án dự phòng §5.1 (gắn micro vào aggregate của tap): không cần.** Lệch đồng hồ của micro và loa tích hợp khoảng
   0,1 ppm.
 - **Mức đạt (§6.3, §11): hạ về mức đo được, dùng làm mốc chống thụt lùi.** Với cấu hình trên:
-  - **A-trộn:** cảnh 1 (nói lần lượt), lỗi online ≤ 6,1% × 1,10, lỗi trong phòng ≤ 3,7% × 1,10. Hai số này đo với cách
-    khuếch đại cũ (`tanh` cho cả hai bản); kế hoạch 03 đo lại với bộ giới hạn mức.
+  - **A-trộn:** cảnh 1 (nói lần lượt), lỗi online ≤ 9,8% × 1,10, lỗi trong phòng ≤ 5,2% × 1,10. Đo lại ở kế hoạch 03 với
+    chuỗi micro mới (`results/tron-moi.md`; cách cũ 6,1% / 3,7%). Lấy số xấu nhất trong dải đo, vì cảnh 1 chỉ khoảng 45
+    đoạn: chỉ lệch khuếch đại 1 dB, lỗi online của cách cũ đã chạy từ 5,3% đến 9,7%. Chế độ trộn: VAD 0,5 / 600 / 500 (400
+    không tốt hơn).
   - **A-ảo:** cảnh 6, không quá 1 câu mỗi 10 phút. Giữ nguyên.
   - **A4-mic (thay A-ồn), gói Chuẩn** (đo lại với bộ giới hạn mức; số của cách cũ trong ngoặc):
     - giọng thật tiếng Việt ở 1 m: lỗi 44,7% (44,0%);
