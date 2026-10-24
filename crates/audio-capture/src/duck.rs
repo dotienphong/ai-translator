@@ -9,6 +9,8 @@
 //!
 //! Mọi số đều ở 16 kHz.
 
+use std::collections::VecDeque;
+
 /// Một khung đo năng lượng: 10 ms.
 pub const GATE_FRAME: usize = 160;
 /// Thời gian mở lại dần: 50 ms.
@@ -100,6 +102,104 @@ impl MicGate {
     }
 }
 
+pub struct DuckingMixer {
+    playback: VecDeque<f32>,
+    mic: VecDeque<f32>,
+    mic_vad: VecDeque<f32>,
+    gate: MicGate,
+    max_skew: usize,
+    mic_samples: u64,
+    ducked_samples: u64,
+}
+
+impl DuckingMixer {
+    /// `max_skew_samples`: lệch tối đa giữa hai luồng trước khi phần dư được phát riêng (app: 100 ms, như `Mixer2`;
+    /// đo offline trên hai file thì `usize::MAX`, ghép theo chỉ số).
+    pub fn new(params: GateParams, max_skew_samples: usize) -> Self {
+        Self {
+            playback: VecDeque::new(),
+            mic: VecDeque::new(),
+            mic_vad: VecDeque::new(),
+            gate: MicGate::new(params),
+            max_skew: max_skew_samples,
+            mic_samples: 0,
+            ducked_samples: 0,
+        }
+    }
+
+    pub fn push_playback(&mut self, samples: &[f32]) {
+        self.playback.extend(samples);
+    }
+
+    /// Hai bản micro (cho whisper, cho VAD) phải dài bằng nhau: thẳng hàng từng mẫu (spec §5.3).
+    pub fn push_mic(&mut self, asr: &[f32], vad: &[f32]) {
+        assert_eq!(asr.len(), vad.len(), "hai bản micro phải dài bằng nhau");
+        self.mic.extend(asr);
+        self.mic_vad.extend(vad);
+    }
+
+    /// Ghi phần ghép được vào `out` (cho whisper) và `out_vad` (cho VAD); phần dư quá `max_skew` phát riêng.
+    pub fn drain_into(&mut self, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) {
+        let paired = self.playback.len().min(self.mic.len());
+        for ((p, m), v) in self
+            .playback
+            .drain(..paired)
+            .zip(self.mic.drain(..paired))
+            .zip(self.mic_vad.drain(..paired))
+        {
+            let g = self.gate.next(p);
+            self.mic_samples += 1;
+            if g < 1.0 {
+                self.ducked_samples += 1;
+            }
+            out.push((p + g * m).clamp(-1.0, 1.0));
+            out_vad.push((p + g * v).clamp(-1.0, 1.0));
+        }
+        let extra = self.playback.len().saturating_sub(self.max_skew);
+        self.flush_playback(extra, out, out_vad);
+        let extra = self.mic.len().saturating_sub(self.max_skew);
+        self.flush_mic(extra, out, out_vad);
+    }
+
+    /// Phát hết phần còn lại (khi dừng, hay cuối file).
+    pub fn flush_into(&mut self, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) {
+        self.drain_into(out, out_vad);
+        self.flush_playback(self.playback.len(), out, out_vad);
+        self.flush_mic(self.mic.len(), out, out_vad);
+    }
+
+    /// Tỉ lệ mẫu micro bị hạ (kể cả lúc giữ và lúc mở lại), để ghi log (spec §5.6).
+    pub fn ducked_ratio(&self) -> f32 {
+        if self.mic_samples == 0 {
+            0.0
+        } else {
+            self.ducked_samples as f32 / self.mic_samples as f32
+        }
+    }
+
+    fn flush_playback(&mut self, n: usize, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) {
+        for p in self.playback.drain(..n) {
+            self.gate.next(p);
+            let p = p.clamp(-1.0, 1.0);
+            out.push(p);
+            out_vad.push(p);
+        }
+    }
+
+    fn flush_mic(&mut self, n: usize, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) {
+        for (m, v) in self.mic.drain(..n).zip(self.mic_vad.drain(..n)) {
+            // Không có Playback ở vị trí này: cổng nhận im lặng, nên vẫn giữ rồi mở lại đúng nhịp.
+            let g = self.gate.next(0.0);
+            self.mic_samples += 1;
+            if g < 1.0 {
+                self.ducked_samples += 1;
+            }
+            out.push((g * m).clamp(-1.0, 1.0));
+            out_vad.push((g * v).clamp(-1.0, 1.0));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,5 +273,92 @@ mod tests {
         );
         // Khung im lặng đầu tiên kết thúc ở mẫu 1760, mở lại xong trước mẫu 1760 + 800 + 1.
         assert_eq!(g[2_600], 1.0);
+    }
+
+    fn mix(
+        params: GateParams,
+        max_skew: usize,
+        playback: &[f32],
+        mic: &[f32],
+        mic_vad: &[f32],
+    ) -> (Vec<f32>, Vec<f32>) {
+        let mut m = DuckingMixer::new(params, max_skew);
+        m.push_playback(playback);
+        m.push_mic(mic, mic_vad);
+        let (mut out, mut out_vad) = (Vec::new(), Vec::new());
+        m.flush_into(&mut out, &mut out_vad);
+        (out, out_vad)
+    }
+
+    #[test]
+    fn quiet_playback_passes_both_mic_views_unchanged() {
+        let (out, out_vad) = mix(
+            GateParams::default(),
+            1_600,
+            &[0.0; 1_600],
+            &[0.3; 1_600],
+            &[0.2; 1_600],
+        );
+        assert!(out.iter().all(|&v| (v - 0.3).abs() < 1e-6));
+        assert!(out_vad.iter().all(|&v| (v - 0.2).abs() < 1e-6));
+    }
+
+    #[test]
+    fn loud_playback_ducks_both_mic_views_by_the_same_gain() {
+        let (out, out_vad) = mix(
+            GateParams::default(),
+            1_600,
+            &[0.1; 1_600],
+            &[0.5; 1_600],
+            &[0.4; 1_600],
+        );
+        // Khung đầu chưa hạ.
+        assert!((out[0] - 0.6).abs() < 1e-6);
+        // Sau đó micro nhân 0,1.
+        assert!((out[1_000] - 0.15).abs() < 1e-5, "{}", out[1_000]);
+        assert!((out_vad[1_000] - 0.14).abs() < 1e-5, "{}", out_vad[1_000]);
+    }
+
+    #[test]
+    fn excess_beyond_the_skew_is_emitted_alone() {
+        let mut m = DuckingMixer::new(GateParams::OFF, 100);
+        m.push_playback(&[0.2; 300]);
+        let (mut out, mut out_vad) = (Vec::new(), Vec::new());
+        m.drain_into(&mut out, &mut out_vad);
+        assert_eq!(out.len(), 200);
+        assert_eq!(out_vad.len(), 200);
+        m.push_mic(&[0.1; 100], &[0.1; 100]);
+        m.drain_into(&mut out, &mut out_vad);
+        assert_eq!(out.len(), 300);
+        assert!((out[250] - 0.3).abs() < 1e-6);
+    }
+
+    #[test]
+    fn flush_emits_everything_that_is_left() {
+        let (out, _) = mix(GateParams::OFF, 10_000, &[0.1; 50], &[0.2; 80], &[0.2; 80]);
+        assert_eq!(out.len(), 80);
+        assert!((out[10] - 0.3).abs() < 1e-6);
+        assert!((out[70] - 0.2).abs() < 1e-6);
+    }
+
+    #[test]
+    fn the_sum_is_clamped() {
+        let (out, _) = mix(GateParams::OFF, 100, &[0.9; 10], &[0.9; 10], &[0.9; 10]);
+        assert!(out.iter().all(|&v| v == 1.0));
+    }
+
+    #[test]
+    #[should_panic(expected = "hai bản micro phải dài bằng nhau")]
+    fn mic_views_must_have_the_same_length() {
+        DuckingMixer::new(GateParams::OFF, 100).push_mic(&[0.0; 3], &[0.0; 2]);
+    }
+
+    #[test]
+    fn ducked_ratio_counts_mic_samples_under_the_gate() {
+        let mut m = DuckingMixer::new(GateParams::default(), 1_600);
+        m.push_playback(&[0.1; 1_600]);
+        m.push_mic(&[0.0; 1_600], &[0.0; 1_600]);
+        m.flush_into(&mut Vec::new(), &mut Vec::new());
+        assert!((m.ducked_ratio() - 0.9).abs() < 0.01, "{}", m.ducked_ratio());
     }
 }
