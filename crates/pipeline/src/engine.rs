@@ -86,6 +86,16 @@ pub trait FrameSource: Send {
     /// Thêm mẫu mới vào `out`, chờ tối đa `timeout` nếu chưa có. `Ok(false)`: hết luồng. `Err`: nguồn hỏng hẳn (app đã
     /// thử mở lại mà không được, 02c); engine báo [`Fatal::Audio`].
     fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> Result<bool>;
+
+    /// Như `read`, kèm bản cho VAD (spec 2026-10-24-nguon-micro §5.8): `vad_out` nhận cùng số mẫu với phần mới của `out`,
+    /// thẳng hàng theo chỉ số. Nguồn micro cho VAD nghe bản đã lọc ồn, còn whisper nghe bản chưa lọc. Bản mặc định chép
+    /// phần mới của `out`.
+    fn read_with_vad(&mut self, out: &mut Vec<f32>, vad_out: &mut Vec<f32>, timeout: Duration) -> Result<bool> {
+        let from = out.len();
+        let more = self.read(out, timeout)?;
+        vad_out.extend_from_slice(&out[from..]);
+        Ok(more)
+    }
 }
 
 /// Mẫu có sẵn trong bộ nhớ (file WAV), phát theo từng khối. `pace`: chờ giữa hai khối, để phát gần thời gian thực.
@@ -731,7 +741,8 @@ fn vad_loop(
     let _ = tx.send(Msg::Threshold(end_silence));
     let mut silence = SilenceMonitor::new(cfg.audio.clone());
     let level_frames = (cfg.audio.level_interval_ms / FRAME_MS).max(1);
-    let (mut buf, mut frames, mut no_audio) = (Vec::new(), 0u64, false);
+    // `buf`: bản cho whisper (mức âm lượng, `SilenceMonitor`, `Segmenter`); `vad_buf`: bản cho VAD, thẳng hàng theo chỉ số.
+    let (mut buf, mut vad_buf, mut frames, mut no_audio) = (Vec::new(), Vec::new(), 0u64, false);
     let mut level_sum = 0.0f32;
     let send_segment = |seg: crate::segmenter::Segment, closed_ms: u64| {
         let _ = tx.send(Msg::Queued {
@@ -743,7 +754,7 @@ fn vad_loop(
         queue.push(PendingSegment::from(seg));
     };
     'outer: while !stop.load(Ordering::SeqCst) {
-        match source.read(&mut buf, Duration::from_millis(20)) {
+        match source.read_with_vad(&mut buf, &mut vad_buf, Duration::from_millis(20)) {
             Ok(true) => {}
             Ok(false) => break,
             Err(e) => {
@@ -753,8 +764,10 @@ fn vad_loop(
             }
         }
         let mut consumed = 0;
-        while buf.len() - consumed >= FRAME_SAMPLES {
+        let ready = buf.len().min(vad_buf.len());
+        while ready - consumed >= FRAME_SAMPLES {
             let frame = &buf[consumed..consumed + FRAME_SAMPLES];
+            let vad_frame = &vad_buf[consumed..consumed + FRAME_SAMPLES];
             consumed += FRAME_SAMPLES;
             frames += 1;
             let now = frames * FRAME_MS;
@@ -770,7 +783,7 @@ fn vad_loop(
                 no_audio = silent;
                 let _ = tx.send(Msg::NoAudio(silent));
             }
-            let prob = match vad.prob(frame) {
+            let prob = match vad.prob(vad_frame) {
                 Ok(p) => p,
                 Err(e) => {
                     log::error!("VAD lỗi: {e:#}");
@@ -822,6 +835,7 @@ fn vad_loop(
             }
         }
         buf.drain(..consumed);
+        vad_buf.drain(..consumed);
     }
     if let Some(seg) = segmenter.flush() {
         send_segment(seg, frames * FRAME_MS);
@@ -4620,6 +4634,60 @@ mod tests {
         Box::new(Live {
             samples: SampleSource::new(samples, 1_600, Duration::ZERO),
         })
+    }
+
+    /// Nguồn có bản VAD riêng (spec 2026-10-24-nguon-micro §5.8): bản cho whisper là `samples`, bản cho VAD toàn im lặng
+    /// hoặc giống hệt bản whisper.
+    struct TwoViews {
+        samples: SampleSource,
+        vad_silent: bool,
+    }
+
+    impl FrameSource for TwoViews {
+        fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> Result<bool> {
+            self.samples.read(out, timeout)
+        }
+
+        fn read_with_vad(&mut self, out: &mut Vec<f32>, vad_out: &mut Vec<f32>, timeout: Duration) -> Result<bool> {
+            let from = out.len();
+            let more = self.samples.read(out, timeout)?;
+            if self.vad_silent {
+                vad_out.extend(std::iter::repeat_n(0.0, out.len() - from));
+            } else {
+                vad_out.extend_from_slice(&out[from..]);
+            }
+            Ok(more)
+        }
+    }
+
+    /// VAD chỉ nghe bản VAD: bản đó im lặng thì không đoạn nào được mở, dù bản cho whisper có tiếng. Bản VAD có tiếng thì
+    /// đoạn được mở và whisper nhận âm thanh của bản whisper.
+    #[test]
+    fn the_vad_listens_to_its_own_view() {
+        for vad_silent in [true, false] {
+            let seen = Arc::new(Mutex::new(Vec::new()));
+            let source = Box::new(TwoViews {
+                samples: SampleSource::new(speech_then_silence(1_500), 1_600, Duration::ZERO),
+                vad_silent,
+            });
+            let (engine, _sink) = start(source, energy(), Box::new(RecordingAsr(seen.clone())), quick_mt(), cfg());
+            engine.join();
+            let seen = seen.lock().unwrap().clone();
+            if vad_silent {
+                assert!(seen.is_empty(), "{seen:?}");
+            } else {
+                assert_eq!(seen.len(), 1, "{seen:?}");
+            }
+        }
+    }
+
+    /// Bản mặc định của `read_with_vad`: bản VAD là bản sao phần mới của `out`.
+    #[test]
+    fn by_default_the_vad_view_copies_the_new_samples() {
+        let mut source = SampleSource::new(vec![0.1, 0.2, 0.3], 2, Duration::ZERO);
+        let (mut out, mut vad) = (vec![9.0], Vec::new());
+        assert!(source.read_with_vad(&mut out, &mut vad, Duration::ZERO).unwrap());
+        assert_eq!((out.as_slice(), vad.as_slice()), (&[9.0, 0.1, 0.2][..], &[0.1, 0.2][..]));
     }
 
     /// Chép lời mọi đoạn thành "so we went home"; ghi (id đoạn, số mẫu) của mọi yêu cầu.
