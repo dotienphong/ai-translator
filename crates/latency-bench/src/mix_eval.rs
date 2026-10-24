@@ -9,7 +9,7 @@
 use crate::wavio::{read_wav_mono, write_wav16};
 use anyhow::{Context, Result, bail};
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
-use audio_capture::duck::{DuckingMixer, GateParams};
+use audio_capture::duck::{DuckingMixer, GateParams, SpeechDetector};
 use audio_capture::highpass::HighPass;
 use audio_capture::mic_chain::Limiter;
 use pipeline::asr_client::{AsrLaunch, AsrWorker};
@@ -37,6 +37,22 @@ pub struct GateSpec {
     /// `null`: tắt hẳn micro khi hạ.
     pub duck_db: Option<f32>,
     pub hold_ms: u32,
+    /// Ngưỡng xác suất tiếng nói của Silero trên âm thanh máy (spec mục 17); không có thì chỉ theo năng lượng.
+    #[serde(default)]
+    pub speech_prob: Option<f32>,
+}
+
+/// Silero VAD làm bộ phát hiện tiếng nói của bộ nhường lời, như app (`src-tauri/src/capture.rs`).
+struct SileroSpeech(SileroVad);
+
+impl SpeechDetector for SileroSpeech {
+    fn prob(&mut self, frame: &[f32]) -> anyhow::Result<f32> {
+        self.0.prob(frame)
+    }
+
+    fn reset(&mut self) -> anyhow::Result<()> {
+        self.0.reset()
+    }
 }
 
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq)]
@@ -149,8 +165,20 @@ fn agc(x: &[f32], target_dbfs: f32, max_gain_db: f32) -> Vec<f32> {
         .collect()
 }
 
-/// Luồng cho whisper và luồng cho VAD của một phương án, cùng độ dài.
+/// Luồng cho whisper và luồng cho VAD của một phương án, cùng độ dài; không có bộ phát hiện tiếng nói (dùng trong test).
+#[cfg(test)]
 pub fn build_views(v: &Variant, playback: &[f32], mic: &[f32], mic_vad: &[f32]) -> (Vec<f32>, Vec<f32>) {
+    build_views_with(v, playback, mic, mic_vad, None)
+}
+
+/// Như [`build_views`], có bộ phát hiện tiếng nói cho cổng (chỉ dùng khi `gate.speech_prob` có giá trị).
+pub fn build_views_with(
+    v: &Variant,
+    playback: &[f32],
+    mic: &[f32],
+    mic_vad: &[f32],
+    speech: Option<&mut dyn SpeechDetector>,
+) -> (Vec<f32>, Vec<f32>) {
     let mut mic = mic.to_vec();
     let mut mic_vad = mic_vad.to_vec();
     let len = mic.len().min(mic_vad.len());
@@ -201,13 +229,17 @@ pub fn build_views(v: &Variant, playback: &[f32], mic: &[f32], mic_vad: &[f32]) 
                 threshold_dbfs: g.threshold_dbfs,
                 duck_db: g.duck_db.unwrap_or(f32::NEG_INFINITY),
                 hold_ms: g.hold_ms,
+                speech_prob: g.speech_prob.unwrap_or(f32::INFINITY),
             });
             // Offline: ghép theo chỉ số, không phát riêng phần dư giữa chừng.
             let mut mixer = DuckingMixer::new(params, usize::MAX);
             mixer.push_playback(playback);
             mixer.push_mic(&mic, &mic_vad);
             let (mut asr, mut vad) = (Vec::new(), Vec::new());
-            mixer.flush_into(&mut asr, &mut vad);
+            mixer.flush_into_with(&mut asr, &mut vad, speech);
+            if let Some(e) = mixer.take_speech_error() {
+                eprintln!("{}: bộ phát hiện tiếng nói lỗi: {e}", v.name);
+            }
             (asr, vad)
         }
     }
@@ -326,7 +358,17 @@ pub fn run(args: MixEvalArgs) -> Result<()> {
             };
             (mic, mic_vad)
         };
-        let (asr_view, vad_view) = build_views(v, &playback, &mic, &mic_vad);
+        let mut speech = match v.gate.and_then(|g| g.speech_prob) {
+            Some(_) => Some(SileroSpeech(SileroVad::load(&args.vad_model)?)),
+            None => None,
+        };
+        let (asr_view, vad_view) = build_views_with(
+            v,
+            &playback,
+            &mic,
+            &mic_vad,
+            speech.as_mut().map(|s| s as &mut dyn SpeechDetector),
+        );
         if args.save_wav {
             write_wav16(&args.out.join(format!("{}.asr.wav", v.name)), &asr_view)?;
             write_wav16(&args.out.join(format!("{}.vad.wav", v.name)), &vad_view)?;
@@ -532,5 +574,38 @@ mod tests {
         let (asr, vad) = build_views(&v, &[0.2; 10], &[0.9; 10], &[0.9; 10]);
         assert_eq!(asr, vec![0.2; 10]);
         assert_eq!(vad, vec![0.2; 10]);
+    }
+
+    /// `gate.speech_prob` với bộ phát hiện: âm thanh máy nhỏ có tiếng nói làm micro tắt (spec mục 17).
+    #[test]
+    fn a_speech_threshold_mutes_the_mic_under_quiet_speech() {
+        struct Always;
+        impl SpeechDetector for Always {
+            fn prob(&mut self, _: &[f32]) -> anyhow::Result<f32> {
+                Ok(1.0)
+            }
+            fn reset(&mut self) -> anyhow::Result<()> {
+                Ok(())
+            }
+        }
+        let v = variant(
+            r#"{"name": "x", "mode": "both", "highpass": false,
+                "gate": {"threshold_dbfs": -55, "duck_db": null, "hold_ms": 300, "speech_prob": 0.5}}"#,
+        );
+        assert_eq!(v.gate.unwrap().speech_prob, Some(0.5));
+        let (asr, _) = build_views_with(
+            &v,
+            &[0.0008; 2_000],
+            &[0.3; 2_000],
+            &[0.3; 2_000],
+            Some(&mut Always as &mut dyn SpeechDetector),
+        );
+        assert!((asr[1_000] - 0.0008).abs() < 1e-6, "{}", asr[1_000]);
+        let (asr, _) = build_views(&v, &[0.0008; 2_000], &[0.3; 2_000], &[0.3; 2_000]);
+        assert!(
+            (asr[1_000] - 0.3008).abs() < 1e-6,
+            "không có bộ phát hiện: {}",
+            asr[1_000]
+        );
     }
 }
