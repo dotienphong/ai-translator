@@ -213,7 +213,7 @@ export const ja: Record<MessageKey, string> = {
   "settings.audio.mic.default": "システムの既定のマイク",
   "settings.audio.mic.hint": "ノートパソコンのマイクは、静かな部屋で近く（約 1 m）で話す人の声に最適です。広い部屋では外付けマイクをお使いください。Bluetooth ヘッドセットのマイクを使うと、ヘッドセットが通話モードに切り替わり音質が下がります。",
   "settings.audio.noiseFilter": "マイクのノイズを除去",
-  "settings.audio.noiseFilter.hint": "キーボードの打鍵音、ペンの音、机をたたく音を無視します。騒がしい部屋では「OK」のようなごく短い言葉が拾われないことがあります。静かな部屋で短い言葉がよく抜ける場合はオフにしてください。",
+  "settings.audio.noiseFilter.hint": "キーボードの打鍵音、ペンの音、机をたたく音を無視します。「OK」「はい」のような一、二語の返事は拾われないことがあります。静かな部屋では、オフにするとこうした返事も訳されます。",
   "settings.audio.micPermission.denied": "AI Translator にマイクの使用が許可されていません。",
   "settings.audio.micPermission.undetermined": "AI Translator にはマイクの使用許可が必要です。",
   "settings.audio.micPermission.allow": "マイクを許可",

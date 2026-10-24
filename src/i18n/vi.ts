@@ -212,7 +212,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.audio.mic.default": "Micro mặc định của hệ thống",
   "settings.audio.mic.hint": "Micro của laptop nghe rõ nhất người nói gần (khoảng 1 m) trong phòng yên tĩnh; phòng lớn nên dùng micro rời. Dùng micro của tai nghe Bluetooth làm tai nghe chuyển sang chế độ gọi: tiếng nghe kém đi.",
   "settings.audio.noiseFilter": "Lọc tiếng ồn micro",
-  "settings.audio.noiseFilter.hint": "Bỏ qua tiếng gõ phím, tiếng bút, tiếng gõ bàn. Một số câu rất ngắn như “OK” có thể bị bỏ qua khi phòng ồn; tắt nếu phòng yên tĩnh mà câu ngắn hay bị mất.",
+  "settings.audio.noiseFilter.hint": "Bỏ qua tiếng gõ phím, tiếng bút, tiếng gõ bàn. Câu chỉ một hai chữ như “OK”, “Vâng” có thể bị bỏ qua; trong phòng yên tĩnh, tắt công tắc này để giữ các câu đó.",
   "settings.audio.micPermission.denied": "AI Translator chưa được phép dùng micro.",
   "settings.audio.micPermission.undetermined": "AI Translator cần quyền dùng micro.",
   "settings.audio.micPermission.allow": "Cho phép dùng micro",

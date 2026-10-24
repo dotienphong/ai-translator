@@ -213,7 +213,7 @@ export const ko: Record<MessageKey, string> = {
   "settings.audio.mic.default": "시스템 기본 마이크",
   "settings.audio.mic.hint": "노트북 마이크는 조용한 방에서 가까이(약 1m) 말하는 사람에게 가장 적합합니다. 넓은 방에서는 외장 마이크를 사용하세요. 블루투스 헤드셋의 마이크를 사용하면 헤드셋이 통화 모드로 전환되어 음질이 떨어집니다.",
   "settings.audio.noiseFilter": "마이크 잡음 필터",
-  "settings.audio.noiseFilter.hint": "키보드 타자 소리, 펜 딸깍 소리, 책상 두드리는 소리를 무시합니다. 시끄러운 방에서는 “OK” 같은 아주 짧은 말이 누락될 수 있습니다. 조용한 방인데 짧은 말이 자주 빠지면 이 옵션을 끄세요.",
+  "settings.audio.noiseFilter.hint": "키보드 타자 소리, 펜 딸깍 소리, 책상 두드리는 소리를 무시합니다. “OK”, “네” 같은 한두 단어의 대답은 누락될 수 있습니다. 조용한 방에서는 이 옵션을 끄면 이런 대답도 번역됩니다.",
   "settings.audio.micPermission.denied": "AI Translator에 마이크 사용 권한이 없습니다.",
   "settings.audio.micPermission.undetermined": "AI Translator에 마이크 사용 권한이 필요합니다.",
   "settings.audio.micPermission.allow": "마이크 허용",

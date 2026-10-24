@@ -212,7 +212,7 @@ export const en = {
   "settings.audio.mic.default": "System default microphone",
   "settings.audio.mic.hint": "A laptop microphone works best for people speaking nearby (about 1 m) in a quiet room; use an external microphone for larger rooms. Using a Bluetooth headset's microphone switches the headset to call mode, which lowers audio quality.",
   "settings.audio.noiseFilter": "Filter microphone noise",
-  "settings.audio.noiseFilter.hint": "Ignores typing, pen clicks and desk taps. Some very short phrases like “OK” may be missed in a noisy room; turn this off if the room is quiet and short phrases keep getting lost.",
+  "settings.audio.noiseFilter.hint": "Ignores typing, pen clicks and desk taps. One- or two-word replies like “OK” may be missed; in a quiet room, turn this off to keep them.",
   "settings.audio.micPermission.denied": "AI Translator is not allowed to use the microphone.",
   "settings.audio.micPermission.undetermined": "AI Translator needs permission to use the microphone.",
   "settings.audio.micPermission.allow": "Allow microphone",

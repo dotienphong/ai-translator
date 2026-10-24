@@ -184,6 +184,9 @@ fn code_of(settings: Lang) -> &'static str {
 /// trước khi đóng đoạn. Thay `vadEndSilenceMs` của người dùng: phụ đề chậm hơn khoảng 0,45 giây nhưng ít câu bị cắt.
 const MIC_VAD_THRESHOLD: f32 = 0.5;
 const MIC_MIN_SPEECH_MS: u64 = 400;
+/// Tắt "Lọc tiếng ồn micro" thì tiếng nói ngắn nhất như chế độ âm thanh máy: người dùng chọn tắt khi phòng yên tĩnh, để giữ
+/// câu một hai chữ ("OK", "Vâng" chỉ khoảng 0,3 giây; thử tay 2026-10-24, `results/thu-tay-mac.md`).
+const MIC_MIN_SPEECH_MS_UNFILTERED: u64 = 250;
 const MIC_END_SILENCE_MS: u64 = 500;
 /// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
 const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
@@ -221,9 +224,13 @@ pub fn engine_config(
     streaming_supported: bool,
 ) -> EngineConfig {
     pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
-    if plan.has_mic() {
+    if let CapturePlan::Mic { noise_filter, .. } = plan {
         pipeline.segmenter.threshold = MIC_VAD_THRESHOLD;
-        pipeline.segmenter.min_speech_ms = MIC_MIN_SPEECH_MS;
+        pipeline.segmenter.min_speech_ms = if *noise_filter {
+            MIC_MIN_SPEECH_MS
+        } else {
+            MIC_MIN_SPEECH_MS_UNFILTERED
+        };
         pipeline.segmenter.end_silence_ms = MIC_END_SILENCE_MS;
     }
     let languages = match settings.source_lock {
@@ -1853,20 +1860,25 @@ mod tests {
     fn a_mic_plan_uses_the_mic_vad_parameters() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
         settings.vad_end_silence_ms = 100;
-        let mic = CapturePlan::Mic {
+        let mic = |noise_filter| CapturePlan::Mic {
             device: None,
-            noise_filter: false,
+            noise_filter,
         };
-        let cfg = engine_config(
-            &settings,
-            &mic,
-            PipelineConfig::default(),
-            0,
-            SharedGlossary::default(),
-            true,
-        );
-        let seg = &cfg.pipeline.segmenter;
-        assert_eq!((seg.threshold, seg.min_speech_ms, seg.end_silence_ms), (0.5, 400, 500));
+        let segmenter = |plan: &CapturePlan| {
+            let cfg = engine_config(
+                &settings,
+                plan,
+                PipelineConfig::default(),
+                0,
+                SharedGlossary::default(),
+                true,
+            );
+            let seg = cfg.pipeline.segmenter;
+            (seg.threshold, seg.min_speech_ms, seg.end_silence_ms)
+        };
+        assert_eq!(segmenter(&mic(true)), (0.5, 400, 500), "lọc ồn bật");
+        // Thử tay 2026-10-24: tắt lọc ồn (phòng yên tĩnh) thì câu một hai chữ như "OK", "Vâng" (khoảng 0,3 giây) không bị bỏ.
+        assert_eq!(segmenter(&mic(false)), (0.5, 250, 500), "lọc ồn tắt");
         let playback = plan_for(&settings, StartOptions::default());
         let cfg = engine_config(
             &settings,

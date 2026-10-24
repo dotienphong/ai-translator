@@ -213,7 +213,7 @@ export const zh: Record<MessageKey, string> = {
   "settings.audio.mic.default": "系统默认麦克风",
   "settings.audio.mic.hint": "笔记本电脑的麦克风最适合安静房间里近距离（约 1 米）说话的人；大房间请使用外接麦克风。使用蓝牙耳机的麦克风会让耳机切换到通话模式，音质会变差。",
   "settings.audio.noiseFilter": "过滤麦克风噪音",
-  "settings.audio.noiseFilter.hint": "忽略打字声、按笔声和敲桌声。在嘈杂的房间里，像“OK”这样很短的话可能会被忽略；如果房间安静但短句经常丢失，请关闭此项。",
+  "settings.audio.noiseFilter.hint": "忽略打字声、按笔声和敲桌声。像“OK”“好的”这样一两个字的回答可能会被忽略；在安静的房间里，关闭此项即可保留这些回答。",
   "settings.audio.micPermission.denied": "AI Translator 未获准使用麦克风。",
   "settings.audio.micPermission.undetermined": "AI Translator 需要使用麦克风的权限。",
   "settings.audio.micPermission.allow": "允许使用麦克风",

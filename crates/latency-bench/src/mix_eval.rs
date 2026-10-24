@@ -11,6 +11,7 @@ use anyhow::{Context, Result, bail};
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
 use audio_capture::duck::{DuckingMixer, GateParams};
 use audio_capture::highpass::HighPass;
+use audio_capture::mic_chain::Limiter;
 use pipeline::asr_client::{AsrLaunch, AsrWorker};
 use pipeline::config::PipelineConfig;
 use pipeline::filter::{Evidence, Verdict, pcm_skip, verdict};
@@ -96,6 +97,16 @@ pub struct Variant {
     /// Tự cân mức (AGC): mức đích của tiếng nói, dBFS. Có thì dùng thay `gain_db` (xem [`agc`]).
     #[serde(default)]
     pub agc_target_dbfs: Option<f32>,
+    /// Cách của app sau thử tay (`results/thu-tay-mac.md`): lọc 80 Hz trước, rồi `audio_capture::mic_chain::Limiter` (tới
+    /// +20 dB, không vượt trần) riêng cho từng bản. Có thì bỏ qua `gain_db`, `agc_target_dbfs` và `highpass`.
+    #[serde(default)]
+    pub limiter: bool,
+    /// Trần của bộ giới hạn; không có thì như app.
+    #[serde(default)]
+    pub limiter_ceiling: Option<f32>,
+    /// Với `limiter`: bản VAD dùng khuếch đại cố định +20 dB kèm `tanh` (sau lọc 80 Hz) thay cho bộ giới hạn.
+    #[serde(default)]
+    pub vad_tanh: bool,
 }
 
 /// Tự cân mức đơn giản cho micro (đo ở spike, sau Task 16): theo khung 10 ms, theo dõi mức nền (xuống ngay, lên chậm
@@ -145,7 +156,22 @@ pub fn build_views(v: &Variant, playback: &[f32], mic: &[f32], mic_vad: &[f32]) 
     let len = mic.len().min(mic_vad.len());
     mic.truncate(len);
     mic_vad.truncate(len);
-    if let Some(target) = v.agc_target_dbfs {
+    if v.limiter {
+        let limiter = || match v.limiter_ceiling {
+            Some(c) => Limiter::with_ceiling(16_000, c),
+            None => Limiter::new(16_000),
+        };
+        HighPass::new(16_000, 80.0).process(&mut mic);
+        limiter().process(&mut mic);
+        HighPass::new(16_000, 80.0).process(&mut mic_vad);
+        if v.vad_tanh {
+            for x in mic_vad.iter_mut() {
+                *x = (*x * 10.0).tanh();
+            }
+        } else {
+            limiter().process(&mut mic_vad);
+        }
+    } else if let Some(target) = v.agc_target_dbfs {
         // Hệ số tính trên bản cho whisper, áp cùng một chuỗi cho bản VAD để hai bản vẫn thẳng hàng về mức.
         let gains = agc_gains(&mic, target, 30.0);
         for (x, g) in mic.iter_mut().zip(&gains) {
@@ -160,7 +186,7 @@ pub fn build_views(v: &Variant, playback: &[f32], mic: &[f32], mic_vad: &[f32]) 
             *x = (*x * g).tanh();
         }
     }
-    if v.highpass {
+    if v.highpass && !v.limiter {
         HighPass::new(16_000, 80.0).process(&mut mic);
         HighPass::new(16_000, 80.0).process(&mut mic_vad);
     }
@@ -453,6 +479,22 @@ mod tests {
         );
         let (asr, _) = build_views(&v, &[0.1; 1_600], &[0.5; 1_600], &[0.5; 1_600]);
         assert!((asr[1_000] - 0.15).abs() < 1e-5, "{}", asr[1_000]);
+    }
+
+    /// Cách của app: lọc 80 Hz rồi bộ giới hạn, riêng cho từng bản; tiếng nhỏ được +20 dB, tiếng to không vượt trần.
+    #[test]
+    fn the_limiter_variant_follows_the_app() {
+        let v = variant(r#"{"name": "x", "mode": "mic", "limiter": true, "gain_db": 5}"#);
+        let quiet: Vec<f32> = (0..16_000).map(|i| 0.005 * (i as f32 * 0.12).sin()).collect();
+        let loud: Vec<f32> = (0..16_000).map(|i| 0.9 * (i as f32 * 0.12).sin()).collect();
+        let (asr, vad) = build_views(&v, &[], &quiet, &loud);
+        let rms = |x: &[f32]| (x[8_000..].iter().map(|v| v * v).sum::<f32>() / 8_000.0).sqrt();
+        let gain = 20.0 * (rms(&asr) / rms(&quiet)).log10();
+        assert!((gain - 20.0).abs() < 0.5, "{gain}");
+        assert!(
+            vad.iter()
+                .all(|v| v.abs() <= audio_capture::mic_chain::LIMITER_CEILING + 1e-6)
+        );
     }
 
     #[test]
