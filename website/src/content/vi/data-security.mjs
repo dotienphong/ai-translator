@@ -31,7 +31,7 @@ export default {
   description:
     "AI Translator xử lý âm thanh trên máy bạn, không gửi đi. Xem dữ liệu nào ở lại trên máy, app kết nối tới đâu, máy chủ lưu gì, giữ bao lâu và cách yêu cầu xóa.",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   llm: "Dữ liệu ở lại trên máy, năm nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS, dữ liệu máy chủ lưu và thời gian giữ, báo cáo lỗi tự động (gửi gì, tắt thế nào), chat hỗ trợ (lưu gì, giữ bao lâu), bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
   llmTitle: "Dữ liệu và bảo mật của AI Translator",
   body: () => `
@@ -90,8 +90,9 @@ ${facts([
 <li><strong>nettop</strong> theo dõi 7 tiến trình của app (gồm cả phần xử lý AI): không thấy luồng dữ liệu ra ngoài nào.</li>
 <li><strong>Từ đánh dấu</strong> trong câu mẫu: không có trong log của app lẫn trong các request đã ghi.</li>
 <li><strong>Báo cáo lỗi tự động</strong> (đo lại ngày 17/10/2026 với bản release ký ad-hoc có tính năng này, cùng máy): trong một phiên 12 phút 31 giây, chúng tôi cố ý làm một tiến trình phụ chết ở phút thứ 5 để app xếp một báo cáo lỗi vào hàng đợi. Suốt hơn 7 phút còn lại của phiên không có request nào gửi báo cáo; báo cáo tới máy chủ của chúng tôi 1 giây sau khi bấm Dừng. Thân báo cáo nặng 49,8 KB và không chứa tên tài khoản, đường dẫn thư mục cá nhân, email hay từ đánh dấu của câu mẫu.</li>
+<li><strong>Chế độ Âm thanh máy + Micro</strong> (đo ngày 25/10/2026 với bản release ký ad-hoc có tính năng micro, cùng máy): trong một phiên 11 phút có micro mở và câu mẫu phát qua loa, có 3 request ra ngoài, đều tới máy chủ của chúng tôi (kiểm tra cập nhật, hai lần kiểm tra bản quyền), không request nào trong lúc dịch. nettop không thấy luồng ra ngoài nào; log của app không có tên micro.</li>
 </ul>
-${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đo trên macOS, một máy, một bản dựng ký ad-hoc; phần báo cáo lỗi tự động chỉ đo một lượt (một phiên 12 phút, một báo cáo), còn chat hỗ trợ chưa được đo bằng proxy. Đây là kiểm tra nội bộ, chưa qua kiểm toán độc lập; chế độ proxy không bắt được request của WebView và luồng không phải HTTP nên chúng tôi bù bằng nettop." })}
+${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đo trên macOS, một máy, một bản dựng ký ad-hoc; phần báo cáo lỗi tự động chỉ đo một lượt (một phiên 12 phút, một báo cáo), chế độ có micro chỉ đo một lượt (một phiên 11 phút), còn chat hỗ trợ chưa được đo bằng proxy. Đây là kiểm tra nội bộ, chưa qua kiểm toán độc lập; chế độ proxy không bắt được request của WebView và luồng không phải HTTP nên chúng tôi bù bằng nettop." })}
 
 <h2 id="may-chu">Máy chủ lưu gì và giữ bao lâu?</h2>
 <p>Máy chủ lưu những dữ liệu dưới đây. Dòng dùng thử Free áp cho mọi máy đã đăng ký dùng thử; các dòng còn lại chỉ có khi bạn mua gói hoặc kích hoạt key, trừ dòng báo cáo lỗi (áp cho mọi máy mà app gửi báo cáo) và dòng chat hỗ trợ (áp cho mọi người đã nhắn ở chat).</p>

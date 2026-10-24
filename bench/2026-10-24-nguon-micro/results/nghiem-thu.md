@@ -83,4 +83,13 @@ trên Metal.
 
 ## A7 (Task 9)
 
+**Kết quả: đạt.** Biên bản: `bench/phase1/results/acceptance/a7-mac-micro.md` (`a7-mac-micro.json`).
+- Bản release ký ad-hoc từ commit `b84fa86a`, chế độ Âm thanh máy + Micro, phiên 11 phút (00:09:45–00:20:45 ngày
+  2026-10-25).
+- 3 request ra ngoài (`latest.json`, hai `validate`), 0 trong lúc dịch. `nettop` không thấy luồng ra ngoài nào. Log không có
+  tên micro.
+- Phát hiện ngoài A7: vài câu "Thank you." có thể là chữ ảo trong khoảng lặng giữa các lần phát qua loa ở chế độ trộn. Cần
+  đo riêng (xem biên bản).
+- Trang Dữ liệu và bảo mật (năm ngôn ngữ) đã thêm lượt đo này.
+
 ## A1-mic và Windows (Task 10)

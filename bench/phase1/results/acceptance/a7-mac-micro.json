@@ -1,0 +1,14 @@
+{
+ "criterion": "A7",
+ "external": 3,
+ "in_session": 0,
+ "violations": [],
+ "window": [
+  "2026-10-25T00:09:45+07:00",
+  "2026-10-25T00:20:45+07:00"
+ ],
+ "pass": true,
+ "har_sha256": "e8f97cd8c60692b5acd0497f8f2aa0ad7d603eb79d93fb2f5bf4ba8d27abcbc2",
+ "os": "mac",
+ "host": "3964c8f1b8a7"
+}
