@@ -46,7 +46,10 @@ spec nguồn micro §8, §11).
 
 ## Phát hiện ngoài A7
 
-Cuối phiên, thanh phụ đề có vài câu "Thank you." → "Cảm ơn bạn.", trong khi câu mẫu (một câu FLEURS) không có cụm này. Bộ
-lọc ảo giác đã bỏ 16 đoạn của phiên. Các câu "Thank you." còn lọt nhiều khả năng là chữ ảo trong khoảng lặng 1 giây giữa các
-lần phát, khi micro nghe đuôi tiếng vọng từ loa. Tiêu chí A-ảo hiện chỉ đo chế độ micro với tiếng ồn trong phòng (cảnh 6);
-chưa đo khoảng lặng giữa các câu phát qua loa ở chế độ trộn. Cần đo riêng trước khi kết luận.
+Bản chép lời của phiên (màn Lịch sử): 73 câu được giữ, 72 câu là "Thank you.", 1 câu "Hello.". Không lần phát nào của câu
+mẫu được nhận đúng. Nguyên nhân (đo ở `bench/2026-10-24-nguon-micro/results/ao-tron.md`):
+- câu mẫu `listen-test-en.wav` chỉ −65 dBFS, nên âm thanh máy dưới ngưỡng nhường lời −55 dBFS, và micro không bao giờ bị hạ
+  (`micro bị hạ Some(0.0)` trong log);
+- micro khuếch đại +20 dB đưa tiếng nền phòng lên trên giọng sạch của âm thanh máy, nên whisper nhận sai.
+
+Đây là giới hạn của bộ nhường lời với giọng online rất nhỏ, không phải lỗi kết nối, và không ảnh hưởng kết quả A7.

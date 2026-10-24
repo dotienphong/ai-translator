@@ -88,8 +88,9 @@ trên Metal.
   2026-10-25).
 - 3 request ra ngoài (`latest.json`, hai `validate`), 0 trong lúc dịch. `nettop` không thấy luồng ra ngoài nào. Log không có
   tên micro.
-- Phát hiện ngoài A7: vài câu "Thank you." có thể là chữ ảo trong khoảng lặng giữa các lần phát qua loa ở chế độ trộn. Cần
-  đo riêng (xem biên bản).
+- Phát hiện ngoài A7: bản chép lời của phiên gần như toàn "Thank you.". Nguyên nhân là câu mẫu rất nhỏ (−65 dBFS), dưới
+  ngưỡng nhường lời. Chế độ trộn hỏng khi giọng online dưới khoảng −55 dBFS: −56 dBFS lỗi 13,7%, −62 dBFS lỗi 80%. Ở mức
+  bình thường thì tốt: 5,2%, 0 câu ảo. Xem `ao-tron.md`; hướng xử lý chờ chủ dự án chọn.
 - Trang Dữ liệu và bảo mật (năm ngôn ngữ) đã thêm lượt đo này.
 
 ## A1-mic và Windows (Task 10)
