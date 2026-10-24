@@ -89,6 +89,49 @@ pub struct Variant {
     /// bị xén cứng. Đo xem giọng ở xa có cần tự cân mức không (Task 16: giọng thật ở 1 m chỉ khoảng −45 dBFS).
     #[serde(default)]
     pub gain_db: f32,
+    /// Tự cân mức (AGC): mức đích của tiếng nói, dBFS. Có thì dùng thay `gain_db` (xem [`agc`]).
+    #[serde(default)]
+    pub agc_target_dbfs: Option<f32>,
+}
+
+/// Tự cân mức đơn giản cho micro (đo ở spike, sau Task 16): theo khung 10 ms, theo dõi mức nền (xuống ngay, lên chậm
+/// khoảng 5 dB/giây) và mức tiếng nói (chỉ cập nhật ở khung cao hơn nền từ 10 dB, hằng số khoảng 200 ms). Độ khuếch đại
+/// tiến dần tới `target − mức tiếng nói` (tối đa 0,2 dB mỗi khung), kẹp trong [0, `max_gain_db`], rồi chặn mềm `tanh`.
+/// Tiếng gõ to làm mức tiếng nói đo được tăng, nên khuếch đại tự giảm. Trả về chuỗi hệ số (tuyến tính) cho từng mẫu.
+pub fn agc_gains(x: &[f32], target_dbfs: f32, max_gain_db: f32) -> Vec<f32> {
+    const FRAME: usize = 160;
+    // Mức nền khởi đầu bằng khung đầu tiên: khởi đầu quá thấp thì tiếng ồn nền bị coi là tiếng nói mấy giây đầu.
+    let mut floor: Option<f32> = None;
+    let mut speech = target_dbfs;
+    let mut gain_db = 0.0f32;
+    let mut gains = Vec::with_capacity(x.len());
+    for frame in x.chunks(FRAME) {
+        let rms = (frame.iter().map(|v| v * v).sum::<f32>() / frame.len() as f32).sqrt();
+        let level = 20.0 * rms.max(1e-9).log10();
+        let f = match floor {
+            Some(f) if level >= f => f + 0.05,
+            _ => level,
+        };
+        floor = Some(f);
+        if level > f + 10.0 {
+            speech += 0.05 * (level - speech);
+        }
+        let want = (target_dbfs - speech).clamp(0.0, max_gain_db);
+        gain_db += (want - gain_db).clamp(-0.2, 0.2);
+        let g = 10f32.powf(gain_db / 20.0);
+        gains.extend(std::iter::repeat_n(g, frame.len()));
+    }
+    gains
+}
+
+/// Áp [`agc_gains`] rồi chặn mềm (dùng trong test; `build_views` áp cùng hệ số cho hai bản micro).
+#[cfg(test)]
+fn agc(x: &[f32], target_dbfs: f32, max_gain_db: f32) -> Vec<f32> {
+    agc_gains(x, target_dbfs, max_gain_db)
+        .iter()
+        .zip(x)
+        .map(|(g, v)| (v * g).tanh())
+        .collect()
 }
 
 /// Luồng cho whisper và luồng cho VAD của một phương án, cùng độ dài.
@@ -98,7 +141,16 @@ pub fn build_views(v: &Variant, playback: &[f32], mic: &[f32], mic_vad: &[f32]) 
     let len = mic.len().min(mic_vad.len());
     mic.truncate(len);
     mic_vad.truncate(len);
-    if v.gain_db > 0.0 {
+    if let Some(target) = v.agc_target_dbfs {
+        // Hệ số tính trên bản cho whisper, áp cùng một chuỗi cho bản VAD để hai bản vẫn thẳng hàng về mức.
+        let gains = agc_gains(&mic, target, 30.0);
+        for (x, g) in mic.iter_mut().zip(&gains) {
+            *x = (*x * g).tanh();
+        }
+        for (x, g) in mic_vad.iter_mut().zip(&gains) {
+            *x = (*x * g).tanh();
+        }
+    } else if v.gain_db > 0.0 {
         let g = 10f32.powf(v.gain_db / 20.0);
         for x in mic.iter_mut().chain(mic_vad.iter_mut()) {
             *x = (*x * g).tanh();
@@ -372,6 +424,24 @@ mod tests {
         // Tiếng to: bị chặn mềm dưới 1, giữ dấu.
         assert!(asr[1] > 0.99 && asr[1] < 1.0 && asr[2] < -0.99);
         assert_eq!(asr, vad);
+    }
+
+    #[test]
+    fn agc_raises_quiet_speech_towards_the_target_and_not_the_noise_floor() {
+        // 1 giây nền −60 dBFS, rồi 4 giây "tiếng nói" −45 dBFS (sin 300 Hz).
+        let mut x: Vec<f32> = (0..16_000).map(|i| if i % 2 == 0 { 0.001 } else { -0.001 }).collect();
+        x.extend((0..64_000).map(|i| 0.0079 * (2.0 * std::f32::consts::PI * 300.0 * i as f32 / 16_000.0).sin()));
+        let out = agc(&x, -23.0, 30.0);
+        let db = |s: &[f32]| 20.0 * ((s.iter().map(|v| v * v).sum::<f32>() / s.len() as f32).sqrt()).log10();
+        // Nền chưa có tiếng nói: không khuếch đại.
+        assert!(
+            (db(&out[..16_000]) - db(&x[..16_000])).abs() < 1.0,
+            "{}",
+            db(&out[..16_000])
+        );
+        // Giây cuối: tiếng nói đã được đưa lên gần −23 dBFS (RMS sin −45 dBFS → khoảng −26 dBFS sau tanh).
+        let tail = db(&out[64_000..]);
+        assert!((-28.0..=-20.0).contains(&tail), "{tail}");
     }
 
     #[test]
