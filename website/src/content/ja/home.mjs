@@ -39,7 +39,7 @@ export default {
   description:
     "Zoom、Teams、Google Meet などで翻訳字幕をリアルタイムに表示。英語・中国語・日本語・韓国語・ベトナム語に対応。AI はパソコン上で動き、クラウドを使いません。",
   software: true,
-  modified: "2026-10-23",
+  modified: "2026-10-24",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     videoObject({ lang: "ja", name: "AI Translator デモ動画：会議の翻訳字幕と入力翻訳", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
@@ -94,6 +94,7 @@ ${checkList([
   "話し手が文を言い終えるとすぐに字幕が表示されます。Mac M4 Pro（Standard モデルパック）での中央値は 1.1 秒未満で、ほかのパソコンでは遅くなることがあります（<a href=\"/ja/features/#performance\">測定条件</a>）",
   "字幕バーは常に最前面に表示されます。ドラッグで移動、文字サイズや色の変更ができ、<strong>ロック</strong>するとクリックがそのまま下に通ります",
   "用語集を使うと、人名や業界の用語の訳し方をヒントとして翻訳に渡せます（Pro 機能）",
+  "対面やハイブリッドの会議：入力元を<strong>マイク</strong>または<strong>コンピューターの音声 + マイク</strong>にすると、会議室の人の声も翻訳します（<a href=\"/ja/features/#microphone\">使い方</a>）",
 ])}
 <p><a class="btn btn-secondary" href="/ja/features/">すべての機能を見る ${icon("arrow-right")}</a></p>
 </div>

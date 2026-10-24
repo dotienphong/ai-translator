@@ -14,6 +14,7 @@ const toc = [
   { level: 2, id: "signs-of-missing-permission", text: "권한이 없을 때의 신호" },
   { level: 2, id: "why-no-error", text: "macOS가 오류를 보여 주지 않는 이유" },
   { level: 2, id: "after-updates", text: "업데이트할 때마다" },
+  { level: 2, id: "microphone-permission", text: "마이크 권한" },
   { level: 2, id: "audio-source", text: "오디오 소스 고르기" },
 ];
 
@@ -89,6 +90,15 @@ ${appShot({ slug: "app-onboarding-5", lang: "ko", alt: "설정 마법사의 시�
 
 <h2 id="after-updates">업데이트할 때마다 macOS가 다시 물을 수 있습니다</h2>
 <p>현재 macOS 빌드는 애드혹 서명이므로, 업데이트할 때마다 macOS가 이 녹음 권한을 한 번 더 물을 수 있습니다(키체인 대화상자 1개와 함께). 허용하세요. 데이터, 요금제, 번역 시간을 잃지 않습니다. 자세한 내용은 <a href="/ko/guide/install-macos/">macOS 설치 가이드</a>에 있습니다.</p>
+
+<h2 id="microphone-permission">마이크 권한(마이크가 들어간 입력 소스를 고를 때)</h2>
+<p><strong>설정 › 오디오 › 입력 소스</strong>에서 <strong>마이크</strong>나 <strong>컴퓨터 오디오 + 마이크</strong>를 고르면, macOS가 바로 또는 처음 ‘시작’을 누를 때 <strong>마이크</strong> 권한을 묻습니다. 허용하세요.</p>
+<ul>
+<li><strong>거부했다면:</strong> 입력 소스가 ‘마이크’면 세션이 시작되지 않고, ‘컴퓨터 오디오 + 마이크’면 앱이 컴퓨터 오디오는 계속 번역하면서 “마이크 권한 없음”을 표시합니다. <strong>마이크 설정 열기</strong>(시스템 설정 › 개인정보 보호 및 보안 › 마이크)를 눌러 AI Translator를 켜고, macOS가 물으면 <strong>종료 후 다시 열기</strong>를 고르세요. 새 권한은 앱을 다시 연 뒤에 적용됩니다.</li>
+<li><strong>업데이트할 때마다</strong> macOS가 시스템 오디오 녹음처럼 마이크 권한을 다시 물을 수 있습니다(<a href="#after-updates">위 참조</a>).</li>
+<li><strong>회의 앱에서 내 마이크를 음소거해도 AI Translator는 계속 듣습니다:</strong> 세션이 진행되는 동안 앱은 마이크를 계속 캡처합니다. 앱이 마이크를 쓰는 동안 macOS는 메뉴 막대에 주황색 점을 표시합니다. 앱이 마이크를 그만 듣게 하려면 ‘중지’를 누르세요.</li>
+<li><strong>Windows:</strong> 개인 정보 설정에서 마이크가 막혀 있다면 설정 › 개인 정보 및 보안 › 마이크를 열고 <em>마이크 액세스</em>와 <em>데스크톱 앱에서 마이크에 액세스하도록 허용</em>을 켜세요.</li>
+</ul>
 
 <h2 id="audio-source">오디오 소스 고르기: 시스템 전체 또는 앱 하나</h2>
 <p>이 권한으로 두 모드를 모두 쓸 수 있습니다. 모드는 <strong>설정 › 오디오 › 오디오 소스</strong>에서 고릅니다:</p>

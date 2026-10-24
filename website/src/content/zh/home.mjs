@@ -39,7 +39,7 @@ export default {
   description:
     "在 Zoom、Teams、Google Meet 或任何应用中阅读实时翻译字幕。支持英语、中文、日语、韩语、越南语。AI 在你的电脑上运行，不经过云端。",
   software: true,
-  modified: "2026-10-23",
+  modified: "2026-10-24",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     videoObject({ lang: "zh", name: "AI Translator 演示视频：会议翻译字幕与输入翻译", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
@@ -94,6 +94,7 @@ ${checkList([
   "说话人说完一句话后，字幕很快就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href=\"/zh/features/#performance\">测试条件</a>）",
   "字幕条始终置顶：可以拖动，可以改字号和颜色，<strong>锁定</strong>后鼠标点击会直接穿过",
   "术语表把人名和行业术语的译法作为提示交给翻译（Pro 功能）",
+  "线下或混合会议：把采集来源选为<strong>麦克风</strong>或<strong>电脑音频 + 麦克风</strong>，会议室里的人说的话也能翻译（<a href=\"/zh/features/#microphone\">使用方法</a>）",
 ])}
 <p><a class="btn btn-secondary" href="/zh/features/">查看全部功能 ${icon("arrow-right")}</a></p>
 </div>

@@ -147,6 +147,10 @@ const GROUPS = [
         a: `<p>Để dịch âm thanh máy, chỉ cần quyền Ghi âm thanh hệ thống (System Audio Recording); macOS hỏi ở lần đầu bạn bấm Bắt đầu. Nếu bạn từ chối, macOS không báo lỗi mà chỉ cho app nhận im lặng; app sẽ nhắc bạn bật lại. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/">hướng dẫn cấp quyền ghi âm</a>. Khi bạn chọn nguồn có micro (Micro, hoặc Âm thanh máy + Micro), macOS hỏi thêm quyền Micro (xem <a href="/huong-dan/cap-quyen-thu-am-macos/#quyen-micro">quyền Micro</a>). Gõ dịch có thể xin thêm quyền Trợ năng (Accessibility), chỉ để tự dán bản dịch vào ô chat; không cấp thì app chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>). Trên Windows không cần cấp quyền nào trong hai quyền này.</p>`,
       },
       {
+        q: "Có dịch được người nói trong phòng họp không?",
+        a: `<p>Có. Ở Cài đặt › Âm thanh, chọn nguồn <strong>Micro</strong> (chỉ người trong phòng) hoặc <strong>Âm thanh máy + Micro</strong> (họp lai). Micro của laptop hợp nhất với người nói gần, khoảng 1&nbsp;m, trong phòng yên tĩnh; phòng lớn nên dùng micro rời. Ở chế độ Âm thanh máy + Micro, người trong phòng nói chen đúng lúc người online đang nói có thể bị bỏ sót; đeo tai nghe cho kết quả tốt nhất. Khi bạn chọn nguồn có micro, app thu micro suốt phiên dịch, kể cả khi bạn đã tắt micro trong app họp; âm thanh chỉ nằm trong RAM, không ghi xuống đĩa, không gửi đi. Xem <a href="/tinh-nang/#micro">cách dùng</a>.</p>`,
+      },
+      {
         q: "Gỡ cài đặt AI Translator như thế nào?",
         a: `<p>Trên macOS, bấm Cài đặt › Quyền riêng tư › Xóa model và dữ liệu trước, rồi kéo app vào Thùng rác (macOS không có bước hỏi khi gỡ). Trên Windows, gỡ ở Settings › Apps › Installed apps; bộ gỡ có ô xóa dữ liệu app để xóa cả model (xem <a href="/huong-dan/cai-dat-windows/#go-cai-dat">hướng dẫn</a>). Xóa dữ liệu hay gỡ app đều không làm mất bản quyền và hạn mức còn lại.</p>`,
       },

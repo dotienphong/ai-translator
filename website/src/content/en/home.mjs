@@ -41,7 +41,7 @@ export default {
   description:
     "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
-  modified: "2026-10-23",
+  modified: "2026-10-24",
   llm: "Home page: what AI Translator is, meeting translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [
@@ -98,6 +98,7 @@ ${checkList([
   "Subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href=\"/en/features/#performance\">test conditions</a>)",
   "The subtitle bar stays on top: drag it, change the text size and colors, and <strong>Lock</strong> it so clicks pass through",
   "A glossary gives the translator hints for names and industry terms (a Pro feature)",
+  "In-person or hybrid meetings: choose the <strong>Microphone</strong> or <strong>Computer audio + Microphone</strong> source to translate people in the room too (<a href=\"/en/features/#microphone\">how it works</a>)",
 ])}
 <p><a class="btn btn-secondary" href="/en/features/">See all features ${icon("arrow-right")}</a></p>
 </div>

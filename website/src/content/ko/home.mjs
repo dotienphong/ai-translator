@@ -39,7 +39,7 @@ export default {
   description:
     "Zoom, Teams, Google Meet 등 모든 앱에서 실시간 번역 자막을 읽으세요. 영어, 중국어, 일본어, 한국어, 베트남어 지원. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
   software: true,
-  modified: "2026-10-23",
+  modified: "2026-10-24",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     videoObject({ lang: "ko", name: "AI Translator 데모 영상: 회의 번역 자막과 입력 번역", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
@@ -94,6 +94,7 @@ ${checkList([
   "화자가 문장을 마치면 바로 자막이 나타납니다. Mac M4 Pro(Standard 모델 팩)에서 중앙값은 1.1초 미만이며, 다른 컴퓨터는 더 느릴 수 있습니다(<a href=\"/ko/features/#performance\">측정 조건</a>)",
   "자막 바는 항상 위에 떠 있습니다. 끌어서 옮기고, 글자 크기와 색을 바꾸고, <strong>잠금</strong>하면 클릭이 그대로 통과합니다",
   "용어집으로 사람 이름과 업계 용어의 번역 방법을 번역에 힌트로 전달합니다(Pro 기능)",
+  "대면 또는 하이브리드 회의: 입력 소스를 <strong>마이크</strong>나 <strong>컴퓨터 오디오 + 마이크</strong>로 고르면 회의실 사람의 말도 번역합니다(<a href=\"/ko/features/#microphone\">사용 방법</a>)",
 ])}
 <p><a class="btn btn-secondary" href="/ko/features/">모든 기능 보기 ${icon("arrow-right")}</a></p>
 </div>

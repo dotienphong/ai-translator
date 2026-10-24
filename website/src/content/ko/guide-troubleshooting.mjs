@@ -43,7 +43,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({
@@ -65,6 +65,10 @@ ${docLayout({
 <div class="card"><span class="card-title">‘선택한 앱에서 소리가 나지 않습니다’</span><p><strong>원인:</strong> <strong>{앱 이름}만</strong>을 골랐는데 그 앱이 조용합니다.</p><p><strong>해결:</strong> 그 앱에서 소리가 나게 하거나(번역이 바로 다시 시작됨), <strong>시스템 전체(이 앱 제외)</strong>를 고르세요(다음 세션부터 적용).</p></div>
 <div class="card"><span class="card-title">자막 바가 보이지 않음</span><p><strong>원인:</strong> 앱을 열 때 바는 ‘시작’을 누르기 전까지 숨겨져 있습니다. 또는 단축키나 ✕ 버튼으로 바를 숨겼습니다(✕ 버튼은 번역도 멈춥니다).</p><p><strong>해결:</strong> ✕를 눌렀다면 <strong>시작</strong>을 눌러 다시 번역하면 바가 돌아옵니다. 그렇지 않다면 홈 화면의 <strong>자막 바</strong>에서 <strong>표시</strong>를 누르거나, ${keys(["⌃", "⌥", "H"])}(Windows: ${keys(["Ctrl", "Alt", "H"])})를 누르거나, 메뉴 막대나 트레이 메뉴에서 ‘자막 표시’를 고르세요. 잠겨 있다면 ${keys(["⌃", "⌥", "L"])}(Windows: ${keys(["Ctrl", "Alt", "L"])})로 잠금을 푸세요.</p></div>
 <div class="card"><span class="card-title">‘등록하지 못한 단축키가 있습니다. 설정 › 단축키에서 변경하세요.’</span><p><strong>원인:</strong> 다른 앱이 이미 그 키 조합을 쓰고 있습니다.</p><p><strong>해결:</strong> ‘설정 › 단축키’에서 <strong>변경</strong>을 누르고, Ctrl, Alt, Cmd/Win 중 하나 이상이 들어간 새 조합을 누르세요(Shift만으로는 안 됩니다).</p></div>
+<div class="card"><span class="card-title">‘마이크 신호 없음’</span><p><strong>원인:</strong> 마이크가 들어간 입력 소스에서만 생깁니다. 마이크가 음소거되었거나(마이크 음소거 키, 헤드셋 버튼) macOS가 앱의 마이크 사용을 허용하지 않았습니다. 이때 macOS는 오류 없이 무음만 넘겨줍니다.</p><p><strong>해결:</strong> 마이크 음소거를 풉니다. 그래도 같으면 <strong>마이크 설정 열기</strong>를 눌러 AI Translator를 켜고, macOS가 물으면 <strong>종료 후 다시 열기</strong>를 고릅니다.</p></div>
+<div class="card"><span class="card-title">‘마이크 권한 없음’</span><p><strong>원인:</strong> 마이크 권한을 거부했습니다. 입력 소스가 ‘마이크’면 세션이 시작되지 않고, ‘컴퓨터 오디오 + 마이크’면 앱이 컴퓨터 오디오만 번역합니다.</p><p><strong>해결:</strong> <strong>마이크 설정 열기</strong>를 눌러 AI Translator를 켭니다(macOS: 시스템 설정 › 개인정보 보호 및 보안 › 마이크, Windows: 설정 › 개인 정보 및 보안 › 마이크에서 <em>데스크톱 앱에서 마이크에 액세스하도록 허용</em>도 켜기). macOS에서는 물으면 <strong>종료 후 다시 열기</strong>를 고릅니다. <a href="/ko/guide/macos-audio-permission/#microphone-permission">마이크 권한</a>을 참고하세요.</p></div>
+<div class="card"><span class="card-title">‘마이크를 열 수 없음’</span><p><strong>원인:</strong> 고른 마이크가 뽑혔거나, 없어졌거나, 다른 앱이 독점하고 있습니다.</p><p><strong>해결:</strong> 마이크를 다시 꽂거나, 설정 › 오디오에서 <strong>목록 새로 고침</strong>을 누르고 다른 마이크를 고릅니다. ‘컴퓨터 오디오 + 마이크’에서는 앱이 컴퓨터 오디오 번역을 이어 가며 2초마다 마이크를 다시 열어 봅니다.</p></div>
+<div class="card"><span class="card-title">블루투스 헤드셋의 마이크를 쓰면 소리가 나빠짐</span><p><strong>원인:</strong> 블루투스 헤드셋의 마이크를 쓰면 헤드셋이 통화 모드로 바뀌어 음질이 떨어집니다.</p><p><strong>해결:</strong> 설정 › 오디오 › 마이크에서 컴퓨터 마이크나 외장 마이크를 고르고, 듣기는 헤드셋으로 계속하면 됩니다.</p></div>
 </div>
 
 <h2 id="slow-or-stopped">자막이 늦거나 빠지거나 멈출 때</h2>

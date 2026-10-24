@@ -31,7 +31,7 @@ export default {
   description:
     "AI Translator는 오디오를 컴퓨터에서 처리하며 외부로 보내지 않습니다. 기기에 남는 것, 연결하는 곳, 서버에 저장하는 것, 삭제 방법을 확인하세요.",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({
   crumbs,
@@ -60,7 +60,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="컴퓨터에 남는 데이터" tabindex="0"><table>
 <thead><tr><th scope="col">데이터</th><th scope="col">처리 방식</th></tr></thead>
 <tbody>
-<tr><th scope="row">캡처 중인 시스템 오디오</th><td>번역하는 동안 RAM에만 있습니다. 디스크에 쓰지 않고, 네트워크로 보내지 않습니다. AI Translator는 회의를 파일로 녹음하지도 않습니다.</td></tr>
+<tr><th scope="row">캡처 중인 오디오(컴퓨터 오디오와, 고른 경우 마이크)</th><td>번역하는 동안 RAM에만 있습니다. 디스크에 쓰지 않고, 네트워크로 보내지 않습니다. AI Translator는 회의를 파일로 녹음하지도 않습니다. 마이크가 들어간 입력 소스를 고르면 회의 앱에서 내 마이크를 음소거해도 세션 내내 마이크를 캡처합니다.</td></tr>
 <tr><th scope="row">받아쓰기와 번역</th><td>화면에 표시되고, 세션 동안 메모리에 있습니다. 기록은 기본적으로 꺼져 있으며, 켜면(Pro 기능) 컴퓨터에 암호화되어 저장됩니다.</td></tr>
 <tr><th scope="row">입력 번역에서 입력한 텍스트와 그 번역</th><td>붙여 넣거나 앱을 종료할 때까지 앱의 메모리에만 있습니다. 디스크에 쓰지 않고, 네트워크로 보내지 않으며, 로그나 오류 보고서에도 들어가지 않습니다. 번역은 붙여 넣기 위해 클립보드에 복사되며, 다른 것을 복사할 때까지 남아 있습니다.</td></tr>
 <tr><th scope="row">키, 토큰, 번역 시간 카운터</th><td>기록 암호화 키, 라이선스 토큰, 체험 토큰, 번역 시간 카운터는 키체인(macOS) 또는 자격 증명 관리자(Windows)에 보관됩니다.</td></tr>

@@ -31,7 +31,7 @@ export default {
   description:
     "AI Translator 在你的电脑上处理音频，从不外传。了解哪些数据留在设备上、应用连接到哪里、服务器保存什么，以及如何删除。",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   body: () => `
 ${pageHero({
   crumbs,
@@ -60,7 +60,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="留在你电脑上的数据" tabindex="0"><table>
 <thead><tr><th scope="col">数据</th><th scope="col">如何处理</th></tr></thead>
 <tbody>
-<tr><th scope="row">正在采集的系统音频</th><td>翻译时只在内存中。从不写入磁盘，从不通过网络发送。AI Translator 也不会把会议录制成文件。</td></tr>
+<tr><th scope="row">正在采集的音频（电脑音频，以及你选择时的麦克风）</th><td>翻译时只在内存中。从不写入磁盘，从不通过网络发送。AI Translator 也不会把会议录制成文件。选择含麦克风的采集来源时，即使你在会议应用中把自己静音，应用在整个会话期间仍会采集麦克风。</td></tr>
 <tr><th scope="row">转写内容和译文</th><td>显示在屏幕上，并在会话期间保存在内存中。历史记录默认关闭；如果你开启（Pro 功能），会加密保存在你的电脑上。</td></tr>
 <tr><th scope="row">在输入翻译中输入的文字及其译文</th><td>只保存在应用的内存中，直到你粘贴或退出应用。不写入磁盘，不通过网络发送，也不会出现在日志或错误报告中。译文会复制到剪贴板以便粘贴，并一直留在那里，直到你复制别的内容。</td></tr>
 <tr><th scope="row">密钥、令牌、翻译时长计数</th><td>历史记录的加密密钥、许可证令牌、试用令牌和翻译时长计数保存在钥匙串（macOS）或凭据管理器（Windows）中。</td></tr>

@@ -2600,3 +2600,51 @@ test("luật câu cũ về micro (STALE_MIC) bắt câu cũ và không bắt câ
 test("không nguồn chữ nào của site còn câu 'app không dùng micro' hay 'cần đúng một quyền trên macOS'", async () => {
   assert.deepEqual(scanStale(await siteTexts(), STALE_MIC), []);
 });
+
+/** Trang có nội dung micro, theo ngôn ngữ: [đường dẫn, id mục]. */
+const MIC_PAGES = {
+  vi: { features: ["/tinh-nang/", "micro"], perm: ["/huong-dan/cap-quyen-thu-am-macos/", "quyen-micro"], trouble: ["/huong-dan/khac-phuc-su-co/", "khong-co-am-thanh"], faq: "/cau-hoi-thuong-gap/", home: "/" },
+  en: { features: ["/en/features/", "microphone"], perm: ["/en/guide/macos-audio-permission/", "microphone-permission"], trouble: ["/en/guide/troubleshooting/", "no-audio"], faq: "/en/faq/", home: "/en/" },
+  ja: { features: ["/ja/features/", "microphone"], perm: ["/ja/guide/macos-audio-permission/", "microphone-permission"], trouble: ["/ja/guide/troubleshooting/", "no-audio"], faq: "/ja/faq/", home: "/ja/" },
+  zh: { features: ["/zh/features/", "microphone"], perm: ["/zh/guide/macos-audio-permission/", "microphone-permission"], trouble: ["/zh/guide/troubleshooting/", "no-audio"], faq: "/zh/faq/", home: "/zh/" },
+  ko: { features: ["/ko/features/", "microphone"], perm: ["/ko/guide/macos-audio-permission/", "microphone-permission"], trouble: ["/ko/guide/troubleshooting/", "no-audio"], faq: "/ko/faq/", home: "/ko/" },
+};
+
+test("nguồn micro: Tính năng, Quyền, Khắc phục sự cố trích đúng chữ của app ở năm ngôn ngữ; Trang chủ và Hỏi đáp dẫn tới mục micro", async () => {
+  const errors = [];
+  for (const [lang, p] of Object.entries(MIC_PAGES)) {
+    const d = await appDict(lang);
+    const need = (where, text, keys) => {
+      for (const k of keys) {
+        if (!d[k]) errors.push(`${lang}: không đọc được khóa ${k} của từ điển app`);
+        else if (!text.includes(d[k])) errors.push(`${where}: không trích "${d[k]}" (${k})`);
+      }
+    };
+    const [fPath, fId] = p.features;
+    const featuresHtml = htmlByPath.get(fPath) ?? "";
+    if (!featuresHtml.includes(`id="${fId}"`)) errors.push(`${fPath}: không có mục #${fId}`);
+    need(fPath, textOf(featuresHtml), ["settings.group.audio", "settings.audio.mode", "settings.audio.mode.playback", "settings.audio.mode.mic", "settings.audio.mode.both", "settings.audio.noiseFilter"]);
+    need(`${p.perm[0]}#${p.perm[1]}`, guideSection(p.perm[0], p.perm[1]), ["settings.audio.mode.mic", "settings.audio.mode.both", "common.openMicSettings", "overlay.note.micPermission"]);
+    need(`${p.trouble[0]}#${p.trouble[1]}`, guideSection(p.trouble[0], p.trouble[1]), ["overlay.note.micSilent", "overlay.note.micPermission", "overlay.note.micUnavailable", "common.openMicSettings", "settings.audio.refresh"]);
+    for (const page of [p.home, p.faq]) {
+      if (!(htmlByPath.get(page) ?? "").includes(`href="${fPath}#${fId}"`)) errors.push(`${page}: không dẫn tới ${fPath}#${fId}`);
+    }
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("nguồn micro: nội dung mới nói giới hạn thật (nói chen, tai nghe, khoảng 1 m, câu ngắn) và không nêu tên kỹ thuật", () => {
+  const needs = {
+    "/tinh-nang/": ["có thể bị bỏ sót", "tai nghe", "khoảng 1&nbsp;m", "“OK”", "mọi gói"],
+    "/en/features/": ["may be missed", "Headphones", "about 1&nbsp;m", "“OK”", "every plan"],
+  };
+  const errors = [];
+  for (const [urlPath, list] of Object.entries(needs)) {
+    const html = htmlByPath.get(urlPath) ?? "";
+    for (const n of list) if (!html.includes(n) && !textOf(html).includes(n)) errors.push(`${urlPath}: thiếu "${n}"`);
+  }
+  for (const [urlPath, html] of htmlByPath) {
+    if (/\b(?:RNNoise|nnnoiseless|AEC3?|WebRTC|Silero|DuckingMixer)\b/i.test(textOf(html))) errors.push(`${urlPath}: nêu tên kỹ thuật lõi`);
+  }
+  assert.deepEqual(errors, []);
+});

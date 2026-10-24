@@ -14,6 +14,7 @@ const toc = [
   { level: 2, id: "signs-of-missing-permission", text: "缺少权限的迹象" },
   { level: 2, id: "why-no-error", text: "macOS 为什么不报错" },
   { level: 2, id: "after-updates", text: "每次更新后" },
+  { level: 2, id: "microphone-permission", text: "麦克风权限" },
   { level: 2, id: "audio-source", text: "选择音频来源" },
 ];
 
@@ -89,6 +90,15 @@ ${appShot({ slug: "app-onboarding-5", lang: "zh", alt: "设置向导中允许系
 
 <h2 id="after-updates">每次更新后，macOS 可能会再次询问</h2>
 <p>当前的 macOS 版本是临时签名，所以每次更新后，macOS 可能会再请求一次这项录音权限（同时还有 1 个钥匙串对话框）。请允许；你不会丢失数据、套餐或翻译时长。详见 <a href="/zh/guide/install-macos/">macOS 安装指南</a>。</p>
+
+<h2 id="microphone-permission">麦克风权限（选择含麦克风的采集来源时）</h2>
+<p>在<strong>设置 › 音频 › 采集来源</strong>中选择<strong>麦克风</strong>或<strong>电脑音频 + 麦克风</strong>时，macOS 会立即，或在你第一次点“开始”时，请求<strong>麦克风</strong>权限。请允许。</p>
+<ul>
+<li><strong>如果你拒绝：</strong>采集来源是“麦克风”时会话不会开始；是“电脑音频 + 麦克风”时，应用仍会翻译电脑音频，并提示“麦克风未获准”。点<strong>打开麦克风设置</strong>（系统设置 › 隐私与安全性 › 麦克风），开启 AI Translator，然后在 macOS 询问时选择<strong>退出并重新打开</strong>：新权限要在应用重新打开后才生效。</li>
+<li><strong>每次更新后，</strong>macOS 可能会像系统音频录制一样，再次请求麦克风权限（<a href="#after-updates">见上文</a>）。</li>
+<li><strong>在会议应用里把自己静音，不会让 AI Translator 停止收听：</strong>会话进行时，应用会一直采集麦克风。有应用在使用麦克风时，macOS 会在菜单栏显示一个橙色圆点。要让应用停止收听麦克风，请点“停止”。</li>
+<li><strong>Windows：</strong>如果麦克风在隐私设置中被阻止，请打开 设置 › 隐私和安全性 › 麦克风，开启<em>麦克风访问权限</em>和<em>允许桌面应用访问你的麦克风</em>。</li>
+</ul>
 
 <h2 id="audio-source">选择音频来源：整个系统还是一个应用</h2>
 <p>这项权限同时适用于两种模式。在<strong>设置 › 音频 › 音频来源</strong>中选择模式：</p>

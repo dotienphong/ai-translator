@@ -106,6 +106,15 @@ ${checkList([
   "<strong>Pause that ends a sentence</strong> is adjustable from 50 to 800&nbsp;ms: shorter gives you subtitles sooner, longer cuts fewer sentences in half",
 ])}
 <p>On macOS, the first time you press Start the system asks for the <em>system audio recording</em> permission. If you choose a source with the microphone, macOS also asks for the <em>Microphone</em> permission. <a href="/en/guide/macos-audio-permission/">See how to grant the audio permission</a>. Windows needs no such permission.</p>
+<h3 id="microphone">Translate people in the room too</h3>
+<p>In <strong>Settings › Audio › Capture from</strong>, choose one of three sources. Available on every plan.</p>
+${checkList([
+  "<strong>Computer audio</strong> (default): online meetings, videos, webinars",
+  "<strong>Microphone</strong>: people speaking in the room, such as in-person meetings or lectures",
+  "<strong>Computer audio + Microphone</strong>: hybrid meetings with people online and in the room. While someone online is speaking, the microphone is turned down so that sentence is not translated twice; someone in the room who speaks at that same moment may be missed. Headphones give the best results",
+  "<strong>Filter microphone noise</strong> (on by default): ignores typing, pen clicks and desk taps. One- or two-word replies like “OK” may be missed; in a quiet room, turn it off to keep them",
+])}
+<p>A laptop microphone works best for people speaking nearby (about 1&nbsp;m) in a quiet room; for larger rooms use an external or conference microphone. When capturing from the microphone, the app waits for a 500&nbsp;ms pause before ending a sentence (computer audio defaults to 50&nbsp;ms), so subtitles appear about half a second later. The microphone is also translated into your language only; the app plays nothing into the meeting. See <a href="/en/guide/macos-audio-permission/#microphone-permission">Microphone permission</a>.</p>
 </div>
 </div>
 </div></section>

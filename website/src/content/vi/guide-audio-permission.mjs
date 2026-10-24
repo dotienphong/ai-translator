@@ -14,6 +14,7 @@ const toc = [
   { level: 2, id: "dau-hieu", text: "Dấu hiệu quyền chưa có" },
   { level: 2, id: "khong-bao-loi", text: "Vì sao macOS không báo lỗi" },
   { level: 2, id: "sau-cap-nhat", text: "Sau mỗi lần cập nhật" },
+  { level: 2, id: "quyen-micro", text: "Quyền Micro" },
   { level: 2, id: "nguon-am-thanh", text: "Chọn nguồn âm thanh" },
 ];
 
@@ -91,6 +92,15 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 
 <h2 id="sau-cap-nhat">Sau mỗi lần cập nhật, macOS có thể hỏi lại</h2>
 <p>Bản macOS hiện được ký ad-hoc, nên sau mỗi lần cập nhật macOS có thể hỏi lại quyền ghi âm này một lần (cùng 1 hộp thoại Keychain). Chọn cho phép; bạn không mất dữ liệu, gói hay hạn mức. Chi tiết trong <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a>.</p>
+
+<h2 id="quyen-micro">Quyền Micro (khi chọn nguồn có micro)</h2>
+<p>Khi bạn chọn <strong>Micro</strong> hoặc <strong>Âm thanh máy + Micro</strong> ở <strong>Cài đặt › Âm thanh › Thu từ</strong>, macOS hỏi quyền <strong>Micro</strong> ngay lúc đó, hoặc lần đầu bạn bấm Bắt đầu. Hãy chọn cho phép.</p>
+<ul>
+<li><strong>Nếu bạn từ chối:</strong> ở nguồn Micro, phiên dịch không bắt đầu; ở nguồn Âm thanh máy + Micro, app vẫn dịch âm thanh máy và ghi chú “Micro chưa được phép”. Bấm <strong>Mở cài đặt quyền micro</strong> (System Settings › Privacy &amp; Security › Microphone), bật AI Translator, rồi chọn <strong>Thoát &amp; Mở lại</strong> khi macOS hỏi: quyền mới chỉ có tác dụng sau khi app mở lại.</li>
+<li><strong>Sau mỗi lần cập nhật,</strong> macOS có thể hỏi lại quyền Micro, như quyền Ghi âm thanh hệ thống (<a href="#sau-cap-nhat">xem trên</a>).</li>
+<li><strong>Tắt micro trong app họp không làm AI Translator ngừng nghe:</strong> trong lúc phiên dịch chạy, app vẫn thu micro. macOS hiện chấm màu cam ở thanh menu khi có app đang dùng micro. Muốn app ngừng nghe micro, bấm Dừng.</li>
+<li><strong>Windows:</strong> nếu micro bị chặn trong cài đặt quyền riêng tư, mở Settings › Privacy &amp; security › Microphone, bật <em>Microphone access</em> và <em>Let desktop apps access your microphone</em>.</li>
+</ul>
 
 <h2 id="nguon-am-thanh">Chọn nguồn âm thanh: toàn hệ thống hay một app</h2>
 <p>Quyền ghi âm áp dụng cho cả hai chế độ. Chọn chế độ ở <strong>Cài đặt › Âm thanh › Nguồn âm thanh</strong>:</p>

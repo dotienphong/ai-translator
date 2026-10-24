@@ -43,7 +43,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({
@@ -65,6 +65,10 @@ ${docLayout({
 <div class="card"><span class="card-title">「選択したアプリから音が出ていません」</span><p><strong>原因：</strong><strong>{アプリ名} のみ</strong>を選んでいて、そのアプリが無音です。</p><p><strong>直し方：</strong>そのアプリから音を出す（翻訳はすぐに再開します）か、<strong>システム全体（このアプリを除く）</strong>を選びます（次のセッションから）。</p></div>
 <div class="card"><span class="card-title">字幕バーが見えない</span><p><strong>原因：</strong>アプリを開いたとき、「開始」を押すまでバーは隠れています。または、ショートカットや ✕ ボタンでバーを隠しました（✕ ボタンは翻訳も停止します）。</p><p><strong>直し方：</strong>✕ を押した場合は、<strong>開始</strong>を押してもう一度翻訳するとバーが戻ります。そうでなければ、ホーム画面の<strong>字幕バー</strong>で<strong>表示</strong>を押すか、${keys(["⌃", "⌥", "H"])}（Windows：${keys(["Ctrl", "Alt", "H"])}）を押すか、メニューバーやトレイのメニューで「字幕を表示」を選びます。ロックされている場合は、${keys(["⌃", "⌥", "L"])}（Windows：${keys(["Ctrl", "Alt", "L"])}）でロックを解除します。</p></div>
 <div class="card"><span class="card-title">「登録できなかったショートカットがあります。設定 › ショートカット で変更してください。」</span><p><strong>原因：</strong>ほかのアプリがそのキーの組み合わせをすでに使っています。</p><p><strong>直し方：</strong>「設定 › ショートカット」で<strong>変更</strong>を押し、Ctrl、Alt、Cmd/Win のうち少なくとも 1 つを含む新しい組み合わせを押します（Shift だけでは足りません）。</p></div>
+<div class="card"><span class="card-title">「マイクの信号なし」</span><p><strong>原因：</strong>マイクを含む入力元のときだけ起こります。マイクがミュートされている（マイクのミュートキー、ヘッドセットのボタン）か、macOS がアプリのマイク使用を許可していません。その場合 macOS はエラーを出さず、無音だけを渡します。</p><p><strong>直し方：</strong>マイクのミュートを解除します。それでも直らなければ<strong>マイクの設定を開く</strong>を押して AI Translator をオンにし、macOS に聞かれたら<strong>終了して再度開く</strong>を選びます。</p></div>
+<div class="card"><span class="card-title">「マイクが許可されていません」</span><p><strong>原因：</strong>マイクの許可を拒否しました。入力元が「マイク」ならセッションは始まりません。「コンピューターの音声 + マイク」なら、アプリはコンピューターの音声だけを翻訳します。</p><p><strong>直し方：</strong><strong>マイクの設定を開く</strong>を押して AI Translator をオンにします（macOS：システム設定 › プライバシーとセキュリティ › マイク。Windows：設定 › プライバシーとセキュリティ › マイクで、<em>デスクトップ アプリがマイクにアクセスできるようにする</em>もオン）。macOS では、聞かれたら<strong>終了して再度開く</strong>を選びます。<a href="/ja/guide/macos-audio-permission/#microphone-permission">マイクの許可</a>をご覧ください。</p></div>
+<div class="card"><span class="card-title">「マイクを開けません」</span><p><strong>原因：</strong>選んだマイクが抜かれた、見つからない、またはほかのアプリが独占しています。</p><p><strong>直し方：</strong>マイクを挿し直すか、設定 › 音声で<strong>リストを更新</strong>を押して別のマイクを選びます。「コンピューターの音声 + マイク」では、アプリはコンピューターの音声の翻訳を続け、2 秒ごとにマイクを開き直します。</p></div>
+<div class="card"><span class="card-title">Bluetooth ヘッドセットのマイクを使うと音が悪くなる</span><p><strong>原因：</strong>Bluetooth ヘッドセットのマイクを使うと、ヘッドセットが通話モードに切り替わり、音質が下がります。</p><p><strong>直し方：</strong>設定 › 音声 › マイクで、パソコンのマイクか外付けマイクを選びます。聞くのはヘッドセットのままで構いません。</p></div>
 </div>
 
 <h2 id="slow-or-stopped">字幕が遅れる、抜ける、止まる</h2>

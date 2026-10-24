@@ -14,6 +14,7 @@ const toc = [
   { level: 2, id: "signs-of-missing-permission", text: "Signs the permission is missing" },
   { level: 2, id: "why-no-error", text: "Why macOS shows no error" },
   { level: 2, id: "after-updates", text: "After every update" },
+  { level: 2, id: "microphone-permission", text: "Microphone permission" },
   { level: 2, id: "audio-source", text: "Choosing the audio source" },
 ];
 
@@ -91,6 +92,15 @@ ${appShot({ slug: "app-onboarding-5", lang: "en", alt: "Allow system audio recor
 
 <h2 id="after-updates">After every update, macOS may ask again</h2>
 <p>The current macOS build is ad-hoc signed, so after each update macOS may ask once more for this recording permission (along with 1 Keychain dialog). Allow it; you lose no data, plan or quota. Details in the <a href="/en/guide/install-macos/">macOS installation guide</a>.</p>
+
+<h2 id="microphone-permission">Microphone permission (when you choose a source with the microphone)</h2>
+<p>When you choose <strong>Microphone</strong> or <strong>Computer audio + Microphone</strong> in <strong>Settings › Audio › Capture from</strong>, macOS asks for the <strong>Microphone</strong> permission right away, or the first time you press Start. Allow it.</p>
+<ul>
+<li><strong>If you decline:</strong> with the Microphone source the session does not start; with Computer audio + Microphone the app still translates computer audio and shows “Microphone not allowed”. Click <strong>Open microphone settings</strong> (System Settings › Privacy &amp; Security › Microphone), turn on AI Translator, then choose <strong>Quit &amp; Reopen</strong> when macOS asks: the new permission only takes effect once the app reopens.</li>
+<li><strong>After each update,</strong> macOS may ask for the Microphone permission again, just like System Audio Recording (<a href="#after-updates">see above</a>).</li>
+<li><strong>Muting yourself in the meeting app does not stop AI Translator listening:</strong> while a session runs, the app keeps capturing the microphone. macOS shows an orange dot in the menu bar while an app uses the microphone. To stop the app listening to the microphone, press Stop.</li>
+<li><strong>Windows:</strong> if the microphone is blocked in the privacy settings, open Settings › Privacy &amp; security › Microphone and turn on <em>Microphone access</em> and <em>Let desktop apps access your microphone</em>.</li>
+</ul>
 
 <h2 id="audio-source">Choosing the audio source: whole system or one app</h2>
 <p>The permission covers both modes. Choose the mode in <strong>Settings › Audio › Audio source</strong>:</p>

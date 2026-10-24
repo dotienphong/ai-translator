@@ -39,7 +39,7 @@ export default {
   description:
     "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-23",
+  modified: "2026-10-24",
   llm: "Trang chủ: AI Translator là gì, dịch cuộc họp bằng phụ đề, Gõ dịch tin nhắn, xem lại lịch sử bản chép lời, hướng dẫn sử dụng bốn bước, dữ liệu ở lại trên máy, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
   schema: [
@@ -96,6 +96,7 @@ ${checkList([
   "Phụ đề hiện ngay sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn), máy khác có thể chậm hơn (<a href=\"/tinh-nang/#hieu-nang\">điều kiện đo</a>)",
   "Thanh phụ đề luôn nằm trên cùng: kéo, đổi cỡ chữ và màu, <strong>Khóa</strong> để chuột xuyên qua",
   "Từ điển thuật ngữ gợi ý cho bộ dịch cách dịch tên riêng và thuật ngữ chuyên ngành (tính năng Pro)",
+  "Họp tại chỗ hay họp lai: chọn nguồn <strong>Micro</strong> hoặc <strong>Âm thanh máy + Micro</strong> để dịch cả người nói trong phòng (<a href=\"/tinh-nang/#micro\">cách dùng</a>)",
 ])}
 <p><a class="btn btn-secondary" href="/tinh-nang/">Xem tất cả tính năng ${icon("arrow-right")}</a></p>
 </div>

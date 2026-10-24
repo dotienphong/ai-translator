@@ -14,6 +14,7 @@ const toc = [
   { level: 2, id: "signs-of-missing-permission", text: "許可がないときのサイン" },
   { level: 2, id: "why-no-error", text: "macOS がエラーを出さない理由" },
   { level: 2, id: "after-updates", text: "更新のたびに" },
+  { level: 2, id: "microphone-permission", text: "マイクの許可" },
   { level: 2, id: "audio-source", text: "音声ソースを選ぶ" },
 ];
 
@@ -89,6 +90,15 @@ ${appShot({ slug: "app-onboarding-5", lang: "ja", alt: "設定ウィザードの
 
 <h2 id="after-updates">更新のたびに、macOS がもう一度尋ねることがあります</h2>
 <p>現在の macOS 版はアドホック署名のため、更新のたびに macOS がこの録音の許可をもう一度尋ねることがあります（キーチェーンのダイアログ 1 つとともに）。許可してください。データ、プラン、翻訳時間が失われることはありません。詳しくは <a href="/ja/guide/install-macos/">macOS へのインストールのガイド</a>をご覧ください。</p>
+
+<h2 id="microphone-permission">マイクの許可（マイクを含む入力元を選んだとき）</h2>
+<p><strong>設定 › 音声 › 入力元</strong>で<strong>マイク</strong>または<strong>コンピューターの音声 + マイク</strong>を選ぶと、macOS はその場で、または初めて「開始」を押したときに<strong>マイク</strong>の許可を求めます。許可してください。</p>
+<ul>
+<li><strong>拒否した場合：</strong>入力元が「マイク」ならセッションは始まりません。「コンピューターの音声 + マイク」なら、アプリはコンピューターの音声の翻訳を続け、「マイクが許可されていません」と表示します。<strong>マイクの設定を開く</strong>（システム設定 › プライバシーとセキュリティ › マイク）を押して AI Translator をオンにし、macOS に聞かれたら<strong>終了して再度開く</strong>を選びます。新しい許可はアプリを開き直したあとで有効になります。</li>
+<li><strong>アップデートのたびに、</strong>システムオーディオの録音と同じく、macOS がマイクの許可をもう一度求めることがあります（<a href="#after-updates">上記</a>）。</li>
+<li><strong>会議アプリで自分をミュートしても、AI Translator は聞き取りを止めません：</strong>セッション中、アプリはマイクを取り込み続けます。アプリがマイクを使っている間、macOS はメニューバーにオレンジ色の点を表示します。マイクの聞き取りを止めるには「停止」を押します。</li>
+<li><strong>Windows：</strong>プライバシーの設定でマイクがブロックされている場合は、設定 › プライバシーとセキュリティ › マイクを開き、<em>マイクへのアクセス</em>と<em>デスクトップ アプリがマイクにアクセスできるようにする</em>をオンにします。</li>
+</ul>
 
 <h2 id="audio-source">音声ソースを選ぶ：システム全体か、1 つのアプリか</h2>
 <p>この許可で両方のモードが使えます。モードは<strong>設定 › 音声 › 音声ソース</strong>で選びます：</p>

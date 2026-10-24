@@ -43,7 +43,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-13",
+  modified: "2026-10-24",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng triệu chứng, nguyên nhân và cách xử lý theo đúng câu báo lỗi của app (âm thanh, quyền ghi âm, model, bản quyền, hạn mức, phím tắt), cách mở và gửi log, thông tin nên kèm khi báo lỗi.",
   llmTitle: "Khắc phục sự cố AI Translator",
@@ -67,6 +67,10 @@ ${docLayout({
 <div class="card"><span class="card-title">“App đã chọn không phát tiếng”</span><p><strong>Nguyên nhân:</strong> Bạn chọn <strong>Chỉ {tên app}</strong> mà app đó đang im.</p><p><strong>Cách xử lý:</strong> Cho app phát tiếng (phiên chạy tiếp ngay), hoặc chọn <strong>Toàn hệ thống, trừ app này</strong> (từ phiên sau).</p></div>
 <div class="card"><span class="card-title">Không thấy thanh phụ đề</span><p><strong>Nguyên nhân:</strong> Thanh ẩn khi mở app cho tới khi bạn bấm Bắt đầu, hoặc đã bị ẩn bằng phím tắt hay nút ✕ (nút ✕ dừng cả phiên dịch).</p><p><strong>Cách xử lý:</strong> Nếu đã bấm nút ✕, bấm <strong>Bắt đầu</strong> để dịch lại, thanh sẽ hiện. Còn lại, ở Màn hình chính, mục <strong>Thanh phụ đề</strong>, bấm <strong>Hiện</strong>; hoặc nhấn ${keys(["⌃", "⌥", "H"])} (Windows: ${keys(["Ctrl", "Alt", "H"])}); hoặc chọn “Hiện phụ đề” ở menu bar hay khay hệ thống. Thanh khóa thì mở khóa bằng ${keys(["⌃", "⌥", "L"])} (Windows: ${keys(["Ctrl", "Alt", "L"])}).</p></div>
 <div class="card"><span class="card-title">“Có phím tắt không đăng ký được. Mở Cài đặt › Phím tắt để đổi.”</span><p><strong>Nguyên nhân:</strong> App khác đang giữ tổ hợp phím đó.</p><p><strong>Cách xử lý:</strong> Ở Cài đặt › Phím tắt, bấm <strong>Đổi</strong> và nhấn tổ hợp mới, có ít nhất một phím Ctrl, Alt hoặc Cmd/Win (chỉ Shift thì chưa đủ).</p></div>
+<div class="card"><span class="card-title">“Micro không có tín hiệu”</span><p><strong>Nguyên nhân:</strong> Chỉ gặp với nguồn có micro. Micro bị tắt tiếng (phím tắt tiếng của micro, nút trên tai nghe), hoặc macOS chưa cho app dùng micro: khi đó macOS không báo lỗi mà chỉ đưa vào im lặng.</p><p><strong>Cách xử lý:</strong> Bật lại micro. Nếu vẫn vậy, bấm <strong>Mở cài đặt quyền micro</strong>, bật AI Translator, rồi chọn <strong>Thoát &amp; Mở lại</strong> khi macOS hỏi.</p></div>
+<div class="card"><span class="card-title">“Micro chưa được phép”</span><p><strong>Nguyên nhân:</strong> Bạn đã từ chối quyền Micro. Ở nguồn Micro, phiên dịch không bắt đầu; ở nguồn Âm thanh máy + Micro, app chỉ dịch âm thanh máy.</p><p><strong>Cách xử lý:</strong> Bấm <strong>Mở cài đặt quyền micro</strong> và bật AI Translator (macOS: Privacy &amp; Security › Microphone; Windows: Settings › Privacy &amp; security › Microphone, bật cả <em>Let desktop apps access your microphone</em>). Trên macOS, chọn <strong>Thoát &amp; Mở lại</strong> khi được hỏi. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/#quyen-micro">quyền Micro</a>.</p></div>
+<div class="card"><span class="card-title">“Không mở được micro”</span><p><strong>Nguyên nhân:</strong> Micro đã chọn bị rút, không còn, hoặc đang bị app khác giữ riêng.</p><p><strong>Cách xử lý:</strong> Cắm lại micro, hoặc ở Cài đặt › Âm thanh bấm <strong>Làm mới danh sách</strong> rồi chọn micro khác. Ở nguồn Âm thanh máy + Micro, app vẫn dịch âm thanh máy và tự thử mở lại micro mỗi 2 giây.</p></div>
+<div class="card"><span class="card-title">Tai nghe Bluetooth nghe kém đi khi dùng micro của nó</span><p><strong>Nguyên nhân:</strong> Dùng micro của tai nghe Bluetooth làm tai nghe chuyển sang chế độ gọi, nên tiếng nghe kém đi.</p><p><strong>Cách xử lý:</strong> Ở Cài đặt › Âm thanh › Micro, chọn micro của máy hoặc micro rời; vẫn dùng tai nghe để nghe.</p></div>
 </div>
 
 <h2 id="cham-hoac-dung">Phụ đề chậm, thiếu hoặc dừng</h2>

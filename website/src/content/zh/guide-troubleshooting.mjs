@@ -43,7 +43,7 @@ export default {
   type: "article",
   schemaType: "TechArticle",
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-10-24",
   schema: [faqPage(QUICK.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({
@@ -65,6 +65,10 @@ ${docLayout({
 <div class="card"><span class="card-title">“所选应用没有发声”</span><p><strong>原因：</strong>你选择了<strong>仅 {应用名称}</strong>，而那个应用没有声音。</p><p><strong>解决方法：</strong>让那个应用发出声音（翻译会立即恢复），或者选择<strong>整个系统（本应用除外）</strong>（从下一个会话开始生效）。</p></div>
 <div class="card"><span class="card-title">看不到字幕条</span><p><strong>原因：</strong>打开应用时，字幕条在你点击“开始”之前是隐藏的；或者你用快捷键或 ✕ 按钮隐藏了它（✕ 按钮还会停止翻译）。</p><p><strong>解决方法：</strong>如果你点了 ✕，点击<strong>开始</strong>再次翻译，字幕条就会回来。否则，在主页的<strong>字幕条</strong>下点击<strong>显示</strong>；或按 ${keys(["⌃", "⌥", "H"])}（Windows：${keys(["Ctrl", "Alt", "H"])}）；或在菜单栏或托盘菜单中选择“显示字幕”。如果已锁定，用 ${keys(["⌃", "⌥", "L"])}（Windows：${keys(["Ctrl", "Alt", "L"])}）解锁。</p></div>
 <div class="card"><span class="card-title">“有快捷键未能注册。请打开“设置 › 快捷键”更改。”</span><p><strong>原因：</strong>其他应用已经占用了这个组合键。</p><p><strong>解决方法：</strong>在“设置 › 快捷键”中点击<strong>更改</strong>，然后按下一个新的组合键，至少包含 Ctrl、Alt 或 Cmd/Win 中的一个（只有 Shift 是不够的）。</p></div>
+<div class="card"><span class="card-title">“麦克风没有信号”</span><p><strong>原因：</strong>只在含麦克风的采集来源下出现。麦克风被静音（麦克风的静音键、耳机上的按钮），或者 macOS 还没允许应用使用麦克风：这时 macOS 不报错，只送来静音。</p><p><strong>解决方法：</strong>取消麦克风静音。如果仍然如此，点<strong>打开麦克风设置</strong>，开启 AI Translator，然后在 macOS 询问时选择<strong>退出并重新打开</strong>。</p></div>
+<div class="card"><span class="card-title">“麦克风未获准”</span><p><strong>原因：</strong>你拒绝了麦克风权限。采集来源是“麦克风”时会话不会开始；是“电脑音频 + 麦克风”时，应用只翻译电脑音频。</p><p><strong>解决方法：</strong>点<strong>打开麦克风设置</strong>并开启 AI Translator（macOS：系统设置 › 隐私与安全性 › 麦克风；Windows：设置 › 隐私和安全性 › 麦克风，并开启<em>允许桌面应用访问你的麦克风</em>）。在 macOS 上，被询问时选择<strong>退出并重新打开</strong>。请参阅<a href="/zh/guide/macos-audio-permission/#microphone-permission">麦克风权限</a>。</p></div>
+<div class="card"><span class="card-title">“无法打开麦克风”</span><p><strong>原因：</strong>所选的麦克风被拔出、已不存在，或被其他应用独占。</p><p><strong>解决方法：</strong>重新插上麦克风，或在 设置 › 音频 中点<strong>刷新列表</strong>并选择其他麦克风。使用“电脑音频 + 麦克风”时，应用会继续翻译电脑音频，并每 2 秒重试打开麦克风。</p></div>
+<div class="card"><span class="card-title">使用蓝牙耳机的麦克风时，耳机声音变差</span><p><strong>原因：</strong>使用蓝牙耳机的麦克风会让耳机切换到通话模式，音质随之下降。</p><p><strong>解决方法：</strong>在 设置 › 音频 › 麦克风 中选择电脑的麦克风或外接麦克风；耳机照样用来听。</p></div>
 </div>
 
 <h2 id="slow-or-stopped">字幕延迟、缺失或停止</h2>

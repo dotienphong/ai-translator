@@ -104,6 +104,15 @@ ${checkList([
   "<strong>Độ nhạy ngắt câu</strong> chỉnh 50–800 ms: ngắn thì phụ đề sớm hơn, dài thì ít cắt câu hơn",
 ])}
 <p>Trên macOS, lần đầu bạn bấm Bắt đầu, hệ điều hành sẽ hỏi quyền <em>ghi âm thanh hệ thống</em>. Chọn nguồn có micro thì macOS hỏi thêm quyền <em>Micro</em>. <a href="/huong-dan/cap-quyen-thu-am-macos/">Xem hướng dẫn cấp quyền</a>. Trên Windows không cần cấp quyền này.</p>
+<h3 id="micro">Dịch cả giọng trong phòng</h3>
+<p>Ở <strong>Cài đặt › Âm thanh › Thu từ</strong>, bạn chọn một trong ba nguồn. Dùng được ở mọi gói.</p>
+${checkList([
+  "<strong>Âm thanh máy</strong> (mặc định): họp online, video, webinar",
+  "<strong>Micro</strong>: người nói trong phòng, như họp tại chỗ hay nghe giảng",
+  "<strong>Âm thanh máy + Micro</strong>: họp lai, có cả người online lẫn người trong phòng. Khi người online đang nói, micro được hạ xuống để câu đó không bị dịch hai lần; người trong phòng nói chen đúng lúc ấy có thể bị bỏ sót. Đeo tai nghe cho kết quả tốt nhất",
+  "<strong>Lọc tiếng ồn micro</strong> (bật sẵn): bỏ qua tiếng gõ phím, tiếng bút, tiếng gõ bàn. Câu chỉ một hai chữ như “OK”, “Vâng” có thể bị bỏ qua; phòng yên tĩnh thì tắt công tắc này để giữ các câu đó",
+])}
+<p>Micro của laptop nghe rõ nhất người nói gần (khoảng 1&nbsp;m) trong phòng yên tĩnh; phòng lớn nên dùng micro rời hay micro hội nghị. Khi thu từ micro, app chờ người nói ngừng 500&nbsp;ms mới chốt câu (âm thanh máy mặc định 50&nbsp;ms), nên phụ đề hiện chậm hơn khoảng nửa giây. Micro cũng chỉ dịch sang ngôn ngữ của bạn; app không phát gì vào cuộc họp. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/#quyen-micro">quyền Micro</a>.</p>
 </div>
 </div>
 </div></section>
