@@ -1146,6 +1146,16 @@ pub struct LiveDeps<R: Runtime> {
 }
 
 impl<R: Runtime> LiveDeps<R> {
+    /// Đường dẫn model VAD của bộ tiến trình phụ đang dùng (rỗng nếu chưa có).
+    fn vad_model(&self) -> PathBuf {
+        self.live
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|l| l.vad_model.clone())
+            .unwrap_or_default()
+    }
+
     pub fn new(app: AppHandle<R>) -> Self {
         Self {
             app,
@@ -1230,18 +1240,15 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     }
 
     fn vad(&self) -> VadFactory {
-        let path = self
-            .live
-            .lock()
-            .unwrap()
-            .as_ref()
-            .map(|l| l.vad_model.clone())
-            .unwrap_or_default();
+        let path = self.vad_model();
         Box::new(move || Ok(Box::new(SileroVad::load(&path)?) as _))
     }
 
     fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource> {
-        Box::new(LiveCapture::open(plan.clone(), on_event))
+        // Chế độ trộn: bộ nhường lời có Silero riêng (spec 2026-10-24-nguon-micro mục 17). `start_with` gọi `prepare()` (dựng
+        // `live`) trước khi mở nguồn, nên đường dẫn đã có.
+        let model = Some(self.vad_model()).filter(|p| !p.as_os_str().is_empty());
+        Box::new(LiveCapture::open(plan.clone(), on_event, model))
     }
 
     fn allow_retry(&self) {

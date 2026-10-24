@@ -31,12 +31,13 @@
 //!   −55 dBFS / −30 dB / giữ 300 ms). Mỗi loại nguồn có một `ZeroWatch` riêng, trên mẫu chưa trộn.
 //! - Âm thanh chỉ nằm trong RAM (§10.1): không ghi xuống đĩa, không gửi đi đâu.
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use audio_capture::duck::{DuckingMixer, GateParams};
+use audio_capture::duck::{DuckingMixer, GateParams, SpeechDetector};
 use audio_capture::mic_chain::MicPreprocessor;
 use audio_capture::preprocess::{ClockFiller, MAX_SKEW_SAMPLES, Preprocessor, RING_SAMPLES, drain_when_ready};
 use audio_capture::{AudioSource as Source, CaptureStats, MicPermission};
@@ -125,12 +126,63 @@ const MIC_DENIED: &str = "chưa được phép dùng micro";
 const E_ACCESSDENIED: &str = "0x80070005";
 /// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
 const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
-/// Nhường lời (spec mục 16): khung âm thanh máy từ −55 dBFS là có tiếng; khi đó micro hạ −30 dB, giữ thêm 300 ms.
+/// Nhường lời (spec mục 17): micro tắt hẳn khi khung âm thanh máy từ −55 dBFS, hoặc khi Silero trên âm thanh máy cho xác suất
+/// có tiếng nói từ 0,5 (người online nói nhỏ); giữ thêm 300 ms.
 const GATE: GateParams = GateParams {
     threshold_dbfs: -55.0,
-    duck_db: -30.0,
+    duck_db: f32::NEG_INFINITY,
     hold_ms: 300,
+    speech_prob: 0.5,
 };
+
+/// Silero VAD làm bộ phát hiện tiếng nói của bộ nhường lời (spec mục 17).
+struct SileroSpeech(pipeline::vad::SileroVad);
+
+impl SpeechDetector for SileroSpeech {
+    fn prob(&mut self, frame: &[f32]) -> anyhow::Result<f32> {
+        self.0.prob(frame)
+    }
+
+    fn reset(&mut self) -> anyhow::Result<()> {
+        self.0.reset()
+    }
+}
+
+/// Silero riêng của bộ nhường lời, chỉ ở chế độ trộn. `LiveCapture` giữ nó qua các lần mở lại nguồn (mỗi bộ trộn mới tự
+/// reset nó). Nạp lười trên luồng gọi `read_with_vad`, tức luồng VAD của engine (stack 8 MiB, đủ cho candle).
+enum SpeechSlot {
+    Off,
+    Pending(PathBuf),
+    Ready(Box<SileroSpeech>),
+    Failed,
+}
+
+impl SpeechSlot {
+    fn new(plan: &CapturePlan, model: Option<PathBuf>) -> Self {
+        match (plan, model) {
+            (CapturePlan::Both { .. }, Some(path)) => SpeechSlot::Pending(path),
+            _ => SpeechSlot::Off,
+        }
+    }
+
+    /// Bộ phát hiện, nạp ở lần gọi đầu. Nạp lỗi thì ghi cảnh báo một lần; từ đó không có bộ phát hiện (cổng theo năng lượng).
+    fn get(&mut self) -> Option<&mut dyn SpeechDetector> {
+        if let SpeechSlot::Pending(path) = self {
+            let path = path.clone();
+            *self = match pipeline::vad::SileroVad::load(&path) {
+                Ok(vad) => SpeechSlot::Ready(Box::new(SileroSpeech(vad))),
+                Err(e) => {
+                    log::warn!("nhường lời: không nạp được VAD, chỉ hạ micro theo mức âm thanh máy: {e:#}");
+                    SpeechSlot::Failed
+                }
+            };
+        }
+        match self {
+            SpeechSlot::Ready(s) => Some(s.as_mut()),
+            _ => None,
+        }
+    }
+}
 
 /// Việc phải làm sau một lần mở nguồn thất bại.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -492,7 +544,8 @@ enum Pre {
 }
 
 impl Pre {
-    fn drain(&mut self, f: &mut Frames) -> anyhow::Result<()> {
+    /// `speech`: bộ phát hiện tiếng nói của bộ nhường lời; chỉ chế độ trộn dùng.
+    fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>) -> anyhow::Result<()> {
         match self {
             Pre::Playback(p) => {
                 let from = f.asr.len();
@@ -507,7 +560,7 @@ impl Pre {
                 f.mic.extend_from_slice(&f.asr[from..]);
                 Ok(())
             }
-            Pre::Both(b) => b.drain(f),
+            Pre::Both(b) => b.drain(f, speech),
         }
     }
 }
@@ -550,7 +603,7 @@ impl BothPre {
         self.mixer.ducked_ratio()
     }
 
-    fn drain(&mut self, f: &mut Frames) -> anyhow::Result<()> {
+    fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>) -> anyhow::Result<()> {
         self.pb.clear();
         self.playback.drain(&mut self.pb)?;
         f.playback.extend_from_slice(&self.pb);
@@ -565,7 +618,10 @@ impl BothPre {
         f.mic.extend_from_slice(&self.mic_asr);
         self.mixer.push_playback(&self.pb);
         self.mixer.push_mic(&self.mic_asr, &self.mic_vad);
-        self.mixer.drain_into(&mut f.asr, &mut f.vad);
+        self.mixer.drain_into_with(&mut f.asr, &mut f.vad, speech);
+        if let Some(e) = self.mixer.take_speech_error() {
+            log::warn!("nhường lời: VAD lỗi, chỉ hạ micro theo mức âm thanh máy tới lần mở nguồn sau: {e}");
+        }
         Ok(())
     }
 }
@@ -964,12 +1020,16 @@ pub struct LiveCapture {
     on_event: Arc<OnEvent>,
     started: Instant,
     frames: Frames,
+    /// Silero của bộ nhường lời (chế độ trộn, spec mục 17).
+    speech: SpeechSlot,
     /// Bản VAD bỏ đi khi engine chỉ gọi `read`.
     unused: Vec<f32>,
 }
 
 impl LiveCapture {
-    pub fn open(plan: CapturePlan, on_event: OnEvent) -> Self {
+    /// `speech_model`: đường dẫn Silero VAD cho bộ nhường lời; chỉ dùng ở chế độ trộn.
+    pub fn open(plan: CapturePlan, on_event: OnEvent, speech_model: Option<PathBuf>) -> Self {
+        let speech = SpeechSlot::new(&plan, speech_model);
         let shared = Arc::new(Mutex::new(None));
         let stop = Arc::new(AtomicBool::new(false));
         let on_event = Arc::new(on_event);
@@ -991,6 +1051,7 @@ impl LiveCapture {
             on_event,
             started: Instant::now(),
             frames: Frames::default(),
+            speech,
             unused: Vec::new(),
         }
     }
@@ -1009,12 +1070,12 @@ impl FrameSource for LiveCapture {
         self.frames.clear();
         // `drain_when_ready` chờ tới khi vector nó giữ có mẫu: cho nó giữ bản cho whisper, và trong mỗi lần đọc thì đổi bản đó
         // vào `frames` để `Pre::drain` ghi đủ bốn phần.
-        let (shared, frames) = (&self.shared, &mut self.frames);
+        let (shared, frames, speech) = (&self.shared, &mut self.frames, &mut self.speech);
         let mut asr = std::mem::take(&mut frames.asr);
         drain_when_ready(&mut asr, timeout, POLL_STEP, |buf| {
             std::mem::swap(&mut frames.asr, buf);
             let result = match shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-                Some(p) => p.drain(frames),
+                Some(p) => p.drain(frames, speech.get()),
                 None => Ok(()),
             };
             std::mem::swap(&mut frames.asr, buf);
@@ -1099,7 +1160,7 @@ mod tests {
             producer.push(0.25).unwrap();
         }
         let mut f = Frames::default();
-        pre.drain(&mut f).unwrap();
+        pre.drain(&mut f, None).unwrap();
         assert_eq!(
             (f.asr.len(), f.vad.len(), f.playback.len(), f.mic.len()),
             (1_600, 1_600, 1_600, 0)
@@ -1107,7 +1168,7 @@ mod tests {
         assert!(f.asr.iter().chain(&f.vad).all(|&v| v == 0.25));
     }
 
-    /// Có micro: tiếng online đang phát thì micro bị hạ (−30 dB); mẫu chưa trộn của micro vẫn nguyên để canh "toàn số 0".
+    /// Có micro: tiếng online đang phát thì micro bị tắt (spec mục 17); mẫu chưa trộn của micro vẫn nguyên để canh "toàn số 0".
     #[test]
     fn with_a_mic_the_both_preprocessor_ducks_the_mic_under_playback() {
         let (mut pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
@@ -1127,12 +1188,12 @@ mod tests {
                 .unwrap();
         }
         let mut f = Frames::default();
-        pre.drain(&mut f).unwrap();
+        pre.drain(&mut f, None).unwrap();
         assert_eq!(f.asr.len(), f.vad.len());
         assert!(f.asr.len() > 1_600 && !f.mic.is_empty());
         let level = |x: &[f32]| x.iter().map(|v| v.abs()).sum::<f32>() / x.len() as f32;
         // Bỏ 1 600 mẫu đầu (bộ giới hạn và cổng vừa khởi động). Phần còn lại, hiệu giữa bản trộn và âm thanh máy chỉ còn micro
-        // đã hạ: micro sau bộ giới hạn khoảng 0,01 × 2/π, hạ −30 dB còn khoảng 0,0002.
+        // đã tắt: gần 0.
         let rest: Vec<f32> = f.asr[1_600..]
             .iter()
             .zip(&f.playback[1_600..])
@@ -1162,7 +1223,7 @@ mod tests {
             pb_in.push(0.2).unwrap();
         }
         let mut f = Frames::default();
-        pre.drain(&mut f).unwrap();
+        pre.drain(&mut f, None).unwrap();
         assert!(f.asr.is_empty(), "chưa có micro để ghép, chưa quá 100 ms");
         let Pre::Both(b) = &mut pre else { unreachable!() };
         b.detach_mic(&mut f);
@@ -1170,7 +1231,7 @@ mod tests {
         for _ in 0..160 {
             pb_in.push(0.2).unwrap();
         }
-        pre.drain(&mut f).unwrap();
+        pre.drain(&mut f, None).unwrap();
         assert_eq!(f.asr.len(), 960);
     }
 
@@ -1485,5 +1546,77 @@ mod tests {
         for ms in [100, 3_100, 10_000, 600_000] {
             assert_eq!(w.push(&zeros, at(ms), || panic!("không còn hỏi")), None, "{ms} ms");
         }
+    }
+
+    /// Âm thanh máy rất nhỏ (−62 dBFS) mà bộ phát hiện báo có tiếng nói: micro bị tắt (spec mục 17). Không có bộ phát hiện
+    /// thì micro không bị hạ (dưới ngưỡng năng lượng).
+    #[test]
+    fn quiet_playback_with_speech_mutes_the_mic() {
+        struct Always;
+        impl SpeechDetector for Always {
+            fn prob(&mut self, _: &[f32]) -> anyhow::Result<f32> {
+                Ok(1.0)
+            }
+            fn reset(&mut self) -> anyhow::Result<()> {
+                Ok(())
+            }
+        }
+        fn run(speech: Option<&mut dyn SpeechDetector>) -> (f32, f32) {
+            let (mut pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
+            let (mut mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+            let format = AudioFormat {
+                sample_rate: 16_000,
+                channels: 1,
+            };
+            let mut both = BothPre::new(Preprocessor::new(vec![(pb_out, format)]).unwrap());
+            both.attach_mic(MicPreprocessor::new(mic_out, format, false).unwrap());
+            let mut pre = Pre::Both(Box::new(both));
+            for i in 0..8_000 {
+                pb_in.push(if i % 2 == 0 { 0.0008 } else { -0.0008 }).unwrap();
+                mic_in
+                    .push(0.001 * (2.0 * std::f32::consts::PI * 300.0 * i as f32 / 16_000.0).sin())
+                    .unwrap();
+            }
+            let mut f = Frames::default();
+            pre.drain(&mut f, speech).unwrap();
+            let level = |x: &[f32]| x.iter().map(|v| v.abs()).sum::<f32>() / x.len() as f32;
+            let rest: Vec<f32> = f.asr[1_600..]
+                .iter()
+                .zip(&f.playback[1_600..])
+                .map(|(a, p)| a - p)
+                .collect();
+            (level(&rest), level(&f.mic[1_600..]))
+        }
+        let (muted, mic) = run(Some(&mut Always as &mut dyn SpeechDetector));
+        assert!(muted < mic * 0.01, "micro phải tắt: {muted} so với {mic}");
+        let (open, mic) = run(None);
+        assert!(
+            open > mic * 0.5,
+            "không có bộ phát hiện thì micro mở: {open} so với {mic}"
+        );
+    }
+
+    /// Bộ phát hiện chỉ được chuẩn bị ở chế độ trộn và khi có đường dẫn model; model hỏng thì không có bộ phát hiện, không
+    /// panic, và không nạp lại.
+    #[test]
+    fn the_speech_slot_is_only_armed_in_both_mode_and_survives_a_missing_model() {
+        let both = CapturePlan::Both {
+            source: AudioSource::System,
+            device: None,
+            noise_filter: true,
+        };
+        let playback = CapturePlan::Playback {
+            source: AudioSource::System,
+            include_self: false,
+        };
+        assert!(matches!(
+            SpeechSlot::new(&playback, Some("x.onnx".into())),
+            SpeechSlot::Off
+        ));
+        assert!(matches!(SpeechSlot::new(&both, None), SpeechSlot::Off));
+        let mut slot = SpeechSlot::new(&both, Some(PathBuf::from("/không/có/model.onnx")));
+        assert!(slot.get().is_none());
+        assert!(matches!(slot, SpeechSlot::Failed));
+        assert!(slot.get().is_none());
     }
 }
