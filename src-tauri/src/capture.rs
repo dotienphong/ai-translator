@@ -702,15 +702,20 @@ impl MicSide {
                 }
             }
             Err(e) => {
-                log::warn!("không mở được micro (chế độ trộn, phiên chạy tiếp với âm thanh máy): {e:#}");
                 self.retry_at = now + RETRY_AFTER;
                 // Lỗi của micro: dùng luật mã lỗi của chế độ micro (`micPermission` hay `micUnavailable`).
                 let as_mic = CapturePlan::Mic {
                     device: self.device.clone(),
                     noise_filter: self.noise_filter,
                 };
-                if let Some(event) = self.report.failed(error_code(&as_mic, &e)) {
-                    on_event(CaptureEvent::MicIssue(event));
+                // Thử lại mỗi 2 giây có thể kéo dài cả phiên (quyền bị từ chối): chỉ ghi cảnh báo khi mã lỗi đổi (thử tay
+                // kế hoạch 03: trước đó log có một dòng mỗi 2 giây).
+                match self.report.failed(error_code(&as_mic, &e)) {
+                    Some(event) => {
+                        log::warn!("không mở được micro (chế độ trộn, phiên chạy tiếp với âm thanh máy): {e:#}");
+                        on_event(CaptureEvent::MicIssue(event));
+                    }
+                    None => log::debug!("vẫn chưa mở được micro: {e:#}"),
                 }
             }
         }
