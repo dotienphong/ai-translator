@@ -104,6 +104,7 @@ export type OverlayNote =
   | "error"
   | "noAudio"
   | "waitingForApp"
+  | "micSilent"
   | "quotaLow"
   | "lagging"
   | "translationUnavailable";
@@ -123,6 +124,7 @@ export function overlayNotes(status: AppStatus | null): OverlayNote[] {
   if (status.session === "running") {
     if (status.indicators.noAudio) notes.push("noAudio");
     if (status.waitingForApp) notes.push("waitingForApp");
+    if (status.micIssue === "suspected") notes.push("micSilent");
     if (status.quotaWarning) notes.push("quotaLow");
     if (status.indicators.lagging) notes.push("lagging");
     if (status.indicators.translationUnavailable) notes.push("translationUnavailable");

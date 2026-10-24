@@ -165,6 +165,9 @@ describe("overlayNotes", () => {
         }),
       ),
     ).toEqual(["noAudio", "waitingForApp", "quotaLow", "lagging", "translationUnavailable"]);
+    // Micro không có tín hiệu (spec 2026-10-24-nguon-micro §7): nhắc khi đang dịch, sau "đang chờ app".
+    expect(overlayNotes(status({ micIssue: "suspected", quotaWarning: true }))).toEqual(["micSilent", "quotaLow"]);
+    expect(overlayNotes(status({ session: "idle", micIssue: "suspected" }))).toEqual([]);
     // Còn dưới 5 phút chỉ nhắc khi đang dịch (kế hoạch 06).
     expect(overlayNotes(status({ session: "idle", quotaWarning: true }))).toEqual([]);
   });

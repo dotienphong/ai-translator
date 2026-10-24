@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
 import { errorKey, type MessageKey } from "../../../i18n";
-import { sourceLabel } from "../../../lib/audioSource";
+import { micLabel, sourceLabel } from "../../../lib/audioSource";
 import type { SessionStatus } from "../../../lib/ipc";
 import { levelToMeter } from "../../../store/app";
 import { useApp, useT } from "../appStore";
@@ -42,6 +42,9 @@ export function Home() {
   const info = useApp((s) => s.info);
   const audioSources = useApp((s) => s.audioSources);
   const loadAudioSourceNames = useApp((s) => s.loadAudioSourceNames);
+  const inputDevices = useApp((s) => s.inputDevices);
+  const loadInputDevices = useApp((s) => s.loadInputDevices);
+  const openMicSettings = useApp((s) => s.openMicSettings);
   const toggleSession = useApp((s) => s.toggleSession);
   const pending = useApp((s) => s.sessionPending);
   const setVisible = useApp((s) => s.setOverlayVisible);
@@ -52,10 +55,19 @@ export function Home() {
   const license = useLicense((s) => s.view);
   // Tên của nguồn đang chọn (tên app trên macOS, tên thiết bị trên Windows) nằm trong danh sách nguồn: đọc lặng lẽ một
   // lần khi chưa có, để màn hình chính không hiện bundle ID hay id thiết bị.
-  const needsNames = settings !== null && settings.audioSource.kind !== "system" && audioSources === null;
+  const needsNames =
+    settings !== null &&
+    settings.captureMode === "playback" &&
+    settings.audioSource.kind !== "system" &&
+    audioSources === null;
   useEffect(() => {
     if (needsNames) void loadAudioSourceNames();
   }, [needsNames, loadAudioSourceNames]);
+  // Chế độ micro: tên micro nằm trong danh sách micro; đọc một lần khi chưa có.
+  const needsMicNames = settings?.captureMode === "mic" && inputDevices === null;
+  useEffect(() => {
+    if (needsMicNames) void loadInputDevices();
+  }, [needsMicNames, loadInputDevices]);
   if (!status || !settings || !info) return null;
   const session = status.session;
   const trial = license && trialKey(license);
@@ -69,7 +81,10 @@ export function Home() {
     if (status.waitingForApp) notes.push("home.waitingForApp");
     if (status.indicators.translationUnavailable) notes.push("home.translationUnavailable");
   }
-  const source = sourceLabel(settings.audioSource, info.platform, audioSources, t);
+  const source =
+    settings.captureMode === "mic"
+      ? micLabel(settings.micDevice, inputDevices, t)
+      : sourceLabel(settings.audioSource, info.platform, audioSources, t);
   const buttonClass = session === "running" ? "lg danger" : session === "starting" ? "lg" : "lg primary";
   return (
     <>
@@ -99,6 +114,9 @@ export function Home() {
             {status.sessionError === "audioPermission" && info.platform === "macos" && (
               <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
             )}
+            {status.sessionError === "micPermission" && (
+              <button onClick={() => void openMicSettings()}>{t("common.openMicSettings")}</button>
+            )}
             {(status.sessionError === "modelMissing" || status.sessionError === "modelBroken") && (
               <button onClick={() => navigate("settings", "model")}>{t("models.openSettings")}</button>
             )}
@@ -123,6 +141,13 @@ export function Home() {
             <Icon name="alert" />
             <span>{t("home.permissionSuspected")}</span>
             <button onClick={() => void openPermission()}>{t("common.openPermissionSettings")}</button>
+          </div>
+        )}
+        {session === "running" && status.micIssue === "suspected" && (
+          <div className="hero-alert" role="alert">
+            <Icon name="alert" />
+            <span>{t("home.micSilent")}</span>
+            <button onClick={() => void openMicSettings()}>{t("common.openMicSettings")}</button>
           </div>
         )}
         {(notes.length > 0 || (session === "running" && status.quotaWarning)) && (
