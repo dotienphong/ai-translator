@@ -1,5 +1,6 @@
 //! Thu âm thanh hệ thống (spec §6.1) và chuyển về 16 kHz mono (spec §6.2).
 
+pub mod duck;
 pub mod gapfill;
 pub mod highpass;
 pub mod mix;
