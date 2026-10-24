@@ -1,4 +1,4 @@
-//! Gộp về mono rồi resample xuống 16 kHz bằng rubato (spec §6.2).
+//! Gộp về mono rồi resample (mặc định xuống 16 kHz) bằng rubato (spec §6.2).
 //! Chạy ở luồng tiền xử lý, không chạy trong callback thu âm.
 
 use anyhow::{Result, anyhow};
@@ -36,19 +36,25 @@ pub struct MonoResampler {
 
 impl MonoResampler {
     pub fn new(input_rate: u32, channels: u16) -> Result<Self> {
-        Self::with_block(input_rate, channels, block_frames(input_rate))
+        Self::to_rate(input_rate, channels, TARGET_RATE)
     }
 
-    /// Như `new`, với khối `block` khung vào (test so với khối cũ 1024).
-    fn with_block(input_rate: u32, channels: u16, block: usize) -> Result<Self> {
-        let inner = if input_rate == TARGET_RATE {
+    /// Như `new`, nhưng ra tần số `output_rate`: chuỗi micro đưa âm thanh lên 48 kHz cho bộ lọc ồn rồi về 16 kHz (spec
+    /// 2026-10-24-nguon-micro §5.7). Khối vào vẫn là [`block_frames`].
+    pub fn to_rate(input_rate: u32, channels: u16, output_rate: u32) -> Result<Self> {
+        Self::with_block(input_rate, channels, output_rate, block_frames(input_rate))
+    }
+
+    /// Như `to_rate`, với khối `block` khung vào (test so với khối cũ 1024).
+    fn with_block(input_rate: u32, channels: u16, output_rate: u32, block: usize) -> Result<Self> {
+        let inner = if input_rate == output_rate {
             None
         } else {
-            // sub_chunks = 1: khối FFT đủ lớn để bộ lọc chống alias cắt gần 8 kHz.
+            // sub_chunks = 1: khối FFT đủ lớn để bộ lọc chống alias cắt gần tần số Nyquist của đầu ra.
             Some(
                 Fft::<f32>::new_custom(
                     input_rate as usize,
-                    TARGET_RATE as usize,
+                    output_rate as usize,
                     block,
                     1,
                     1,
@@ -134,6 +140,31 @@ mod tests {
         (x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32).sqrt()
     }
 
+    /// Chuỗi micro (spec 2026-10-24-nguon-micro §5.7) đưa âm thanh lên 48 kHz cho bộ lọc ồn rồi về 16 kHz: số mẫu đúng tỉ
+    /// lệ (trừ phần trễ của bộ lọc, dưới 10 ms) và mức tín hiệu giữ nguyên.
+    #[test]
+    fn mono_audio_goes_up_to_48k_and_back() {
+        let tone = sine(16_000, 1, 1_000.0, 1.0);
+        let mut up = MonoResampler::to_rate(16_000, 1, 48_000).unwrap();
+        let mut at48 = Vec::new();
+        up.process(&tone, &mut at48).unwrap();
+        assert!((47_520..=48_000).contains(&at48.len()), "{}", at48.len());
+        let mut down = MonoResampler::to_rate(48_000, 1, 16_000).unwrap();
+        let mut back = Vec::new();
+        down.process(&at48, &mut back).unwrap();
+        assert!((15_680..=16_000).contains(&back.len()), "{}", back.len());
+        let (a, b) = (rms(&tone[4_000..12_000]), rms(&back[4_000..12_000]));
+        assert!((20.0 * (b / a).log10()).abs() < 0.5, "{a} {b}");
+    }
+
+    #[test]
+    fn the_same_rate_passes_through() {
+        let mut r = MonoResampler::to_rate(48_000, 2, 48_000).unwrap();
+        let mut out = Vec::new();
+        r.process(&[0.25, 0.75, 0.5, 1.0], &mut out).unwrap();
+        assert_eq!(out, [0.5, 0.75]);
+    }
+
     #[test]
     fn stereo_48k_becomes_mono_16k_with_same_pitch_and_level() {
         let mut r = MonoResampler::new(48_000, 2).unwrap();
@@ -217,7 +248,7 @@ mod tests {
     fn cpu_cost_of_10_ms_blocks() {
         let input = sine(48_000, 2, 440.0, 60.0);
         let time = |block: usize| {
-            let mut r = MonoResampler::with_block(48_000, 2, block).unwrap();
+            let mut r = MonoResampler::with_block(48_000, 2, TARGET_RATE, block).unwrap();
             let mut out = Vec::new();
             let started = std::time::Instant::now();
             for piece in input.chunks(960) {
