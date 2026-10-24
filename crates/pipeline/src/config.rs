@@ -78,6 +78,16 @@ pub struct FilterConfig {
     pub compression_ratio_max: f32,
     /// Đổi chữ phồn thể sang giản thể cho đoạn tiếng Trung (§6.4, "Việc cho MVP"; `small` hay ra phồn thể).
     pub simplify_chinese: bool,
+    /// Luật câu ngắn không chắc (spec 2026-10-24-nguon-micro §5.7, lớp 5): chỉ bật ở chế độ có micro. Mặc định tắt.
+    pub short_unsure: bool,
+    /// Câu ngắn: có chữ, tối đa chừng này từ (đếm theo khoảng trắng)…
+    pub short_max_words: usize,
+    /// …và tối đa chừng này chữ Hán hay kana (tiếng Trung, Nhật viết liền).
+    pub short_max_cjk_chars: usize,
+    /// Câu ngắn bị bỏ khi `vad_mean_prob` dưới ngưỡng này…
+    pub short_vad_prob_min: f32,
+    /// …hoặc khi `speech_ms` dưới ngưỡng này. Hai ngưỡng do spike chọn (kế hoạch nguồn micro 01, Task 19).
+    pub short_speech_ms_min: u64,
 }
 
 /// Câu đệm mặc định, theo ngôn ngữ: en, vi, ja, zh, ko. "I" đứng một mình là chữ bịa của gói Nhẹ trên nhạc
@@ -148,6 +158,11 @@ impl Default for FilterConfig {
             filler_long_max_words: 1,
             compression_ratio_max: 2.4,
             simplify_chinese: true,
+            short_unsure: false,
+            short_max_words: 2,
+            short_max_cjk_chars: 4,
+            short_vad_prob_min: 0.8,
+            short_speech_ms_min: 400,
         }
     }
 }

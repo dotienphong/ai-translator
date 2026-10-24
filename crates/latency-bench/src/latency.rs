@@ -43,6 +43,8 @@ const SKIP_HALLUCINATION: &str = "hallucination";
 const SKIP_REPETITION: &str = "repetition";
 /// Câu đệm ("you", "Thank you."…) có thêm dấu hiệu không phải tiếng nói thật: app bỏ (`pipeline::filter`).
 const SKIP_FILLER: &str = "filler";
+/// Câu ngắn mà VAD không chắc (`pipeline::filter`, chỉ bật ở chế độ có micro).
+const SKIP_SHORT_UNSURE: &str = "short_unsure";
 /// Đoạn ngắn hơn `MIN_PCM_SAMPLES`: không gửi cho `asr-worker`.
 const SKIP_TOO_SHORT: &str = "too_short";
 /// Đoạn dài hơn `MAX_PCM_SAMPLES`: không gửi cho `asr-worker`.
@@ -545,6 +547,7 @@ fn route(rec: &SegmentRecord, target: Lang, cfg: &FilterConfig) -> Result<Lang, 
         Verdict::Hallucination => return Err(SKIP_HALLUCINATION.into()),
         Verdict::Repetition => return Err(SKIP_REPETITION.into()),
         Verdict::Filler => return Err(SKIP_FILLER.into()),
+        Verdict::ShortUnsure => return Err(SKIP_SHORT_UNSURE.into()),
         Verdict::Speech => {}
     }
     match Lang::from_code(&rec.lang) {

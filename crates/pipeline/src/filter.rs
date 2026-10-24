@@ -60,9 +60,11 @@ pub enum Verdict {
     Repetition,
     /// Chỉ là một câu đệm ("you", "thank you", "谢谢"…) và có dấu hiệu đoạn không phải tiếng nói thật.
     Filler,
+    /// Câu ngắn (một–hai từ) mà VAD không chắc là tiếng nói; chỉ ở chế độ có micro (`FilterConfig::short_unsure`).
+    ShortUnsure,
 }
 
-/// Áp mọi luật, theo thứ tự: `NoSpeech`, `Hallucination`, `Repetition`, `Filler`. `text` là chữ đã qua
+/// Áp mọi luật, theo thứ tự: `NoSpeech`, `Hallucination`, `Repetition`, `Filler`, `ShortUnsure`. `text` là chữ đã qua
 /// `text::display_text`.
 pub fn verdict(ev: &Evidence, text: &str, cfg: &FilterConfig) -> Verdict {
     if is_no_speech(ev.no_speech_prob, ev.avg_logprob, text, cfg) {
@@ -73,6 +75,8 @@ pub fn verdict(ev: &Evidence, text: &str, cfg: &FilterConfig) -> Verdict {
         Verdict::Repetition
     } else if is_suspect_filler(ev, text, cfg) {
         Verdict::Filler
+    } else if is_short_unsure(ev, text, cfg) {
+        Verdict::ShortUnsure
     } else {
         Verdict::Speech
     }
@@ -160,6 +164,30 @@ pub fn is_suspect_filler(ev: &Evidence, text: &str, cfg: &FilterConfig) -> bool 
     ev.avg_logprob < cfg.filler_logprob_max
         || ev.vad_mean_prob < cfg.filler_vad_prob_max
         || (ev.speech_ms >= cfg.filler_long_ms && words <= cfg.filler_long_max_words)
+}
+
+/// Chữ Hán, hiragana, katakana: tiếng Trung, Nhật viết liền nên câu ngắn được đếm theo chữ.
+fn is_cjk(c: char) -> bool {
+    matches!(c, '\u{3040}'..='\u{30FF}' | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}')
+}
+
+/// Câu ngắn (lớp 5): có chữ, tối đa `short_max_words` từ và tối đa `short_max_cjk_chars` chữ Hán hay kana. "OK",
+/// "Đúng rồi", "好的", "はい", "네" là câu ngắn; "我们明天下午开会" thì không.
+pub fn is_short(text: &str, cfg: &FilterConfig) -> bool {
+    let words = text
+        .split_whitespace()
+        .filter(|w| w.chars().any(char::is_alphanumeric))
+        .count();
+    let cjk = text.chars().filter(|&c| is_cjk(c)).count();
+    words > 0 && words <= cfg.short_max_words && cjk <= cfg.short_max_cjk_chars
+}
+
+/// Câu ngắn mà VAD không chắc là tiếng nói (lớp 5): tiếng gõ phím, tiếng bút lọt qua VAD hay sinh ra các chữ ngắn như
+/// thế. Chỉ áp khi `short_unsure` bật.
+pub fn is_short_unsure(ev: &Evidence, text: &str, cfg: &FilterConfig) -> bool {
+    cfg.short_unsure
+        && is_short(text, cfg)
+        && (ev.vad_mean_prob < cfg.short_vad_prob_min || ev.speech_ms < cfg.short_speech_ms_min)
 }
 
 #[cfg(test)]
@@ -415,5 +443,60 @@ mod tests {
         for text in ["Thank you all", "So what", "Cảm ơn anh", ""] {
             assert!(!suspect(worst, text), "{text:?}");
         }
+    }
+
+    fn short_cfg() -> FilterConfig {
+        FilterConfig {
+            short_unsure: true,
+            ..FilterConfig::default()
+        }
+    }
+
+    #[test]
+    fn short_texts_are_one_or_two_words_or_up_to_four_han_or_kana() {
+        let cfg = FilterConfig::default();
+        for text in ["OK", "Đúng rồi.", "好的", "はい", "네", "Got it!"] {
+            assert!(is_short(text, &cfg), "{text}");
+        }
+        for text in [
+            "我们明天下午开会",
+            "We will meet tomorrow",
+            "내일 회의가 있어요",
+            "...",
+            "",
+        ] {
+            assert!(!is_short(text, &cfg), "{text}");
+        }
+    }
+
+    #[test]
+    fn short_unsure_is_off_by_default() {
+        let unsure = Evidence {
+            vad_mean_prob: 0.5,
+            speech_ms: 200,
+            ..CLEAR
+        };
+        assert!(!is_short_unsure(&unsure, "Đúng rồi", &FilterConfig::default()));
+        assert_eq!(verdict(&unsure, "Đúng rồi", &FilterConfig::default()), Verdict::Speech);
+    }
+
+    #[test]
+    fn short_unsure_drops_short_text_when_the_vad_is_not_sure() {
+        let cfg = short_cfg();
+        let low_prob = Evidence {
+            vad_mean_prob: 0.6,
+            ..CLEAR
+        };
+        let too_brief = Evidence {
+            speech_ms: 300,
+            ..CLEAR
+        };
+        assert!(is_short_unsure(&low_prob, "Đúng rồi", &cfg));
+        assert!(is_short_unsure(&too_brief, "Đúng rồi", &cfg));
+        assert_eq!(verdict(&low_prob, "Đúng rồi", &cfg), Verdict::ShortUnsure);
+        // VAD chắc chắn và đủ dài: giữ.
+        assert!(!is_short_unsure(&CLEAR, "Đúng rồi", &cfg));
+        // Câu dài: giữ dù VAD không chắc.
+        assert!(!is_short_unsure(&low_prob, "We will meet tomorrow at nine", &cfg));
     }
 }

@@ -910,9 +910,11 @@ fn asr_loop(
                             asr_ms: r.asr_ms + r.lid_ms,
                         }
                     }
-                    Verdict::NoSpeech | Verdict::Hallucination | Verdict::Repetition | Verdict::Filler => {
-                        AsrOutcome::Filtered { ids: segment.ids }
-                    }
+                    Verdict::NoSpeech
+                    | Verdict::Hallucination
+                    | Verdict::Repetition
+                    | Verdict::Filler
+                    | Verdict::ShortUnsure => AsrOutcome::Filtered { ids: segment.ids },
                 }
             }
             Err(AsrFailure::Dropped(reason)) => {
