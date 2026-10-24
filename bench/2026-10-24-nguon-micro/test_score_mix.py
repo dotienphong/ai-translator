@@ -46,6 +46,8 @@ class ScoreMix(unittest.TestCase):
         track = np.repeat(rng.random(300) > 0.7, 1600).astype(np.float32) * 0.5
         recording = np.concatenate([np.zeros(16000 * 2, dtype=np.float32), track])
         self.assertEqual(best_offset_ms(track, recording, 16000), 2000)
+        # Track bắt đầu trước bản thu 1,5 giây.
+        self.assertEqual(best_offset_ms(track, track[24000:], 16000, min_ms=-15000), -1500)
 
 
 if __name__ == "__main__":

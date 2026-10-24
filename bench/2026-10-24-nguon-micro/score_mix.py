@@ -9,8 +9,8 @@ Thư mục cảnh có `meta.json` (do `capture` ghi), `mic.wav`, có thể có `
 `schedule.json`, `online.wav`, `room.wav`. In bảng Markdown, ghi `<results>/score.json` và `<results>/score.md`.
 
 Cách chấm:
-- Căn track với bản thu bằng tương quan đường bao 10 ms: online.wav với playback.wav (không có thì với mic.wav),
-  room.wav với mic.wav.
+- Căn track với bản thu bằng tương quan đường bao 10 ms (lệch −15 s tới +30 s): online.wav với playback.wav (không
+  có thì với mic.wav), room.wav với mic.wav.
 - Đoạn được giữ: `verdict` = Speech; phương án có hậu tố `+su<p>-<s>` bỏ thêm theo luật ShortUnsure: `short` và
   (`mean_prob` < p hoặc `speech_ms` < s).
 - Gán mỗi đoạn được giữ cho clip trùng thời gian nhiều nhất (clip nới 300 ms mỗi phía). Không trùng clip nào là câu ảo,
@@ -174,7 +174,8 @@ def scene_items(scene, rate):
         rec = "playback.wav" if source == "online" and os.path.exists(os.path.join(scene, "playback.wav")) else "mic.wav"
         track, _ = read_wav(os.path.join(scene, f"{source}.wav"))
         recording, _ = read_wav(os.path.join(scene, rec))
-        offsets[source] = best_offset_ms(track, recording, rate)
+        # Âm: track bắt đầu phát trước khi bản thu bắt đầu (afplay chạy trước khi Capture.app khởi động xong).
+        offsets[source] = best_offset_ms(track, recording, rate, min_ms=-15_000)
     items = [{**it, "start_ms": it["start_ms"] + offsets[it["source"]], "end_ms": it["end_ms"] + offsets[it["source"]]}
              for it in sched["items"]]
     return items, offsets
