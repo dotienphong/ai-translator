@@ -12,5 +12,14 @@ allowBuilds:
 # ở bản mới nhất (5.20261006.0-alpha), nên `pnpm audit` của CI đỏ. sharp chỉ là phụ thuộc gián tiếp của wrangler và
 # miniflare (giả lập Images binding khi chạy cục bộ), không nằm trong Worker đã triển khai. Gỡ mục này khi miniflare
 # nâng sharp lên 0.35.5 trở lên.
+#
+# undici < 7.30.1 dính GHSA-xjj6-f33q-929c (mức high) và miniflare ghim cứng undici 7.29.1, kể cả ở bản mới nhất
+# (5.20261019.2-beta). zod < 4.6.6 dính GHSA-mrhx-c7xc-m3w5 (mức high) và @cloudflare/vitest-plugin ghim cứng zod
+# (1.3.4: 4.4.3; 1.4.7: 4.6.5). Cả hai chỉ là phụ thuộc gián tiếp của công cụ dev và test (chạy Worker cục bộ, kiểm tra
+# tùy chọn), không nằm trong Worker đã triển khai. Cùng dòng chính nên chỉ là nâng minor/patch. Selector theo khoảng
+# (không theo đúng số đang ghim) để override còn đúng khi nâng plugin hay miniflare; undici 8.x của jsdom khai báo
+# `^8.11.2` nên không cần override, chỉ làm mới lockfile. Gỡ từng mục khi gói cha ghim bản đã vá.
 overrides:
   sharp: 0.35.5
+  "undici@>=7.0.0 <7.30.1": 7.30.1
+  "zod@>=4.0.0 <4.6.6": 4.6.7
