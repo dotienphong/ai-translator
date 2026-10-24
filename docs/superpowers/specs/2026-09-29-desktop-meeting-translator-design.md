@@ -356,7 +356,7 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
 
 Gộp về một kênh (mono), rồi resample từ tần số của thiết bị (thường 48 kHz) xuống 16 kHz bằng crate `rubato`. Sau đó chia thành khung 512 mẫu (32 ms) để đưa vào VAD.
 
-**Khi có micro** (F12; spec nguồn micro §5.3–§5.8, §16): micro qua lọc thông cao 80 Hz rồi khuếch đại tới +20 dB. Bản cho whisper qua bộ giới hạn mức (trần 0,9, không méo); bản cho VAD qua `tanh` và, khi bật "Lọc tiếng ồn micro", qua RNNoise (`nnnoiseless`). Whisper không nghe bản đã lọc ồn. Chế độ Âm thanh máy + Micro trộn trước VAD bằng `DuckingMixer`: âm thanh máy vượt −55 dBFS thì micro bị hạ −30 dB, giữ 300 ms. Không khử vọng (AEC).
+**Khi có micro** (F12; spec nguồn micro §5.3–§5.8, §16): micro qua lọc thông cao 80 Hz rồi khuếch đại tới +20 dB. Bản cho whisper qua bộ giới hạn mức (trần 0,9, không méo); bản cho VAD qua `tanh` và, khi bật "Lọc tiếng ồn micro", qua RNNoise (`nnnoiseless`). Whisper không nghe bản đã lọc ồn. Chế độ Âm thanh máy + Micro trộn trước VAD bằng `DuckingMixer`: micro bị tắt khi khung âm thanh máy từ −55 dBFS, hoặc khi một Silero VAD riêng nghe âm thanh máy cho xác suất có tiếng nói từ 0,5 (người online nói nhỏ); giữ 300 ms. Không đệm hay trễ thêm. Không khử vọng (AEC) (spec nguồn micro §17).
 
 ### 6.3 VAD và cắt câu
 
