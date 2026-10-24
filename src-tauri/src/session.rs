@@ -523,6 +523,7 @@ fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
                 changed(&app);
             }
         }
+        CaptureEvent::MicIssue(_) => {}
         CaptureEvent::MicSilent(silent) => {
             let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
             if current {

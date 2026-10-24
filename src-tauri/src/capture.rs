@@ -26,6 +26,9 @@
 //!   suốt lúc hộp thoại mở), mở lại khi micro mặc định đổi, không kiểm tap chết (micro luôn có khung), `ZeroWatch` báo
 //!   [`CaptureEvent::MicSilent`] mà không hỏi có app đang phát. Nguồn micro cho hai bản: bản cho whisper và bản đã lọc ồn
 //!   cho VAD ([`FrameSource::read_with_vad`]).
+//! - Chế độ âm thanh máy + micro (spec §5.3–5.6, kế hoạch 03): âm thanh máy theo các luật trên; micro do [`MicSide`] quản
+//!   lý, lỗi không dừng phiên mà báo [`CaptureEvent::MicIssue`] và thử lại mỗi 2 giây; trộn bằng `DuckingMixer` (nhường lời
+//!   −55 dBFS / −30 dB / giữ 300 ms). Mỗi loại nguồn có một `ZeroWatch` riêng, trên mẫu chưa trộn.
 //! - Âm thanh chỉ nằm trong RAM (§10.1): không ghi xuống đĩa, không gửi đi đâu.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -33,8 +36,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use audio_capture::duck::{DuckingMixer, GateParams};
 use audio_capture::mic_chain::MicPreprocessor;
-use audio_capture::preprocess::{ClockFiller, Preprocessor, RING_SAMPLES, drain_when_ready};
+use audio_capture::preprocess::{ClockFiller, MAX_SKEW_SAMPLES, Preprocessor, RING_SAMPLES, drain_when_ready};
 use audio_capture::{AudioSource as Source, CaptureStats, MicPermission};
 use pipeline::engine::FrameSource;
 
@@ -79,22 +83,39 @@ pub enum CaptureEvent {
     /// Micro trả toàn số 0 tuyệt đối 3 giây từ đầu phiên (`true`), hoặc đã có tín hiệu (`false`): thiếu quyền micro hay
     /// micro đang tắt tiếng bằng phím cứng (spec 2026-10-24-nguon-micro §5.6, §7).
     MicSilent(bool),
+    /// Chế độ âm thanh máy + micro: micro không mở được, kèm mã (`micPermission`, `micUnavailable`); `None` khi đã mở lại
+    /// được. Phiên không dừng (spec §7).
+    MicIssue(Option<&'static str>),
 }
 
 pub type OnEvent = Box<dyn Fn(CaptureEvent) + Send + Sync>;
 
-/// Thu gì trong một phiên (spec 2026-10-24-nguon-micro §5.6): âm thanh máy theo `audioSource`, hay micro.
+/// Thu gì trong một phiên (spec 2026-10-24-nguon-micro §5.6): âm thanh máy theo `audioSource`, micro, hay cả hai.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CapturePlan {
     /// `include_self`: macOS, tap toàn hệ thống thu cả âm thanh của chính app (bước "Nghe thử").
     Playback { source: AudioSource, include_self: bool },
     /// `device`: `None` là micro mặc định. `noise_filter`: RNNoise cho bản VAD.
     Mic { device: Option<String>, noise_filter: bool },
+    /// Âm thanh máy và micro, trộn có nhường lời (spec §5.3, §5.4).
+    Both {
+        source: AudioSource,
+        device: Option<String>,
+        noise_filter: bool,
+    },
 }
 
 impl CapturePlan {
     pub fn has_mic(&self) -> bool {
-        matches!(self, CapturePlan::Mic { .. })
+        matches!(self, CapturePlan::Mic { .. } | CapturePlan::Both { .. })
+    }
+}
+
+/// Nguồn âm thanh máy của plan, nếu có.
+fn playback_source(plan: &CapturePlan) -> Option<&AudioSource> {
+    match plan {
+        CapturePlan::Playback { source, .. } | CapturePlan::Both { source, .. } => Some(source),
+        CapturePlan::Mic { .. } => None,
     }
 }
 
@@ -104,6 +125,12 @@ const MIC_DENIED: &str = "chưa được phép dùng micro";
 const E_ACCESSDENIED: &str = "0x80070005";
 /// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
 const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
+/// Nhường lời (spec mục 16): khung âm thanh máy từ −55 dBFS là có tiếng; khi đó micro hạ −30 dB, giữ thêm 300 ms.
+const GATE: GateParams = GateParams {
+    threshold_dbfs: -55.0,
+    duck_db: -30.0,
+    hold_ms: 300,
+};
 
 /// Việc phải làm sau một lần mở nguồn thất bại.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -437,31 +464,135 @@ struct Opened {
     tapped: Option<Vec<i32>>,
 }
 
-/// Bộ tiền xử lý của nguồn đang mở: âm thanh máy (một bản, bản VAD là bản sao) hay micro (hai bản).
+/// Mẫu của một lần đọc: bản cho whisper, bản cho VAD (cùng độ dài), và mẫu chưa trộn của từng loại nguồn cho các bộ canh
+/// "toàn số 0" (QĐ4 của kế hoạch 03).
+#[derive(Default)]
+struct Frames {
+    asr: Vec<f32>,
+    vad: Vec<f32>,
+    playback: Vec<f32>,
+    mic: Vec<f32>,
+}
+
+impl Frames {
+    fn clear(&mut self) {
+        self.asr.clear();
+        self.vad.clear();
+        self.playback.clear();
+        self.mic.clear();
+    }
+}
+
+/// Bộ tiền xử lý của nguồn đang mở.
 enum Pre {
     Playback(Preprocessor),
     /// Đóng hộp: chuỗi micro có bộ đệm khung của RNNoise, lớn hơn hẳn `Preprocessor`.
     Mic(Box<MicPreprocessor>),
+    Both(Box<BothPre>),
 }
 
 impl Pre {
-    fn drain(&mut self, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) -> anyhow::Result<()> {
+    fn drain(&mut self, f: &mut Frames) -> anyhow::Result<()> {
         match self {
             Pre::Playback(p) => {
-                let from = out.len();
-                p.drain(out)?;
-                out_vad.extend_from_slice(&out[from..]);
+                let from = f.asr.len();
+                p.drain(&mut f.asr)?;
+                f.vad.extend_from_slice(&f.asr[from..]);
+                f.playback.extend_from_slice(&f.asr[from..]);
                 Ok(())
             }
-            Pre::Mic(m) => m.drain(out, out_vad),
+            Pre::Mic(m) => {
+                let from = f.asr.len();
+                m.drain(&mut f.asr, &mut f.vad)?;
+                f.mic.extend_from_slice(&f.asr[from..]);
+                Ok(())
+            }
+            Pre::Both(b) => b.drain(f),
         }
     }
 }
 
-/// Đã có quyền micro chưa; chưa hỏi thì hỏi (hộp thoại macOS), để Core Audio không tự hỏi trong lúc `start` (spec mục 16).
-fn ensure_mic_permission() -> anyhow::Result<()> {
+/// Chế độ âm thanh máy + micro (QĐ3 của kế hoạch 03): âm thanh máy, micro nếu đang mở, và bộ trộn có nhường lời.
+struct BothPre {
+    playback: Preprocessor,
+    mic: Option<MicPreprocessor>,
+    mixer: DuckingMixer,
+    pb: Vec<f32>,
+    mic_asr: Vec<f32>,
+    mic_vad: Vec<f32>,
+}
+
+impl BothPre {
+    fn new(playback: Preprocessor) -> Self {
+        Self {
+            playback,
+            mic: None,
+            mixer: DuckingMixer::new(GATE, MAX_SKEW_SAMPLES),
+            pb: Vec::new(),
+            mic_asr: Vec::new(),
+            mic_vad: Vec::new(),
+        }
+    }
+
+    fn attach_mic(&mut self, mic: MicPreprocessor) {
+        self.mixer = DuckingMixer::new(GATE, MAX_SKEW_SAMPLES);
+        self.mic = Some(mic);
+    }
+
+    /// Gỡ micro: xả phần còn trong bộ trộn vào `f`, rồi âm thanh máy đi thẳng.
+    fn detach_mic(&mut self, f: &mut Frames) {
+        self.mic = None;
+        self.mixer.flush_into(&mut f.asr, &mut f.vad);
+    }
+
+    /// Tỉ lệ thời gian micro bị hạ, để ghi log (spec §5.6).
+    fn ducked_ratio(&self) -> f32 {
+        self.mixer.ducked_ratio()
+    }
+
+    fn drain(&mut self, f: &mut Frames) -> anyhow::Result<()> {
+        self.pb.clear();
+        self.playback.drain(&mut self.pb)?;
+        f.playback.extend_from_slice(&self.pb);
+        let Some(mic) = self.mic.as_mut() else {
+            f.asr.extend_from_slice(&self.pb);
+            f.vad.extend_from_slice(&self.pb);
+            return Ok(());
+        };
+        self.mic_asr.clear();
+        self.mic_vad.clear();
+        mic.drain(&mut self.mic_asr, &mut self.mic_vad)?;
+        f.mic.extend_from_slice(&self.mic_asr);
+        self.mixer.push_playback(&self.pb);
+        self.mixer.push_mic(&self.mic_asr, &self.mic_vad);
+        self.mixer.drain_into(&mut f.asr, &mut f.vad);
+        Ok(())
+    }
+}
+
+/// Khi nào báo vấn đề của micro ở chế độ trộn: mỗi lần mã lỗi đổi, và một lần khi mở lại được.
+#[derive(Debug, Default)]
+struct MicReport {
+    current: Option<&'static str>,
+}
+
+impl MicReport {
+    /// Mở micro lỗi với `code`: trả sự kiện cần báo, nếu có.
+    fn failed(&mut self, code: &'static str) -> Option<Option<&'static str>> {
+        (self.current.replace(code) != Some(code)).then_some(Some(code))
+    }
+
+    /// Micro mở được: trả sự kiện xóa nếu trước đó đang báo lỗi.
+    fn ok(&mut self) -> Option<Option<&'static str>> {
+        self.current.take().map(|_| None)
+    }
+}
+
+/// Đã có quyền micro chưa. `ask`: chưa hỏi thì hỏi (hộp thoại macOS; chỉ chế độ micro, vì ở chế độ trộn luồng thu còn phải
+/// đọc âm thanh máy, và `start_with` đã hỏi trước). Không hỏi thì quyền chưa hỏi coi như chưa có.
+fn ensure_mic_permission(ask: bool) -> anyhow::Result<()> {
     let permission = match audio_capture::mic_permission() {
-        MicPermission::Undetermined => audio_capture::request_mic_permission(MIC_PROMPT_WAIT)?,
+        MicPermission::Undetermined if ask => audio_capture::request_mic_permission(MIC_PROMPT_WAIT)?,
         other => other,
     };
     if permission == MicPermission::Granted {
@@ -479,30 +610,30 @@ fn mic_transport(device: Option<&str>) -> &'static str {
         .map_or("unknown", |d| d.transport.as_str())
 }
 
-/// Mở micro và chạy nó; lỗi thì dừng nguồn.
-fn start_mic(device: Option<&str>, noise_filter: bool) -> anyhow::Result<(Opened, Pre)> {
-    ensure_mic_permission()?;
+/// Micro đang chạy: nguồn, số liệu, và bộ tiền xử lý của nó.
+struct OpenMic {
+    source: Box<dyn Source>,
+    stats: Arc<CaptureStats>,
+    pre: MicPreprocessor,
+}
+
+/// Mở micro và chạy nó; lỗi thì dừng nguồn. `ask`: xem [`ensure_mic_permission`].
+fn open_mic(device: Option<&str>, noise_filter: bool, ask: bool) -> anyhow::Result<OpenMic> {
+    ensure_mic_permission(ask)?;
     let stats = Arc::new(CaptureStats::default());
     let mut source = audio_capture::mic_source(device.map(str::to_string), stats.clone())?;
     let (producer, consumer) = rtrb::RingBuffer::new(RING_SAMPLES);
     source.start(producer)?;
     let format = source.format();
     match MicPreprocessor::new(consumer, format, noise_filter) {
-        Ok(p) => {
+        Ok(pre) => {
             log::info!(
                 "đang thu micro: {} Hz, {} kênh, kết nối {}, lọc ồn {noise_filter}",
                 format.sample_rate,
                 format.channels,
                 mic_transport(device)
             );
-            Ok((
-                Opened {
-                    sources: vec![source],
-                    stats: vec![stats],
-                    tapped: None,
-                },
-                Pre::Mic(Box::new(p)),
-            ))
+            Ok(OpenMic { source, stats, pre })
         }
         Err(e) => {
             source.stop();
@@ -511,16 +642,115 @@ fn start_mic(device: Option<&str>, noise_filter: bool) -> anyhow::Result<(Opened
     }
 }
 
+fn start_mic(device: Option<&str>, noise_filter: bool) -> anyhow::Result<(Opened, Pre)> {
+    let mic = open_mic(device, noise_filter, true)?;
+    Ok((
+        Opened {
+            sources: vec![mic.source],
+            stats: vec![mic.stats],
+            tapped: None,
+        },
+        Pre::Mic(Box::new(mic.pre)),
+    ))
+}
+
+/// Micro của chế độ trộn (QĐ5 của kế hoạch 03): mở, mở lại khi micro mặc định đổi hay luồng thu chết, thử lại mỗi 2 giây khi
+/// lỗi; lỗi không dừng phiên mà báo [`CaptureEvent::MicIssue`].
+struct MicSide {
+    device: Option<String>,
+    noise_filter: bool,
+    source: Option<(Box<dyn Source>, Arc<CaptureStats>)>,
+    signature: Option<String>,
+    retry_at: Instant,
+    report: MicReport,
+}
+
+impl MicSide {
+    fn new(device: Option<String>, noise_filter: bool) -> Self {
+        Self {
+            device,
+            noise_filter,
+            source: None,
+            signature: None,
+            retry_at: Instant::now(),
+            report: MicReport::default(),
+        }
+    }
+
+    /// Một lần canh: gỡ micro khi nó chết hay micro mặc định đổi; mở micro khi tới giờ thử.
+    fn tick(&mut self, now: Instant, shared: &Mutex<Option<Pre>>, on_event: &OnEvent) {
+        let follows_default = self.device.is_none();
+        let dead = self.source.as_ref().is_some_and(|(s, _)| s.failed())
+            || (self.source.is_some() && follows_default && audio_capture::default_input_signature() != self.signature);
+        if dead {
+            log::info!("mở lại micro");
+            self.close(shared);
+            self.retry_at = now;
+        }
+        if self.source.is_some() || now < self.retry_at {
+            return;
+        }
+        self.signature = audio_capture::default_input_signature();
+        match open_mic(self.device.as_deref(), self.noise_filter, false) {
+            Ok(mic) => {
+                if let Some(Pre::Both(b)) = shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+                    b.attach_mic(mic.pre);
+                }
+                self.source = Some((mic.source, mic.stats));
+                if let Some(event) = self.report.ok() {
+                    on_event(CaptureEvent::MicIssue(event));
+                }
+            }
+            Err(e) => {
+                log::warn!("không mở được micro (chế độ trộn, phiên chạy tiếp với âm thanh máy): {e:#}");
+                self.retry_at = now + RETRY_AFTER;
+                // Lỗi của micro: dùng luật mã lỗi của chế độ micro (`micPermission` hay `micUnavailable`).
+                let as_mic = CapturePlan::Mic {
+                    device: self.device.clone(),
+                    noise_filter: self.noise_filter,
+                };
+                if let Some(event) = self.report.failed(error_code(&as_mic, &e)) {
+                    on_event(CaptureEvent::MicIssue(event));
+                }
+            }
+        }
+    }
+
+    /// Số khung micro đã nhận, để ghi log.
+    fn frames(&self) -> u64 {
+        self.source
+            .as_ref()
+            .map_or(0, |(_, s)| s.frames.load(Ordering::Relaxed))
+    }
+
+    /// Dừng micro và gỡ nó khỏi bộ trộn (phần còn trong bộ trộn bị bỏ: nguồn đang đóng hay mở lại).
+    fn close(&mut self, shared: &Mutex<Option<Pre>>) {
+        if let Some(Pre::Both(b)) = shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+            b.detach_mic(&mut Frames::default());
+        }
+        if let Some((mut s, _)) = self.source.take() {
+            s.stop();
+        }
+    }
+}
+
 fn start_plan(plan: &CapturePlan) -> anyhow::Result<(Opened, Pre)> {
     match plan {
         CapturePlan::Playback { source, include_self } => start_sources(source, *include_self),
         CapturePlan::Mic { device, noise_filter } => start_mic(device.as_deref(), *noise_filter),
+        CapturePlan::Both { source, .. } => {
+            let (opened, pre) = start_sources(source, false)?;
+            let Pre::Playback(playback) = pre else {
+                unreachable!("start_sources chỉ dựng Pre::Playback")
+            };
+            Ok((opened, Pre::Both(Box::new(BothPre::new(playback)))))
+        }
     }
 }
 
 /// Dấu hiệu của thiết bị mà nguồn theo: micro mặc định, hay thiết bị phát mặc định.
 fn device_signature(plan: &CapturePlan) -> Option<String> {
-    if plan.has_mic() {
+    if matches!(plan, CapturePlan::Mic { .. }) {
         audio_capture::default_input_signature()
     } else {
         audio_capture::default_output_signature()
@@ -555,7 +785,7 @@ fn someone_playing(source: &AudioSource) -> bool {
 /// Như [`someone_playing`], theo plan. Micro: không dùng (micro không có khái niệm "app đang phát").
 fn someone_playing_for(plan: &CapturePlan) -> bool {
     match plan {
-        CapturePlan::Playback { source, .. } => someone_playing(source),
+        CapturePlan::Playback { source, .. } | CapturePlan::Both { source, .. } => someone_playing(source),
         CapturePlan::Mic { .. } => false,
     }
 }
@@ -566,7 +796,7 @@ fn error_code(plan: &CapturePlan, err: &anyhow::Error) -> &'static str {
     match plan {
         CapturePlan::Mic { .. } if text.contains(MIC_DENIED) || text.contains(E_ACCESSDENIED) => errors::MIC_PERMISSION,
         CapturePlan::Mic { .. } => errors::MIC_UNAVAILABLE,
-        CapturePlan::Playback { source, .. } => {
+        CapturePlan::Playback { source, .. } | CapturePlan::Both { source, .. } => {
             if matches!(source, AudioSource::App { .. }) && text.contains("không phát âm thanh") {
                 errors::APP_NOT_PLAYING
             } else if cfg!(target_os = "macos") && text.contains("AudioHardwareCreateProcessTap") {
@@ -618,8 +848,18 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
     let mut watch = Watch::new(Instant::now());
     // Thiết bị chọn tay (Windows) hay micro chọn tay không theo thiết bị mặc định.
     let follows_default = match &plan {
-        CapturePlan::Playback { source, .. } => !matches!(source, AudioSource::Device { .. }),
+        CapturePlan::Playback { source, .. } | CapturePlan::Both { source, .. } => {
+            !matches!(source, AudioSource::Device { .. })
+        }
         CapturePlan::Mic { device, .. } => device.is_none(),
+    };
+    let mic_only = matches!(plan, CapturePlan::Mic { .. });
+    // Chế độ trộn: micro mở và mở lại riêng, lỗi không dừng phiên (QĐ5 của kế hoạch 03).
+    let mut mic_side = match &plan {
+        CapturePlan::Both {
+            device, noise_filter, ..
+        } => Some(MicSide::new(device.clone(), *noise_filter)),
+        _ => None,
     };
     while !stop.load(Ordering::SeqCst) {
         let signature = device_signature(&plan);
@@ -628,6 +868,10 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
                 *shared.lock().unwrap_or_else(|e| e.into_inner()) = Some(preprocessor);
                 if policy.on_ok() {
                     on_event(CaptureEvent::WaitingForApp(false));
+                }
+                if let Some(mic) = mic_side.as_mut() {
+                    mic.retry_at = Instant::now();
+                    mic.tick(Instant::now(), &shared, &on_event);
                 }
                 opened
             }
@@ -642,7 +886,7 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
                 continue;
             }
         };
-        if !plan.has_mic() {
+        if !mic_only {
             log::info!("đang thu âm thanh ({} nguồn)", opened.sources.len());
         }
         let frames = |o: &Opened| o.stats.iter().map(|s| s.frames.load(Ordering::Relaxed)).sum::<u64>();
@@ -652,6 +896,9 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
         let mut stats_at = Instant::now();
         while !wait_or_stop(&stop, WATCH_EVERY) {
             let now = Instant::now();
+            if let Some(mic) = mic_side.as_mut() {
+                mic.tick(now, &shared, &on_event);
+            }
             #[cfg_attr(not(target_os = "macos"), allow(unused_mut))]
             let mut seen = Observed {
                 device_changed: follows_default && device_signature(&plan) != signature,
@@ -659,13 +906,7 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
                 ..Observed::default()
             };
             #[cfg(target_os = "macos")]
-            if let (
-                Some(tapped),
-                CapturePlan::Playback {
-                    source: AudioSource::App { bundle_id },
-                    ..
-                },
-            ) = (&opened.tapped, &plan)
+            if let (Some(tapped), Some(AudioSource::App { bundle_id })) = (&opened.tapped, playback_source(&plan))
                 && now.duration_since(pids_at) >= PIDS_EVERY
             {
                 pids_at = now;
@@ -675,7 +916,7 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
             let tick = watch.tick(
                 now,
                 frames(&opened),
-                cfg!(target_os = "macos") && !plan.has_mic(),
+                cfg!(target_os = "macos") && !mic_only,
                 || someone_playing_for(&plan),
                 seen,
             );
@@ -686,8 +927,19 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
             if now.duration_since(stats_at) >= STATS_EVERY {
                 stats_at = now;
                 let all: Vec<[u64; 5]> = opened.stats.iter().map(|s| s.snapshot()).collect();
-                log::info!("số liệu thu (frames, silence_inserted, skipped, dropped, rejected_cycles): {all:?}");
+                let ducked = match shared.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+                    Some(Pre::Both(b)) => Some(b.ducked_ratio()),
+                    _ => None,
+                };
+                log::info!(
+                    "số liệu thu (frames, silence_inserted, skipped, dropped, rejected_cycles): {all:?}; khung micro {}; \
+                     micro bị hạ {ducked:?}",
+                    mic_side.as_ref().map_or(0, MicSide::frames)
+                );
             }
+        }
+        if let Some(mic) = mic_side.as_mut() {
+            mic.close(&shared);
         }
         *shared.lock().unwrap_or_else(|e| e.into_inner()) = None;
         opened.sources.iter_mut().for_each(|s| s.stop());
@@ -701,11 +953,12 @@ pub struct LiveCapture {
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
     filler: ClockFiller,
-    zeros: ZeroWatch,
+    /// "Toàn số 0" trên mẫu chưa trộn của âm thanh máy (macOS: nghi thiếu quyền ghi âm thanh hệ thống) và của micro.
+    zeros_playback: ZeroWatch,
+    zeros_mic: ZeroWatch,
     on_event: Arc<OnEvent>,
     started: Instant,
-    buf: Vec<f32>,
-    vad_buf: Vec<f32>,
+    frames: Frames,
     /// Bản VAD bỏ đi khi engine chỉ gọi `read`.
     unused: Vec<f32>,
 }
@@ -728,11 +981,11 @@ impl LiveCapture {
             stop,
             thread,
             filler: ClockFiller::new(200),
-            zeros: ZeroWatch::default(),
+            zeros_playback: ZeroWatch::default(),
+            zeros_mic: ZeroWatch::default(),
             on_event,
             started: Instant::now(),
-            buf: Vec::new(),
-            vad_buf: Vec::new(),
+            frames: Frames::default(),
             unused: Vec::new(),
         }
     }
@@ -748,35 +1001,42 @@ impl FrameSource for LiveCapture {
     }
 
     fn read_with_vad(&mut self, out: &mut Vec<f32>, vad_out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
-        self.buf.clear();
-        self.vad_buf.clear();
-        let (shared, vad_buf) = (&self.shared, &mut self.vad_buf);
-        drain_when_ready(&mut self.buf, timeout, POLL_STEP, |buf| {
-            match shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-                Some(p) => p.drain(buf, vad_buf),
+        self.frames.clear();
+        // `drain_when_ready` chờ tới khi vector nó giữ có mẫu: cho nó giữ bản cho whisper, và trong mỗi lần đọc thì đổi bản đó
+        // vào `frames` để `Pre::drain` ghi đủ bốn phần.
+        let (shared, frames) = (&self.shared, &mut self.frames);
+        let mut asr = std::mem::take(&mut frames.asr);
+        drain_when_ready(&mut asr, timeout, POLL_STEP, |buf| {
+            std::mem::swap(&mut frames.asr, buf);
+            let result = match shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+                Some(p) => p.drain(frames),
                 None => Ok(()),
-            }
+            };
+            std::mem::swap(&mut frames.asr, buf);
+            result
         })?;
+        self.frames.asr = asr;
         let now = Instant::now();
-        match &self.plan {
-            CapturePlan::Mic { .. } => {
-                if let Some(silent) = self.zeros.push(&self.buf, now, || true) {
-                    (self.on_event)(CaptureEvent::MicSilent(silent));
-                }
-            }
-            CapturePlan::Playback { source, .. } => {
-                if cfg!(target_os = "macos")
-                    && let Some(suspected) = self.zeros.push(&self.buf, now, || someone_playing(source))
-                {
-                    (self.on_event)(CaptureEvent::PermissionSuspected(suspected));
-                }
-            }
+        if self.plan.has_mic()
+            && let Some(silent) = self.zeros_mic.push(&self.frames.mic, now, || true)
+        {
+            (self.on_event)(CaptureEvent::MicSilent(silent));
         }
-        let silence = self.filler.silence_before(self.started.elapsed(), self.buf.len());
+        if cfg!(target_os = "macos")
+            && let Some(source) = playback_source(&self.plan)
+            && let Some(suspected) = self
+                .zeros_playback
+                .push(&self.frames.playback, now, || someone_playing(source))
+        {
+            (self.on_event)(CaptureEvent::PermissionSuspected(suspected));
+        }
+        let silence = self
+            .filler
+            .silence_before(self.started.elapsed(), self.frames.asr.len());
         out.extend(std::iter::repeat_n(0.0, silence));
-        out.extend_from_slice(&self.buf);
+        out.extend_from_slice(&self.frames.asr);
         vad_out.extend(std::iter::repeat_n(0.0, silence));
-        vad_out.extend_from_slice(&self.vad_buf);
+        vad_out.extend_from_slice(&self.frames.vad);
         Ok(!self.stop.load(Ordering::SeqCst))
     }
 }
@@ -802,6 +1062,123 @@ impl Drop for LiveCapture {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use audio_capture::AudioFormat;
+
+    fn both() -> CapturePlan {
+        CapturePlan::Both {
+            source: AudioSource::System,
+            device: None,
+            noise_filter: true,
+        }
+    }
+
+    /// Spec 2026-10-24-nguon-micro §5.6: chế độ trộn có micro; lỗi mở âm thanh máy vẫn theo mã của âm thanh máy.
+    #[test]
+    fn the_both_plan_uses_the_mic_and_playback_error_codes() {
+        assert!(both().has_mic());
+        let other = anyhow::anyhow!("AudioDeviceStart lỗi OSStatus 1");
+        assert_eq!(error_code(&both(), &other), errors::CAPTURE_FAILED);
+    }
+
+    /// Chưa có micro: âm thanh máy đi thẳng ra cả hai bản; mẫu chưa trộn của âm thanh máy được giữ cho bộ canh.
+    #[test]
+    fn without_a_mic_the_both_preprocessor_passes_playback_through() {
+        let (mut producer, consumer) = rtrb::RingBuffer::new(16_000);
+        let format = AudioFormat {
+            sample_rate: 16_000,
+            channels: 1,
+        };
+        let playback = Preprocessor::new(vec![(consumer, format)]).unwrap();
+        let mut pre = Pre::Both(Box::new(BothPre::new(playback)));
+        for _ in 0..1_600 {
+            producer.push(0.25).unwrap();
+        }
+        let mut f = Frames::default();
+        pre.drain(&mut f).unwrap();
+        assert_eq!(
+            (f.asr.len(), f.vad.len(), f.playback.len(), f.mic.len()),
+            (1_600, 1_600, 1_600, 0)
+        );
+        assert!(f.asr.iter().chain(&f.vad).all(|&v| v == 0.25));
+    }
+
+    /// Có micro: tiếng online đang phát thì micro bị hạ (−30 dB); mẫu chưa trộn của micro vẫn nguyên để canh "toàn số 0".
+    #[test]
+    fn with_a_mic_the_both_preprocessor_ducks_the_mic_under_playback() {
+        let (mut pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
+        let (mut mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+        let format = AudioFormat {
+            sample_rate: 16_000,
+            channels: 1,
+        };
+        let mut both = BothPre::new(Preprocessor::new(vec![(pb_out, format)]).unwrap());
+        both.attach_mic(MicPreprocessor::new(mic_out, format, false).unwrap());
+        let mut pre = Pre::Both(Box::new(both));
+        // Micro: sin 300 Hz biên độ 0,001 (lọc 80 Hz giữ nguyên; tín hiệu DC sẽ bị lọc mất và test không còn ý nghĩa).
+        for i in 0..8_000 {
+            pb_in.push(if i % 2 == 0 { 0.1 } else { -0.1 }).unwrap();
+            mic_in
+                .push(0.001 * (2.0 * std::f32::consts::PI * 300.0 * i as f32 / 16_000.0).sin())
+                .unwrap();
+        }
+        let mut f = Frames::default();
+        pre.drain(&mut f).unwrap();
+        assert_eq!(f.asr.len(), f.vad.len());
+        assert!(f.asr.len() > 1_600 && !f.mic.is_empty());
+        let level = |x: &[f32]| x.iter().map(|v| v.abs()).sum::<f32>() / x.len() as f32;
+        // Bỏ 1 600 mẫu đầu (bộ giới hạn và cổng vừa khởi động). Phần còn lại, hiệu giữa bản trộn và âm thanh máy chỉ còn micro
+        // đã hạ: micro sau bộ giới hạn khoảng 0,01 × 2/π, hạ −30 dB còn khoảng 0,0002.
+        let rest: Vec<f32> = f.asr[1_600..]
+            .iter()
+            .zip(&f.playback[1_600..])
+            .map(|(a, p)| a - p)
+            .collect();
+        let unducked = level(&f.mic[1_600..]);
+        assert!(
+            level(&rest) < unducked * 0.05,
+            "micro phải bị hạ: {} so với {unducked}",
+            level(&rest)
+        );
+    }
+
+    /// Gỡ micro giữa chừng: phần còn trong bộ trộn được xả, sau đó âm thanh máy lại đi thẳng.
+    #[test]
+    fn detaching_the_mic_flushes_the_mixer() {
+        let (mut pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
+        let (_mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+        let format = AudioFormat {
+            sample_rate: 16_000,
+            channels: 1,
+        };
+        let mut both = BothPre::new(Preprocessor::new(vec![(pb_out, format)]).unwrap());
+        both.attach_mic(MicPreprocessor::new(mic_out, format, false).unwrap());
+        let mut pre = Pre::Both(Box::new(both));
+        for _ in 0..800 {
+            pb_in.push(0.2).unwrap();
+        }
+        let mut f = Frames::default();
+        pre.drain(&mut f).unwrap();
+        assert!(f.asr.is_empty(), "chưa có micro để ghép, chưa quá 100 ms");
+        let Pre::Both(b) = &mut pre else { unreachable!() };
+        b.detach_mic(&mut f);
+        assert_eq!(f.asr.len(), 800, "phần chờ micro được xả ra");
+        for _ in 0..160 {
+            pb_in.push(0.2).unwrap();
+        }
+        pre.drain(&mut f).unwrap();
+        assert_eq!(f.asr.len(), 960);
+    }
+
+    /// `MicSide` báo mỗi lần mã lỗi đổi, và báo hết lỗi khi mở lại được (QĐ5 của kế hoạch 03).
+    #[test]
+    fn mic_issues_are_reported_once_per_change() {
+        let mut r = MicReport::default();
+        assert_eq!(r.failed(errors::MIC_PERMISSION), Some(Some(errors::MIC_PERMISSION)));
+        assert_eq!(r.failed(errors::MIC_PERMISSION), None);
+        assert_eq!(r.failed(errors::MIC_UNAVAILABLE), Some(Some(errors::MIC_UNAVAILABLE)));
+        assert_eq!(r.ok(), Some(None));
+        assert_eq!(r.ok(), None);
+    }
 
     fn playback(source: AudioSource) -> CapturePlan {
         CapturePlan::Playback {
