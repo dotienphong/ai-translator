@@ -143,6 +143,24 @@ máy có năm lượt. Phép đo ở buổi trước còn có một lượt Tr�
 - Silero trong app: trung bình 1,5–1,7 ms mỗi lần hỏi, chậm nhất 2,8–16,3 ms; 57–283 lần trong mỗi khoảng log 60–72 giây (thay vì 1 875
   khi hỏi mọi khung). Không gây trễ đo được.
 
+**Giao thức A2 gốc (100 giây đầu `online.wav` của `s1-luot`, kế hoạch 05 Task 6 Step 1), cùng bản dựng, xen kẽ bốn lượt:**
+
+| Lượt | Chế độ | Đoạn | Nhận dạng p50 | Dịch p50 | Tổng p50 | Tổng p90 | `micro bị hạ` |
+|---|---|---|---|---|---|---|---|
+| 1 | Trộn | 8 | 256 ms | 485 ms | 1 120 ms | 1 363 ms | 0,490 |
+| 2 | Âm thanh máy | 8 | 247 ms | 482 ms | 1 024 ms | 1 312 ms | — |
+| 3 | Trộn | 8 | 257 ms | 496 ms | 1 088 ms | 1 376 ms | 0,490 |
+| 4 | Âm thanh máy | 8 | 259 ms | 487 ms | 1 120 ms | 1 331 ms | — |
+
+- Trộn so với Âm thanh máy (trung bình hai lượt): tổng p50 1 104 so với 1 072 ms (**+32 ms**), p90 1 370 so với 1 322 ms
+  (**+48 ms**). Đạt mức +50 ms và +100 ms.
+- Mức của kế hoạch gốc (tổng p50 ≤ 1 076 ms, tức lượt A2 cũ 1 056 + 20) **không đạt theo nghĩa đen** (1 120 và 1 088 ms), và
+  cũng không có cách nào đạt chắc chắn: chế độ Âm thanh máy cùng ngưỡng 500 ms trên cùng track cho 1 024 và 1 120 ms (lượt cũ:
+  1 088 ms). Mức tuyệt đối đó là một số đo đơn lẻ nằm dưới chính mốc đối chứng cùng ngưỡng, nên được thay bằng so sánh cùng
+  điều kiện (spec mục 17).
+- Nhận dạng p50 +20 ms và dịch p50 −2 / +9 ms so với lượt A2 cũ (236 ms, 487 ms): trong ±30 ms.
+- `micro bị hạ` 0,49 > 0 ở cả hai lượt Trộn; log không có "không nạp được".
+
 ### A7 trong app thật với cổng kép (2026-10-25)
 
 **Kết quả: đạt.** Cùng bản dựng. Tình huống y như A7 ngày 2026-10-25 lần trước: nguồn "Toàn hệ thống, trừ app này", chế độ
