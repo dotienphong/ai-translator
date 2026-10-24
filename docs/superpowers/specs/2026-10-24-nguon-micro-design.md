@@ -264,11 +264,14 @@ Bản thu WAV chứa giọng người thật **không commit**. Chỉ commit b�
 
 - Thêm `--mic [<id>]` vào `crates/audio-capture/src/bin/capture.rs`. Công cụ ghi hai file WAV 16 kHz mono chưa trộn
   (`*-playback.wav`, `*-mic.wav`) cùng mốc thời gian, và ghi số liệu lệch đồng hồ.
-- Thêm `--play-room <danh sách clip>` (macOS): công cụ tự phát các clip "người trong phòng" ra loa. Tap đã loại trừ chính
-  tiến trình công cụ nên tiếng này chỉ vào micro. Clip "người online" do một app khác phát (ví dụ `afplay`), nên tap thu
-  được.
-- Clip lấy từ FLEURS (có bản chép chuẩn). Công cụ ghi lịch phát (clip, nguồn, giờ bắt đầu, giờ kết thúc) ra JSON, để
-  chấm riêng từng nguồn.
+- macOS: một script phát hai track bằng hai tiến trình `afplay` (track "người online", track "người trong phòng"), rồi
+  chạy công cụ với `--pid <pid của afplay phát track online>`. Tap chỉ thu tiến trình đó, nên tiếng "trong phòng" chỉ vào
+  micro qua loa, đúng như giọng người trong phòng. Khi cần đối chứng bằng tai nghe, track "trong phòng" phát từ điện
+  thoại.
+- Thêm `--cues <file JSON>`: công cụ in lời nhắc đúng giờ (ví dụ "Gõ phím laptop 2 phút") và ghi giờ thật vào
+  `meta.json`, để chấm chữ ảo theo từng loại tiếng ồn.
+- Clip lấy từ FLEURS (có bản chép chuẩn). Script dựng track ghi lịch của từng clip (nguồn, giờ bắt đầu, giờ kết thúc)
+  ra `schedule.json`. Lúc chấm, mỗi track được căn với bản thu bằng tương quan đường bao, rồi chấm riêng từng nguồn.
 - Câu trả lời rất ngắn (FLEURS không có): khoảng 40 câu một–hai từ ("OK", "Yes", "Vâng", "Đúng rồi", "好的", "はい",
   "네"…), dựng bằng lệnh `say` của macOS với giọng có sẵn của từng tiếng, kèm bản chép chuẩn.
 
