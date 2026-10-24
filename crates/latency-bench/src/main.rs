@@ -8,6 +8,7 @@ mod session;
 mod session_metrics;
 mod session_replay;
 mod stats;
+mod wavio;
 
 use clap::Parser;
 
@@ -24,6 +25,8 @@ enum Command {
     MtEval(mt_eval::MtEvalArgs),
     /// Đo độ trễ bằng `pipeline::Engine` thật trên một session phát lại theo thời gian thực (spec 2026-10-10 §10.1).
     Session(session::SessionArgs),
+    /// Căn một bản thu đã xử lý ngoài thẳng hàng với `mic.wav` (spike nguồn micro).
+    Align(wavio::AlignArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -41,6 +44,7 @@ fn main() -> anyhow::Result<()> {
             Command::AsrEval(args) => asr_eval::run(args),
             Command::MtEval(args) => mt_eval::run(args),
             Command::Session(args) => session::run(args),
+            Command::Align(args) => wavio::run_align(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }
