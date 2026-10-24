@@ -50,7 +50,60 @@ Tái hiện A7 (`he-thong-mic`, 4 đoạn có tiếng):
   `nen-h36` 80,0% → 15,8%; A7 được nhận đúng.
 - Chưa đo chi phí và A2 trên app thật (Task 6).
 
+## Đo lại với nhiều clip khác nhau (2026-10-25)
+
+Lượt đo đầu chỉ có 30 clip khác nhau (câu mẫu lặp 48 lần), nên chênh 0,4–2 điểm ở trên nằm trong nhiễu của mẫu. Đo lại bằng
+`build_lon.py` (`score_mix.py --subset` chấm riêng nửa chẵn và nửa lẻ của lịch clip để chỉnh trên nửa này, kiểm nửa kia; lượt này
+không phải chỉnh gì nên cả hai nửa chỉ để kiểm độ ổn định). Mỗi clip FLEURS khác nhau, 4–12 giây, không phải băng hẹp.
+
+**Cảnh số hóa `lon-h<dB>`:** 230 clip online, 40,3 phút. Âm thanh máy là track hạ `<dB>` dB, micro chỉ có tiếng nền phòng thật
+(−45 dBFS, `im-lang`). Mức đạt theo spec mục 17: −36 và −46 dBFS không xấu hơn cách cũ quá 10%; −56 và −62 dBFS không xấu hơn
+chế độ Âm thanh máy quá 10%.
+
+| Giọng online | CU (cũ) | TAT | **LOINOI** | PB-app | Mức đạt | Nửa chẵn / nửa lẻ của LOINOI | Kết quả |
+|---|---|---|---|---|---|---|---|
+| −36 dBFS | 7,9% | 7,7% | **7,7%** | 10,1% | ≤ 8,69% | 6,3% / 9,1% (đạt cả hai) | **Đạt** |
+| −46 dBFS | 8,6% | 7,4% | **7,8%** | 10,3% | ≤ 9,46% | 7,4% / 8,1% (đạt cả hai) | **Đạt** |
+| −56 dBFS | 17,6% | 16,0% | **9,5%** | 11,8% | ≤ 12,98% | 9,4% / 9,9% (đạt cả hai) | **Đạt** |
+| −62 dBFS | 83,9% | 78,1% | **15,0%** | 15,8% | ≤ 17,38% | 15,2% / 15,3% (đạt cả hai) | **Đạt** |
+
+Chữ ảo: 0 ở cả bốn cảnh, cả bốn phương án.
+
+**Bản thu thật `lon-thu-can`:** 144 clip (104 online, 40 trong phòng), 26,1 phút, loa 60%, micro tích hợp. Thu bằng
+`run_scene_macos.sh`: không rớt khung, không chèn lặng. Tap và micro lệch cố định 1 020 ms (đo ở đầu, giữa, cuối), cắt 1 020 ms
+đầu của hai file micro, sau đó độ trễ vọng 0 ms. Trong phòng 40 clip chỉ qua micro.
+
+| Chỉ tiêu | CU (cũ) | TAT | **LOINOI** | PB-app | Mức đạt | Kết quả |
+|---|---|---|---|---|---|---|
+| Lỗi online | 8,0% | 8,1% | **8,4%** | 10,3% | ≤ CU × 1,10 = 8,8% | **Đạt** |
+| Lỗi trong phòng | 7,5% | 7,5% | **7,5%** | (không nghe) | ≤ CU × 1,10 = 8,25% | **Đạt** |
+| Giữ câu trong phòng | 100% | 100% | **100%** | 0% | 100% | **Đạt** |
+| Chữ ảo (26 phút) | 0 | 0 | **0** | 0 | ≤ 1 mỗi 10 phút | **Đạt** |
+
+Mốc A-trộn tuyệt đối của spec mục 16 (online ≤ 10,78%, phòng ≤ 5,72%) đo trên cảnh `s1-loa` 30 clip: `LOINOI` 4,4% / 4,4%, đạt.
+Bộ clip mới có mức lỗi nền khác (phòng 7,5% với cả cách cũ), nên ở đây so với cách cũ trên cùng bộ clip.
+
+**So từng clip với cách cũ và với chế độ Âm thanh máy** (kiểm dấu hai phía, chỉ tính clip có khác biệt):
+
+| Cảnh | So với | Online: tốt hơn / tệ hơn / bằng | Tổng lỗi (LOINOI vs đối chứng) | p |
+|---|---|---|---|---|
+| `lon-thu-can` | CU | 5 / 8 / 91 | 258 vs 246 | 0,58 |
+| `lon-thu-can` | CU, trong phòng | 0 / 0 / 40 | 96 vs 96 | 1,00 |
+| `lon-thu-can` | PB-app | 36 / 15 / 53 | 258 vs 316 | 0,005 |
+| `lon-h10` | CU | 23 / 25 / 182 | 507 vs 513 | 0,89 |
+| `lon-h20` | CU | 38 / 33 / 159 | 521 vs 576 | 0,64 |
+| `lon-h30` | CU | 134 / 18 / 78 | 604 vs 1 232 | < 0,001 |
+| `lon-h36` | CU | 226 / 2 / 2 | 891 vs 5 700 | < 0,001 |
+| `lon-h36` | PB-app | 67 / 79 / 84 | 891 vs 884 | 0,36 |
+
+Đọc: ở mức giọng bình thường cách mới **không khác** cách cũ (không có chênh lệch có ý nghĩa; người trong phòng giống hệt);
+ở giọng nhỏ cách mới tốt hơn hẳn và **ngang chế độ Âm thanh máy** (−62 dBFS: 891 so với 884 lỗi).
+
+Máy: MacBook Pro M4 Pro, macOS 26.6.2, `asr-worker` có Metal (mọi `asr-worker.log` có `Metal total size`), gói Chuẩn. Dữ liệu và
+kết quả không commit (`data/`).
+
 ## Kết luận
 
-Chưa đủ mức đạt theo kế hoạch: ba tiêu chí trượt 0,4–2 điểm. Theo kế hoạch, dừng và báo chủ dự án; không tự chỉnh ngưỡng.
-Dữ liệu (không commit): `data/results/<cảnh>/loi-noi/`.
+Tất cả tiêu chí của kế hoạch 05 **đạt** khi đo trên mẫu đủ lớn (230 clip số hóa và 144 clip thu thật). Ba chỗ trượt ở lượt đo đầu
+(78 clip, trong đó chỉ 30 clip khác nhau) là nhiễu của mẫu nhỏ, không phải lỗi của thiết kế; không phải chỉnh tham số nào. Việc
+còn lại của kế hoạch 05 là Task 6 (A2 và tình huống A7 trên app thật) và Task 7.

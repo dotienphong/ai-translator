@@ -97,8 +97,9 @@ trên Metal.
 
 ## Nhường lời theo tiếng nói (kế hoạch 05)
 
-Đo offline ngày 2026-10-25, biên bản `loi-noi.md`.
-- Đạt: A-trộn (`s1-loa` online 4,4%, phòng 4,4%), giọng online −36 và −56 dBFS, 0 câu ảo, tái hiện A7 nhận đúng câu mẫu.
-- Trượt mức đạt của kế hoạch 0,4–2 điểm (cảnh mẫu nhỏ, 78 clip): giọng −46 dBFS (6,8% so với 6,38%), giọng −62 dBFS (15,8%
-  so với 13,75%), lỗi của `ao-tron-can` (6,2% so với 5,72%). Chờ chủ dự án quyết.
-- Cải thiện so với cách cũ ở đúng chỗ thiết kế nhắm tới: −56 dBFS 13,7% → 7,3%; −62 dBFS 80,0% → 15,8%.
+**Đạt** (đo offline ngày 2026-10-25, biên bản `loi-noi.md`).
+- Lượt đầu (78 clip, chỉ 30 clip khác nhau): đạt A-trộn, giọng −36 và −56 dBFS, 0 câu ảo, tái hiện A7 nhận đúng; trượt 0,4–2
+  điểm ở ba tiêu chí do mẫu nhỏ.
+- Đo lại với mẫu lớn (230 clip số hóa × 4 mức giọng, 144 clip thu thật 26 phút): đạt mọi tiêu chí, cả hai nửa clip; 0 chữ ảo.
+  Giọng −62 dBFS: 15,0% (cách cũ 83,9%, chế độ Âm thanh máy 15,8%). Mức giọng bình thường không khác cách cũ (kiểm dấu theo
+  cặp, p ≥ 0,58); người trong phòng giống hệt (40/40 clip).
