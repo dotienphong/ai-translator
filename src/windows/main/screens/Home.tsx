@@ -43,7 +43,7 @@ export function Home() {
   const audioSources = useApp((s) => s.audioSources);
   const loadAudioSourceNames = useApp((s) => s.loadAudioSourceNames);
   const inputDevices = useApp((s) => s.inputDevices);
-  const loadInputDevices = useApp((s) => s.loadInputDevices);
+  const loadInputDeviceNames = useApp((s) => s.loadInputDeviceNames);
   const openMicSettings = useApp((s) => s.openMicSettings);
   const toggleSession = useApp((s) => s.toggleSession);
   const pending = useApp((s) => s.sessionPending);
@@ -66,8 +66,8 @@ export function Home() {
   // Chế độ micro: tên micro nằm trong danh sách micro; đọc một lần khi chưa có.
   const needsMicNames = settings !== null && settings.captureMode !== "playback" && inputDevices === null;
   useEffect(() => {
-    if (needsMicNames) void loadInputDevices();
-  }, [needsMicNames, loadInputDevices]);
+    if (needsMicNames) void loadInputDeviceNames();
+  }, [needsMicNames, loadInputDeviceNames]);
   if (!status || !settings || !info) return null;
   const session = status.session;
   const trial = license && trialKey(license);

@@ -136,6 +136,10 @@ const GATE: GateParams = GateParams {
     speech_floor_dbfs: -80.0,
 };
 
+/// Âm thanh máy không trả mẫu nào chừng này thì coi là im (tap macOS tự dừng khi không app nào phát): micro được xả ngay thay
+/// vì chờ ghép cặp, nếu không giọng trong phòng trễ thêm 100 ms đúng lúc phía online chưa nói (spec mục 17: không thêm trễ).
+const PLAYBACK_IDLE: Duration = Duration::from_millis(150);
+
 /// Chu kỳ ghi log thời gian Silero của bộ nhường lời.
 const SPEECH_LOG_EVERY: Duration = Duration::from_secs(60);
 
@@ -627,6 +631,12 @@ struct BothPre {
     pb: Vec<f32>,
     mic_asr: Vec<f32>,
     mic_vad: Vec<f32>,
+    /// Lần cuối âm thanh máy trả mẫu; quá `idle_after` thì micro được xả ngay (tap macOS không trả khung khi không app nào phát).
+    last_pb: Instant,
+    idle_after: Duration,
+    /// Phần bộ trộn xả khi gỡ micro, chờ lần `drain` kế tiếp để không mất.
+    pending_asr: Vec<f32>,
+    pending_vad: Vec<f32>,
 }
 
 impl BothPre {
@@ -638,6 +648,10 @@ impl BothPre {
             pb: Vec::new(),
             mic_asr: Vec::new(),
             mic_vad: Vec::new(),
+            last_pb: Instant::now(),
+            idle_after: PLAYBACK_IDLE,
+            pending_asr: Vec::new(),
+            pending_vad: Vec::new(),
         }
     }
 
@@ -646,10 +660,10 @@ impl BothPre {
         self.mic = Some(mic);
     }
 
-    /// Gỡ micro: xả phần còn trong bộ trộn vào `f`, rồi âm thanh máy đi thẳng.
-    fn detach_mic(&mut self, f: &mut Frames) {
+    /// Gỡ micro: xả phần còn trong bộ trộn (giữ cho lần `drain` kế tiếp), rồi âm thanh máy đi thẳng.
+    fn detach_mic(&mut self) {
         self.mic = None;
-        self.mixer.flush_into(&mut f.asr, &mut f.vad);
+        self.mixer.flush_into(&mut self.pending_asr, &mut self.pending_vad);
     }
 
     /// Tỉ lệ thời gian micro bị hạ, để ghi log (spec §5.6).
@@ -658,8 +672,13 @@ impl BothPre {
     }
 
     fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>) -> anyhow::Result<()> {
+        f.asr.append(&mut self.pending_asr);
+        f.vad.append(&mut self.pending_vad);
         self.pb.clear();
         self.playback.drain(&mut self.pb)?;
+        if !self.pb.is_empty() {
+            self.last_pb = Instant::now();
+        }
         f.playback.extend_from_slice(&self.pb);
         let Some(mic) = self.mic.as_mut() else {
             f.asr.extend_from_slice(&self.pb);
@@ -673,6 +692,9 @@ impl BothPre {
         self.mixer.push_playback(&self.pb);
         self.mixer.push_mic(&self.mic_asr, &self.mic_vad);
         self.mixer.drain_into_with(&mut f.asr, &mut f.vad, speech);
+        if self.last_pb.elapsed() >= self.idle_after {
+            self.mixer.release_mic(&mut f.asr, &mut f.vad);
+        }
         if let Some(e) = self.mixer.take_speech_error() {
             log::warn!("nhường lời: VAD lỗi, chỉ hạ micro theo mức âm thanh máy tới lần mở nguồn sau: {e}");
         }
@@ -838,10 +860,10 @@ impl MicSide {
             .map_or(0, |(_, s)| s.frames.load(Ordering::Relaxed))
     }
 
-    /// Dừng micro và gỡ nó khỏi bộ trộn (phần còn trong bộ trộn bị bỏ: nguồn đang đóng hay mở lại).
+    /// Dừng micro và gỡ nó khỏi bộ trộn (phần còn trong bộ trộn đi tiếp ở lần `drain` kế).
     fn close(&mut self, shared: &Mutex<Option<Pre>>) {
         if let Some(Pre::Both(b)) = shared.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-            b.detach_mic(&mut Frames::default());
+            b.detach_mic();
         }
         if let Some((mut s, _)) = self.source.take() {
             s.stop();
@@ -1280,13 +1302,38 @@ mod tests {
         pre.drain(&mut f, None).unwrap();
         assert!(f.asr.is_empty(), "chưa có micro để ghép, chưa quá 100 ms");
         let Pre::Both(b) = &mut pre else { unreachable!() };
-        b.detach_mic(&mut f);
-        assert_eq!(f.asr.len(), 800, "phần chờ micro được xả ra");
+        b.detach_mic();
+        assert!(f.asr.is_empty(), "phần xả được giữ cho lần drain kế, không bị bỏ");
         for _ in 0..160 {
             pb_in.push(0.2).unwrap();
         }
         pre.drain(&mut f, None).unwrap();
-        assert_eq!(f.asr.len(), 960);
+        assert_eq!(f.asr.len(), 960, "800 mẫu đã xả + 160 mẫu mới, đúng thứ tự thời gian");
+        assert_eq!(f.vad.len(), 960);
+    }
+
+    /// Âm thanh máy im (tap macOS không trả khung): micro không bị giữ lại chờ ghép cặp, và sau đó không trễ mãi.
+    #[test]
+    fn an_idle_playback_releases_the_mic_at_once() {
+        let format = AudioFormat {
+            sample_rate: 16_000,
+            channels: 1,
+        };
+        let run = |idle_after: Duration| {
+            let (_pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
+            let (mut mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+            let mut both = BothPre::new(Preprocessor::new(vec![(pb_out, format)]).unwrap());
+            both.attach_mic(MicPreprocessor::new(mic_out, format, false).unwrap());
+            both.idle_after = idle_after;
+            for _ in 0..800 {
+                mic_in.push(0.05).unwrap();
+            }
+            let mut f = Frames::default();
+            both.drain(&mut f, None).unwrap();
+            (f.asr.len(), f.vad.len())
+        };
+        assert_eq!(run(Duration::from_secs(3_600)), (0, 0), "Playback vừa mới thôi nên chờ ghép cặp như cũ");
+        assert_eq!(run(Duration::ZERO), (800, 800), "Playback đã im: micro đi ngay, không chờ đủ 100 ms");
     }
 
     /// `MicSide` báo mỗi lần mã lỗi đổi, và báo hết lỗi khi mở lại được (QĐ5 của kế hoạch 03).

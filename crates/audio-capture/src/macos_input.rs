@@ -99,7 +99,15 @@ impl AudioSource for MacInputSource {
             sample_rate: rate.round() as u32,
             channels: channels as u16,
         };
-        check(unsafe { AudioDeviceStart(device, self.proc_id) }, "AudioDeviceStart")
+        check(unsafe { AudioDeviceStart(device, self.proc_id) }, "AudioDeviceStart")?;
+        // Tai nghe Bluetooth (AirPods) chuyển sang chế độ đàm thoại, đổi tần số, khi luồng thu bắt đầu chạy: đọc lại để
+        // `format()` đúng với âm thanh sẽ tới (nếu đổi muộn hơn thì `failed()` bắt).
+        if let Ok(now) = nominal_sample_rate(device)
+            && now > 0.0
+        {
+            self.format.sample_rate = now.round() as u32;
+        }
+        Ok(())
     }
 
     fn stop(&mut self) {
@@ -118,13 +126,14 @@ impl AudioSource for MacInputSource {
         self.format
     }
 
-    /// Micro bị rút (USB, Bluetooth): thiết bị không còn "sống", app phải mở lại nguồn (spec §5.6).
+    /// Micro bị rút (USB, Bluetooth): thiết bị không còn "sống", hay đổi tần số mẫu sau khi mở (tai nghe Bluetooth chuyển
+    /// chế độ), thì app phải mở lại nguồn (spec §5.6).
     fn failed(&self) -> bool {
         if self.device == 0 {
             return false;
         }
         let mut alive: u32 = 1;
-        get_property(
+        let dead = get_property(
             self.device,
             kAudioDevicePropertyDeviceIsAlive,
             std::ptr::null(),
@@ -132,7 +141,8 @@ impl AudioSource for MacInputSource {
             &mut alive,
         )
         .is_err()
-            || alive == 0
+            || alive == 0;
+        dead || rate_changed(nominal_sample_rate(self.device).ok(), self.format.sample_rate)
     }
 }
 
@@ -268,13 +278,20 @@ pub fn list_capture_devices() -> Result<Vec<InputDevice>> {
     })
 }
 
+/// Tần số danh định hiện tại của thiết bị khác tần số đã dùng để dựng bộ lấy mẫu lại: âm thanh tới sẽ sai tốc độ, phải mở lại.
+/// Không đọc được tần số thì không coi là đổi (tránh mở lại liên tục vì một lần đọc hỏng).
+fn rate_changed(now: Option<f64>, used: u32) -> bool {
+    now.is_some_and(|r| r > 0.0 && r.round() as u32 != used)
+}
+
 fn device_by_uid(uid: &str) -> Result<AudioObjectID> {
     for id in all_devices()? {
         if string_property(id, kAudioDevicePropertyDeviceUID).as_deref() == Some(uid) {
             return Ok(id);
         }
     }
-    bail!("không tìm thấy micro {uid}")
+    // Không đưa UID vào thông điệp: có thể chứa tên sản phẩm, số serial hay địa chỉ MAC, và thông điệp đi vào log (spec mục 4).
+    bail!("không tìm thấy micro đã chọn")
 }
 
 /// Trạng thái quyền micro của app. Chỉ đọc, không hỏi người dùng.
@@ -312,6 +329,16 @@ pub fn request_mic_permission(wait: Duration) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Tai nghe Bluetooth đổi tần số khi mở micro (48 kHz → 16 kHz): phải mở lại; không đọc được tần số thì thôi.
+    #[test]
+    fn a_changed_sample_rate_means_the_stream_must_reopen() {
+        assert!(!rate_changed(Some(48_000.0), 48_000));
+        assert!(rate_changed(Some(16_000.0), 48_000));
+        assert!(rate_changed(Some(44_100.0), 48_000));
+        assert!(!rate_changed(None, 48_000), "không đọc được: giữ nguyên");
+        assert!(!rate_changed(Some(0.0), 48_000), "0 Hz là đọc hỏng, không phải đổi tần số");
+    }
 
     #[test]
     fn one_interleaved_stream() {

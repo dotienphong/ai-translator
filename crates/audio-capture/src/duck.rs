@@ -260,6 +260,12 @@ impl DuckingMixer {
         self.flush_mic(self.mic.len(), out, out_vad);
     }
 
+    /// Phát hết micro đang chờ ghép, như thể Playback im lặng ở các vị trí đó. Dùng khi Playback không trả mẫu nào một lúc
+    /// (tap macOS tự dừng khi không app nào phát): micro không phải chờ đủ `max_skew` rồi còn trễ mãi sau đó.
+    pub fn release_mic(&mut self, out: &mut Vec<f32>, out_vad: &mut Vec<f32>) {
+        self.flush_mic(self.mic.len(), out, out_vad);
+    }
+
     /// (số lần hỏi bộ phát hiện tiếng nói, số khung bỏ qua vì to hay im lặng) từ lúc tạo bộ trộn.
     pub fn speech_stats(&self) -> (u64, u64) {
         (self.speech_calls, self.speech_skips)
@@ -699,6 +705,23 @@ mod tests {
         let mut s = FakeSpeech::default();
         mix_with(params, &playback, &vec![0.0; playback.len()], &mut s);
         assert_eq!((s.calls, s.resets), (42, 1));
+    }
+
+    /// Playback im lặng: micro đang chờ ghép được xả ngay (cổng nhận im lặng ở các vị trí đó), không chờ đủ `max_skew`.
+    #[test]
+    fn release_mic_flushes_the_unpaired_mic_at_once() {
+        let mut m = DuckingMixer::new(APP, 1_600);
+        m.push_mic(&[0.1; 800], &[0.1; 800]);
+        let (mut out, mut vad) = (Vec::new(), Vec::new());
+        m.drain_into(&mut out, &mut vad);
+        assert!(out.is_empty(), "chưa quá max_skew: vẫn chờ Playback");
+        m.release_mic(&mut out, &mut vad);
+        assert_eq!((out.len(), vad.len()), (800, 800));
+        assert!(out.iter().all(|&v| (v - 0.1).abs() < 1e-6), "Playback im lặng nên micro nguyên vẹn");
+        m.push_playback(&[0.0; 160]);
+        m.push_mic(&[0.1; 160], &[0.1; 160]);
+        m.drain_into(&mut out, &mut vad);
+        assert_eq!(out.len(), 960, "sau khi xả, Playback quay lại thì ghép từng mẫu, không lệch");
     }
 
     /// Thống kê số lần hỏi bộ phát hiện và số khung bỏ qua (để log và để đo).

@@ -111,6 +111,9 @@ export interface AppStoreState {
   // Màn hình chính: đọc danh sách nguồn một lần mỗi lần mở app, chỉ để có tên hiển thị của nguồn đang chọn (tên app,
   // tên thiết bị). Lặng lẽ: lỗi không hiện ở thanh báo lỗi, thành công không xóa lỗi đang hiện.
   loadAudioSourceNames(): Promise<void>;
+  // Như `loadAudioSourceNames`, cho tên micro của màn hình chính (chế độ có micro). Lặng lẽ: lỗi không hiện ở thanh báo lỗi,
+  // thành công không xóa lỗi đang hiện; Cài đặt › Âm thanh dùng `loadInputDevices` và báo lỗi như cũ.
+  loadInputDeviceNames(): Promise<void>;
   finishOnboarding(): Promise<void>;
   // Qua bước Điều khoản (đã đồng ý): đăng ký dùng thử chạy nền (spec 2026-10-07 §3.2). Lỗi không chặn các bước.
   startTrial(): Promise<void>;
@@ -188,6 +191,8 @@ export function createAppStore(ipc: Ipc) {
 
     // `loadAudioSourceNames` đã gửi lệnh trong lần mở app này chưa.
     let sourceNamesRequested = false;
+    // `loadInputDeviceNames` đã gửi lệnh trong lần mở app này chưa.
+    let inputNamesRequested = false;
 
     return {
       settings: null,
@@ -390,6 +395,17 @@ export function createAppStore(ipc: Ipc) {
           if (get().audioSources === null) set({ audioSources });
         } catch {
           // Không có tên thì màn hình chính hiện mã nguồn; Cài đặt › Âm thanh vẫn đọc lại và báo lỗi như cũ.
+        }
+      },
+
+      async loadInputDeviceNames() {
+        if (inputNamesRequested || get().inputDevices !== null) return;
+        inputNamesRequested = true;
+        try {
+          const inputDevices = await ipc.invoke("list_input_devices");
+          if (get().inputDevices === null) set({ inputDevices });
+        } catch {
+          // Không có tên thì màn hình chính hiện mã micro; Cài đặt › Âm thanh vẫn đọc lại và báo lỗi như cũ.
         }
       },
 

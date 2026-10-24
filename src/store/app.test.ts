@@ -377,6 +377,36 @@ describe("app store", () => {
     expect(again.getState().error).toEqual({ code: "network", field: null });
   });
 
+  it("tên micro cho màn hình chính: đọc một lần, lặng lẽ (không hiện lỗi, không xóa lỗi đang có)", async () => {
+    let fail = true;
+    let calls = 0;
+    const fake = fakeIpc({
+      get_settings: () => settings,
+      get_app_status: () => status,
+      get_app_info: () => info,
+      list_input_devices: () => {
+        calls += 1;
+        if (fail) throw { code: "micUnavailable", field: null, message: "…" };
+        return [{ id: "mic-1", name: "MacBook Pro Microphone", isDefault: true }];
+      },
+    });
+    const store = createAppStore(fake.ipc);
+    await store.getState().init();
+    store.setState({ error: { code: "network", field: null } });
+    await store.getState().loadInputDeviceNames();
+    expect(store.getState().error).toEqual({ code: "network", field: null });
+    expect(store.getState().inputDevices).toBeNull();
+    await store.getState().loadInputDeviceNames();
+    expect(calls).toBe(1);
+    fail = false;
+    const again = createAppStore(fake.ipc);
+    await again.getState().init();
+    again.setState({ error: { code: "network", field: null } });
+    await again.getState().loadInputDeviceNames();
+    expect(again.getState().inputDevices).toEqual([{ id: "mic-1", name: "MacBook Pro Microphone", isDefault: true }]);
+    expect(again.getState().error).toEqual({ code: "network", field: null });
+  });
+
   it("nghe thử bắt đầu phiên riêng; xóa toàn bộ dữ liệu báo lại; đọc bảng debug", async () => {
     const { fake, store } = setup();
     await store.getState().init();
