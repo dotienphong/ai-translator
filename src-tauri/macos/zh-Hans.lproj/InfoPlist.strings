@@ -1,2 +1,4 @@
 /* Câu hỏi quyền "Ghi âm thanh hệ thống" của macOS (NSAudioCaptureUsageDescription), tiếng Trung giản thể. */
 "NSAudioCaptureUsageDescription" = "AI Translator 会采集 Mac 正在播放的音频，用于显示翻译字幕。音频不会离开你的 Mac。";
+/* Câu hỏi quyền Micro của macOS (NSMicrophoneUsageDescription), tiếng Trung giản thể. */
+"NSMicrophoneUsageDescription" = "当你选择麦克风作为来源时，AI Translator 会采集麦克风音频，用于显示你身边说话人的翻译字幕。音频不会离开你的 Mac。";

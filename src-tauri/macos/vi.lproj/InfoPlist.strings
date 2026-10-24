@@ -1,2 +1,4 @@
 /* Câu hỏi quyền "Ghi âm thanh hệ thống" của macOS (NSAudioCaptureUsageDescription), tiếng Việt. */
 "NSAudioCaptureUsageDescription" = "AI Translator thu âm thanh máy đang phát để hiện phụ đề dịch. Âm thanh không rời khỏi máy.";
+/* Câu hỏi quyền Micro của macOS (NSMicrophoneUsageDescription), tiếng Việt. */
+"NSMicrophoneUsageDescription" = "AI Translator nghe micro khi bạn chọn nguồn micro, để hiện phụ đề dịch lời người nói gần bạn. Âm thanh không rời khỏi máy.";

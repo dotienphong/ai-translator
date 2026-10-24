@@ -1,2 +1,4 @@
 /* Câu hỏi quyền "Ghi âm thanh hệ thống" của macOS (NSAudioCaptureUsageDescription), tiếng Hàn. */
 "NSAudioCaptureUsageDescription" = "AI Translator는 번역 자막을 표시하기 위해 Mac에서 재생 중인 오디오를 수집합니다. 오디오는 Mac 밖으로 전송되지 않습니다.";
+/* Câu hỏi quyền Micro của macOS (NSMicrophoneUsageDescription), tiếng Hàn. */
+"NSMicrophoneUsageDescription" = "AI Translator는 마이크를 입력으로 선택한 경우 주변에서 말하는 사람의 번역 자막을 표시하기 위해 마이크 오디오를 수집합니다. 오디오는 Mac 밖으로 전송되지 않습니다.";

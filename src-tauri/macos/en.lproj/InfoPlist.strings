@@ -1,2 +1,4 @@
 /* Câu hỏi quyền "Ghi âm thanh hệ thống" của macOS (NSAudioCaptureUsageDescription), tiếng Anh. */
 "NSAudioCaptureUsageDescription" = "AI Translator captures the audio your Mac is playing to show translated subtitles. The audio never leaves your Mac.";
+/* Câu hỏi quyền Micro của macOS (NSMicrophoneUsageDescription), tiếng Anh. */
+"NSMicrophoneUsageDescription" = "AI Translator listens to the microphone when you choose a microphone source, to show translated subtitles of people speaking near you. The audio never leaves your Mac.";

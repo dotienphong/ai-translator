@@ -3,8 +3,9 @@
 <!--
   Entitlement của AI Translator.app khi ký với hardened runtime (kế hoạch 07a, N9 của review lần 1).
   Hardened runtime chặn đường vào âm thanh (audio input) nếu app không khai entitlement này. App thu âm thanh hệ thống
-  bằng Core Audio process tap, đọc qua một aggregate device (crates/audio-capture), tức một đường vào âm thanh. App không
-  mở micro; quyền "Ghi âm thanh hệ thống" vẫn do macOS hỏi theo NSAudioCaptureUsageDescription. Không có entitlement nào
+  bằng Core Audio process tap, đọc qua một aggregate device (crates/audio-capture), tức một đường vào âm thanh. Entitlement
+  này cũng cho phép mở micro khi người dùng chọn nguồn micro (spec 2026-10-24-nguon-micro); quyền "Ghi âm thanh hệ thống"
+  và quyền Micro vẫn do macOS hỏi theo NSAudioCaptureUsageDescription và NSMicrophoneUsageDescription. Không có entitlement nào
   tắt library validation hay cho JIT. Task 15 thử bản đã ký này với âm thanh thật.
 -->
 <plist version="1.0">

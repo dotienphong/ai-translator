@@ -1508,14 +1508,17 @@ fn old_temporary_folders_of_mock_apps_are_removed() {
     std::fs::remove_dir_all(parent).unwrap();
 }
 
-/// Q8(c) của review 02c: câu hỏi quyền ghi âm thanh hệ thống có bản gốc tiếng Anh (trong `Info.plist`) và bản của từng
+/// Q8(c) của review 02c, spec 2026-10-24-nguon-micro §3.4: câu hỏi quyền ghi âm thanh hệ thống và quyền micro có bản gốc tiếng Anh (trong `Info.plist`) và bản của từng
 /// ngôn ngữ giao diện (`<lproj>/InfoPlist.strings`, spec 2026-10-12 §6), đều nói tên AI Translator; `Info.plist` liệt kê
 /// đủ ngôn ngữ trong `CFBundleLocalizations`, và `tauri.conf.json` chép các file `InfoPlist.strings` vào gói `.app`.
 #[test]
-fn the_audio_permission_prompt_is_localized() {
-    const KEY: &str = "NSAudioCaptureUsageDescription";
+fn the_audio_and_mic_permission_prompts_are_localized() {
+    const KEYS: [&str; 2] = ["NSAudioCaptureUsageDescription", "NSMicrophoneUsageDescription"];
     let plist = include_str!("../Info.plist");
-    assert!(plist.contains(KEY) && plist.contains("AI Translator"), "Info.plist");
+    for key in KEYS {
+        assert!(plist.contains(key), "Info.plist thiếu {key}");
+    }
+    assert!(plist.contains("AI Translator"), "Info.plist");
     // Tên thư mục `.lproj` của macOS: tiếng Trung giản thể là `zh-Hans`, không phải `zh`.
     let prompts = [
         ("en", include_str!("../macos/en.lproj/InfoPlist.strings")),
@@ -1525,13 +1528,17 @@ fn the_audio_permission_prompt_is_localized() {
         ("ko", include_str!("../macos/ko.lproj/InfoPlist.strings")),
     ];
     for (name, text) in prompts {
-        assert!(text.contains(KEY) && text.contains("AI Translator"), "{name}");
+        for key in KEYS {
+            assert!(text.contains(key), "{name} thiếu {key}");
+        }
+        assert!(text.contains("AI Translator"), "{name}");
         assert!(
             plist.contains(&format!("<string>{name}</string>")),
             "CFBundleLocalizations có {name}"
         );
     }
     assert!(prompts[1].1.contains("thu âm thanh máy đang phát"));
+    assert!(prompts[1].1.contains("nghe micro khi bạn chọn nguồn micro"));
     let conf: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
     let files = &conf["bundle"]["macOS"]["files"];
     for (lang, _) in prompts {
