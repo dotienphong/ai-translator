@@ -8,7 +8,7 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 
 ## 2. Summary
 
-- Meeting audio is processed **entirely on your computer**. Audio is **never** sent anywhere and is not written to disk.
+- Audio (computer audio and, if you choose, the microphone) is processed **entirely on your computer**. Audio is **never** sent anywhere and is not written to disk. When you choose a source with the microphone, the app captures the microphone for the whole translation session, **even if you have muted yourself in the meeting app** (section 3).
 - Text you type in **Type & Translate** (a box for writing a message, translating it and pasting it into another app) is also translated **entirely on your computer**: it is not sent anywhere and not written to disk (section 3).
 - The app has **no sign-in accounts, no advertising and no analytics**. When it hits an error, it **automatically sends us an error report with personal data scrubbed out** so we can fix the problem; you can turn this off at any time (section 10).
 - If you write to us in the **support chat** (on the website or in the app), your messages are stored on our server, forwarded to the operator's Zalo account so they can reply, and **deleted automatically 90 days** after the last message; you can delete them sooner yourself (section 11).
@@ -19,7 +19,8 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 
 | Data | How it is handled |
 |---|---|
-| System audio being captured | Held only in RAM while translating; never written to disk or sent over the network |
+| Computer audio being captured | Held only in RAM while translating; never written to disk or sent over the network |
+| Microphone audio (when you choose a source with the microphone) | Held only in RAM while translating; never written to disk or sent over the network. Logs do not record the microphone's name, only its connection type (for example built-in, USB, Bluetooth) |
 | Transcripts and translations | Shown on screen. **History is off by default.** If you turn it on, it is stored on your computer, encrypted, and can be deleted with one button |
 | Text you type in Type & Translate and its translation | Held only in RAM until you paste it or quit the app; never written to disk, never sent over the network, not in logs or error reports. The app copies the translation to the operating system's clipboard to paste it; it stays there until you copy something else |
 | Glossary, settings | Stored on your computer |
@@ -30,6 +31,8 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 The app's helper programs only listen on `127.0.0.1` (your own machine) or open no network port at all.
 
 On macOS, Type & Translate can ask for the **Accessibility** permission to paste the translation into the box you are typing in. The app uses this permission only to send the paste keys (⌘V); it does not read text, content or the clipboard of other apps. If you do not grant it, the app only copies the translation to the clipboard for you to paste.
+
+The app uses the microphone only when you choose the **Microphone** or **Computer audio + Microphone** source in Settings › Audio; the default source, **Computer audio**, does not open the microphone. When you choose a source with the microphone, macOS asks for the **Microphone** permission; on Windows, the app's use of the microphone follows Windows' microphone privacy settings. While a translation session runs, the app captures the microphone continuously, **even if you have muted yourself in the meeting app**: muting there only stops your voice from reaching the other participants, not this app. The operating system shows when an app is using the microphone (on macOS, an orange dot in the menu bar). To stop the app capturing the microphone, press Stop. The microphone can pick up the voices of other people near you; ask their permission where needed (EULA section 6).
 
 ## 4. When the app uses the network
 
@@ -42,7 +45,7 @@ The app connects to the network only to:
 
 App versions before 0.2.7 connect to the same servers under our former domain `aitranslator.io.vn`; the website at the former domain redirects to `aitranslator.vn`.
 
-There are no other connections, and none carries audio, transcript text or text you type in Type & Translate.
+There are no other connections, and none carries audio (including microphone audio), transcript text or text you type in Type & Translate.
 
 ## 5. Data we store on our servers
 
@@ -107,9 +110,9 @@ When the app hits an error, it **automatically sends us an error report** throug
 
 | What | Details |
 |---|---|
-| When it is sent automatically | When the app's previous run ended abruptly; when a translation session stops because of an error in the app (not errors caused by you or your environment, such as a missing recording permission, a used-up quota, an ended trial, no network or no disk space); or when one of the app's helper programs dies and is restarted automatically. A report is only sent while the app is not translating, and each machine sends at most 5 reports a day |
+| When it is sent automatically | When the app's previous run ended abruptly; when a translation session stops because of an error in the app (not errors caused by you or your environment, such as a missing recording or microphone permission, a microphone that cannot be opened, a used-up quota, an ended trial, no network or no disk space); or when one of the app's helper programs dies and is restarted automatically. A report is only sent while the app is not translating, and each machine sends at most 5 reports a day |
 | The report contains | The report code, the type and code of the error, the time it happened; the app version, the operating system and its version, the architecture, the chip or CPU name, RAM, the type of GPU in use, the model pack, the name of your license plan (never the key), the interface language; a **hash of the machine ID**; and the part of the log that relates to the error (at most 64 KB) |
-| The report does not contain | Audio, transcripts, translations, text typed in Type & Translate, license keys, tokens, email addresses, the computer name, the operating-system user name, IP addresses |
+| The report does not contain | Audio (including microphone audio), transcripts, translations, text typed in Type & Translate, license keys, tokens, email addresses, the computer name, the microphone name, the operating-system user name, IP addresses |
 | Scrubbing | Before sending, the app removes personal folder paths, keys, tokens and email addresses from the log; if any sensitive pattern is left, the whole report is dropped. Our server checks again and rejects a report if anything is left |
 | How it is tied to you | The machine-ID hash in the report is the same one we store for licensing and the Free trial (section 5), so we **can link a report to that machine's license and email** when handling a support request |
 | How long it is kept | At most **30 days**, then deleted automatically; the server keeps at most 3,000 reports and deletes the oldest first |

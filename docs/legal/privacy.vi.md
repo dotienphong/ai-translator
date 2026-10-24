@@ -8,7 +8,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 
 ## 2. Tóm tắt
 
-- Âm thanh cuộc họp được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa.
+- Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi bạn chọn nguồn có micro, ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
 - Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
 - Ứng dụng **không có tài khoản đăng nhập, không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
 - Nếu bạn nhắn ở **chat hỗ trợ** (trên website hay trong ứng dụng), tin nhắn được lưu trên máy chủ của chúng tôi, chuyển tới tài khoản Zalo của người vận hành để trả lời, và **tự xóa sau 90 ngày** kể từ tin cuối; bạn tự xóa được sớm hơn (mục 11).
@@ -19,7 +19,8 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 
 | Dữ liệu | Cách xử lý |
 |---|---|
-| Âm thanh hệ thống đang thu | Chỉ nằm trong bộ nhớ RAM trong lúc dịch; không ghi xuống đĩa, không gửi qua mạng |
+| Âm thanh máy đang thu | Chỉ nằm trong bộ nhớ RAM trong lúc dịch; không ghi xuống đĩa, không gửi qua mạng |
+| Âm thanh từ micro (khi bạn chọn nguồn có micro) | Chỉ nằm trong bộ nhớ RAM trong lúc dịch; không ghi xuống đĩa, không gửi qua mạng. Log không ghi tên micro, chỉ ghi loại kết nối (ví dụ tích hợp, USB, Bluetooth) |
 | Bản chép lời và bản dịch | Hiện trên màn hình. **Lịch sử mặc định tắt.** Bật thì lưu trên máy bạn, mã hóa, và xóa toàn bộ được bằng một nút |
 | Chữ bạn gõ ở Gõ dịch và bản dịch của nó | Chỉ nằm trong bộ nhớ RAM tới khi bạn dán hoặc thoát ứng dụng; không ghi xuống đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Ứng dụng chép bản dịch vào clipboard của hệ điều hành để dán; bản dịch ở lại đó tới khi bạn chép thứ khác |
 | Từ điển thuật ngữ, cài đặt | Lưu trên máy bạn |
@@ -30,6 +31,8 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 Các công cụ phụ của ứng dụng chỉ nghe trên `127.0.0.1` (máy bạn) hoặc không mở cổng mạng nào.
 
 Trên macOS, Gõ dịch có thể xin quyền **Trợ năng** (Accessibility) để tự dán bản dịch vào ô bạn đang gõ. Ứng dụng chỉ dùng quyền này để gửi tổ hợp phím dán (⌘V); ứng dụng không đọc chữ, nội dung hay clipboard của ứng dụng khác. Nếu bạn không cấp quyền, ứng dụng chỉ chép bản dịch vào clipboard để bạn tự dán.
+
+Ứng dụng chỉ dùng micro khi bạn chọn nguồn **Micro** hoặc **Âm thanh máy + Micro** ở Cài đặt › Âm thanh; nguồn mặc định, **Âm thanh máy**, không mở micro. Khi bạn chọn nguồn có micro, macOS hỏi quyền **Micro**; trên Windows, việc ứng dụng dùng micro theo cài đặt quyền riêng tư về micro của Windows. Trong lúc phiên dịch chạy, ứng dụng thu micro liên tục, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp**: việc đó chỉ chặn tiếng của bạn tới người cùng họp, không chặn ứng dụng này. Hệ điều hành báo khi có ứng dụng đang dùng micro (trên macOS là chấm màu cam ở thanh menu). Muốn ứng dụng ngừng thu micro, hãy bấm Dừng. Micro có thể thu giọng của người khác ở gần bạn; hãy xin phép họ khi cần (EULA mục 6).
 
 ## 4. Khi nào ứng dụng kết nối mạng
 
@@ -42,7 +45,7 @@ Trên macOS, Gõ dịch có thể xin quyền **Trợ năng** (Accessibility) đ
 
 Các bản ứng dụng trước 0.2.7 kết nối tới cùng các máy chủ trên dưới tên miền cũ `aitranslator.io.vn` của chúng tôi; website ở tên cũ tự chuyển sang `aitranslator.vn`.
 
-Không có kết nối nào khác, và không có kết nối nào mang âm thanh, nội dung chép lời hay chữ bạn gõ ở Gõ dịch.
+Không có kết nối nào khác, và không có kết nối nào mang âm thanh (kể cả âm thanh từ micro), nội dung chép lời hay chữ bạn gõ ở Gõ dịch.
 
 ## 5. Dữ liệu chúng tôi lưu trên máy chủ
 
@@ -107,9 +110,9 @@ Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chún
 
 | Nội dung | Chi tiết |
 |---|---|
-| Khi nào gửi tự động | Khi lần chạy trước của ứng dụng bị dừng đột ngột; khi một phiên dịch dừng vì lỗi của ứng dụng (không tính lỗi do bạn hay môi trường như thiếu quyền ghi âm, hết hạn mức, hết dùng thử, mất mạng, hết dung lượng); hoặc khi một công cụ phụ của ứng dụng chết rồi được tự khởi động lại. Báo cáo chỉ được gửi khi ứng dụng không đang dịch, và mỗi máy gửi tối đa 5 báo cáo mỗi ngày |
+| Khi nào gửi tự động | Khi lần chạy trước của ứng dụng bị dừng đột ngột; khi một phiên dịch dừng vì lỗi của ứng dụng (không tính lỗi do bạn hay môi trường như thiếu quyền ghi âm hay quyền micro, không mở được micro, hết hạn mức, hết dùng thử, mất mạng, hết dung lượng); hoặc khi một công cụ phụ của ứng dụng chết rồi được tự khởi động lại. Báo cáo chỉ được gửi khi ứng dụng không đang dịch, và mỗi máy gửi tối đa 5 báo cáo mỗi ngày |
 | Báo cáo gồm | Mã báo cáo, loại và mã lỗi, giờ xảy ra; phiên bản ứng dụng, hệ điều hành và phiên bản, kiến trúc, tên chip hoặc CPU, RAM, loại GPU đang dùng, gói model, tên gói bản quyền (không có key), ngôn ngữ giao diện; **mã băm của ID máy**; và phần log liên quan đến lỗi (tối đa 64 KB) |
-| Báo cáo không gồm | Âm thanh, bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email, tên máy, tên tài khoản hệ điều hành, địa chỉ IP |
+| Báo cáo không gồm | Âm thanh (kể cả âm thanh từ micro), bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email, tên máy, tên micro, tên tài khoản hệ điều hành, địa chỉ IP |
 | Che dữ liệu | Trước khi gửi, ứng dụng che đường dẫn thư mục cá nhân, key, token và email trong log; còn sót mẫu nhạy cảm thì bỏ cả báo cáo. Máy chủ kiểm lại và từ chối báo cáo nếu còn |
 | Gắn với bạn thế nào | Mã băm của ID máy trong báo cáo cũng là mã chúng tôi lưu cho bản quyền và dùng thử Free (mục 5), nên chúng tôi **có thể nối báo cáo với license và email** của máy đó khi tra cứu hỗ trợ |
 | Giữ bao lâu | Tối đa **30 ngày** rồi tự xóa; máy chủ giữ tối đa 3.000 báo cáo, báo cáo cũ nhất bị xóa trước |

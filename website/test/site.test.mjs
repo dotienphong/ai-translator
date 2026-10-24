@@ -1321,7 +1321,7 @@ test("chính sách quyền riêng tư: mục 10 Báo cáo lỗi nêu khi nào g�
           "mã báo cáo",
           "không đang dịch",
           "mã băm của ID máy",
-          "Âm thanh, bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email",
+          "Âm thanh (kể cả âm thanh từ micro), bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email",
           "có thể nối báo cáo với license và email",
           "30 ngày",
           "3.000",
@@ -1347,7 +1347,7 @@ test("chính sách quyền riêng tư: mục 10 Báo cáo lỗi nêu khi nào g�
           "report code",
           "not translating",
           "hash of the machine ID",
-          "Audio, transcripts, translations, text typed in Type",
+          "Audio (including microphone audio), transcripts, translations, text typed in Type",
           "Translate, license keys, tokens, email addresses",
           "can link a report to that machine",
           "30 days",
@@ -2520,6 +2520,37 @@ test("Dữ liệu và bảo mật (năm ngôn ngữ): app gửi ngôn ngữ giao
   for (const [urlPath, list] of Object.entries(needs)) {
     const text = textOf(htmlByPath.get(urlPath));
     for (const needle of list) if (!text.includes(needle)) errors.push(`${urlPath}: thiếu "${needle}"`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+// ---- Nguồn micro (spec 2026-10-24-nguon-micro §8, §9): pháp lý, câu "không dùng micro" cũ, nội dung micro ----
+
+test("chính sách quyền riêng tư và EULA nói về micro: chỉ trong RAM, thu cả khi đã tắt mic trong app họp, không có trong kết nối hay báo cáo lỗi, có thể gồm giọng người ở gần", () => {
+  const needs = {
+    "/chinh-sach-quyen-rieng-tu/": [
+      "Âm thanh (âm thanh máy và, nếu bạn chọn, micro)",
+      "Âm thanh từ micro (khi bạn chọn nguồn có micro)",
+      "kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp",
+      "không có kết nối nào mang âm thanh (kể cả âm thanh từ micro)",
+      "thiếu quyền ghi âm hay quyền micro",
+      "tên micro",
+    ],
+    "/en/privacy/": [
+      "Audio (computer audio and, if you choose, the microphone)",
+      "Microphone audio (when you choose a source with the microphone)",
+      "even if you have muted yourself in the meeting app",
+      "none carries audio (including microphone audio)",
+      "a missing recording or microphone permission",
+      "the microphone name",
+    ],
+    "/dieu-khoan/": ["khi bạn chọn, cho âm thanh từ micro", "khi bạn chọn, âm thanh từ micro, có thể gồm giọng nói của người khác, kể cả người ở gần bạn"],
+    "/en/terms/": ["when you choose, for audio from the microphone", "when you choose, audio from the microphone, which may include other people", "voices, including people near you"],
+  };
+  const errors = [];
+  for (const [urlPath, list] of Object.entries(needs)) {
+    const text = textOf(htmlByPath.get(urlPath));
+    for (const n of list) if (!text.includes(n)) errors.push(`${urlPath}: thiếu "${n}"`);
   }
   assert.deepEqual(errors, []);
 });
