@@ -61,7 +61,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "会议之前", title: "五分钟准备", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "zh", alt: "音频设置：音频来源选择器（设为仅 Zoom）以及刷新正在播放声音的应用列表的按钮", caption: "设置 › 音频：收听整个系统，或只收听一个应用。" })}
+${appShot({ slug: "app-settings-audio", lang: "zh", alt: "音频设置：采集来源设为“电脑音频 + 麦克风”，音频来源（仅 Zoom）、麦克风选择器、调低麦克风的说明、“过滤麦克风噪音”开关，以及固定在 500 ms 的结束一句话的停顿滑块", caption: "设置 › 音频：收听整个系统，或只收听一个应用。" })}
 </div>
 <div>
 ${steps(

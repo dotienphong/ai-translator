@@ -48,7 +48,7 @@ const APP = [
   ["app-glossary", "screen=glossary"],
   ["app-settings-subtitles", "screen=settings&group=subtitles"],
   ["app-settings-subtitles.dark", "screen=settings&group=subtitles&theme=dark&size=26&text=yellow&bg=navy&opacity=0.8"],
-  ["app-settings-audio", "screen=settings&group=audio"],
+  ["app-settings-audio", "screen=settings&group=audio&capture=both", { fit: true }],
   ["app-settings-hotkeys", "screen=settings&group=hotkeys"],
   ["app-settings-compose", "screen=settings&group=compose"],
   ["app-settings-license", "screen=settings&group=license"],

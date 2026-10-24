@@ -91,7 +91,7 @@ ${appShot({ slug: "app-settings-subtitles", lang: "ja", alt: "字幕の設定：
 <section class="section" id="audio-source"><div class="container">
 <div class="split wide-left">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "ja", alt: "音声の設定：音声ソースの選択（Zoom のみ）と、音を出しているアプリのリストを更新するボタン", caption: "設定 › 音声：システム全体を聞き取るか、1 つのアプリだけを聞き取るかを選べます（macOS）。" })}
+${appShot({ slug: "app-settings-audio", lang: "ja", alt: "音声の設定：入力元は「コンピューターの音声 + マイク」、音声ソース（Zoom のみ）、マイクの選択、マイクの音量を下げる説明、「マイクのノイズを除去」スイッチ、500 ms に固定された文を区切る間の長さのスライダー", caption: "設定 › 音声：システム全体を聞き取るか、1 つのアプリだけを聞き取るかを選べます（macOS）。" })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">音声ソース</span>

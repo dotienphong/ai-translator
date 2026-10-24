@@ -405,9 +405,9 @@
   "lang": "vi",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 46970,
-  "description": "Cài đặt âm thanh: chọn nguồn thu là một app đang phát tiếng như Zoom và chỉnh độ nhạy ngắt câu."
+  "height": 1139,
+  "bytes": 100634,
+  "description": "Cài đặt âm thanh: thu từ âm thanh máy + micro, nguồn là một app đang phát tiếng như Zoom, chọn micro, lọc tiếng ồn micro, ngắt câu 500 ms."
  },
  {
   "file": "app-settings-audio.en.webp",
@@ -415,9 +415,9 @@
   "lang": "en",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 46104,
-  "description": "Audio settings: choosing a single app that is playing sound, such as Zoom, as the source and adjusting the pause that ends a sentence."
+  "height": 1251,
+  "bytes": 106538,
+  "description": "Audio settings: capture from computer audio + microphone, a source app such as Zoom, the microphone, microphone noise filtering and a 500 ms sentence pause."
  },
  {
   "file": "app-settings-audio.ja.webp",
@@ -425,9 +425,9 @@
   "lang": "ja",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 44692,
-  "description": "音声の設定：音を出しているアプリを 1 つ（例：Zoom）だけ音声ソースに選び、文を区切る間の長さを調整します。"
+  "height": 1139,
+  "bytes": 99266,
+  "description": "音声の設定：コンピューターの音声 + マイクから取り込み、Zoom などのアプリを音声ソースに、マイクの選択、マイクのノイズ除去、500 ms の文の区切り。"
  },
  {
   "file": "app-settings-audio.zh.webp",
@@ -435,9 +435,9 @@
   "lang": "zh",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 38872,
-  "description": "音频设置：选择一个正在播放声音的应用（例如 Zoom）作为音频来源，并调整断句所需的停顿长度。"
+  "height": 1112,
+  "bytes": 89632,
+  "description": "音频设置：从电脑音频 + 麦克风采集，以 Zoom 等应用为音频来源，选择麦克风，过滤麦克风噪音，断句停顿 500 ms。"
  },
  {
   "file": "app-settings-audio.ko.webp",
@@ -445,9 +445,9 @@
   "lang": "ko",
   "theme": "light",
   "width": 1440,
-  "height": 960,
-  "bytes": 35496,
-  "description": "오디오 설정: 소리를 내고 있는 앱 하나(예: Zoom)만 소스로 고르고, 문장을 끊는 멈춤 길이를 조절합니다."
+  "height": 1112,
+  "bytes": 82050,
+  "description": "오디오 설정: 컴퓨터 오디오 + 마이크로 입력, Zoom 같은 앱을 오디오 소스로, 마이크 선택, 마이크 잡음 필터, 500 ms 문장 끊기."
  },
  {
   "file": "app-settings-hotkeys.vi.webp",
