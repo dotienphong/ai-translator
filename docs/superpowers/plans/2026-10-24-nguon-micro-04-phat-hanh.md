@@ -1036,8 +1036,8 @@ Không phát tiếng, không mở micro: chỉ chạy lại `latency-bench mix-e
 
 - [ ] **Step 1: Build release**
 
-Run: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/nguon-micro && git rev-parse --short HEAD && cargo build --release -p latency-bench -p asr-worker 2>&1 | tail -2`
-Expected: `Finished`. Ghi mã commit (commit ứng viên).
+Run: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/nguon-micro && git rev-parse --short HEAD && cargo build --release --locked -p latency-bench 2>&1 | tail -1 && MACOSX_DEPLOYMENT_TARGET=14.2 cargo build --release --locked -p asr-worker --features metal,shared-encode 2>&1 | tail -1 && otool -L target/release/asr-worker | grep -c Metal`
+Expected: `Finished` hai lần, số cuối ≥ 1. Ghi mã commit (commit ứng viên). **Phải có `--features metal,shared-encode`** như `scripts/release/build-sidecars-macos.sh`: thiếu thì whisper chạy trên CPU và số lệch khỏi mốc (lần thực thi đầu đã gặp: giọng thật 52,7%, A-trộn online 16,7%). Log `asr-worker.log` trong thư mục kết quả phải có `Metal total size`.
 
 - [ ] **Step 2: Chế độ micro, gói Chuẩn và gói Nhẹ**
 
