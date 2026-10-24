@@ -94,3 +94,11 @@ trên Metal.
 - Trang Dữ liệu và bảo mật (năm ngôn ngữ) đã thêm lượt đo này.
 
 ## A1-mic và Windows (Task 10)
+
+## Nhường lời theo tiếng nói (kế hoạch 05)
+
+Đo offline ngày 2026-10-25, biên bản `loi-noi.md`.
+- Đạt: A-trộn (`s1-loa` online 4,4%, phòng 4,4%), giọng online −36 và −56 dBFS, 0 câu ảo, tái hiện A7 nhận đúng câu mẫu.
+- Trượt mức đạt của kế hoạch 0,4–2 điểm (cảnh mẫu nhỏ, 78 clip): giọng −46 dBFS (6,8% so với 6,38%), giọng −62 dBFS (15,8%
+  so với 13,75%), lỗi của `ao-tron-can` (6,2% so với 5,72%). Chờ chủ dự án quyết.
+- Cải thiện so với cách cũ ở đúng chỗ thiết kế nhắm tới: −56 dBFS 13,7% → 7,3%; −62 dBFS 80,0% → 15,8%.
