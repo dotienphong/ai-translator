@@ -3,9 +3,11 @@
 //!
 //! Đọc theo timer 10 ms, không chờ sự kiện, vì loopback không báo sự kiện khi không có gì phát.
 //! Khoảng trống được chèn im lặng theo đồng hồ QPC (`GapFiller`).
+//!
+//! Cũng thu micro (spec 2026-10-24-nguon-micro §5.2): cùng luồng thu, mở endpoint `eCapture` và bỏ cờ loopback.
 
 use crate::gapfill::GapFiller;
-use crate::{AudioFormat, AudioSource, CaptureStats};
+use crate::{AudioFormat, AudioSource, CaptureStats, InputDevice, Transport};
 use anyhow::{Context, Result, anyhow};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,8 +18,8 @@ use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
 use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
 use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
-    AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, DEVICE_STATE_ACTIVE, ERole,
-    IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVEFORMATEX,
+    AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, DEVICE_STATE_ACTIVE, EDataFlow, ERole,
+    IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVEFORMATEX, eCapture,
     eCommunications, eConsole, eRender,
 };
 use windows::Win32::Media::Multimedia::WAVE_FORMAT_IEEE_FLOAT;
@@ -60,8 +62,25 @@ pub struct RenderDevice {
     pub name: String,
 }
 
-pub struct LoopbackSource {
-    endpoint: Endpoint,
+/// Micro để thu (spec 2026-10-24-nguon-micro §5.2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MicEndpoint {
+    /// Micro mặc định (vai trò Console: thiết bị Settings › Sound › Input đang chọn).
+    Default,
+    /// Một micro người dùng chọn, theo id endpoint.
+    Device(String),
+}
+
+/// Thiết bị mà luồng thu WASAPI mở: loopback của một thiết bị phát, hay một micro.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Target {
+    Loopback(Endpoint),
+    Mic(MicEndpoint),
+}
+
+/// Phần chung của nguồn loopback và nguồn micro: luồng thu WASAPI chạy nền.
+struct Wasapi {
+    target: Target,
     format: AudioFormat,
     stats: Arc<CaptureStats>,
     stop: Arc<AtomicBool>,
@@ -103,21 +122,52 @@ pub fn default_endpoint_id(role: Role) -> Result<String> {
     })
 }
 
-/// Các thiết bị phát đang hoạt động, kèm tên hiển thị.
-pub fn list_render_devices() -> Result<Vec<RenderDevice>> {
+/// Các endpoint đang hoạt động theo chiều `flow`: (id, tên hiển thị).
+fn active_endpoints(flow: EDataFlow) -> Result<Vec<(String, String)>> {
     with_com(|| {
         let enumerator: IMMDeviceEnumerator = unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)? };
-        let collection = unsafe { enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)? };
+        let collection = unsafe { enumerator.EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE)? };
         let mut devices = Vec::new();
         for i in 0..unsafe { collection.GetCount()? } {
             let device = unsafe { collection.Item(i)? };
             let id = pwstr_to_string(unsafe { device.GetId()? })?;
             let store = unsafe { device.OpenPropertyStore(STGM_READ)? };
             let name = unsafe { store.GetValue(&PKEY_Device_FriendlyName)? }.to_string();
-            devices.push(RenderDevice { id, name });
+            devices.push((id, name));
         }
         Ok(devices)
     })
+}
+
+/// Các thiết bị phát đang hoạt động, kèm tên hiển thị.
+pub fn list_render_devices() -> Result<Vec<RenderDevice>> {
+    Ok(active_endpoints(eRender)?
+        .into_iter()
+        .map(|(id, name)| RenderDevice { id, name })
+        .collect())
+}
+
+/// Id của micro mặc định (vai trò Console). App hỏi định kỳ để biết micro mặc định đã đổi (spec §5.6).
+pub fn default_capture_endpoint_id() -> Result<String> {
+    with_com(|| {
+        let enumerator: IMMDeviceEnumerator = unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)? };
+        let device = unsafe { enumerator.GetDefaultAudioEndpoint(eCapture, eConsole)? };
+        pwstr_to_string(unsafe { device.GetId()? })
+    })
+}
+
+/// Các micro đang hoạt động. Loại kết nối chưa đọc trên Windows (kế hoạch 02 quyết có cần không).
+pub fn list_capture_devices() -> Result<Vec<InputDevice>> {
+    let default = default_capture_endpoint_id().ok();
+    Ok(active_endpoints(eCapture)?
+        .into_iter()
+        .map(|(id, name)| InputDevice {
+            is_default: default.as_deref() == Some(id.as_str()),
+            id,
+            name,
+            transport: Transport::Other,
+        })
+        .collect())
 }
 
 fn open_device(enumerator: &IMMDeviceEnumerator, endpoint: &Endpoint) -> Result<IMMDevice> {
@@ -127,10 +177,18 @@ fn open_device(enumerator: &IMMDeviceEnumerator, endpoint: &Endpoint) -> Result<
     })
 }
 
-impl LoopbackSource {
-    pub fn new(endpoint: Endpoint, stats: Arc<CaptureStats>) -> Self {
+fn open_target(enumerator: &IMMDeviceEnumerator, target: &Target) -> Result<IMMDevice> {
+    Ok(match target {
+        Target::Loopback(endpoint) => open_device(enumerator, endpoint)?,
+        Target::Mic(MicEndpoint::Default) => unsafe { enumerator.GetDefaultAudioEndpoint(eCapture, eConsole)? },
+        Target::Mic(MicEndpoint::Device(id)) => unsafe { enumerator.GetDevice(&HSTRING::from(id.as_str()))? },
+    })
+}
+
+impl Wasapi {
+    fn new(target: Target, stats: Arc<CaptureStats>) -> Self {
         Self {
-            endpoint,
+            target,
             format: AudioFormat {
                 sample_rate: 0,
                 channels: 0,
@@ -141,15 +199,13 @@ impl LoopbackSource {
             thread: None,
         }
     }
-}
 
-impl AudioSource for LoopbackSource {
     fn start(&mut self, sink: rtrb::Producer<f32>) -> Result<()> {
         let (ready_tx, ready_rx) = mpsc::channel::<Result<AudioFormat, String>>();
-        let endpoint = self.endpoint.clone();
+        let target = self.target.clone();
         let (stop, failed, stats) = (self.stop.clone(), self.failed.clone(), self.stats.clone());
         self.thread = Some(std::thread::spawn(move || {
-            if let Err(e) = capture_thread(&endpoint, sink, stop, stats, &ready_tx) {
+            if let Err(e) = capture_thread(&target, sink, stop, stats, &ready_tx) {
                 failed.store(true, Ordering::SeqCst);
                 let _ = ready_tx.send(Err(format!("{e:#}")));
             }
@@ -167,24 +223,69 @@ impl AudioSource for LoopbackSource {
             let _ = t.join();
         }
     }
-
-    fn format(&self) -> AudioFormat {
-        self.format
-    }
-
-    fn failed(&self) -> bool {
-        self.failed.load(Ordering::SeqCst)
-    }
 }
 
-impl Drop for LoopbackSource {
+impl Drop for Wasapi {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
+pub struct LoopbackSource(Wasapi);
+
+impl LoopbackSource {
+    pub fn new(endpoint: Endpoint, stats: Arc<CaptureStats>) -> Self {
+        Self(Wasapi::new(Target::Loopback(endpoint), stats))
+    }
+}
+
+impl AudioSource for LoopbackSource {
+    fn start(&mut self, sink: rtrb::Producer<f32>) -> Result<()> {
+        self.0.start(sink)
+    }
+
+    fn stop(&mut self) {
+        self.0.stop();
+    }
+
+    fn format(&self) -> AudioFormat {
+        self.0.format
+    }
+
+    fn failed(&self) -> bool {
+        self.0.failed.load(Ordering::SeqCst)
+    }
+}
+
+/// Nguồn micro (spec 2026-10-24-nguon-micro §5.2): WASAPI shared mode trên endpoint thu, không cờ loopback.
+pub struct InputSource(Wasapi);
+
+impl InputSource {
+    pub fn new(endpoint: MicEndpoint, stats: Arc<CaptureStats>) -> Self {
+        Self(Wasapi::new(Target::Mic(endpoint), stats))
+    }
+}
+
+impl AudioSource for InputSource {
+    fn start(&mut self, sink: rtrb::Producer<f32>) -> Result<()> {
+        self.0.start(sink)
+    }
+
+    fn stop(&mut self) {
+        self.0.stop();
+    }
+
+    fn format(&self) -> AudioFormat {
+        self.0.format
+    }
+
+    fn failed(&self) -> bool {
+        self.0.failed.load(Ordering::SeqCst)
+    }
+}
+
 fn capture_thread(
-    endpoint: &Endpoint,
+    target: &Target,
     mut sink: rtrb::Producer<f32>,
     stop: Arc<AtomicBool>,
     stats: Arc<CaptureStats>,
@@ -192,7 +293,7 @@ fn capture_thread(
 ) -> Result<()> {
     with_com(|| {
         let enumerator: IMMDeviceEnumerator = unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)? };
-        let device = open_device(&enumerator, endpoint)?;
+        let device = open_target(&enumerator, target)?;
         let client: IAudioClient = unsafe { device.Activate(CLSCTX_ALL, None)? };
 
         let mix = unsafe { client.GetMixFormat()? };
@@ -208,8 +309,10 @@ fn capture_thread(
             wBitsPerSample: 32,
             cbSize: 0,
         };
-        let flags =
-            AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
+        let mut flags = AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
+        if matches!(target, Target::Loopback(_)) {
+            flags |= AUDCLNT_STREAMFLAGS_LOOPBACK;
+        }
         unsafe { client.Initialize(AUDCLNT_SHAREMODE_SHARED, flags, 1_000_000, 0, &wanted, None)? };
         let capture: IAudioCaptureClient = unsafe { client.GetService()? };
         unsafe { client.Start()? };
