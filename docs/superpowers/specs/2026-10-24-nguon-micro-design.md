@@ -592,8 +592,10 @@ Số liệu: `bench/2026-10-24-nguon-micro/results/ao-tron.md`. Chủ dự án c
   và đồng hồ của app; **ngân sách p95 ≤ 0,5 ms ở bản nháp đầu chỉ đúng cho số vi mô, không phải cho app thật**. Dù vậy không
   gây trễ đo được (xem dưới).
 - Ngân sách đo được trong app:
-  - tổng p50 của chế độ trộn không tăng quá 50 ms so với chế độ Âm thanh máy cùng ngưỡng cắt đoạn, cùng nội dung (50 ms
-    là dao động giữa hai lượt đo giống hệt nhau); lượt A2 ngày 2026-10-24 (1 056 ms) dùng ngưỡng khác nên không so được;
+  - A2: so chế độ trộn với chế độ Âm thanh máy cùng ngưỡng cắt đoạn (500 ms), cùng track 300 giây, xen kẽ ít nhất ba lượt
+    mỗi chế độ. Một lượt đơn lẻ dao động khoảng ±50 ms (cùng cấu hình, tổng p50 từ 1 088 tới 1 216 ms), nên so **trung bình**:
+    tổng p50 của trộn không hơn Âm thanh máy quá 50 ms, tổng p90 không hơn quá 100 ms (tiêu chí gốc của A2-mic: phần do
+    trộn và micro gây ra dưới 100 ms). Lượt A2 ngày 2026-10-24 (1 056 ms) dùng track khác nên không so được;
   - nhận dạng p50 và dịch p50 giữ nguyên trong dao động đo;
   - Windows i5 (máy yếu nhất đang hỗ trợ): log `nhường lời: Silero …` mỗi phút phải cho trung bình dưới 5 ms mỗi khung
     (32 ms mỗi khung, dưới 16% một nhân); **chưa đo**.

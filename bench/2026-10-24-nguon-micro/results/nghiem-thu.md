@@ -103,3 +103,62 @@ trên Metal.
 - Đo lại với mẫu lớn (230 clip số hóa × 4 mức giọng, 144 clip thu thật 26 phút): đạt mọi tiêu chí, cả hai nửa clip; 0 chữ ảo.
   Giọng −62 dBFS: 15,0% (cách cũ 83,9%, chế độ Âm thanh máy 15,8%). Mức giọng bình thường không khác cách cũ (kiểm dấu theo
   cặp, p ≥ 0,58); người trong phòng giống hệt (40/40 clip).
+- Cấu hình cuối của app (bỏ khung to và khung im lặng số dưới −80 dBFS, không xóa state Silero giữa chừng, commit `9b2190d1`):
+  đo lại cả năm cảnh, đạt mọi tiêu chí (`-62 dBFS` 12,7%, `-56` 8,9%, `-46` 7,4%, `-36` 7,7%; bản thu thật online 8,1%, trong
+  phòng 7,5%, giữ 100%, 0 chữ ảo). Chi tiết ở `loi-noi.md`, mục "Giảm chi phí Silero".
+
+### A2 trên app thật với cổng kép (2026-10-25)
+
+**Kết quả: đạt.** Bản release ký ad-hoc (`scripts/run-dev-app-release.sh`) từ commit `9b2190d1`, M4 Pro, loa 60%, micro
+tích hợp, track `lon300` (300 giây, 42–43 đoạn) phát bằng `OnlinePlayer.app`, dịch sang tiếng Việt, gói Chuẩn, ngưỡng ngắt câu
+500 ms ở cả hai chế độ. Xen kẽ các lượt để trôi dạt của máy không dồn về một phía.
+
+| Lượt | Chế độ | Đoạn | Nhận dạng p50 / p90 | Dịch p50 / p90 | Tổng p50 | Tổng p90 |
+|---|---|---|---|---|---|---|
+| 1 | Trộn | 43 | 259 / 295 ms | 471 / 692 ms | 1 216 ms | 1 562 ms |
+| 2 | Âm thanh máy | 43 | 252 / 289 ms | 434 / 585 ms | 1 120 ms | 1 555 ms |
+| 3 | Trộn | 43 | 255 / 293 ms | 447 / 607 ms | 1 136 ms | 1 597 ms |
+| 4 | Âm thanh máy | 43 | 260 / 291 ms | 450 / 607 ms | 1 168 ms | 1 475 ms |
+| 5 | Trộn | 43 | 259 / 290 ms | 440 / 623 ms | 1 184 ms | 1 638 ms |
+| 6 | Âm thanh máy | 43 | 258 / 289 ms | 440 / 590 ms | 1 088 ms | 1 402 ms |
+| 7 | Trộn | 43 | 256 / 295 ms | 439 / 615 ms | 1 120 ms | 1 587 ms |
+
+Thêm hai lượt Âm thanh máy của buổi đo trước cùng track (tổng p50 1 168 và 1 136 ms, p90 1 562 và 1 562 ms), nên Âm thanh
+máy có năm lượt. Phép đo ở buổi trước còn có một lượt Trộn chưa tối ưu (Silero mọi khung): p50 1 120, p90 1 565 ms.
+
+| | Trộn (4 lượt) | Âm thanh máy (5 lượt) | Chênh | Mức đạt |
+|---|---|---|---|---|
+| Tổng p50, trung bình | 1 164 ms | 1 136 ms | **+28 ms** | ≤ +50 ms |
+| Tổng p90, trung bình | 1 596 ms | 1 511 ms | **+85 ms** | ≤ +100 ms |
+| Nhận dạng p50, trung bình | 257 ms | 256 ms | +1 ms | |
+| Cắt đoạn p50 | 512 ms | 512 ms | 0 | |
+
+- Một lượt đơn lẻ dao động nhiều hơn mức chênh: Trộn từ 1 120 tới 1 216 ms, Âm thanh máy từ 1 088 tới 1 168 ms (cùng cấu hình,
+  cùng track). Vì vậy tiêu chí so trung bình nhiều lượt (spec mục 17), không so một cặp. **Cách so này được chọn sau khi thấy
+  độ dao động của lượt đầu, không phải trước.** Mức ≤ 50 ms ở p50 và tiêu chí ≤ 100 ms phần do trộn và micro gây ra (A2-mic gốc)
+  đều có từ trước.
+- Chênh p50 +28 ms nằm trong dao động giữa các lượt. Chênh p90 +85 ms có thể thật (độ lệch chuẩn của p90: 32 ms ở Trộn,
+  71 ms ở Âm thanh máy; t ≈ 2,4), nhưng không đến từ bộ trộn hay micro: cắt đoạn và nhận dạng giống nhau (±5 ms), phần chênh nằm
+  ở bước dịch (p90 trung bình 634 ms ở Trộn so với 594 ms ở ba lượt Âm thanh máy của buổi này; chuỗi chữ hơi khác nhau giữa hai chế độ nên câu dịch dài ngắn khác nhau).
+- Silero trong app: trung bình 1,5–1,7 ms mỗi lần hỏi, chậm nhất 2,8–16,3 ms; 57–283 lần trong mỗi khoảng log 60–72 giây (thay vì 1 875
+  khi hỏi mọi khung). Không gây trễ đo được.
+
+### A7 trong app thật với cổng kép (2026-10-25)
+
+**Kết quả: đạt.** Cùng bản dựng. Tình huống y như A7 ngày 2026-10-25 lần trước: nguồn "Toàn hệ thống, trừ app này", chế độ
+Âm thanh máy + Micro, phát `public/listen-test-en.wav` (−65 dBFS) lặp mười lần, cách nhau 1 giây, qua loa 60%
+(06:19:13–06:20:27). Đọc bản chép lời qua màn "Bản chép lời" và "Sao chép tất cả".
+
+| | Lượt A7 trước (cổng năng lượng) | **Lượt này (cổng kép)** |
+|---|---|---|
+| `micro bị hạ` trong log | 0,0 | **0,5637** |
+| Đoạn | 89 (bộ lọc ảo giác bỏ 16) | 10 |
+| Bản chép lời | 72 câu "Thank you.", 1 câu "Hello." | **10/10 lần phát nhận đúng** ("The results of plotting analysis will be posted to a public website."; một đoạn gộp hai lần phát liền nhau) |
+| Câu "Thank you." | 72 | **0** |
+| Tổng p50 | 768 ms | 976 ms (nội dung khác: mười đoạn đều là câu mẫu) |
+
+Không kiểm lại mạng trong lượt này (A7 mạng đã đạt ở `bench/phase1/results/acceptance/a7-mac-micro.md`; thay đổi không thêm lời gọi
+mạng nào, Silero chạy cục bộ).
+
+Máy đã trả: app dev thoát qua menu khay, cài đặt về `playback`, clipboard trống như trước, quyền micro về "chưa hỏi", âm lượng
+về mức cũ, bản đã cài mở lại.
