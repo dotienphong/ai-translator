@@ -2,6 +2,7 @@
 //! `pipeline::Engine` thật, spec 2026-10-10 §10.1).
 
 mod asr_eval;
+mod denoise;
 mod latency;
 mod mt_eval;
 mod session;
@@ -27,6 +28,8 @@ enum Command {
     Session(session::SessionArgs),
     /// Căn một bản thu đã xử lý ngoài thẳng hàng với `mic.wav` (spike nguồn micro).
     Align(wavio::AlignArgs),
+    /// Lọc ồn micro bằng RNNoise cho bản VAD (spike nguồn micro).
+    Denoise(denoise::DenoiseArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -45,6 +48,7 @@ fn main() -> anyhow::Result<()> {
             Command::MtEval(args) => mt_eval::run(args),
             Command::Session(args) => session::run(args),
             Command::Align(args) => wavio::run_align(args),
+            Command::Denoise(args) => denoise::run(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }
