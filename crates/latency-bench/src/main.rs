@@ -1,6 +1,7 @@
 //! Công cụ đo: `latency` (S6), `asr-eval` (S7, A4), `mt-eval` (A3, qua đúng code dịch của app), `session` (đo bằng
 //! `pipeline::Engine` thật, spec 2026-10-10 §10.1).
 
+mod aec;
 mod asr_eval;
 mod denoise;
 mod latency;
@@ -30,6 +31,8 @@ enum Command {
     Align(wavio::AlignArgs),
     /// Lọc ồn micro bằng RNNoise cho bản VAD (spike nguồn micro).
     Denoise(denoise::DenoiseArgs),
+    /// Khử vọng micro bằng AEC3 (phương án C của spike nguồn micro).
+    Aec(aec::AecArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -49,6 +52,7 @@ fn main() -> anyhow::Result<()> {
             Command::Session(args) => session::run(args),
             Command::Align(args) => wavio::run_align(args),
             Command::Denoise(args) => denoise::run(args),
+            Command::Aec(args) => aec::run(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }
