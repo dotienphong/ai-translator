@@ -22,12 +22,17 @@ pub enum SessionStatus {
     Error,
 }
 
-/// Vấn đề của micro (`AppStatus::mic_issue`).
+/// Vấn đề của micro (`AppStatus::mic_issue`, spec 2026-10-24-nguon-micro §7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum MicIssue {
     /// Micro trả toàn số 0 từ đầu phiên: thiếu quyền micro hoặc micro đang tắt tiếng bằng phím cứng.
     Suspected,
+    /// Chế độ âm thanh máy + micro: chưa được phép dùng micro; phiên chạy với âm thanh máy.
+    Permission,
+    /// Chế độ âm thanh máy + micro: không mở được micro (không có, bị rút, bị giữ độc quyền); phiên chạy với âm thanh máy và
+    /// thử lại mỗi 2 giây.
+    Unavailable,
 }
 
 /// Đang chờ tiến trình phụ (§4.2, §6.5).
@@ -86,8 +91,7 @@ pub struct AppStatus {
     /// macOS, nguồn một app: app đã chọn không phát tiếng nữa (đã đóng); phiên vẫn chạy và thử thu lại mỗi 2 giây
     /// (Q-C của review 02 lần 2). Giao diện hiện chỉ báo.
     pub waiting_for_app: bool,
-    /// Vấn đề của micro trong phiên đang chạy (spec 2026-10-24-nguon-micro §4, §7); `None` khi không có. Kế hoạch 03 của
-    /// spec đó thêm `permission`, `unavailable` cho chế độ âm thanh máy + micro.
+    /// Vấn đề của micro trong phiên đang chạy (spec 2026-10-24-nguon-micro §4, §7); `None` khi không có.
     pub mic_issue: Option<MicIssue>,
     /// Đang có gói trả phí còn hạn (spec §2 "Pro"): giao diện mở hay khóa tính năng Pro. Đặt bởi `pro::refresh`.
     pub pro: bool,
@@ -240,6 +244,17 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mic_issues_serialize_as_the_ui_expects() {
+        for (issue, name) in [
+            (MicIssue::Suspected, "suspected"),
+            (MicIssue::Permission, "permission"),
+            (MicIssue::Unavailable, "unavailable"),
+        ] {
+            assert_eq!(serde_json::to_value(issue).unwrap(), serde_json::json!(name));
+        }
+    }
 
     /// QĐ2 của kế hoạch 03: máy chưa đủ sức biết được khi chưa có phiên nào (dò GPU, `asr-worker` chạy sẵn bằng CPU) thì
     /// ghi ngay; đang có phiên bắt đầu hay chạy thì không đổi (lần bắt đầu tự quyết, phiên đang chạy thì engine tự tắt).

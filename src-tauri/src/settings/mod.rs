@@ -54,7 +54,7 @@ pub enum AudioSource {
     App { bundle_id: String },
 }
 
-/// Thu gì (spec 2026-10-24-nguon-micro §3.1). Chế độ "Âm thanh máy + Micro" (`both`) tới ở kế hoạch 03 của spec đó.
+/// Thu gì (spec 2026-10-24-nguon-micro §3.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CaptureMode {
@@ -62,6 +62,8 @@ pub enum CaptureMode {
     Playback,
     /// Chỉ micro (`micDevice`).
     Mic,
+    /// Âm thanh máy và micro, trộn có nhường lời (họp lai, spec §5.3, §5.4).
+    Both,
 }
 
 /// Giao diện sáng/tối (§4.3, nhóm Chung).
@@ -600,6 +602,7 @@ mod tests {
         assert_eq!(value["micDevice"], serde_json::Value::Null);
         assert_eq!(value["micNoiseFilter"], json!(true));
         assert_eq!(serde_json::to_value(CaptureMode::Mic).unwrap(), json!("mic"));
+        assert_eq!(serde_json::to_value(CaptureMode::Both).unwrap(), json!("both"));
         assert_eq!(value["overlay"]["fontSize"], json!(20));
         assert_eq!(value["overlay"]["showSource"], json!(true));
         assert_eq!(value["audioSource"], json!({ "kind": "system" }));

@@ -489,6 +489,8 @@ mod tests {
             (CaptureMode::Mic, Some("usb-1"), false)
         );
         let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "captureMode": "both" }));
+        assert_eq!(load(raw, defaults()).settings.capture_mode, CaptureMode::Both);
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "captureMode": "stereo" }));
         let loaded = load(raw, defaults());
         assert_eq!(loaded.settings.capture_mode, CaptureMode::Playback);
         assert_eq!(loaded.rejected, ["captureMode"]);

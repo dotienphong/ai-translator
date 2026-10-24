@@ -208,6 +208,7 @@ pub fn plan_for(settings: &Settings, options: StartOptions) -> CapturePlan {
             device: settings.mic_device.clone(),
             noise_filter: settings.mic_noise_filter,
         },
+        CaptureMode::Both => todo!("Task 4"),
     }
 }
 
