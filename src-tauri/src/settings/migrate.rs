@@ -465,6 +465,35 @@ mod tests {
         assert_eq!(loaded.rejected, ["translateWhileSpeaking"]);
     }
 
+    /// Spec 2026-10-24-nguon-micro §4: file của bản trước chưa có ba khóa nguồn micro thì người dùng cũ không đổi gì (âm
+    /// thanh máy, micro mặc định, lọc ồn bật), không phải ghi lại file. Giá trị lạ thì về mặc định.
+    #[test]
+    fn an_old_file_without_mic_keys_keeps_the_playback_mode() {
+        use crate::settings::CaptureMode;
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark" }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.capture_mode, CaptureMode::Playback);
+        assert_eq!(loaded.settings.mic_device, None);
+        assert!(loaded.settings.mic_noise_filter);
+        assert!(loaded.rejected.is_empty());
+        assert!(!loaded.needs_save());
+        let raw = object(json!({
+            "schemaVersion": CURRENT_SCHEMA_VERSION,
+            "captureMode": "mic",
+            "micDevice": "usb-1",
+            "micNoiseFilter": false,
+        }));
+        let s = load(raw, defaults()).settings;
+        assert_eq!(
+            (s.capture_mode, s.mic_device.as_deref(), s.mic_noise_filter),
+            (CaptureMode::Mic, Some("usb-1"), false)
+        );
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "captureMode": "both" }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.capture_mode, CaptureMode::Playback);
+        assert_eq!(loaded.rejected, ["captureMode"]);
+    }
+
     /// Spec 2026-10-17-go-dich §3.5: file của bản trước chưa có nhóm `compose` thì nhận mặc định mà không phải ghi lại; một
     /// khóa con hỏng chỉ kéo khóa con đó về mặc định.
     #[test]

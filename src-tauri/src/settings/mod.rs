@@ -54,6 +54,16 @@ pub enum AudioSource {
     App { bundle_id: String },
 }
 
+/// Thu gì (spec 2026-10-24-nguon-micro §3.1). Chế độ "Âm thanh máy + Micro" (`both`) tới ở kế hoạch 03 của spec đó.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CaptureMode {
+    /// Âm thanh máy theo `audioSource` (như trước khi có micro).
+    Playback,
+    /// Chỉ micro (`micDevice`).
+    Mic,
+}
+
 /// Giao diện sáng/tối (§4.3, nhóm Chung).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -231,6 +241,14 @@ pub struct Settings {
     /// Khóa cố định một ngôn ngữ nguồn; `None` là tự nhận diện trong `source_languages`.
     pub source_lock: Option<Lang>,
     pub audio_source: AudioSource,
+    /// Thu âm thanh máy hay micro (spec 2026-10-24-nguon-micro §3.1, §4). File của bản trước chưa có khóa này thì lấy
+    /// mặc định `playback` (`migrate::load` ghép từng khóa), người dùng cũ không đổi gì.
+    pub capture_mode: CaptureMode,
+    /// Micro đã chọn: macOS là UID, Windows là ID endpoint. `None` là micro mặc định của hệ thống, tự theo khi người dùng
+    /// đổi micro mặc định.
+    pub mic_device: Option<String>,
+    /// "Lọc tiếng ồn micro" (spec §3.2, mục 16): RNNoise cho bản VAD. Mặc định bật.
+    pub mic_noise_filter: bool,
     /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu").
     pub vad_end_silence_ms: u32,
     pub overlay: OverlaySettings,
@@ -293,6 +311,9 @@ impl Settings {
             source_languages: Lang::ALL.to_vec(),
             source_lock: None,
             audio_source: AudioSource::System,
+            capture_mode: CaptureMode::Playback,
+            mic_device: None,
+            mic_noise_filter: true,
             vad_end_silence_ms: 50,
             overlay: OverlaySettings {
                 font_size: 20,
@@ -362,6 +383,9 @@ impl Settings {
             AudioSource::System => {}
             AudioSource::Device { id } => check_id("audioSource", id)?,
             AudioSource::App { bundle_id } => check_id("audioSource", bundle_id)?,
+        }
+        if let Some(id) = &self.mic_device {
+            check_id("micDevice", id)?;
         }
         let overlay = &self.overlay;
         if !OVERLAY_FONT_SIZE.contains(&overlay.font_size) {
@@ -566,9 +590,16 @@ mod tests {
             "revision",
             "translateWhileSpeaking",
             "compose",
+            "captureMode",
+            "micDevice",
+            "micNoiseFilter",
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }
+        assert_eq!(value["captureMode"], json!("playback"));
+        assert_eq!(value["micDevice"], serde_json::Value::Null);
+        assert_eq!(value["micNoiseFilter"], json!(true));
+        assert_eq!(serde_json::to_value(CaptureMode::Mic).unwrap(), json!("mic"));
         assert_eq!(value["overlay"]["fontSize"], json!(20));
         assert_eq!(value["overlay"]["showSource"], json!(true));
         assert_eq!(value["audioSource"], json!({ "kind": "system" }));
@@ -638,6 +669,20 @@ mod tests {
             bundle_id: "x".repeat(513),
         };
         rejects(s, "audioSource", Reason::TooLong);
+    }
+
+    /// Spec 2026-10-24-nguon-micro §4: `micDevice` là ID thiết bị, kiểm như `audioSource`.
+    #[test]
+    fn mic_device_ids_are_bounded() {
+        let mut s = valid();
+        s.mic_device = Some(String::new());
+        rejects(s, "micDevice", Reason::Empty);
+        let mut s = valid();
+        s.mic_device = Some("x".repeat(513));
+        rejects(s, "micDevice", Reason::TooLong);
+        let mut s = valid();
+        s.mic_device = Some("BuiltInMicrophoneDevice".into());
+        assert_eq!(s.validate(), Ok(()));
     }
 
     #[test]
