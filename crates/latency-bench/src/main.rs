@@ -5,6 +5,7 @@ mod aec;
 mod asr_eval;
 mod denoise;
 mod latency;
+mod mix_eval;
 mod mt_eval;
 mod session;
 mod session_metrics;
@@ -33,6 +34,8 @@ enum Command {
     Denoise(denoise::DenoiseArgs),
     /// Khử vọng micro bằng AEC3 (phương án C của spike nguồn micro).
     Aec(aec::AecArgs),
+    /// Chấm các phương án trộn và chống ồn trên bản thu của một cảnh (spike nguồn micro).
+    MixEval(mix_eval::MixEvalArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -53,6 +56,7 @@ fn main() -> anyhow::Result<()> {
             Command::Align(args) => wavio::run_align(args),
             Command::Denoise(args) => denoise::run(args),
             Command::Aec(args) => aec::run(args),
+            Command::MixEval(args) => mix_eval::run(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }
