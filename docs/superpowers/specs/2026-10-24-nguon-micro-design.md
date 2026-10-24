@@ -1,7 +1,8 @@
 # Nguồn micro: dịch giọng trong phòng, riêng hay cùng âm thanh máy (thiết kế)
 
 Ngày 2026-10-24. Nhánh `nguon-micro` (worktree `meeting-translator-work/nguon-micro`). Phạm vi: `crates/audio-capture`
-(nguồn micro, `Preprocessor`, bộ trộn có nhường lời, công cụ `capture`), `crates/latency-bench` (lệnh `mix-eval`),
+(nguồn micro, `Preprocessor`, bộ trộn có nhường lời, chống tiếng ồn ở micro, công cụ `capture`), `crates/pipeline`
+(`FrameSource` có thêm bản cho VAD, tham số VAD theo chế độ, luật lọc câu ngắn), `crates/latency-bench` (lệnh `mix-eval`),
 `src-tauri/src/capture.rs`, `src-tauri/src/settings/mod.rs`, `src-tauri/src/session.rs`, `src-tauri/src/errors.rs`,
 `src-tauri/src/system.rs`, `src-tauri/src/actions.rs`, `src-tauri/Info.plist`, `src-tauri/macos/*.lproj/InfoPlist.strings`,
 `src/lib/ipc.ts`, `src/lib/audioSource.ts`, `src/lib/subtitleView.ts`, `src/windows/main/settings/AudioSettings.tsx`,
@@ -28,10 +29,14 @@ Chủ dự án chọn (2026-10-24):
 
 1. **Micro dùng để thu người khác trong phòng.** Giọng thu được dịch sang ngôn ngữ của người dùng, cùng chiều với tiếng
    cuộc họp online.
-2. **Không cần nhãn nguồn.** Ở chế độ âm thanh máy + micro, hai luồng được trộn thành một trước VAD. Pipeline giữ nguyên.
+2. **Không cần nhãn nguồn.** Ở chế độ âm thanh máy + micro, hai luồng được trộn thành một trước VAD. Pipeline (nhận dạng,
+   ghép câu, dịch, phụ đề) giữ nguyên, trừ ba chỗ nhỏ cho việc chống tiếng ồn (mục 5.8).
 3. **Mọi gói đều dùng được** (kể cả Free dùng thử). Phút vẫn trừ theo hạn mức như cũ.
 4. **Xử lý tiếng vọng bằng cách nhường lời** (mục 5.4), kèm một spike so ba cách (trộn thẳng, nhường lời, khử vọng AEC3)
    trên bản thu thật rồi mới chốt (mục 6).
+5. **Micro phải hạn chế tối đa tiếng ồn và tạp âm** (gõ bàn phím, bấm hay viết bút, gõ bàn…) để không dịch sai và không
+   hiện chữ không mong muốn. Khi phải chọn, **ưu tiên không có chữ ảo**: chấp nhận bỏ sót một phần câu thật rất ngắn nói
+   riêng lẻ ("OK", "Vâng") khi phòng ồn (mục 5.7, mức đạt ở mục 6.3).
 
 ## 2. Ngoài phạm vi
 
@@ -45,6 +50,9 @@ Chủ dự án chọn (2026-10-24):
   - Windows chỉ cho chọn tham chiếu AEC (`IAcousticEchoCancellationControl`) từ build 22621, tùy driver; Windows 10
     không có.
 - Tự cân mức micro (AGC). Chỉ thêm nếu spike cho thấy VAD bỏ sót giọng ở xa (mục 6.3).
+- Lọc ồn cho luồng âm thanh máy: đó là tín hiệu số, app họp đã tự lọc ồn phía người nói.
+- Lọc giọng của hệ điều hành (Voice Isolation trên macOS, Studio Effects trên Windows): app không điều khiển được, và
+  chúng chỉ áp cho một số app hay một số máy.
 - Phân biệt người nói, ghi âm.
 
 ## 3. Trải nghiệm người dùng
@@ -65,6 +73,9 @@ Chủ dự án chọn (2026-10-24):
   - Mặc định "Micro mặc định của hệ thống", tự theo khi người dùng đổi micro mặc định (cắm tai nghe). Có thể chọn một
     micro cụ thể.
   - Ghi chú dưới bộ chọn: "Dùng micro của tai nghe Bluetooth làm tai nghe chuyển sang chế độ gọi: tiếng nghe kém đi."
+- **Công tắc "Lọc tiếng ồn micro"** (mới, mặc định bật): hiện ở chế độ Micro và Âm thanh máy + Micro. Ghi chú: "Bỏ qua
+  tiếng gõ phím, tiếng bút, tiếng gõ bàn. Một số câu rất ngắn như "OK" có thể bị bỏ qua khi phòng ồn; tắt nếu phòng
+  yên tĩnh mà câu ngắn hay bị mất." Tắt thì bỏ lớp 2, 4, 5 của mục 5.7; lớp 1 (lọc 80 Hz) luôn chạy.
 - **Ở chế độ Âm thanh máy + Micro**, có ghi chú: "Khi người online đang nói, micro được hạ xuống để không dịch hai lần.
   Người trong phòng nói chen lúc đó có thể bị bỏ sót. Đeo tai nghe cho kết quả tốt nhất."
 - Đổi chế độ hay đổi micro giữa phiên thì có tác dụng ở lần bắt đầu phiên sau, giống `audioSource` hiện nay.
@@ -113,6 +124,7 @@ Chủ dự án chọn (2026-10-24):
   - `captureMode: "playback" | "mic" | "both"`, mặc định `"playback"`.
   - `micDevice: string | null`, mặc định `null` (micro mặc định). Nếu có giá trị thì kiểm bằng `check_id` như
     `audioSource`.
+  - `micNoiseFilter: boolean`, mặc định `true` (mục 3.2, 5.7).
   - `audioSource` giữ nguyên ý nghĩa: là phần "âm thanh máy" của chế độ `playback` và `both`.
 - **Lệnh IPC mới:**
   - `list_input_devices` → `{ id, name, isDefault }[]`.
@@ -151,8 +163,13 @@ Chủ dự án chọn (2026-10-24):
 - `Preprocessor::new` nhận các đầu vào kèm vai `Playback` hay `Mic`, tối đa ba đầu vào (Windows tự động: Console,
   Communications, Mic). Phải có ít nhất một đầu vào.
 - Các đầu vào `Playback` trộn với nhau bằng `Mixer2` như bây giờ.
-- Chế độ `mic`: chỉ một đầu vào `Mic`, đi thẳng ra như nguồn đơn hiện nay.
-- Chế độ `both`: luồng Playback (đã trộn) và luồng Mic đi vào `DuckingMixer` (mục 5.4).
+- Đầu vào `Mic` qua chuỗi chống tiếng ồn (mục 5.7), cho ra **hai bản thẳng hàng từng mẫu**: bản cho whisper (chỉ qua
+  lọc 80 Hz) và bản cho VAD (thêm lọc ồn).
+- Chế độ `mic`: hai bản đi thẳng ra.
+- Chế độ `both`: luồng Playback (đã trộn) và luồng Mic đi vào `DuckingMixer` (mục 5.4). Cổng nhân cùng một hệ số cho cả
+  hai bản micro. Kết quả là hai bản trộn: Playback + micro cho whisper, và Playback + micro cho VAD.
+- `Preprocessor::drain` ghi bản cho whisper vào `out` như hiện nay, và ghi bản cho VAD vào một vector thứ hai. Khi không
+  có micro, hoặc tắt "Lọc tiếng ồn micro", hai bản giống hệt nhau.
 
 ### 5.4. `DuckingMixer` và `MicGate`
 
@@ -192,9 +209,48 @@ dùng AEC3 (mục 6.3), chỉ cần cài trait bằng `sonora`; phần còn lạ
 - **Log số liệu** mỗi 60 giây (như `STATS_EVERY`): thêm số khung của Mic, số lần phát riêng phần dư, tỉ lệ thời gian cổng
   đang hạ.
 
-### 5.7. Không đổi
+### 5.7. Chống tiếng ồn ở micro
 
-- Pipeline (VAD, ghép câu, nhận dạng, dịch, phụ đề, đếm phút).
+**Vì sao làm theo cách này.**
+- Chữ ảo chủ yếu sinh ra khi một đoạn chỉ có tiếng ồn (tiếng gõ phím, tiếng bút) lọt qua VAD rồi tới whisper: whisper cố
+  đoán chữ và bịa ra câu quen thuộc. Vì vậy chặn chính ở VAD và sau nhận dạng.
+- Không làm sạch âm thanh đưa cho whisper: nhiều nghiên cứu thấy lọc ồn làm Whisper nhận sai nhiều hơn, vì Whisper vốn
+  học trên âm thanh có ồn (mục Tham khảo). Spike vẫn đo phương án whisper nghe bản đã lọc (mục 6.3).
+
+**Năm lớp, chỉ áp cho luồng micro** (luồng Playback không đổi):
+
+1. **Lọc thông cao 80 Hz, luôn chạy** (bậc 2, Butterworth). Cắt tiếng thình thịch khi gõ bàn, rung bàn, chạm laptop.
+   Giọng nói hầu như không có năng lượng dưới 80 Hz. Áp cho cả hai bản.
+2. **Lọc ồn bằng mạng nơ-ron, chỉ cho bản VAD.** Spike chọn một trong hai:
+   - RNNoise qua `nnnoiseless` (0.5.2, Rust thuần, BSD-3-Clause): rất nhẹ, xử lý tốt tiếng ồn đều; với tiếng lách cách
+     ngắn thì kém hơn.
+   - DeepFilterNet3 (MIT/Apache-2.0): mạnh hơn với tiếng gõ phím, nặng hơn. Bản phát hành cuối v0.5.6 (2023); bản trên
+     crates.io (`deep_filter` 0.2.5, 2022) đã cũ. Chỉ chọn khi RNNoise không đạt mức, và phải qua quy tắc §6.12.
+   - Cả hai chạy ở 48 kHz (khung 10 ms). Micro không phải 48 kHz thì resample lên 48 kHz trước bước này.
+   - Bản cho whisper được trễ đúng bằng độ trễ của bộ lọc, để hai bản thẳng hàng từng mẫu.
+3. **Tách bản cho VAD và bản cho whisper** (mục 5.3, 5.8). Tiếng gõ phím bị lọc khỏi bản VAD nên không mở được đoạn.
+   Đoạn đã mở vẫn lấy âm thanh từ bản cho whisper.
+4. **VAD chặt hơn ở chế độ có micro** (`mic` và `both`): ngưỡng xác suất tiếng nói (`threshold`, hiện 0,5) và độ dài
+   tiếng nói ngắn nhất (`min_speech_ms`, hiện 250 ms) có bộ giá trị riêng, do spike chọn. Ở chế độ `both`, luồng đã trộn
+   nên bộ giá trị này áp cho cả tiếng online; tiếng số của cuộc họp có xác suất VAD cao nên ít bị ảnh hưởng (spike kiểm).
+5. **Luật lọc câu ngắn sau nhận dạng, ở chế độ có micro** (`pipeline::filter`, thêm `Verdict::ShortUnsure`). Câu ngắn
+   (tối đa 2 từ, hoặc tối đa 4 ký tự với zh/ja) bị bỏ khi VAD không chắc: `vad_mean_prob` dưới ngưỡng, hoặc `speech_ms`
+   dưới ngưỡng. Ngưỡng do spike chọn. Luật `Filler` hiện có chỉ xét một danh sách câu đệm; luật mới xét mọi câu ngắn,
+   chỉ ở chế độ có micro.
+
+Công tắc "Lọc tiếng ồn micro" tắt thì bỏ lớp 2, 4, 5 (lớp 3 khi đó không còn tác dụng vì hai bản giống nhau).
+
+### 5.8. Ba chỗ sửa trong pipeline
+
+- **`FrameSource`:** thêm `read_with_vad(&mut self, out, vad_out, timeout)`. Bản mặc định gọi `read` rồi chép `out` sang
+  `vad_out`, nên `SampleSource` và các nguồn trong test không đổi. Luồng VAD của engine tính `vad.prob` trên khung của
+  `vad_out`, còn `Segmenter::push`, mức âm lượng, `SilenceMonitor` vẫn dùng khung của `out`.
+- **`EngineConfig`:** thêm bộ tham số VAD dùng khi có micro (lớp 4), app chọn theo `captureMode` lúc bắt đầu phiên.
+- **`FilterConfig` và `verdict`:** thêm luật `ShortUnsure` (lớp 5), bật theo cờ trong `EngineConfig`.
+
+### 5.9. Không đổi
+
+- Phần còn lại của pipeline (ghép câu, nhận dạng, dịch, phụ đề, đếm phút).
 - Chỉ báo "không có âm thanh" vẫn theo ngưỡng RMS hiện có (`SilenceMonitor`). Ở chế độ có micro, tiếng ồn nền có thể làm
   chỉ báo này ít hiện hơn. Như vậy là đúng: micro vẫn đang nhận tiếng.
 - `ClockFiller`, `GapFiller`, bước "Nghe thử" lần đầu (luôn dùng âm thanh máy).
@@ -213,6 +269,8 @@ Bản thu WAV chứa giọng người thật **không commit**. Chỉ commit b�
   được.
 - Clip lấy từ FLEURS (có bản chép chuẩn). Công cụ ghi lịch phát (clip, nguồn, giờ bắt đầu, giờ kết thúc) ra JSON, để
   chấm riêng từng nguồn.
+- Câu trả lời rất ngắn (FLEURS không có): khoảng 40 câu một–hai từ ("OK", "Yes", "Vâng", "Đúng rồi", "好的", "はい",
+  "네"…), dựng bằng lệnh `say` của macOS với giọng có sẵn của từng tiếng, kèm bản chép chuẩn.
 
 ### 6.2. S-M2: các cảnh thu
 
@@ -225,9 +283,12 @@ Máy M4 Pro. Mỗi cảnh khoảng 3–5 phút, các tiếng en, zh, ja, ko, vi.
 | 3 | Tai nghe có dây | Đối chứng không có tiếng vọng |
 | 4 | Chỉ micro: điện thoại phát ở 1 m và 3 m; micro máy, micro AirPods | Mốc WER/CER của micro (A4-mic) |
 | 5 | Một buổi thật: người đọc trong phòng, một cuộc Zoom hay Meet qua loa | Kiểm lại trong điều kiện thật (chủ dự án ngồi máy) |
-| 6 | Phòng không ai nói 10 phút: quạt hay điều hòa, gõ phím, tiếng bước chân | Đếm phụ đề ảo do tiếng ồn nền |
+| 6 | Không ai nói, mỗi loại tiếng 2 phút: gõ phím laptop, bàn phím cơ, bấm bút, viết bút trên giấy, gõ ngón tay xuống bàn, lật giấy, đặt cốc, kéo ghế; thêm 2 phút quạt hay điều hòa | Đếm chữ ảo theo từng loại tiếng |
+| 7 | Có người nói (clip FLEURS và câu ngắn ở mục 6.1, điện thoại ở 1 m) trong lúc có tiếng gõ phím, bấm bút, gõ bàn | Tiếng ồn hại nhận dạng tới đâu; câu ngắn bị bỏ sót bao nhiêu |
 
-Trên máy Windows i5 của chủ dự án: cảnh 1, 4, 6. Tôi soạn sẵn lệnh, chủ dự án chạy. Trên Windows, loopback thu cả tiếng
+Cảnh 6 và 7 cần chủ dự án tạo tiếng ồn bằng tay (gõ phím, bút, gõ bàn). Tôi ghi lịch từng loại tiếng để chấm.
+
+Trên máy Windows i5 của chủ dự án: cảnh 1, 4, 6, 7. Tôi soạn sẵn lệnh, chủ dự án chạy. Trên Windows, loopback thu cả tiếng
 của chính công cụ, nên clip "trong phòng" phải phát ra một thiết bị phát khác, hoặc từ điện thoại.
 
 ### 6.3. S-M3: so sánh offline, `latency-bench mix-eval`
@@ -250,8 +311,24 @@ của chính công cụ, nên clip "trong phòng" phải phát ra một thiết 
   - Ở cảnh 1, WER/CER câu online không tệ hơn cảnh 3 quá 10% (tương đối).
   - Câu trong phòng giữ được (không bị bỏ hay cắt cụt) ít nhất 95% so với cảnh 4 ở 1 m.
 - **Độ nhạy micro:** nếu cảnh 4 ở 3 m bỏ sót trên 10% câu so với 1 m, cân nhắc AGC (mục 2) bằng một quyết định riêng.
-- **Phụ đề ảo** (cảnh 6): không quá 1 câu mỗi 5 phút. Vượt mức này thì xem lại luật lọc (`pipeline::filter`) cho nguồn
-  micro trước khi phát hành.
+
+**Chống tiếng ồn (mục 5.7), trên cảnh 4, 6, 7:**
+- Các phương án:
+  - Lớp 2: không lọc ồn, RNNoise, DeepFilterNet3.
+  - Lớp 3: VAD nghe bản đã lọc còn whisper nghe bản chỉ lọc 80 Hz, hoặc cả hai cùng nghe bản đã lọc.
+  - Lớp 4: dò lưới `threshold` {0,5; 0,6; 0,7} và `min_speech_ms` {250, 400, 600}.
+  - Lớp 5: dò ngưỡng `vad_mean_prob` và `speech_ms` của luật `ShortUnsure`.
+- **Mức đạt** (theo ưu tiên "không có chữ ảo" ở mục 1):
+  - **Chữ ảo:** cảnh 6 không quá 1 câu ảo mỗi 10 phút, tính trên cả cảnh. Ghi riêng số câu ảo của từng loại tiếng.
+  - **Câu ngắn:** cảnh 7 bỏ sót không quá 20% câu một–hai từ.
+  - **Câu thường có ồn:** WER/CER câu FLEURS ở cảnh 7 không tệ hơn cảnh 4 (1 m, không ồn) quá 15% (tương đối).
+  - **Không hại khi phòng yên tĩnh:** cảnh 4 với năm lớp bật, WER/CER không tệ hơn khi tắt quá 5% (tương đối).
+  - **Chế độ `both`:** bộ VAD chặt hơn không làm WER câu online ở cảnh 1 tệ thêm quá 5% (tương đối).
+  - **CPU:** lớp 2 không quá 10% một nhân trên máy i5.
+- **Luật chốt:** chọn tổ hợp nhẹ nhất đạt đủ mức, theo thứ tự: không lọc ồn, rồi RNNoise, rồi DeepFilterNet3. Trong cùng
+  một bộ lọc thì chọn tham số lớp 4 và 5 lỏng nhất mà vẫn đạt mức chữ ảo. Whisper chỉ nghe bản đã lọc khi cách đó cho
+  WER tốt hơn ở cảnh 7 mà không tệ hơn ở cảnh 4.
+- **Không tổ hợp nào đạt mức chữ ảo:** dừng lại, báo chủ dự án kèm bảng số liệu theo từng loại tiếng, trước khi làm tiếp.
 - Nếu không bộ tham số nào của B đạt mức trên, dừng lại và báo chủ dự án trước khi làm tiếp chế độ `both`.
 
 ### 6.4. S-M4: kiểm hành vi (làm đầu tiên)
@@ -305,6 +382,8 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
   thanh và hướng dẫn xử lý sự cố. Đủ năm ngôn ngữ. Trang pháp lý chỉ vi/en.
 - Chỉ nói điều có thật:
   - Ghi giới hạn khi người trong phòng nói chen, và khuyên dùng tai nghe.
+  - Được nói app bỏ qua tiếng gõ phím, tiếng bút, tiếng gõ bàn. Chỉ nêu số liệu nếu kèm điều kiện đo (ví dụ "trên bản
+    thu thử X phút, Y câu ảo"). Nói rõ câu rất ngắn có thể bị bỏ qua khi phòng ồn.
   - Số đo nào cũng kèm điều kiện đo.
   - Không nêu tên thư viện, không nói "AEC3" hay "WebRTC" (`website/README.md`, có test chặn).
 - Chỉ deploy sau khi bản app có tính năng này đã phát hành.
@@ -314,13 +393,23 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
 - **`audio-capture`:**
   - `MicGate`: đóng ngay khi Playback vượt ngưỡng, giữ đúng thời gian, mở dần, không đóng vì tiếng dưới ngưỡng.
   - `DuckingMixer`: ghép cặp, phát riêng phần dư, áp hệ số đúng mẫu, kẹp biên.
-  - `Preprocessor`: một, hai, ba đầu vào có vai; từ chối đầu vào rỗng.
+  - `Preprocessor`: một, hai, ba đầu vào có vai; từ chối đầu vào rỗng; hai bản (whisper, VAD) cùng độ dài và thẳng
+    hàng (xung đơn vị ở micro hiện đúng vị trí ở cả hai bản); không micro hay tắt lọc ồn thì hai bản giống hệt nhau.
+  - Lọc 80 Hz: tín hiệu 40 Hz giảm mạnh, 300 Hz gần như giữ nguyên.
+  - Lớp 2 (bộ đã chọn): một chuỗi tiếng click tổng hợp giảm năng lượng rõ ở bản VAD; bản whisper không đổi.
 - **`capture.rs`:**
   - `Watch` chỉ đếm khung Playback: micro luôn có khung mà tap đứng yên vẫn bị coi là chết.
   - `ZeroWatch` cho Mic.
   - Luật mở lại khi micro mặc định đổi.
   - Micro lỗi ở chế độ `both` không dừng phiên và đặt `micIssue`.
-- **Settings:** settings cũ không có `captureMode` thì đọc ra `playback`; `micDevice` rỗng hay quá dài bị từ chối.
+- **`pipeline`:**
+  - `FrameSource::read_with_vad` mặc định chép `out` sang `vad_out`.
+  - Engine với nguồn giả có bản VAD toàn số 0 thì không mở đoạn nào, dù bản whisper có tiếng.
+  - Bộ tham số VAD khi có micro được dùng đúng theo chế độ.
+  - Luật `ShortUnsure`: câu ngắn mà VAD không chắc thì bị bỏ; câu ngắn mà VAD chắc thì giữ; câu dài thì giữ; tắt cờ thì
+    không bỏ câu nào.
+- **Settings:** settings cũ không có `captureMode`, `micNoiseFilter` thì đọc ra `playback`, `true`; `micDevice` rỗng hay
+  quá dài bị từ chối.
 - **Giao diện (Vitest, ảnh qua `scripts/ui-preview`):** bộ chọn ba chế độ hiện và ẩn đúng hai bộ chọn con; nhãn nguồn ở
   màn hình chính; ghi chú `micIssue` trên thanh phụ đề; `check-i18n` năm ngôn ngữ.
 - **Tích hợp:** `latency-bench session` trên bản thu cảnh 1 của spike (đã trộn theo B): A2 p50 không tăng quá 100 ms so
@@ -335,7 +424,8 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
 | A1-mic | **Tương thích:** chế độ `mic` với micro máy, micro USB (nếu có), micro AirPods. Chế độ `both` với Zoom, Meet (Chrome), Teams, nghe qua loa và qua tai nghe. Trên cả hai hệ điều hành. |
 | A4-mic | **Nhận dạng qua micro:** mốc WER/CER lấy từ cảnh 4 của spike (1 m và 3 m). Chống thụt lùi 10% (tương đối), như A4. |
 | A-trộn | **Tiếng vọng:** đạt mức của B (mục 6.3) với tham số đã chốt. |
-| A-ảo | **Phụ đề ảo:** cảnh 6 không quá 1 câu mỗi 5 phút. |
+| A-ảo | **Chữ ảo:** cảnh 6 (gõ phím, bút, gõ bàn, lật giấy, đặt cốc, kéo ghế, quạt) không quá 1 câu ảo mỗi 10 phút, với "Lọc tiếng ồn micro" bật. |
+| A-ồn | **Câu thật khi có ồn:** cảnh 7 bỏ sót không quá 20% câu một–hai từ; WER/CER câu thường không tệ hơn khi không ồn quá 15% (tương đối). Cảnh 4 với lọc ồn bật không tệ hơn khi tắt quá 5%. |
 | A2 | Không tăng quá 100 ms (p50) ở chế độ `both` so với chế độ `playback` trên cùng bản thu. |
 | A7 | Kiểm lại bằng proxy ở chế độ `both`: không có kết nối mới. |
 
@@ -347,15 +437,17 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
 - **§3.2:** bỏ dòng "Thu âm từ micro". Giữ dòng micro ảo.
 - **§3.3:** thêm các tiêu chí ở mục 11.
 - **§4.3:** màn hình chính (nguồn âm thanh) và nhóm Cài đặt "Âm thanh".
-- **§6.1:** mục mới "Micro". **§6.2:** trộn có nhường lời.
+- **§6.1:** mục mới "Micro". **§6.2:** trộn có nhường lời, chống tiếng ồn ở micro.
+- **§6.3:** bộ tham số VAD khi có micro; VAD nghe bản đã lọc ồn. **§6.4:** luật `ShortUnsure`.
 - **§9:** ba tình huống ở mục 7. **§10.1:** âm thanh micro chỉ nằm trong RAM.
 
 ## 13. Kế hoạch và thứ tự
 
 1. **Kế hoạch 01, spike:** S-M4 trước, rồi S-M1 → S-M3. Kết thúc bằng bảng kết quả và tham số chốt. Chủ dự án duyệt
    trước khi sang kế hoạch 03.
-2. **Kế hoạch 02, chế độ `mic`:** nguồn micro hai nền tảng, settings, IPC, quyền, giao diện, i18n. Chỉ phụ thuộc S-M4,
-   làm song song được với S-M2 và S-M3.
+2. **Kế hoạch 02, chế độ `mic`:** nguồn micro hai nền tảng, settings, IPC, quyền, giao diện, i18n, chống tiếng ồn (mục
+   5.7, 5.8). Phần nguồn, quyền và giao diện chỉ phụ thuộc S-M4, làm song song được với S-M2 và S-M3. Phần chống tiếng
+   ồn làm sau khi S-M3 chốt bộ lọc và tham số.
 3. **Kế hoạch 03, chế độ `both`:** `Preprocessor` có vai, `DuckingMixer`, bộ canh tách theo nguồn, lỗi một phần. Phụ
    thuộc kết quả S-M3.
 4. **Kế hoạch 04, phát hành:** pháp lý 1.8/1.5, website, sửa spec chính, nghiệm thu mục 11. Phát hành theo
@@ -367,7 +459,10 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
 |---|---|
 | macOS hỏi lại quyền micro sau mỗi bản cập nhật (ký ad-hoc) | Chỉ hỏi người dùng chọn chế độ có micro (mục 3.4); hết khi có Developer ID |
 | Tham số nhường lời không hợp mọi phòng (loa Bluetooth trễ lớn, phòng vang) | Spike đo độ trễ vọng thật; ghi chú khuyên đeo tai nghe; chỗ nối AEC3 để nâng cấp |
-| Tiếng ồn nền của micro sinh phụ đề ảo | Cảnh 6 và tiêu chí A-ảo; xem lại luật lọc nếu vượt |
+| Tiếng gõ phím, tiếng bút, tiếng gõ bàn sinh chữ ảo | Năm lớp ở mục 5.7; cảnh 6 đo theo từng loại tiếng; tiêu chí A-ảo |
+| Lọc ồn làm whisper nhận sai | Whisper nghe bản chỉ lọc 80 Hz; lọc ồn chỉ cho VAD trừ khi spike cho thấy tốt hơn; tiêu chí A-ồn |
+| Lọc chặt làm mất câu thật rất ngắn | Ưu tiên đã chốt (mục 1); mức bỏ sót tối đa 20% (A-ồn); công tắc tắt lọc ồn |
+| DeepFilterNet ít được bảo trì (bản cuối 2023) | Chỉ dùng khi RNNoise không đạt; qua quy tắc §6.12; nếu phải lấy từ git thay vì crates.io thì hỏi chủ dự án |
 | Giọng ở xa quá nhỏ, VAD bỏ sót | Cảnh 4 ở 3 m; AGC là quyết định riêng nếu cần |
 | Micro bị app họp giữ độc quyền hay bị chặn quyền trên Windows | `micUnavailable`/`micPermission` với hướng dẫn; chế độ `both` vẫn chạy với âm thanh máy |
 | Người dùng tưởng tắt mic trong Zoom là app ngừng thu | Chính sách quyền riêng tư 1.8, hướng dẫn trên website; chỉ báo micro của hệ điều hành |
@@ -377,8 +472,9 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
 - Làm trên nhánh `nguon-micro` (worktree riêng). Mọi lệnh gắn `cd <đường dẫn tuyệt đối của worktree> &&`.
 - **Không merge, push, deploy hay đẩy tag** khi chủ dự án chưa cho phép.
 - Spike S-M1 và S-M2 phát tiếng ra loa và mở micro trên máy của chủ dự án: hỏi trước mỗi lần chạy.
-- Thư viện mới (`objc2-av-foundation`, `sonora` nếu chốt C) theo §6.12: bản ổn định mới nhất, kiểm tương thích, build
-  lại toàn bộ và chạy test.
+- Thư viện mới (`objc2-av-foundation`, `nnnoiseless`, `sonora` nếu chốt C, DeepFilterNet nếu cần) theo §6.12: bản ổn
+  định mới nhất, kiểm tương thích, build lại toàn bộ và chạy test. Spike thử thư viện trong `crates/latency-bench` trước,
+  chỉ thêm vào `audio-capture` khi đã chốt.
 
 ## Tham khảo
 
@@ -391,3 +487,10 @@ Ghi chú hiện ở màn hình chính và trên thanh phụ đề, như `waiting
 - Thu cả hai phía, tiếng vọng và câu trùng: https://docs.openwhispr.com/help/meetings/capture-both-sides
 - `sonora` (bản Rust thuần của WebRTC audio processing, có AEC3, BSD-3-Clause, 0.2.0 ngày 2026-07-29):
   https://crates.io/crates/sonora
+- Lọc ồn làm Whisper nhận sai hơn: https://arxiv.org/pdf/2512.17562, https://arxiv.org/pdf/2406.12699,
+  https://arxiv.org/html/2603.04710v1
+- So RNNoise và DeepFilterNet (một bài đo, có tiếng gõ phím; không bộ nào làm Whisper đúng hơn):
+  https://www.creativeainews.com/articles/deepfilternet-vs-rnnoise-vs-ffmpeg-noise-removal-2026/
+- Tiếng gõ phím dễ bị bộ lọc ồn thông thường coi là tiếng nói: https://scitepress.org/PublishedPapers/2022/115374
+- `nnnoiseless` (RNNoise bằng Rust, BSD-3-Clause, 0.5.2 ngày 2025-12-18): https://crates.io/crates/nnnoiseless
+- DeepFilterNet (bản phát hành): https://github.com/Rikorose/DeepFilterNet/releases
