@@ -127,3 +127,73 @@ tối đa +30 dB, chặn mềm):
 - **Nhường lời:** −55 dBFS / −30 dB / giữ 300 ms.
 
 Cấu hình này vẫn **không đạt** các mức câu ngắn, câu có ồn và giọng ở xa của §6.3.
+
+## Đo thêm lần 2: giọng người thật và thời gian đóng đoạn
+
+**Giọng thật:**
+- `doc-vi-1m`: chủ dự án đọc 15 dòng tiếng Việt (10 câu FLEURS xen 5 câu ngắn) ở 1 m, giọng bình thường. Đỉnh p95 −31 đến
+  −37 dBFS, gần bằng điện thoại ở 1 m.
+- Bài tiếng Anh: chủ dự án bỏ.
+- Chấm bằng `score_doc.py`: WER của toàn bộ chữ ghép theo thứ tự so với cả bài.
+
+**Nguyên nhân chính khi nghe giọng thật:** với `end_silence_ms` 50 ms (mặc định của app), câu bị cắt thành mẩu 1–2 giây,
+ví dụ "Kết quả phân" | "Tích đồ thị" | "Sedu" | "năng lên một trang web". Whisper nghe từng mẩu ngắn nên sai nhiều.
+
+**Lưới `end_silence_ms`** {50, 300, 500} × {app, không lọc +20 dB, RNNoise cho VAD +20 dB, RNNoise cho VAD 0 dB} ×
+`min_speech_ms` {250, 400}; `variants/end-silence.json`:
+
+| Phương án (VAD 0,5) | Giọng thật 1 m (WER) | Cảnh 6: ảo | 1 m (điện thoại): lỗi / giữ | 3 m: lỗi / giữ | Cảnh 7: câu ngắn / lỗi |
+|---|---|---|---|---|---|
+| App hiện nay (50 ms) | 59,3% | 1 | 74,2% / 28% | 89,4% / 8% | 10,5% / 87,8% |
+| App, đóng đoạn 500 ms | **36,0%** | 1 | 70,1% / 32% | 88,9% / 8% | 10,5% / 83,1% |
+| Không lọc, +20 dB, 500 ms | 39,3% | 1 | **31,9% / 76%** | 62,9% / 40% | 0% / 97,1% |
+| RNNoise cho VAD, 0 dB, 500 ms, 400 | 41,3% | 1 | 45,3% / 60% | 66,6% / 28% | 26,3% / 79,7% |
+| **RNNoise cho VAD, +20 dB, 500 ms, 400** | 44,0% | 1 | 33,5% / **80%** | **55,3% / 44%** | 39,5% / **69,9%** |
+| RNNoise cho VAD, +20 dB, 50 ms, 400 (đề xuất trước) | 68,0% | 1 | 42,0% / 68% | 65,8% / 36% | 42,1% / 75,9% |
+
+- **Đóng đoạn sau 500 ms là thay đổi có tác dụng lớn nhất** cho giọng thật (59% xuống 36%), và cũng tốt hơn ở mọi cảnh điện
+  thoại.
+- **Không tăng chữ ảo.** Câu duy nhất của cảnh 6 ("Vợ có bút bi nữa…", lúc bấm bút) xuất hiện ở mọi tổ hợp, kể cả khi
+  không khuếch đại, nên nhiều khả năng là **tiếng người thật trong phòng** chứ không phải chữ bịa.
+- **Câu ngắn của bài đọc gần như không bao giờ đứng riêng thành một đoạn** (0–1/5): người đọc nghỉ ngắn nên câu ngắn dính
+  vào câu bên cạnh. Cách đếm "đứng riêng" của `score_doc.py` vì thế tính thấp hơn thực tế.
+- **Khuếch đại +20 dB:** giúp rõ với loa điện thoại (ở 1 m giữ 32% lên 76–80%), nhưng với giọng thật lại tệ hơn chút (36% so
+  với 39–44%).
+- **Cái giá:** phụ đề hiện chậm hơn khoảng 450 ms vì đóng đoạn muộn hơn.
+
+**Chế độ trộn với đóng đoạn 500 ms** (`variants/both-es.json`; B đã chọn):
+
+| Phương án | Cảnh 1: lỗi online / lỗi trong phòng | Cảnh 2: lỗi online / lỗi trong phòng |
+|---|---|---|
+| 0 dB, 50 ms, 600 | 7,3% / 6,8% | 10,4% / 69,6% |
+| 0 dB, 500 ms, 600 | **4,2% / 4,0%** | 19,0% / 73,9% |
+| +20 dB, 50 ms, 600 | 7,9% / 5,4% | 11,6% / 66,0% |
+| +20 dB, 500 ms, 600 | 6,1% / 3,7% | 20,4% / 76,3% |
+
+Khi nói lần lượt thì 500 ms tốt hơn. Khi nói chồng 30% thời gian thì 500 ms gộp lẫn tiếng hai bên, lỗi online tăng gần gấp
+đôi.
+
+**Câu ảo khi khuếch đại:** "Hãy subscribe cho kênh Ghiền Mì Gõ Để không bỏ lỡ những video hấp dẫn" xuất hiện ở bài đọc
+(RNNoise, +20 dB, 50 ms) và ở cảnh giả lập. Luật `Hallucination` của app chỉ bỏ câu khi **toàn bộ** câu là cụm trong
+danh sách, nên câu dài hơn cụm "hãy subscribe cho kênh" vẫn lọt. Kế hoạch 02 nên cho luật này bắt cả câu **chứa** các cụm
+quảng cáo kênh rõ ràng.
+
+## Cấu hình đề xuất (chờ chủ dự án quyết)
+
+- **Chế độ chỉ micro:**
+  - lọc 80 Hz;
+  - khuếch đại cố định +20 dB, chặn mềm;
+  - RNNoise chỉ cho VAD;
+  - VAD 0,5, `min_speech_ms` 400, **`end_silence_ms` 500**;
+  - không dùng `ShortUnsure`, AGC hay DeepFilterNet.
+- **Chế độ trộn:**
+  - nhường lời −55 dBFS / −30 dB / giữ 300 ms;
+  - khuếch đại +20 dB;
+  - VAD 0,5 / 600 ms;
+  - `end_silence_ms` 500 nếu ưu tiên họp nói lần lượt, 50 nếu hay nói chồng.
+- **Thêm vào kế hoạch 02:** luật `Hallucination` bắt cả câu chứa cụm quảng cáo kênh.
+
+**Còn không đạt mức của §6.3:**
+- cảnh 7 câu ngắn 39,5% (cần 80%);
+- cảnh 7 lỗi câu dài 69,9% (cần khoảng 38%);
+- giọng thật 1 m lỗi 44% (36% nếu bỏ khuếch đại).

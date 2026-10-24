@@ -1,0 +1,122 @@
+[
+ {
+  "name": "BE-g0-es50-m400",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 0,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 50
+  }
+ },
+ {
+  "name": "BE-g0-es50-m600",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 0,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600,
+   "end_silence_ms": 50
+  }
+ },
+ {
+  "name": "BE-g0-es500-m400",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 0,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 500
+  }
+ },
+ {
+  "name": "BE-g0-es500-m600",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 0,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600,
+   "end_silence_ms": 500
+  }
+ },
+ {
+  "name": "BE-g20-es50-m400",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 20,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 50
+  }
+ },
+ {
+  "name": "BE-g20-es50-m600",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 20,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600,
+   "end_silence_ms": 50
+  }
+ },
+ {
+  "name": "BE-g20-es500-m400",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 20,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 400,
+   "end_silence_ms": 500
+  }
+ },
+ {
+  "name": "BE-g20-es500-m600",
+  "mode": "both",
+  "gate": {
+   "threshold_dbfs": -55,
+   "duck_db": -30,
+   "hold_ms": 300
+  },
+  "gain_db": 20,
+  "vad": {
+   "threshold": 0.5,
+   "min_speech_ms": 600,
+   "end_silence_ms": 500
+  }
+ }
+]
