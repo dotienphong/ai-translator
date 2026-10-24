@@ -43,6 +43,9 @@ pub struct GateSpec {
 pub struct VadSpec {
     pub threshold: f32,
     pub min_speech_ms: u64,
+    /// Im lặng bao lâu thì đóng đoạn (`vadEndSilenceMs`, mặc định của app 50 ms). Giọng ở xa bị cắt vụn ở 50 ms (đo thêm
+    /// sau Task 19), nên dò cả giá trị này.
+    pub end_silence_ms: u64,
 }
 
 impl Default for VadSpec {
@@ -50,6 +53,7 @@ impl Default for VadSpec {
         Self {
             threshold: 0.5,
             min_speech_ms: 250,
+            end_silence_ms: 50,
         }
     }
 }
@@ -288,7 +292,7 @@ pub fn run(args: MixEvalArgs) -> Result<()> {
         let mut segmenter = Segmenter::new(SegmenterConfig {
             threshold: v.vad.threshold,
             min_speech_ms: v.vad.min_speech_ms,
-            end_silence_ms: 50,
+            end_silence_ms: v.vad.end_silence_ms,
             ..base.segmenter.clone()
         });
         let mut segments = Vec::new();
@@ -382,6 +386,9 @@ mod tests {
         assert_eq!(v.mic, "mic.wav");
         assert!(v.highpass && v.gate.is_none() && v.mic_vad.is_none() && !v.whisper_hears_vad);
         assert_eq!(v.vad, VadSpec::default());
+        assert_eq!(v.vad.end_silence_ms, 50);
+        let v = variant(r#"{"name": "x", "mode": "mic", "vad": {"end_silence_ms": 300}}"#);
+        assert_eq!((v.vad.threshold, v.vad.end_silence_ms), (0.5, 300));
     }
 
     #[test]
