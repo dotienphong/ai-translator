@@ -61,4 +61,9 @@ Kế hoạch: `docs/superpowers/plans/2026-10-24-nguon-micro-02-che-do-micro.md`
 
 - Phát hiện 1: bản cho whisper dùng bộ giới hạn mức thay `tanh`, lọc 80 Hz chạy trước khuếch đại; số đo ở `gioi-han-muc.md`.
 - Phát hiện 3: tắt lọc ồn thì `min_speech_ms` 250; ghi chú dưới công tắc sửa cho đúng.
-- Phát hiện 4 và 5: chưa làm.
+- Phát hiện 4: thử lại sau khi sửa. "Quit & Reopen" của System Settings gửi `quit` với lý do `rlgo` (người gửi
+  `com.apple.settings.PrivacySecurity.extension`). Lý do này vốn đã được phép thoát, nên app thoát và macOS mở lại app (mở bản
+  đã cài vì cùng bundle id). Giao diện giờ nhắc chọn "Thoát & Mở lại" sau khi bật quyền (Cài đặt › Âm thanh, lỗi
+  `micPermission` ở màn hình chính).
+- Phát hiện 5: thanh trượt ở chế độ Micro khóa và hiện 500 ms. Câu bị cắt ở dấu phẩy chưa xử lý (cần đo thêm, chỉ gặp một
+  lần).
