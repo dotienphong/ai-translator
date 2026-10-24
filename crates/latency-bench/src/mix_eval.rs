@@ -85,6 +85,10 @@ pub struct Variant {
     pub gate: Option<GateSpec>,
     #[serde(default)]
     pub vad: VadSpec,
+    /// Khuếch đại cố định cả hai bản micro (dB), trước mọi lớp khác; dương thì qua bộ chặn mềm `tanh` để tiếng gõ to không
+    /// bị xén cứng. Đo xem giọng ở xa có cần tự cân mức không (Task 16: giọng thật ở 1 m chỉ khoảng −45 dBFS).
+    #[serde(default)]
+    pub gain_db: f32,
 }
 
 /// Luồng cho whisper và luồng cho VAD của một phương án, cùng độ dài.
@@ -94,6 +98,12 @@ pub fn build_views(v: &Variant, playback: &[f32], mic: &[f32], mic_vad: &[f32]) 
     let len = mic.len().min(mic_vad.len());
     mic.truncate(len);
     mic_vad.truncate(len);
+    if v.gain_db > 0.0 {
+        let g = 10f32.powf(v.gain_db / 20.0);
+        for x in mic.iter_mut().chain(mic_vad.iter_mut()) {
+            *x = (*x * g).tanh();
+        }
+    }
     if v.highpass {
         HighPass::new(16_000, 80.0).process(&mut mic);
         HighPass::new(16_000, 80.0).process(&mut mic_vad);
@@ -351,6 +361,17 @@ mod tests {
         );
         let (asr, _) = build_views(&v, &[0.1; 1_600], &[0.5; 1_600], &[0.5; 1_600]);
         assert!((asr[1_000] - 0.15).abs() < 1e-5, "{}", asr[1_000]);
+    }
+
+    #[test]
+    fn gain_amplifies_the_mic_with_a_soft_limit() {
+        let v = variant(r#"{"name": "x", "mode": "mic", "highpass": false, "gain_db": 20}"#);
+        let (asr, vad) = build_views(&v, &[], &[0.01, 0.5, -0.5], &[0.01, 0.5, -0.5]);
+        // Tiếng nhỏ: gần đúng ×10.
+        assert!((asr[0] - 0.1).abs() < 0.002, "{}", asr[0]);
+        // Tiếng to: bị chặn mềm dưới 1, giữ dấu.
+        assert!(asr[1] > 0.99 && asr[1] < 1.0 && asr[2] < -0.99);
+        assert_eq!(asr, vad);
     }
 
     #[test]

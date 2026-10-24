@@ -6,7 +6,9 @@
 
 - `echo` (cảnh 1, 2, 3): đối chứng chỉ-Playback và chỉ-micro, A (trộn thẳng), B (lưới 3 × 4 × 4), C (micro đã khử vọng).
 - `noise` (cảnh 4, 6, 7, chỉ micro): bộ lọc {không, RNNoise, DeepFilterNet} × whisper nghe {bản thường, bản đã lọc} ×
-  VAD {0,5; 0,6; 0,7} × {250, 400, 600} ms. Luật ShortUnsure được dò ở `score_mix.py`, không cần chép lời lại.
+  khuếch đại {0, +10, +20 dB} × VAD {0,5; 0,6; 0,7} × {250, 400, 600} ms. `--no-dfn` bỏ các phương án DeepFilterNet.
+  Luật ShortUnsure được dò ở `score_mix.py`, không cần chép lời lại. Chiều khuếch đại thêm sau Task 16: VAD bỏ sót giọng ở
+  xa (giọng thật ở 1 m chỉ khoảng −45 dBFS).
 - `both-vad` (cảnh 1): B với tham số đã chọn × lưới VAD, để kiểm VAD chặt hơn không hại tiếng online.
 """
 import argparse
@@ -38,17 +40,19 @@ def echo():
     return out
 
 
-def noise():
+def noise(dfn=True):
     out = []
-    filters = [("khong", None, False), ("rnn", "mic-rnnoise.wav", False), ("rnn-ca-hai", "mic-rnnoise.wav", True),
-               ("dfn", "mic-dfn.wav", False), ("dfn-ca-hai", "mic-dfn.wav", True)]
+    filters = [("khong", None, False), ("rnn", "mic-rnnoise.wav", False), ("rnn-ca-hai", "mic-rnnoise.wav", True)]
+    if dfn:
+        filters += [("dfn", "mic-dfn.wav", False), ("dfn-ca-hai", "mic-dfn.wav", True)]
     for fname, file, both in filters:
-        for t, m in VAD_GRID:
-            v = {"name": f"N-{fname}-v{int(t * 10)}-m{m}", "mode": "mic", "vad": vad(t, m)}
-            if file:
-                v["mic_vad"] = file
-                v["whisper_hears_vad"] = both
-            out.append(v)
+        for gain in (0, 10, 20):
+            for t, m in VAD_GRID:
+                v = {"name": f"N-{fname}-g{gain}-v{int(t * 10)}-m{m}", "mode": "mic", "vad": vad(t, m), "gain_db": gain}
+                if file:
+                    v["mic_vad"] = file
+                    v["whisper_hears_vad"] = both
+                out.append(v)
     return out
 
 
@@ -65,12 +69,13 @@ def both_vad(gate):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kind", choices=["echo", "noise", "both-vad"])
+    ap.add_argument("--no-dfn", action="store_true", help="noise: bỏ các phương án DeepFilterNet")
     ap.add_argument("--gate", help="ngưỡng,mức hạ,thời gian giữ của B đã chọn, ví dụ -45,-20,300 (mức hạ 'tat' là tắt hẳn)")
     args = ap.parse_args()
     if args.kind == "echo":
         variants = echo()
     elif args.kind == "noise":
-        variants = noise()
+        variants = noise(dfn=not args.no_dfn)
     else:
         t, d, h = args.gate.split(",")
         variants = both_vad((float(t), None if d == "tat" else float(d), int(h)))
