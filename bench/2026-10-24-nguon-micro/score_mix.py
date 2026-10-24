@@ -178,7 +178,14 @@ def scene_items(scene, rate):
     with open(path, encoding="utf-8") as f:
         sched = json.load(f)
     offsets = {}
+    # Ghi đè tay khi tương quan đường bao bị tiếng ồn đánh lừa (cảnh 7): `offsets.json` = {"room": ms}, kiểm bằng số câu
+    # ngắn có chữ nhận được trùng khớp câu chuẩn.
+    manual_path = os.path.join(scene, "offsets.json")
+    manual = json.load(open(manual_path, encoding="utf-8")) if os.path.exists(manual_path) else {}
     for source in ("online", "room"):
+        if source in manual:
+            offsets[source] = manual[source]
+            continue
         if not any(it["source"] == source for it in sched["items"]):
             continue
         rec = "playback.wav" if source == "online" and os.path.exists(os.path.join(scene, "playback.wav")) else "mic.wav"
@@ -188,7 +195,10 @@ def scene_items(scene, rate):
         offsets[source] = best_offset_ms(track, recording, rate, min_ms=-15_000)
     items = [{**it, "start_ms": it["start_ms"] + offsets[it["source"]], "end_ms": it["end_ms"] + offsets[it["source"]]}
              for it in sched["items"]]
-    return items, offsets
+    # Clip kết thúc sau lúc dừng thu (bấm phát trễ) không có trong bản thu: không chấm.
+    mic, _ = read_wav(os.path.join(scene, "mic.wav"))
+    recorded_ms = len(mic) * 1000 // rate
+    return [it for it in items if it["end_ms"] <= recorded_ms], offsets
 
 
 def fmt(x, pct=True):
