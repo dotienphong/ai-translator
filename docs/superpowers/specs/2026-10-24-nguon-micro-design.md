@@ -579,8 +579,10 @@ Số liệu: `bench/2026-10-24-nguon-micro/results/ao-tron.md`. Chủ dự án c
   VAD của engine.
 - Mở lại nguồn (đổi thiết bị, micro rút ra cắm lại) thì xóa state của Silero, như engine làm với VAD của nó.
 
-**Lỗi.** Silero của bộ trộn không nạp được hay chạy lỗi thì ghi cảnh báo một lần và dùng riêng điều kiện (a) cho tới hết
-phiên. Phiên không dừng, không có mã lỗi mới.
+**Lỗi.**
+- Silero của bộ trộn không nạp được: ghi cảnh báo một lần và dùng riêng điều kiện (a) tới hết phiên.
+- Chạy lỗi giữa chừng: ghi cảnh báo và dùng riêng (a) tới lần mở nguồn kế tiếp, vì mỗi lần mở có bộ trộn mới.
+- Phiên không dừng, không có mã lỗi mới.
 
 **Chi phí và ngân sách.**
 - Đo ngày 2026-10-25, bản release, M4 Pro, 3 000 khung của bản thu thật: Silero 0,22 ms mỗi khung (p95 0,23 ms, chậm nhất
@@ -600,8 +602,8 @@ phiên. Phiên không dừng, không có mã lỗi mới.
   - âm thanh máy to vẫn hạ ngay ở khung 10 ms kế tiếp, kể cả khi không có bộ phát hiện;
   - bộ phát hiện lỗi thì quay về điều kiện (a).
 - `capture.rs`: `BothPre` có VAD lỗi nạp vẫn trộn được; hàm tạo VAD chỉ được gọi ở chế độ trộn.
-- `mix-eval`: phương án nhận `gate.speech_prob` (ngưỡng xác suất; không có thì như mục 16) và `gate.mute` (tắt hẳn micro
-  khi hạ; JSON không ghi được âm vô cực).
+- `mix-eval`: phương án nhận `gate.speech_prob` (ngưỡng xác suất; không có thì như mục 16). Tắt hẳn micro khi hạ là
+  `"duck_db": null`, đã có từ spike.
 
 **Nghiệm thu (thêm vào mục 11).**
 - **A-trộn:** cảnh 1, 2 không xấu hơn mốc mục 16 quá 10% (tương đối): online ≤ 9,8% × 1,10, trong phòng ≤ 5,2% × 1,10.
