@@ -7,6 +7,8 @@
 //!   `RunEvent::Exit`). Plugin cập nhật trên Windows còn gọi `process::exit` sau `install_on_exit`, nên marker phải xóa trước đó.
 //! - **`panic.json`**: panic hook ghi vị trí và câu panic trước khi bản phát hành abort (`panic = "abort"`).
 //! - Máy khởi động lại từ lúc ghi marker (mất điện, tắt máy cưỡng bức, kernel panic) không phải lỗi của app: không báo.
+//! - Tên hai file trên là của bản phát hành. Bản debug dùng `run.debug.marker` và `panic.debug.json` trong cùng thư mục (xem
+//!   `MARKER`), nên hai bản không đọc dấu của nhau.
 //!
 //! Plugin single-instance bảo đảm chỉ một bản app chạy, nên marker còn lại luôn của một lần chạy đã chết.
 
@@ -17,7 +19,17 @@ use serde::{Deserialize, Serialize};
 
 use super::report::{MAX_MESSAGE_CHARS, location_key};
 
+// Bản debug (`tauri dev`) và bản phát hành đã cài dùng chung thư mục dữ liệu vì cùng identifier, nên mỗi bên giữ file riêng:
+// bản này không đọc dấu của bản kia. Nếu không, dấu của một bản debug chết không qua đường thoát (Ctrl+C `tauri dev`, kill)
+// sẽ được bản phát hành báo thành `crash` của chính nó, kèm `build: "release"` và log lẫn của hai bản (báo cáo thật
+// `R-4C5A-RG44`, 2026-10-24).
+#[cfg(debug_assertions)]
+const MARKER: &str = "run.debug.marker";
+#[cfg(not(debug_assertions))]
 const MARKER: &str = "run.marker";
+#[cfg(debug_assertions)]
+const PANIC: &str = "panic.debug.json";
+#[cfg(not(debug_assertions))]
 const PANIC: &str = "panic.json";
 
 #[derive(Serialize, Deserialize)]
@@ -294,6 +306,40 @@ mod tests {
         std::fs::write(dir.join(PANIC), b"hong").unwrap();
         let files = RunFiles::new(dir.clone());
         assert_eq!(files.begin_run(T0, None, "0.1.10"), PreviousRun::Clean);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// Bản debug (`tauri dev`) và bản phát hành đã cài dùng chung thư mục dữ liệu vì cùng identifier. Dấu của bản debug chết
+    /// không qua đường thoát không được bản phát hành báo thành `crash` của chính nó (báo cáo thật `R-4C5A-RG44`, 2026-10-24).
+    #[test]
+    fn a_marker_or_panic_dump_left_by_the_other_build_kind_is_not_ours() {
+        let dir = temp("other-build");
+        std::fs::create_dir_all(&dir).unwrap();
+        let (other_marker, other_panic) = if cfg!(debug_assertions) {
+            ("run.marker", "panic.json")
+        } else {
+            ("run.debug.marker", "panic.debug.json")
+        };
+        std::fs::write(
+            dir.join(other_marker),
+            br#"{"started_at":1790812800,"version":"0.2.7"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join(other_panic),
+            br#"{"at":1790812900,"location":"x.rs:1","message":"boom"}"#,
+        )
+        .unwrap();
+        let files = RunFiles::new(dir.clone());
+        assert_eq!(files.begin_run(T0 + 500, None, "0.2.7"), PreviousRun::Clean);
+        assert!(
+            dir.join(other_marker).exists(),
+            "dấu của bản kia còn nguyên cho chính nó"
+        );
+        assert!(
+            dir.join(other_panic).exists(),
+            "panic dump của bản kia còn nguyên cho chính nó"
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 

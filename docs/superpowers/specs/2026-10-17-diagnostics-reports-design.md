@@ -21,7 +21,7 @@ Bốn loại báo cáo (`kind`):
 
 | `kind` | Khi nào | Tự động? |
 |---|---|---|
-| `crash` | Lần chạy trước chết. Hai nguồn: panic hook ghi file `panic.json` (vị trí và câu panic) trước khi abort (bản phát hành build `panic = "abort"`, `lib.rs` đã cài `pipeline::process::install_panic_hook`); hoặc file đánh dấu "đang chạy" còn sót lại mà không có `panic.json` (mã `unclean_exit`). Gửi ở lần mở sau | Có |
+| `crash` | Lần chạy trước chết. Hai nguồn: panic hook ghi file `panic.json` (vị trí và câu panic) trước khi abort (bản phát hành build `panic = "abort"`, `lib.rs` đã cài `pipeline::process::install_panic_hook`); hoặc file đánh dấu "đang chạy" còn sót lại mà không có `panic.json` (mã `unclean_exit`). Hai file này là của bản phát hành; bản debug dùng `run.debug.marker` và `panic.debug.json` trong cùng thư mục (hai bản chung identifier nên chung thư mục dữ liệu), để bản phát hành đã cài không báo cái chết của một bản debug thành `crash` của mình. Gửi ở lần mở sau | Có |
 | `session_error` | Phiên dịch dừng vì lỗi **của app**: `sidecarFailed`, `sidecarMissing`, `sidecarTampered`, `modelBroken`, `vadFailed`, `captureFailed`, `dataUnavailable`, `unknown` | Có |
 | `sidecar_died` | `SidecarEvent::Restarting` của `pipeline::supervisor`: tiến trình phụ chết rồi được app tự khởi động lại | Có |
 | `manual` | Người dùng bấm "Gửi log cho hỗ trợ" ở Giới thiệu | Không: bấm tay, gửi ngay, kể cả khi tắt tự động |
@@ -137,7 +137,7 @@ Thứ tự deploy: server (áp migration `0004` lên D1 production, deploy `mt-l
 - **Đồng ý tích sẵn.** Ô tích sẵn có thể không được coi là sự đồng ý hợp lệ theo luật của một số nơi (ví dụ EU, vì app bán thẻ USD qua Creem cho người dùng quốc tế). Cần luật sư xem.
 - **Báo cáo gắn được với người** qua `device_id_hash` (license, email, tên máy). Chính sách ghi rõ; "xóa theo email" xóa luôn báo cáo của các máy đó.
 - **Log có thể chứa dữ liệu chưa lường** (ví dụ thông báo lỗi của thư viện chứa tên file). Giảm bằng che dữ liệu, fail closed, kiểm lại ở server, trần 64 KB, giữ 30 ngày, và admin xóa tay được.
-- **`unclean_exit` có thể báo nhầm** (tắt máy, hết pin, người dùng kill app). Hiện thành nhóm riêng ở Web Admin, không lẫn với panic.
+- **`unclean_exit` có thể báo nhầm** (tắt máy, hết pin, người dùng kill app). Hiện thành nhóm riêng ở Web Admin, không lẫn với panic. Trường hợp đã gặp thật: báo cáo `R-4C5A-RG44` (2026-10-24) là dấu của một bản debug (`tauri dev`) chết không qua đường thoát (log dừng im lặng, không có panic hay crash report của macOS; cách chết cụ thể chưa xác định) mà bản phát hành đã cài đọc phải; đã tách file dấu theo loại build (§1, bảng `crash`). Người dùng thật chạy một loại build nên không gặp lại kiểu này.
 - **Chỉ một người vận hành** xem báo cáo (Cloudflare Access, `ADMIN_EMAILS`), như phần còn lại của Web Admin.
 
 ## 10. Không làm
