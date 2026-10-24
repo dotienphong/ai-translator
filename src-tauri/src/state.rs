@@ -22,6 +22,14 @@ pub enum SessionStatus {
     Error,
 }
 
+/// Vấn đề của micro (`AppStatus::mic_issue`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MicIssue {
+    /// Micro trả toàn số 0 từ đầu phiên: thiếu quyền micro hoặc micro đang tắt tiếng bằng phím cứng.
+    Suspected,
+}
+
 /// Đang chờ tiến trình phụ (§4.2, §6.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,6 +86,9 @@ pub struct AppStatus {
     /// macOS, nguồn một app: app đã chọn không phát tiếng nữa (đã đóng); phiên vẫn chạy và thử thu lại mỗi 2 giây
     /// (Q-C của review 02 lần 2). Giao diện hiện chỉ báo.
     pub waiting_for_app: bool,
+    /// Vấn đề của micro trong phiên đang chạy (spec 2026-10-24-nguon-micro §4, §7); `None` khi không có. Kế hoạch 03 của
+    /// spec đó thêm `permission`, `unavailable` cho chế độ âm thanh máy + micro.
+    pub mic_issue: Option<MicIssue>,
     /// Đang có gói trả phí còn hạn (spec §2 "Pro"): giao diện mở hay khóa tính năng Pro. Đặt bởi `pro::refresh`.
     pub pro: bool,
     /// Hạn mức còn từ 5 phút trở xuống (§4.2 bước 2): thanh phụ đề và cửa sổ chính nhắc. Đặt bởi `license::app::refresh`.
@@ -180,6 +191,7 @@ impl AppState {
                 streaming_too_slow: false,
                 permission_suspected: false,
                 waiting_for_app: false,
+                mic_issue: None,
                 pro: false,
                 quota_warning: false,
                 quota_reset_at: None,

@@ -546,6 +546,64 @@ fn the_listening_test_captures_the_whole_system_and_the_overlay_hears_the_level(
     );
 }
 
+/// Spec 2026-10-24-nguon-micro §7, QĐ5 của kế hoạch 02: chế độ micro mà quyền đã bị từ chối thì không bắt đầu phiên, không
+/// nạp model, không mở nguồn; có quyền thì mở nguồn micro theo cài đặt.
+#[test]
+fn the_mic_mode_needs_the_mic_permission() {
+    use crate::capture::CapturePlan;
+    use audio_capture::MicPermission;
+    let deps = FakeDeps::default();
+    let (plans, prepares, permission) = (
+        deps.capture_plans.clone(),
+        deps.prepares.clone(),
+        deps.mic_permission.clone(),
+    );
+    *permission.lock().unwrap() = Some(MicPermission::Denied);
+    let app = mock_app_with(deps);
+    let main = window(&app, "main");
+    invoke(&main, "update_settings", json!({ "patch": { "captureMode": "mic" } })).unwrap();
+    let err = session::toggle(app.handle()).unwrap_err();
+    assert_eq!(err.code, errors::MIC_PERMISSION);
+    let status = app.state::<AppState>().status();
+    assert_eq!(
+        (status.session, status.session_error.as_deref()),
+        (SessionStatus::Error, Some(errors::MIC_PERMISSION))
+    );
+    assert!(plans.lock().unwrap().is_empty());
+    assert_eq!(*prepares.lock().unwrap(), 0, "không nạp model");
+    *permission.lock().unwrap() = Some(MicPermission::Granted);
+    let status = invoke(&main, "toggle_session", json!({})).unwrap();
+    assert_eq!(status["session"], "running");
+    assert_eq!(
+        *plans.lock().unwrap(),
+        [CapturePlan::Mic {
+            device: None,
+            noise_filter: true
+        }]
+    );
+}
+
+/// Micro không có tín hiệu (spec §5.6, §7): phiên chạy tiếp, `micIssue` là `suspected`; có tín hiệu lại hay dừng phiên thì
+/// xóa.
+#[test]
+fn a_silent_mic_shows_a_mic_issue() {
+    use crate::capture::CaptureEvent;
+    use crate::state::MicIssue;
+    let deps = FakeDeps::default();
+    let events = deps.capture_events.clone();
+    let app = mock_app_with(deps);
+    let _main = window(&app, "main");
+    session::start(app.handle()).unwrap();
+    let current = events.lock().unwrap().remove(0);
+    current(CaptureEvent::MicSilent(true));
+    assert_eq!(app.state::<AppState>().status().mic_issue, Some(MicIssue::Suspected));
+    current(CaptureEvent::MicSilent(false));
+    assert_eq!(app.state::<AppState>().status().mic_issue, None);
+    current(CaptureEvent::MicSilent(true));
+    session::stop(app.handle());
+    assert_eq!(app.state::<AppState>().status().mic_issue, None);
+}
+
 /// App giả có `prepare` chặn ở cổng (như nạp model lâu), và một lần bắt đầu phiên đang chờ ở đó trên luồng riêng.
 struct StartingApp {
     app: tauri::App<tauri::test::MockRuntime>,

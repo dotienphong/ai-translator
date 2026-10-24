@@ -33,17 +33,18 @@ use pipeline::translate::Mt;
 use pipeline::vad::SileroVad;
 use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
-use crate::capture::{CaptureEvent, LiveCapture, OnEvent};
+use crate::capture::{CaptureEvent, CapturePlan, LiveCapture, OnEvent};
 use crate::debug::{DebugLog, DebugSession};
 use crate::errors::{self, CommandError};
 use crate::glossary::{self, ActiveGlossary};
 use crate::models::service::ModelService;
-use crate::settings::{AudioSource, Lang, Settings};
+use crate::settings::{AudioSource, CaptureMode, Lang, Settings};
 use crate::sidecar::{self, first_run, integrity};
-use crate::state::{AppState, AppStatus, Loading, SessionStatus};
+use crate::state::{AppState, AppStatus, Loading, MicIssue, SessionStatus};
 use crate::transcript::history;
 use crate::transcript::store::TranscriptStore;
 use crate::{actions, events, overlay, window};
+use audio_capture::MicPermission;
 
 /// Chu kỳ gọi `SessionDeps::tick` (tắt tiến trình phụ khi rảnh 10 phút). Để ngoài `PipelineConfig`: chỉ là nhịp kiểm, mốc
 /// 10 phút nằm ở `supervisor.idle_shutdown_ms`.
@@ -62,9 +63,19 @@ pub trait SessionDeps: Send + Sync {
     fn asr(&self) -> Box<dyn Asr>;
     fn mt(&self) -> Box<dyn Mt>;
     fn vad(&self) -> VadFactory;
-    /// Mở nguồn âm thanh. Việc của nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_event`. `include_self`: xem
-    /// [`StartOptions`].
-    fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource>;
+    /// Mở nguồn âm thanh theo `plan`. Việc của nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_event`.
+    fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource>;
+    /// Quyền micro lúc này (chỉ đọc). Bản giả của test trả giá trị đặt trước, để test không chạm quyền thật của máy.
+    fn mic_permission(&self) -> MicPermission {
+        audio_capture::mic_permission()
+    }
+    /// Xin quyền micro (macOS: hộp thoại nếu chưa hỏi). Chặn tới khi người dùng trả lời: gọi từ luồng nền.
+    fn request_mic_permission(&self) -> MicPermission {
+        audio_capture::request_mic_permission(MIC_PROMPT_WAIT).unwrap_or_else(|e| {
+            log::warn!("không xin được quyền micro: {e:#}");
+            audio_capture::mic_permission()
+        })
+    }
     /// Người dùng bấm Bắt đầu: tiến trình phụ đã bỏ cuộc được thử lại từ đầu (người dùng có thể đã sửa nguyên nhân). Gọi
     /// trước `prepare` của lần bắt đầu; lần chạy sẵn khi mở cửa sổ chính (`prewarm`) thì không (R3-1 của review 02 lần 3).
     fn allow_retry(&self) {}
@@ -169,17 +180,52 @@ fn code_of(settings: Lang) -> &'static str {
     }
 }
 
+/// VAD khi nguồn là micro (spec 2026-10-24-nguon-micro mục 16, lớp 4): ngưỡng xác suất, độ dài tiếng nói ngắn nhất, im lặng
+/// trước khi đóng đoạn. Thay `vadEndSilenceMs` của người dùng: phụ đề chậm hơn khoảng 0,45 giây nhưng ít câu bị cắt.
+const MIC_VAD_THRESHOLD: f32 = 0.5;
+const MIC_MIN_SPEECH_MS: u64 = 400;
+const MIC_END_SILENCE_MS: u64 = 500;
+/// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
+const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
+
+/// Thu gì trong phiên: theo cài đặt, trừ bước "Nghe thử" (luôn âm thanh máy toàn hệ thống, `options.system_source`).
+pub fn plan_for(settings: &Settings, options: StartOptions) -> CapturePlan {
+    if options.system_source {
+        return CapturePlan::Playback {
+            source: AudioSource::System,
+            include_self: options.include_self,
+        };
+    }
+    match settings.capture_mode {
+        CaptureMode::Playback => CapturePlan::Playback {
+            source: settings.audio_source.clone(),
+            include_self: options.include_self,
+        },
+        CaptureMode::Mic => CapturePlan::Mic {
+            device: settings.mic_device.clone(),
+            noise_filter: settings.mic_noise_filter,
+        },
+    }
+}
+
 /// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh, công tắc "Dịch trong lúc người nói chưa
 /// dừng" (spec 2026-10-10 §6.3); từ điển thuật ngữ dùng chung; máy có đủ sức cho chế độ đó không (`streaming_supported`,
-/// app quyết lúc bắt đầu phiên, §5); các ngưỡng khác theo `pipeline`.
+/// app quyết lúc bắt đầu phiên, §5); nguồn micro dùng VAD riêng (spec 2026-10-24-nguon-micro mục 16); các ngưỡng khác theo
+/// `pipeline`.
 pub fn engine_config(
     settings: &Settings,
+    plan: &CapturePlan,
     mut pipeline: PipelineConfig,
     id_base: u64,
     glossary: SharedGlossary,
     streaming_supported: bool,
 ) -> EngineConfig {
     pipeline.segmenter.end_silence_ms = u64::from(settings.vad_end_silence_ms);
+    if plan.has_mic() {
+        pipeline.segmenter.threshold = MIC_VAD_THRESHOLD;
+        pipeline.segmenter.min_speech_ms = MIC_MIN_SPEECH_MS;
+        pipeline.segmenter.end_silence_ms = MIC_END_SILENCE_MS;
+    }
     let languages = match settings.source_lock {
         Some(lang) => vec![code_of(lang).to_string()],
         None => settings
@@ -302,6 +348,16 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     // Cài đặt của phiên này: gói ghi lại lúc chuyển sang `Starting` (dưới khóa của dịch vụ model) phải đúng là gói mà lần
     // chuẩn bị dùng.
     let settings = state.settings();
+    let plan = plan_for(&settings, options);
+    // Chế độ micro mà quyền đã bị từ chối: không nạp model, báo ngay (spec 2026-10-24-nguon-micro §7). Quyền chưa hỏi thì
+    // luồng thu hỏi trước khi mở micro.
+    if plan.has_mic() && session.deps.mic_permission() == MicPermission::Denied {
+        return refuse(CommandError::new(
+            errors::MIC_PERMISSION,
+            None,
+            "chưa được phép dùng micro",
+        ));
+    }
     let mut begin = || {
         state.update_status(|s| {
             if matches!(s.session, SessionStatus::Starting | SessionStatus::Running) {
@@ -314,6 +370,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
             s.indicators = Indicators::default();
             s.permission_suspected = false;
             s.waiting_for_app = false;
+            s.mic_issue = None;
             s.overlay_visible = true;
             true
         })
@@ -375,14 +432,11 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     if let Some(transcript) = app.try_state::<TranscriptStore>() {
         transcript.begin(n, now_ms(), code_of(settings.target_language));
     }
-    let audio_source = if options.system_source {
-        AudioSource::System
-    } else {
-        settings.audio_source.clone()
-    };
-    let source = session
-        .deps
-        .capture(&audio_source, options.include_self, capture_events(app, n));
+    let source = session.deps.capture(&plan, capture_events(app, n));
+    log::info!(
+        "phiên dịch {n}: nguồn {}",
+        if plan.has_mic() { "micro" } else { "âm thanh máy" }
+    );
     let sink = Arc::new(TauriSink {
         app: app.clone(),
         session: n,
@@ -397,6 +451,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     let engine = match Engine::start(
         engine_config(
             &settings,
+            &plan,
             session.deps.pipeline_config(),
             n * ID_STRIDE,
             glossary,
@@ -460,7 +515,14 @@ fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
                 changed(&app);
             }
         }
-        CaptureEvent::MicSilent(_) => {}
+        CaptureEvent::MicSilent(silent) => {
+            let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
+            if current {
+                app.state::<AppState>()
+                    .update_status(|s| s.mic_issue = silent.then_some(MicIssue::Suspected));
+                changed(&app);
+            }
+        }
         CaptureEvent::WaitingForApp(waiting) => {
             let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
             if current {
@@ -530,8 +592,19 @@ pub fn stop<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
         s.indicators = Indicators::default();
         s.permission_suspected = false;
         s.waiting_for_app = false;
+        s.mic_issue = None;
     });
     changed(app)
+}
+
+/// Quyền micro lúc này, qua `SessionDeps` (bản giả trong test).
+pub fn mic_permission<R: Runtime>(app: &AppHandle<R>) -> MicPermission {
+    app.state::<Session>().deps.mic_permission()
+}
+
+/// Xin quyền micro, qua `SessionDeps`. Chặn tới khi người dùng trả lời hộp thoại: gọi từ luồng nền.
+pub fn request_mic_permission<R: Runtime>(app: &AppHandle<R>) -> MicPermission {
+    app.state::<Session>().deps.request_mic_permission()
 }
 
 /// Công tắc "Dịch trong lúc người nói chưa dừng" vừa đổi (spec 2026-10-10 §6.3; QĐ4 của kế hoạch 03): phiên đang chạy áp
@@ -1118,14 +1191,8 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
         Box::new(move || Ok(Box::new(SileroVad::load(&path)?) as _))
     }
 
-    fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
-        Box::new(LiveCapture::open(
-            crate::capture::CapturePlan::Playback {
-                source: source.clone(),
-                include_self,
-            },
-            on_event,
-        ))
+    fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource> {
+        Box::new(LiveCapture::open(plan.clone(), on_event))
     }
 
     fn allow_retry(&self) {
@@ -1772,12 +1839,77 @@ mod tests {
         assert!(!check(None), "chưa có kết quả dò");
     }
 
+    /// Plan âm thanh máy toàn hệ thống, như phiên thường mặc định.
+    fn system() -> CapturePlan {
+        CapturePlan::Playback {
+            source: AudioSource::System,
+            include_self: false,
+        }
+    }
+
+    /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ4 của kế hoạch 02: nguồn micro dùng VAD riêng, thay
+    /// `vadEndSilenceMs` của người dùng; âm thanh máy giữ như cũ.
+    #[test]
+    fn a_mic_plan_uses_the_mic_vad_parameters() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.vad_end_silence_ms = 100;
+        let mic = CapturePlan::Mic {
+            device: None,
+            noise_filter: false,
+        };
+        let cfg = engine_config(
+            &settings,
+            &mic,
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
+        let seg = &cfg.pipeline.segmenter;
+        assert_eq!((seg.threshold, seg.min_speech_ms, seg.end_silence_ms), (0.5, 400, 500));
+        let playback = plan_for(&settings, StartOptions::default());
+        let cfg = engine_config(
+            &settings,
+            &playback,
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
+        let seg = &cfg.pipeline.segmenter;
+        assert_eq!((seg.min_speech_ms, seg.end_silence_ms), (250, 100));
+    }
+
+    /// Chế độ micro trong cài đặt cho plan micro; bước "Nghe thử" luôn thu âm thanh máy.
+    #[test]
+    fn the_plan_follows_the_settings_except_for_the_listening_test() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.capture_mode = CaptureMode::Mic;
+        settings.mic_device = Some("usb-1".into());
+        settings.mic_noise_filter = false;
+        assert_eq!(
+            plan_for(&settings, StartOptions::default()),
+            CapturePlan::Mic {
+                device: Some("usb-1".into()),
+                noise_filter: false
+            }
+        );
+        assert_eq!(
+            plan_for(&settings, StartOptions::LISTEN_TEST),
+            CapturePlan::Playback {
+                source: AudioSource::System,
+                include_self: true
+            }
+        );
+    }
+
     #[test]
     fn the_engine_follows_the_language_and_pause_settings() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
         settings.vad_end_silence_ms = 500;
         let cfg = engine_config(
             &settings,
+            &system(),
             PipelineConfig::default(),
             3_000_000,
             SharedGlossary::default(),
@@ -1794,7 +1926,7 @@ mod tests {
         let mut from_manifest = PipelineConfig::default();
         from_manifest.queue.lag_warn_ms = 8_000;
         from_manifest.segmenter.end_silence_ms = 900;
-        let cfg = engine_config(&settings, from_manifest, 0, SharedGlossary::default(), true);
+        let cfg = engine_config(&settings, &system(), from_manifest, 0, SharedGlossary::default(), true);
         assert_eq!(cfg.languages, ["ja"], "khóa ngôn ngữ nguồn thì bỏ nhận diện (§6.4)");
         assert_eq!(cfg.target, MtLang::En);
         assert!(cfg.translation_context);
@@ -1815,7 +1947,14 @@ mod tests {
             "mặc định: tắt (spec 2026-10-10 §6.3)"
         );
         settings.translate_while_speaking = true;
-        let cfg = engine_config(&settings, PipelineConfig::default(), 0, SharedGlossary::default(), true);
+        let cfg = engine_config(
+            &settings,
+            &system(),
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
         assert!(
             cfg.streaming_supported && cfg.streaming_enabled,
             "công tắc bật, máy đủ sức"
@@ -1823,6 +1962,7 @@ mod tests {
         assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 50);
         let cfg = engine_config(
             &settings,
+            &system(),
             PipelineConfig::default(),
             0,
             SharedGlossary::default(),
@@ -1833,7 +1973,14 @@ mod tests {
             "máy chưa đủ sức: công tắc giữ nguyên"
         );
         settings.translate_while_speaking = false;
-        let cfg = engine_config(&settings, PipelineConfig::default(), 0, SharedGlossary::default(), true);
+        let cfg = engine_config(
+            &settings,
+            &system(),
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
         assert!(cfg.streaming_supported && !cfg.streaming_enabled, "người dùng tắt");
     }
 

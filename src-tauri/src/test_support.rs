@@ -20,7 +20,7 @@ use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
 use tauri::webview::InvokeRequest;
 use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
 
-use crate::capture::OnEvent;
+use crate::capture::{CapturePlan, OnEvent};
 use crate::commands;
 use crate::db::DataStore;
 use crate::errors::{self, CommandError};
@@ -43,6 +43,7 @@ use crate::state::AppState;
 use crate::support::api::{ApiError, Batch, Opening, Sender, Started, SupportApi, SupportMessage};
 use crate::system::{System, SystemOpener};
 use crate::transcript::store::TranscriptStore;
+use audio_capture::MicPermission;
 
 /// Bản giả của thanh phụ đề: ghi lại từng lần gọi, dạng `show`, `hide`, `click_through on`, `frame 1 2 300x80`,
 /// `system resize west`. Khung cửa sổ (pixel), màn hình và con trỏ (điểm logic, như `Surface::cursor`) do test đặt; mặc
@@ -372,6 +373,12 @@ pub struct FakeDeps {
     pub captures: Arc<Mutex<Vec<bool>>>,
     /// Nguồn âm thanh của từng lần mở.
     pub capture_sources: Arc<Mutex<Vec<AudioSource>>>,
+    /// Plan của từng lần mở nguồn, theo thứ tự.
+    pub capture_plans: Arc<Mutex<Vec<CapturePlan>>>,
+    /// Quyền micro mà `mic_permission` trả (`None`: `Granted`; `MicPermission` không có `Default`);
+    /// `request_mic_permission` cũng trả giá trị này và đếm số lần gọi.
+    pub mic_permission: Arc<Mutex<Option<MicPermission>>>,
+    pub mic_requests: Arc<Mutex<usize>>,
     /// Nơi nhận việc của nguồn âm thanh của từng phiên, theo thứ tự: test gọi để giả lỗi tới muộn.
     pub capture_events: Arc<Mutex<Vec<OnEvent>>>,
     /// Số lần `release_models` được gọi (tắt tiến trình phụ rảnh trước khi xóa hay tải đè model, kế hoạch 04).
@@ -510,9 +517,12 @@ impl SessionDeps for FakeDeps {
         Box::new(|| Ok(Box::new(EnergyVad { threshold_rms: 0.05 }) as _))
     }
 
-    fn capture(&self, source: &AudioSource, include_self: bool, on_event: OnEvent) -> Box<dyn FrameSource> {
-        self.captures.lock().unwrap().push(include_self);
-        self.capture_sources.lock().unwrap().push(source.clone());
+    fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource> {
+        self.capture_plans.lock().unwrap().push(plan.clone());
+        if let CapturePlan::Playback { source, include_self } = plan {
+            self.captures.lock().unwrap().push(*include_self);
+            self.capture_sources.lock().unwrap().push(source.clone());
+        }
         if let Some(code) = self.capture_error {
             on_event(crate::capture::CaptureEvent::Failed {
                 code,
@@ -524,6 +534,15 @@ impl SessionDeps for FakeDeps {
             audio: self.audio,
             pos: 0,
         })
+    }
+
+    fn mic_permission(&self) -> MicPermission {
+        self.mic_permission.lock().unwrap().unwrap_or(MicPermission::Granted)
+    }
+
+    fn request_mic_permission(&self) -> MicPermission {
+        *self.mic_requests.lock().unwrap() += 1;
+        self.mic_permission.lock().unwrap().unwrap_or(MicPermission::Granted)
     }
 
     fn release_models(&self) {
