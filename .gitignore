@@ -9,6 +9,8 @@
 /models/
 /tools/
 /bench/phase0/data/
+# Bản thu của spike nguồn micro: có giọng người thật, không commit (spec 2026-10-24-nguon-micro §6)
+/bench/2026-10-24-nguon-micro/data/
 
 # Tauri
 /src-tauri/gen/
