@@ -135,16 +135,65 @@ const GATE: GateParams = GateParams {
     speech_prob: 0.5,
 };
 
+/// Số khung Silero giữa hai dòng log thời gian: 1 875 khung × 32 ms = 60 giây.
+const SPEECH_LOG_EVERY: u32 = 1_875;
+
+/// Đo thời gian mỗi lần Silero của bộ nhường lời chạy (chi phí trên luồng VAD, ngân sách ở spec mục 17), để ghi log mỗi phút:
+/// người dùng và người kiểm đọc được số thật trên máy của mình, kể cả máy Windows yếu.
+#[derive(Default)]
+struct SpeechTimer {
+    calls: u32,
+    total: Duration,
+    max: Duration,
+}
+
+impl SpeechTimer {
+    /// Ghi một lần chạy; đủ `SPEECH_LOG_EVERY` lần thì trả dòng log và đếm lại.
+    fn record(&mut self, took: Duration) -> Option<String> {
+        self.calls += 1;
+        self.total += took;
+        self.max = self.max.max(took);
+        if self.calls < SPEECH_LOG_EVERY {
+            return None;
+        }
+        let line = format!(
+            "nhường lời: Silero {} khung, trung bình {} µs, lớn nhất {} µs",
+            self.calls,
+            (self.total / self.calls).as_micros(),
+            self.max.as_micros()
+        );
+        *self = Self::default();
+        Some(line)
+    }
+}
+
 /// Silero VAD làm bộ phát hiện tiếng nói của bộ nhường lời (spec mục 17).
-struct SileroSpeech(pipeline::vad::SileroVad);
+struct SileroSpeech {
+    vad: pipeline::vad::SileroVad,
+    timer: SpeechTimer,
+}
+
+impl SileroSpeech {
+    fn new(vad: pipeline::vad::SileroVad) -> Self {
+        Self {
+            vad,
+            timer: SpeechTimer::default(),
+        }
+    }
+}
 
 impl SpeechDetector for SileroSpeech {
     fn prob(&mut self, frame: &[f32]) -> anyhow::Result<f32> {
-        self.0.prob(frame)
+        let started = Instant::now();
+        let prob = self.vad.prob(frame);
+        if let Some(line) = self.timer.record(started.elapsed()) {
+            log::info!("{line}");
+        }
+        prob
     }
 
     fn reset(&mut self) -> anyhow::Result<()> {
-        self.0.reset()
+        self.vad.reset()
     }
 }
 
@@ -170,7 +219,7 @@ impl SpeechSlot {
         if let SpeechSlot::Pending(path) = self {
             let path = path.clone();
             *self = match pipeline::vad::SileroVad::load(&path) {
-                Ok(vad) => SpeechSlot::Ready(Box::new(SileroSpeech(vad))),
+                Ok(vad) => SpeechSlot::Ready(Box::new(SileroSpeech::new(vad))),
                 Err(e) => {
                     log::warn!("nhường lời: không nạp được VAD, chỉ hạ micro theo mức âm thanh máy: {e:#}");
                     SpeechSlot::Failed
@@ -1618,5 +1667,19 @@ mod tests {
         assert!(slot.get().is_none());
         assert!(matches!(slot, SpeechSlot::Failed));
         assert!(slot.get().is_none());
+    }
+
+    /// Bộ đo thời gian Silero của bộ nhường lời: báo một dòng log mỗi `SPEECH_LOG_EVERY` khung (60 giây) rồi đếm lại.
+    #[test]
+    fn the_speech_timer_reports_once_per_window_and_starts_over() {
+        let mut t = SpeechTimer::default();
+        for i in 0..SPEECH_LOG_EVERY - 1 {
+            assert!(t.record(Duration::from_micros(200)).is_none(), "khung {i}");
+        }
+        let line = t.record(Duration::from_micros(1_800)).unwrap();
+        assert!(line.contains("1875 khung"), "{line}");
+        assert!(line.contains("trung bình 200 µs"), "{line}");
+        assert!(line.contains("lớn nhất 1800 µs"), "{line}");
+        assert!(t.record(Duration::from_micros(200)).is_none(), "đã đếm lại");
     }
 }
