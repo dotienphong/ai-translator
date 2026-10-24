@@ -514,6 +514,12 @@ const SCREENS = [
   ["settings-subtitles", "screen=settings&group=subtitles"],
   ["settings-subtitles-dark", "screen=settings&group=subtitles&theme=dark"],
   ["settings-audio", "screen=settings&group=audio"],
+  // Nguồn micro (spec 2026-10-24-nguon-micro §3.2): chế độ Micro; quyền micro bị từ chối và chưa hỏi.
+  ["settings-audio-mic", "screen=settings&group=audio&capture=mic"],
+  ["settings-audio-mic-denied", "screen=settings&group=audio&capture=mic&micperm=denied"],
+  ["settings-audio-mic-undetermined", "screen=settings&group=audio&capture=mic&micperm=undetermined"],
+  // Màn hình chính chế độ Micro, phiên đang chạy mà micro không có tín hiệu (§3.3, §7).
+  ["home-mic-silent", "screen=home&session=running&capture=mic&micissue=suspected"],
   ["settings-model", "screen=settings&group=model"],
   ["settings-hotkeys", "screen=settings&group=hotkeys"],
   ["settings-license", "screen=settings&group=license"],
@@ -627,6 +633,7 @@ const COMPOSES = [
 const OVERLAYS = [
   ["overlay", "session=running"],
   ["overlay-live", "session=running&live=alone"],
+  ["overlay-mic-silent", "session=running&notes=micSilent"],
 ];
 
 // Phần tử có chữ tràn khỏi ô: tối đa 8, mỗi phần tử một dòng mô tả. Dấu "…" có chủ ý (text-overflow: ellipsis) không tính.

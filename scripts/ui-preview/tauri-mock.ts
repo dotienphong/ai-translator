@@ -28,6 +28,8 @@
 //     một đáp; như open mà câu trả lời chưa xem, mục Hỗ trợ có chấm đỏ)  support=off|closed (chủ dự án tắt chat; cuộc chat bị chặn)
 //     send=failed|ratelimited|busy|expired|disabled (kết quả của lệnh gửi tin; disabled: chat đã tắt, như phía Rust báo trạng
 //     tắt qua sự kiện rồi trả lỗi)  email=invalid (lưu email lỗi sai dạng)
+//   nguồn micro (spec 2026-10-24-nguon-micro): capture=mic (Cài đặt › Âm thanh ở chế độ Micro)  micperm=denied|undetermined
+//     (quyền micro; mặc định đã cấp)  micissue=suspected (phiên đang chạy mà micro không có tín hiệu; overlay.html: notes=micSilent)
 //   video giới thiệu (scripts/demo-video, spec 2026-10-21-demo-video §2.4): demo=1 thì không tự phát mức âm lượng ngẫu nhiên và
 //     không tự mở ô soạn; trang dựng cảnh (frame ngoài cùng) phát sự kiện qua `window.__demoEmit` và trả lời lệnh dịch của ô soạn
 //     qua `window.top.__demo.composeTranslate(id, emit)`
@@ -87,7 +89,7 @@ let settings: Settings = {
   sourceLanguages: ["en", "zh", "ja", "ko", "vi"],
   sourceLock: null,
   audioSource: platform === "macos" ? { kind: "app", bundleId: "us.zoom.xos" } : { kind: "system" },
-  captureMode: "playback",
+  captureMode: param("capture") === "mic" ? "mic" : "playback",
   micDevice: null,
   micNoiseFilter: true,
   vadEndSilenceMs: 300,
@@ -135,7 +137,7 @@ let status: AppStatus = {
   streamingTooSlow: param("slow") === "1",
   permissionSuspected: false,
   waitingForApp: false,
-  micIssue: null,
+  micIssue: param("micissue") === "suspected" ? "suspected" : null,
   pro: plan !== "free",
   quotaWarning: false,
   quotaResetAt: sec(now + 20 * DAY),
@@ -707,8 +709,8 @@ const handlers = {
     },
     { id: "usb-1", name: "Jabra Speak 510", isDefault: false },
   ],
-  get_mic_permission: () => "granted",
-  request_mic_permission: () => "granted",
+  get_mic_permission: () => (param("micperm") === "denied" ? "denied" : param("micperm") === "undetermined" ? "undetermined" : "granted"),
+  request_mic_permission: () => (param("micperm") === "denied" ? "denied" : "granted"),
   open_mic_settings: () => null,
   list_audio_sources: () =>
     platform === "macos"
@@ -891,6 +893,7 @@ setTimeout(async () => {
     if (notes) {
       const n = notes.split(",");
       changeStatus({
+        micIssue: n.includes("micSilent") ? "suspected" : null,
         loading: n.includes("loading") ? "model" : null,
         indicators: {
           lagging: n.includes("lagging"),
