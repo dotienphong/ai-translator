@@ -51,7 +51,7 @@ pub enum TapTarget {
     Processes(Vec<i32>),
 }
 
-type IoBlock = RcBlock<
+pub(crate) type IoBlock = RcBlock<
     dyn Fn(
         NonNull<AudioTimeStamp>,
         NonNull<AudioBufferList>,
@@ -72,15 +72,15 @@ pub struct MacTapSource {
 }
 
 /// Trạng thái dùng trong IO block. Chỉ luồng IO của Core Audio chạm vào `producer`.
-struct IoState {
-    producer: UnsafeCell<rtrb::Producer<f32>>,
-    non_interleaved: bool,
-    channels: usize,
+pub(crate) struct IoState {
+    pub(crate) producer: UnsafeCell<rtrb::Producer<f32>>,
+    pub(crate) non_interleaved: bool,
+    pub(crate) channels: usize,
     /// Số kênh mỗi buffer: 1 nếu tách kênh, `channels` nếu xen kẽ.
-    per_buffer: u32,
+    pub(crate) per_buffer: u32,
     /// Số buffer IO block phải nhận: `channels` nếu tách kênh, 1 nếu xen kẽ.
-    buffers: usize,
-    stats: Arc<CaptureStats>,
+    pub(crate) buffers: usize,
+    pub(crate) stats: Arc<CaptureStats>,
 }
 
 // SAFETY: Core Audio gọi IO block tuần tự trên một luồng IO; `producer` không được dùng ở nơi khác.
@@ -263,7 +263,7 @@ impl Drop for MacTapSource {
 
 /// Chạy trên luồng IO: không cấp phát, không lock. Mỗi lần ghi một chunk gồm trọn các khung,
 /// nên bên đọc không bao giờ thấy nửa khung; ring buffer đầy thì bỏ cả lượt.
-unsafe fn on_io(io: &IoState, input: NonNull<AudioBufferList>) {
+pub(crate) unsafe fn on_io(io: &IoState, input: NonNull<AudioBufferList>) {
     let list = input.as_ptr();
     // Đọc mBuffers qua con trỏ gốc: mảng thật dài mNumberBuffers, không phải [AudioBuffer; 1].
     let count = unsafe { (*list).mNumberBuffers } as usize;
@@ -317,7 +317,7 @@ fn tap_layout(non_interleaved: bool, channels: usize) -> (usize, u32) {
 }
 
 /// Số kênh của từng buffer vào mà IO proc của `device` sẽ nhận.
-fn input_layout(device: AudioObjectID) -> Result<Vec<u32>> {
+pub(crate) fn input_layout(device: AudioObjectID) -> Result<Vec<u32>> {
     let mut address = AudioObjectPropertyAddress {
         mSelector: kAudioDevicePropertyStreamConfiguration,
         mScope: kAudioObjectPropertyScopeInput,
@@ -673,7 +673,7 @@ fn process_object(pid: i32) -> Result<AudioObjectID> {
     Ok(id)
 }
 
-fn get_property<T>(
+pub(crate) fn get_property<T>(
     object: AudioObjectID,
     selector: u32,
     qualifier: *const c_void,
@@ -699,7 +699,7 @@ fn get_property<T>(
     check(status, "AudioObjectGetPropertyData")
 }
 
-fn check(status: i32, what: &str) -> Result<()> {
+pub(crate) fn check(status: i32, what: &str) -> Result<()> {
     if status != 0 {
         let code = status.to_be_bytes();
         let fourcc: String = code

@@ -9,9 +9,12 @@ pub mod resample;
 
 #[cfg(target_os = "macos")]
 pub mod macos;
+#[cfg(target_os = "macos")]
+pub mod macos_input;
 #[cfg(windows)]
 pub mod windows;
 
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,6 +65,91 @@ pub fn default_output_signature() -> Option<String> {
         let communications = default_endpoint_id(Role::Communications).unwrap_or_default();
         Some(format!("{console}|{communications}"))
     };
+    #[allow(unreachable_code)]
+    None
+}
+
+/// Cách micro nối với máy. Log và báo cáo lỗi chỉ ghi loại này, không ghi tên micro, vì tên có thể chứa tên người
+/// (spec 2026-10-24-nguon-micro §4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Transport {
+    BuiltIn,
+    Usb,
+    Bluetooth,
+    Virtual,
+    Other,
+}
+
+impl Transport {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Transport::BuiltIn => "builtin",
+            Transport::Usb => "usb",
+            Transport::Bluetooth => "bluetooth",
+            Transport::Virtual => "virtual",
+            Transport::Other => "other",
+        }
+    }
+}
+
+/// Một micro (thiết bị có luồng vào), cho bộ chọn ở Cài đặt › Âm thanh.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InputDevice {
+    /// macOS: UID của thiết bị; Windows: id endpoint.
+    pub id: String,
+    pub name: String,
+    pub transport: Transport,
+    pub is_default: bool,
+}
+
+/// Quyền dùng micro của app (spec 2026-10-24-nguon-micro §3.4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MicPermission {
+    Granted,
+    Denied,
+    Undetermined,
+}
+
+/// Nguồn micro (spec 2026-10-24-nguon-micro §5.1, §5.2). `id`: `None` là micro mặc định.
+pub fn mic_source(id: Option<String>, stats: Arc<CaptureStats>) -> anyhow::Result<Box<dyn AudioSource>> {
+    #[cfg(target_os = "macos")]
+    return Ok(Box::new(macos_input::MacInputSource::new(
+        id.map_or(macos_input::MicTarget::Default, macos_input::MicTarget::Uid),
+        stats,
+    )));
+    #[cfg(windows)]
+    return Ok(Box::new(windows::InputSource::new(
+        id.map_or(windows::MicEndpoint::Default, windows::MicEndpoint::Device),
+        stats,
+    )));
+    #[allow(unreachable_code)]
+    {
+        let _ = (id, stats);
+        anyhow::bail!("chỉ hỗ trợ macOS và Windows")
+    }
+}
+
+/// Các micro đang dùng được.
+pub fn list_input_devices() -> anyhow::Result<Vec<InputDevice>> {
+    #[cfg(target_os = "macos")]
+    return macos_input::list_capture_devices();
+    #[cfg(windows)]
+    return windows::list_capture_devices();
+    #[allow(unreachable_code)]
+    {
+        anyhow::bail!("chỉ hỗ trợ macOS và Windows")
+    }
+}
+
+/// Dấu hiệu của micro mặc định: đổi thì mở lại nguồn micro (spec §5.6). `None` nếu không đọc được hay máy không có micro.
+pub fn default_input_signature() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    return macos_input::default_input_device().ok().map(|id| {
+        let rate = macos::nominal_sample_rate(id).unwrap_or(0.0);
+        format!("{id}@{rate:.0}")
+    });
+    #[cfg(windows)]
+    return windows::default_capture_endpoint_id().ok();
     #[allow(unreachable_code)]
     None
 }
