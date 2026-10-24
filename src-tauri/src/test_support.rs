@@ -140,6 +140,9 @@ impl SystemOpener for FakeSystem {
     fn open_accessibility_settings(&self) -> Result<(), String> {
         self.push("open_accessibility_settings".into())
     }
+    fn open_mic_settings(&self) -> Result<(), String> {
+        self.push("open_mic_settings".into())
+    }
 }
 
 /// Bản giả của `compose::Native`: ghi lại từng lần gọi, dạng `show`, `hide`, `height 240`, `request_trust`,

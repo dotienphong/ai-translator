@@ -59,6 +59,7 @@ const OPENER_COMMANDS: &[&str] = &[
     "open_login_items_settings",
     "open_audio_permission_settings",
     "open_accessibility_settings",
+    "open_mic_settings",
 ];
 
 fn allow(cmd: &str) -> String {
@@ -218,9 +219,10 @@ fn outside_effects_only_reach_the_fake_opener() {
             "open_login_items_settings",
             "open_audio_permission_settings",
             "open_accessibility_settings",
+            "open_mic_settings",
         ]
     } else {
-        &["open_log_dir", "open_taskbar_settings"]
+        &["open_log_dir", "open_taskbar_settings", "open_mic_settings"]
     };
     assert_eq!(system_calls(&app), expected);
 }

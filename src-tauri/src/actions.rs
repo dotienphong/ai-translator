@@ -339,6 +339,44 @@ pub fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
     }
 }
 
+/// Một micro ở Cài đặt › Âm thanh (spec 2026-10-24-nguon-micro §4). Không gửi loại kết nối: giao diện không cần.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputDeviceOption {
+    pub id: String,
+    pub name: String,
+    pub is_default: bool,
+}
+
+/// Các micro đang dùng được. Chỉ đọc danh sách thiết bị, không mở micro nên không hỏi quyền.
+pub fn list_input_devices() -> Result<Vec<InputDeviceOption>, CommandError> {
+    audio_capture::list_input_devices()
+        .map(|list| {
+            list.into_iter()
+                .map(|d| InputDeviceOption {
+                    id: d.id,
+                    name: d.name,
+                    is_default: d.is_default,
+                })
+                .collect()
+        })
+        .map_err(|e| CommandError::new(errors::MIC_UNAVAILABLE, None, format!("{e:#}")))
+}
+
+/// Mở trang quyền micro của hệ điều hành, qua `SystemOpener`.
+pub fn open_mic_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    system::open_mic_settings(app).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e))
+}
+
+/// Tên trạng thái quyền micro cho giao diện.
+pub fn mic_permission_name(p: audio_capture::MicPermission) -> &'static str {
+    match p {
+        audio_capture::MicPermission::Granted => "granted",
+        audio_capture::MicPermission::Denied => "denied",
+        audio_capture::MicPermission::Undetermined => "undetermined",
+    }
+}
+
 /// macOS: mở System Settings ở trang quyền ghi âm thanh hệ thống, cho bước lần đầu và lỗi "chưa cấp quyền" (§4.1
 /// bước 4, §9). Đi qua `SystemOpener` như mọi việc mở ra ngoài app.
 pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {

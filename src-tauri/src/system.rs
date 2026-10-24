@@ -26,6 +26,8 @@ pub trait SystemOpener: Send + Sync + 'static {
     fn open_audio_permission_settings(&self) -> Result<(), String>;
     /// macOS: System Settings › Privacy & Security › Accessibility, quyền Gõ dịch cần để tự dán (spec 2026-10-17-go-dich §4.2).
     fn open_accessibility_settings(&self) -> Result<(), String>;
+    /// Trang quyền micro: System Settings (macOS) hay Settings (Windows) (spec 2026-10-24-nguon-micro §3.4).
+    fn open_mic_settings(&self) -> Result<(), String>;
 }
 
 /// macOS: trang "Screen & System Audio Recording" của System Settings, phần "System Audio Recording Only" (quyền mà
@@ -33,6 +35,10 @@ pub trait SystemOpener: Send + Sync + 'static {
 pub const AUDIO_PERMISSION_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture";
 /// macOS: trang "Accessibility" của System Settings (quyền gửi phím dán vào app khác, spec 2026-10-17-go-dich §4.2).
 pub const ACCESSIBILITY_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
+/// macOS: trang "Microphone" của System Settings (spec 2026-10-24-nguon-micro §3.4).
+pub const MIC_PERMISSION_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+/// Windows: Settings › Privacy & security › Microphone.
+pub const WINDOWS_MIC_PERMISSION_URL: &str = "ms-settings:privacy-microphone";
 
 /// `SystemOpener` đang dùng.
 pub struct System(pub Box<dyn SystemOpener>);
@@ -98,6 +104,15 @@ impl<R: Runtime> SystemOpener for Native<R> {
             .open_url(ACCESSIBILITY_URL, None::<&str>)
             .map_err(|e| e.to_string())
     }
+
+    fn open_mic_settings(&self) -> Result<(), String> {
+        let url = if cfg!(target_os = "macos") {
+            MIC_PERMISSION_URL
+        } else {
+            WINDOWS_MIC_PERMISSION_URL
+        };
+        self.0.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+    }
 }
 
 /// Lớp chặn thứ hai sau `navigation`: bản thật chỉ mở URL `https` có tên máy chủ, kể cả khi một lời gọi
@@ -149,6 +164,10 @@ pub fn open_accessibility_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(),
     with(app, |s| s.open_accessibility_settings())
 }
 
+pub fn open_mic_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    with(app, |s| s.open_mic_settings())
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -183,6 +202,9 @@ mod tests {
         }
         fn open_accessibility_settings(&self) -> Result<(), String> {
             self.push("open_accessibility_settings")
+        }
+        fn open_mic_settings(&self) -> Result<(), String> {
+            self.push("open_mic_settings")
         }
     }
 
@@ -221,6 +243,11 @@ mod tests {
         assert_eq!(url.scheme(), "x-apple.systempreferences");
         assert!(url.as_str().ends_with("?Privacy_Accessibility"));
         assert!(https_only(ACCESSIBILITY_URL).is_err());
+        let url = Url::parse(MIC_PERMISSION_URL).unwrap();
+        assert_eq!(url.scheme(), "x-apple.systempreferences");
+        assert!(url.as_str().ends_with("?Privacy_Microphone"));
+        assert!(https_only(MIC_PERMISSION_URL).is_err());
+        assert!(https_only(WINDOWS_MIC_PERMISSION_URL).is_err());
     }
 
     #[test]
@@ -233,6 +260,7 @@ mod tests {
         assert!(open_external_url(app, "https://pay.payos.vn/").is_err());
         assert!(open_audio_permission_settings(app).is_err());
         assert!(open_accessibility_settings(app).is_err());
+        assert!(open_mic_settings(app).is_err());
     }
 
     #[test]
@@ -247,6 +275,7 @@ mod tests {
         open_external_url(app, "https://pay.payos.vn/web/1").unwrap();
         open_audio_permission_settings(app).unwrap();
         open_accessibility_settings(app).unwrap();
+        open_mic_settings(app).unwrap();
         assert_eq!(
             *recorder.0.lock().unwrap(),
             [
@@ -256,6 +285,7 @@ mod tests {
                 "open_external_url https://pay.payos.vn/web/1",
                 "open_audio_permission_settings",
                 "open_accessibility_settings",
+                "open_mic_settings",
             ]
         );
     }

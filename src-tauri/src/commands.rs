@@ -9,7 +9,7 @@
 use serde_json::Value;
 use tauri::{AppHandle, Runtime, State};
 
-use crate::actions::{self, AudioSourceOption};
+use crate::actions::{self, AudioSourceOption, InputDeviceOption};
 use crate::compose;
 use crate::data::{self, TranscriptRef, blocking};
 use crate::debug::DebugSession;
@@ -118,6 +118,35 @@ pub async fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError
 #[tauri::command]
 pub fn open_audio_permission_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
     actions::open_audio_permission_settings(&app)
+}
+
+/// Các micro (spec 2026-10-24-nguon-micro §4). Hỏi Core Audio hay WASAPI có thể chậm: `async`.
+#[tauri::command]
+pub async fn list_input_devices() -> Result<Vec<InputDeviceOption>, CommandError> {
+    tauri::async_runtime::spawn_blocking(actions::list_input_devices)
+        .await
+        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
+}
+
+/// Quyền micro: `granted`, `denied` hay `undetermined` (Windows không có `undetermined`).
+#[tauri::command]
+pub fn get_mic_permission<R: Runtime>(app: AppHandle<R>) -> &'static str {
+    actions::mic_permission_name(crate::session::mic_permission(&app))
+}
+
+/// Xin quyền micro (macOS: hộp thoại nếu chưa hỏi; Windows: trả trạng thái hiện có). Chờ người dùng trả lời: `async`.
+#[tauri::command]
+pub async fn request_mic_permission<R: Runtime>(app: AppHandle<R>) -> Result<&'static str, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        actions::mic_permission_name(crate::session::request_mic_permission(&app))
+    })
+    .await
+    .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))
+}
+
+#[tauri::command]
+pub fn open_mic_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    actions::open_mic_settings(&app)
 }
 
 /// Cài đặt › Gõ dịch (spec 2026-10-17-go-dich §1.4): đã có quyền Trợ năng chưa (macOS); Windows không cần quyền nên luôn `true`.
@@ -505,6 +534,10 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_login_items_settings",
     "list_audio_sources",
     "open_audio_permission_settings",
+    "list_input_devices",
+    "get_mic_permission",
+    "request_mic_permission",
+    "open_mic_settings",
     "get_accessibility_trusted",
     "open_accessibility_settings",
     "get_transcript",
@@ -591,6 +624,10 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         open_login_items_settings,
         list_audio_sources,
         open_audio_permission_settings,
+        list_input_devices,
+        get_mic_permission,
+        request_mic_permission,
+        open_mic_settings,
         get_accessibility_trusted,
         open_accessibility_settings,
         get_transcript,

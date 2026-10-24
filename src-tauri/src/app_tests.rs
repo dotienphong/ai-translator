@@ -583,6 +583,35 @@ fn the_mic_mode_needs_the_mic_permission() {
     );
 }
 
+/// Spec 2026-10-24-nguon-micro §4: cửa sổ chính đọc và xin quyền micro qua `SessionDeps` (bản giả, không hỏi quyền thật);
+/// thanh phụ đề không gọi được.
+#[test]
+fn the_main_window_reads_and_requests_the_mic_permission() {
+    use audio_capture::MicPermission;
+    let deps = FakeDeps::default();
+    let (permission, requests) = (deps.mic_permission.clone(), deps.mic_requests.clone());
+    *permission.lock().unwrap() = Some(MicPermission::Undetermined);
+    let app = mock_app_with(deps);
+    let main = window(&app, "main");
+    assert_eq!(
+        invoke(&main, "get_mic_permission", json!({})).unwrap(),
+        json!("undetermined")
+    );
+    *permission.lock().unwrap() = Some(MicPermission::Granted);
+    assert_eq!(
+        invoke(&main, "request_mic_permission", json!({})).unwrap(),
+        json!("granted")
+    );
+    assert_eq!(*requests.lock().unwrap(), 1);
+    let overlay = window(&app, "overlay");
+    assert!(crate::test_support::denied(&invoke(
+        &overlay,
+        "request_mic_permission",
+        json!({})
+    )));
+    assert_eq!(*requests.lock().unwrap(), 1);
+}
+
 /// Micro không có tín hiệu (spec §5.6, §7): phiên chạy tiếp, `micIssue` là `suspected`; có tín hiệu lại hay dừng phiên thì
 /// xóa.
 #[test]
