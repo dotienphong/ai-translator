@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! MT_ASR_WORKER=<asr-worker build metal,shared-encode> MT_ASR_MODEL=models/ggml-small-q5_1.bin \
-//! MT_LLAMA_SERVER=tools/llama-b11146/macos-arm64/llama-b11146/llama-server MT_MT_MODEL=models/Hy-MT2-1.8B-Q4_K_M.gguf \
+//! MT_LLAMA_SERVER=tools/llama-b11669/macos-arm64/llama-b11669/llama-server MT_MT_MODEL=models/Hy-MT2-1.8B-Q4_K_M.gguf \
 //! MT_VAD_MODEL=models/silero_vad_v6.2.3.onnx cargo test -p pipeline --test real_sidecars -- --include-ignored --nocapture
 //! ```
 //!

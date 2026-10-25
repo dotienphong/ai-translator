@@ -4,7 +4,7 @@
 //! qua mặc định. Chạy từ gốc repo, với từng model:
 //!
 //! ```text
-//! MT_LLAMA_SERVER=$PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
+//! MT_LLAMA_SERVER=$PWD/tools/llama-b11669/macos-arm64/llama-b11669/llama-server \
 //! MT_MT_MODEL=$PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf cargo test -p pipeline --test real_terms -- --include-ignored --nocapture
 //! ```
 

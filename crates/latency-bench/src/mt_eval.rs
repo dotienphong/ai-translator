@@ -382,7 +382,7 @@ mod tests {
             git_dirty: false,
             model_file: "m.gguf".into(),
             model_bytes: 10,
-            llama_server: "/tools/llama-b11146/llama-server".into(),
+            llama_server: "/tools/llama-b11669/llama-server".into(),
             llama_server_bytes: 20,
             variant: "plain".into(),
             testset_file: "t.jsonl".into(),

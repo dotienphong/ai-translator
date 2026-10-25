@@ -1370,7 +1370,7 @@ Spec: `docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md`.
 - rclone có remote `r2:` (token R2 chỉ quyền object, vì vậy lệnh dùng `--s3-no-check-bucket`).
 - `gh auth login` với tài khoản `dotienphong` (lệnh tự lấy token bằng `gh auth token --user dotienphong`).
 - wrangler đã đăng nhập (lệnh chạy `pnpm --dir server exec wrangler whoami --json`, chỉ bản `--json` mới thoát khác 0 khi chưa đăng nhập, và dừng nếu lỗi).
-- `uv`, `cargo`, `curl`, dữ liệu thử `bench/phase0/data/` và `tools/llama-b11146/` có sẵn.
+- `uv`, `cargo`, `curl`, dữ liệu thử `bench/phase0/data/` và `tools/llama-b11669/` có sẵn.
 - Ổ còn trống trên 10 GB (bản mới tải vào `target/models-update/`).
 
 ### 13.2. Cách chạy
@@ -1433,7 +1433,7 @@ Bản silero-vad mới chỉ được báo ("có bản mới (chỉ báo)"): đ�
 
 ### 13.6. Giới hạn đã biết: cổng kiểm chỉ thử với engine hiện tại
 
-Cổng kiểm chạy model mới bằng engine của app lúc này (llama.cpp b11146 trong `tools/`, `asr-worker` build từ `main`). Các mục trong manifest giữ `min_app_version` của chúng. Nếu sau này engine trong app được nâng, phải cân nhắc lại `min_app_version` của các model trước khi đăng (model được thử bằng engine mới có thể không chạy trên app cũ), vì lệnh chưa tự xử lý chuyện này.
+Cổng kiểm chạy model mới bằng engine của app lúc này (llama.cpp b11669 trong `tools/`, `asr-worker` build từ `main`). Các mục trong manifest giữ `min_app_version` của chúng. Nếu sau này engine trong app được nâng, phải cân nhắc lại `min_app_version` của các model trước khi đăng (model được thử bằng engine mới có thể không chạy trên app cũ), vì lệnh chưa tự xử lý chuyện này.
 
 ## 14. Chuyển sang tên miền `aitranslator.vn`
 

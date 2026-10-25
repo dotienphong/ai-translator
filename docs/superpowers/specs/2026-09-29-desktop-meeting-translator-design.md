@@ -935,7 +935,7 @@ Từ điển thuật ngữ không nằm trong file cài đặt mà nằm trong S
   - Nếu có đụng tới engine hoặc model thì chạy lại benchmark (§11).
 - **Khóa phiên bản:**
   - Commit lockfile (`Cargo.lock`, `pnpm-lock.yaml`), và ghi rõ phiên bản llama.cpp, whisper.cpp đang dùng. Hiện tại:
-    - llama.cpp v0.5.0, tức build b11146. Các build `bXXXX` hằng ngày chỉ là prerelease.
+    - llama.cpp v0.7.0, tức build b11669 (nâng từ v0.5.0 = b11146 ngày 2026-10-25: cùng bản dịch từng chữ trên 212 câu ở cả hai model, compare-llama giống nhau ở GPU và CPU, test llama-server thật đạt; số đo A3 ở trên là mốc của b11146). Các build `bXXXX` hằng ngày chỉ là prerelease.
     - whisper.cpp 1.8.3, qua `whisper-rs` 0.16.0 và `whisper-rs-sys` 0.15.0, có vá (`third_party/`, §6.4). whisper.cpp mới nhất là 1.9.4, nhưng `whisper-rs` chưa theo kịp.
     - Silero VAD v6.2.3 chạy bằng `candle-onnx` 0.11.0. Không dùng `ort`, vì crate này chỉ có bản 2.0.0-rc.13 (§6.3).
   - Chỉ nâng cấp khi chủ động quyết định, không để phiên bản tự nhảy.

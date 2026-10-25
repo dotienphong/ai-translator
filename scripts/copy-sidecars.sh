@@ -6,13 +6,13 @@
 #   scripts/copy-sidecars.sh              # build asr-worker (metal, shared-encode) rồi chép
 #   scripts/copy-sidecars.sh <asr-worker> # chép một bản asr-worker đã build sẵn
 #
-# llama-server lấy từ bản chính thức b11146 (bench/phase0/fetch.py tải vào tools/), kèm các .dylib nó cần; llama-server
+# llama-server lấy từ bản chính thức b11669 (bench/phase0/fetch.py tải vào tools/), kèm các .dylib nó cần; llama-server
 # tìm chúng qua @loader_path. Bản phát hành: CI của kế hoạch 07 build và ký.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 triple=aarch64-apple-darwin
 out="$root/src-tauri/binaries"
-llama_dir="$root/tools/llama-b11146/macos-arm64/llama-b11146"
+llama_dir="$root/tools/llama-b11669/macos-arm64/llama-b11669"
 if [ "$#" -ge 1 ]; then
   asr="$1"
 else

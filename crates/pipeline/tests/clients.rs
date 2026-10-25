@@ -364,12 +364,12 @@ fn a_server_that_runs_out_of_memory_reports_the_log_tail() {
 /// Với `llama-server` b11146 thật: request không có key bị từ chối (401), có key thì được (200). Cần binary và model:
 ///
 /// ```text
-/// MT_LLAMA_SERVER=$PWD/tools/llama-b11146/macos-arm64/llama-b11146/llama-server \
+/// MT_LLAMA_SERVER=$PWD/tools/llama-b11669/macos-arm64/llama-b11669/llama-server \
 /// MT_LLAMA_MODEL=$PWD/models/Hy-MT2-1.8B-Q4_K_M.gguf \
 /// cargo test -p pipeline --test clients real_llama_server -- --include-ignored
 /// ```
 #[test]
-#[ignore = "cần llama-server b11146 và model"]
+#[ignore = "cần llama-server (bản của versions.env) và model"]
 fn real_llama_server_requires_the_api_key() {
     let exe = PathBuf::from(std::env::var("MT_LLAMA_SERVER").expect("MT_LLAMA_SERVER"));
     let model = PathBuf::from(std::env::var("MT_LLAMA_MODEL").expect("MT_LLAMA_MODEL"));
@@ -501,7 +501,7 @@ impl Drop for KillOnDrop {
 ///   đổi);
 /// - test lỗi ở header: bản mới báo `Connection: close`, client tự đóng kết nối, cũng có thể cân nhắc bật lại pool.
 #[test]
-#[ignore = "cần llama-server b11146 và model"]
+#[ignore = "cần llama-server (bản của versions.env) và model"]
 fn real_llama_server_closes_the_connection_after_a_stream() {
     let exe = PathBuf::from(std::env::var("MT_LLAMA_SERVER").expect("MT_LLAMA_SERVER"));
     let model = PathBuf::from(std::env::var("MT_LLAMA_MODEL").expect("MT_LLAMA_MODEL"));

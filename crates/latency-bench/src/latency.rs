@@ -1311,8 +1311,8 @@ mod tests {
             "models/ggml-small-q5_1.bin"
         );
         assert_eq!(
-            rel("/home/dev/meeting-translator/tools/llama-b11146/macos-arm64/llama-b11146/llama-server"),
-            "tools/llama-b11146/macos-arm64/llama-b11146/llama-server"
+            rel("/home/dev/meeting-translator/tools/llama-b11669/macos-arm64/llama-b11669/llama-server"),
+            "tools/llama-b11669/macos-arm64/llama-b11669/llama-server"
         );
         // Ngoài repo: chỉ tên file, không lộ thư mục cha (có thể chứa tên người dùng).
         assert_eq!(rel("/Users/somebody/models/x.gguf"), "x.gguf");

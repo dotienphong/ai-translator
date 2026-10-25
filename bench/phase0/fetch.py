@@ -30,9 +30,9 @@ TOOLS = os.path.join(ROOT, "tools")
 HF = "https://huggingface.co"
 WHISPER_REV = "5359861c739e955e79d9a303bcbc70fb988958b1"  # commit của repo ggerganov/whisper.cpp trên Hugging Face
 HYMT2_REV = "a0c709d9fac510f2c807aa3af52872340dc37a4a"  # commit của repo tencent/Hy-MT2-1.8B-GGUF
-# llama.cpp v0.5.0 là bản ổn định mới nhất (spec §6.12): build b11146 = commit 7fe450e19 = tag v0.5.0.
-# `llama-server --version` in "0.5.0-dev (build 11146, commit 7fe450e19)".
-LLAMA_TAG = "b11146"
+# llama.cpp v0.7.0 là bản ổn định mới nhất (spec §6.12): build b11669 = commit 620d2225c = tag v0.7.0 (trước 2026-10-25 là v0.5.0 = b11146).
+# `llama-server --version` in "0.7.0-dev (build 11669, commit 620d222)".
+LLAMA_TAG = "b11669"
 LLAMA_URL = f"https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA_TAG}"
 TIMEOUT = 30  # giây, cho mỗi lần kết nối và mỗi lần chờ dữ liệu
 RETRIES = 4
@@ -60,17 +60,17 @@ FILES = {
          2327524, "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"),
     ],
 }
-# Gói llama.cpp theo nền tảng: (tên file, số byte, SHA-256), lấy từ trang release b11146.
+# Gói llama.cpp theo nền tảng: (tên file, số byte, SHA-256), lấy từ trang release b11669.
 LLAMA = {
     "macos-arm64": [
         (f"llama-{LLAMA_TAG}-bin-macos-arm64.tar.gz",
-         11189714, "1ad3f9eff80edb9dbef4259ad564d1720612ef7eea48fa4afed0e54f5f3d5711"),
+         12191582, "dbed55493d72bc1ba2babc8770d669c2289b5bc4ee9fb2a4dfc158d45b7d13fd"),
     ],
     "windows-x64": [
         (f"llama-{LLAMA_TAG}-bin-win-vulkan-x64.zip",
-         32127004, "55a378aa095b466979d85075234f66d7655c7a7483222af0c006c0e55b4d7bd6"),
+         32182350, "2c07574e7bde71321cb785282b20cc821e951132149eeceeea32ddebdbf0598e"),
         (f"llama-{LLAMA_TAG}-bin-win-cpu-x64.zip",
-         18560055, "14cf1303ca9ac3abd94816850532f9f9a69ac66fbaca3776fc6f9061c2fac1d1"),
+         19537886, "37b3efcf962847ca869745fd4ccf7f5e7e8dacfeff9fa3523b4ca8cdc66d632b"),
     ],
 }
 

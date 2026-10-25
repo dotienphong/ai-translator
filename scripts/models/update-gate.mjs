@@ -1,5 +1,5 @@
 // Cổng kiểm của `pnpm models:update` (spec docs/superpowers/specs/2026-10-23-cap-nhat-model-tu-dong-design.md mục 4.4):
-// chạy model bằng đúng engine của app (llama-server b11146 của tools/, asr-worker build từ workspace), chấm A3 (dịch) hay
+// chạy model bằng đúng engine của app (llama-server b11669 của tools/, asr-worker build từ workspace), chấm A3 (dịch) hay
 // A4 (nhận dạng), so với mốc của model đang phát hành.
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -15,7 +15,7 @@ export const GATE_PATHS = {
   mtOutputs: resolve(REPO, "bench/phase0/data/mt"),
   mtTestset: resolve(REPO, "bench/phase0/data/mt/testset_phase0.jsonl"),
   asrData: resolve(REPO, "bench/phase0/data/asr"),
-  llamaServer: resolve(REPO, "tools/llama-b11146/macos-arm64/llama-b11146/llama-server"),
+  llamaServer: resolve(REPO, "tools/llama-b11669/macos-arm64/llama-b11669/llama-server"),
   latencyBench: resolve(TARGET, "release/latency-bench"),
   asrWorker: resolve(TARGET, "release/asr-worker"),
 };
