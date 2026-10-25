@@ -18,6 +18,10 @@ export const HOME_FAQ = [
     a: "<p>Được. App thu âm thanh hệ thống của máy tính nên không phụ thuộc ứng dụng họp, webinar hay video bạn dùng, và không cần bot hay plugin. Chúng tôi đã thử thu âm thanh trên macOS với Zoom, Google Meet, Microsoft Teams và Zalo PC (thử nghiệm nội bộ, không phải chứng nhận của các bên đó). Trên macOS bạn cũng có thể chọn chỉ nghe một app cụ thể.</p>",
   },
   {
+    q: "Dịch livestream ra tiếng Việt được không?",
+    a: "<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream. Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. App không có bản cho điện thoại và chỉ làm phụ đề cho người xem, không dịch live của chính bạn cho người xem của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
+  },
+  {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
     a: "<p>Không. Âm thanh chỉ nằm trong bộ nhớ RAM trong lúc dịch, không ghi xuống đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy trên macOS: trong lúc dịch, app không gửi dữ liệu âm thanh hay chữ chép lời ra ngoài.</p>",
   },
@@ -35,12 +39,12 @@ export default {
   id: "home",
   lang: "vi",
   path: "/",
-  title: "Phần mềm dịch phụ đề cuộc họp trực tiếp, chạy offline | AI Translator",
+  title: "Dịch livestream, họp trực tiếp bằng AI, chạy offline | AI Translator",
   description:
-    "Phụ đề dịch trực tiếp khi họp Zoom, Teams, Google Meet, Zalo: tiếng Anh, Trung, Nhật, Hàn sang tiếng Việt. AI chạy trên máy, âm thanh không lên cloud.",
+    "Phụ đề tiếng Việt dịch trực tiếp cho livestream, video và họp Zoom, Teams, Meet, Zalo: từ tiếng Anh, Trung, Nhật, Hàn. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-24",
-  llm: "Trang chủ: AI Translator là gì, dịch cuộc họp bằng phụ đề, Gõ dịch tin nhắn, xem lại lịch sử bản chép lời, hướng dẫn sử dụng bốn bước, dữ liệu ở lại trên máy, bảng giá và câu hỏi thường gặp.",
+  modified: "2026-10-25",
+  llm: "Trang chủ: AI Translator là gì, dịch cuộc họp và livestream bằng phụ đề, Gõ dịch tin nhắn, xem lại lịch sử bản chép lời, hướng dẫn sử dụng bốn bước, dữ liệu ở lại trên máy, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
@@ -51,7 +55,7 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · Dùng thử Free 10 ngày</p>
 <h1 class="reveal">Phụ đề dịch <em>bằng&nbsp;AI</em> cho mọi cuộc họp, chạy ngay trên máy bạn</h1>
-<p class="lead reveal"><strong>AI Translator</strong> là app desktop dịch âm thanh đang phát trên máy thành phụ đề nổi trên màn hình, và dịch tin nhắn bạn gõ sang tiếng của người bên kia. AI chạy ngay trên máy, nên âm thanh và nội dung cuộc họp không lên cloud. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar hay video.</p>
+<p class="lead reveal"><strong>AI Translator</strong> là app desktop dịch âm thanh đang phát trên máy thành phụ đề nổi trên màn hình, và dịch tin nhắn bạn gõ sang tiếng của người bên kia. AI chạy ngay trên máy, nên âm thanh và nội dung cuộc họp không lên cloud. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video hay livestream xem trên máy tính.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/tai-xuong/">Tải xuống ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#cach-dung">Xem cách dùng</a>
@@ -97,6 +101,7 @@ ${checkList([
   "Thanh phụ đề luôn nằm trên cùng: kéo, đổi cỡ chữ và màu, <strong>Khóa</strong> để chuột xuyên qua",
   "Từ điển thuật ngữ gợi ý cho bộ dịch cách dịch tên riêng và thuật ngữ chuyên ngành (tính năng Pro)",
   "Họp tại chỗ hay họp lai: chọn nguồn <strong>Micro</strong> hoặc <strong>Âm thanh máy + Micro</strong> để dịch cả người nói trong phòng (<a href=\"/tinh-nang/#micro\">cách dùng</a>)",
+  "Xem livestream hay video cũng được: app nghe mọi âm thanh phát trên máy, kể cả live phát trong trình duyệt (<a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>)",
 ])}
 <p><a class="btn btn-secondary" href="/tinh-nang/">Xem tất cả tính năng ${icon("arrow-right")}</a></p>
 </div>

@@ -18,6 +18,10 @@ export const HOME_FAQ = [
     a: `<p>Yes. The app captures your computer's system audio, so it does not depend on which meeting app, webinar or video you use, and it needs no bot and no plugin. We tested audio capture on macOS with Zoom, Google Meet, Microsoft Teams and Zalo PC (internal testing, not a certification by those companies). On macOS you can also choose to listen to one specific app only.</p>`,
   },
   {
+    q: "Can I translate a livestream into my language?",
+    a: "<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform. We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. There is no phone version, and the app only makes subtitles for the viewer: it does not translate your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
+  },
+  {
     q: "Is my meeting audio sent anywhere?",
     a: `<p>No. While you translate, audio exists only in memory (RAM). It is never written to disk and never sent over the network. We checked with a network proxy on macOS: during translation, the app sent no audio and no transcript text out.</p>`,
   },
@@ -37,12 +41,12 @@ export default {
   id: "home",
   lang: "en",
   path: "/en/",
-  title: "Live translated subtitles for meetings, offline | AI Translator",
+  title: "Real-time translator for meetings and livestreams | AI Translator",
   description:
-    "Read live translated subtitles in Zoom, Teams, Google Meet or any app. English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
+    "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
   software: true,
-  modified: "2026-10-24",
-  llm: "Home page: what AI Translator is, meeting translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
+  modified: "2026-10-25",
+  llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
@@ -53,7 +57,7 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · 10-day free trial</p>
 <h1 class="reveal">AI-translated subtitles for <em>every meeting</em>, running on your computer</h1>
-<p class="lead reveal"><strong>AI Translator</strong> is a desktop app that turns the audio playing on your computer into floating translated subtitles, and translates the messages you type into the other person's language. The AI runs on your own machine, so your audio and meeting content never go to the cloud. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars or videos.</p>
+<p class="lead reveal"><strong>AI Translator</strong> is an AI live translator for macOS and Windows: a desktop app that turns the audio playing on your computer into floating translated subtitles in real time, and translates the messages you type into the other person's language. The AI runs on your own machine, so your audio and meeting content never go to the cloud. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos or livestreams you watch on a computer.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/en/download/">Download ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">See how to use it</a>
@@ -99,6 +103,7 @@ ${checkList([
   "The subtitle bar stays on top: drag it, change the text size and colors, and <strong>Lock</strong> it so clicks pass through",
   "A glossary gives the translator hints for names and industry terms (a Pro feature)",
   "In-person or hybrid meetings: choose the <strong>Microphone</strong> or <strong>Computer audio + Microphone</strong> source to translate people in the room too (<a href=\"/en/features/#microphone\">how it works</a>)",
+  "Livestreams and videos too: the app hears any audio playing on your computer, so it works with live video in a browser (<a href=\"/en/solutions/livestream-translation/\">livestream translation</a>)",
 ])}
 <p><a class="btn btn-secondary" href="/en/features/">See all features ${icon("arrow-right")}</a></p>
 </div>
