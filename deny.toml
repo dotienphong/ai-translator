@@ -42,6 +42,13 @@ confidence-threshold = 0.8
 # Danh sách trên dùng cho cả workspace sau này, nên giấy phép chưa gặp không phải lỗi.
 unused-allowed-license = "allow"
 
+# `sqlcipher-src` (mã nguồn SQLCipher của rusqlite 0.41+) khai thêm "blessing" (lời chúc của SQLite, public domain, đã nằm trong
+# bản phát hành từ trước qua SQLCipher) và "WTFPL" (libtomcrypt, KHÔNG được biên dịch: macOS dùng CommonCrypto, Windows dùng
+# OpenSSL). Chỉ ngoại lệ cho đúng crate này; about.toml làm rõ rằng bản phát hành chỉ mang MIT và BSD-3-Clause của nó.
+[[licenses.exceptions]]
+crate = "sqlcipher-src"
+allow = ["blessing", "WTFPL"]
+
 [licenses.private]
 # Crate trong workspace không publish nên không khai giấy phép.
 ignore = true

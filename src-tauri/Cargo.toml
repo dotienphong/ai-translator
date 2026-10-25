@@ -30,7 +30,7 @@ pipeline = { path = "../crates/pipeline" }
 rtrb.workspace = true
 # SQLite mã hóa bằng SQLCipher (spec §6.6, §10.2): SQLCipher 4.14 (SQLite 3.51.3) build kèm. macOS dùng CommonCrypto của
 # hệ thống; Windows thêm OpenSSL build tĩnh từ mã nguồn (bên dưới). Không bật `cache` mặc định (không cần `hashlink`).
-rusqlite = { version = "0.40.2", default-features = false, features = ["bundled-sqlcipher"] }
+rusqlite = { version = "0.41.0", default-features = false, features = ["bundled-sqlcipher"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.11.0"
@@ -103,7 +103,7 @@ windows = { version = "0.62.2", features = [
 windows-native-keyring-store = "1.1.0"
 # Windows không có CommonCrypto: SQLCipher dùng OpenSSL 3.6 (`openssl-src` 300.6, Apache-2.0) link tĩnh, nên không có DLL
 # OpenSSL nào trong thư mục cài đặt. Build cần Perl (Strawberry Perl); có `nasm` thì bật mã assembly, không thì `no-asm`.
-rusqlite = { version = "0.40.2", default-features = false, features = ["bundled-sqlcipher-vendored-openssl"] }
+rusqlite = { version = "0.41.0", default-features = false, features = ["bundled-sqlcipher-vendored-openssl"] }
 
 [dev-dependencies]
 # `test`: MockRuntime để test ACL của từng cửa sổ mà không mở cửa sổ thật.

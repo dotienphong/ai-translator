@@ -38,20 +38,25 @@ path = "oniguruma/COPYING"
 license = "BSD-2-Clause"
 checksum = "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f"
 
-# libsqlite3-sys (rusqlite, kế hoạch 03) nhúng mã nguồn SQLCipher (BSD-3-Clause, `sqlcipher/LICENSE`) và SQLite (public
-# domain) vào tiến trình chính; giấy phép của crate chỉ ghi MIT (N4 của review 07a lần 1).
-[libsqlite3-sys.clarify]
+# SQLCipher (BSD-3-Clause, `sqlcipher/LICENSE-sqlcipher`) và SQLite (public domain) vào tiến trình chính (rusqlite, kế hoạch 03).
+# Từ rusqlite 0.41 / libsqlite3-sys 0.39 mã nguồn SQLCipher nằm ở crate riêng `sqlcipher-src` (libsqlite3-sys chỉ còn
+# phần Rust, giấy phép MIT đúng như khai, không cần làm rõ). `sqlcipher-src` khai "MIT AND BSD-3-Clause AND blessing AND
+# WTFPL": blessing là lời chúc trong SQLite (public domain), còn WTFPL là của libtomcrypt, nhà cung cấp mật mã dự phòng cho
+# nền tảng không có thư viện mật mã hệ thống, KHÔNG được biên dịch ở hai nền tảng phát hành (macOS dùng CommonCrypto,
+# Windows dùng OpenSSL; test `the_cipher_provider_matches_the_platform` giữ điều này). Nên chỉ liệt kê hai giấy phép mà bản
+# phát hành thật sự mang: MIT của crate và BSD-3-Clause của SQLCipher (cần giữ nguyên thông báo bản quyền khi phân phối).
+[sqlcipher-src.clarify]
 license = "MIT AND BSD-3-Clause"
 
-[[libsqlite3-sys.clarify.files]]
+[[sqlcipher-src.clarify.files]]
 path = "LICENSE"
 license = "MIT"
-checksum = "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
+checksum = "413f82e0f4f8191a8624a7b7b2c9809466f7f3d930ad52a74ad29f2dd907881d"
 
-[[libsqlite3-sys.clarify.files]]
-path = "sqlcipher/LICENSE"
+[[sqlcipher-src.clarify.files]]
+path = "sqlcipher/LICENSE-sqlcipher"
 license = "BSD-3-Clause"
-checksum = "ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131"
+checksum = "2a2826f6acf46fa650730cf42cbb22a642be33a7ef119c9c4f4bf6daf3bef48e"
 
 # openssl-src (chỉ Windows: SQLCipher dùng OpenSSL 3.6.3 build tĩnh) nhúng mã nguồn OpenSSL (Apache-2.0,
 # `openssl/LICENSE.txt`); giấy phép của crate chỉ ghi MIT/Apache-2.0 cho phần Rust.
