@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Can I translate TikTok Live into my language?",
-    a: `<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a speaker using English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser. We have not tested TikTok Live itself. To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
+    a: `<p>In principle, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a speaker using English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. But for TikTok Live we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music made recognition fail, so the subtitles were not usable; we have no result for livestreams in English, Chinese, Japanese or Korean. We have tested it with videos playing in a browser, and once with YouTube Live. To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
   },
   {
     q: "Does it work on a phone?",
@@ -82,7 +82,7 @@ ${checkList([
   "<strong>You need to record the livestream or download the video.</strong> The app does not record audio or video to disk and does not process video files; it only has a text transcript.",
   "<strong>The livestream is not in English, Chinese, Japanese, Korean or Vietnamese.</strong> The app supports only these five languages; a livestream in Thai, Indonesian or another language cannot be translated yet.",
 ], true)}
-${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, payments, contracts) without checking. We have not tested TikTok Live itself. We have tested it with videos playing in a browser." })}
+${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, payments, contracts) without checking. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music made recognition fail, so the subtitles were not usable. We have tested it with videos playing in a browser, and once with YouTube Live." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

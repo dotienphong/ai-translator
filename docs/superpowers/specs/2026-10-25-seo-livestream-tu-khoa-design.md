@@ -55,7 +55,7 @@ Luật của CLAUDE.md: chỉ nói điều có thật, số đo kèm điều ki�
 - Không ghi lại buổi live, không có chế độ tóm tắt.
 
 **Không được nói trước khi kiểm (xem V1 ở mục 7):**
-- "Đã thử với TikTok Live / YouTube Live / Facebook Live". Mặc định trang ghi đúng như trang webinar hiện tại: *đã thử với video trên trình duyệt, chưa thử riêng từng nền tảng livestream*.
+- "Đã thử với TikTok Live / Facebook Live" (hay nói app chạy tốt với hai nền tảng này). Sau V1 (mục 7, 2026-10-25): **YouTube Live đã kiểm và đạt**, trang được nói đã thử một lần với YouTube Live (kèm ngày, Chrome, macOS); **TikTok LIVE chỉ có một buổi live tiếng Việt có nhạc nền, không đạt**, trang nói đúng như vậy, không nói "đã thử TikTok"; **Facebook Live chưa kiểm**, trang nói "chưa thử Facebook Live". Trước V1, trang ghi như trang webinar: *đã thử với video trên trình duyệt, chưa thử riêng từng nền tảng livestream*.
 - Tên nền tảng chỉ dùng như tên gọi để người đọc nhận ra tình huống, kèm câu nhãn hiệu ở chân trang (mục 5.4).
 
 ## 5. Thiết kế
@@ -113,6 +113,14 @@ Câu `trademark` ở chân trang (`T[lang].trademark` trong `src/site.mjs`, năm
 ## 7. Xác minh trước khi viết "đã thử"
 
 **V1 (không chặn việc làm):** chạy app trên Mac với một livestream YouTube và một TikTok LIVE mở trong trình duyệt máy tính, ghi lại: app nhận được âm thanh, phụ đề hiện, độ trễ cảm nhận, chọn nguồn "chỉ trình duyệt" hoạt động. Việc này dùng loa và máy của chủ dự án nên phải báo trước khi chạy. Nếu có kết quả đạt thì thêm câu "đã thử với …" kèm ngày và điều kiện; nếu không thì giữ câu mặc định ở mục 4. Windows: chủ dự án đã thử mọi tính năng ngày 2026-10-20 nhưng chưa thử riêng livestream, giữ nguyên câu mặc định.
+
+**Kết quả (2026-10-25)** (chi tiết ở mục 3 của `docs/release/seo-theo-doi.md`):
+- **YouTube Live: đạt.** Thử một lần ngày 25/10/2026 (22:01–22:12 giờ Việt Nam) trên Chrome, macOS, kênh tin tức tiếng Anh Al Jazeera English: phụ đề tiếng Việt hiện suốt khoảng 2 phút 45 giây với nguồn âm thanh mặc định, và cả khi chọn nguồn "Chỉ Google Chrome" (khoảng 1 phút 20 giây). Bản dịch nhìn chung khớp lời, vài lỗi nhỏ.
+- **TikTok LIVE trên web: không đạt, thử chưa đúng loại.** Chỉ xem được một buổi live tiếng Việt có nhạc nền (không tìm được buổi live tiếng Anh, Trung, Nhật, Hàn). App thu được tiếng, nhưng nhạc làm nhận dạng sai (nhận nhầm ngôn ngữ, câu ảo lặp lại) nên phụ đề không dùng được. Chưa có kết quả với live tiếng Anh, Trung, Nhật, Hàn.
+- **Facebook Live: chưa thử.** Windows: chưa thử riêng livestream.
+- Số thời gian xử lý trong log app (p50 khoảng 0,5 giây) **không** đưa lên website: không phải số đo chính thức và khác điều kiện đo của trang Tính năng.
+
+Website đã đổi chữ theo kết quả này ở năm ngôn ngữ (hai trang mới, Trang chủ, Hỏi đáp): nói đã thử một lần với YouTube Live (kèm ngày), nói đúng kết quả không đạt của buổi TikTok LIVE có nhạc nền, nói chưa thử Facebook Live; mỗi câu "đã thử"/"chưa thử" vẫn là một câu riêng. Test `STALE_LIVE` dùng hằng `V1_TESTED = ["YouTube"]`: vẫn chặn câu nói đã thử TikTok hay Facebook.
 
 ## 8. Việc ngoài mã (của chủ dự án)
 

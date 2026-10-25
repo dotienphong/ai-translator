@@ -47,7 +47,7 @@ Spec: `docs/superpowers/specs/2026-10-25-seo-livestream-tu-khoa-design.md` (đã
 | Độ trễ | Trung vị 0,76–1,03 giây, Mac M4 Pro, gói model Chuẩn; máy yếu hơn chậm hơn; Windows mới đo sơ bộ trên một laptop GPU tích hợp, chậm hơn | `vi/features.mjs` mục Hiệu năng |
 | Riêng tư | Âm thanh chỉ ở RAM, không ghi đĩa, không gửi đi; dịch không cần internet | `vi/home.mjs` |
 | Hạn mức | Free 10 ngày × 30 phút mỗi ngày; Monthly 50 giờ/30 ngày, 6 Months 100 giờ/30 ngày, Yearly không giới hạn; im lặng không tính | `vi/solutions-webinar.mjs` |
-| Đã thử | **Chỉ**: "đã thử với video phát trong trình duyệt" (Chrome, Safari, Edge). **Chưa** thử riêng TikTok LIVE, YouTube Live, Facebook Live cho tới khi kế hoạch 06 (V1) đạt | `vi/faq.mjs` |
+| Đã thử | "Đã thử với video phát trong trình duyệt" (Chrome, Safari, Edge) và **thử một lần với YouTube Live** trên Chrome, macOS (25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. **TikTok LIVE**: chỉ có kết quả của một buổi live tiếng Việt có nhạc nền, nhạc làm nhận dạng sai nên phụ đề không dùng được (không nói "đã thử TikTok"). **Chưa** thử Facebook Live. Không đưa số thời gian xử lý trong log lên website (V1 xong 25/10/2026) | `vi/faq.mjs`, `docs/release/seo-theo-doi.md` mục 3 |
 | Giới hạn | Chỉ macOS và Windows, không điện thoại; chỉ phụ đề cho người xem, không dịch live của người phát; không ghi âm/ghi hình, không xử lý file video; bản dịch có thể sai; nhạc nền lớn, tiếng ồn, nhiều người nói chồng làm kém đi | spec mục 4 |
 
 Cách viết câu "đã thử" (test `STALE_LIVE` ở kế hoạch 01 bắt sai): **luôn hai câu riêng**, ví dụ "Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream." Đừng nối thành một câu có chữ TikTok, YouTube, Facebook sau "đã thử".

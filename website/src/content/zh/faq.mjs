@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "能把直播翻译成我的语言吗？TikTok 直播呢？",
-        a: `<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把英语、中文、日语、韩语或越南语的直播翻译成这五种语言中的另一种并显示为字幕。我们用浏览器中播放的视频做过测试。我们没有针对任何一个直播平台（TikTok Live、YouTube Live、Facebook Live）单独做过测试。请参阅<a href="/zh/solutions/livestream-translation/">直播翻译</a>和<a href="/zh/solutions/tiktok-live-translation/">翻译 TikTok 直播</a>。</p>`,
+        a: `<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把英语、中文、日语、韩语或越南语的直播翻译成这五种语言中的另一种并显示为字幕。我们用浏览器中播放的视频做过测试，还用 YouTube Live 测试过一次（2026年10月25日），字幕显示了出来。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果，背景音乐导致识别出错。我们没有测试过 Facebook Live。没有手机版，应用也不会为你自己的直播添加给观众看的字幕。请参阅<a href="/zh/solutions/livestream-translation/">直播翻译</a>和<a href="/zh/solutions/tiktok-live-translation/">翻译 TikTok 直播</a>。</p>`,
       },
       {
         q: "能在手机上用 AI Translator 翻译直播吗？",

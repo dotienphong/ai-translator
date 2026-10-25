@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "라이브 방송을 내 언어로 번역할 수 있나요? TikTok 라이브는요?",
-        a: `<p>컴퓨터에서는 가능합니다. 앱은 컴퓨터에서 재생되는 오디오를 들으므로 웹사이트에 좌우되지 않고, 영어, 중국어, 일본어, 한국어, 베트남어로 된 라이브 방송을 이 다섯 언어 중 다른 언어의 자막으로 보여 줄 수 있습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다. 개별 라이브 방송 플랫폼(<span lang="en">TikTok Live, YouTube Live, Facebook Live</span>)에서는 테스트하지 않았습니다. <a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>과 <a href="/ko/solutions/tiktok-live-translation/">TikTok 라이브 번역하기</a>를 참고하세요.</p>`,
+        a: `<p>컴퓨터에서는 가능합니다. 앱은 컴퓨터에서 재생되는 오디오를 들으므로 웹사이트에 좌우되지 않고, 영어, 중국어, 일본어, 한국어, 베트남어로 된 라이브 방송을 이 다섯 언어 중 다른 언어의 자막으로 보여 줄 수 있습니다. 브라우저에서 재생한 동영상으로 테스트해 보았고, YouTube 라이브로도 한 번 테스트했으며(2026년 10월 25일) 자막이 표시되었습니다. TikTok 라이브는 배경 음악이 흐르는 베트남어 라이브 방송 한 건의 결과만 있으며, 배경 음악 때문에 인식이 잘못되었습니다. Facebook 라이브에서는 테스트하지 않았습니다. 휴대폰 버전은 없으며, 앱이 내 라이브 방송에 시청자를 위한 자막을 더하지도 않습니다. <a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>과 <a href="/ko/solutions/tiktok-live-translation/">TikTok 라이브 번역하기</a>를 참고하세요.</p>`,
       },
       {
         q: "휴대폰에서 AI Translator로 라이브 방송을 번역할 수 있나요?",
