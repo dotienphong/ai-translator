@@ -145,6 +145,18 @@ Lưới thử trên `lon-h36` (giọng −62 dBFS, cảnh khó nhất; lỗi onl
 Ở cảnh −62 dBFS, kiểm riêng nửa chẵn / nửa lẻ của lịch clip: V1 14,9% / 11,6% (cả hai ≤ 17,38%). Số kết quả của V1 lúc
 chạy lưới và lúc chạy lại bằng mã cuối giống hệt nhau (cả năm cảnh). `asr-worker` có Metal.
 
+Ba cảnh của lượt đo đầu (78 clip) đo lại với cấu hình cuối `LOINOI-app`, vì các số ở trên mới đo với Silero mọi khung:
+
+| Cảnh | Ý nghĩa | LOINOI (Silero mọi khung) | **LOINOI-app** | Mức đạt | Silero được hỏi |
+|---|---|---|---|---|---|
+| `s1-loa` | A-trộn, nói lần lượt | 4,4% / 4,4% | **4,2% online / 4,4% phòng**, giữ 100% | online ≤ 10,78%, phòng ≤ 5,72% | 343 / 10 157 (3%) |
+| `ao-tron-can` | A-ảo, 0 câu ảo | 6,2% (0 câu ảo) | **4,9%, 0 câu ảo** | ≤ 5,72% và 0 câu ảo | 689 / 20 323 (3%) |
+| `he-thong-mic` | tái hiện A7 offline | đúng | **đúng 4/4 đoạn** ("The results of plotting analysis will be posted to a public website.", đoạn đầu cắt còn "will be posted to a public website.") | chép đúng câu mẫu | 430 / 781 (55%) |
+
+Ở `ao-tron-can`, lỗi 6,2% của lượt đầu (trượt 0,5 điểm) nay là 4,9%: chênh lệch là nhiễu của whisper tham lam trên 78 clip, đúng như
+đã nhận định. Cột "câu ảo" của `he-thong-mic` trong `score.md` (4 câu) không có nghĩa: cảnh này không có lịch clip để đối chiếu, bốn đoạn
+đều là câu mẫu.
+
 ## Kết luận
 
 Tất cả tiêu chí của kế hoạch 05 **đạt** khi đo trên mẫu đủ lớn (230 clip số hóa và 144 clip thu thật), cả với cấu hình
