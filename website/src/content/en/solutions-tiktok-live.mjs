@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Can I translate TikTok Live into my language?",
-    a: `<p>Yes, if you watch TikTok Live on a computer: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar. The app listens to the sound playing on your machine, so nothing has to be installed into TikTok or your browser. We have tested it with videos playing in a browser. We have not tested TikTok Live itself.</p>`,
+    a: `<p>Yes, if you watch TikTok Live on a computer and the speaker uses English, Chinese, Japanese or Korean. We have not tested TikTok Live itself. We have tested it with videos playing in a browser, and the app listens to the sound playing on your machine, so it does not depend on the website. To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
   },
   {
     q: "Does it work on a phone?",
@@ -18,11 +18,11 @@ const FAQ = [
   },
   {
     q: "Do I need to install anything into TikTok or my browser?",
-    a: `<p>No. There is no browser extension, no plugin and no account on the platform: the app only listens to the sound playing on your computer.</p>`,
+    a: `<p>No. There is no browser extension or plugin, and AI Translator does not need to connect to your TikTok account: it only listens to the sound playing on your computer. Whether you need to sign in to watch is up to TikTok.</p>`,
   },
   {
     q: "I sell on TikTok Live. Can I translate for foreign customers?",
-    a: `<p>Not yet. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose. The app does not add subtitles or a translated voice to your livestream.</p>`,
+    a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
   },
 ];
 
@@ -32,12 +32,12 @@ export default {
   path: "/en/solutions/tiktok-live-translation/",
   title: "Translate TikTok Live in real time on your computer",
   description:
-    "How to translate TikTok Live in real time with translated subtitles in a desktop browser. AI Translator does not run on phones; see the steps and the limits.",
+    "How to get real-time translated subtitles for TikTok Live in a desktop browser. AI Translator does not run on phones; see the steps and the limits.",
   type: "article",
   published: "2026-10-25",
   breadcrumbs: crumbs,
   modified: "2026-10-25",
-  llm: "How to translate TikTok Live in real time with translated subtitles when you watch in a desktop browser: four steps, tips for fast speakers, background music and several voices, honest limits (no phones, no translating your own livestream) and FAQ.",
+  llm: "How to translate TikTok Live in real time with translated subtitles when you watch in a desktop browser: four steps, tips for sentences cut in the middle, background music and several voices, honest limits (no phones, no translating your own livestream) and FAQ.",
   llmTitle: "Translate TikTok Live in real time when you watch on a computer",
   schema: [faqPage(FAQ)],
   body: () => `
@@ -55,21 +55,22 @@ ${callout({ kind: "warn", title: "Before you try: computers only.", text: "AI Tr
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "Get started", title: "Four steps to watch TikTok Live with translated subtitles" })}
 ${steps([
-  { title: "Open TikTok Live on your computer", text: "Open the livestream on the TikTok website in your computer's browser and let it play sound. Signing in and who can watch are up to TikTok and have nothing to do with AI Translator." },
   { title: "Install and open AI Translator", text: "Paste the install command from the <a href=\"/en/download/\">Download</a> page into Terminal (macOS) or PowerShell (Windows). Set <em>Translate into</em> to the language you want to read." },
-  { title: "Press Start while the livestream plays", text: "Press <strong>Start</strong> (shortcut ⌃⌥T, Windows: Ctrl+Alt+T). On macOS, the first time the system asks for the <em>System Audio Recording</em> permission: see <a href=\"/en/guide/macos-audio-permission/\">how to grant it</a>." },
+  { title: "Open TikTok Live on your computer", text: "Open the livestream on the TikTok website in your computer's browser and let it play sound. Signing in and who can watch are up to TikTok and have nothing to do with AI Translator." },
+  { title: "Press Start while the livestream plays", text: "Press <strong>Start</strong> (shortcut ⌃⌥T, Windows: Ctrl+Alt+T). On macOS, the first time the system asks for the <em>System Audio Recording</em> permission: see <a href=\"/en/guide/macos-audio-permission/\">how to grant it</a>. The app loads its models in the first few seconds (the first run after installing or updating can take longer, up to a few minutes)." },
   { title: "Drag the subtitle bar next to the video", text: "Drag the bar just under the livestream, set the text size in Settings › Subtitles and click <em>Lock (click-through)</em> so the mouse passes through the bar." },
 ], true)}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Tips", title: "Tips for fast speakers, background music and several voices" })}
+${sectionHead({ eyebrow: "Tips", title: "Tips for cut-off sentences, background music and several voices" })}
 ${checkList([
-  "<strong>Fast speakers who rarely pause:</strong> raise <em>Pause that ends a sentence</em> (50–800 ms) so sentences are cut less often; subtitles appear a little later.",
+  "<strong>Sentences cut in the middle (the speaker hesitates or pauses for breath):</strong> raise <em>Pause that ends a sentence</em> (50–800 ms) so sentences are cut less often; subtitles appear a little later. The change applies from the next session.",
   "<strong>Loud background music or noise:</strong> recognition gets worse and translations are more likely to be wrong; a livestream with clear speech works better.",
   "<strong>Several people talking over each other:</strong> the app translates sentence by sentence from the sound it hears and does not know who is speaking.",
-  "<strong>Listen to the browser only (macOS):</strong> in Settings › Audio, choose <em>Only {browser name}</em> so system notifications are not translated; the other tabs of that browser are still heard.",
-  "<strong>Chinese, Korean, Japanese or English livestreams:</strong> set <em>Translate into</em> to your language; if you know the spoken language, set <em>Source language</em>, and if speakers switch, keep Detect automatically.",
+  "<strong>Listen to the browser only (macOS):</strong> so system notifications are not translated, start the livestream first, then in Settings › Audio click <em>Refresh list</em>, choose <em>Only {browser name}</em> and only then press Start. For Safari the entry is named <em>Only Safari and web pages inside other apps</em>. A new source applies from the next session; the other tabs of that browser are still heard.",
+  "<strong>Windows cannot pick a single app yet:</strong> mute system notifications while you watch.",
+  "<strong>Chinese, Korean, Japanese or English livestreams:</strong> set <em>Translate into</em> to your language (English, Vietnamese, Chinese, Japanese or Korean); if you know the spoken language, set <em>Source language</em>, and if speakers switch, keep Detect automatically. Translation quality has been measured only for pairs that include Vietnamese; other pairs work but have no measured score.",
 ])}
 </div></section>
 
@@ -79,8 +80,9 @@ ${checkList([
   "<strong>You watch TikTok Live on a phone.</strong> AI Translator only runs on macOS and Windows, so it does not show subtitles inside the TikTok app on a phone.",
   "<strong>You are the one streaming and want to translate for your viewers.</strong> Subtitles appear only on the screen of the person using the app. The app does not add subtitles or a translated voice to your livestream.",
   "<strong>You need to record the livestream or download the video.</strong> The app does not record audio or video to disk and does not process video files; it only has a text transcript.",
+  "<strong>The livestream is not in English, Chinese, Japanese, Korean or Vietnamese.</strong> The app supports only these five languages; a livestream in Thai, Indonesian or another language cannot be translated yet.",
 ], true)}
-${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, payments, contracts) without checking. We have not tested TikTok Live itself; what we have tested is described on the <a href=\"/en/solutions/livestream-translation/#not-a-fit\">livestream translation page</a>." })}
+${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, payments, contracts) without checking. We have not tested TikTok Live itself. We have tested it with videos playing in a browser." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
@@ -91,7 +93,7 @@ ${faq(FAQ, { open: true })}
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "Keep reading", title: "Next steps", center: true })}
 <div class="grid grid-3">
-${linkCard({ href: "/en/solutions/livestream-translation/", icon: "play", title: "Livestream translation", text: "How it works, tips for live video that cannot be rewound and the quota, for any livestream platform.", more: "See the solution" })}
+${linkCard({ href: "/en/solutions/livestream-translation/", icon: "play", title: "Livestream translation", text: "How it works, tips for live video you often cannot rewind and the quota, for any livestream platform.", more: "See the solution" })}
 ${linkCard({ href: "/en/guide/quick-start/", icon: "zap", title: "Quick start", text: "From installation to your first subtitles.", more: "Open the guide" })}
 ${linkCard({ href: "/en/pricing/", icon: "wallet", title: "Pricing", text: "A 10-day Free trial; after that Monthly, 6 Months or Yearly, prepaid.", more: "See pricing" })}
 </div>

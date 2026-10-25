@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Dịch livestream ra tiếng Việt bằng cách nào?",
-    a: `<p>Cài AI Translator trên máy tính, mở livestream trong trình duyệt, chọn tiếng Việt ở ô Dịch sang rồi bấm Bắt đầu. App nghe âm thanh đang phát ra từ máy và hiện phụ đề tiếng Việt trên một thanh nổi, với độ trễ trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro (gói model Chuẩn).</p>`,
+    a: `<p>Cài AI Translator trên máy tính, mở livestream trong trình duyệt, chọn tiếng Việt ở ô Dịch sang rồi bấm Bắt đầu. App nghe âm thanh đang phát ra từ máy và hiện phụ đề tiếng Việt trên một thanh nổi, với độ trễ trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro (gói model Chuẩn). Live có thể bằng tiếng Anh, Trung, Nhật hay Hàn; chất lượng dịch mới được đo cho các cặp có tiếng Việt, còn cặp khác (ví dụ Nhật sang Anh) dịch được nhưng chưa có điểm đo.</p>`,
   },
   {
     q: "Có dịch được live TikTok, YouTube và Facebook không?",
@@ -22,11 +22,11 @@ const FAQ = [
   },
   {
     q: "Có cần internet khi đang dịch không?",
-    a: `<p>Không cho phần dịch: nhận dạng giọng nói, dịch và hiện phụ đề chạy trên máy bạn, âm thanh không gửi đi. Bạn vẫn cần internet để xem livestream.</p>`,
+    a: `<p>Phần dịch thì không: nhận dạng giọng nói, dịch và hiện phụ đề chạy trên máy bạn, âm thanh không gửi đi. Bạn vẫn cần internet để xem livestream.</p>`,
   },
   {
     q: "Tôi phát live thì dịch cho người xem của mình được không?",
-    a: `<p>Chưa. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn. App không đưa phụ đề hay giọng dịch vào buổi live.</p>`,
+    a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn.</p>`,
   },
   {
     q: "Dịch live có miễn phí không?",
@@ -40,26 +40,26 @@ export default {
   path: "/giai-phap/dich-livestream/",
   title: "Dịch livestream ra tiếng Việt: phụ đề trực tiếp",
   description:
-    "Xem livestream TikTok, YouTube, Facebook bằng phụ đề tiếng Việt dịch trực tiếp trên máy tính: AI chạy offline trên máy, không cài vào trình duyệt, nói rõ giới hạn.",
+    "Dịch livestream ra tiếng Việt khi xem trên máy tính: phụ đề trực tiếp, AI chạy ngay trên máy, không cần tiện ích trình duyệt. Không dùng được trên điện thoại.",
   type: "article",
   published: "2026-10-25",
   breadcrumbs: crumbs,
   modified: "2026-10-25",
-  llm: "Cách dùng AI Translator để dịch livestream ra tiếng Việt bằng phụ đề trực tiếp khi xem live trên máy tính: bốn bước, mẹo cho live không tua lại được, hạn mức, giới hạn thật (không dùng trên điện thoại, không dịch live của người phát) và hỏi đáp.",
+  llm: "Cách dùng AI Translator để dịch livestream ra tiếng Việt bằng phụ đề trực tiếp khi xem live trên máy tính: bốn bước, mẹo cho live thường không tua lại được, hạn mức, giới hạn thật (không dùng trên điện thoại, không dịch live của người phát) và hỏi đáp.",
   llmTitle: "Dịch livestream ra tiếng Việt bằng phụ đề trực tiếp",
   schema: [faqPage(FAQ)],
   body: () => `
 ${pageHero({
   crumbs,
   title: "Dịch livestream ra tiếng Việt bằng phụ đề trực tiếp",
-  lead: "Nếu bạn cần dịch live trực tiếp để xem hiểu ngay, AI Translator hiện phụ đề tiếng Việt khi bạn xem livestream bằng ngoại ngữ trên máy tính. App nghe âm thanh đang phát ra từ máy nên dùng được với live phát trong trình duyệt, không cần cài tiện ích, và việc nhận dạng cùng dịch chạy ngay trên máy bạn. App chỉ có bản cho macOS và Windows, không dùng được trên điện thoại, và chỉ làm phụ đề cho người xem: không dịch live của chính bạn cho người xem của bạn.",
+  lead: "Muốn dịch live trực tiếp một buổi livestream nước ngoài để hiểu ngay khi đang phát? AI Translator hiện phụ đề tiếng Việt khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. App nghe âm thanh đang phát ra từ máy nên dùng được với live phát trong trình duyệt, không cần cài tiện ích, và việc nhận dạng cùng dịch chạy ngay trên máy bạn. App chỉ có bản cho macOS và Windows, không dùng được trên điện thoại, và chỉ làm phụ đề cho người xem: không dịch live của chính bạn cho người xem của bạn.",
   meta: "<span>Cập nhật {{updated}}</span><span>Chạy trên máy tính macOS và Windows, không chạy trên điện thoại</span>",
 })}
 
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Dùng với", "Livestream phát trong trình duyệt hoặc app trên máy tính<small>TikTok LIVE, YouTube, Facebook Live: app nghe âm thanh của máy nên không phụ thuộc nền tảng; chúng tôi chưa thử riêng từng nền tảng</small>"],
-  ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Chỉ các chiều có tiếng Việt đã được đo chất lượng dịch</small>"],
+  ["Ngôn ngữ", "Tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Chỉ các chiều có tiếng Việt đã được đo chất lượng dịch</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Sau khi người nói dừng câu; Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
   ["Máy", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64<small>Không có bản cho điện thoại hay máy tính bảng</small>"],
 ])}</div>
@@ -68,7 +68,7 @@ ${pageHero({
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "Dành cho ai", title: "Khi buổi live hay nhưng không phải tiếng của bạn", center: true })}
 <div class="grid grid-3">
-${feature({ icon: "play", title: "Người xem live nước ngoài", text: "Buổi live bằng tiếng Anh, Trung, Nhật, Hàn của người sáng tạo nội dung, diễn giả hay đài truyền hình mà bạn muốn hiểu ngay khi đang phát." })}
+${feature({ icon: "play", title: "Người xem live bằng ngoại ngữ", text: "Buổi live bằng tiếng Anh, Trung, Nhật, Hàn của người sáng tạo nội dung, diễn giả hay đài truyền hình mà bạn muốn hiểu ngay khi đang phát." })}
 ${feature({ icon: "users", title: "Người theo dõi sự kiện trực tiếp", text: "Hội nghị, ra mắt sản phẩm hay buổi live giới thiệu hàng bằng ngoại ngữ, nơi bạn chỉ xem và nghe." })}
 ${feature({ icon: "book", title: "Người học qua buổi live", text: "Buổi giảng, lớp học hay hội thảo phát trực tiếp bằng ngoại ngữ mà bạn muốn theo kịp từng câu." })}
 </div>
@@ -83,11 +83,11 @@ ${checkList([
   "Bạn mở livestream trên trình duyệt (hoặc app) ở máy tính rồi bấm <strong>Bắt đầu</strong> trong AI Translator",
   "App nghe âm thanh đang phát ra từ máy, tách thành câu, nhận dạng và dịch ngay trên máy bạn",
   "Bản dịch hiện trên thanh phụ đề nổi nằm trên cửa sổ live, câu gốc chữ nhỏ ở trên",
-  "Không cần tiện ích trình duyệt hay tài khoản trên nền tảng; thanh phụ đề không lấy focus của cửa sổ đang mở nên bạn vẫn gõ chat bình thường",
+  "Không cần tiện ích trình duyệt và app không cần kết nối tài khoản nền tảng; thanh phụ đề không lấy focus của cửa sổ đang mở nên bạn vẫn gõ chat bình thường",
 ])}
 </div>
 <div>
-${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề của AI Translator hiện câu tiếng Anh và bản dịch tiếng Việt bên dưới", caption: "Thanh phụ đề thật của app: câu gốc chữ nhỏ ở trên, bản dịch ở dưới." })}
+${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề của AI Translator hiện ba câu: câu gốc tiếng Trung và tiếng Anh chữ nhỏ ở trên, bản dịch tiếng Việt chữ lớn bên dưới; câu đã là tiếng Việt hiện một dòng", caption: "Thanh phụ đề thật của app: câu gốc chữ nhỏ ở trên, bản dịch ở dưới." })}
 </div>
 </div>
 </div></section>
@@ -103,13 +103,12 @@ ${steps([
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
-${sectionHead({ eyebrow: "Mẹo", title: "Livestream không tua lại được: chỉnh thế nào cho dễ xem?" })}
+${sectionHead({ eyebrow: "Mẹo", title: "Livestream thường không tua lại được: chỉnh thế nào cho dễ xem?" })}
 ${checkList([
-  "<strong>Chọn nguồn Chỉ {tên app} (macOS):</strong> ở Cài đặt › Âm thanh, chọn trình duyệt đang phát live để thông báo của máy không bị dịch. Các tab khác của trình duyệt đó vẫn được nghe, nên hãy tắt tiếng tab khác. Danh sách chỉ có app đang phát tiếng: cho live phát trước rồi bấm <em>Làm mới danh sách</em>.",
+  "<strong>Chọn nguồn Chỉ {tên app} (macOS):</strong> để thông báo của máy không bị dịch, hãy cho live phát trước, vào Cài đặt › Âm thanh, bấm <em>Làm mới danh sách</em> (danh sách chỉ có app đang phát tiếng), chọn trình duyệt đang phát live rồi mới bấm Bắt đầu. Với Safari, mục này tên là <em>Chỉ Safari và trang web trong các app khác</em>. Đổi nguồn có tác dụng từ phiên dịch sau. Các tab khác của trình duyệt đó vẫn được nghe, nên hãy tắt tiếng tab khác.",
   "<strong>Windows chưa chọn được từng app:</strong> hãy tắt tiếng thông báo của máy khi xem.",
-  "<strong>Độ nhạy ngắt câu</strong> chỉnh 50–800 ms: ngắn thì phụ đề hiện sớm hơn, dài thì ít cắt câu hơn. Người nói liền một mạch thì thử tăng lên.",
-  "<strong>Khóa ngôn ngữ nguồn</strong> khi cả buổi chỉ một ngôn ngữ; giữ Tự nhận diện khi người nói đổi tiếng.",
-  "<strong>Lỡ một câu:</strong> cuộn lên trên thanh phụ đề để đọc lại câu cũ, nút <em>Mới nhất</em> đưa về hiện tại. Mọi gói còn xem, tìm và sao chép được bản chép lời của phiên gần nhất (<a href=\"/huong-dan/lich-su-va-xuat-file/\">lịch sử và xuất file</a>).",
+  "<strong>Độ nhạy ngắt câu</strong> chỉnh 50–800 ms: ngắn thì phụ đề hiện sớm hơn, dài thì ít cắt câu hơn. Thấy câu bị cắt vụn giữa chừng (người nói hay ngập ngừng, ngắt hơi) thì thử tăng lên; đổi có tác dụng từ phiên dịch sau.",
+  "<strong>Lỡ một câu:</strong> thanh đã khóa thì bấm ⌃⌥PageUp (Windows: Ctrl+Alt+PageUp) để xem câu cũ, ⌃⌥PageDown để về câu mới; thanh chưa khóa thì cuộn bằng con lăn, nút <em>Mới nhất</em> đưa về câu hiện tại. Ở mọi gói, bạn còn xem, tìm và sao chép được bản chép lời của phiên gần nhất; bắt đầu phiên mới thì bản cũ bị thay (<a href=\"/huong-dan/lich-su-va-xuat-file/\">lịch sử và xuất file</a>).",
 ])}
 ${callout({ title: "Hạn mức cho buổi live dài.", text: "Phút chỉ tính theo tiếng nói đã dịch, không tính im lặng; câu đã ở đúng ngôn ngữ bạn muốn đọc không bị tính. Free chỉ có 30 phút mỗi ngày trong 10 ngày dùng thử, nên một buổi live dài cần Monthly (50 giờ mỗi 30 ngày), 6 Months (100 giờ mỗi 30 ngày) hoặc Yearly (không giới hạn). Xem <a href=\"/bang-gia/\">bảng giá</a>." })}
 </div></section>
@@ -119,11 +118,13 @@ ${sectionHead({ eyebrow: "Trung thực", title: "Khi nào AI Translator chưa ph
 ${checkList([
   "<strong>Bạn xem live bằng điện thoại.</strong> AI Translator chỉ có bản cho macOS và Windows, nên không hiện phụ đề trong ứng dụng điện thoại. Muốn dùng, hãy mở buổi live trên máy tính.",
   "<strong>Bạn là người phát live và muốn dịch cho người xem của mình.</strong> Phụ đề chỉ hiện trên màn hình người dùng app, từ âm thanh phát trên máy họ sang ngôn ngữ họ chọn. App không đưa phụ đề hay giọng dịch vào buổi live của bạn.",
-  "<strong>Bạn cần ghi lại buổi live, tải video hoặc tạo file phụ đề từ file video.</strong> App không ghi âm hay ghi hình xuống đĩa và không xử lý file video; nó chỉ có bản chép lời bằng chữ.",
+  "<strong>Bạn cần ghi lại buổi live, tải video hoặc tạo file phụ đề từ file video.</strong> App không ghi âm hay ghi hình xuống đĩa và không xử lý file video; nó chỉ có bản chép lời bằng chữ và không có chế độ tóm tắt.",
   "<strong>Âm thanh không rõ.</strong> Nhạc nền lớn, tiếng ồn hay nhiều người nói chồng lên nhau làm nhận dạng kém đi và bản dịch dễ sai.",
   "<strong>Máy yếu hoặc cần tốc độ trên Windows.</strong> Độ trễ 0,76–1,03 giây là đo trên Mac M4 Pro với gói model Chuẩn; Windows mới đo sơ bộ trên một laptop có GPU tích hợp và chậm hơn (<a href=\"/tinh-nang/#hieu-nang\">điều kiện đo</a>).",
+  "<strong>Buổi live không nói tiếng Anh, Trung, Nhật, Hàn hay Việt.</strong> App chỉ hỗ trợ năm ngôn ngữ này; live bằng tiếng Thái, tiếng Indonesia hay ngôn ngữ khác chưa dịch được.",
 ], true)}
-${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (mua bán, hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream." })}
+${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (mua bán, hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn." })}
+<p>Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
