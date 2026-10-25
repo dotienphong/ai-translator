@@ -14,7 +14,7 @@ export default {
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown. Tất cả chạy offline trên máy bạn.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
@@ -96,7 +96,7 @@ ${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh:
 <div class="stack-lg reveal">
 <span class="eyebrow">Nguồn âm thanh</span>
 <h2>Mọi app họp, không cần bot, không cần plugin</h2>
-<p>Vì app thu âm thanh hệ thống, AI Translator chạy với mọi thứ phát ra tiếng: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video, khóa học trực tuyến.</p>
+<p>Vì app thu âm thanh hệ thống, AI Translator chạy với mọi thứ phát ra tiếng: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video, khóa học trực tuyến và livestream xem trên máy tính (<a href="/giai-phap/dich-livestream/">dịch livestream</a>).</p>
 ${checkList([
   "<strong>macOS:</strong> nghe toàn hệ thống (trừ chính app) hoặc chỉ một app đang phát tiếng để không dịch nhầm tiếng thông báo",
   "<strong>Windows:</strong> thiết bị phát mặc định hoặc một thiết bị bạn chọn",

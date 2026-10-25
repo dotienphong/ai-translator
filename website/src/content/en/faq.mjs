@@ -37,6 +37,18 @@ const GROUPS = [
         a: `<p>Yes. The app listens to the audio playing on your computer, so it works with videos playing in a browser with no extension. We have tested capturing audio from Google Meet running in Chrome, Safari and Edge (macOS 26.6.2); we have not tested individual video platforms.</p>`,
       },
       {
+        q: "Can I translate a livestream into my language? What about TikTok Live?",
+        a: `<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform (TikTok Live, YouTube, Facebook Live). We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
+      },
+      {
+        q: "Can I use AI Translator on a phone to translate a livestream?",
+        a: `<p>No. AI Translator only runs on macOS (Apple Silicon) and Windows 10/11. To get subtitles for a livestream, open it on a computer.</p>`,
+      },
+      {
+        q: "I stream live. Can I translate for my viewers?",
+        a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
+      },
+      {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
         a: `<p>Yes. The app captures system audio, so it does not depend on the meeting app and needs no per-app setup: you just press Start. On macOS you can also choose to listen to a single app only (Settings › Audio) so notification sounds are not translated.</p><p>We have checked system-audio capture on macOS 26 with Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams and Zalo PC: the speaker's audio was captured clearly. That was a check of the capture component, confirmed by the tester, not a formal acceptance test on the release build, and we have not tried every macOS version or every app. These names are used only to describe compatibility, and AI Translator is not affiliated with them. See <a href="/en/solutions/online-meeting-translation/">meeting translation</a>.</p>`,
       },
@@ -239,7 +251,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

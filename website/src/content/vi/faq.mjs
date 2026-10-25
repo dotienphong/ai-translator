@@ -37,6 +37,18 @@ const GROUPS = [
         a: `<p>Được. App nghe âm thanh đang phát trên máy nên dùng được với video phát trong trình duyệt mà không cần tiện ích nào. Chúng tôi đã thử thu âm thanh từ Google Meet chạy trên Chrome, Safari và Edge (macOS 26.6.2); chưa thử riêng từng nền tảng video.</p>`,
       },
       {
+        q: "Dịch livestream ra tiếng Việt được không? Có dịch live TikTok không?",
+        a: `<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream (TikTok LIVE, YouTube, Facebook Live). Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
+      },
+      {
+        q: "Có dùng AI Translator trên điện thoại để dịch live được không?",
+        a: `<p>Không. AI Translator chỉ có bản cho macOS (Apple Silicon) và Windows 10/11. Muốn có phụ đề cho livestream, hãy mở buổi live trên máy tính.</p>`,
+      },
+      {
+        q: "Tôi phát livestream, dịch cho người xem của mình được không?",
+        a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn.</p>`,
+      },
+      {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
         a: `<p>Được. App thu âm thanh hệ thống nên không phụ thuộc app họp và không cần cấu hình riêng cho từng app: bạn chỉ cần bấm Bắt đầu. Trên macOS bạn có thể chọn chỉ nghe một app (Cài đặt › Âm thanh) để không dịch tiếng thông báo.</p><p>Chúng tôi đã kiểm tra việc thu âm thanh hệ thống trên macOS 26 với Zoom, Google Meet (Chrome, Safari, Edge), Microsoft Teams và Zalo PC: âm thanh người nói được thu rõ. Đó là kiểm tra bộ thu âm do người thử xác nhận, chưa phải kiểm thử chính thức trên bản phát hành, và chúng tôi chưa thử mọi phiên bản macOS hay mọi app. Các tên này chỉ để nói về khả năng tương thích, AI Translator không liên kết với họ. Xem <a href="/giai-phap/dich-hop-truc-tuyen/">giải pháp cho họp trực tuyến</a>.</p>`,
       },
@@ -239,7 +251,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

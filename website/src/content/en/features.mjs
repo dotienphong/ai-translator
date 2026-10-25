@@ -14,7 +14,7 @@ export default {
     "Live translated subtitles in 5 languages, a subtitle bar, Type & Translate for chat, glossary, history and TXT/SRT/Markdown export. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `
@@ -98,7 +98,7 @@ ${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: Captur
 <div class="stack-lg reveal">
 <span class="eyebrow">Audio source</span>
 <h2>Any meeting app, no bot, no plugin</h2>
-<p>Because the app captures system audio, AI Translator works with anything that makes sound: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos and online courses.</p>
+<p>Because the app captures system audio, AI Translator works with anything that makes sound: Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos, online courses and livestreams you watch on a computer (<a href="/en/solutions/livestream-translation/">livestream translation</a>).</p>
 ${checkList([
   "<strong>macOS:</strong> listen to the whole system (except the app itself) or to a single app that is playing sound, so notification sounds from other apps are not translated by mistake",
   "<strong>Windows:</strong> the default playback device, or a device you choose",
