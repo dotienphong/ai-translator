@@ -73,7 +73,7 @@ Tìm (đầu mục hỏi đáp thứ tư):
 Thay bằng (chèn một mục mới ngay trước, dòng `{` đứng trước dòng Tìm được giữ nguyên làm phần mở của mục mới):
 ```
     q: "Dịch livestream ra tiếng Việt được không?",
-    a: "<p>Được, khi bạn xem livestream trên máy tính: app nghe âm thanh đang phát ra từ máy nên dùng được với live phát trong trình duyệt. App không có bản cho điện thoại và chỉ làm phụ đề cho người xem, không dịch live của chính bạn cho người xem của bạn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
+    a: "<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream. Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. App không có bản cho điện thoại và chỉ làm phụ đề cho người xem, không dịch live của chính bạn cho người xem của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
@@ -124,7 +124,7 @@ Tìm:
 Thay bằng:
 ```
     q: "Can I translate a livestream into my language?",
-    a: "<p>Yes, when you watch the livestream on a computer: the app listens to the audio playing on your machine, so it works with live video in a browser. There is no phone version, and the app only makes subtitles for the viewer: it does not translate your own livestream for your audience. We have tested it with videos playing in a browser. We have not tested each livestream platform. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
+    a: "<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform. We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. There is no phone version, and the app only makes subtitles for the viewer: it does not translate your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",
@@ -186,7 +186,7 @@ Tìm: `more: "Xem giải pháp cho webinar và video" })}`
 Thay bằng:
 ```
 more: "Xem giải pháp cho webinar và video" })}
-${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng ngoại ngữ trên máy tính, không cài vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch live của người phát.", more: "Xem giải pháp cho livestream" })}
+${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cài vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch live của người phát.", more: "Xem giải pháp cho livestream" })}
 ${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "play", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
 ```
 
@@ -225,7 +225,7 @@ Tìm: `more: "See the webinar and video solution" })}`
 Thay bằng:
 ```
 more: "See the webinar and video solution" })}
-${linkCard({ href: "/en/solutions/livestream-translation/", icon: "video", title: "Livestreams: TikTok, YouTube, Facebook", text: "Translated subtitles while you watch a livestream in a foreign language on a computer, with nothing to install in your browser. Honest limits: no phones, and no translating your own livestream.", more: "See the livestream solution" })}
+${linkCard({ href: "/en/solutions/livestream-translation/", icon: "video", title: "Livestreams: TikTok, YouTube, Facebook", text: "Translated subtitles while you watch a livestream in English, Chinese, Japanese or Korean on a computer, with nothing to install in your browser. Honest limits: no phones, and no translating your own livestream.", more: "See the livestream solution" })}
 ${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "play", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
 ```
 
@@ -366,7 +366,7 @@ Tìm:
 Thay bằng (dòng `{` đứng trước dòng Tìm là phần mở của mục đầu tiên trong ba mục mới):
 ```
         q: "Dịch livestream ra tiếng Việt được không? Có dịch live TikTok không?",
-        a: `<p>Được, khi bạn xem livestream trên máy tính: app nghe âm thanh đang phát ra từ máy nên dùng được với live phát trong trình duyệt, kể cả TikTok LIVE, YouTube và Facebook Live. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
+        a: `<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream (TikTok LIVE, YouTube, Facebook Live). Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
       },
       {
         q: "Có dùng AI Translator trên điện thoại để dịch live được không?",
@@ -374,7 +374,7 @@ Thay bằng (dòng `{` đứng trước dòng Tìm là phần mở của mục �
       },
       {
         q: "Tôi phát livestream, dịch cho người xem của mình được không?",
-        a: `<p>Chưa. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn; app không đưa phụ đề hay giọng dịch vào buổi live của bạn.</p>`,
+        a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn.</p>`,
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
@@ -391,7 +391,7 @@ Tìm:
 Thay bằng:
 ```
         q: "Can I translate a livestream into my language? What about TikTok Live?",
-        a: `<p>Yes, when you watch the livestream on a computer: the app listens to the audio playing on your machine, so it works with live video in a browser, including TikTok Live, YouTube and Facebook Live. We have tested it with videos playing in a browser. We have not tested each livestream platform. See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
+        a: `<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform (TikTok Live, YouTube, Facebook Live). We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
       },
       {
         q: "Can I use AI Translator on a phone to translate a livestream?",
@@ -399,7 +399,7 @@ Thay bằng:
       },
       {
         q: "I stream live. Can I translate for my viewers?",
-        a: `<p>Not yet. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose; the app does not add subtitles or a translated voice to your livestream.</p>`,
+        a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
       },
       {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
