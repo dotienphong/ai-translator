@@ -106,7 +106,7 @@ Câu `trademark` ở chân trang (`T[lang].trademark` trong `src/site.mjs`, năm
 
 - Bảng `need` của `test/site.test.mjs`: cụm bắt buộc cho mỗi trang mới (câu giới hạn điện thoại, câu "chỉ làm phụ đề cho người xem", điều kiện của số độ trễ).
 - Test mới `SEO_TARGETS`: bảng mục 1 dưới dạng dữ liệu; kiểm cụm đích có trong `title` hoặc `description` hoặc H1 của trang đích (đúng ngôn ngữ của cụm). Sửa trang về sau mà làm mất cụm thì test đỏ.
-- Chặn câu cấm: test mới `STALE_LIVE` bắt "đã thử với TikTok/YouTube/Facebook" khi chưa có kết quả V1, và "dịch live của bạn cho người xem". Test "không lộ công nghệ lõi" và `test/i18n-content.test.mjs` (so khung ja/zh/ko với en) áp dụng cho trang mới như mọi trang.
+- Chặn câu cấm: test mới `STALE_LIVE` chỉ bắt câu nói đã thử (hoặc chạy tốt với) TikTok/YouTube/Facebook khi chưa có kết quả V1; nó quét title, mô tả, thân trang và JSON-LD của mọi trang đã dựng (năm ngôn ngữ). Câu nói app dịch live của người phát cho người xem không tự động chặn được mà không bắt nhầm câu trung thực của chính trang chứa cụm này: câu đó được bảo vệ bằng các câu bắt buộc ở bảng `NEEDS` của test (hai trang mới) và kiểm bằng mắt khi sửa trang. Test "không lộ công nghệ lõi" và `test/i18n-content.test.mjs` (so khung ja/zh/ko với en) áp dụng cho trang mới như mọi trang.
 - Độ dài: `title` ≤ 70 ký tự (ja/zh/ko ≤ 40 gồm đuôi), description 90–165 (ja/zh/ko 50–120).
 - Chạy `pnpm test` ở `website/` sau mỗi nhóm thay đổi; deploy không nằm trong spec này.
 

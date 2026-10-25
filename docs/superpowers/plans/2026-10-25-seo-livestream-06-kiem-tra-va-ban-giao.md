@@ -26,7 +26,7 @@ Thay bằng:
 ## SEO từ khóa: dịch livestream, dịch live, dịch thời gian thực
 Spec `docs/superpowers/specs/2026-10-25-seo-livestream-tu-khoa-design.md`. Hai trang giải pháp riêng (`solutions-livestream`, `solutions-tiktok-live`, năm ngôn ngữ) nhắm các cụm tiếng Việt về dịch livestream và dịch live; Trang chủ và trang họp bản en nhắm các cụm tiếng Anh về dịch thời gian thực và dịch họp.
 - `test/seo-targets.test.mjs` giữ bảng `SEO_TARGETS` (cụm → trang đích → chỗ phải có: title, H1, H2, mô tả hay thân trang). **Sửa title, H1, mô tả hay câu dẫn của các trang đích thì chạy test này**; mất cụm thì test đỏ. Thêm cụm mới thì thêm một dòng vào `SEO_TARGETS` (và vào `REQUESTED` nếu chủ dự án yêu cầu nguyên văn). Test tự dựng vào thư mục tạm riêng: đừng đặt `WEBSITE_DIST` chung cho cả lượt `pnpm test`, các tiến trình dựng sẽ đè nhau và ba test i18n đỏ giả.
-- **Không nói đã thử TikTok, YouTube hay Facebook Live** chừng nào chưa có kết quả V1 (`docs/release/seo-theo-doi.md`): trang chỉ nói "đã thử với video phát trong trình duyệt" và "chưa thử riêng từng nền tảng livestream", **luôn là hai câu riêng**. Test `STALE_LIVE` (hằng `LIVE_TESTED` đang `false`) bắt câu nối. Có kết quả V1 đạt thì đổi `LIVE_TESTED` thành `true`, viết lại các câu "chưa thử" ở năm ngôn ngữ kèm ngày và điều kiện, và đổi các câu bắt buộc ở bảng `NEEDS` của test.
+- **Không nói đã thử TikTok, YouTube hay Facebook Live** chừng nào chưa có kết quả V1 (`docs/release/seo-theo-doi.md`): trang chỉ nói "đã thử với video phát trong trình duyệt" và "chưa thử riêng từng nền tảng livestream", **luôn là hai câu riêng**. Test `STALE_LIVE` (hằng `LIVE_TESTED` đang `false`) quét title, mô tả, thân trang và JSON-LD của mọi trang năm ngôn ngữ, bắt cả câu nối bằng dấu phẩy ("đã thử …, nhưng chưa thử riêng TikTok") và các cách nói như "kiểm thử", "chạy tốt với", "tested on"; câu về người phát live thì không tự động chặn được, đã có câu bắt buộc ở `NEEDS` bảo vệ. Có kết quả V1 đạt thì đổi `LIVE_TESTED` thành `true` (test quét khi đó hiện là bỏ qua), viết lại các câu "chưa thử" ở năm ngôn ngữ kèm ngày và điều kiện, và đổi các câu bắt buộc ở bảng `NEEDS` của test.
 - Giới hạn phải còn nguyên ở hai trang này (bảng `NEEDS` kiểm): chỉ máy tính, không điện thoại; chỉ phụ đề cho người xem, không dịch live của người phát; không ghi âm hay ghi hình; số độ trễ kèm điều kiện đo.
 - Trang chủ, Tính năng, Hỏi đáp, Webinar và video, trang Giải pháp, menu Giải pháp và chân trang đều dẫn tới trang dịch livestream (test kiểm). Câu `trademark` ở chân trang nêu TikTok, YouTube, Facebook.
 - Website không có analytics: thứ hạng đo bằng Search Console, Bing Webmaster Tools và bảng kiểm tay `docs/release/seo-theo-doi.md`.
@@ -190,7 +190,7 @@ Không đổi chữ trên website. Ghi kết quả trung thực vào bảng V1, 
 - [ ] **Step 1: Chạy toàn bộ test, không đặt biến nào**
 
 Run: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/seo-livestream/website && pnpm test 2>&1 | tail -n 14`
-Expected: `ℹ fail 0`, `ℹ skipped 6`, số `ℹ tests` lớn hơn mốc 245 (các test của `seo-targets.test.mjs` cộng thêm: khoảng 18 test cụm, 2–3 test nhãn hiệu/luật, và các test theo ngôn ngữ).
+Expected: `ℹ fail 0`, `ℹ skipped 6` (7 nếu V1 đã đạt và `LIVE_TESTED = true`: test quét câu "đã thử" khi đó bị bỏ qua), số `ℹ tests` lớn hơn mốc 245 (các test của `seo-targets.test.mjs` cộng thêm: khoảng 18 test cụm, 2–3 test nhãn hiệu/luật, và các test theo ngôn ngữ).
 
 - [ ] **Step 2: Dựng và chụp ảnh kiểm tra trang mới ở máy tính và điện thoại, sáng và tối**
 
