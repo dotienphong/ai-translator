@@ -71,7 +71,7 @@ ${checkList([
   "<strong>Bạn dùng Mac Intel, Windows ARM64 hoặc máy Windows có CPU không hỗ trợ AVX2.</strong> AI Translator chạy trên macOS 14.2 trở lên với Apple Silicon và Windows 10/11 64-bit (x64) có CPU hỗ trợ AVX2.",
   "<strong>Máy có dưới 8 GB RAM,</strong> hoặc bạn cần ngôn ngữ ngoài năm ngôn ngữ trên: app chưa đáp ứng.",
   "<strong>Bạn không có tài khoản ngân hàng Việt Nam và ở một nước mà Creem không nhận thanh toán thẻ.</strong> Thẻ quốc tế đi qua Creem, và Creem không nhận người mua từ một số nước (theo danh sách của Creem); không có PayPal. Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",
-  "<strong>Bạn xem hoặc phát livestream.</strong> AI Translator không dùng được trên điện thoại và không đưa phụ đề hay giọng dịch vào buổi live của bạn; xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>.",
+  "<strong>Bạn xem livestream trên điện thoại, hoặc muốn dịch buổi live của chính mình cho người xem.</strong> AI Translator không dùng được trên điện thoại và không đưa phụ đề hay giọng dịch vào buổi live của bạn; xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>.",
 ], true)}
 ${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn." })}
 </div></section>

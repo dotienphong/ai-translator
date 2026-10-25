@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Can I translate TikTok Live into my language?",
-    a: `<p>Yes, if you watch TikTok Live on a computer and the speaker uses English, Chinese, Japanese or Korean. We have not tested TikTok Live itself. We have tested it with videos playing in a browser, and the app listens to the sound playing on your machine, so it does not depend on the website. To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
+    a: `<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a speaker using English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser. We have not tested TikTok Live itself. To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
   },
   {
     q: "Does it work on a phone?",

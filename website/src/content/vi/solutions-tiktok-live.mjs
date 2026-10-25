@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Dịch live TikTok sang tiếng Việt được không?",
-    a: `<p>Được, nếu bạn xem TikTok LIVE trên máy tính và người nói dùng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi chưa thử riêng TikTok LIVE. Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. Cách làm: mở buổi live trong trình duyệt, bấm Bắt đầu ở AI Translator và đọc phụ đề tiếng Việt trên thanh nổi.</p>`,
+    a: `<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt khi người nói dùng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng TikTok LIVE. Cách làm: mở buổi live trong trình duyệt, bấm Bắt đầu ở AI Translator và đọc phụ đề tiếng Việt trên thanh nổi.</p>`,
   },
   {
     q: "Dùng trên điện thoại được không?",

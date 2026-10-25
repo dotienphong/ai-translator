@@ -71,7 +71,7 @@ ${checkList([
   "<strong>You use an Intel Mac, Windows ARM64, or a Windows PC whose CPU lacks AVX2.</strong> AI Translator runs on macOS 14.2 or later on Apple Silicon and on Windows 10/11 64-bit (x64) with a CPU that supports AVX2.",
   "<strong>Your computer has less than 8 GB of RAM,</strong> or you need a language beyond the five above: the app cannot cover that yet.",
   "<strong>You have no Vietnamese bank account and you are in a country where Creem does not accept card payments.</strong> International cards go through Creem, which does not accept buyers from some countries (per Creem's list), and there is no PayPal. Then there is no way to pay for a paid plan yet; the Free trial still works.",
-  "<strong>You watch or run a livestream.</strong> AI Translator does not work on phones and does not add subtitles or a translated voice to your livestream; see <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.",
+  "<strong>You watch livestreams on a phone, or want to translate your own livestream for your viewers.</strong> AI Translator does not work on phones and does not add subtitles or a translated voice to your livestream; see <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.",
 ], true)}
 ${callout({ kind: "warn", title: "Automatic translation can be wrong.", text: "Do not rely on AI Translator for important decisions (contracts, medical, legal, financial) without checking with a qualified person." })}
 </div></section>

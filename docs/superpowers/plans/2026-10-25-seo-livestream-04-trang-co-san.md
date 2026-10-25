@@ -4,7 +4,7 @@
 
 **Goal:** Đưa các cụm đích vào Trang chủ (vi, en), trang họp (chỉ en), trang Webinar và video (vi, en); dẫn tới hai trang mới từ trang Giải pháp, Tính năng, Hỏi đáp, menu và chân trang (vi, en).
 
-Một số cặp bên dưới đã được chỉnh thêm sau rà soát sự thật (commit sửa của đơn vị 3); nếu có lệch, file thật là nguồn đúng. Các chỗ đã chỉnh: (1) dòng "Livestream, live TikTok" ở bảng "Chọn nhanh" trang Giải pháp (vi, en) nói đúng cơ chế Độ nhạy ngắt câu; (2) câu trả lời FAQ livestream (Hỏi đáp, Trang chủ; vi, en) mở bằng "Trên máy tính thì dùng được" / "On a computer, yes", rồi nói điều đã thử và chưa thử thành hai câu riêng; (3) câu "phụ đề chỉ hiện trên màn hình người dùng" đổi thành "app làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ" (Hỏi đáp và bốn trang mới); (4) câu về file video ở trang Webinar (vi, en) viết lại, nhắc bản chép lời vẫn xuất được SRT; (5) bỏ cụm "không dịch live của người phát" mơ hồ (thẻ trang Giải pháp vi, `llm` của hai trang vi); (6) title Trang chủ vi; (7) trang họp en: lead, mô tả meta, `llmTitle` và mục giới hạn "One direction" (không kèm liên kết vì trang chưa có liên kết tới Type & Translate); (8) mô tả meta Trang chủ en; (9) thêm một mục "xem hoặc phát livestream" vào danh sách "chưa phù hợp" của trang Giải pháp (vi, en); (10) thẻ TikTok ở trang Giải pháp dùng biểu tượng `laptop`.
+Một số cặp bên dưới đã được chỉnh thêm sau rà soát sự thật (commit sửa của đơn vị 3); nếu có lệch, file thật là nguồn đúng. Các chỗ đã chỉnh: (1) dòng "Livestream, live TikTok" ở bảng "Chọn nhanh" trang Giải pháp (vi, en) nói đúng cơ chế Độ nhạy ngắt câu; (2) câu trả lời FAQ livestream (Hỏi đáp, Trang chủ và FAQ đầu của hai trang TikTok; vi, en) mở bằng "Trên máy tính thì dùng được" / "On a computer, yes", rồi nói điều đã thử và chưa thử thành hai câu riêng; (3) câu "phụ đề chỉ hiện trên màn hình người dùng" đổi thành "app làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ" (Hỏi đáp và bốn trang mới); (4) câu về file video ở trang Webinar (vi, en) viết lại, nhắc bản chép lời vẫn xuất được SRT; (5) bỏ cụm "không dịch live của người phát" mơ hồ (thẻ trang Giải pháp vi, `llm` của hai trang vi); (6) title Trang chủ vi; (7) trang họp en: lead, mô tả meta, `llmTitle` và mục giới hạn "One direction" (không kèm liên kết vì trang chưa có liên kết tới Type & Translate); (8) mô tả meta Trang chủ en; (9) thêm một mục "xem livestream trên điện thoại, hoặc muốn dịch buổi live của chính mình cho người xem" vào danh sách "chưa phù hợp" của trang Giải pháp (vi, en); (10) thẻ TikTok ở trang Giải pháp dùng biểu tượng `laptop`.
 
 **Architecture:** Chỉ sửa chữ trong các module trang sẵn có (không đổi khung), mỗi chỗ sửa là một cặp "Tìm" (chuỗi nguyên văn, duy nhất trong file) và "Thay bằng". Dùng công cụ Edit; nếu Edit báo chuỗi không duy nhất hay không thấy, mở file đọc lại chỗ đó rồi sửa đúng chỗ (đừng đoán). Tiền đề: kế hoạch 02 và 03 đã xong. `WT=/Users/dtphong/Desktop/software_business/meeting-translator-work/seo-livestream` (viết đường dẫn đầy đủ khi chạy lệnh). Mọi đường dẫn "Files" dưới đây tính từ `WT/website/`.
 
@@ -208,7 +208,7 @@ Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn 
 Thay bằng:
 ```
 Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",
-  "<strong>Bạn xem hoặc phát livestream.</strong> AI Translator không dùng được trên điện thoại và không đưa phụ đề hay giọng dịch vào buổi live của bạn; xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>.",
+  "<strong>Bạn xem livestream trên điện thoại, hoặc muốn dịch buổi live của chính mình cho người xem.</strong> AI Translator không dùng được trên điện thoại và không đưa phụ đề hay giọng dịch vào buổi live của bạn; xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>.",
 ```
 
 - [ ] **Step 2: Sửa `src/content/en/solutions.mjs`**
@@ -258,7 +258,7 @@ Then there is no way to pay for a paid plan yet; the Free trial still works.",
 Thay bằng:
 ```
 Then there is no way to pay for a paid plan yet; the Free trial still works.",
-  "<strong>You watch or run a livestream.</strong> AI Translator does not work on phones and does not add subtitles or a translated voice to your livestream; see <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.",
+  "<strong>You watch livestreams on a phone, or want to translate your own livestream for your viewers.</strong> AI Translator does not work on phones and does not add subtitles or a translated voice to your livestream; see <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.",
 ```
 
 - [ ] **Step 3: Kiểm**
