@@ -1879,6 +1879,17 @@ static bool whisper_model_load(struct whisper_model_loader * loader, whisper_con
                 break;
             }
 
+            // Backport từ whisper.cpp upstream (#3957, #4091): tiêu đề tensor của file model không đáng tin, n_dims ngoài 0..4 làm
+            // tràn mảng ne[4] trên stack, ttype ngoài khoảng làm đọc ngoài bảng kiểu của ggml.
+            if (n_dims < 0 || n_dims > 4) {
+                WHISPER_LOG_ERROR("%s: invalid n_dims %d in model file (expected 0 <= n_dims <= 4)\n", __func__, n_dims);
+                return false;
+            }
+            if (ttype < 0 || ttype >= GGML_TYPE_COUNT) {
+                WHISPER_LOG_ERROR("%s: invalid ttype %d in model file (expected 0 <= ttype < %d)\n", __func__, ttype, GGML_TYPE_COUNT);
+                return false;
+            }
+
             int32_t nelements = 1;
             int32_t ne[4] = { 1, 1, 1, 1 };
             for (int i = 0; i < n_dims; ++i) {
@@ -3197,8 +3208,11 @@ static bool log_mel_spectrogram(
     // pad 30 seconds of zeros at the end of audio (480,000 samples) + reflective pad 200 samples at the end of audio
     std::fill(samples_padded.begin() + n_samples + stage_2_pad, samples_padded.begin() + n_samples + stage_1_pad + 2 * stage_2_pad, 0);
 
-    // reflective pad 200 samples at the beginning of audio
-    std::reverse_copy(samples + 1, samples + 1 + stage_2_pad, samples_padded.begin());
+    // reflective pad up to 200 samples at the beginning of audio
+    // Backport từ whisper.cpp upstream (#3956): kẹp số mẫu phản chiếu theo đầu vào có sẵn, để âm thanh rất ngắn
+    // (n_samples <= stage_2_pad) không đọc quá cuối `samples`.
+    const int64_t n_reflect = std::min<int64_t>(stage_2_pad, std::max<int64_t>(0, (int64_t) n_samples - 1));
+    std::reverse_copy(samples + 1, samples + 1 + n_reflect, samples_padded.begin() + (stage_2_pad - n_reflect));
 
     mel.n_mel     = n_mel;
     // https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/SpectralOps.cpp#L936
@@ -3685,7 +3699,10 @@ struct whisper_context * whisper_init_from_buffer_with_params_no_state(void * bu
 
         size_t size_to_copy = buf->current_offset + read_size < buf->size ? read_size : buf->size - buf->current_offset;
 
-        memcpy(output, buf->buffer + buf->current_offset, size_to_copy);
+        // Backport từ whisper.cpp upstream (#3982): không chép khi không có gì để chép hay nguồn là null.
+        if (size_to_copy > 0 && buf->buffer != nullptr) {
+            memcpy(output, buf->buffer + buf->current_offset, size_to_copy);
+        }
         buf->current_offset += size_to_copy;
 
         return size_to_copy;
@@ -5014,6 +5031,17 @@ struct whisper_vad_context * whisper_vad_init_with_params(
 
             if (loader->eof(loader->context)) {
                 break;
+            }
+
+            // Backport từ whisper.cpp upstream (#3957, #4091): tiêu đề tensor của file model không đáng tin, n_dims ngoài 0..4 làm
+            // tràn mảng ne[4] trên stack, ttype ngoài khoảng làm đọc ngoài bảng kiểu của ggml.
+            if (n_dims < 0 || n_dims > 4) {
+                WHISPER_LOG_ERROR("%s: invalid n_dims %d in model file (expected 0 <= n_dims <= 4)\n", __func__, n_dims);
+                return nullptr;
+            }
+            if (ttype < 0 || ttype >= GGML_TYPE_COUNT) {
+                WHISPER_LOG_ERROR("%s: invalid ttype %d in model file (expected 0 <= ttype < %d)\n", __func__, ttype, GGML_TYPE_COUNT);
+                return nullptr;
             }
 
             int32_t nelements = 1;

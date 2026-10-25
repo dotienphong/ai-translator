@@ -4,7 +4,7 @@ Bản sao đã vá của hai crate, nối vào qua `[patch.crates-io]` trong `Ca
 
 | Thư mục | Nguồn | Bản vá |
 |---|---|---|
-| `whisper-rs-sys/` | crates.io `whisper-rs-sys` 0.15.0 (kèm whisper.cpp 1.8.3) | `patches/0001-whisper-cpp-set-audio-ctx.patch` (whisper.cpp và `src/bindings.rs`), `patches/0003-whisper-rs-sys-msvc-optimization-flags.patch` (`build.rs`) |
+| `whisper-rs-sys/` | crates.io `whisper-rs-sys` 0.15.0 (kèm whisper.cpp 1.8.3) | `patches/0001-whisper-cpp-set-audio-ctx.patch` (whisper.cpp và `src/bindings.rs`), `patches/0003-whisper-rs-sys-msvc-optimization-flags.patch` (`build.rs`), `patches/0004-whisper-cpp-upstream-hardening.patch` (whisper.cpp) |
 | `whisper-rs/` | crates.io `whisper-rs` 0.16.0 | `patches/0002-whisper-rs-set-audio-ctx.patch` |
 
 ## Vì sao phải vá (spec §6.4)
@@ -24,6 +24,16 @@ Bản Vulkan cũng dính, vì nhận diện ngôn ngữ, tính mel và các ph�
 `/O2 /Ob2 /DNDEBUG` qua `cflag`/`cxxflag`, là đường mà crate `cmake` giữ nguyên. Kiểm sau khi build bằng
 `CMAKE_C_FLAGS_RELEASE` trong `CMakeCache.txt` của thư mục `out/build`: phải có `/O2`.
 
+## Vì sao có bản vá 0004 (backport bốn sửa lỗi an toàn của upstream)
+whisper.cpp 1.8.3 có hai lỗi đọc file model và hai lỗi nhỏ ở đường nhận diện; upstream đã sửa từ 1.9.x. Không nâng cả whisper.cpp lên 1.9.5 vì
+khoảng cách rất lớn (1604 commit, ggml đồng bộ nhiều lần, ảnh hưởng nhận diện và `shared-encode` ở ba nền tảng, không kiểm được
+Windows ở đây), nên chỉ lấy đúng bốn sửa nhỏ, bằng chứng nằm ở bản vá:
+- `ggml-org/whisper.cpp#3957`: từ chối `n_dims` ngoài 0..4 ở tiêu đề tensor (trước đó `ne[4]` trên stack bị ghi tràn; cả `whisper_model_load` lẫn bộ nạp VAD);
+- `#4091` (CVE-2026-110810): từ chối `ttype` ngoài `[0, GGML_TYPE_COUNT)` (trước đó đọc ngoài bảng kiểu);
+- `#3956`: kẹp số mẫu phản chiếu ở đầu `log_mel_spectrogram` theo đầu vào, để âm thanh quá ngắn không đọc quá cuối bộ đệm (`asr-worker` đã chặn `pcm` dưới 0,1 giây nên đường này không tới được, giữ làm lớp thứ hai);
+- `#3982`: không `memcpy` khi nguồn là null ở bộ nạp từ bộ đệm.
+Với model hợp lệ và âm thanh bình thường, kết quả không đổi (đường mel giống hệt khi `n_samples > 200`; hai kiểm tra tiêu đề không chạm model thật). File model của app chỉ đến từ manifest ký Ed25519 và kiểm SHA-256, nên các lỗi này không khai thác được qua đường chính thức; bản vá là lớp thứ hai. Khi nâng whisper.cpp lên bản có các sửa này thì bỏ 0004.
+
 ## Dựng lại từ đầu
 
 ```bash
@@ -42,6 +52,7 @@ rm third_party/whisper-rs-sys/.cargo_vcs_info.json third_party/whisper-rs/.cargo
 git apply --directory=third_party third_party/patches/0001-whisper-cpp-set-audio-ctx.patch
 git apply --directory=third_party third_party/patches/0002-whisper-rs-set-audio-ctx.patch
 git apply --directory=third_party third_party/patches/0003-whisper-rs-sys-msvc-optimization-flags.patch
+git apply --directory=third_party third_party/patches/0004-whisper-cpp-upstream-hardening.patch
 ```
 
 ## Khi sửa bản vá hoặc nâng phiên bản
