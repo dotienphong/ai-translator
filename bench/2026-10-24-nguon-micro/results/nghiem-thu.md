@@ -178,5 +178,25 @@ máy có năm lượt. Phép đo ở buổi trước còn có một lượt Tr�
 Không kiểm lại mạng trong lượt này (A7 mạng đã đạt ở `bench/phase1/results/acceptance/a7-mac-micro.md`; thay đổi không thêm lời gọi
 mạng nào, Silero chạy cục bộ).
 
+### Chạy lại sau rà mã (2026-10-25, commit `f18ffbe2`)
+
+Rà mã độc lập tìm ra năm điểm, đã sửa (micro Bluetooth đổi tần số, micro bị giữ lại khi âm thanh máy im, mất phần bộ trộn khi
+gỡ micro, UID micro trong thông điệp lỗi, màn hình chính báo lỗi micro). Điểm thứ hai chạm đường trộn thời gian thực nên đo lại
+trên app thật với bản dựng mới:
+
+| Lượt | Đoạn | Nhận dạng p50 | Dịch p50 | Tổng p50 | Tổng p90 |
+|---|---|---|---|---|---|
+| A2 100 giây, Trộn, lần 1 | 8 | 249 ms | 485 ms | 1 088 ms | 1 376 ms |
+| A2 100 giây, Trộn, lần 2 | 8 | 253 ms | 499 ms | 1 088 ms | 1 376 ms |
+| A7 (câu mẫu −65 dBFS, nguồn toàn hệ thống) | 10 | 253 ms | 224 ms | 960 ms | 1 027 ms |
+
+- A2 100 giây: Trộn 1 088 ms so với Âm thanh máy 1 072 ms (trung bình hai lượt cùng giao thức ở trên): **+16 ms** p50, p90
+  1 376 so với 1 322 ms (+54 ms). Không kém hơn các lượt trước sửa (1 120 và 1 088 ms).
+- A7: 10/10 lần phát nhận đúng ("The results of plotting analysis will be posted to a public website."), 0 câu "Thank you.",
+  `micro bị hạ` 0,566.
+- Ba lượt đầu của buổi chạy lại này ra 0 đoạn vì macOS hỏi lại quyền "Ghi âm thanh hệ thống" cho bản dev vừa dựng lại và hộp
+  thoại chặn luồng thu (log không có "đang thu", có "luồng thu chưa dừng sau 500ms"). Sau khi cấp quyền, chạy lại bình thường. Ba
+  lượt đó không được tính.
+
 Máy đã trả: app dev thoát qua menu khay, cài đặt về `playback`, clipboard trống như trước, quyền micro về "chưa hỏi", âm lượng
 về mức cũ, bản đã cài mở lại.
