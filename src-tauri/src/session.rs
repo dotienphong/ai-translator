@@ -180,8 +180,9 @@ fn code_of(settings: Lang) -> &'static str {
     }
 }
 
-/// VAD khi nguồn là micro (spec 2026-10-24-nguon-micro mục 16, lớp 4): ngưỡng xác suất, độ dài tiếng nói ngắn nhất, im lặng
-/// trước khi đóng đoạn. Thay `vadEndSilenceMs` của người dùng: phụ đề chậm hơn khoảng 0,45 giây nhưng ít câu bị cắt.
+/// VAD khi nguồn là micro (spec 2026-10-24-nguon-micro mục 16, lớp 4): ngưỡng xác suất và độ dài tiếng nói ngắn nhất. Im lặng
+/// trước khi đóng đoạn là `micEndSilenceMs` của người dùng (mặc định 500 ms, thay `vadEndSilenceMs`): phụ đề chậm hơn khoảng
+/// 0,45 giây so với 50 ms nhưng ít câu bị cắt.
 const MIC_VAD_THRESHOLD: f32 = 0.5;
 const MIC_MIN_SPEECH_MS: u64 = 400;
 /// Tắt "Lọc tiếng ồn micro" thì tiếng nói ngắn nhất như chế độ âm thanh máy: người dùng chọn tắt khi phòng yên tĩnh, để giữ
@@ -190,7 +191,6 @@ const MIC_MIN_SPEECH_MS_UNFILTERED: u64 = 250;
 /// Chế độ trộn (spec mục 16, `results/tron-moi.md`): tiếng nói ngắn nhất dài hơn chế độ micro, vì bản trộn đã khuếch đại làm
 /// VAD mở đoạn vì tiếng vọng còn sót; 400 không tốt hơn khi đo.
 const BOTH_MIN_SPEECH_MS: u64 = 600;
-const MIC_END_SILENCE_MS: u64 = 500;
 /// Chờ người dùng trả lời hộp thoại quyền micro tối đa chừng này.
 const MIC_PROMPT_WAIT: Duration = Duration::from_secs(120);
 
@@ -243,7 +243,7 @@ pub fn engine_config(
     if let Some(min_speech_ms) = mic_speech_ms {
         pipeline.segmenter.threshold = MIC_VAD_THRESHOLD;
         pipeline.segmenter.min_speech_ms = min_speech_ms;
-        pipeline.segmenter.end_silence_ms = MIC_END_SILENCE_MS;
+        pipeline.segmenter.end_silence_ms = u64::from(settings.mic_end_silence_ms);
     }
     let languages = match settings.source_lock {
         Some(lang) => vec![code_of(lang).to_string()],
@@ -1903,8 +1903,8 @@ mod tests {
         }
     }
 
-    /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ4 của kế hoạch 02: nguồn micro dùng VAD riêng, thay
-    /// `vadEndSilenceMs` của người dùng; âm thanh máy giữ như cũ.
+    /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ4 của kế hoạch 02: nguồn micro dùng VAD riêng và `micEndSilenceMs` (mặc
+    /// định 500 ms), thay `vadEndSilenceMs` của người dùng; âm thanh máy giữ như cũ.
     #[test]
     fn a_mic_plan_uses_the_mic_vad_parameters() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
@@ -1939,6 +1939,27 @@ mod tests {
         );
         let seg = &cfg.pipeline.segmenter;
         assert_eq!((seg.min_speech_ms, seg.end_silence_ms), (250, 100));
+    }
+
+    /// Người dùng kéo thanh "Độ nhạy ngắt câu" khi thu từ micro: `micEndSilenceMs` có tác dụng ở cả chế độ micro lẫn trộn, và
+    /// không đụng tới mức của chế độ âm thanh máy.
+    #[test]
+    fn the_mic_pause_setting_applies_to_the_mic_and_both_plans_only() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.vad_end_silence_ms = 100;
+        settings.mic_end_silence_ms = 200;
+        let end_silence = |mode| {
+            let mut s = settings.clone();
+            s.capture_mode = mode;
+            let plan = plan_for(&s, StartOptions::default());
+            engine_config(&s, &plan, PipelineConfig::default(), 0, SharedGlossary::default(), true)
+                .pipeline
+                .segmenter
+                .end_silence_ms
+        };
+        assert_eq!(end_silence(CaptureMode::Playback), 100);
+        assert_eq!(end_silence(CaptureMode::Mic), 200);
+        assert_eq!(end_silence(CaptureMode::Both), 200);
     }
 
     /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ6 của kế hoạch 03: chế độ trộn dùng VAD 0,5 / 600 / 500, cả khi tắt lọc ồn.

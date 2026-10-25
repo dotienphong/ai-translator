@@ -660,7 +660,18 @@ const AUDIT = `(() => {
 })()`;
 
 // Điều kiện riêng của từng màn hình: danh sách [biểu thức phải ra true, mô tả].
+// Thanh "Độ nhạy ngắt câu": kéo được ở mọi chế độ thu, mỗi chế độ một mức (âm thanh máy `vadEndSilenceMs` 300 ở trang xem trước,
+// có micro `micEndSilenceMs` 500).
+const pauseSlider = (value) => [
+  [
+    `(() => { const r = document.querySelector("#vad-end-silence"); return !!r && !r.disabled && r.value === "${value}"; })()`,
+    `thanh ngắt câu kéo được và đang ở ${value} ms`,
+  ],
+];
 const EXTRA = {
+  "settings-audio": () => pauseSlider(300),
+  "settings-audio-mic": () => pauseSlider(500),
+  "settings-audio-both": () => pauseSlider(500),
   "settings-general": (lang) => [
     [
       `(() => { const s = document.querySelector("#ui-language"); return !!s && s.options.length === 5 && s.value === ${JSON.stringify(lang)}; })()`,

@@ -251,8 +251,12 @@ pub struct Settings {
     pub mic_device: Option<String>,
     /// "Lọc tiếng ồn micro" (spec §3.2, mục 16): RNNoise cho bản VAD. Mặc định bật.
     pub mic_noise_filter: bool,
-    /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu").
+    /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu"). Dùng khi thu từ âm thanh máy.
     pub vad_end_silence_ms: u32,
+    /// Như `vad_end_silence_ms`, riêng cho chế độ có micro (micro, âm thanh máy + micro). Mặc định 500 ms: giọng người thật có
+    /// nhiều quãng nghỉ ngắn, đóng đoạn sớm thì câu bị cắt thành mẩu và nhận sai nhiều (spec 2026-10-24-nguon-micro mục 16:
+    /// giọng thật 1 m lỗi 59% ở 50 ms, 36% ở 500 ms). File của bản trước chưa có khóa này thì lấy mặc định.
+    pub mic_end_silence_ms: u32,
     pub overlay: OverlaySettings,
     /// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có
     /// tác dụng từ đoạn kế tiếp (`session::set_streaming_enabled`). File của bản trước chưa có khóa này thì lấy mặc định
@@ -317,6 +321,7 @@ impl Settings {
             mic_device: None,
             mic_noise_filter: true,
             vad_end_silence_ms: 50,
+            mic_end_silence_ms: 500,
             overlay: OverlaySettings {
                 font_size: 20,
                 lines: 2,
@@ -370,6 +375,9 @@ impl Settings {
     pub fn validate(&self) -> Result<(), Invalid> {
         if !VAD_END_SILENCE_MS.contains(&self.vad_end_silence_ms) {
             return Err(Invalid::new("vadEndSilenceMs", Reason::OutOfRange));
+        }
+        if !VAD_END_SILENCE_MS.contains(&self.mic_end_silence_ms) {
+            return Err(Invalid::new("micEndSilenceMs", Reason::OutOfRange));
         }
         if self.source_languages.is_empty() {
             return Err(Invalid::new("sourceLanguages", Reason::Empty));
@@ -494,6 +502,12 @@ mod tests {
         assert_eq!(vi.target_language, Lang::Vi);
         assert_eq!(vi.source_languages, Lang::ALL.to_vec());
         assert_eq!(vi.vad_end_silence_ms, 50);
+        assert_eq!(vi.mic_end_silence_ms, 500, "chế độ có micro: ngắt câu riêng, mặc định 500 ms");
+        assert_eq!(
+            (vi.capture_mode, vi.audio_source.clone()),
+            (CaptureMode::Playback, AudioSource::System),
+            "mặc định \"Thu từ\" là Âm thanh máy (toàn hệ thống)"
+        );
         assert!(!vi.save_history, "lưu lịch sử mặc định tắt (F4)");
         assert!(
             !vi.send_error_reports,
@@ -595,6 +609,7 @@ mod tests {
             "captureMode",
             "micDevice",
             "micNoiseFilter",
+            "micEndSilenceMs",
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }
@@ -625,6 +640,12 @@ mod tests {
         s.vad_end_silence_ms = 801;
         rejects(s, "vadEndSilenceMs", Reason::OutOfRange);
         let mut s = valid();
+        s.mic_end_silence_ms = 49;
+        rejects(s, "micEndSilenceMs", Reason::OutOfRange);
+        let mut s = valid();
+        s.mic_end_silence_ms = 801;
+        rejects(s, "micEndSilenceMs", Reason::OutOfRange);
+        let mut s = valid();
         s.overlay.lines = 4;
         rejects(s, "overlay.lines", Reason::OutOfRange);
         let mut s = valid();
@@ -642,11 +663,13 @@ mod tests {
     fn accepts_range_bounds() {
         let mut s = valid();
         s.vad_end_silence_ms = 50;
+        s.mic_end_silence_ms = 50;
         s.overlay.lines = 3;
         s.overlay.font_size = 48;
         s.overlay.opacity = 0.0;
         assert_eq!(s.validate(), Ok(()));
         s.vad_end_silence_ms = 800;
+        s.mic_end_silence_ms = 800;
         s.overlay.lines = 1;
         s.overlay.opacity = 1.0;
         assert_eq!(s.validate(), Ok(()));

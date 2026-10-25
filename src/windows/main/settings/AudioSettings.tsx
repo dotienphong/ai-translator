@@ -7,12 +7,9 @@ import { appStore, useApp, useT } from "../appStore";
 
 // Giá trị của bộ chọn micro cho micro mặc định (`micDevice: null`).
 const DEFAULT_MIC = "";
-// Ngưỡng ngắt câu app dùng khi thu từ micro, thay `vadEndSilenceMs` (khớp `MIC_END_SILENCE_MS` ở src-tauri/src/session.rs):
-// thanh trượt khóa ở giá trị này để người dùng thấy đúng mức đang dùng.
-const MIC_PAUSE_MS = 500;
-
 // Nhóm Cài đặt "Âm thanh" (§4.3): thu từ âm thanh máy hay micro (spec 2026-10-24-nguon-micro §3.2), nguồn âm thanh máy
-// (§6.1) hay micro, lọc ồn micro, quyền micro, và độ nhạy ngắt câu (50–800 ms, §6.3).
+// (§6.1) hay micro, lọc ồn micro, quyền micro, và độ nhạy ngắt câu (50–800 ms, §6.3): chế độ âm thanh máy dùng
+// `vadEndSilenceMs`, chế độ có micro dùng `micEndSilenceMs` (mặc định 500 ms), mỗi chế độ giữ mức riêng.
 export function AudioSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
@@ -39,9 +36,11 @@ export function AudioSettings() {
     void loadPermission();
   }, [usesMic, loadDevices, loadPermission]);
   if (!settings || !info) return null;
-  const pauseMs = usesMic ? MIC_PAUSE_MS : (pause ?? settings.vadEndSilenceMs);
+  const pauseKey = usesMic ? "micEndSilenceMs" : "vadEndSilenceMs";
+  const savedPause = settings[pauseKey];
+  const pauseMs = pause ?? savedPause;
   const commitPause = () => {
-    if (pause !== null && pause !== settings.vadEndSilenceMs) void update({ vadEndSilenceMs: pause });
+    if (pause !== null && pause !== savedPause) void update({ [pauseKey]: pause });
     setPause(null);
   };
   // Chọn chế độ có micro: hỏi quyền ngay nếu chưa hỏi (spec §3.4), không đợi tới lúc bắt đầu phiên.
@@ -162,7 +161,6 @@ export function AudioSettings() {
             max={800}
             step={50}
             value={pauseMs}
-            disabled={usesMic}
             onChange={(e) => setPause(Number(e.target.value))}
             onPointerUp={commitPause}
             onKeyUp={commitPause}

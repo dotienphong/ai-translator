@@ -223,7 +223,7 @@ export const zh: Record<MessageKey, string> = {
   "settings.audio.micPermission.undetermined": "AI Translator 需要使用麦克风的权限。",
   "settings.audio.micPermission.allow": "允许使用麦克风",
   "settings.audio.micPermission.reopen": "允许后，在 macOS 提示时选择“退出并重新打开”。",
-  "settings.audio.pause.micNote": "从麦克风采集时，应用会使用麦克风专用的断句设置（500 毫秒），减少句子被截断。",
+  "settings.audio.pause.micNote": "从麦克风采集时，此滑块是麦克风专用的设置（默认 500 毫秒）。真人说话有许多短暂停顿，设得太短会把句子切成碎片，识别效果变差。从下一次会话开始生效。",
   "settings.general.uiLanguage": "界面语言",
   "settings.general.launchAtLogin": "登录时启动",
   "settings.general.launchAtLogin.hint": "应用会在菜单栏或系统托盘中启动，不会打开此窗口。",

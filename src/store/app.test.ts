@@ -13,6 +13,7 @@ const settings: Settings = {
   micDevice: null,
   micNoiseFilter: true,
   vadEndSilenceMs: 50,
+  micEndSilenceMs: 500,
   overlay: {
     fontSize: 22,
     lines: 2,

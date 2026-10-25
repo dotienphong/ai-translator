@@ -66,6 +66,8 @@ export interface Settings {
   micDevice: string | null;
   micNoiseFilter: boolean;
   vadEndSilenceMs: number;
+  // Như `vadEndSilenceMs`, riêng cho chế độ có micro (micro, âm thanh máy + micro). Mặc định 500 ms.
+  micEndSilenceMs: number;
   overlay: {
     fontSize: number;
     // Không còn dùng: thanh giữ mọi câu và cuộn được (§4.4). Giữ khóa để file cài đặt cũ vẫn đọc được.

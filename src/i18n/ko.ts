@@ -223,7 +223,7 @@ export const ko: Record<MessageKey, string> = {
   "settings.audio.micPermission.undetermined": "AI Translator에 마이크 사용 권한이 필요합니다.",
   "settings.audio.micPermission.allow": "마이크 허용",
   "settings.audio.micPermission.reopen": "허용한 뒤 macOS가 물으면 “종료 후 다시 열기”를 선택하세요.",
-  "settings.audio.pause.micNote": "마이크에서 가져올 때는 문장이 덜 끊기도록 마이크 전용 끊기 설정(500ms)을 사용합니다.",
+  "settings.audio.pause.micNote": "마이크에서 가져올 때는 이 슬라이더가 마이크 전용 설정입니다(기본값 500ms). 실제 말에는 짧은 쉼이 많아서 너무 짧게 하면 문장이 조각나 인식이 나빠집니다. 다음 세션부터 적용됩니다.",
   "settings.general.uiLanguage": "표시 언어",
   "settings.general.launchAtLogin": "로그인 시 실행",
   "settings.general.launchAtLogin.hint": "앱이 메뉴 막대 또는 시스템 트레이에서 시작되며 이 창은 열리지 않습니다.",
