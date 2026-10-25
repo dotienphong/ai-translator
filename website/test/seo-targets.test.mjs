@@ -1,7 +1,7 @@
 // Kiểm SEO từ khóa livestream, dịch live, dịch thời gian thực (spec 2026-10-25-seo-livestream-tu-khoa-design.md):
 //  - 17 cụm chủ dự án yêu cầu đều có trang đích và có mặt đúng chỗ (title, H1, H2, mô tả, thân trang);
 //  - hai trang mới nói thẳng giới hạn (chỉ máy tính, chỉ phụ đề cho người xem, không ghi hình) và số đo kèm điều kiện;
-//  - không trang nào nói "đã thử" TikTok, YouTube hay Facebook khi chưa kiểm (LIVE_TESTED, kế hoạch 06): quét title, mô tả, thân trang, JSON-LD;
+//  - không trang nào nói "đã thử" một nền tảng livestream chưa đạt V1 (V1_TESTED, kế hoạch 06; hiện chỉ YouTube đạt): quét title, mô tả, thân trang, JSON-LD;
 //  - chân trang nêu nhãn hiệu; menu, chân trang, trang Giải pháp và llms.txt liên kết tới hai trang mới.
 //   node --test test/seo-targets.test.mjs        (đang viết dở, thiếu trang ja/zh/ko: ALLOW_PARTIAL=1)
 import { test, before } from "node:test";
@@ -120,21 +120,21 @@ for (const t of SEO_TARGETS) {
   });
 }
 
-/** Câu bắt buộc có ở hai trang mới: giới hạn nói thẳng, số đo kèm điều kiện, câu "chưa thử riêng". Chữ khớp từng chữ với thân trang. */
+/** Câu bắt buộc có ở hai trang mới: giới hạn nói thẳng, số đo kèm điều kiện, kết quả V1 (YouTube đạt, TikTok một buổi có nhạc không đạt, chưa thử Facebook). Chữ khớp từng chữ với thân trang. */
 // Spec mục 6 cũng muốn chặn câu nói app dịch live của người phát cho người xem: chưa tự động hóa (cần luật loại trừ câu phủ định
 // như `staleHits` của site.test.mjs, chưa làm); tạm thời chỉ được bảo vệ bằng câu bắt buộc ở NEEDS (hai trang mới) và kiểm bằng mắt khi sửa trang.
 const NEEDS = {
   "solutions-livestream": {
-    vi: ["Bạn xem live bằng điện thoại", "Bạn là người phát live", "không ghi âm hay ghi hình", "không chạy trên điện thoại", "0,76–1,03 giây", "Mac M4 Pro", "Chúng tôi chưa thử riêng từng nền tảng livestream"],
-    en: ["You watch on a phone", "You are the one streaming", "does not record audio or video", "not on phones", "0.76–1.03 seconds", "Mac M4 Pro", "We have not tested each livestream platform"],
+    vi: ["Bạn xem live bằng điện thoại", "Bạn là người phát live", "không ghi âm hay ghi hình", "không chạy trên điện thoại", "0,76–1,03 giây", "Mac M4 Pro", "thử một lần với YouTube Live", "Chúng tôi chưa thử Facebook Live"],
+    en: ["You watch on a phone", "You are the one streaming", "does not record audio or video", "not on phones", "0.76–1.03 seconds", "Mac M4 Pro", "once with YouTube Live", "We have not tested Facebook Live"],
     // ja/zh/ko (chỉ kiểm khi không đặt ALLOW_PARTIAL): số đo và điều kiện đo không được rớt khi dịch; các câu giới hạn do người dịch giữ và kế hoạch 05 Task 5 đọc lại bằng mắt.
     ja: ["Mac M4 Pro", "0.76", "1.03"],
     zh: ["Mac M4 Pro", "0.76", "1.03"],
     ko: ["Mac M4 Pro", "0.76", "1.03"],
   },
   "solutions-tiktok-live": {
-    vi: ["Bạn xem TikTok LIVE bằng điện thoại", "Bạn là người phát live", "không ghi âm hay ghi hình", "không chạy trên điện thoại", "Chúng tôi chưa thử riêng TikTok LIVE", "không liên kết với TikTok"],
-    en: ["You watch TikTok Live on a phone", "You are the one streaming", "does not record audio or video", "not on phones", "We have not tested TikTok Live itself", "not affiliated with TikTok"],
+    vi: ["Bạn xem TikTok LIVE bằng điện thoại", "Bạn là người phát live", "không ghi âm hay ghi hình", "không chạy trên điện thoại", "một buổi live tiếng Việt có nhạc nền", "không liên kết với TikTok"],
+    en: ["You watch TikTok Live on a phone", "You are the one streaming", "does not record audio or video", "not on phones", "one Vietnamese livestream with background music", "not affiliated with TikTok"],
     ja: ["TikTok と提携していません"],
     zh: ["与 TikTok 没有关联"],
     ko: ["TikTok과 제휴 관계가 없습니다"],
@@ -151,14 +151,20 @@ for (const [id, byLang] of Object.entries(NEEDS)) {
   }
 }
 
-/** Đổi thành true CHỈ khi kế hoạch 06 (V1) đạt và kết quả đã ghi ở docs/release/seo-theo-doi.md; lúc đó viết lại các câu "chưa thử". Khi true, test quét bên dưới bị bỏ qua. */
-const LIVE_TESTED = false;
 /**
- * Câu nói đã thử một nền tảng livestream (hoặc chạy tốt với nó). Ranh giới là dấu chấm: một câu có "đã thử …" rồi tới TikTok/YouTube/Facebook
+ * Nền tảng đã thử thật và ĐẠT ở V1 (xem mục 3 của docs/release/seo-theo-doi.md, 2026-10-25): YouTube Live trên Chrome, macOS.
+ * TikTok LIVE chỉ có một buổi live tiếng Việt có nhạc nền, KHÔNG đạt; Facebook Live chưa thử. Chỉ khi một nền tảng khác đạt V1
+ * mới thêm vào mảng này, rồi viết lại chữ ở năm ngôn ngữ (kèm ngày và điều kiện) và các câu bắt buộc ở NEEDS.
+ */
+const V1_TESTED = ["YouTube"];
+/** Nền tảng chưa được nói "đã thử": luật bên dưới chỉ bắt câu nói đã thử các nền tảng này. */
+const UNTESTED = ["TikTok", "YouTube", "Facebook"].filter((n) => !V1_TESTED.includes(n));
+/**
+ * Câu nói đã thử một nền tảng livestream chưa đạt V1 (hoặc chạy tốt với nó). Ranh giới là dấu chấm: một câu có "đã thử …" rồi tới TikTok/Facebook
  * trước dấu chấm kế tiếp thì bị bắt, kể cả câu nối bằng dấu phẩy ("đã thử …, nhưng chưa thử riêng TikTok"). Vì vậy luôn viết hai câu riêng (xem kế hoạch 00).
  * ja/zh/ko chỉ bắt dấu hiệu khẳng định mạnh; câu phủ định (試していません, 尚未测试, 테스트하지 않았) không chứa các chuỗi này.
  */
-const P = "(?:TikTok|YouTube|Facebook)";
+const P = `(?:${UNTESTED.join("|")})`;
 const CLAIM = {
   vi: new RegExp(String.raw`(?<!(?:chưa|không)\s)(?<![\p{L}])(?:đã|được)\s(?:[^.]{0,20}?\s)?(?:thử|test|kiểm\s?(?:tra|thử|chứng)|chạy|đo|xác\s?(?:nhận|minh))[^.]{0,80}?${P}|(?<!(?:chưa|không)\s)(?<![\p{L}])(?:chạy|hoạt động)\s+tốt\s+(?:với|trên)\s[^.]{0,20}?${P}`, "iu"),
   en: new RegExp(String.raw`\b(?:we|team|it|translator)(?:'ve|\s+(?:have|has|had))?\s+(?:(?:also|already|successfully|been|now)\s+)*(?:tested|tried|checked|verified|measured|confirmed|ran|run|used)\b[^.]{0,80}?${P}|(?<!(?:\bnot|\bnever|n't)\s(?:(?:yet|been)\s)*)\b(?:tested|verified|confirmed)\s+(?:on|with|against)\s[^.]{0,20}?${P}|(?<!(?:\bnot|\bnever|n't)\s)\bworks?\s+(?:well|fine|great)\s+(?:with|on)\s[^.]{0,20}?${P}`, "i"),
@@ -173,44 +179,53 @@ const SHOULD_CATCH = [
   ["vi", "Chúng tôi đã thử với TikTok LIVE và YouTube."],
   ["vi", "Chúng tôi đã thử với video phát trong trình duyệt, cả TikTok LIVE."],
   ["vi", "Chúng tôi đã thử với video phát trong trình duyệt, nhưng chưa thử riêng TikTok LIVE."],
+  ["vi", "Chúng tôi đã thử một lần với YouTube Live và TikTok LIVE."],
+  ["vi", "Chúng tôi đã thử với Facebook Live."],
   ["vi", "Chúng tôi đã kiểm thử với TikTok LIVE."],
-  ["vi", "Chúng tôi đã dùng thử trên YouTube."],
+  ["vi", "Chúng tôi đã dùng thử trên Facebook Live."],
   ["vi", "Chạy tốt với TikTok LIVE."],
   ["vi", "Chúng tôi đã test với TikTok LIVE."],
-  ["vi", "Chúng tôi đã đo độ trễ khi xem YouTube Live."],
+  ["vi", "Chúng tôi đã đo độ trễ khi xem TikTok LIVE."],
   ["vi", "Tính năng được thử nghiệm với TikTok LIVE."],
-  ["vi", "Đã xác nhận chạy tốt trên YouTube."],
+  ["vi", "Đã xác nhận chạy tốt trên Facebook Live."],
   ["en", "We have tested it with TikTok Live."],
-  ["en", "We tested it on YouTube livestreams."],
-  ["en", "We've tested it on YouTube Live."],
+  ["en", "We tested it on Facebook livestreams."],
+  ["en", "We've tested it on TikTok Live."],
   ["en", "We have also tested TikTok Live."],
+  ["en", "We tested it once with YouTube Live and TikTok Live."],
   ["en", "It has been tested with Facebook Live."],
   ["en", "Tested on TikTok Live."],
   ["en", "Works well with TikTok Live."],
   ["en", "We also tested TikTok Live."],
-  ["en", "It was tested on YouTube."],
+  ["en", "It was tested on Facebook."],
   ["en", "We ran it on Facebook Live."],
-  ["en", "We verified it on YouTube Live."],
+  ["en", "We verified it on Facebook Live."],
   ["en", "We measured latency on TikTok Live."],
-  ["en", "We have already tested YouTube Live."],
+  ["en", "We have already tested TikTok Live."],
   ["en", "We have tested it with videos playing in a browser, but have not tested TikTok Live itself."],
   ["ja", "TikTok でテスト済み"],
   ["zh", "已测试 TikTok 直播"],
   ["ko", "TikTok에서 테스트했습니다"],
 ];
-/** Câu trung thực mà luật không được bắt. */
+/** Câu trung thực mà luật không được bắt (kể cả câu nói đã thử YouTube Live, vì YouTube đã đạt V1). */
 const SHOULD_PASS = [
   ["vi", "Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng TikTok LIVE."],
+  ["vi", "Chúng tôi đã thử một lần với YouTube Live."],
+  ["vi", "Chúng tôi chưa thử Facebook Live."],
+  ["vi", "Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live trên Chrome (macOS, 25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live."],
   ["en", "We have tested it with videos playing in a browser. We have not tested TikTok Live itself."],
+  ["en", "We tested it once with YouTube Live."],
+  ["en", "We have not tested Facebook Live."],
+  ["en", "We have tested it with videos playing in a browser, and once with YouTube Live in Chrome on macOS (25 October 2026): subtitles appeared, including when listening to Chrome only. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music made recognition fail, so the subtitles were not usable. We have not tested Facebook Live."],
   ["en", "We have not tested TikTok Live itself; what we have tested is described on the livestream translation page."],
   ["en", "We have not tested on TikTok Live."],
-  ["en", "This has not been tested with YouTube Live yet."],
+  ["en", "This has not been tested with Facebook Live yet."],
   ["en", "Not yet tested on Facebook Live."],
   ["en", "It does not work well with the TikTok app on phones."],
   ["vi", "App không chạy tốt với TikTok trên điện thoại."],
-  ["vi", "Chưa được thử nghiệm với YouTube."],
+  ["vi", "Chưa được thử nghiệm với Facebook Live."],
   ["zh", "我们没有验证过 TikTok 直播"],
-  ["zh", "尚未验证过 YouTube"],
+  ["zh", "尚未验证过 Facebook Live"],
   ["ja", "TikTok ライブはまだ試していません"],
   ["zh", "尚未测试 TikTok 直播"],
   ["ko", "TikTok 라이브는 아직 테스트하지 않았습니다"],
@@ -237,7 +252,7 @@ const surfacesOf = (h) => [
   ...ldBlocks(h).flatMap((b) => jsonStrings(b)).map((s) => ["JSON-LD", text(s)]),
 ];
 
-test("không trang nào nói đã thử TikTok, YouTube hay Facebook Live (LIVE_TESTED = false): quét title, mô tả, thân trang, JSON-LD", { skip: LIVE_TESTED && "V1 đã đạt, xem docs/release/seo-theo-doi.md" }, () => {
+test(`không trang nào nói đã thử nền tảng livestream chưa đạt V1 (${UNTESTED.join(", ")}): quét title, mô tả, thân trang, JSON-LD`, () => {
   const errors = [];
   for (const p of pages.filter((x) => CLAIM[x.lang])) {
     for (const [surface, s] of surfacesOf(html.get(p.path))) {
