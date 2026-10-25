@@ -9,21 +9,23 @@ export default {
   id: "solutions",
   lang: "vi",
   path: "/giai-phap/",
-  title: "Giải pháp: AI Translator cho họp, webinar và video",
+  title: "Giải pháp: AI Translator cho họp, livestream và video",
   description:
-    "AI Translator hiện phụ đề dịch trực tiếp cho họp Zoom, Teams, Meet, Zalo, webinar, khóa học và video. Xem cách dùng cho từng tình huống và khi nào app chưa phù hợp.",
+    "AI Translator hiện phụ đề dịch trực tiếp cho họp Zoom, Teams, Meet, Zalo, livestream, webinar và video. Xem cách dùng từng tình huống và khi nào app chưa phù hợp.",
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
-  llm: "Tổng quan các tình huống dùng AI Translator (họp trực tuyến, webinar, khóa học, video), liên kết tới hai trang giải pháp chi tiết và danh sách trường hợp app chưa phù hợp.",
+  modified: "2026-10-25",
+  llm: "Tổng quan các tình huống dùng AI Translator (họp trực tuyến, livestream, webinar, khóa học, video), liên kết tới các trang giải pháp chi tiết và danh sách trường hợp app chưa phù hợp.",
   llmTitle: "Giải pháp: AI Translator dùng vào việc gì",
   body: () => `
-${pageHero({ crumbs, title: "AI Translator dùng được vào những việc nào?", lead: "AI Translator hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính, và nhận dạng cùng dịch đều chạy trên máy bạn. Hai tình huống chính là họp trực tuyến và xem webinar, khóa học, video bằng ngoại ngữ. Trang này giúp bạn chọn cách dùng phù hợp, và biết khi nào app chưa phù hợp." })}
+${pageHero({ crumbs, title: "AI Translator dùng được vào những việc nào?", lead: "AI Translator hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính, và nhận dạng cùng dịch đều chạy trên máy bạn. Các tình huống chính là họp trực tuyến, xem livestream, và xem webinar, khóa học, video bằng ngoại ngữ. Trang này giúp bạn chọn cách dùng phù hợp, và biết khi nào app chưa phù hợp." })}
 
 <section class="section-tight"><div class="container">
-${sectionHead({ eyebrow: "Hai cách dùng chính", title: "Chọn tình huống giống bạn nhất", center: true })}
+${sectionHead({ eyebrow: "Các cách dùng chính", title: "Chọn tình huống giống bạn nhất", center: true })}
 <div class="grid grid-2">
 ${linkCard({ href: "/giai-phap/dich-hop-truc-tuyen/", icon: "users", title: "Họp trực tuyến: Zoom, Teams, Meet, Zalo", text: "Phụ đề dịch cho cuộc họp với đối tác nước ngoài mà không cần bot, không cần chủ họp bật gì. Có cách chuẩn bị trước họp, phím tắt khi họp và bản chép lời sau họp.", more: "Xem giải pháp cho họp trực tuyến" })}
 ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "Webinar, khóa học và video", text: "Đọc phụ đề dịch khi xem hội thảo, khóa học hay video bằng ngoại ngữ, kể cả phiên dài nhiều giờ, rồi sao chép hoặc xuất bản chép lời để học lại.", more: "Xem giải pháp cho webinar và video" })}
+${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cài vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch live của người phát.", more: "Xem giải pháp cho livestream" })}
+${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "play", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
 </div>
 </div></section>
 
@@ -54,6 +56,7 @@ ${sectionHead({ eyebrow: "Chọn nhanh", title: "Tình huống nào, thiết l�
 <tbody>
 <tr><th scope="row">Họp Zoom, Teams, Meet với đối tác</th><td>Khóa ngôn ngữ nguồn, thêm tên riêng vào từ điển (Pro), đặt thanh phụ đề sát dưới khung video</td></tr>
 <tr><th scope="row">Cuộc gọi Zalo PC</th><td>Giữ Tự nhận diện, hoặc khóa ngôn ngữ nếu biết trước</td></tr>
+<tr><th scope="row">Livestream, live TikTok</th><td>Xem live trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), tăng độ nhạy ngắt câu nếu người nói liền một mạch; không dùng trên điện thoại</td></tr>
 <tr><th scope="row">Webinar, hội thảo</th><td>Giữ hiện câu gốc (mặc định bật), chọn nguồn chỉ nghe trình phát (macOS)</td></tr>
 <tr><th scope="row">Khóa học, video bài giảng</th><td>Xuất bản chép lời để học lại (Pro), thêm thuật ngữ chuyên ngành vào từ điển (Pro)</td></tr>
 </tbody></table></div>

@@ -9,21 +9,23 @@ export default {
   id: "solutions",
   lang: "en",
   path: "/en/solutions/",
-  title: "Solutions: AI Translator for meetings and video",
+  title: "Solutions: AI Translator for meetings, livestreams and video",
   description:
-    "AI Translator shows translated subtitles for Zoom, Teams, Meet and Zalo calls, webinars, courses and videos. See how to use it and when it is not the right fit.",
+    "AI Translator shows translated subtitles for Zoom, Teams, Meet and Zalo calls, livestreams, webinars and videos. See how to use it and when it is not the right fit.",
   breadcrumbs: crumbs,
-  modified: "2026-10-14",
-  llm: "Overview of what AI Translator is used for (online meetings, webinars, courses, videos), links to the two detailed solution pages, and a list of cases where the app is not the right fit.",
+  modified: "2026-10-25",
+  llm: "Overview of what AI Translator is used for (online meetings, livestreams, webinars, courses, videos), links to the detailed solution pages, and a list of cases where the app is not the right fit.",
   llmTitle: "Solutions: what AI Translator is used for",
   body: () => `
-${pageHero({ crumbs, title: "What can you use AI Translator for?", lead: "AI Translator shows live translated subtitles for any audio playing on your computer, and both speech recognition and translation run on your own machine. The two main uses are online meetings, and watching webinars, courses or videos in a language you do not speak. This page helps you pick the right setup, and tells you when the app is not the right fit." })}
+${pageHero({ crumbs, title: "What can you use AI Translator for?", lead: "AI Translator shows live translated subtitles for any audio playing on your computer, and both speech recognition and translation run on your own machine. The main uses are online meetings, watching livestreams, and watching webinars, courses or videos in a language you do not speak. This page helps you pick the right setup, and tells you when the app is not the right fit." })}
 
 <section class="section-tight"><div class="container">
-${sectionHead({ eyebrow: "Two main uses", title: "Pick the situation closest to yours", center: true })}
+${sectionHead({ eyebrow: "Main uses", title: "Pick the situation closest to yours", center: true })}
 <div class="grid grid-2">
 ${linkCard({ href: "/en/solutions/online-meeting-translation/", icon: "users", title: "Online meetings: Zoom, Teams, Meet, Zalo", text: "Translated subtitles for calls with partners abroad, without a bot and without asking the host to turn anything on. Includes how to prepare before the call, shortcuts during it and the transcript afterwards.", more: "See the meeting solution" })}
 ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play", title: "Webinars, courses and videos", text: "Read translated subtitles while you watch a conference talk, a course or a video in another language, even in sessions that last hours, then copy or export the transcript to study it again.", more: "See the webinar and video solution" })}
+${linkCard({ href: "/en/solutions/livestream-translation/", icon: "video", title: "Livestreams: TikTok, YouTube, Facebook", text: "Translated subtitles while you watch a livestream in English, Chinese, Japanese or Korean on a computer, with nothing to install in your browser. Honest limits: no phones, and no translating your own livestream.", more: "See the livestream solution" })}
+${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "play", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
 </div>
 </div></section>
 
@@ -54,6 +56,7 @@ ${sectionHead({ eyebrow: "Quick pick", title: "Which situation, which setup?" })
 <tbody>
 <tr><th scope="row">Zoom, Teams or Meet call with a partner</th><td>Lock the source language, add proper names to the glossary (Pro), place the subtitle bar just under the video</td></tr>
 <tr><th scope="row">Zalo PC call</th><td>Keep Detect automatically, or lock the language if you know it</td></tr>
+<tr><th scope="row">Livestream or TikTok Live</th><td>Watch in a desktop browser, listen to the browser only (macOS), raise the sentence pause if the speaker rarely stops; not for phones</td></tr>
 <tr><th scope="row">Webinar or conference talk</th><td>Keep the original text showing (on by default), and listen to the player only (macOS)</td></tr>
 <tr><th scope="row">Course or lecture video</th><td>Export the transcript to study it again (Pro), add field-specific terms to the glossary (Pro)</td></tr>
 </tbody></table></div>
