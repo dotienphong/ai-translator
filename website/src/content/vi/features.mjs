@@ -112,7 +112,7 @@ ${checkList([
   "<strong>Âm thanh máy + Micro</strong>: họp lai, có cả người online lẫn người trong phòng. Khi người online đang nói, micro được hạ xuống để câu đó không bị dịch hai lần; người trong phòng nói chen đúng lúc ấy có thể bị bỏ sót. Đeo tai nghe cho kết quả tốt nhất",
   "<strong>Lọc tiếng ồn micro</strong> (bật sẵn): bỏ qua tiếng gõ phím, tiếng bút, tiếng gõ bàn. Câu chỉ một hai chữ như “OK”, “Vâng” có thể bị bỏ qua; phòng yên tĩnh thì tắt công tắc này để giữ các câu đó",
 ])}
-<p>Micro của laptop nghe rõ nhất người nói gần (khoảng 1&nbsp;m) trong phòng yên tĩnh; phòng lớn nên dùng micro rời hay micro hội nghị. Khi thu từ micro, app chờ người nói ngừng 500&nbsp;ms mới chốt câu (âm thanh máy mặc định 50&nbsp;ms), nên phụ đề hiện chậm hơn khoảng nửa giây. Micro cũng chỉ dịch sang ngôn ngữ của bạn; app không phát gì vào cuộc họp. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/#quyen-micro">quyền Micro</a>.</p>
+<p>Micro của laptop nghe rõ nhất người nói gần (khoảng 1&nbsp;m) trong phòng yên tĩnh; phòng lớn nên dùng micro rời hay micro hội nghị. Khi thu từ micro, app cũng chờ người nói ngừng 50&nbsp;ms mới chốt câu, giống chế độ âm thanh máy. Giọng người thật có nhiều quãng nghỉ ngắn, nên nếu thấy câu bị cắt vụn, hãy kéo thanh <em>Độ nhạy ngắt câu</em> trong Cài đặt › Âm thanh lên khoảng 300–500&nbsp;ms; đổi lại phụ đề hiện chậm hơn. Micro cũng chỉ dịch sang ngôn ngữ của bạn; app không phát gì vào cuộc họp. Xem <a href="/huong-dan/cap-quyen-thu-am-macos/#quyen-micro">quyền Micro</a>.</p>
 </div>
 </div>
 </div></section>
