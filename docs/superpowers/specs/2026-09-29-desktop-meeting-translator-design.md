@@ -338,7 +338,7 @@ App ──HTTPS──► License server (Cloudflare Worker + D1) ◄──webhoo
   - S2 trên Windows đạt (`results/s2_capture.md`; dòng 1–3 có số đo, dòng 4–10 chủ dự án báo đạt 2026-10-07): Teams, Zoom, Meet, Zalo PC, thiết bị Communications, tai nghe Bluetooth, chèn im lặng.
 - **macOS:** dùng Core Audio process tap (`AudioHardwareCreateProcessTap`, macOS 14.2+), đọc qua aggregate device.
   - **Mặc định:** tap toàn hệ thống, trừ chính app.
-  - **Tùy chọn:** chỉ tap một app họp được chọn từ danh sách các app đang phát âm thanh.
+  - **Tùy chọn:** chỉ tap một app họp được chọn từ danh sách các app đang phát âm thanh. Cài đặt chỉ lưu bundle ID, nên app đang được chọn luôn có trong danh sách kể cả lúc nó im lặng, kèm tên hiển thị tra theo bundle ID từ gói `.app` đã cài (`NSWorkspace`, thêm 2026-10-25); nếu không, nhãn của nguồn đang chọn rơi về `com.google.Chrome` mỗi khi Chrome không phát tiếng.
   - Khai báo `NSAudioCaptureUsageDescription` trong Info.plist.
   - Gọi API qua `objc2` và `objc2-core-audio`; không dùng `coreaudio-sys`.
   - Đã kiểm ở S1 (`results/s1_capture.md`, macOS 26.6.2, 2026-10-04), với app ký ad-hoc kèm hardened runtime, không sandbox, không entitlement nào:

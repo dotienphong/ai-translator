@@ -552,6 +552,20 @@ pub fn bundle_identity(app: &Path) -> Option<AppIdentity> {
     Some(AppIdentity { name, bundle_id })
 }
 
+/// Tên hiển thị của app theo bundle ID, kể cả khi app không chạy: `NSWorkspace` tìm gói `.app` đã cài, rồi đọc tên từ
+/// `Info.plist` như `bundle_identity`. Không có gói nào mang bundle ID này (đã gỡ, ID sai) thì `None`.
+pub fn app_name_for_bundle_id(bundle_id: &str) -> Option<String> {
+    use objc2_app_kit::NSWorkspace;
+    use objc2_foundation::NSString;
+    // `NSWorkspace` và `NSURL` trả về đối tượng autorelease; hàm được gọi từ luồng nền không có pool riêng.
+    objc2::rc::autoreleasepool(|_| {
+        let url =
+            NSWorkspace::sharedWorkspace().URLForApplicationWithBundleIdentifier(&NSString::from_str(bundle_id))?;
+        let path = url.path()?.to_string();
+        bundle_identity(Path::new(&path))?.name
+    })
+}
+
 /// Tên hiển thị (`localizedName`) và bundle ID của app chứa `pid`: thử chính `pid`, rồi đi lên tối đa 3 tiến trình cha
 /// (helper do app chính chạy). Bỏ tên rỗng.
 pub fn app_identity(pid: i32) -> Option<AppIdentity> {
@@ -762,6 +776,15 @@ mod grouping {
         assert_eq!(id.bundle_id.as_deref(), Some("com.apple.calculator"));
         assert!(id.name.is_some_and(|n| !n.is_empty()));
         assert_eq!(bundle_identity(Path::new("/khong/co.app")), None);
+    }
+
+    /// Tên app theo bundle ID khi app không cần đang chạy (người dùng đã chọn Chrome nhưng Chrome không phát tiếng lúc
+    /// này). Máy macOS nào cũng có Máy tính (`com.apple.calculator`).
+    #[test]
+    fn a_bundle_id_names_its_app_even_when_it_is_not_running() {
+        let name = app_name_for_bundle_id("com.apple.calculator").unwrap();
+        assert!(!name.is_empty() && name != "com.apple.calculator");
+        assert_eq!(app_name_for_bundle_id("khong.co.app.nao"), None);
     }
 
     /// Bảng các app đang phát tiếng của máy này, để người thử ở 02c Task 8 so với app thật (tên, bundle ID, pid). Đọc

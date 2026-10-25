@@ -296,15 +296,37 @@ pub fn open_taskbar_settings<R: Runtime>(app: &AppHandle<R>) -> Result<(), Comma
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum AudioSourceOption {
-    /// macOS: một app đang phát âm thanh, gộp cả các tiến trình helper của nó (trình duyệt, app Electron). `name` là tên
-    /// hiển thị (`NSRunningApplication.localizedName`); không có thì giao diện hiện bundle ID.
+    /// macOS: một app đang phát âm thanh, gộp cả các tiến trình helper của nó (trình duyệt, app Electron), và app đang được
+    /// chọn khi lúc này nó không phát tiếng. `name` là tên hiển thị (`NSRunningApplication.localizedName`, hay tên trong
+    /// gói `.app` nếu app không chạy); không có thì giao diện hiện bundle ID.
     App { bundle_id: String, name: Option<String> },
     /// Windows: một thiết bị phát đang hoạt động.
     Device { id: String, name: String },
 }
 
-/// Danh sách nguồn chọn được lúc này: macOS, các app đang phát âm thanh (trừ chính app); Windows, các thiết bị phát.
-pub fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
+/// Thêm app đang được chọn vào danh sách các app đang phát tiếng nếu lúc này nó không có trong đó, kèm tên do `resolve` tra
+/// theo bundle ID. Cài đặt chỉ lưu bundle ID; nếu danh sách chỉ liệt kê app đang phát tiếng, mỗi lúc app họp im lặng
+/// (Chrome đã đóng tab phát) nhãn của nguồn đang chọn rơi về `com.google.Chrome` thay vì "Google Chrome". `resolve` chỉ được
+/// gọi khi cần.
+#[cfg(any(target_os = "macos", test))]
+fn with_selected_app(
+    mut apps: std::collections::BTreeMap<String, Option<String>>,
+    selected: &settings::AudioSource,
+    resolve: impl FnOnce(&str) -> Option<String>,
+) -> std::collections::BTreeMap<String, Option<String>> {
+    if let settings::AudioSource::App { bundle_id } = selected
+        && !bundle_id.is_empty()
+        && !apps.contains_key(bundle_id)
+    {
+        let name = resolve(bundle_id);
+        apps.insert(bundle_id.clone(), name);
+    }
+    apps
+}
+
+/// Danh sách nguồn chọn được lúc này: macOS, các app đang phát âm thanh (trừ chính app) và app đang được chọn; Windows, các
+/// thiết bị phát. `selected` là nguồn đang lưu trong cài đặt.
+pub fn list_audio_sources(selected: &settings::AudioSource) -> Result<Vec<AudioSourceOption>, CommandError> {
     let failed = |e: anyhow::Error| CommandError::new(errors::CAPTURE_FAILED, None, format!("{e:#}"));
     #[cfg(target_os = "macos")]
     {
@@ -315,6 +337,7 @@ pub fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
             .filter(|a| !a.bundle_id.is_empty())
             .map(|a| (a.bundle_id, a.name))
             .collect();
+        let apps = with_selected_app(apps, selected, audio_capture::macos::app_name_for_bundle_id);
         Ok(apps
             .into_iter()
             .map(|(bundle_id, name)| AudioSourceOption::App { bundle_id, name })
@@ -322,6 +345,7 @@ pub fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
     }
     #[cfg(windows)]
     {
+        let _ = selected;
         Ok(audio_capture::windows::list_render_devices()
             .map_err(failed)?
             .into_iter()
@@ -330,7 +354,7 @@ pub fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
     }
     #[cfg(not(any(target_os = "macos", windows)))]
     {
-        let _ = failed;
+        let _ = (failed, selected);
         Err(CommandError::new(
             errors::UNSUPPORTED,
             None,
@@ -451,5 +475,68 @@ mod tests {
         let mut other = base.clone();
         other.save_history = !base.save_history;
         assert!(!tray_needs_refresh(&base, &other), "cài đặt không liên quan");
+    }
+
+    fn playing(list: &[(&str, Option<&str>)]) -> std::collections::BTreeMap<String, Option<String>> {
+        list.iter()
+            .map(|(id, name)| (id.to_string(), name.map(str::to_string)))
+            .collect()
+    }
+
+    /// Chọn Chrome rồi Chrome im lặng: danh sách vẫn có Chrome, kèm tên tra theo bundle ID, để nhãn là "Google Chrome".
+    #[test]
+    fn the_selected_app_is_listed_with_its_name_when_it_is_not_playing() {
+        let apps = playing(&[("us.zoom.xos", Some("zoom.us"))]);
+        let selected = settings::AudioSource::App {
+            bundle_id: "com.google.Chrome".into(),
+        };
+        let listed = with_selected_app(apps, &selected, |id| {
+            assert_eq!(id, "com.google.Chrome");
+            Some("Google Chrome".into())
+        });
+        assert_eq!(
+            listed,
+            playing(&[
+                ("com.google.Chrome", Some("Google Chrome")),
+                ("us.zoom.xos", Some("zoom.us"))
+            ])
+        );
+    }
+
+    /// App đang phát thì tên lấy từ danh sách đang phát như cũ, không tra lại.
+    #[test]
+    fn the_selected_app_that_is_playing_keeps_its_listed_name() {
+        let apps = playing(&[("com.google.Chrome", Some("Google Chrome"))]);
+        let selected = settings::AudioSource::App {
+            bundle_id: "com.google.Chrome".into(),
+        };
+        let listed = with_selected_app(apps.clone(), &selected, |_| panic!("không được tra lại tên"));
+        assert_eq!(listed, apps);
+    }
+
+    /// Tra không ra tên (app đã gỡ) thì vẫn liệt kê, không tên: giao diện hiện bundle ID, như trước khi sửa.
+    #[test]
+    fn a_selected_app_with_no_known_name_is_listed_without_one() {
+        let selected = settings::AudioSource::App {
+            bundle_id: "com.da.go.bo".into(),
+        };
+        let listed = with_selected_app(playing(&[]), &selected, |_| None);
+        assert_eq!(listed, playing(&[("com.da.go.bo", None)]));
+    }
+
+    /// Chọn "toàn hệ thống", thiết bị (Windows) hay bundle ID rỗng thì danh sách không đổi và không tra tên.
+    #[test]
+    fn other_selections_leave_the_list_alone() {
+        let apps = playing(&[("us.zoom.xos", Some("zoom.us"))]);
+        for selected in [
+            settings::AudioSource::System,
+            settings::AudioSource::Device { id: "{0.0.0}".into() },
+            settings::AudioSource::App {
+                bundle_id: String::new(),
+            },
+        ] {
+            let listed = with_selected_app(apps.clone(), &selected, |_| panic!("không được tra tên"));
+            assert_eq!(listed, apps, "{selected:?}");
+        }
     }
 }

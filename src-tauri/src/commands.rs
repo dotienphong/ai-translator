@@ -107,10 +107,12 @@ pub fn open_login_items_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), Co
     actions::open_login_items_settings(&app)
 }
 
-/// Hỏi Core Audio hay WASAPI có thể chậm: lệnh `async` để không chặn luồng chính.
+/// Hỏi Core Audio hay WASAPI có thể chậm: lệnh `async` để không chặn luồng chính. Nguồn đang lưu trong cài đặt được đưa
+/// vào danh sách cả khi lúc này nó không phát tiếng, để giao diện có tên của nó.
 #[tauri::command]
-pub async fn list_audio_sources() -> Result<Vec<AudioSourceOption>, CommandError> {
-    tauri::async_runtime::spawn_blocking(actions::list_audio_sources)
+pub async fn list_audio_sources(state: State<'_, AppState>) -> Result<Vec<AudioSourceOption>, CommandError> {
+    let selected = state.settings().audio_source;
+    tauri::async_runtime::spawn_blocking(move || actions::list_audio_sources(&selected))
         .await
         .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 }
