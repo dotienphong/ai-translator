@@ -24,8 +24,8 @@ ${sectionHead({ eyebrow: "Các cách dùng chính", title: "Chọn tình huống
 <div class="grid grid-2">
 ${linkCard({ href: "/giai-phap/dich-hop-truc-tuyen/", icon: "users", title: "Họp trực tuyến: Zoom, Teams, Meet, Zalo", text: "Phụ đề dịch cho cuộc họp với đối tác nước ngoài mà không cần bot, không cần chủ họp bật gì. Có cách chuẩn bị trước họp, phím tắt khi họp và bản chép lời sau họp.", more: "Xem giải pháp cho họp trực tuyến" })}
 ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "Webinar, khóa học và video", text: "Đọc phụ đề dịch khi xem hội thảo, khóa học hay video bằng ngoại ngữ, kể cả phiên dài nhiều giờ, rồi sao chép hoặc xuất bản chép lời để học lại.", more: "Xem giải pháp cho webinar và video" })}
-${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cài vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch live của người phát.", more: "Xem giải pháp cho livestream" })}
-${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "play", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
+${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cần cài gì vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch buổi live của chính bạn cho người xem.", more: "Xem giải pháp cho livestream" })}
+${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "laptop", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
 </div>
 </div></section>
 
@@ -56,7 +56,7 @@ ${sectionHead({ eyebrow: "Chọn nhanh", title: "Tình huống nào, thiết l�
 <tbody>
 <tr><th scope="row">Họp Zoom, Teams, Meet với đối tác</th><td>Khóa ngôn ngữ nguồn, thêm tên riêng vào từ điển (Pro), đặt thanh phụ đề sát dưới khung video</td></tr>
 <tr><th scope="row">Cuộc gọi Zalo PC</th><td>Giữ Tự nhận diện, hoặc khóa ngôn ngữ nếu biết trước</td></tr>
-<tr><th scope="row">Livestream, live TikTok</th><td>Xem live trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), tăng độ nhạy ngắt câu nếu người nói liền một mạch; không dùng trên điện thoại</td></tr>
+<tr><th scope="row">Livestream, live TikTok</th><td>Xem live trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), tăng Độ nhạy ngắt câu (số ms) nếu câu bị cắt vụn giữa chừng; không dùng trên điện thoại</td></tr>
 <tr><th scope="row">Webinar, hội thảo</th><td>Giữ hiện câu gốc (mặc định bật), chọn nguồn chỉ nghe trình phát (macOS)</td></tr>
 <tr><th scope="row">Khóa học, video bài giảng</th><td>Xuất bản chép lời để học lại (Pro), thêm thuật ngữ chuyên ngành vào từ điển (Pro)</td></tr>
 </tbody></table></div>
@@ -71,6 +71,7 @@ ${checkList([
   "<strong>Bạn dùng Mac Intel, Windows ARM64 hoặc máy Windows có CPU không hỗ trợ AVX2.</strong> AI Translator chạy trên macOS 14.2 trở lên với Apple Silicon và Windows 10/11 64-bit (x64) có CPU hỗ trợ AVX2.",
   "<strong>Máy có dưới 8 GB RAM,</strong> hoặc bạn cần ngôn ngữ ngoài năm ngôn ngữ trên: app chưa đáp ứng.",
   "<strong>Bạn không có tài khoản ngân hàng Việt Nam và ở một nước mà Creem không nhận thanh toán thẻ.</strong> Thẻ quốc tế đi qua Creem, và Creem không nhận người mua từ một số nước (theo danh sách của Creem); không có PayPal. Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",
+  "<strong>Bạn xem hoặc phát livestream.</strong> AI Translator không dùng được trên điện thoại và không đưa phụ đề hay giọng dịch vào buổi live của bạn; xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>.",
 ], true)}
 ${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn." })}
 </div></section>

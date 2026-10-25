@@ -26,7 +26,7 @@ const FAQ = [
   },
   {
     q: "Can I translate my own livestream for my viewers?",
-    a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
+    a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. It makes subtitles for the person using the app to read, on a floating bar on their own computer.</p>`,
   },
   {
     q: "Is live translation free?",
@@ -117,7 +117,7 @@ ${callout({ title: "Quota for long livestreams.", text: "Minutes count only tran
 ${sectionHead({ eyebrow: "Honest limits", title: "When is AI Translator not the right fit for a livestream?", text: "Knowing the limits up front saves you a trial." })}
 ${checkList([
   "<strong>You watch on a phone.</strong> AI Translator only runs on macOS and Windows, so it does not show subtitles inside a phone app. To use it, open the livestream on a computer.",
-  "<strong>You are the one streaming and want to translate for your viewers.</strong> Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose. The app does not add subtitles or a translated voice to your livestream.",
+  "<strong>You are the one streaming and want to translate for your viewers.</strong> The app makes subtitles for the person using it to read, on a floating bar on their own computer. It does not add subtitles or a translated voice to your livestream.",
   "<strong>You need to record the livestream, download the video or create a subtitle file from a video file.</strong> The app does not record audio or video to disk and does not process video files; it only has a text transcript and no summary mode.",
   "<strong>The audio is unclear.</strong> Loud background music, noise or several people talking over each other make recognition worse and translations more likely to be wrong.",
   "<strong>You need speed on Windows or on a weaker machine.</strong> The 0.76–1.03-second delay was measured on a Mac M4 Pro with the Standard pack; Windows has only a preliminary measurement on one laptop with integrated graphics and is slower (<a href=\"/en/features/#performance\">test conditions</a>).",

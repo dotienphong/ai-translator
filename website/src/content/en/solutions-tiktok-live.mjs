@@ -22,7 +22,7 @@ const FAQ = [
   },
   {
     q: "I sell on TikTok Live. Can I translate for foreign customers?",
-    a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
+    a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. It makes subtitles for the person using the app to read, on a floating bar on their own computer.</p>`,
   },
 ];
 
@@ -78,7 +78,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Honest limits", title: "When is AI Translator not the right fit for TikTok Live?", text: "Knowing the limits up front saves you a trial." })}
 ${checkList([
   "<strong>You watch TikTok Live on a phone.</strong> AI Translator only runs on macOS and Windows, so it does not show subtitles inside the TikTok app on a phone.",
-  "<strong>You are the one streaming and want to translate for your viewers.</strong> Subtitles appear only on the screen of the person using the app. The app does not add subtitles or a translated voice to your livestream.",
+  "<strong>You are the one streaming and want to translate for your viewers.</strong> The app makes subtitles for the person using it to read, on a floating bar on their own computer. It does not add subtitles or a translated voice to your livestream.",
   "<strong>You need to record the livestream or download the video.</strong> The app does not record audio or video to disk and does not process video files; it only has a text transcript.",
   "<strong>The livestream is not in English, Chinese, Japanese, Korean or Vietnamese.</strong> The app supports only these five languages; a livestream in Thai, Indonesian or another language cannot be translated yet.",
 ], true)}

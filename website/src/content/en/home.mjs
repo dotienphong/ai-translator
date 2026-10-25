@@ -19,7 +19,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Can I translate a livestream into my language?",
-    a: "<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform. We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. There is no phone version, and the app only makes subtitles for the viewer: it does not translate your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
+    a: "<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser. We have not tested each livestream platform. There is no phone version, and the app does not add subtitles to your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",
@@ -43,7 +43,7 @@ export default {
   path: "/en/",
   title: "Real-time translator for meetings and livestreams | AI Translator",
   description:
-    "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
+    "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean and Vietnamese. AI runs offline on your computer.",
   software: true,
   modified: "2026-10-25",
   llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",

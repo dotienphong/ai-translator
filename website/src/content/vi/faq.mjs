@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "Dịch livestream ra tiếng Việt được không? Có dịch live TikTok không?",
-        a: `<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream (TikTok LIVE, YouTube, Facebook Live). Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
+        a: `<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream (TikTok LIVE, YouTube, Facebook Live). Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
       },
       {
         q: "Có dùng AI Translator trên điện thoại để dịch live được không?",
@@ -46,7 +46,7 @@ const GROUPS = [
       },
       {
         q: "Tôi phát livestream, dịch cho người xem của mình được không?",
-        a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn.</p>`,
+        a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. App làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ.</p>`,
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",

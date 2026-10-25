@@ -25,7 +25,7 @@ ${sectionHead({ eyebrow: "Main uses", title: "Pick the situation closest to your
 ${linkCard({ href: "/en/solutions/online-meeting-translation/", icon: "users", title: "Online meetings: Zoom, Teams, Meet, Zalo", text: "Translated subtitles for calls with partners abroad, without a bot and without asking the host to turn anything on. Includes how to prepare before the call, shortcuts during it and the transcript afterwards.", more: "See the meeting solution" })}
 ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play", title: "Webinars, courses and videos", text: "Read translated subtitles while you watch a conference talk, a course or a video in another language, even in sessions that last hours, then copy or export the transcript to study it again.", more: "See the webinar and video solution" })}
 ${linkCard({ href: "/en/solutions/livestream-translation/", icon: "video", title: "Livestreams: TikTok, YouTube, Facebook", text: "Translated subtitles while you watch a livestream in English, Chinese, Japanese or Korean on a computer, with nothing to install in your browser. Honest limits: no phones, and no translating your own livestream.", more: "See the livestream solution" })}
-${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "play", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
+${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
 </div>
 </div></section>
 
@@ -56,7 +56,7 @@ ${sectionHead({ eyebrow: "Quick pick", title: "Which situation, which setup?" })
 <tbody>
 <tr><th scope="row">Zoom, Teams or Meet call with a partner</th><td>Lock the source language, add proper names to the glossary (Pro), place the subtitle bar just under the video</td></tr>
 <tr><th scope="row">Zalo PC call</th><td>Keep Detect automatically, or lock the language if you know it</td></tr>
-<tr><th scope="row">Livestream or TikTok Live</th><td>Watch in a desktop browser, listen to the browser only (macOS), raise the sentence pause if the speaker rarely stops; not for phones</td></tr>
+<tr><th scope="row">Livestream or TikTok Live</th><td>Watch in a desktop browser, listen to the browser only (macOS), raise the sentence pause if sentences get cut into pieces; not for phones</td></tr>
 <tr><th scope="row">Webinar or conference talk</th><td>Keep the original text showing (on by default), and listen to the player only (macOS)</td></tr>
 <tr><th scope="row">Course or lecture video</th><td>Export the transcript to study it again (Pro), add field-specific terms to the glossary (Pro)</td></tr>
 </tbody></table></div>
@@ -71,6 +71,7 @@ ${checkList([
   "<strong>You use an Intel Mac, Windows ARM64, or a Windows PC whose CPU lacks AVX2.</strong> AI Translator runs on macOS 14.2 or later on Apple Silicon and on Windows 10/11 64-bit (x64) with a CPU that supports AVX2.",
   "<strong>Your computer has less than 8 GB of RAM,</strong> or you need a language beyond the five above: the app cannot cover that yet.",
   "<strong>You have no Vietnamese bank account and you are in a country where Creem does not accept card payments.</strong> International cards go through Creem, which does not accept buyers from some countries (per Creem's list), and there is no PayPal. Then there is no way to pay for a paid plan yet; the Free trial still works.",
+  "<strong>You watch or run a livestream.</strong> AI Translator does not work on phones and does not add subtitles or a translated voice to your livestream; see <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.",
 ], true)}
 ${callout({ kind: "warn", title: "Automatic translation can be wrong.", text: "Do not rely on AI Translator for important decisions (contracts, medical, legal, financial) without checking with a qualified person." })}
 </div></section>

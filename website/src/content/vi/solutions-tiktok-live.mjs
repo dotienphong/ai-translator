@@ -22,7 +22,7 @@ const FAQ = [
   },
   {
     q: "Tôi bán hàng trên TikTok LIVE, dịch cho khách nước ngoài được không?",
-    a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn.</p>`,
+    a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. App làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ.</p>`,
   },
 ];
 
@@ -37,7 +37,7 @@ export default {
   published: "2026-10-25",
   breadcrumbs: crumbs,
   modified: "2026-10-25",
-  llm: "Cách dịch live TikTok sang tiếng Việt bằng phụ đề trực tiếp khi xem TikTok LIVE trên trình duyệt máy tính: bốn bước, mẹo khi câu bị cắt giữa chừng, có nhạc nền và nhiều người nói, giới hạn thật (không dùng trên điện thoại, không dịch live của người phát) và hỏi đáp.",
+  llm: "Cách dịch live TikTok sang tiếng Việt bằng phụ đề trực tiếp khi xem TikTok LIVE trên trình duyệt máy tính: bốn bước, mẹo khi câu bị cắt giữa chừng, có nhạc nền và nhiều người nói, giới hạn thật (không dùng trên điện thoại, không dịch buổi live của chính bạn cho người xem) và hỏi đáp.",
   llmTitle: "Dịch live TikTok sang tiếng Việt khi xem trên máy tính",
   schema: [faqPage(FAQ)],
   body: () => `
@@ -78,7 +78,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Trung thực", title: "Khi nào AI Translator chưa phù hợp với live TikTok?", text: "Biết trước giới hạn sẽ giúp bạn khỏi mất công thử." })}
 ${checkList([
   "<strong>Bạn xem TikTok LIVE bằng điện thoại.</strong> AI Translator chỉ có bản cho macOS và Windows, nên không hiện phụ đề trong ứng dụng TikTok trên điện thoại.",
-  "<strong>Bạn là người phát live và muốn dịch cho người xem của mình.</strong> Phụ đề chỉ hiện trên màn hình người dùng app. App không đưa phụ đề hay giọng dịch vào buổi live của bạn.",
+  "<strong>Bạn là người phát live và muốn dịch cho người xem của mình.</strong> App làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ. App không đưa phụ đề hay giọng dịch vào buổi live của bạn.",
   "<strong>Bạn cần ghi lại buổi live hoặc tải video.</strong> App không ghi âm hay ghi hình xuống đĩa và không xử lý file video; nó chỉ có bản chép lời bằng chữ.",
   "<strong>Buổi live không nói tiếng Anh, Trung, Nhật, Hàn hay Việt.</strong> App chỉ hỗ trợ năm ngôn ngữ này; live bằng tiếng Thái, tiếng Indonesia hay ngôn ngữ khác chưa dịch được.",
 ], true)}

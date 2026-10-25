@@ -19,7 +19,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Dịch livestream ra tiếng Việt được không?",
-    a: "<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream. Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. App không có bản cho điện thoại và chỉ làm phụ đề cho người xem, không dịch live của chính bạn cho người xem của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
+    a: "<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream. App không có bản cho điện thoại và không đưa phụ đề vào buổi live của chính bạn cho khán giả của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
@@ -39,7 +39,7 @@ export default {
   id: "home",
   lang: "vi",
   path: "/",
-  title: "Dịch livestream, họp trực tiếp bằng AI, chạy offline | AI Translator",
+  title: "Dịch livestream và họp bằng phụ đề AI, chạy offline | AI Translator",
   description:
     "Phụ đề tiếng Việt dịch trực tiếp cho livestream, video và họp Zoom, Teams, Meet, Zalo: từ tiếng Anh, Trung, Nhật, Hàn. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,

@@ -12,18 +12,18 @@ export default {
   path: "/en/solutions/online-meeting-translation/",
   title: "AI meeting translator for Zoom, Teams and Meet",
   description:
-    "AI Translator is an AI meeting translator: live translated subtitles for Zoom, Teams, Meet and Zalo calls, no bot, runs offline. Setup tips and honest limits.",
+    "AI meeting translator for Zoom, Teams, Meet and Zalo calls: live translated subtitles, no bot, runs offline on your computer. Setup tips and honest limits.",
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
   modified: "2026-10-25",
   llm: "How to use AI Translator as an AI meeting translator for live translated subtitles in Zoom, Teams, Google Meet and Zalo calls: preparing before the call, shortcuts during it, the transcript afterwards, apps tested, privacy notes and limits.",
-  llmTitle: "AI meeting translator: subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
+  llmTitle: "AI meeting translator: translated subtitles for Zoom, Teams, Meet, Zalo",
   body: () => `
 ${pageHero({
   crumbs,
   title: "AI meeting translator: translated subtitles for Zoom, Teams, Meet, Zalo",
-  lead: "AI Translator is a real-time translator for meetings: it shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. It is live meeting translation without a bot: nothing to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",
+  lead: "AI Translator is a real-time translator for meetings: it shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. You get live meeting translation without a bot: nothing to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",
   meta: "<span>Updated {{updated}}</span>",
 })}
 
@@ -127,6 +127,7 @@ ${checkList([
   "<strong>Latency:</strong> median 0.76–1.03 seconds and p90 0.94–1.34 seconds, measured on a Mac M4 Pro with 24 GB, Standard pack. Less powerful machines will see higher latency: we have not measured an M1 Mac, and on one Windows laptop with integrated graphics the Standard pack missed our target. See <a href=\"/en/features/\">the measurement conditions</a>.",
   "<strong>Quality varies</strong> with the language and how clear the audio is. The Lite pack transcribes less accurately than Standard in Vietnamese, Japanese, Korean and Chinese. We have not measured accuracy over real Bluetooth headsets.",
   "<strong>Translations can be wrong,</strong> especially jargon and proper names. Do not rely on them for important decisions without checking with a qualified person.",
+  "<strong>One direction:</strong> subtitles translate what you hear into your language; the app does not translate your voice for the other participants. To reply in writing, use Type &amp; Translate.",
 ], true)}
 </div></section>
 

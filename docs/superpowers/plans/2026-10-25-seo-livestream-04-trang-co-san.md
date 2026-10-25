@@ -4,6 +4,8 @@
 
 **Goal:** Đưa các cụm đích vào Trang chủ (vi, en), trang họp (chỉ en), trang Webinar và video (vi, en); dẫn tới hai trang mới từ trang Giải pháp, Tính năng, Hỏi đáp, menu và chân trang (vi, en).
 
+Một số cặp bên dưới đã được chỉnh thêm sau rà soát sự thật (commit sửa của đơn vị 3); nếu có lệch, file thật là nguồn đúng. Các chỗ đã chỉnh: (1) dòng "Livestream, live TikTok" ở bảng "Chọn nhanh" trang Giải pháp (vi, en) nói đúng cơ chế Độ nhạy ngắt câu; (2) câu trả lời FAQ livestream (Hỏi đáp, Trang chủ; vi, en) mở bằng "Trên máy tính thì dùng được" / "On a computer, yes", rồi nói điều đã thử và chưa thử thành hai câu riêng; (3) câu "phụ đề chỉ hiện trên màn hình người dùng" đổi thành "app làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ" (Hỏi đáp và bốn trang mới); (4) câu về file video ở trang Webinar (vi, en) viết lại, nhắc bản chép lời vẫn xuất được SRT; (5) bỏ cụm "không dịch live của người phát" mơ hồ (thẻ trang Giải pháp vi, `llm` của hai trang vi); (6) title Trang chủ vi; (7) trang họp en: lead, mô tả meta, `llmTitle` và mục giới hạn "One direction" (không kèm liên kết vì trang chưa có liên kết tới Type & Translate); (8) mô tả meta Trang chủ en; (9) thêm một mục "xem hoặc phát livestream" vào danh sách "chưa phù hợp" của trang Giải pháp (vi, en); (10) thẻ TikTok ở trang Giải pháp dùng biểu tượng `laptop`.
+
 **Architecture:** Chỉ sửa chữ trong các module trang sẵn có (không đổi khung), mỗi chỗ sửa là một cặp "Tìm" (chuỗi nguyên văn, duy nhất trong file) và "Thay bằng". Dùng công cụ Edit; nếu Edit báo chuỗi không duy nhất hay không thấy, mở file đọc lại chỗ đó rồi sửa đúng chỗ (đừng đoán). Tiền đề: kế hoạch 02 và 03 đã xong. `WT=/Users/dtphong/Desktop/software_business/meeting-translator-work/seo-livestream` (viết đường dẫn đầy đủ khi chạy lệnh). Mọi đường dẫn "Files" dưới đây tính từ `WT/website/`.
 
 **Tech Stack:** như trước. Bản ja/zh/ko của các chỗ sửa này làm ở kế hoạch 05, nên ở đây bản ja/zh/ko tạm lệch bản en (chưa dẫn tới trang mới): test ở kế hoạch này chạy với `ALLOW_PARTIAL=1`.
@@ -29,7 +31,7 @@ Tìm:
 ```
 Thay bằng:
 ```
-  title: "Dịch livestream, họp trực tiếp bằng AI, chạy offline | AI Translator",
+  title: "Dịch livestream và họp bằng phụ đề AI, chạy offline | AI Translator",
 ```
 
 Mô tả:
@@ -73,7 +75,7 @@ Tìm (đầu mục hỏi đáp thứ tư):
 Thay bằng (chèn một mục mới ngay trước, dòng `{` đứng trước dòng Tìm được giữ nguyên làm phần mở của mục mới):
 ```
     q: "Dịch livestream ra tiếng Việt được không?",
-    a: "<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream. Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. App không có bản cho điện thoại và chỉ làm phụ đề cho người xem, không dịch live của chính bạn cho người xem của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
+    a: "<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream. App không có bản cho điện thoại và không đưa phụ đề vào buổi live của chính bạn cho khán giả của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
@@ -92,7 +94,7 @@ Tìm:
 ```
 Thay bằng:
 ```
-    "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean, Vietnamese. AI runs on your computer, no cloud.",
+    "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean and Vietnamese. AI runs offline on your computer.",
 ```
 
 Ngày sửa: Tìm `  modified: "2026-10-24",` Thay bằng `  modified: "2026-10-25",`
@@ -124,7 +126,7 @@ Tìm:
 Thay bằng:
 ```
     q: "Can I translate a livestream into my language?",
-    a: "<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform. We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. There is no phone version, and the app only makes subtitles for the viewer: it does not translate your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
+    a: "<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser. We have not tested each livestream platform. There is no phone version, and the app does not add subtitles to your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",
@@ -186,16 +188,27 @@ Tìm: `more: "Xem giải pháp cho webinar và video" })}`
 Thay bằng:
 ```
 more: "Xem giải pháp cho webinar và video" })}
-${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cài vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch live của người phát.", more: "Xem giải pháp cho livestream" })}
-${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "play", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
+${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cần cài gì vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch buổi live của chính bạn cho người xem.", more: "Xem giải pháp cho livestream" })}
+${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "laptop", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
 ```
 
 Dòng mới trong bảng "Chọn nhanh":
 Tìm: `<tr><th scope="row">Webinar, hội thảo</th>`
 Thay bằng:
 ```
-<tr><th scope="row">Livestream, live TikTok</th><td>Xem live trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), tăng độ nhạy ngắt câu nếu người nói liền một mạch; không dùng trên điện thoại</td></tr>
+<tr><th scope="row">Livestream, live TikTok</th><td>Xem live trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), tăng Độ nhạy ngắt câu (số ms) nếu câu bị cắt vụn giữa chừng; không dùng trên điện thoại</td></tr>
 <tr><th scope="row">Webinar, hội thảo</th>
+```
+
+Gạch đầu dòng mới ở cuối mục "Khi nào AI Translator chưa phù hợp?" (`id="chua-phu-hop"`), thêm ngay sau dòng nói về Creem, trước `], true)}`:
+Tìm:
+```
+Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",
+```
+Thay bằng:
+```
+Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",
+  "<strong>Bạn xem hoặc phát livestream.</strong> AI Translator không dùng được trên điện thoại và không đưa phụ đề hay giọng dịch vào buổi live của bạn; xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream</a>.",
 ```
 
 - [ ] **Step 2: Sửa `src/content/en/solutions.mjs`**
@@ -226,15 +239,26 @@ Thay bằng:
 ```
 more: "See the webinar and video solution" })}
 ${linkCard({ href: "/en/solutions/livestream-translation/", icon: "video", title: "Livestreams: TikTok, YouTube, Facebook", text: "Translated subtitles while you watch a livestream in English, Chinese, Japanese or Korean on a computer, with nothing to install in your browser. Honest limits: no phones, and no translating your own livestream.", more: "See the livestream solution" })}
-${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "play", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
+${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
 ```
 
 Dòng mới trong bảng:
 Tìm: `<tr><th scope="row">Webinar or conference talk</th>`
 Thay bằng:
 ```
-<tr><th scope="row">Livestream or TikTok Live</th><td>Watch in a desktop browser, listen to the browser only (macOS), raise the sentence pause if the speaker rarely stops; not for phones</td></tr>
+<tr><th scope="row">Livestream or TikTok Live</th><td>Watch in a desktop browser, listen to the browser only (macOS), raise the sentence pause if sentences get cut into pieces; not for phones</td></tr>
 <tr><th scope="row">Webinar or conference talk</th>
+```
+
+Gạch đầu dòng mới ở cuối mục "When AI Translator is not the right fit" (`id="not-a-fit"`), thêm ngay sau dòng nói về Creem, trước `], true)}`:
+Tìm:
+```
+Then there is no way to pay for a paid plan yet; the Free trial still works.",
+```
+Thay bằng:
+```
+Then there is no way to pay for a paid plan yet; the Free trial still works.",
+  "<strong>You watch or run a livestream.</strong> AI Translator does not work on phones and does not add subtitles or a translated voice to your livestream; see <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.",
 ```
 
 - [ ] **Step 3: Kiểm**
@@ -277,7 +301,7 @@ Tìm:
 ```
 Thay bằng:
 ```
-    "AI Translator is an AI meeting translator: live translated subtitles for Zoom, Teams, Meet and Zalo calls, no bot, runs offline. Setup tips and honest limits.",
+    "AI meeting translator for Zoom, Teams, Meet and Zalo calls: live translated subtitles, no bot, runs offline on your computer. Setup tips and honest limits.",
 ```
 
 Ngày sửa: Tìm `  modified: "2026-10-24",` Thay bằng `  modified: "2026-10-25",`
@@ -286,7 +310,7 @@ llms:
 Tìm: `llm: "How to use AI Translator for translated subtitles in Zoom, Teams, Google Meet and Zalo calls:`
 Thay bằng: `llm: "How to use AI Translator as an AI meeting translator for live translated subtitles in Zoom, Teams, Google Meet and Zalo calls:`
 Tìm: `  llmTitle: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",`
-Thay bằng: `  llmTitle: "AI meeting translator: subtitles for online meetings (Zoom, Teams, Meet, Zalo)",`
+Thay bằng: `  llmTitle: "AI meeting translator: translated subtitles for Zoom, Teams, Meet, Zalo",`
 
 H1 (đối số của `pageHero`):
 Tìm: `  title: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",`
@@ -294,7 +318,18 @@ Thay bằng: `  title: "AI meeting translator: translated subtitles for Zoom, Te
 
 Câu dẫn:
 Tìm: `lead: "AI Translator shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. There is no bot to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",`
-Thay bằng: `lead: "AI Translator is a real-time translator for meetings: it shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. It is live meeting translation without a bot: nothing to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",`
+Thay bằng: `lead: "AI Translator is a real-time translator for meetings: it shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. You get live meeting translation without a bot: nothing to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",`
+
+Gạch đầu dòng mới ở cuối danh sách "Honest limits" (trang họp en này chưa có liên kết tới `/en/guide/type-and-translate/`, nên mục mới viết KHÔNG kèm thẻ `<a>`, để bản ja/zh/ko của trang họp, không đổi ở kế hoạch này, không lệch tập liên kết):
+Tìm:
+```
+Do not rely on them for important decisions without checking with a qualified person.",
+```
+Thay bằng:
+```
+Do not rely on them for important decisions without checking with a qualified person.",
+  "<strong>One direction:</strong> subtitles translate what you hear into your language; the app does not translate your voice for the other participants. To reply in writing, use Type &amp; Translate.",
+```
 
 - [ ] **Step 2: Sửa `src/content/vi/solutions-webinar.mjs`**
 
@@ -302,7 +337,7 @@ Ngày sửa: Tìm `  modified: "2026-10-24",` Thay bằng `  modified: "2026-10-
 
 Đoạn "Không cần cài thêm":
 Tìm: `Chúng tôi đã thử với video trên trình duyệt, nhưng chưa thử riêng từng nền tảng khóa học hay webinar.</p>`
-Thay bằng: `Chúng tôi đã thử với video trên trình duyệt, nhưng chưa thử riêng từng nền tảng khóa học hay webinar. AI Translator làm việc như một công cụ dịch video theo thời gian thực cho nội dung bạn đang xem trên máy tính: nó không dịch, lồng tiếng hay tạo phụ đề cho file video, mà hiện phụ đề trên màn hình khi video đang phát. Xem livestream thì đọc <a href="/giai-phap/dich-livestream/">dịch livestream</a>.</p>`
+Thay bằng: `Chúng tôi đã thử với video trên trình duyệt, nhưng chưa thử riêng từng nền tảng khóa học hay webinar. AI Translator hoạt động như một công cụ dịch video theo thời gian thực: app nghe âm thanh khi video đang phát, trên trang web hay trong app trình phát trên máy, và hiện phụ đề trên thanh nổi. App không mở hay xử lý file video: không tải file lên, không lồng tiếng, không gắn phụ đề vào video (bản chép lời của phiên vẫn xuất được ra SRT, xem bên dưới). Xem livestream thì đọc <a href="/giai-phap/dich-livestream/">dịch livestream</a>.</p>`
 
 - [ ] **Step 3: Sửa `src/content/en/solutions-webinar.mjs`**
 
@@ -310,7 +345,7 @@ Ngày sửa: Tìm `  modified: "2026-10-24",` Thay bằng `  modified: "2026-10-
 
 Đoạn "Nothing extra to install":
 Tìm: `We have tested it with videos in a browser, but not with each individual course or webinar platform.</p>`
-Thay bằng: `We have tested it with videos in a browser, but not with each individual course or webinar platform. AI Translator works as a real-time video translator for what you watch on your computer: it does not translate, dub or subtitle video files; it shows subtitles on screen while the video plays. For live video, see <a href="/en/solutions/livestream-translation/">livestream translation</a>.</p>`
+Thay bằng: `We have tested it with videos in a browser, but not with each individual course or webinar platform. AI Translator works as a real-time video translator: it listens while a video plays, in a browser or a player app on your computer, and shows subtitles on a floating bar. It does not open or process video files: no uploading, no dubbing and no subtitles added to the video itself (you can still export the session transcript as SRT, see below). For live video, see <a href="/en/solutions/livestream-translation/">livestream translation</a>.</p>`
 
 - [ ] **Step 4: Kiểm**
 
@@ -366,7 +401,7 @@ Tìm:
 Thay bằng (dòng `{` đứng trước dòng Tìm là phần mở của mục đầu tiên trong ba mục mới):
 ```
         q: "Dịch livestream ra tiếng Việt được không? Có dịch live TikTok không?",
-        a: `<p>Được, khi bạn xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính. Chúng tôi chưa thử riêng từng nền tảng livestream (TikTok LIVE, YouTube, Facebook Live). Chúng tôi đã thử với video phát trong trình duyệt, và app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
+        a: `<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream (TikTok LIVE, YouTube, Facebook Live). Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
       },
       {
         q: "Có dùng AI Translator trên điện thoại để dịch live được không?",
@@ -374,7 +409,7 @@ Thay bằng (dòng `{` đứng trước dòng Tìm là phần mở của mục �
       },
       {
         q: "Tôi phát livestream, dịch cho người xem của mình được không?",
-        a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. Phụ đề chỉ hiện trên màn hình của người dùng app, từ âm thanh phát ra trên máy họ sang ngôn ngữ họ chọn.</p>`,
+        a: `<p>Không. AI Translator không có tính năng đưa phụ đề hay giọng dịch vào buổi live của bạn. App làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ.</p>`,
       },
       {
         q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
@@ -391,7 +426,7 @@ Tìm:
 Thay bằng:
 ```
         q: "Can I translate a livestream into my language? What about TikTok Live?",
-        a: `<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform (TikTok Live, YouTube, Facebook Live). We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
+        a: `<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser. We have not tested each livestream platform (TikTok Live, YouTube Live, Facebook Live). See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
       },
       {
         q: "Can I use AI Translator on a phone to translate a livestream?",
@@ -399,7 +434,7 @@ Thay bằng:
       },
       {
         q: "I stream live. Can I translate for my viewers?",
-        a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
+        a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. It makes subtitles for the person using the app to read, on a floating bar on their own computer.</p>`,
       },
       {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",

@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "Can I translate a livestream into my language? What about TikTok Live?",
-        a: `<p>Yes, when you watch a livestream in English, Chinese, Japanese or Korean on a computer. We have not tested each livestream platform (TikTok Live, YouTube, Facebook Live). We have tested it with videos playing in a browser, and the app listens to the audio playing on your machine, so it does not depend on the website. See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
+        a: `<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser. We have not tested each livestream platform (TikTok Live, YouTube Live, Facebook Live). See <a href="/en/solutions/livestream-translation/">livestream translation</a> and <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
       },
       {
         q: "Can I use AI Translator on a phone to translate a livestream?",
@@ -46,7 +46,7 @@ const GROUPS = [
       },
       {
         q: "I stream live. Can I translate for my viewers?",
-        a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. Subtitles appear only on the screen of the person using the app, translating the sound that plays on their computer into the language they choose.</p>`,
+        a: `<p>No. AI Translator has no feature that adds subtitles or a translated voice to your livestream. It makes subtitles for the person using the app to read, on a floating bar on their own computer.</p>`,
       },
       {
         q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
