@@ -14,7 +14,7 @@ const FAQ = [
   },
   {
     q: "Có dịch được live TikTok, YouTube và Facebook không?",
-    a: `<p>App thu âm thanh hệ thống nên không phụ thuộc nền tảng: buổi live nào phát tiếng ra máy tính của bạn thì app nghe được. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live trên Chrome (macOS, 25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live. Xem thêm <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
+    a: `<p>App thu âm thanh hệ thống nên không phụ thuộc nền tảng: buổi live nào phát tiếng ra máy tính của bạn thì app nghe được. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live: một kênh tin tức tiếng Anh, xem trên Chrome (Mac M4 Pro, 25/10/2026). Phụ đề tiếng Việt hiện suốt khoảng 4 phút xem, kể cả khi đặt nguồn Chỉ Google Chrome; bản dịch nhìn chung khớp lời, có vài lỗi nhỏ. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live. Xem thêm <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
   },
   {
     q: "Dùng AI Translator để dịch live trên điện thoại được không?",
@@ -58,7 +58,7 @@ ${pageHero({
 
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
-  ["Dùng với", "Livestream phát trong trình duyệt hoặc app trên máy tính<small>TikTok LIVE, YouTube, Facebook Live: app nghe âm thanh của máy nên không phụ thuộc nền tảng. Đã thử một lần với YouTube Live (25/10/2026). Một buổi TikTok LIVE tiếng Việt có nhạc nền không đạt. Chưa thử Facebook Live.</small>"],
+  ["Dùng với", "Livestream phát trong trình duyệt hoặc app trên máy tính<small>TikTok LIVE, YouTube, Facebook Live: app nghe âm thanh của máy nên không phụ thuộc nền tảng. Đã thử một lần với YouTube Live (kênh tin tức tiếng Anh, 25/10/2026). Với một buổi TikTok LIVE tiếng Việt có nhạc nền, nhạc làm phụ đề sai. Chưa thử Facebook Live.</small>"],
   ["Ngôn ngữ", "Tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Chỉ các chiều có tiếng Việt đã được đo chất lượng dịch</small>"],
   ["Độ trễ", "Trung vị 0,76–1,03 giây<small>Sau khi người nói dừng câu; Mac M4 Pro, gói model Chuẩn; máy yếu hơn sẽ chậm hơn</small>"],
   ["Máy", "macOS 14.2+ (Apple Silicon) và Windows 10/11 x64<small>Không có bản cho điện thoại hay máy tính bảng</small>"],
@@ -124,7 +124,7 @@ ${checkList([
   "<strong>Buổi live không nói tiếng Anh, Trung, Nhật, Hàn hay Việt.</strong> App chỉ hỗ trợ năm ngôn ngữ này; live bằng tiếng Thái, tiếng Indonesia hay ngôn ngữ khác chưa dịch được.",
 ], true)}
 ${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (mua bán, hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn." })}
-<p>Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live trên Chrome (macOS, 25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live.</p>
+<p>Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live: một kênh tin tức tiếng Anh, xem trên Chrome (Mac M4 Pro, 25/10/2026). Phụ đề tiếng Việt hiện suốt khoảng 4 phút xem, kể cả khi đặt nguồn Chỉ Google Chrome; bản dịch nhìn chung khớp lời, có vài lỗi nhỏ. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

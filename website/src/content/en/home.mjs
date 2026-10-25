@@ -19,7 +19,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Can I translate a livestream into my language?",
-    a: "<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser, and once with YouTube Live (25 October 2026): subtitles appeared. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the music made recognition fail. We have not tested Facebook Live. There is no phone version, and the app does not add subtitles to your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
+    a: "<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser, and once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026): Vietnamese subtitles appeared throughout the test and the translation broadly matched the speech. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music threw off speech recognition, so the subtitles were not usable. We have not tested Facebook Live. There is no phone version, and the app does not add subtitles to your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",

@@ -14,7 +14,7 @@ const FAQ = [
   },
   {
     q: "可以用于 TikTok Live、YouTube 和 Facebook Live 吗？",
-    a: `<p>应用采集的是电脑的系统音频，所以不依赖平台，只要直播在你的电脑上发出声音，应用就能听到。我们用浏览器中播放的视频做过测试，还在 macOS 的 Chrome 上用 YouTube Live 测试过一次（2026年10月25日）。字幕显示了出来，把应用设为只收听 Chrome 的声音时也是如此。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果。应用收到了声音，但背景音乐导致识别出错，所以字幕无法使用。我们没有测试过 Facebook Live。另请参阅<a href="/zh/solutions/tiktok-live-translation/">翻译 TikTok 直播</a>。</p>`,
+    a: `<p>应用采集的是电脑的系统音频，所以不依赖平台，只要直播在你的电脑上发出声音，应用就能听到。我们用浏览器中播放的视频做过测试，还在 Mac M4 Pro 的 Chrome 中用 YouTube Live 上的一个英语新闻频道测试过一次（2026年10月25日）。在约 4 分钟的观看中，越南语字幕一直正常显示，把音频来源设为“仅 Google Chrome”时也是如此；译文大体与讲话内容相符，有几处小错误。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果。应用采集到了声音，但背景音乐导致识别出错，所以字幕无法使用。我们没有测试过 Facebook Live。另请参阅<a href="/zh/solutions/tiktok-live-translation/">翻译 TikTok 直播</a>。</p>`,
   },
   {
     q: "能在手机上翻译直播吗？",
@@ -56,7 +56,7 @@ ${pageHero({
 
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
-  ["适用于", "在电脑的浏览器或应用中播放的直播<small>例如 TikTok Live、YouTube、Facebook Live。应用收听的是电脑发出的声音，所以不依赖平台。我们用 YouTube Live 测试过一次（2026年10月25日）。一场带背景音乐的越南语 TikTok 直播没有成功。我们没有测试过 Facebook Live。</small>"],
+  ["适用于", "在电脑的浏览器或应用中播放的直播<small>例如 TikTok Live、YouTube、Facebook Live。应用收听的是电脑发出的声音，所以不依赖平台。我们用 YouTube Live 上的一个英语新闻频道测试过一次（2026年10月25日）。在一场带背景音乐的越南语 TikTok 直播上，背景音乐导致字幕无法使用。我们没有测试过 Facebook Live。</small>"],
   ["语言", "英语、中文、日语（日本語）、韩语（한국어）、越南语（Tiếng Việt）<small>只有包含越南语的语言对测量过翻译质量</small>"],
   ["延迟", "中位数 0.76–1.03 秒<small>从说话人说完一句话算起；Mac M4 Pro，Standard 模型包；性能较弱的电脑会更慢</small>"],
   ["平台", "macOS 14.2+（Apple 芯片）和 Windows 10/11 x64<small>没有手机或平板电脑版本</small>"],
@@ -122,7 +122,7 @@ ${checkList([
   "<strong>直播语言不是英语、中文、日语、韩语或越南语。</strong>应用只支持这五种语言；泰语、印尼语或其他语言的直播目前还无法翻译。",
 ], true)}
 ${callout({ kind: "warn", title: "机器翻译可能出错。", text: "在重要决策（购物、合同、医疗、法律、财务）中，请不要在未经专业人士核实的情况下依赖 AI Translator。" })}
-<p>我们用浏览器中播放的视频做过测试，还在 macOS 的 Chrome 上用 YouTube Live 测试过一次（2026年10月25日）。字幕显示了出来，把应用设为只收听 Chrome 的声音时也是如此。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果。应用收到了声音，但背景音乐导致识别出错，所以字幕无法使用。我们没有测试过 Facebook Live。</p>
+<p>我们用浏览器中播放的视频做过测试，还在 Mac M4 Pro 的 Chrome 中用 YouTube Live 上的一个英语新闻频道测试过一次（2026年10月25日）。在约 4 分钟的观看中，越南语字幕一直正常显示，把音频来源设为“仅 Google Chrome”时也是如此；译文大体与讲话内容相符，有几处小错误。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果。应用采集到了声音，但背景音乐导致识别出错，所以字幕无法使用。我们没有测试过 Facebook Live。</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

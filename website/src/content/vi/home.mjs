@@ -19,7 +19,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Dịch livestream ra tiếng Việt được không?",
-    a: "<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (25/10/2026): phụ đề hiện ra. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: nhạc làm nhận dạng sai. Chúng tôi chưa thử Facebook Live. App không có bản cho điện thoại và không đưa phụ đề vào buổi live của chính bạn cho khán giả của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
+    a: "<p>Trên máy tính thì dùng được: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (một kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026): phụ đề tiếng Việt hiện suốt buổi thử, bản dịch nhìn chung khớp lời. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live. App không có bản cho điện thoại và không đưa phụ đề vào buổi live của chính bạn cho khán giả của bạn. Xem <a href=\"/giai-phap/dich-livestream/\">dịch livestream ra tiếng Việt</a>.</p>",
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",

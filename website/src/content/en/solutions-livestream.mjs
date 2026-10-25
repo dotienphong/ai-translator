@@ -14,7 +14,7 @@ const FAQ = [
   },
   {
     q: "Does it work with TikTok Live, YouTube and Facebook Live?",
-    a: `<p>The app captures your computer's system audio, so it does not depend on the platform: if a livestream plays sound on your computer, the app can hear it. We have tested it with videos playing in a browser, and once with YouTube Live in Chrome on macOS (25 October 2026): subtitles appeared, including when listening to Chrome only. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music made recognition fail, so the subtitles were not usable. We have not tested Facebook Live. See also <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
+    a: `<p>The app captures your computer's system audio, so it does not depend on the platform: if a livestream plays sound on your computer, the app can hear it. We have tested it with videos playing in a browser, and once with YouTube Live: an English-language news channel watched in Chrome (Mac M4 Pro, 25 October 2026). Vietnamese subtitles appeared throughout about 4 minutes of viewing, including with the audio source set to Chrome only; the translation broadly matched the speech, with a few small errors. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music threw off speech recognition, so the subtitles were not usable. We have not tested Facebook Live. See also <a href="/en/solutions/tiktok-live-translation/">translating TikTok Live</a>.</p>`,
   },
   {
     q: "Can I translate a livestream on my phone?",
@@ -58,7 +58,7 @@ ${pageHero({
 
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
-  ["Works with", "Livestreams playing in a browser or app on your computer<small>TikTok Live, YouTube, Facebook Live: the app hears your computer's sound, so it does not depend on the platform. We tested it once with YouTube Live (25 October 2026). One Vietnamese TikTok Live with background music did not work. We have not tested Facebook Live.</small>"],
+  ["Works with", "Livestreams playing in a browser or app on your computer<small>TikTok Live, YouTube, Facebook Live: the app hears your computer's sound, so it does not depend on the platform. We tested it once with YouTube Live (an English-language news channel, 25 October 2026). On one Vietnamese TikTok Live with background music, the music made the subtitles unusable. We have not tested Facebook Live.</small>"],
   ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>Only the pairs that include Vietnamese have a measured translation quality</small>"],
   ["Delay", "Median 0.76–1.03 seconds<small>After the speaker finishes a sentence; Mac M4 Pro, Standard pack; slower machines will be slower</small>"],
   ["Platform", "macOS 14.2+ (Apple Silicon) and Windows 10/11 x64<small>No version for phones or tablets</small>"],
@@ -124,7 +124,7 @@ ${checkList([
   "<strong>The livestream is not in English, Chinese, Japanese, Korean or Vietnamese.</strong> The app supports only these five languages; a livestream in Thai, Indonesian or another language cannot be translated yet.",
 ], true)}
 ${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, contracts, medical, legal, financial) without checking with someone qualified." })}
-<p>We have tested it with videos playing in a browser, and once with YouTube Live in Chrome on macOS (25 October 2026): subtitles appeared, including when listening to Chrome only. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music made recognition fail, so the subtitles were not usable. We have not tested Facebook Live.</p>
+<p>We have tested it with videos playing in a browser, and once with YouTube Live: an English-language news channel watched in Chrome (Mac M4 Pro, 25 October 2026). Vietnamese subtitles appeared throughout about 4 minutes of viewing, including with the audio source set to Chrome only; the translation broadly matched the speech, with a few small errors. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music threw off speech recognition, so the subtitles were not usable. We have not tested Facebook Live.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
