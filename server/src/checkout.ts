@@ -2,7 +2,7 @@
 // (VND: PayOS, USD: Creem), trả link thanh toán, chuỗi VietQR (null với Creem), order_token, và ước tính hạn mới của license
 // khi gia hạn hay đổi gói.
 import type { Context, Hono } from "hono";
-import { authFailedAlert, raiseAlert } from "./alerts";
+import { type AlertKind, authFailedAlert, raiseAlert } from "./alerts";
 import type { AppEnv } from "./app";
 import { audit } from "./audit";
 import { b64urlEncode, randomBytes, sha256Hex } from "./crypto";
@@ -22,7 +22,7 @@ import {
   type PlanTable,
   parsePlans,
 } from "./plans";
-import { failureBlock, hit, noteFailure } from "./ratelimit";
+import { failureBlock, hit, LIMITS, noteFailure } from "./ratelimit";
 
 /** Link thanh toán của PayOS hết hạn sau 15 phút (`expiredAt` của PayOS); app hỏi trạng thái tối đa bằng thời gian này. */
 export const CHECKOUT_TTL_SECONDS = 15 * 60;
@@ -35,6 +35,8 @@ export const CHECKOUT_TTL_SECONDS = 15 * 60;
 export const CREEM_CHECKOUT_TTL_SECONDS = 30 * 60;
 /** Một số ngân hàng chỉ nhận mô tả tối đa 9 ký tự (§14 giả định 7): "AT" + tối đa 7 chữ số. */
 export const MAX_ORDER_CODE = 9_999_999;
+/** Mã đơn từ mức này trở lên (80% của MAX_ORDER_CODE) thì mỗi đơn mới tạo cảnh báo order_code_near_limit, để còn thời gian đổi định dạng. */
+export const ORDER_CODE_WARN_AT = Math.floor(MAX_ORDER_CODE * 0.8);
 
 /**
  * Loại tiền khách chọn và cổng bán loại tiền đó (spec 2026-10-14 §4.3). Thiếu `currency` trong request thì là VND qua PayOS:
@@ -82,6 +84,15 @@ export function orderDescription(orderCode: number): string {
   return `AT${orderCode}`;
 }
 
+/** Cảnh báo của checkout chỉ là phụ: lỗi ghi cảnh báo (D1) chỉ vào log, không bao giờ đổi phản hồi trả khách. */
+async function raiseCheckoutAlert(db: D1Database, kind: AlertKind, now: number, extra: Record<string, unknown> = {}): Promise<void> {
+  try {
+    await raiseAlert(db, kind, now);
+  } catch (err) {
+    console.error(JSON.stringify({ event: "checkout_alert_failed", kind, ...extra, error: String(err) }));
+  }
+}
+
 export function registerCheckout(app: Hono<AppEnv>) {
   // Bảng gói trả phí cho màn hình Nâng cấp của app (§4.3). Free không có ở đây: hạn mức Free là hằng số phía app.
   // `?plans=` là các mã gói app bán được: app cũ không gửi nên chỉ thấy gói cũ (spec 2026-10-13 §2.3).
@@ -108,6 +119,14 @@ export function registerCheckout(app: Hono<AppEnv>) {
     const now = deps.now();
     const rl = await hit(c.env, "checkout_ip", clientIp(c), now);
     if (!rl.allowed) return tooMany(c, rl.retryAfter);
+    // Trần toàn hệ thống, đếm sau giới hạn theo IP (IP đã bị chặn không tiêu bộ đếm chung) và trước khi đọc thân hay chèn đơn:
+    // mỗi đơn đã chèn là một order_code không hoàn lại được (kiểm toán bảo mật 2026-10-25).
+    const global = await hit(c.env, "checkout_global", "all", now);
+    if (!global.allowed) {
+      // Đúng lần từ chối đầu tiên của giờ này: một cảnh báo, không phải mỗi request.
+      if (global.count === LIMITS.checkout_global + 1) await raiseCheckoutAlert(db, "checkout_flood", now);
+      return tooMany(c, global.retryAfter);
+    }
 
     const body = await readJson(c);
     if (!body) return fail(c, 400, "invalid_request");
@@ -168,6 +187,8 @@ export function registerCheckout(app: Hono<AppEnv>) {
       .first<{ order_code: number }>();
     if (!row) throw new Error("không tạo được đơn");
     const orderCode = row.order_code;
+    // Trước cả nhánh cạn bên dưới: tới lúc cạn cũng còn thư báo (nhánh cạn chỉ có log).
+    if (orderCode >= ORDER_CODE_WARN_AT) await raiseCheckoutAlert(db, "order_code_near_limit", now, { order_code: orderCode });
     if (orderCode > MAX_ORDER_CODE) {
       await db.prepare("UPDATE orders SET status = 'failed' WHERE order_code = ?").bind(orderCode).run();
       console.error(JSON.stringify({ event: "order_code_exhausted", order_code: orderCode }));

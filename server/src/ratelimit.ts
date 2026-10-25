@@ -7,6 +7,11 @@ import { hmacSha256Hex } from "./crypto";
 
 export const LIMITS = {
   checkout_ip: 10,
+  // Tạo đơn, toàn hệ thống (kiểm toán bảo mật 2026-10-25). Mỗi POST /v1/checkout chèn một dòng orders trước khi gọi cổng thanh toán,
+  // mà order_code (AUTOINCREMENT) không hoàn lại được và chỉ có 9.999.999 số cho mô tả chuyển khoản "AT"+7 chữ số, nên kẻ tấn công
+  // đốt được mã đơn mà không tốn tiền. 600 mỗi giờ thì cạn 9 triệu mã trong khoảng 1,7 năm (lưu lượng thật chỉ vài chục đơn mỗi giờ).
+  // Chạm ngưỡng thì có cảnh báo checkout_flood; khách thật bị từ chối (429) tới hết giờ.
+  checkout_global: 600,
   activate_ip: 10,
   deactivate_ip: 10,
   validate_key: 30,

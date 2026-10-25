@@ -227,6 +227,34 @@ describe("cảnh báo cho người vận hành", () => {
     });
   });
 
+  describe("tạo đơn bị đốt mã (kiểm toán bảo mật 2026-10-25)", () => {
+    const body = async (kind: "checkout_flood" | "order_code_near_limit") => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      await raiseAlert(env.DB, kind, T);
+      const box = mailbox();
+      expect(await sendAlerts(ops, box.provider, T + 300)).toBe(1);
+      expect(box.sent[0]!.subject).toBe(`[license test] Cảnh báo: ${kind} (1)`);
+      return box.sent[0]!.text;
+    };
+
+    it("checkout_flood: ngưỡng 600 mỗi giờ, khách thật có thể bị từ chối tạm, cách xem ở Web Admin", async () => {
+      const text = await body("checkout_flood");
+      expect(text).toContain("chạm trần toàn hệ thống (600 yêu cầu mỗi giờ)");
+      expect(text).toContain("đốt mã đơn");
+      expect(text).toContain("bị từ chối (429) tới hết giờ, nên khách thật cũng có thể bị từ chối tạm trong giờ đó");
+      expect(text).toContain("Web Admin, trang Đơn hàng");
+      expect(text).toContain("order_created");
+    });
+
+    it("order_code_near_limit: 80% của 9.999.999, đổi định dạng mã hay mô tả trước khi cạn", async () => {
+      const text = await body("order_code_near_limit");
+      expect(text).toContain("80% giới hạn 9.999.999");
+      expect(text).toContain('"AT" + 7 chữ số');
+      expect(text).toContain("503 order_code_exhausted");
+      expect(text).toContain("Cần đổi định dạng mã hay mô tả chuyển khoản");
+    });
+  });
+
   describe("authFailedAlert: loại cảnh báo theo tên cổng của đơn (orders.provider)", () => {
     it("payos và creem có loại riêng; cổng khác hay tên lạ (kể cả tên thuộc tính của Object) không có loại", () => {
       expect(authFailedAlert("payos")).toBe("payos_auth_failed");

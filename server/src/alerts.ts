@@ -21,7 +21,9 @@ export type AlertKind =
   | "error_report_new"
   | "diagnostics_flood"
   | "support_zalo_failed"
-  | "support_flood";
+  | "support_flood"
+  | "checkout_flood"
+  | "order_code_near_limit";
 
 /** Loại cảnh báo khi cổng (`orders.provider`) từ chối khóa API: mỗi cổng một loại, để thư chỉ đúng khóa cần thay. */
 const AUTH_FAILED_ALERT = { payos: "payos_auth_failed", creem: "creem_auth_failed" } as const satisfies Record<string, AlertKind>;
@@ -96,6 +98,15 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   support_flood:
     'Chat hỗ trợ chạm trần toàn hệ thống (200 tin của khách mỗi giờ): có thể đang bị spam. Khách nhận "đang bận, hãy gửi email" tới hết giờ. ' +
     "Nhắn /ds cho bot để xem các cuộc chat, /chan #MÃ để chặn cuộc chat spam, hay /tat để tắt chat.",
+  checkout_flood:
+    "Tạo đơn (POST /v1/checkout) chạm trần toàn hệ thống (600 yêu cầu mỗi giờ): có vẻ đang bị đốt mã đơn hay bị tạo đơn hàng loạt " +
+    "(mỗi đơn dùng một số order_code, không hoàn lại được). Yêu cầu tạo đơn bị từ chối (429) tới hết giờ, nên khách thật cũng có thể " +
+    "bị từ chối tạm trong giờ đó. Mở Web Admin, trang Đơn hàng để xem các đơn mới tạo liên tiếp (cùng email, cùng gói hay cùng thời " +
+    "điểm); trang Nhật ký lọc theo hành động order_created. Lưu lượng thật chỉ vài chục đơn mỗi giờ.",
+  order_code_near_limit:
+    "Mã đơn đã tới 80% giới hạn 9.999.999 của mô tả chuyển khoản \"AT\" + 7 chữ số. Quá giới hạn thì mọi đơn mới bị từ chối " +
+    "(503 order_code_exhausted). Cần đổi định dạng mã hay mô tả chuyển khoản (kiểm giới hạn ký tự của các ngân hàng), hay xử lý " +
+    "nguồn đốt mã nếu mã tăng nhanh bất thường, trước khi cạn.",
 };
 const HOUR = 3600;
 
