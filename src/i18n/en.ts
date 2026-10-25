@@ -222,7 +222,7 @@ export const en = {
   "settings.audio.micPermission.undetermined": "AI Translator needs permission to use the microphone.",
   "settings.audio.micPermission.allow": "Allow microphone",
   "settings.audio.micPermission.reopen": "After allowing it, choose “Quit & Reopen” when macOS asks.",
-  "settings.audio.pause.micNote": "When capturing from the microphone, this slider is the microphone's own setting (default 100 ms). Real speech has many short pauses: set too short, sentences may be cut into fragments and recognized worse. If sentences come out fragmented, raise it to about 300–500 ms. Applies from the next session.",
+  "settings.audio.pause.micNote": "When capturing from the microphone, this slider is the microphone's own setting (default 50 ms). Real speech has many short pauses: set too short, sentences may be cut into fragments and recognized worse. If sentences come out fragmented, raise it to about 300–500 ms. Applies from the next session.",
   "settings.general.uiLanguage": "Interface language",
   "settings.general.launchAtLogin": "Launch at login",
   "settings.general.launchAtLogin.hint": "The app starts in the menu bar or system tray, without opening this window.",

@@ -63,7 +63,7 @@ impl SpeechDetector for SileroSpeech {
 pub struct VadSpec {
     pub threshold: f32,
     pub min_speech_ms: u64,
-    /// Im lặng bao lâu thì đóng đoạn (`vadEndSilenceMs`; mặc định của app nay 100 ms, bench giữ 50 để số đo cũ so được). Giọng ở xa bị cắt vụn ở 50 ms (đo thêm
+    /// Im lặng bao lâu thì đóng đoạn (`vadEndSilenceMs`; mặc định của app 50 ms, 0.2.9–0.2.10 là 100 ms). Giọng ở xa bị cắt vụn ở 50 ms (đo thêm
     /// sau Task 19), nên dò cả giá trị này.
     pub end_silence_ms: u64,
 }

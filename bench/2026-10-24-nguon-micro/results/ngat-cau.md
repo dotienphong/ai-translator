@@ -52,3 +52,5 @@ Chữ ảo: 0 ở mọi mức, mọi cảnh.
 Chế độ Âm thanh máy (không micro) không dùng mức này: giữ `vadEndSilenceMs` mặc định 50 ms, thanh trượt chỉnh tự do.
 
 **Quyết định (chủ dự án, 2026-10-25):** mọi chế độ mặc định 100 ms (`vadEndSilenceMs` và `micEndSilenceMs`, chỉnh riêng từng chế độ). Spec nguồn micro mục 18.
+
+**Quyết định (chủ dự án, 2026-10-25, bản 0.3.0):** hạ tiếp mọi chế độ xuống mặc định 50 ms. Spec nguồn micro mục 19.

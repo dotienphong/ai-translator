@@ -223,7 +223,7 @@ export const ja: Record<MessageKey, string> = {
   "settings.audio.micPermission.undetermined": "AI Translator にはマイクの使用許可が必要です。",
   "settings.audio.micPermission.allow": "マイクを許可",
   "settings.audio.micPermission.reopen": "許可したあと、macOS に表示される「終了して再度開く」を選んでください。",
-  "settings.audio.pause.micNote": "マイクから取得するときは、このスライダーはマイク専用の設定です（初期値 100 ms）。実際の話し声には短い間が多いため、短すぎると文が断片に切れて認識精度が下がることがあります。文が細切れになる場合は 300〜500 ms 程度まで上げてください。次のセッションから適用されます。",
+  "settings.audio.pause.micNote": "マイクから取得するときは、このスライダーはマイク専用の設定です（初期値 50 ms）。実際の話し声には短い間が多いため、短すぎると文が断片に切れて認識精度が下がることがあります。文が細切れになる場合は 300〜500 ms 程度まで上げてください。次のセッションから適用されます。",
   "settings.general.uiLanguage": "表示言語",
   "settings.general.launchAtLogin": "ログイン時に起動",
   "settings.general.launchAtLogin.hint": "アプリはメニューバーまたはシステムトレイで起動し、このウィンドウは開きません。",

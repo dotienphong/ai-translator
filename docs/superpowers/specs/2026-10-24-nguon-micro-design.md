@@ -501,7 +501,8 @@ trước ở những điểm sau.
       `min_speech_ms` 250 (thử tay: "OK", "Vâng" chỉ dài khoảng 0,3 giây nên bị ngưỡng 400 bỏ, cả trong phòng yên tĩnh);
     - chế độ `both`: `threshold` 0,5, `min_speech_ms` 600, **`end_silence_ms` 500**.
     - Ở chế độ có micro, giá trị này thay cho `vadEndSilenceMs` của người dùng. Phụ đề hiện chậm hơn khoảng 0,45 s.
-    - **Mục 18 ghi đè `end_silence_ms` 500 ở trên:** mặc định thành 100 ms (khóa `micEndSilenceMs`, chỉnh được 50–800 ms).
+    - **Mục 18 ghi đè `end_silence_ms` 500 ở trên:** mặc định thành 100 ms (khóa `micEndSilenceMs`, chỉnh được 50–800 ms);
+      mục 19 hạ tiếp xuống 50 ms.
   - **Lớp 5 (`ShortUnsure`): bỏ.** Không giảm thêm chữ ảo mà làm mất câu ngắn. Code trong `pipeline::filter` (mặc định
     tắt) bị gỡ ở kế hoạch 02.
   - **Thêm:** luật `Hallucination` bắt cả câu **chứa** cụm quảng cáo kênh rõ ràng (ví dụ "subscribe cho kênh"). Câu "Hãy
@@ -647,6 +648,18 @@ làm phụ đề dịch video chậm.
 - Các mốc nghiệm thu A4-mic và A-trộn (mục 16, 17) đo ở 500 ms và vẫn là mốc của cấu hình 500 ms; ở mặc định 100 ms mốc A4-mic
   giọng thật là 57,3%, không phải 44,7%. Người dùng muốn chính xác hơn thì kéo thanh lên 300–500 ms (ghi chú dưới thanh nói
   rõ). Chưa đo chất lượng bản dịch.
+
+## 19. Mặc định ngắt câu 50 ms cho mọi chế độ (2026-10-25, bản 0.3.0)
+
+Chủ dự án chốt (2026-10-25), ghi đè mặc định 100 ms của mục 18: **mọi chế độ thu mặc định ngắt câu 50 ms**
+(`vadEndSilenceMs` và `micEndSilenceMs`), để phụ đề hiện nhanh nhất.
+
+- Hai khóa vẫn riêng, mỗi khóa 50–800 ms, bước 50 ms; thanh "Độ nhạy ngắt câu" lưu vào khóa của chế độ đang chọn.
+- Người dùng đã lưu giá trị (kể cả 100 ms của 0.2.9–0.2.10) thì giữ nguyên, như mục 18. Chỉ cài mới, hay file thiếu/hỏng khóa,
+  mới nhận 50 ms.
+- Đánh đổi đã biết (`bench/2026-10-24-nguon-micro/results/ngat-cau.md`): ở chế độ có micro, giọng thật bị cắt vụn và nhận sai
+  nhiều hơn ở 50 ms (giọng thật 1 m lỗi 59% so với 36% ở 500 ms). Ghi chú dưới thanh trượt gợi ý kéo lên 300–500 ms khi câu bị
+  cắt vụn. Chưa đo lại riêng ở cấu hình cuối này.
 
 ## Tham khảo
 

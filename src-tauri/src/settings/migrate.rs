@@ -360,7 +360,8 @@ mod tests {
         assert_eq!(entries[SCHEMA_VERSION_KEY], json!(CURRENT_SCHEMA_VERSION));
     }
 
-    /// Mặc định đổi từ 300 xuống 150, 50 rồi 100 ms: người dùng đã lưu 300 thì giữ nguyên, chỉ khóa thiếu hay hỏng mới về 100.
+    /// Mặc định đổi từ 300 xuống 150, 50, 100 rồi lại 50 ms: người dùng đã lưu 300 hay 100 thì giữ nguyên, chỉ khóa thiếu hay
+    /// hỏng mới về 50.
     #[test]
     fn a_saved_pause_is_kept_when_the_default_changes() {
         let raw = object(json!({ "schemaVersion": 1, "vadEndSilenceMs": 300 }));
@@ -391,7 +392,7 @@ mod tests {
         // File đã ở bản 1 thì chỉ chạy bước thứ hai.
         let v1 = object(json!({ "schemaVersion": 1, "vadSilence": 500, "theme": 2 }));
         let loaded = load_with(v1, defaults(), steps);
-        assert_eq!(loaded.settings.vad_end_silence_ms, 100, "bước 0→1 không chạy lại");
+        assert_eq!(loaded.settings.vad_end_silence_ms, 50, "bước 0→1 không chạy lại");
         assert_eq!(loaded.settings.theme, Theme::Dark);
     }
 
@@ -406,7 +407,7 @@ mod tests {
         }));
         let loaded = load(raw, defaults());
         assert_eq!(loaded.settings.ui_language, UiLanguage::En);
-        assert_eq!(loaded.settings.vad_end_silence_ms, 100);
+        assert_eq!(loaded.settings.vad_end_silence_ms, 50);
         assert_eq!(loaded.settings.theme, Theme::Dark);
         assert_eq!(loaded.settings.overlay.font_size, 30, "khóa con hợp lệ vẫn được giữ");
         assert_eq!(loaded.settings.overlay.lines, 2);
@@ -476,8 +477,8 @@ mod tests {
         assert_eq!(loaded.settings.mic_device, None);
         assert!(loaded.settings.mic_noise_filter);
         assert_eq!(
-            loaded.settings.mic_end_silence_ms, 100,
-            "ngắt câu riêng của chế độ có micro: mặc định 100 ms"
+            loaded.settings.mic_end_silence_ms, 50,
+            "ngắt câu riêng của chế độ có micro: mặc định 50 ms"
         );
         assert!(loaded.rejected.is_empty());
         assert!(!loaded.needs_save());
@@ -500,7 +501,7 @@ mod tests {
         let loaded = load(raw, defaults());
         assert_eq!(
             (loaded.settings.mic_end_silence_ms, loaded.rejected),
-            (100, vec!["micEndSilenceMs".to_string()])
+            (50, vec!["micEndSilenceMs".to_string()])
         );
         let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "captureMode": "stereo" }));
         let loaded = load(raw, defaults());

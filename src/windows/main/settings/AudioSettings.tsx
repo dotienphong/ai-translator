@@ -9,7 +9,7 @@ import { appStore, useApp, useT } from "../appStore";
 const DEFAULT_MIC = "";
 // Nhóm Cài đặt "Âm thanh" (§4.3): thu từ âm thanh máy hay micro (spec 2026-10-24-nguon-micro §3.2), nguồn âm thanh máy
 // (§6.1) hay micro, lọc ồn micro, quyền micro, và độ nhạy ngắt câu (50–800 ms, §6.3): chế độ âm thanh máy dùng
-// `vadEndSilenceMs`, chế độ có micro dùng `micEndSilenceMs` (mặc định 100 ms), mỗi chế độ giữ mức riêng.
+// `vadEndSilenceMs`, chế độ có micro dùng `micEndSilenceMs` (mặc định 50 ms), mỗi chế độ giữ mức riêng.
 export function AudioSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);

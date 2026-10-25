@@ -181,7 +181,7 @@ fn code_of(settings: Lang) -> &'static str {
 }
 
 /// VAD khi nguồn là micro (spec 2026-10-24-nguon-micro mục 16, lớp 4): ngưỡng xác suất và độ dài tiếng nói ngắn nhất. Im lặng
-/// trước khi đóng đoạn là `micEndSilenceMs` của người dùng (mặc định 100 ms như `vadEndSilenceMs`, nhưng chỉnh riêng): đặt
+/// trước khi đóng đoạn là `micEndSilenceMs` của người dùng (mặc định 50 ms như `vadEndSilenceMs`, nhưng chỉnh riêng): đặt
 /// 300–500 ms thì ít câu bị cắt vụn hơn, đổi lại phụ đề chậm hơn (spec nguồn micro mục 18).
 const MIC_VAD_THRESHOLD: f32 = 0.5;
 const MIC_MIN_SPEECH_MS: u64 = 400;
@@ -1904,7 +1904,7 @@ mod tests {
     }
 
     /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ4 của kế hoạch 02: nguồn micro dùng VAD riêng và `micEndSilenceMs` (mặc
-    /// định 100 ms), thay `vadEndSilenceMs` của người dùng; âm thanh máy giữ như cũ.
+    /// định 50 ms), thay `vadEndSilenceMs` của người dùng; âm thanh máy giữ như cũ.
     #[test]
     fn a_mic_plan_uses_the_mic_vad_parameters() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
@@ -1925,9 +1925,9 @@ mod tests {
             let seg = cfg.pipeline.segmenter;
             (seg.threshold, seg.min_speech_ms, seg.end_silence_ms)
         };
-        assert_eq!(segmenter(&mic(true)), (0.5, 400, 100), "lọc ồn bật");
+        assert_eq!(segmenter(&mic(true)), (0.5, 400, 50), "lọc ồn bật");
         // Thử tay 2026-10-24: tắt lọc ồn (phòng yên tĩnh) thì câu một hai chữ như "OK", "Vâng" (khoảng 0,3 giây) không bị bỏ.
-        assert_eq!(segmenter(&mic(false)), (0.5, 250, 100), "lọc ồn tắt");
+        assert_eq!(segmenter(&mic(false)), (0.5, 250, 50), "lọc ồn tắt");
         let playback = plan_for(&settings, StartOptions::default());
         let cfg = engine_config(
             &settings,
@@ -1962,7 +1962,7 @@ mod tests {
         assert_eq!(end_silence(CaptureMode::Both), 200);
     }
 
-    /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ6 của kế hoạch 03: chế độ trộn dùng VAD 0,5 / 600 ms, im lặng theo `micEndSilenceMs` (mặc định 100 ms), cả khi tắt lọc ồn.
+    /// Spec 2026-10-24-nguon-micro mục 16 (lớp 4), QĐ6 của kế hoạch 03: chế độ trộn dùng VAD 0,5 / 600 ms, im lặng theo `micEndSilenceMs` (mặc định 50 ms), cả khi tắt lọc ồn.
     #[test]
     fn the_both_plan_uses_the_mixed_vad_parameters() {
         let mut settings = Settings::defaults(UiLanguage::Vi);
@@ -1987,7 +1987,7 @@ mod tests {
                 true,
             );
             let seg = cfg.pipeline.segmenter;
-            assert_eq!((seg.threshold, seg.min_speech_ms, seg.end_silence_ms), (0.5, 600, 100));
+            assert_eq!((seg.threshold, seg.min_speech_ms, seg.end_silence_ms), (0.5, 600, 50));
         }
         assert_eq!(
             plan_for(&settings, StartOptions::LISTEN_TEST),
@@ -2079,8 +2079,8 @@ mod tests {
             "công tắc bật, máy đủ sức"
         );
         assert_eq!(
-            cfg.pipeline.segmenter.end_silence_ms, 100,
-            "mặc định `vadEndSilenceMs` 100 ms"
+            cfg.pipeline.segmenter.end_silence_ms, 50,
+            "mặc định `vadEndSilenceMs` 50 ms"
         );
         let cfg = engine_config(
             &settings,

@@ -94,7 +94,7 @@ let settings: Settings = {
   micDevice: null,
   micNoiseFilter: true,
   vadEndSilenceMs: 300,
-  micEndSilenceMs: 100,
+  micEndSilenceMs: 50,
   overlay: {
     fontSize: Number(param("size", "28")),
     lines: 3,

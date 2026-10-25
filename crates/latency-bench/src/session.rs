@@ -58,7 +58,7 @@ pub struct SessionArgs {
     pub languages: Vec<String>,
     #[arg(long, default_value = "vi")]
     pub target: String,
-    /// Ngưỡng im lặng đóng đoạn (`vadEndSilenceMs`; mặc định của app là 100 ms từ bản 0.2.9, trước đó 50 ms; bench giữ 50 để số đo cũ so được).
+    /// Ngưỡng im lặng đóng đoạn (`vadEndSilenceMs`; mặc định của app là 50 ms; 0.2.9–0.2.10 là 100 ms).
     #[arg(long, default_value_t = 50)]
     pub end_silence_ms: u64,
     /// Bật chế độ dịch trong lúc nói (kế hoạch 02): `streaming_supported` và `streaming_enabled` của engine.

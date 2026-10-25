@@ -364,13 +364,13 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 - **Tham số mặc định:**
   - Ngưỡng tiếng nói: 0,5.
   - Đoạn tiếng nói ngắn nhất: 250 ms.
-  - **Im lặng 100 ms thì chốt đoạn** (mặc định của app từ 0.2.9; trước đó 50 ms, người dùng đã lưu giá trị thì giữ nguyên). Người dùng chỉnh được trong khoảng 50–800 ms, bước 50 ms, bằng mục "Độ nhạy ngắt câu". Mặc định này đổi từ 300 ms xuống 150 ms, 100 ms rồi 50 ms theo yêu cầu của chủ dự án ngày 2026-10-04; các số đo độ trễ ở A2 và benchmark ở `bench/` dùng 300 ms (mặc định của `SegmenterConfig` trong `pipeline`), chưa đo lại với 50 ms. Khung VAD dài 32 ms nên ngưỡng 50 ms làm tròn lên 2 khung (64 ms) khi chạy. Người dùng đã lưu giá trị khác thì giữ nguyên.
+  - **Im lặng 50 ms thì chốt đoạn** (mặc định của app; 0.2.9–0.2.10 là 100 ms, từ 0.3.0 lại 50 ms theo chủ dự án ngày 2026-10-25; người dùng đã lưu giá trị thì giữ nguyên). Người dùng chỉnh được trong khoảng 50–800 ms, bước 50 ms, bằng mục "Độ nhạy ngắt câu". Mặc định này đổi từ 300 ms xuống 150 ms, 100 ms rồi 50 ms theo yêu cầu của chủ dự án ngày 2026-10-04; các số đo độ trễ ở A2 và benchmark ở `bench/` dùng 300 ms (mặc định của `SegmenterConfig` trong `pipeline`), chưa đo lại với 50 ms. Khung VAD dài 32 ms nên ngưỡng 50 ms làm tròn lên 2 khung (64 ms) khi chạy. Người dùng đã lưu giá trị khác thì giữ nguyên.
   - **Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §4.7): ngưỡng đóng đoạn là max(`vadEndSilenceMs`, 50 ms); vừa có 2 khung im lặng thì chép từng phần thêm một lần, nên chữ cuối câu vẫn hiện nhanh. Cửa sổ ghép tính lại theo ngưỡng này.
   - **Mỗi đoạn dài tối đa 8 giây.** Nếu dài hơn, cắt cưỡng bức tại khung có năng lượng thấp nhất trong 1,5 giây cuối.
   - Thêm 200 ms đệm ở đầu và cuối mỗi đoạn. Code làm tròn lên 7 khung, tức 224 ms mỗi phía; đầu phiên, cuối phiên và phía bị cắt cưỡng bức có ít hơn.
 - **Ghép câu và phụ đề tạm:** ngưỡng im lặng ngắn (mặc định 50 ms) dễ cắt giữa câu, ở những chỗ người nói ngừng nghỉ tự nhiên.
   - Nếu đoạn vừa chốt không kết thúc bằng dấu câu kết thúc (`.` `?` `!` `。` `？` `！`), phụ đề được đánh dấu **tạm**.
-  - **Cửa sổ ghép** = max(700 ms, `vadEndSilenceMs` + 400 ms), tính từ lúc hết tiếng nói của đoạn trước. Với mặc định 100 ms (và với mọi giá trị đến 300 ms), cửa sổ là 700 ms.
+  - **Cửa sổ ghép** = max(700 ms, `vadEndSilenceMs` + 400 ms), tính từ lúc hết tiếng nói của đoạn trước. Với mặc định 50 ms (và với mọi giá trị đến 300 ms), cửa sổ là 700 ms.
   - Nếu tiếng nói tiếp tục trong cửa sổ ghép **và đoạn sau cùng ngôn ngữ với câu đang mở** (ngôn ngữ do §6.4 chọn), đoạn sau được ghép vào: nối chữ của hai đoạn, dịch lại cả câu, rồi thay phụ đề tạm. Tiếng Trung và tiếng Nhật nối chữ không có dấu cách.
   - Đoạn khác ngôn ngữ thì mở một câu mới. Đoạn đã là ngôn ngữ đích (`same_lang`, §6.6) cũng cắt chuỗi ghép; đoạn bị bỏ vì không có tiếng nói (§6.4) thì không.
   - Phụ đề được chốt khi có dấu câu kết thúc, hoặc khi hết cửa sổ ghép mà không có tiếng nói mới.
@@ -388,7 +388,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Bản debug cần khoảng 1 MiB stack cho mỗi lần suy luận, mà luồng chính của Windows chỉ có 1 MiB. Vì vậy VAD được tạo và chạy trên luồng riêng, có stack từ 4 MiB.
   - Test `vad_reference` so kết quả với onnxruntime, rồi chạy thêm 4 000 khung để bắt rò bộ nhớ (§6.12).
 - **Việc cho MVP:** chọn luật ghép câu tốt hơn cho zh và ja, ví dụ coi khoảng nghỉ đủ dài là hết câu. Cần dữ liệu hội thoại thật, không phải câu đọc của FLEURS.
-- **Khi có micro** (F12; spec nguồn micro §16): VAD nghe bản đã qua chuỗi micro (§6.2). Chế độ Micro: ngưỡng 0,5, đoạn ngắn nhất 400 ms (250 ms khi tắt "Lọc tiếng ồn micro"), im lặng 500 ms thì chốt đoạn. Chế độ Âm thanh máy + Micro: 0,5 / 600 ms / 500 ms. Im lặng chốt đoạn lấy từ `micEndSilenceMs` (mặc định 100 ms như chế độ Âm thanh máy, chỉnh riêng 50–800 ms; spec nguồn micro §18), thay `vadEndSilenceMs`; kéo lên 300–500 ms thì ít câu bị cắt vụn hơn, đổi lại phụ đề chậm hơn. Luật `ShortUnsure` của spec nguồn micro bị bỏ.
+- **Khi có micro** (F12; spec nguồn micro §16): VAD nghe bản đã qua chuỗi micro (§6.2). Chế độ Micro: ngưỡng 0,5, đoạn ngắn nhất 400 ms (250 ms khi tắt "Lọc tiếng ồn micro"), im lặng 500 ms thì chốt đoạn. Chế độ Âm thanh máy + Micro: 0,5 / 600 ms / 500 ms. Im lặng chốt đoạn lấy từ `micEndSilenceMs` (mặc định 50 ms như chế độ Âm thanh máy, chỉnh riêng 50–800 ms; spec nguồn micro §18, §19), thay `vadEndSilenceMs`; kéo lên 300–500 ms thì ít câu bị cắt vụn hơn, đổi lại phụ đề chậm hơn. Luật `ShortUnsure` của spec nguồn micro bị bỏ.
 
 ### 6.4 Nhận dạng giọng nói
 

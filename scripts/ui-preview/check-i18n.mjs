@@ -661,7 +661,7 @@ const AUDIT = `(() => {
 
 // Điều kiện riêng của từng màn hình: danh sách [biểu thức phải ra true, mô tả].
 // Thanh "Độ nhạy ngắt câu": kéo được ở mọi chế độ thu, mỗi chế độ một mức (âm thanh máy `vadEndSilenceMs` 300 ở trang xem trước,
-// có micro `micEndSilenceMs` 100, mặc định của app).
+// có micro `micEndSilenceMs` 50, mặc định của app).
 const pauseSlider = (value) => [
   [
     `(() => { const r = document.querySelector("#vad-end-silence"); return !!r && !r.disabled && r.value === "${value}"; })()`,
@@ -670,8 +670,8 @@ const pauseSlider = (value) => [
 ];
 const EXTRA = {
   "settings-audio": () => pauseSlider(300),
-  "settings-audio-mic": () => pauseSlider(100),
-  "settings-audio-both": () => pauseSlider(100),
+  "settings-audio-mic": () => pauseSlider(50),
+  "settings-audio-both": () => pauseSlider(50),
   "settings-general": (lang) => [
     [
       `(() => { const s = document.querySelector("#ui-language"); return !!s && s.options.length === 5 && s.value === ${JSON.stringify(lang)}; })()`,
