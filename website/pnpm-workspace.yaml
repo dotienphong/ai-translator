@@ -6,5 +6,11 @@ allowBuilds:
 
 # Giống server/pnpm-workspace.yaml: miniflare ghim sharp 0.35.4 (CVE-2026-96889, librsvg). sharp chỉ là phụ thuộc gián tiếp
 # phục vụ chạy cục bộ, không nằm trong Worker đã triển khai. Gỡ khi miniflare tự nâng lên 0.35.5 trở lên.
+#
+# undici < 7.30.1 dính GHSA-xjj6-f33q-929c (mức high), GHSA-4qv8-2p9j-2685 và GHSA-f72v-6w45-q472; miniflare ghim cứng
+# undici 7.29.1. Chỉ là phụ thuộc gián tiếp của wrangler (công cụ deploy chạy tay trên máy dev), không nằm trong Worker đã
+# triển khai. Cùng dòng 7.x nên chỉ nâng minor. Selector theo khoảng để override còn đúng khi nâng wrangler. Gỡ khi
+# miniflare ghim bản đã vá.
 overrides:
   sharp: 0.35.5
+  "undici@>=7.0.0 <7.30.1": 7.30.1

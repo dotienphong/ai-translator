@@ -87,6 +87,10 @@ jobs:
           pnpm -C server install --frozen-lockfile
           pnpm -C server check
           pnpm -C server audit --audit-level high
+      - name: Website (audit phụ thuộc)
+        run: |
+          pnpm -C website install --frozen-lockfile
+          pnpm -C website audit --audit-level high
 
   windows:
     name: Windows x64
