@@ -38,7 +38,7 @@ const GROUPS = [
       },
       {
         q: "ライブ配信を自分の言語に翻訳できますか？TikTok ライブはどうですか？",
-        a: `<p>パソコンでならできます。アプリはパソコンで再生されている音声を聞き取るのでウェブサイトに左右されず、英語、中国語、日本語、韓国語、ベトナム語のライブ配信を、この 5 つのうちほかの言語の字幕にできます。ブラウザーで再生した動画で動作を確認しました。ライブ配信のプラットフォーム（TikTok Live、YouTube Live、Facebook Live）を 1 つずつは試していません。<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>と<a href="/ja/solutions/tiktok-live-translation/">TikTok ライブの翻訳</a>をご覧ください。</p>`,
+        a: `<p>パソコンでならできます。アプリはパソコンで再生されている音声を聞き取るのでウェブサイトに左右されず、英語、中国語、日本語、韓国語、ベトナム語のライブ配信を、この 5 つのうちほかの言語の字幕にできます。ブラウザーで再生した動画で動作を確認しました。個々のライブ配信プラットフォーム（TikTok Live、YouTube Live、Facebook Live）では試していません。<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>と<a href="/ja/solutions/tiktok-live-translation/">TikTok ライブの翻訳</a>をご覧ください。</p>`,
       },
       {
         q: "スマホで AI Translator を使ってライブ配信を翻訳できますか？",

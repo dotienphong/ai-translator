@@ -19,7 +19,7 @@ export const HOME_FAQ = [
   },
   {
     q: "ライブ配信を自分の言語に翻訳できますか？",
-    a: "<p>パソコンでならできます。アプリはパソコンで再生されている音声を聞き取るのでウェブサイトに左右されず、英語、中国語、日本語、韓国語、ベトナム語のライブ配信を、この 5 つのうちほかの言語の字幕にできます。ブラウザーで再生した動画で動作を確認しました。ライブ配信のプラットフォームを 1 つずつは試していません。スマホ版はなく、ご自身のライブ配信に視聴者向けの字幕を追加することもできません。<a href=\"/ja/solutions/livestream-translation/\">ライブ配信の翻訳</a>をご覧ください。</p>",
+    a: "<p>パソコンでならできます。アプリはパソコンで再生されている音声を聞き取るのでウェブサイトに左右されず、英語、中国語、日本語、韓国語、ベトナム語のライブ配信を、この 5 つのうちほかの言語の字幕にできます。ブラウザーで再生した動画で動作を確認しました。個々のライブ配信プラットフォームでは試していません。スマホ版はなく、ご自身のライブ配信に視聴者向けの字幕を追加することもできません。<a href=\"/ja/solutions/livestream-translation/\">ライブ配信の翻訳</a>をご覧ください。</p>",
   },
   {
     q: "会議の音声はどこかに送信されますか？",
@@ -53,7 +53,7 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple シリコン）· Windows 10/11 · 10 日間の無料お試し</p>
 <h1 class="reveal">すべての会議に <em>AI 翻訳字幕</em> を。あなたのパソコン上で動きます</h1>
-<p class="lead reveal"><strong>AI Translator</strong> は、macOS と Windows 向けの AI リアルタイム翻訳デスクトップアプリです。パソコンで再生されている音声をリアルタイムで画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳します。AI はあなたのパソコン上で動くため、音声や会議の内容がクラウドに送られることはありません。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、パソコンで見るライブ配信で使えます。</p>
+<p class="lead reveal"><strong>AI Translator</strong> は、macOS と Windows 向けの、AI によるリアルタイム翻訳デスクトップアプリです。パソコンで再生されている音声をリアルタイムで画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳します。AI はあなたのパソコン上で動くため、音声や会議の内容がクラウドに送られることはありません。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、パソコンで見るライブ配信で使えます。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ja/download/">ダウンロード ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">使い方を見る</a>
