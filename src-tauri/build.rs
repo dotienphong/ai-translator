@@ -13,8 +13,12 @@ fn main() {
     // `src/commands.rs` (test `acl_tests::capabilities_grant_exactly_the_fixed_lists`).
     tauri_build::try_build(
         // Manifest Windows do `embed_windows_manifest` nhúng, không phải tauri-build (xem hàm đó).
+        // `static_vc_runtime(false)`: tauri-build từ 2.7.4 mặc định liên kết tĩnh VC runtime ở Windows (`staticVCRuntime` đặt
+        // mặc định true), trong khi SQLCipher và OpenSSL dựng bằng CRT động: trộn hai loại CRT là rủi ro cho người dùng Windows
+        // mà CI không bắt được (chỉ biên dịch, không chạy bản Windows). Giữ cách dựng của các bản trước; muốn đổi thì thử trên
+        // máy Windows thật và đổi cả cách dựng crate C (`crt-static`).
         tauri_build::Attributes::new()
-            .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest())
+            .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest().static_vc_runtime(false))
             .app_manifest(tauri_build::AppManifest::new().commands(&[
                 "get_settings",
                 "update_settings",

@@ -12,7 +12,7 @@ name = "meeting_translator_lib"
 [build-dependencies]
 # SHA-256 của tiến trình phụ trong `binaries/`, build sẵn vào app (spec §10.2, Đ15 của kế hoạch 00).
 sha2 = "0.11.0"
-tauri-build = { version = "2.7.1", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
 anyhow.workspace = true
@@ -35,14 +35,14 @@ serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.11.0"
 sys-locale = "0.3.2"
-tauri = { version = "2.12.1", features = ["macos-private-api", "tray-icon"] }
+tauri = { version = "2.12.5", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-autostart = "2.7.0"
 # Hộp thoại lưu và mở file của hệ điều hành, chỉ gọi từ Rust (files.rs); không cửa sổ nào được cấp `dialog:*`.
-tauri-plugin-dialog = "2.8.1"
-tauri-plugin-global-shortcut = "2.4.0"
-tauri-plugin-log = "2.10.0"
-tauri-plugin-opener = "2.7.0"
-tauri-plugin-single-instance = "2.5.2"
+tauri-plugin-dialog = "2.8.3"
+tauri-plugin-global-shortcut = "2.4.1"
+tauri-plugin-log = "2.10.1"
+tauri-plugin-opener = "2.7.2"
+tauri-plugin-single-instance = "2.5.4"
 tauri-plugin-store = "2.5.0"
 thiserror.workspace = true
 # Manifest model (spec §6.7): base64url của phong bì, kiểm chữ ký Ed25519 bằng khóa công khai build sẵn.
@@ -64,7 +64,7 @@ qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
 regex = "1.13.1"
 # Tự cập nhật (kế hoạch 07b, spec §6.11): TLS của hệ điều hành và proxy của hệ thống như `reqwest` ở trên; bỏ `zip` (chỉ
 # cần cho bộ cài `.msi.zip`/`.nsis.zip` cũ), bỏ `rustls-tls`. Lệnh của plugin không cấp cho cửa sổ nào (acl_tests).
-tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy"] }
+tauri-plugin-updater = { version = "2.14.0", default-features = false, features = ["native-tls", "system-proxy"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Bản quyền (kế hoạch 06): app tự kiểm chữ ký của gói `.app` (`SecStaticCodeCheckValidity`, license/genuine.rs, §10.2).
@@ -75,7 +75,7 @@ apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
 objc2 = "0.6.4"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSGeometry", "NSString", "NSURL"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
-tauri-nspanel = "2.1.0"
+tauri-nspanel = "2.1.1"
 # Gõ dịch (compose/native_macos.rs, spec 2026-10-17-go-dich §3.1, §4.2): đặt ô soạn theo màn hình có con trỏ (NSScreen,
 # NSEvent), chép bản dịch vào clipboard (NSPasteboard), gửi ⌘V (CGEvent). Cùng bản `Cargo.lock` đã có (qua tao, tauri-nspanel).
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSEvent", "NSPasteboard", "NSResponder", "NSScreen", "NSWindow"] }
@@ -107,4 +107,4 @@ rusqlite = { version = "0.40.2", default-features = false, features = ["bundled-
 
 [dev-dependencies]
 # `test`: MockRuntime để test ACL của từng cửa sổ mà không mở cửa sổ thật.
-tauri = { version = "2.12.1", features = ["macos-private-api", "tray-icon", "test"] }
+tauri = { version = "2.12.5", features = ["macos-private-api", "tray-icon", "test"] }
