@@ -18,6 +18,10 @@ export const HOME_FAQ = [
     a: `<p>はい。アプリはパソコンのシステム音声を取り込むため、どの会議アプリ、ウェビナー、動画を使っていても関係なく、ボットもプラグインも不要です。macOS で Zoom、Google Meet、Microsoft Teams、Zalo PC の音声取り込みを確認しました（社内テストであり、各社による認定ではありません）。macOS では、特定のアプリ 1 つの音声だけを聞き取るように選ぶこともできます。</p>`,
   },
   {
+    q: "ライブ配信を自分の言語に翻訳できますか？",
+    a: "<p>パソコンでならできます。アプリはパソコンで再生されている音声を聞き取るのでウェブサイトに左右されず、英語、中国語、日本語、韓国語、ベトナム語のライブ配信を、この 5 つのうちほかの言語の字幕にできます。ブラウザーで再生した動画で動作を確認しました。ライブ配信のプラットフォームを 1 つずつは試していません。スマホ版はなく、ご自身のライブ配信に視聴者向けの字幕を追加することもできません。<a href=\"/ja/solutions/livestream-translation/\">ライブ配信の翻訳</a>をご覧ください。</p>",
+  },
+  {
     q: "会議の音声はどこかに送信されますか？",
     a: `<p>いいえ。翻訳中、音声はメモリ（RAM）上にだけ存在し、ディスクに書き込まれることもネットワークに送られることもありません。macOS でネットワークプロキシを使って確認したところ、翻訳中にアプリが外部に送った音声や文字起こしのテキストはありませんでした。</p>`,
   },
@@ -35,11 +39,11 @@ export default {
   id: "home",
   lang: "ja",
   path: "/ja/",
-  title: "会議のリアルタイム翻訳字幕、オフラインで動作 | AI Translator",
+  title: "ライブ配信と会議のリアルタイム翻訳字幕 | AI Translator",
   description:
-    "Zoom、Teams、Google Meet などで翻訳字幕をリアルタイムに表示。英語・中国語・日本語・韓国語・ベトナム語に対応。AI はパソコン上で動き、クラウドを使いません。",
+    "ライブ配信、動画、Zoom・Teams・Meet の会議にリアルタイム翻訳字幕。英語・中国語・日本語・韓国語・ベトナム語に対応。AI はパソコン上で動き、クラウドは使いません。",
   software: true,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     videoObject({ lang: "ja", name: "AI Translator デモ動画：会議の翻訳字幕と入力翻訳", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
@@ -49,7 +53,7 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple シリコン）· Windows 10/11 · 10 日間の無料お試し</p>
 <h1 class="reveal">すべての会議に <em>AI 翻訳字幕</em> を。あなたのパソコン上で動きます</h1>
-<p class="lead reveal"><strong>AI Translator</strong> は、パソコンで再生されている音声を画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳するデスクトップアプリです。AI はあなたのパソコン上で動くため、音声や会議の内容がクラウドに送られることはありません。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画で使えます。</p>
+<p class="lead reveal"><strong>AI Translator</strong> は、macOS と Windows 向けの AI リアルタイム翻訳デスクトップアプリです。パソコンで再生されている音声をリアルタイムで画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳します。AI はあなたのパソコン上で動くため、音声や会議の内容がクラウドに送られることはありません。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、パソコンで見るライブ配信で使えます。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ja/download/">ダウンロード ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">使い方を見る</a>
@@ -95,6 +99,7 @@ ${checkList([
   "字幕バーは常に最前面に表示されます。ドラッグで移動、文字サイズや色の変更ができ、<strong>ロック</strong>するとクリックがそのまま下に通ります",
   "用語集を使うと、人名や業界の用語の訳し方をヒントとして翻訳に渡せます（Pro 機能）",
   "対面やハイブリッドの会議：入力元を<strong>マイク</strong>または<strong>コンピューターの音声 + マイク</strong>にすると、会議室の人の声も翻訳します（<a href=\"/ja/features/#microphone\">使い方</a>）",
+  "ライブ配信や動画にも：アプリはパソコンで再生されている音声なら何でも聞き取るので、ブラウザーのライブ映像でも使えます（<a href=\"/ja/solutions/livestream-translation/\">ライブ配信の翻訳</a>）",
 ])}
 <p><a class="btn btn-secondary" href="/ja/features/">すべての機能を見る ${icon("arrow-right")}</a></p>
 </div>

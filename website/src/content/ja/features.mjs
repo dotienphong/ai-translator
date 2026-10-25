@@ -14,7 +14,7 @@ export default {
     "5 言語のリアルタイム翻訳字幕、字幕バー、チャット用の入力翻訳、用語集、履歴、TXT/SRT/Markdown 書き出し。すべてパソコン上でオフラインで動きます。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   body: () => `
 ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイム翻訳機能", lead: "AI Translator が今できることを、アプリでの実際の動きそのままにご紹介します。有料プランだけの機能ははっきり示しています。" })}
 
@@ -96,7 +96,7 @@ ${appShot({ slug: "app-settings-audio", lang: "ja", alt: "音声の設定：入�
 <div class="stack-lg reveal">
 <span class="eyebrow">音声ソース</span>
 <h2>どの会議アプリでも、ボットもプラグインも不要</h2>
-<p>アプリはシステムの音声を取り込むため、AI Translator は音が出るものなら何でも使えます：Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、オンライン講座。</p>
+<p>アプリはシステムの音声を取り込むため、AI Translator は音が出るものなら何でも使えます：Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、オンライン講座、パソコンで見るライブ配信（<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>）。</p>
 ${checkList([
   "<strong>macOS：</strong>システム全体（アプリ自身を除く）か、音を出している 1 つのアプリだけを聞き取れるので、ほかのアプリの通知音を誤って翻訳しません",
   "<strong>Windows：</strong>既定の再生デバイス、または選んだデバイス",

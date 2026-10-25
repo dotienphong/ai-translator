@@ -175,6 +175,8 @@ export const NAV = {
       children: [
         { label: "Zoom・Teams・Meet の会議", href: "/ja/solutions/online-meeting-translation/", hint: "あらゆる会議アプリに翻訳字幕" },
         { label: "ウェビナーと動画", href: "/ja/solutions/webinar-and-video-translation/", hint: "外国語のコンテンツを理解する" },
+        { label: "ライブ配信", href: "/ja/solutions/livestream-translation/", hint: "ライブ映像に翻訳字幕" },
+        { label: "TikTok ライブ", href: "/ja/solutions/tiktok-live-translation/", hint: "パソコンのブラウザーで視聴" },
       ],
     },
     {
@@ -311,7 +313,7 @@ export const FOOTER = {
   ],
   ja: [
     { title: "製品", links: [{ label: "機能", href: "/ja/features/" }, { label: "料金", href: "/ja/pricing/" }, { label: "ダウンロード", href: "/ja/download/" }, { label: "オフライン翻訳とクラウド翻訳", href: "/ja/compare/offline-vs-cloud-translation/" }] },
-    { title: "ソリューション", links: [{ label: "Zoom・Teams・Meet の会議", href: "/ja/solutions/online-meeting-translation/" }, { label: "ウェビナーと動画", href: "/ja/solutions/webinar-and-video-translation/" }] },
+    { title: "ソリューション", links: [{ label: "Zoom・Teams・Meet の会議", href: "/ja/solutions/online-meeting-translation/" }, { label: "ウェビナーと動画", href: "/ja/solutions/webinar-and-video-translation/" }, { label: "ライブ配信", href: "/ja/solutions/livestream-translation/" }, { label: "TikTok ライブ", href: "/ja/solutions/tiktok-live-translation/" }] },
     { title: "サポート", links: [{ label: "ユーザーガイド", href: "/ja/guide/" }, { label: "よくある質問", href: "/ja/faq/" }, { label: "トラブルシューティング", href: "/ja/guide/troubleshooting/" }, { label: "お問い合わせ", href: "/ja/contact/" }] },
     { title: "会社情報", links: [{ label: "AI Translator について", href: "/ja/about/" }, { label: "データとセキュリティ", href: "/ja/data-security/" }, { label: "利用規約（英語）", href: "/en/terms/" }, { label: "プライバシーポリシー（英語）", href: "/en/privacy/" }] },
   ],

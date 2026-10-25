@@ -37,6 +37,18 @@ const GROUPS = [
         a: `<p>はい。アプリはパソコンで再生されている音声を聞き取るので、拡張機能なしでブラウザーの動画にも使えます。Chrome、Safari、Edge で動く Google Meet の音声取り込みを確認済みです（macOS 26.6.2）。個々の動画サービスについてはテストしていません。</p>`,
       },
       {
+        q: "ライブ配信を自分の言語に翻訳できますか？TikTok ライブはどうですか？",
+        a: `<p>パソコンでならできます。アプリはパソコンで再生されている音声を聞き取るのでウェブサイトに左右されず、英語、中国語、日本語、韓国語、ベトナム語のライブ配信を、この 5 つのうちほかの言語の字幕にできます。ブラウザーで再生した動画で動作を確認しました。ライブ配信のプラットフォーム（TikTok Live、YouTube Live、Facebook Live）を 1 つずつは試していません。<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>と<a href="/ja/solutions/tiktok-live-translation/">TikTok ライブの翻訳</a>をご覧ください。</p>`,
+      },
+      {
+        q: "スマホで AI Translator を使ってライブ配信を翻訳できますか？",
+        a: `<p>いいえ。AI Translator が動くのは macOS（Apple シリコン）と Windows 10/11 だけです。ライブ配信に字幕を表示するには、パソコンで開いてください。</p>`,
+      },
+      {
+        q: "ライブ配信をしています。視聴者向けに翻訳できますか？",
+        a: `<p>いいえ。AI Translator には、あなたのライブ配信に字幕や翻訳した音声を追加する機能はありません。字幕を作るのはアプリを使っている本人が読むためで、その人のパソコンのフローティングバーに表示されます。</p>`,
+      },
+      {
         q: "Zoom、Teams、Google Meet、Zalo で使えますか？",
         a: `<p>はい。アプリはシステムの音声を取り込むため、会議アプリに左右されず、アプリごとの設定も不要で、「開始」を押すだけです。macOS では、通知音が翻訳されないように 1 つのアプリだけを聞き取るように選ぶこともできます（設定 › 音声）。</p><p>macOS 26 で Zoom、Google Meet（Chrome、Safari、Edge）、Microsoft Teams、Zalo PC のシステム音声の取り込みを確認し、話し手の音声がはっきり取り込めました。これは取り込み部分の確認をテスト担当者が確かめたもので、リリースビルドでの正式な受け入れテストではなく、すべての macOS のバージョンやアプリで試したわけではありません。これらの名前は互換性の説明のためだけに使っており、AI Translator はこれらの企業と提携していません。<a href="/ja/solutions/online-meeting-translation/">会議の翻訳</a>をご覧ください。</p>`,
       },
@@ -239,7 +251,7 @@ export default {
   description:
     "Zoom・Teams・Meet での使い方、言語、オフライン動作、プライバシー、動作環境、プラン、お支払い、日々の使い方について、AI Translator の質問に短くお答えします。",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   body: () => `
 ${pageHero({
