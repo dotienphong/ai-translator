@@ -475,7 +475,10 @@ mod tests {
         assert_eq!(loaded.settings.capture_mode, CaptureMode::Playback);
         assert_eq!(loaded.settings.mic_device, None);
         assert!(loaded.settings.mic_noise_filter);
-        assert_eq!(loaded.settings.mic_end_silence_ms, 100, "ngắt câu riêng của chế độ có micro: mặc định 100 ms");
+        assert_eq!(
+            loaded.settings.mic_end_silence_ms, 100,
+            "ngắt câu riêng của chế độ có micro: mặc định 100 ms"
+        );
         assert!(loaded.rejected.is_empty());
         assert!(!loaded.needs_save());
         let raw = object(json!({
@@ -495,7 +498,10 @@ mod tests {
         assert_eq!(load(raw, defaults()).settings.mic_end_silence_ms, 200);
         let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "micEndSilenceMs": 5000 }));
         let loaded = load(raw, defaults());
-        assert_eq!((loaded.settings.mic_end_silence_ms, loaded.rejected), (100, vec!["micEndSilenceMs".to_string()]));
+        assert_eq!(
+            (loaded.settings.mic_end_silence_ms, loaded.rejected),
+            (100, vec!["micEndSilenceMs".to_string()])
+        );
         let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "captureMode": "stereo" }));
         let loaded = load(raw, defaults());
         assert_eq!(loaded.settings.capture_mode, CaptureMode::Playback);

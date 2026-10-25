@@ -717,11 +717,18 @@ mod tests {
         assert!(out.is_empty(), "chưa quá max_skew: vẫn chờ Playback");
         m.release_mic(&mut out, &mut vad);
         assert_eq!((out.len(), vad.len()), (800, 800));
-        assert!(out.iter().all(|&v| (v - 0.1).abs() < 1e-6), "Playback im lặng nên micro nguyên vẹn");
+        assert!(
+            out.iter().all(|&v| (v - 0.1).abs() < 1e-6),
+            "Playback im lặng nên micro nguyên vẹn"
+        );
         m.push_playback(&[0.0; 160]);
         m.push_mic(&[0.1; 160], &[0.1; 160]);
         m.drain_into(&mut out, &mut vad);
-        assert_eq!(out.len(), 960, "sau khi xả, Playback quay lại thì ghép từng mẫu, không lệch");
+        assert_eq!(
+            out.len(),
+            960,
+            "sau khi xả, Playback quay lại thì ghép từng mẫu, không lệch"
+        );
     }
 
     /// Thống kê số lần hỏi bộ phát hiện và số khung bỏ qua (để log và để đo).

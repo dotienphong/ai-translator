@@ -1332,8 +1332,16 @@ mod tests {
             both.drain(&mut f, None).unwrap();
             (f.asr.len(), f.vad.len())
         };
-        assert_eq!(run(Duration::from_secs(3_600)), (0, 0), "Playback vừa mới thôi nên chờ ghép cặp như cũ");
-        assert_eq!(run(Duration::ZERO), (800, 800), "Playback đã im: micro đi ngay, không chờ đủ 100 ms");
+        assert_eq!(
+            run(Duration::from_secs(3_600)),
+            (0, 0),
+            "Playback vừa mới thôi nên chờ ghép cặp như cũ"
+        );
+        assert_eq!(
+            run(Duration::ZERO),
+            (800, 800),
+            "Playback đã im: micro đi ngay, không chờ đủ 100 ms"
+        );
     }
 
     /// `MicSide` báo mỗi lần mã lỗi đổi, và báo hết lỗi khi mở lại được (QĐ5 của kế hoạch 03).

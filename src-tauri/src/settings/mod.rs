@@ -504,7 +504,10 @@ mod tests {
         assert_eq!(vi.target_language, Lang::Vi);
         assert_eq!(vi.source_languages, Lang::ALL.to_vec());
         assert_eq!(vi.vad_end_silence_ms, 100);
-        assert_eq!(vi.mic_end_silence_ms, 100, "chế độ có micro: ngắt câu riêng, cùng mặc định 100 ms");
+        assert_eq!(
+            vi.mic_end_silence_ms, 100,
+            "chế độ có micro: ngắt câu riêng, cùng mặc định 100 ms"
+        );
         assert_eq!(
             (vi.capture_mode, vi.audio_source.clone()),
             (CaptureMode::Playback, AudioSource::System),

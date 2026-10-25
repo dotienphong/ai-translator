@@ -337,7 +337,10 @@ mod tests {
         assert!(rate_changed(Some(16_000.0), 48_000));
         assert!(rate_changed(Some(44_100.0), 48_000));
         assert!(!rate_changed(None, 48_000), "không đọc được: giữ nguyên");
-        assert!(!rate_changed(Some(0.0), 48_000), "0 Hz là đọc hỏng, không phải đổi tần số");
+        assert!(
+            !rate_changed(Some(0.0), 48_000),
+            "0 Hz là đọc hỏng, không phải đổi tần số"
+        );
     }
 
     #[test]
