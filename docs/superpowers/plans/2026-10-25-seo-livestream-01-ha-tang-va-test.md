@@ -143,8 +143,8 @@ for (const t of SEO_TARGETS) {
 }
 
 /** Câu bắt buộc có ở hai trang mới: giới hạn nói thẳng, số đo kèm điều kiện, câu "chưa thử riêng". Chữ khớp từng chữ với thân trang. */
-// Spec mục 6 cũng muốn chặn câu nói app dịch live của người phát cho người xem: không tự động hóa được mà không bắt nhầm câu trung thực;
-// được bảo vệ bằng câu bắt buộc ở NEEDS (hai trang mới) và kiểm bằng mắt khi sửa trang.
+// Spec mục 6 cũng muốn chặn câu nói app dịch live của người phát cho người xem: chưa tự động hóa (cần luật loại trừ câu phủ định
+// như `staleHits` của site.test.mjs, chưa làm); tạm thời chỉ được bảo vệ bằng câu bắt buộc ở NEEDS (hai trang mới) và kiểm bằng mắt khi sửa trang.
 const NEEDS = {
   "solutions-livestream": {
     vi: ["Bạn xem live bằng điện thoại", "Bạn là người phát live", "không ghi âm hay ghi hình", "không chạy trên điện thoại", "0,76–1,03 giây", "Mac M4 Pro", "Chúng tôi chưa thử riêng từng nền tảng livestream"],
@@ -182,11 +182,10 @@ const LIVE_TESTED = false;
  */
 const P = "(?:TikTok|YouTube|Facebook)";
 const CLAIM = {
-  vi: new RegExp(String.raw`(?<![\p{L}])(?:đã|được)\s(?:[^.]{0,20}?\s)?(?:thử|test|kiểm\s?(?:tra|thử|chứng)|chạy|đo|xác\s?(?:nhận|minh))[^.]{0,80}?${P}|(?<![\p{L}])(?:chạy|hoạt động)\s+tốt\s+(?:với|trên)\s[^.]{0,20}?${P}`, "iu"),
-  en: new RegExp(String.raw`\b(?:we|team|it|translator)(?:'ve|\s+(?:have|has|had))?\s+(?:(?:also|already|successfully|been|now)\s+)*(?:tested|tried|checked|verified|measured|confirmed|ran|run|used)\b[^.]{0,80}?${P}|\b(?:tested|verified|confirmed)\s+(?:on|with|against)\s[^.]{0,20}?${P}|\bworks?\s+(?:well|fine|great)\s+(?:with|on)\s[^.]{0,20}?${P}`, "i"),
-  // ja/zh/ko: chỉ dấu hiệu khẳng định mạnh (câu phủ định như 試していません, 尚未测试, 테스트하지 않았 không chứa các chuỗi này)
+  vi: new RegExp(String.raw`(?<!(?:chưa|không)\s)(?<![\p{L}])(?:đã|được)\s(?:[^.]{0,20}?\s)?(?:thử|test|kiểm\s?(?:tra|thử|chứng)|chạy|đo|xác\s?(?:nhận|minh))[^.]{0,80}?${P}|(?<!(?:chưa|không)\s)(?<![\p{L}])(?:chạy|hoạt động)\s+tốt\s+(?:với|trên)\s[^.]{0,20}?${P}`, "iu"),
+  en: new RegExp(String.raw`\b(?:we|team|it|translator)(?:'ve|\s+(?:have|has|had))?\s+(?:(?:also|already|successfully|been|now)\s+)*(?:tested|tried|checked|verified|measured|confirmed|ran|run|used)\b[^.]{0,80}?${P}|(?<!(?:\bnot|\bnever|n't)\s(?:(?:yet|been)\s)*)\b(?:tested|verified|confirmed)\s+(?:on|with|against)\s[^.]{0,20}?${P}|(?<!(?:\bnot|\bnever|n't)\s)\bworks?\s+(?:well|fine|great)\s+(?:with|on)\s[^.]{0,20}?${P}`, "i"),
   ja: new RegExp(String.raw`(?:テスト済み|試しました|確認済み)[^。]{0,60}?${P}|${P}[^。]{0,60}?(?:テスト済み|試しました|確認済み)`, "u"),
-  zh: new RegExp(String.raw`(?:已(?:经)?(?:测试|验证|试过)|验证过)[^。]{0,60}?${P}|${P}[^。]{0,60}?(?:已(?:经)?(?:测试|验证|试过)|验证过)`, "u"),
+  zh: new RegExp(String.raw`(?:已(?:经)?(?:测试|验证|试过)|(?<![没未尚]有?(?:经)?)验证过)[^。]{0,60}?${P}|${P}[^。]{0,60}?(?:已(?:经)?(?:测试|验证|试过)|(?<![没未尚]有?(?:经)?)验证过)`, "u"),
   ko: new RegExp(String.raw`(?:테스트했|검증했|시험했)[^.]{0,60}?${P}|${P}[^.]{0,60}?(?:테스트했|검증했|시험했)`, "u"),
 };
 const claimsLiveTested = (lang, s) => CLAIM[lang]?.test(s) ?? false;
@@ -199,6 +198,10 @@ const SHOULD_CATCH = [
   ["vi", "Chúng tôi đã kiểm thử với TikTok LIVE."],
   ["vi", "Chúng tôi đã dùng thử trên YouTube."],
   ["vi", "Chạy tốt với TikTok LIVE."],
+  ["vi", "Chúng tôi đã test với TikTok LIVE."],
+  ["vi", "Chúng tôi đã đo độ trễ khi xem YouTube Live."],
+  ["vi", "Tính năng được thử nghiệm với TikTok LIVE."],
+  ["vi", "Đã xác nhận chạy tốt trên YouTube."],
   ["en", "We have tested it with TikTok Live."],
   ["en", "We tested it on YouTube livestreams."],
   ["en", "We've tested it on YouTube Live."],
@@ -206,6 +209,12 @@ const SHOULD_CATCH = [
   ["en", "It has been tested with Facebook Live."],
   ["en", "Tested on TikTok Live."],
   ["en", "Works well with TikTok Live."],
+  ["en", "We also tested TikTok Live."],
+  ["en", "It was tested on YouTube."],
+  ["en", "We ran it on Facebook Live."],
+  ["en", "We verified it on YouTube Live."],
+  ["en", "We measured latency on TikTok Live."],
+  ["en", "We have already tested YouTube Live."],
   ["en", "We have tested it with videos playing in a browser, but have not tested TikTok Live itself."],
   ["ja", "TikTok でテスト済み"],
   ["zh", "已测试 TikTok 直播"],
@@ -216,6 +225,14 @@ const SHOULD_PASS = [
   ["vi", "Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng TikTok LIVE."],
   ["en", "We have tested it with videos playing in a browser. We have not tested TikTok Live itself."],
   ["en", "We have not tested TikTok Live itself; what we have tested is described on the livestream translation page."],
+  ["en", "We have not tested on TikTok Live."],
+  ["en", "This has not been tested with YouTube Live yet."],
+  ["en", "Not yet tested on Facebook Live."],
+  ["en", "It does not work well with the TikTok app on phones."],
+  ["vi", "App không chạy tốt với TikTok trên điện thoại."],
+  ["vi", "Chưa được thử nghiệm với YouTube."],
+  ["zh", "我们没有验证过 TikTok 直播"],
+  ["zh", "尚未验证过 YouTube"],
   ["ja", "TikTok ライブはまだ試していません"],
   ["zh", "尚未测试 TikTok 直播"],
   ["ko", "TikTok 라이브는 아직 테스트하지 않았습니다"],
