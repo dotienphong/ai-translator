@@ -66,7 +66,7 @@ ${steps([
 ${sectionHead({ eyebrow: "Tips", title: "Tips for cut-off sentences, background music and several voices" })}
 ${checkList([
   "<strong>Sentences cut in the middle (the speaker hesitates or pauses for breath):</strong> raise <em>Pause that ends a sentence</em> (50–800 ms) so sentences are cut less often; subtitles appear a little later. The change applies from the next session.",
-  "<strong>Loud background music or noise:</strong> recognition gets worse: the app may detect the wrong language or repeat a sentence nobody said, so the translation can stop making sense; a livestream with clear speech works better.",
+  "<strong>Loud background music or noise:</strong> recognition gets worse, and the app may detect the wrong language or repeat a sentence nobody said, so the translation can stop making sense; a livestream with clear speech works better.",
   "<strong>Several people talking over each other:</strong> the app translates sentence by sentence from the sound it hears and does not know who is speaking.",
   "<strong>Listen to the browser only (macOS):</strong> so system notifications are not translated, start the livestream first, then in Settings › Audio click <em>Refresh list</em>, choose <em>Only {browser name}</em> and only then press Start. For Safari the entry is named <em>Only Safari and web pages inside other apps</em>. A new source applies from the next session; the other tabs of that browser are still heard.",
   "<strong>Windows cannot pick a single app yet:</strong> mute system notifications while you watch.",
