@@ -18,6 +18,10 @@ export const HOME_FAQ = [
     a: `<p>네. 앱이 컴퓨터의 시스템 오디오를 가져오므로 어떤 회의 앱, 웨비나, 동영상을 쓰든 상관없고, 봇이나 플러그인도 필요 없습니다. macOS에서 Zoom, Google Meet, Microsoft Teams, Zalo PC의 오디오 캡처를 테스트했습니다(내부 테스트이며 해당 회사의 인증이 아닙니다). macOS에서는 특정 앱 하나의 소리만 듣도록 선택할 수도 있습니다.</p>`,
   },
   {
+    q: "라이브 방송을 내 언어로 번역할 수 있나요?",
+    a: "<p>컴퓨터에서는 가능합니다. 앱은 컴퓨터에서 재생되는 오디오를 들으므로 웹사이트에 좌우되지 않고, 영어, 중국어, 일본어, 한국어, 베트남어로 된 라이브 방송을 이 다섯 언어 중 다른 언어의 자막으로 보여 줄 수 있습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다. 개별 라이브 방송 플랫폼에서는 테스트하지 않았습니다. 휴대폰 버전은 없으며, 앱이 내 라이브 방송에 시청자를 위한 자막을 더하지도 않습니다. <a href=\"/ko/solutions/livestream-translation/\">라이브 방송 번역</a>을 참고하세요.</p>",
+  },
+  {
     q: "회의 음성이 어딘가로 전송되나요?",
     a: `<p>아니요. 번역하는 동안 음성은 메모리(RAM)에만 있고, 디스크에 저장되거나 네트워크로 전송되지 않습니다. macOS에서 네트워크 프록시로 확인한 결과, 번역 중에 앱이 외부로 보낸 음성이나 받아쓰기 텍스트는 없었습니다.</p>`,
   },
@@ -35,11 +39,11 @@ export default {
   id: "home",
   lang: "ko",
   path: "/ko/",
-  title: "회의 실시간 번역 자막, 오프라인 실행 | AI Translator",
+  title: "라이브·회의 실시간 번역 자막, 오프라인 | AI Translator",
   description:
-    "Zoom, Teams, Google Meet 등 모든 앱에서 실시간 번역 자막을 읽으세요. 영어, 중국어, 일본어, 한국어, 베트남어 지원. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
+    "라이브 방송, 동영상, Zoom·Teams·Meet 회의에 실시간 번역 자막. 영어·중국어·일본어·한국어·베트남어 지원. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
   software: true,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     videoObject({ lang: "ko", name: "AI Translator 데모 영상: 회의 번역 자막과 입력 번역", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
@@ -49,7 +53,7 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS(Apple 실리콘) · Windows 10/11 · 10일 무료 체험</p>
 <h1 class="reveal"><em>모든 회의</em>에 AI 번역 자막을, 내 컴퓨터에서</h1>
-<p class="lead reveal"><strong>AI Translator</strong>는 컴퓨터에서 재생되는 소리를 화면 위에 떠 있는 번역 자막으로 바꾸고, 내가 입력한 메시지를 상대방의 언어로 번역하는 데스크톱 앱입니다. AI가 내 컴퓨터에서 실행되므로 음성과 회의 내용이 클라우드로 전송되지 않습니다. Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상에서 쓸 수 있습니다.</p>
+<p class="lead reveal"><strong>AI Translator</strong>는 macOS와 Windows용 AI 실시간 번역 데스크톱 앱입니다. 컴퓨터에서 재생되는 소리를 실시간으로 화면 위에 떠 있는 번역 자막으로 바꾸고, 내가 입력한 메시지를 상대방의 언어로 번역합니다. AI가 내 컴퓨터에서 실행되므로 음성과 회의 내용이 클라우드로 전송되지 않습니다. Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상, 컴퓨터로 보는 라이브 방송에서 쓸 수 있습니다.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ko/download/">다운로드 ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">사용법 보기</a>
@@ -95,6 +99,7 @@ ${checkList([
   "자막 바는 항상 위에 떠 있습니다. 끌어서 옮기고, 글자 크기와 색을 바꾸고, <strong>잠금</strong>하면 클릭이 그대로 통과합니다",
   "용어집으로 사람 이름과 업계 용어의 번역 방법을 번역에 힌트로 전달합니다(Pro 기능)",
   "대면 또는 하이브리드 회의: 입력 소스를 <strong>마이크</strong>나 <strong>컴퓨터 오디오 + 마이크</strong>로 고르면 회의실 사람의 말도 번역합니다(<a href=\"/ko/features/#microphone\">사용 방법</a>)",
+  "라이브 방송과 동영상에도: 앱은 컴퓨터에서 재생되는 모든 소리를 들으므로 브라우저의 라이브 영상에도 쓸 수 있습니다(<a href=\"/ko/solutions/livestream-translation/\">라이브 방송 번역</a>)",
 ])}
 <p><a class="btn btn-secondary" href="/ko/features/">모든 기능 보기 ${icon("arrow-right")}</a></p>
 </div>

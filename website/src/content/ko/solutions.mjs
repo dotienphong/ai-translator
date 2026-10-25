@@ -9,19 +9,21 @@ export default {
   id: "solutions",
   lang: "ko",
   path: "/ko/solutions/",
-  title: "솔루션: 회의와 동영상 번역 자막",
+  title: "솔루션: 회의·라이브·동영상 번역 자막",
   description:
-    "AI Translator는 Zoom, Teams, Meet, Zalo 통화와 웨비나, 강좌, 동영상에 번역 자막을 표시합니다. 사용법과 맞지 않는 경우를 알아보세요.",
+    "AI Translator는 Zoom, Teams, Meet, Zalo 통화와 라이브 방송, 웨비나, 동영상에 번역 자막을 표시합니다. 사용법과 맞지 않는 경우를 알아보세요.",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-25",
   body: () => `
-${pageHero({ crumbs, title: "AI Translator는 어디에 쓸 수 있나요?", lead: "AI Translator는 컴퓨터에서 재생되는 모든 오디오에 실시간 번역 자막을 표시하며, 음성 인식과 번역 모두 사용자의 기기에서 실행됩니다. 주된 용도는 두 가지로, 온라인 회의, 그리고 모르는 언어로 된 웨비나, 강좌, 동영상 시청입니다. 이 페이지는 알맞은 설정을 고르도록 돕고, 앱이 맞지 않는 경우도 알려 드립니다." })}
+${pageHero({ crumbs, title: "AI Translator는 어디에 쓸 수 있나요?", lead: "AI Translator는 컴퓨터에서 재생되는 모든 오디오에 실시간 번역 자막을 표시하며, 음성 인식과 번역 모두 사용자의 기기에서 실행됩니다. 주된 용도는 온라인 회의, 라이브 방송 시청, 그리고 모르는 언어로 된 웨비나, 강좌, 동영상 시청입니다. 이 페이지는 알맞은 설정을 고르도록 돕고, 앱이 맞지 않는 경우도 알려 드립니다." })}
 
 <section class="section-tight"><div class="container">
-${sectionHead({ eyebrow: "두 가지 주요 용도", title: "가장 가까운 상황을 고르세요", center: true })}
+${sectionHead({ eyebrow: "주요 용도", title: "가장 가까운 상황을 고르세요", center: true })}
 <div class="grid grid-2">
 ${linkCard({ href: "/ko/solutions/online-meeting-translation/", icon: "users", title: "온라인 회의: Zoom, Teams, Meet, Zalo", text: "해외 파트너와의 통화에 번역 자막을. 봇도 필요 없고, 주최자에게 무언가를 켜 달라고 부탁할 필요도 없습니다. 통화 전 준비, 통화 중 단축키, 통화 후 대본까지 다룹니다.", more: "회의 솔루션 보기" })}
 ${linkCard({ href: "/ko/solutions/webinar-and-video-translation/", icon: "play", title: "웨비나, 강좌, 동영상", text: "다른 언어로 된 콘퍼런스 발표, 강좌, 동영상을 몇 시간짜리 세션이라도 번역 자막을 읽으며 보고, 나중에 대본을 복사하거나 내보내 다시 공부할 수 있습니다.", more: "웨비나와 동영상 솔루션 보기" })}
+${linkCard({ href: "/ko/solutions/livestream-translation/", icon: "video", title: "라이브 방송: TikTok, YouTube, Facebook", text: "영어, 중국어, 일본어, 한국어 라이브 방송을 컴퓨터로 보면서 번역 자막을 읽을 수 있으며, 브라우저에 설치할 것이 없습니다. 솔직한 한계로, 휴대폰에서는 쓸 수 없고 내 라이브 방송을 번역하지도 않습니다.", more: "라이브 방송 솔루션 보기" })}
+${linkCard({ href: "/ko/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok 라이브", text: "컴퓨터 브라우저에서 TikTok 라이브를 번역 자막과 함께 보는 방법과 TikTok 라이브만의 한계.", more: "TikTok 라이브 가이드 보기" })}
 </div>
 </div></section>
 
@@ -52,6 +54,7 @@ ${sectionHead({ eyebrow: "빠른 선택", title: "어떤 상황에 어떤 설정
 <tbody>
 <tr><th scope="row">파트너와의 Zoom, Teams, Meet 통화</th><td>원본 언어를 고정하고, 고유 명사를 용어집에 추가하고(Pro), 자막 바를 영상 바로 아래에 둡니다</td></tr>
 <tr><th scope="row">Zalo PC 통화</th><td>‘자동 감지’를 그대로 두거나, 언어를 안다면 고정합니다</td></tr>
+<tr><th scope="row">라이브 방송이나 TikTok 라이브</th><td>컴퓨터 브라우저에서 보고, 브라우저 소리만 듣게 하며(macOS), 문장이 잘게 끊기면 문장을 끝내는 정지 시간을 올립니다. 휴대폰은 지원하지 않습니다</td></tr>
 <tr><th scope="row">웨비나나 콘퍼런스 발표</th><td>원문 표시를 그대로 두고(기본값 켜짐), 플레이어 소리만 듣게 합니다(macOS)</td></tr>
 <tr><th scope="row">강좌나 강의 동영상</th><td>대본을 내보내 다시 공부하고(Pro), 분야별 용어를 용어집에 추가합니다(Pro)</td></tr>
 </tbody></table></div>
@@ -66,6 +69,7 @@ ${checkList([
   "<strong>Intel Mac, Windows ARM64, 또는 CPU가 AVX2를 지원하지 않는 Windows PC를 쓴다.</strong> AI Translator는 Apple 실리콘의 macOS 14.2 이상과, AVX2를 지원하는 CPU가 있는 Windows 10/11 64비트(x64)에서 실행됩니다.",
   "<strong>컴퓨터의 RAM이 8GB 미만이거나,</strong> 위 5개 언어 외의 언어가 필요하다: 앱이 아직 이를 지원하지 못합니다.",
   "<strong>베트남 은행 계좌가 없고, Creem이 카드 결제를 받지 않는 나라에 있다.</strong> 해외 카드는 Creem을 통해 결제되는데, Creem은 일부 국가의 구매자를 받지 않으며(Creem 목록 기준), PayPal도 없습니다. 이 경우 지금은 유료 요금제를 결제할 방법이 없으며, Free 체험은 쓸 수 있습니다.",
+  "<strong>휴대폰으로 라이브 방송을 보거나, 내 라이브 방송을 시청자를 위해 번역하고 싶다.</strong> AI Translator는 휴대폰에서 작동하지 않으며, 내 라이브 방송에 자막이나 번역된 음성을 더하지 않습니다. <a href=\"/ko/solutions/livestream-translation/\">라이브 방송 번역</a>을 참고하세요.",
 ], true)}
 ${callout({ kind: "warn", title: "자동 번역은 틀릴 수 있습니다.", text: "중요한 결정(계약, 의료, 법률, 금융)에서는 전문가의 확인 없이 AI Translator에 의존하지 마세요." })}
 </div></section>

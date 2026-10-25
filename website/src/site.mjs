@@ -221,6 +221,8 @@ export const NAV = {
       children: [
         { label: "Zoom, Teams, Meet 회의", href: "/ko/solutions/online-meeting-translation/", hint: "모든 회의 앱에 번역 자막" },
         { label: "웨비나와 동영상", href: "/ko/solutions/webinar-and-video-translation/", hint: "외국어 콘텐츠 이해하기" },
+        { label: "라이브 방송", href: "/ko/solutions/livestream-translation/", hint: "라이브 영상에 번역 자막" },
+        { label: "TikTok 라이브", href: "/ko/solutions/tiktok-live-translation/", hint: "컴퓨터 브라우저에서 시청" },
       ],
     },
     {
@@ -327,7 +329,7 @@ export const FOOTER = {
   ],
   ko: [
     { title: "제품", links: [{ label: "기능", href: "/ko/features/" }, { label: "요금", href: "/ko/pricing/" }, { label: "다운로드", href: "/ko/download/" }, { label: "오프라인 번역과 클라우드 번역", href: "/ko/compare/offline-vs-cloud-translation/" }] },
-    { title: "솔루션", links: [{ label: "Zoom, Teams, Meet 회의", href: "/ko/solutions/online-meeting-translation/" }, { label: "웨비나와 동영상", href: "/ko/solutions/webinar-and-video-translation/" }] },
+    { title: "솔루션", links: [{ label: "Zoom, Teams, Meet 회의", href: "/ko/solutions/online-meeting-translation/" }, { label: "웨비나와 동영상", href: "/ko/solutions/webinar-and-video-translation/" }, { label: "라이브 방송", href: "/ko/solutions/livestream-translation/" }, { label: "TikTok 라이브", href: "/ko/solutions/tiktok-live-translation/" }] },
     { title: "지원", links: [{ label: "사용 가이드", href: "/ko/guide/" }, { label: "자주 묻는 질문", href: "/ko/faq/" }, { label: "문제 해결", href: "/ko/guide/troubleshooting/" }, { label: "문의하기", href: "/ko/contact/" }] },
     { title: "회사", links: [{ label: "AI Translator 소개", href: "/ko/about/" }, { label: "데이터와 보안", href: "/ko/data-security/" }, { label: "이용약관(영어)", href: "/en/terms/" }, { label: "개인정보 처리방침(영어)", href: "/en/privacy/" }] },
   ],

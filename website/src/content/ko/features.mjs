@@ -14,7 +14,7 @@ export default {
     "5개 언어 실시간 번역 자막, 자막 바, 채팅용 입력 번역, 용어집, 기록, TXT/SRT/Markdown 내보내기. 모두 내 컴퓨터에서 오프라인으로 실행됩니다.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   body: () => `
 ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 번역 기능", lead: "AI Translator가 지금 할 수 있는 일을 앱에서 실제로 작동하는 그대로 소개합니다. 유료 요금제에만 있는 기능은 분명히 표시했습니다." })}
 
@@ -96,7 +96,7 @@ ${appShot({ slug: "app-settings-audio", lang: "ko", alt: "오디오 설정: 입�
 <div class="stack-lg reveal">
 <span class="eyebrow">오디오 소스</span>
 <h2>어떤 회의 앱이든, 봇도 플러그인도 없이</h2>
-<p>앱이 시스템 오디오를 가져오기 때문에 AI Translator는 소리가 나는 것이라면 무엇이든 쓸 수 있습니다: Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상, 온라인 강좌.</p>
+<p>앱이 시스템 오디오를 가져오기 때문에 AI Translator는 소리가 나는 것이라면 무엇이든 쓸 수 있습니다: Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상, 온라인 강좌, 컴퓨터로 보는 라이브 방송(<a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>).</p>
 ${checkList([
   "<strong>macOS:</strong> 시스템 전체(앱 자신 제외) 또는 소리를 내고 있는 앱 하나만 들을 수 있어, 다른 앱의 알림음을 실수로 번역하지 않습니다",
   "<strong>Windows:</strong> 기본 재생 장치 또는 직접 고른 장치",

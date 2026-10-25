@@ -37,6 +37,18 @@ const GROUPS = [
         a: `<p>네. 앱은 컴퓨터에서 재생되는 소리를 들으므로 확장 프로그램 없이 브라우저 동영상에도 쓸 수 있습니다. Chrome, Safari, Edge에서 실행되는 Google Meet의 오디오 캡처를 테스트했습니다(macOS 26.6.2). 개별 동영상 플랫폼은 테스트하지 않았습니다.</p>`,
       },
       {
+        q: "라이브 방송을 내 언어로 번역할 수 있나요? TikTok 라이브는요?",
+        a: `<p>컴퓨터에서는 가능합니다. 앱은 컴퓨터에서 재생되는 오디오를 들으므로 웹사이트에 좌우되지 않고, 영어, 중국어, 일본어, 한국어, 베트남어로 된 라이브 방송을 이 다섯 언어 중 다른 언어의 자막으로 보여 줄 수 있습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다. 개별 라이브 방송 플랫폼(<span lang="en">TikTok Live, YouTube Live, Facebook Live</span>)에서는 테스트하지 않았습니다. <a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>과 <a href="/ko/solutions/tiktok-live-translation/">TikTok 라이브 번역하기</a>를 참고하세요.</p>`,
+      },
+      {
+        q: "휴대폰에서 AI Translator로 라이브 방송을 번역할 수 있나요?",
+        a: `<p>아니요. AI Translator는 macOS(Apple 실리콘)와 Windows 10/11에서만 실행됩니다. 라이브 방송에 자막을 띄우려면 컴퓨터에서 라이브 방송을 여세요.</p>`,
+      },
+      {
+        q: "라이브 방송을 하고 있습니다. 시청자를 위해 번역할 수 있나요?",
+        a: `<p>아니요. AI Translator에는 내 라이브 방송에 자막이나 번역된 음성을 더하는 기능이 없습니다. 자막은 앱을 쓰는 사람이 자기 컴퓨터의 떠 있는 바에서 읽기 위해 만들어집니다.</p>`,
+      },
+      {
         q: "Zoom, Teams, Google Meet, Zalo에서 쓸 수 있나요?",
         a: `<p>네. 앱이 시스템 오디오를 가져오므로 회의 앱에 상관없이 쓸 수 있고, 앱마다 따로 설정할 필요도 없이 '시작'만 누르면 됩니다. macOS에서는 알림음이 번역되지 않도록 앱 하나만 듣도록 선택할 수도 있습니다(설정 › 오디오).</p><p>macOS 26에서 Zoom, Google Meet(Chrome, Safari, Edge), Microsoft Teams, Zalo PC의 시스템 오디오 캡처를 확인했으며, 화자의 음성이 깨끗하게 캡처되었습니다. 이는 테스터가 확인한 캡처 구성 요소 점검이며, 릴리스 빌드의 정식 인수 테스트가 아니고, 모든 macOS 버전이나 모든 앱에서 시험한 것도 아닙니다. 이 이름들은 호환성을 설명하기 위해서만 쓰며, AI Translator는 이들과 제휴 관계가 없습니다. <a href="/ko/solutions/online-meeting-translation/">회의 번역</a>을 참조하세요.</p>`,
       },
@@ -239,7 +251,7 @@ export default {
   description:
     "AI Translator에 대한 짧은 답: Zoom, Teams, Meet에서의 사용, 언어, 오프라인 작동, 개인정보, 시스템 요구 사항, 요금제, 결제, 일상적인 사용.",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   body: () => `
 ${pageHero({
