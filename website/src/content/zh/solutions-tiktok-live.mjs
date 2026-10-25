@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "能把 TikTok 直播翻译成我的语言吗？",
-    a: `<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把用英语、中文、日语、韩语或越南语说话的人的话，翻译成这五种语言中的另一种并显示为字幕。我们用浏览器中播放的视频做过测试。我们没有在 TikTok 直播本身上做过测试。做法是在浏览器中打开直播，在 AI Translator 中点“开始”，然后阅读悬浮字幕条上的翻译字幕。</p>`,
+    a: `<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把说英语、中文、日语、韩语或越南语的人所讲的话翻译成这五种语言中的另一种，并显示为字幕。我们用浏览器中播放的视频做过测试。我们没有用 TikTok 直播本身测试过。做法是在浏览器中打开直播，在 AI Translator 中点“开始”，然后阅读悬浮字幕条上的翻译字幕。</p>`,
   },
   {
     q: "能在手机上使用吗？",
@@ -42,12 +42,12 @@ export default {
 ${pageHero({
   crumbs,
   title: "在电脑上观看时实时翻译 TikTok 直播",
-  lead: "如果你在观看用中文、日语、韩语或应用支持的五种语言中其他语言进行的 TikTok 直播，想阅读翻译字幕，请在电脑的浏览器中打开直播，然后运行 AI Translator。它收听你电脑上正在播放的音频，并在悬浮字幕条上显示译文。它只能在 macOS 和 Windows 上运行，所以不能在手机上的 TikTok 应用内使用，而且字幕只给使用该应用观看的人本人阅读。",
+  lead: "如果你想在观看 TikTok 直播时阅读翻译字幕，而主播说的是中文、日语、韩语或应用支持的五种语言中的其他语言，请在电脑的浏览器中打开直播，然后运行 AI Translator。它收听你电脑上正在播放的音频，并在悬浮字幕条上显示译文。它只能在 macOS 和 Windows 上运行，所以不能在手机上的 TikTok 应用内使用，而且字幕只供使用该应用观看直播的人自己阅读。",
   meta: "<span>更新于 {{updated}}</span><span>在 macOS 和 Windows 电脑上运行，不支持手机</span>",
 })}
 
 <section class="section-tight"><div class="container narrow">
-${callout({ kind: "warn", title: "试用之前请注意，仅支持电脑。", text: "AI Translator 没有手机版。如果你平时用手机看 TikTok 直播，请在电脑的浏览器中打开同一场直播，就能看到翻译字幕。" })}
+${callout({ kind: "warn", title: "试用前请注意：仅支持电脑。", text: "AI Translator 没有手机版。如果你平时用手机看 TikTok 直播，请在电脑的浏览器中打开同一场直播，就能看到翻译字幕。" })}
 </div></section>
 
 <section class="section"><div class="container narrow">
@@ -65,7 +65,7 @@ ${sectionHead({ eyebrow: "技巧", title: "句子被切断、背景音乐和多�
 ${checkList([
   "<strong>句子在中间被切断（说话人犹豫或停下来换气）：</strong>调高<em>结束一句话的停顿</em>（50–800 ms），句子就更不容易被切断，但字幕会稍晚出现。更改从下一次会话开始生效。",
   "<strong>背景音乐或噪音很大：</strong>识别效果会变差，译文也更容易出错；语音清楚的直播效果更好。",
-  "<strong>多人同时说话：</strong>应用根据听到的声音逐句翻译，不知道是谁在说话。",
+  "<strong>多人同时说话：</strong>应用根据听到的声音逐句翻译，不会区分是谁在说话。",
   "<strong>只收听浏览器（macOS）：</strong>为了不翻译系统通知，请先播放直播，再在“设置 › 音频”中点击<em>刷新列表</em>，选择<em>仅 {浏览器名称}</em>，然后再点“开始”。Safari 对应的选项名为<em>仅 Safari 以及其他应用内的网页</em>。新的来源从下一次会话开始生效；该浏览器的其他标签页仍会被收听。",
   "<strong>Windows 目前还不能只选择一个应用：</strong>观看时请把系统通知静音。",
   "<strong>中文、韩语、日语或英语直播：</strong>把<em>目标语言</em>设为你的语言（英语、越南语、中文、日语或韩语）；如果你知道直播说的是哪种语言，就设置<em>源语言</em>，如果说话人会切换语言，就保持自动检测。我们只测量过包含越南语的语言对的翻译质量（<a href=\"/zh/features/#quality-by-direction\">查看表格</a>）；其他语言对可以运行，但没有测得的评分。",
@@ -80,7 +80,7 @@ ${checkList([
   "<strong>你需要录制直播或下载视频。</strong>应用不会把音频或视频录制到磁盘，也不处理视频文件；它只有文字转写记录。",
   "<strong>直播语言不是英语、中文、日语、韩语或越南语。</strong>应用只支持这五种语言；泰语、印尼语或其他语言的直播目前还无法翻译。",
 ], true)}
-${callout({ kind: "warn", title: "机器翻译可能出错。", text: "在重要决策（购物、付款、合同）中，请不要未经核实就依赖 AI Translator。我们没有在 TikTok 直播本身上做过测试。我们用浏览器中播放的视频做过测试。" })}
+${callout({ kind: "warn", title: "机器翻译可能出错。", text: "在重要决策（购物、付款、合同）中，请不要未经核实就依赖 AI Translator。我们没有用 TikTok 直播本身测试过。我们用浏览器中播放的视频做过测试。" })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">
@@ -91,7 +91,7 @@ ${faq(FAQ, { open: true })}
 <section class="section"><div class="container">
 ${sectionHead({ eyebrow: "继续阅读", title: "下一步", center: true })}
 <div class="grid grid-3">
-${linkCard({ href: "/zh/solutions/livestream-translation/", icon: "play", title: "直播翻译", text: "工作原理、往往无法倒回的直播的使用技巧，以及翻译时长，适用于任何直播平台。", more: "查看解决方案" })}
+${linkCard({ href: "/zh/solutions/livestream-translation/", icon: "play", title: "直播翻译", text: "工作原理、往往无法倒回的直播的使用技巧，以及翻译时长；内容不限于特定直播平台。", more: "查看解决方案" })}
 ${linkCard({ href: "/zh/guide/quick-start/", icon: "zap", title: "快速入门", text: "从安装到看到第一行字幕。", more: "打开指南" })}
 ${linkCard({ href: "/zh/pricing/", icon: "wallet", title: "价格", text: "10 天 Free 试用；之后可预付 Monthly、6 Months 或 Yearly。", more: "查看价格" })}
 </div>

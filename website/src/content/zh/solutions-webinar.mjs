@@ -45,7 +45,7 @@ ${feature({ icon: "play", title: "视频观众", text: "技术视频、演讲和
 
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "无需额外安装", title: "不依赖播放器或平台" })}
-<p>因为 AI Translator 采集的是电脑上正在播放的声音，所以它不依赖你正在观看的网站或平台。按下<strong>开始</strong>，然后播放视频；翻译字幕会显示在播放器窗口上方的悬浮字幕条上。我们用浏览器中的视频测试过，但没有逐一测试每个课程或网络研讨会平台。AI Translator 可以作为实时视频翻译工具使用。在电脑的浏览器或播放器应用中播放视频时，它会边听边在悬浮字幕条上显示字幕。它不会打开或处理视频文件，不上传，不配音，也不会把字幕加到视频本身中（你仍然可以把会话的转写记录导出为 SRT，见下文）。观看直播视频，请参阅<a href="/zh/solutions/livestream-translation/">直播翻译</a>。</p>
+<p>因为 AI Translator 采集的是电脑上正在播放的声音，所以它不依赖你正在观看的网站或平台。按下<strong>开始</strong>，然后播放视频；翻译字幕会显示在播放器窗口上方的悬浮字幕条上。我们用浏览器中的视频测试过，但没有逐一测试每个课程或网络研讨会平台。AI Translator 可以作为实时视频翻译工具使用。在电脑的浏览器或播放器应用中播放视频时，它会边听边在悬浮字幕条上显示字幕。它不会打开或处理视频文件，不上传，不配音，也不会把字幕加到视频本身中（你仍然可以把会话的转写记录导出为 SRT，见下文）。如果观看的是直播视频，请参阅<a href="/zh/solutions/livestream-translation/">直播翻译</a>。</p>
 <p>在 macOS 上，你只需授予一次<em>系统音频录制</em>权限；网络研讨会使用默认的“电脑音频”来源就够了。请参阅<a href="/zh/guide/macos-audio-permission/">如何授予权限</a>。</p>
 </div></section>
 

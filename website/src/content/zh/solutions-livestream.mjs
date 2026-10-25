@@ -40,7 +40,7 @@ export default {
   path: "/zh/solutions/livestream-translation/",
   title: "直播实时翻译字幕（电脑端）",
   description:
-    "在电脑上观看 YouTube、TikTok 等直播时显示实时翻译字幕。AI 在你的电脑上运行；没有手机版，也不能为主播的观众翻译。",
+    "在电脑上观看 YouTube、TikTok 等直播时显示实时翻译字幕。AI 在你的电脑上运行；没有手机版，也不能把你自己的直播翻译给观众。",
   type: "article",
   published: "2026-10-25",
   breadcrumbs: crumbs,
@@ -50,7 +50,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "直播视频翻译器：为直播显示实时字幕",
-  lead: "AI Translator 是一款用于电脑的直播视频翻译器，可以实时翻译直播，并以字幕形式显示在你的屏幕上。它收听你电脑上正在播放的音频，所以无需任何扩展就能用于浏览器中的直播视频，语音识别和翻译也都在你自己的电脑上运行。它只能在 macOS 和 Windows 上运行，不能在手机上使用。字幕是给使用该应用观看的人本人阅读的，不会把你自己的直播翻译给你的观众。",
+  lead: "AI Translator 是一款用于电脑的直播视频翻译器，可以实时翻译直播，并以字幕形式显示在你的屏幕上。它收听你电脑上正在播放的音频，所以无需任何扩展就能用于浏览器中的直播视频，语音识别和翻译也都在你自己的电脑上运行。它只能在 macOS 和 Windows 上运行，不能在手机上使用。字幕只供使用该应用观看直播的人自己阅读；应用不会把你自己的直播翻译给你的观众。",
   meta: "<span>更新于 {{updated}}</span><span>在 macOS 和 Windows 电脑上运行，不支持手机</span>",
 })}
 
@@ -67,7 +67,7 @@ ${pageHero({
 ${sectionHead({ eyebrow: "适合谁", title: "直播很精彩，却不是你的语言", center: true })}
 <div class="grid grid-3">
 ${feature({ icon: "play", title: "观看外语直播的人", text: "创作者、演讲者或媒体用英语、中文、日语或韩语进行的直播，你想在直播进行时就看懂。" })}
-${feature({ icon: "users", title: "关注直播活动的人", text: "外语的大会、产品发布会或直播带货，你只需要观看和收听。" })}
+${feature({ icon: "users", title: "观看直播活动的人", text: "外语的大会、产品发布会或直播带货，你在其中只是观看和收听。" })}
 ${feature({ icon: "book", title: "学习者", text: "外语的直播讲座、课程和演讲，你想一句一句地跟上。" })}
 </div>
 </div></section>
@@ -85,7 +85,7 @@ ${checkList([
 ])}
 </div>
 <div>
-${overlayShot({ slug: "overlay-default", lang: "zh", alt: "显示三句话的 AI Translator 字幕条：两句英语原文以小字显示在上方，下方是大字的中文译文；另一句中文只占一行", caption: "真实的字幕条：上方是小字原文，下方是译文。" })}
+${overlayShot({ slug: "overlay-default", lang: "zh", alt: "显示三句话的 AI Translator 字幕条：两句英语各以小字显示原文，下方是大字的中文译文；另一句本来就是中文，只占一行", caption: "真实的字幕条：上方是小字原文，下方是译文。" })}
 </div>
 </div>
 </div></section>
@@ -108,7 +108,7 @@ ${checkList([
   "<strong>结束一句话的停顿</strong>可在 50 到 800 ms 之间调整。调短，字幕出现得更快；调长，句子更不容易被切断。如果句子在中间被切断（说话人犹豫或停下来换气），可以试着调高；更改从下一次会话开始生效。",
   "<strong>漏看了一句？</strong>字幕条锁定时，按 ⌃⌥PageUp（Windows：Ctrl+Alt+PageUp）查看之前的句子，按 ⌃⌥PageDown 返回；字幕条未锁定时，在字幕条上滚动，再点击<em>最新</em>回到实时的那一行。所有套餐都可以查看、搜索和复制最近一次会话的转写记录；开始新的会话后，它会被替换（<a href=\"/zh/guide/history-and-export/\">历史记录和导出</a>）。",
 ])}
-${callout({ title: "长时间直播的翻译时长。", text: "只计算已翻译的语音，不计算静音；已经是你想阅读的语言的句子也不计算。Free 是 10 天试用，每天 30 分钟，所以较长的直播需要 Monthly（每 30 天 50 小时）、6 Months（每 30 天 100 小时）或 Yearly（不限时长）。请参阅<a href=\"/zh/pricing/\">价格</a>。" })}
+${callout({ title: "长时间直播的翻译时长。", text: "时长只计算已翻译的语音，不计算静音；已经是你想阅读的语言的句子也不计算。Free 是 10 天试用，每天 30 分钟，所以较长的直播需要 Monthly（每 30 天 50 小时）、6 Months（每 30 天 100 小时）或 Yearly（不限时长）。请参阅<a href=\"/zh/pricing/\">价格</a>。" })}
 </div></section>
 
 <section class="section" id="not-a-fit"><div class="container narrow">
