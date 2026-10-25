@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "How do I translate a livestream into my language?",
-    a: `<p>Install AI Translator on your computer, open the livestream in a browser, choose the language you want to read in Translate into (English, Vietnamese, Chinese, Japanese or Korean) and press Start. The app listens to the audio playing on your computer and shows translated subtitles on a floating bar, with a median delay of 0.76–1.03 seconds measured on a Mac M4 Pro (Standard pack). Translation quality has been measured only for pairs that include Vietnamese; other pairs, such as Japanese to English, work but have no measured score.</p>`,
+    a: `<p>Install AI Translator on your computer, open the livestream in a browser, choose the language you want to read in Translate into (English, Vietnamese, Chinese, Japanese or Korean) and press Start. The app listens to the audio playing on your computer and shows translated subtitles on a floating bar, with a median delay of 0.76–1.03 seconds from when the speaker finishes a sentence, measured on a Mac M4 Pro (Standard pack). Translation quality has been measured only for pairs that include Vietnamese (<a href="/en/features/#quality-by-direction">see the table</a>); other pairs, such as Japanese to English, work but have no measured score.</p>`,
   },
   {
     q: "Does it work with TikTok Live, YouTube and Facebook Live?",

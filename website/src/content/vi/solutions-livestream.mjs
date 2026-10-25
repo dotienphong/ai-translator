@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Dịch livestream ra tiếng Việt bằng cách nào?",
-    a: `<p>Cài AI Translator trên máy tính, mở livestream trong trình duyệt, chọn tiếng Việt ở ô Dịch sang rồi bấm Bắt đầu. App nghe âm thanh đang phát ra từ máy và hiện phụ đề tiếng Việt trên một thanh nổi, với độ trễ trung vị 0,76–1,03 giây khi đo trên Mac M4 Pro (gói model Chuẩn). Live có thể bằng tiếng Anh, Trung, Nhật hay Hàn; chất lượng dịch mới được đo cho các cặp có tiếng Việt, còn cặp khác (ví dụ Nhật sang Anh) dịch được nhưng chưa có điểm đo.</p>`,
+    a: `<p>Cài AI Translator trên máy tính, mở livestream trong trình duyệt, chọn tiếng Việt ở ô Dịch sang rồi bấm Bắt đầu. App nghe âm thanh đang phát ra từ máy và hiện phụ đề tiếng Việt trên một thanh nổi, với độ trễ trung vị 0,76–1,03 giây, tính từ lúc người nói dừng câu, khi đo trên Mac M4 Pro (gói model Chuẩn). Live có thể bằng tiếng Anh, Trung, Nhật hay Hàn; cả bốn chiều sang tiếng Việt đều đã có điểm đo chất lượng dịch (<a href="/tinh-nang/#chat-luong-theo-chieu">xem bảng</a>).</p>`,
   },
   {
     q: "Có dịch được live TikTok, YouTube và Facebook không?",
@@ -87,7 +87,7 @@ ${checkList([
 ])}
 </div>
 <div>
-${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề của AI Translator hiện ba câu: câu gốc tiếng Trung và tiếng Anh chữ nhỏ ở trên, bản dịch tiếng Việt chữ lớn bên dưới; câu đã là tiếng Việt hiện một dòng", caption: "Thanh phụ đề thật của app: câu gốc chữ nhỏ ở trên, bản dịch ở dưới." })}
+${overlayShot({ slug: "overlay-default", lang: "vi", alt: "Thanh phụ đề của AI Translator: câu gốc tiếng Trung và tiếng Anh chữ nhỏ ở trên, bản dịch tiếng Việt chữ lớn bên dưới", caption: "Thanh phụ đề thật của app: câu gốc chữ nhỏ ở trên, bản dịch ở dưới." })}
 </div>
 </div>
 </div></section>

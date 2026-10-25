@@ -56,7 +56,7 @@ ${callout({ kind: "warn", title: "Trước khi thử: chỉ dùng được trên
 ${sectionHead({ eyebrow: "Bắt đầu", title: "Xem TikTok LIVE có phụ đề tiếng Việt trong bốn bước" })}
 ${steps([
   { title: "Cài và mở AI Translator", text: "Dán lệnh cài ở trang <a href=\"/tai-xuong/\">Tải xuống</a> vào Terminal (macOS) hoặc PowerShell (Windows). Ở ô <em>Dịch sang</em>, chọn tiếng Việt." },
-  { title: "Mở TikTok LIVE trên máy tính", text: "Mở buổi live trên trang web TikTok bằng trình duyệt của máy tính và cho nó phát tiếng. Việc đăng nhập và quyền xem do TikTok quyết định, không liên quan tới AI Translator." },
+  { title: "Mở TikTok LIVE trên máy tính", text: "Mở buổi live trên trang web TikTok bằng trình duyệt của máy tính (nếu TikTok cho xem buổi đó trên web) và cho nó phát tiếng. Việc đăng nhập và quyền xem do TikTok quyết định, không liên quan tới AI Translator." },
   { title: "Bấm Bắt đầu khi live đang phát", text: "Bấm <strong>Bắt đầu</strong> (phím tắt ⌃⌥T, Windows: Ctrl+Alt+T). Trên macOS, lần đầu hệ điều hành hỏi quyền <em>Ghi âm thanh hệ thống</em>: xem <a href=\"/huong-dan/cap-quyen-thu-am-macos/\">cách cấp quyền</a>. App nạp model trong vài giây đầu; lần đầu sau khi cài hoặc cập nhật có thể lâu hơn, tới vài phút." },
   { title: "Kéo thanh phụ đề tới sát khung live", text: "Kéo thanh tới sát dưới khung live, chỉnh cỡ chữ ở Cài đặt › Phụ đề và bấm <em>Khóa (click xuyên qua)</em> để chuột đi xuyên thanh." },
 ], true)}
@@ -70,7 +70,7 @@ ${checkList([
   "<strong>Nhiều người nói chồng lên nhau:</strong> app dịch từng câu theo âm thanh nghe được và không biết ai đang nói.",
   "<strong>Chỉ nghe trình duyệt (macOS):</strong> để thông báo của máy không bị dịch, hãy cho live phát trước, vào Cài đặt › Âm thanh, bấm <em>Làm mới danh sách</em>, chọn <em>Chỉ {tên trình duyệt}</em> rồi mới bấm Bắt đầu. Với Safari, mục này tên là <em>Chỉ Safari và trang web trong các app khác</em>. Đổi nguồn có tác dụng từ phiên dịch sau; các tab khác của trình duyệt đó vẫn được nghe.",
   "<strong>Windows chưa chọn được từng app:</strong> tắt tiếng thông báo của máy khi xem.",
-  "<strong>Live tiếng Trung, Hàn, Nhật hay Anh:</strong> chọn tiếng Việt ở ô Dịch sang; biết trước ngôn ngữ thì đặt <em>Ngôn ngữ nguồn</em>, người nói đổi tiếng thì giữ Tự nhận diện. Chất lượng dịch mới được đo cho các chiều có tiếng Việt; các chiều khác dịch được nhưng chưa có điểm đo.",
+  "<strong>Live tiếng Trung, Hàn, Nhật hay Anh:</strong> chọn tiếng Việt ở ô Dịch sang; biết trước ngôn ngữ thì đặt <em>Ngôn ngữ nguồn</em>, người nói đổi tiếng thì giữ Tự nhận diện. Cả bốn chiều Anh, Trung, Nhật, Hàn sang tiếng Việt đều đã có điểm đo chất lượng dịch (<a href=\"/tinh-nang/#chat-luong-theo-chieu\">xem bảng</a>).",
 ])}
 </div></section>
 

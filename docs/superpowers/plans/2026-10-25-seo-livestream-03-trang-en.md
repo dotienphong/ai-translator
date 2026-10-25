@@ -34,7 +34,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "How do I translate a livestream into my language?",
-    a: `<p>Install AI Translator on your computer, open the livestream in a browser, choose the language you want to read in Translate into (English, Vietnamese, Chinese, Japanese or Korean) and press Start. The app listens to the audio playing on your computer and shows translated subtitles on a floating bar, with a median delay of 0.76–1.03 seconds measured on a Mac M4 Pro (Standard pack). Translation quality has been measured only for pairs that include Vietnamese; other pairs, such as Japanese to English, work but have no measured score.</p>`,
+    a: `<p>Install AI Translator on your computer, open the livestream in a browser, choose the language you want to read in Translate into (English, Vietnamese, Chinese, Japanese or Korean) and press Start. The app listens to the audio playing on your computer and shows translated subtitles on a floating bar, with a median delay of 0.76–1.03 seconds from when the speaker finishes a sentence, measured on a Mac M4 Pro (Standard pack). Translation quality has been measured only for pairs that include Vietnamese (<a href="/en/features/#quality-by-direction">see the table</a>); other pairs, such as Japanese to English, work but have no measured score.</p>`,
   },
   {
     q: "Does it work with TikTok Live, YouTube and Facebook Live?",
@@ -246,7 +246,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Translate TikTok Live in real time when you watch on a computer",
-  lead: "To read translated subtitles while you watch TikTok Live in a language you do not speak, open the livestream in your computer's browser and run AI Translator: it listens to the audio playing on your machine and shows the translation on a floating bar. It runs only on macOS and Windows, so it does not work inside the TikTok app on a phone, and it makes subtitles only for the viewer.",
+  lead: "To read translated subtitles while you watch TikTok Live in Chinese, Japanese, Korean or another of the app's five languages, open the livestream in your computer's browser and run AI Translator: it listens to the audio playing on your machine and shows the translation on a floating bar. It runs only on macOS and Windows, so it does not work inside the TikTok app on a phone, and it makes subtitles only for the viewer.",
   meta: "<span>Updated {{updated}}</span><span>Runs on macOS and Windows computers, not on phones</span>",
 })}
 
@@ -258,7 +258,7 @@ ${callout({ kind: "warn", title: "Before you try: computers only.", text: "AI Tr
 ${sectionHead({ eyebrow: "Get started", title: "Four steps to watch TikTok Live with translated subtitles" })}
 ${steps([
   { title: "Install and open AI Translator", text: "Paste the install command from the <a href=\"/en/download/\">Download</a> page into Terminal (macOS) or PowerShell (Windows). Set <em>Translate into</em> to the language you want to read." },
-  { title: "Open TikTok Live on your computer", text: "Open the livestream on the TikTok website in your computer's browser and let it play sound. Signing in and who can watch are up to TikTok and have nothing to do with AI Translator." },
+  { title: "Open TikTok Live on your computer", text: "Open the livestream on the TikTok website in your computer's browser (if TikTok lets you watch it on the web) and let it play sound. Signing in and who can watch are up to TikTok and have nothing to do with AI Translator." },
   { title: "Press Start while the livestream plays", text: "Press <strong>Start</strong> (shortcut ⌃⌥T, Windows: Ctrl+Alt+T). On macOS, the first time the system asks for the <em>System Audio Recording</em> permission: see <a href=\"/en/guide/macos-audio-permission/\">how to grant it</a>. The app loads its models in the first few seconds (the first run after installing or updating can take longer, up to a few minutes)." },
   { title: "Drag the subtitle bar next to the video", text: "Drag the bar just under the livestream, set the text size in Settings › Subtitles and click <em>Lock (click-through)</em> so the mouse passes through the bar." },
 ], true)}
@@ -272,7 +272,7 @@ ${checkList([
   "<strong>Several people talking over each other:</strong> the app translates sentence by sentence from the sound it hears and does not know who is speaking.",
   "<strong>Listen to the browser only (macOS):</strong> so system notifications are not translated, start the livestream first, then in Settings › Audio click <em>Refresh list</em>, choose <em>Only {browser name}</em> and only then press Start. For Safari the entry is named <em>Only Safari and web pages inside other apps</em>. A new source applies from the next session; the other tabs of that browser are still heard.",
   "<strong>Windows cannot pick a single app yet:</strong> mute system notifications while you watch.",
-  "<strong>Chinese, Korean, Japanese or English livestreams:</strong> set <em>Translate into</em> to your language (English, Vietnamese, Chinese, Japanese or Korean); if you know the spoken language, set <em>Source language</em>, and if speakers switch, keep Detect automatically. Translation quality has been measured only for pairs that include Vietnamese; other pairs work but have no measured score.",
+  "<strong>Chinese, Korean, Japanese or English livestreams:</strong> set <em>Translate into</em> to your language (English, Vietnamese, Chinese, Japanese or Korean); if you know the spoken language, set <em>Source language</em>, and if speakers switch, keep Detect automatically. Translation quality has been measured only for pairs that include Vietnamese (<a href=\"/en/features/#quality-by-direction\">see the table</a>); other pairs work but have no measured score.",
 ])}
 </div></section>
 
