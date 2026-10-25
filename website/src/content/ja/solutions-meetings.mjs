@@ -61,7 +61,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "会議の前に", title: "5 分の準備", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "ja", alt: "音声の設定：入力元は「コンピューターの音声 + マイク」、音声ソース（Zoom のみ）、マイクの選択、マイクの音量を下げる説明、「マイクのノイズを除去」スイッチ、500 ms に固定された文を区切る間の長さのスライダー", caption: "設定 › 音声：システム全体を聞き取るか、1 つのアプリだけを聞き取るか。" })}
+${appShot({ slug: "app-settings-audio", lang: "ja", alt: "音声の設定：入力元は「コンピューターの音声 + マイク」、音声ソース（Zoom のみ）、マイクの選択、マイクの音量を下げる説明、「マイクのノイズを除去」スイッチ、100 ms に設定された文を区切る間の長さのスライダー", caption: "設定 › 音声：システム全体を聞き取るか、1 つのアプリだけを聞き取るか。" })}
 </div>
 <div>
 ${steps(

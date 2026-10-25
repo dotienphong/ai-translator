@@ -405,9 +405,9 @@
   "lang": "vi",
   "theme": "light",
   "width": 1440,
-  "height": 1139,
-  "bytes": 100634,
-  "description": "Cài đặt âm thanh: thu từ âm thanh máy + micro, nguồn là một app đang phát tiếng như Zoom, chọn micro, lọc tiếng ồn micro, ngắt câu 500 ms."
+  "height": 1193,
+  "bytes": 110202,
+  "description": "Cài đặt âm thanh: thu từ âm thanh máy + micro, nguồn là một app đang phát tiếng như Zoom, chọn micro, lọc tiếng ồn micro, ngắt câu 100 ms."
  },
  {
   "file": "app-settings-audio.en.webp",
@@ -415,9 +415,9 @@
   "lang": "en",
   "theme": "light",
   "width": 1440,
-  "height": 1251,
-  "bytes": 106538,
-  "description": "Audio settings: capture from computer audio + microphone, a source app such as Zoom, the microphone, microphone noise filtering and a 500 ms sentence pause."
+  "height": 1278,
+  "bytes": 117098,
+  "description": "Audio settings: capture from computer audio + microphone, a source app such as Zoom, the microphone, microphone noise filtering and a 100 ms sentence pause."
  },
  {
   "file": "app-settings-audio.ja.webp",
@@ -425,9 +425,9 @@
   "lang": "ja",
   "theme": "light",
   "width": 1440,
-  "height": 1139,
-  "bytes": 99266,
-  "description": "音声の設定：コンピューターの音声 + マイクから取り込み、Zoom などのアプリを音声ソースに、マイクの選択、マイクのノイズ除去、500 ms の文の区切り。"
+  "height": 1193,
+  "bytes": 109768,
+  "description": "音声の設定：コンピューターの音声 + マイクから取り込み、Zoom などのアプリを音声ソースに、マイクの選択、マイクのノイズ除去、100 ms の文の区切り。"
  },
  {
   "file": "app-settings-audio.zh.webp",
@@ -435,9 +435,9 @@
   "lang": "zh",
   "theme": "light",
   "width": 1440,
-  "height": 1112,
-  "bytes": 89632,
-  "description": "音频设置：从电脑音频 + 麦克风采集，以 Zoom 等应用为音频来源，选择麦克风，过滤麦克风噪音，断句停顿 500 ms。"
+  "height": 1139,
+  "bytes": 99044,
+  "description": "音频设置：从电脑音频 + 麦克风采集，以 Zoom 等应用为音频来源，选择麦克风，过滤麦克风噪音，断句停顿 100 ms。"
  },
  {
   "file": "app-settings-audio.ko.webp",
@@ -445,9 +445,9 @@
   "lang": "ko",
   "theme": "light",
   "width": 1440,
-  "height": 1112,
-  "bytes": 82050,
-  "description": "오디오 설정: 컴퓨터 오디오 + 마이크로 입력, Zoom 같은 앱을 오디오 소스로, 마이크 선택, 마이크 잡음 필터, 500 ms 문장 끊기."
+  "height": 1139,
+  "bytes": 90010,
+  "description": "오디오 설정: 컴퓨터 오디오 + 마이크로 입력, Zoom 같은 앱을 오디오 소스로, 마이크 선택, 마이크 잡음 필터, 100 ms 문장 끊기."
  },
  {
   "file": "app-settings-hotkeys.vi.webp",

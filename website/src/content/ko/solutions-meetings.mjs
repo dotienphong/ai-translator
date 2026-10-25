@@ -61,7 +61,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "회의 전에", title: "5분 준비", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "ko", alt: "오디오 설정: 입력 소스는 ‘컴퓨터 오디오 + 마이크’, 오디오 소스(Zoom만), 마이크 선택, 마이크 소리를 낮춘다는 안내, ‘마이크 잡음 필터’ 스위치, 500 ms로 고정된 문장을 끝내는 정지 시간 슬라이더", caption: "설정 › 오디오: 시스템 전체 또는 앱 하나만 듣기." })}
+${appShot({ slug: "app-settings-audio", lang: "ko", alt: "오디오 설정: 입력 소스는 ‘컴퓨터 오디오 + 마이크’, 오디오 소스(Zoom만), 마이크 선택, 마이크 소리를 낮춘다는 안내, ‘마이크 잡음 필터’ 스위치, 100 ms로 설정된 문장을 끝내는 정지 시간 슬라이더", caption: "설정 › 오디오: 시스템 전체 또는 앱 하나만 듣기." })}
 </div>
 <div>
 ${steps(

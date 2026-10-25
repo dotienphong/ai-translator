@@ -251,11 +251,13 @@ pub struct Settings {
     pub mic_device: Option<String>,
     /// "Lọc tiếng ồn micro" (spec §3.2, mục 16): RNNoise cho bản VAD. Mặc định bật.
     pub mic_noise_filter: bool,
-    /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu"). Dùng khi thu từ âm thanh máy.
+    /// Im lặng bao lâu thì chốt đoạn (§6.3, "Độ nhạy ngắt câu"). Dùng khi thu từ âm thanh máy. Mặc định 100 ms (chủ dự án chốt
+    /// 2026-10-25, trước đó 50 ms); người dùng đã lưu giá trị khác thì giữ nguyên.
     pub vad_end_silence_ms: u32,
-    /// Như `vad_end_silence_ms`, riêng cho chế độ có micro (micro, âm thanh máy + micro). Mặc định 500 ms: giọng người thật có
-    /// nhiều quãng nghỉ ngắn, đóng đoạn sớm thì câu bị cắt thành mẩu và nhận sai nhiều (spec 2026-10-24-nguon-micro mục 16:
-    /// giọng thật 1 m lỗi 59% ở 50 ms, 36% ở 500 ms). File của bản trước chưa có khóa này thì lấy mặc định.
+    /// Như `vad_end_silence_ms`, riêng cho chế độ có micro (micro, âm thanh máy + micro). Mặc định cũng 100 ms (chủ dự án
+    /// chốt 2026-10-25: mọi chế độ cùng một mặc định, phụ đề nhanh). Giọng người thật có nhiều quãng nghỉ ngắn nên mức cao hơn
+    /// (300–500 ms) ít cắt vụn hơn, nhận chính xác hơn, đổi lại phụ đề chậm hơn (spec 2026-10-24-nguon-micro mục 18). File của
+    /// bản trước chưa có khóa này thì lấy mặc định.
     pub mic_end_silence_ms: u32,
     pub overlay: OverlaySettings,
     /// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có
@@ -320,8 +322,8 @@ impl Settings {
             capture_mode: CaptureMode::Playback,
             mic_device: None,
             mic_noise_filter: true,
-            vad_end_silence_ms: 50,
-            mic_end_silence_ms: 500,
+            vad_end_silence_ms: 100,
+            mic_end_silence_ms: 100,
             overlay: OverlaySettings {
                 font_size: 20,
                 lines: 2,
@@ -501,8 +503,8 @@ mod tests {
         assert_eq!(vi.validate(), Ok(()));
         assert_eq!(vi.target_language, Lang::Vi);
         assert_eq!(vi.source_languages, Lang::ALL.to_vec());
-        assert_eq!(vi.vad_end_silence_ms, 50);
-        assert_eq!(vi.mic_end_silence_ms, 500, "chế độ có micro: ngắt câu riêng, mặc định 500 ms");
+        assert_eq!(vi.vad_end_silence_ms, 100);
+        assert_eq!(vi.mic_end_silence_ms, 100, "chế độ có micro: ngắt câu riêng, cùng mặc định 100 ms");
         assert_eq!(
             (vi.capture_mode, vi.audio_source.clone()),
             (CaptureMode::Playback, AudioSource::System),

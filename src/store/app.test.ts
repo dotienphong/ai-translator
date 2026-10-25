@@ -12,8 +12,8 @@ const settings: Settings = {
   captureMode: "playback",
   micDevice: null,
   micNoiseFilter: true,
-  vadEndSilenceMs: 50,
-  micEndSilenceMs: 500,
+  vadEndSilenceMs: 100,
+  micEndSilenceMs: 100,
   overlay: {
     fontSize: 22,
     lines: 2,
@@ -186,7 +186,7 @@ describe("app store", () => {
     await store.getState().init();
     expect(await store.getState().updateSettings({ vadEndSilenceMs: 900 })).toBe(false);
     expect(store.getState().error).toEqual({ code: "outOfRange", field: "vadEndSilenceMs" });
-    expect(store.getState().settings?.vadEndSilenceMs).toBe(50);
+    expect(store.getState().settings?.vadEndSilenceMs).toBe(100);
     store.getState().dismissError();
     expect(store.getState().error).toBeNull();
   });

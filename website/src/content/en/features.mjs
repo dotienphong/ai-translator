@@ -93,7 +93,7 @@ ${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings
 <section class="section" id="audio-source"><div class="container">
 <div class="split wide-left">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: Capture from set to Computer audio + Microphone, the computer audio source (Only Zoom), the microphone picker, the note about turning the microphone down, the Filter microphone noise switch and the sentence pause slider locked at 500 ms", caption: "Settings › Audio: listen to the whole system or to just one app (macOS)." })}
+${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: Capture from set to Computer audio + Microphone, the computer audio source (Only Zoom), the microphone picker, the note about turning the microphone down, the Filter microphone noise switch and the sentence pause slider at 100 ms", caption: "Settings › Audio: listen to the whole system or to just one app (macOS)." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Audio source</span>

@@ -91,7 +91,7 @@ ${appShot({ slug: "app-settings-subtitles", lang: "zh", alt: "字幕设置：例
 <section class="section" id="audio-source"><div class="container">
 <div class="split wide-left">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "zh", alt: "音频设置：采集来源设为“电脑音频 + 麦克风”，音频来源（仅 Zoom）、麦克风选择器、调低麦克风的说明、“过滤麦克风噪音”开关，以及固定在 500 ms 的结束一句话的停顿滑块", caption: "设置 › 音频：收听整个系统，或只收听一个应用（macOS）。" })}
+${appShot({ slug: "app-settings-audio", lang: "zh", alt: "音频设置：采集来源设为“电脑音频 + 麦克风”，音频来源（仅 Zoom）、麦克风选择器、调低麦克风的说明、“过滤麦克风噪音”开关，以及设为 100 ms 的结束一句话的停顿滑块", caption: "设置 › 音频：收听整个系统，或只收听一个应用（macOS）。" })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">音频来源</span>

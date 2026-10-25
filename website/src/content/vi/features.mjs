@@ -91,7 +91,7 @@ ${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ 
 <section class="section" id="nguon-am-thanh"><div class="container">
 <div class="split wide-left">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô Thu từ đang là Âm thanh máy + Micro, ô chọn nguồn âm thanh máy (Chỉ Zoom), ô chọn micro, ghi chú nhường lời, công tắc Lọc tiếng ồn micro và thanh Độ nhạy ngắt câu khóa ở 500 ms", caption: "Cài đặt › Âm thanh: nghe toàn hệ thống hoặc chỉ một app (macOS)." })}
+${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô Thu từ đang là Âm thanh máy + Micro, ô chọn nguồn âm thanh máy (Chỉ Zoom), ô chọn micro, ghi chú nhường lời, công tắc Lọc tiếng ồn micro và thanh Độ nhạy ngắt câu ở 100 ms", caption: "Cài đặt › Âm thanh: nghe toàn hệ thống hoặc chỉ một app (macOS)." })}
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Nguồn âm thanh</span>

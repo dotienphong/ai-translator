@@ -63,7 +63,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Before the meeting", title: "Five minutes of preparation", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: Capture from set to Computer audio + Microphone, the computer audio source (Only Zoom), the microphone picker, the note about turning the microphone down, the Filter microphone noise switch and the sentence pause slider locked at 500 ms", caption: "Settings › Audio: listen to the whole system or to one app." })}
+${appShot({ slug: "app-settings-audio", lang: "en", alt: "Audio settings: Capture from set to Computer audio + Microphone, the computer audio source (Only Zoom), the microphone picker, the note about turning the microphone down, the Filter microphone noise switch and the sentence pause slider at 100 ms", caption: "Settings › Audio: listen to the whole system or to one app." })}
 </div>
 <div>
 ${steps(

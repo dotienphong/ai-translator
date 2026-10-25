@@ -109,7 +109,7 @@ ${appShot({ slug: "app-onboarding-5", lang: "vi", alt: "Bước Cho phép ghi â
 <li><strong>“Chỉ” kèm tên một app</strong>: chọn đúng app họp. Các âm thanh khác, như tiếng thông báo, không được dịch. Trình duyệt Safari và trang web trong các app khác được gộp thành “Safari và trang web trong các app khác”.</li>
 </ul>
 <p>Danh sách chỉ gồm các app <em>đang phát tiếng</em>; bấm <strong>Làm mới danh sách</strong> sau khi bật cuộc họp. Nguồn mới có tác dụng từ phiên dịch sau. Nếu app đã chọn ngừng phát tiếng, app báo “App đã chọn không phát tiếng” và dịch tiếp ngay khi nó phát lại.</p>
-${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô Thu từ đang là Âm thanh máy + Micro, ô chọn nguồn âm thanh máy (Chỉ Zoom), ô chọn micro, ghi chú nhường lời, công tắc Lọc tiếng ồn micro và thanh Độ nhạy ngắt câu khóa ở 500 ms", caption: "Cài đặt › Âm thanh: chọn nguồn và độ nhạy ngắt câu." })}
+${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô Thu từ đang là Âm thanh máy + Micro, ô chọn nguồn âm thanh máy (Chỉ Zoom), ô chọn micro, ghi chú nhường lời, công tắc Lọc tiếng ồn micro và thanh Độ nhạy ngắt câu ở 100 ms", caption: "Cài đặt › Âm thanh: chọn nguồn và độ nhạy ngắt câu." })}
 
 ${docNav(
   [

@@ -222,7 +222,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.audio.micPermission.undetermined": "AI Translator cần quyền dùng micro.",
   "settings.audio.micPermission.allow": "Cho phép dùng micro",
   "settings.audio.micPermission.reopen": "Bật quyền xong, chọn “Thoát & Mở lại” khi macOS hỏi để áp dụng.",
-  "settings.audio.pause.micNote": "Khi thu từ micro, thanh này là mức riêng cho micro (mặc định 500 ms). Giọng người thật có nhiều quãng nghỉ ngắn: đặt quá ngắn thì câu bị cắt thành mẩu và nhận sai nhiều hơn. Áp dụng từ phiên dịch sau.",
+  "settings.audio.pause.micNote": "Khi thu từ micro, thanh này là mức riêng cho micro (mặc định 100 ms). Giọng người thật có nhiều quãng nghỉ ngắn: đặt quá ngắn thì câu có thể bị cắt thành mẩu và nhận sai nhiều hơn. Thấy câu bị cắt vụn thì kéo lên khoảng 300–500 ms. Áp dụng từ phiên dịch sau.",
   "settings.general.uiLanguage": "Ngôn ngữ giao diện",
   "settings.general.launchAtLogin": "Khởi động cùng hệ thống",
   "settings.general.launchAtLogin.hint": "App mở sẵn ở menu bar hoặc khay hệ thống, không mở cửa sổ này.",

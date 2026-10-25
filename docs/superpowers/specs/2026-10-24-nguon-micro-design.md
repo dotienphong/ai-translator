@@ -501,6 +501,7 @@ trước ở những điểm sau.
       `min_speech_ms` 250 (thử tay: "OK", "Vâng" chỉ dài khoảng 0,3 giây nên bị ngưỡng 400 bỏ, cả trong phòng yên tĩnh);
     - chế độ `both`: `threshold` 0,5, `min_speech_ms` 600, **`end_silence_ms` 500**.
     - Ở chế độ có micro, giá trị này thay cho `vadEndSilenceMs` của người dùng. Phụ đề hiện chậm hơn khoảng 0,45 s.
+    - **Mục 18 ghi đè `end_silence_ms` 500 ở trên:** mặc định thành 100 ms (khóa `micEndSilenceMs`, chỉnh được 50–800 ms).
   - **Lớp 5 (`ShortUnsure`): bỏ.** Không giảm thêm chữ ảo mà làm mất câu ngắn. Code trong `pipeline::filter` (mặc định
     tắt) bị gỡ ở kế hoạch 02.
   - **Thêm:** luật `Hallucination` bắt cả câu **chứa** cụm quảng cáo kênh rõ ràng (ví dụ "subscribe cho kênh"). Câu "Hãy
@@ -629,6 +630,23 @@ Số liệu: `bench/2026-10-24-nguon-micro/results/ao-tron.md`. Chủ dự án c
 **Kế hoạch.** Kế hoạch 05 (`docs/superpowers/plans/2026-10-25-nguon-micro-05-nhuong-loi-theo-tieng-noi.md`) làm trước
 phần phát hành của kế hoạch 04 (Task 10–12). Website và pháp lý không đổi: câu "Khi người online đang nói, micro được hạ
 xuống" vẫn đúng.
+
+## 18. Mặc định ngắt câu 100 ms cho mọi chế độ (2026-10-25)
+
+Chủ dự án chốt (2026-10-25), sau khi thử bản dev và xem số đo ở `bench/2026-10-24-nguon-micro/results/ngat-cau.md`: **mọi chế độ
+thu mặc định ngắt câu 100 ms.** Bản trước đó là 50 ms (Âm thanh máy) và 500 ms (có micro, thanh trượt khóa); chủ dự án thấy 500 ms
+làm phụ đề dịch video chậm.
+
+- Hai khóa riêng, cùng mặc định: `vadEndSilenceMs` (Âm thanh máy) và `micEndSilenceMs` (micro, Âm thanh máy + Micro), mỗi khóa
+  50–800 ms, bước 50 ms. Thanh "Độ nhạy ngắt câu" kéo được ở mọi chế độ và lưu vào khóa của chế độ đang chọn.
+- Người dùng đã lưu `vadEndSilenceMs` (kể cả 50 ms, mặc định cũ) thì giữ nguyên: file không ghi được ai đặt tay, ai để mặc
+  định, nên không đổi hàng loạt. Chỉ cài mới, hay file thiếu/hỏng khóa, mới nhận 100 ms.
+- Đánh đổi đã biết (đo offline, M4 Pro; xem biên bản): ở 100 ms so với 500 ms, chế độ chỉ Micro với giọng thật nhận kém hơn
+  (lỗi 57% so với 45%, 36 đoạn so với 26); chế độ Âm thanh máy + Micro nói lần lượt kém 1,5–2 điểm (online 9,7% so với 8,1% ở
+  bản thu thật), nhưng nói chồng tốt hơn hẳn (10,0% so với 21,6%); phụ đề nhanh hơn khoảng 400 ms. Chữ ảo vẫn 0 ở mọi mức.
+- Các mốc nghiệm thu A4-mic và A-trộn (mục 16, 17) đo ở 500 ms và vẫn là mốc của cấu hình 500 ms; ở mặc định 100 ms mốc A4-mic
+  giọng thật là 57,3%, không phải 44,7%. Người dùng muốn chính xác hơn thì kéo thanh lên 300–500 ms (ghi chú dưới thanh nói
+  rõ). Chưa đo chất lượng bản dịch.
 
 ## Tham khảo
 

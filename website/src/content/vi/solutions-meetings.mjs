@@ -63,7 +63,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Trước cuộc họp", title: "Chuẩn bị trong năm phút", center: true })}
 <div class="split wide-right">
 <div>
-${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô Thu từ đang là Âm thanh máy + Micro, ô chọn nguồn âm thanh máy (Chỉ Zoom), ô chọn micro, ghi chú nhường lời, công tắc Lọc tiếng ồn micro và thanh Độ nhạy ngắt câu khóa ở 500 ms", caption: "Cài đặt › Âm thanh: chọn nghe toàn hệ thống hoặc chỉ một app." })}
+${appShot({ slug: "app-settings-audio", lang: "vi", alt: "Cài đặt Âm thanh: ô Thu từ đang là Âm thanh máy + Micro, ô chọn nguồn âm thanh máy (Chỉ Zoom), ô chọn micro, ghi chú nhường lời, công tắc Lọc tiếng ồn micro và thanh Độ nhạy ngắt câu ở 100 ms", caption: "Cài đặt › Âm thanh: chọn nghe toàn hệ thống hoặc chỉ một app." })}
 </div>
 <div>
 ${steps(
