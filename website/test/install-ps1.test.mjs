@@ -89,3 +89,38 @@ test("ghim bản cài (kiểm toán 2026-10-25): hai biến trống ở bản ng
   assert.ok(inElse("Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl"), "SHA256SUMS chỉ được tải khi không ghim");
   assert.ok(script.includes("$PinSha256 -notmatch '^[0-9a-f]{64}$'"), "mã ghim hỏng phải bị từ chối trước khi tải");
 });
+
+// Mô phỏng cả luồng cài (test/install-ps1.sim.ps1): giả mạng và bộ cài, chạy Install-AiTranslator thật của script. Cần `pwsh`.
+const SIM = join(ROOT, "website/test/install-ps1.sim.ps1");
+const sim = (mode, extra = [], file = SCRIPT) => {
+  const r = spawnSync(pwsh, ["-NoProfile", "-File", SIM, "-Script", file, "-Mode", mode, ...extra], { encoding: "utf8", timeout: 120_000 });
+  const line = r.stdout.split("\n").find((l) => l.startsWith("RESULT:"));
+  assert.ok(line, `mô phỏng không in RESULT: ${r.stdout}${r.stderr}`);
+  return JSON.parse(line.slice("RESULT:".length));
+};
+// Kịch bản `pinned-*` của bộ mô phỏng tự điền hai dòng ghim vào bản trong repo (như `pnpm deploy` làm), kịch bản `unpinned-*` để trống.
+const mismatch = /SHA-256 does not match/;
+
+test("mô phỏng đã ghim: cài đúng bản ghim, không đọc latest.json hay SHA256SUMS của R2", { skip }, () => {
+  const r = sim("pinned-good");
+  assert.deepEqual(r.requested, ["9.9.9/AI%20Translator_9.9.9_x64-setup.exe"], "chỉ tải bộ cài, không đọc gì khác ở R2");
+  assert.equal(r.started, 1);
+  assert.match(r.output, /SHA-256 checked: it matches/);
+});
+
+test("mô phỏng đã ghim: R2 bị đổi cả file lẫn SHA256SUMS thì từ chối, không chạy bộ cài", { skip }, () => {
+  const r = sim("pinned-evil");
+  assert.equal(r.started, 0, "bộ cài của kẻ tấn công không được chạy");
+  assert.match(r.output, mismatch);
+});
+
+test("mô phỏng đối chứng, chưa ghim: file và SHA256SUMS cùng bị đổi thì lọt qua (điểm yếu mà ghim vá)", { skip }, () => {
+  const r = sim("unpinned-evil");
+  assert.equal(r.started, 1);
+  assert.deepEqual(r.requested, ["stable/latest.json", "9.9.9/AI%20Translator_9.9.9_x64-setup.exe", "9.9.9/SHA256SUMS-windows.txt"]);
+});
+
+test("mô phỏng đã ghim nhưng chạy -Beta: ghim không áp dụng, đọc beta/latest.json và SHA256SUMS như cũ", { skip }, () => {
+  const r = sim("pinned-good", ["-Beta"]);
+  assert.deepEqual(r.requested, ["beta/latest.json", "9.9.9/AI%20Translator_9.9.9_x64-setup.exe", "9.9.9/SHA256SUMS-windows.txt"]);
+});
