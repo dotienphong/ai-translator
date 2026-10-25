@@ -129,6 +129,8 @@ export const NAV = {
       children: [
         { label: "Họp Zoom, Teams, Meet", href: "/giai-phap/dich-hop-truc-tuyen/", hint: "Phụ đề dịch cho mọi app họp" },
         { label: "Webinar và video", href: "/giai-phap/dich-webinar-va-video/", hint: "Xem nội dung tiếng nước ngoài" },
+        { label: "Dịch livestream", href: "/giai-phap/dich-livestream/", hint: "Phụ đề cho live trên máy tính" },
+        { label: "Dịch live TikTok", href: "/giai-phap/dich-live-tiktok/", hint: "Xem trên trình duyệt máy tính" },
       ],
     },
     {
@@ -150,6 +152,8 @@ export const NAV = {
       children: [
         { label: "Zoom, Teams, Meet meetings", href: "/en/solutions/online-meeting-translation/", hint: "Translated subtitles for any meeting app" },
         { label: "Webinars and videos", href: "/en/solutions/webinar-and-video-translation/", hint: "Follow foreign-language content" },
+        { label: "Livestreams", href: "/en/solutions/livestream-translation/", hint: "Translated subtitles for live video" },
+        { label: "TikTok Live", href: "/en/solutions/tiktok-live-translation/", hint: "Watch in a desktop browser" },
       ],
     },
     {
@@ -244,6 +248,8 @@ export const FOOTER = {
       links: [
         { label: "Họp Zoom, Teams, Meet", href: "/giai-phap/dich-hop-truc-tuyen/" },
         { label: "Webinar và video", href: "/giai-phap/dich-webinar-va-video/" },
+        { label: "Dịch livestream", href: "/giai-phap/dich-livestream/" },
+        { label: "Dịch live TikTok", href: "/giai-phap/dich-live-tiktok/" },
       ],
     },
     {
@@ -280,6 +286,8 @@ export const FOOTER = {
       links: [
         { label: "Zoom, Teams, Meet meetings", href: "/en/solutions/online-meeting-translation/" },
         { label: "Webinars and videos", href: "/en/solutions/webinar-and-video-translation/" },
+        { label: "Livestreams", href: "/en/solutions/livestream-translation/" },
+        { label: "TikTok Live", href: "/en/solutions/tiktok-live-translation/" },
       ],
     },
     {
