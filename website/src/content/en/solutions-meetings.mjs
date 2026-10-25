@@ -10,20 +10,20 @@ export default {
   id: "solutions-meetings",
   lang: "en",
   path: "/en/solutions/online-meeting-translation/",
-  title: "Translated subtitles for Zoom, Teams, Meet, Zalo",
+  title: "AI meeting translator for Zoom, Teams and Meet",
   description:
-    "Read live translated subtitles in Zoom, Teams, Google Meet and Zalo calls with AI Translator: no bot, runs offline. Setup tips and honest limits.",
+    "AI Translator is an AI meeting translator: live translated subtitles for Zoom, Teams, Meet and Zalo calls, no bot, runs offline. Setup tips and honest limits.",
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
-  llm: "How to use AI Translator for translated subtitles in Zoom, Teams, Google Meet and Zalo calls: preparing before the call, shortcuts during it, the transcript afterwards, apps tested, privacy notes and limits.",
-  llmTitle: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
+  modified: "2026-10-25",
+  llm: "How to use AI Translator as an AI meeting translator for live translated subtitles in Zoom, Teams, Google Meet and Zalo calls: preparing before the call, shortcuts during it, the transcript afterwards, apps tested, privacy notes and limits.",
+  llmTitle: "AI meeting translator: subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
   body: () => `
 ${pageHero({
   crumbs,
-  title: "Translated subtitles for online meetings (Zoom, Teams, Meet, Zalo)",
-  lead: "AI Translator shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. There is no bot to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",
+  title: "AI meeting translator: translated subtitles for Zoom, Teams, Meet, Zalo",
+  lead: "AI Translator is a real-time translator for meetings: it shows live translated subtitles for Zoom, Microsoft Teams, Google Meet and Zalo PC calls by listening to the audio playing on your computer. It is live meeting translation without a bot: nothing to invite, nothing for the host to switch on, and both speech recognition and translation run on your own machine.",
   meta: "<span>Updated {{updated}}</span>",
 })}
 
