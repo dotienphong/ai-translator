@@ -1,5 +1,7 @@
 # SEO từ khóa livestream: tổng quan kế hoạch
 
+> Ghi chú (sau V1): hằng LIVE_TESTED đã được thay bằng V1_TESTED = ["YouTube"] (xem commit b8f3c714 và website/README.md mục "SEO từ khóa"); các đoạn nhắc LIVE_TESTED bên dưới là lịch sử.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Đọc file này trước, rồi làm tuần tự các kế hoạch 01 → 06.
 
 **Goal:** Website `aitranslator.vn` có trang đích đúng ý định cho 17 cụm từ khóa về dịch livestream, dịch live, dịch thời gian thực và dịch họp (năm ngôn ngữ), nói đúng sự thật về giới hạn của app, và có test giữ các cụm đó ở đúng trang.
@@ -47,10 +49,10 @@ Spec: `docs/superpowers/specs/2026-10-25-seo-livestream-tu-khoa-design.md` (đã
 | Độ trễ | Trung vị 0,76–1,03 giây, Mac M4 Pro, gói model Chuẩn; máy yếu hơn chậm hơn; Windows mới đo sơ bộ trên một laptop GPU tích hợp, chậm hơn | `vi/features.mjs` mục Hiệu năng |
 | Riêng tư | Âm thanh chỉ ở RAM, không ghi đĩa, không gửi đi; dịch không cần internet | `vi/home.mjs` |
 | Hạn mức | Free 10 ngày × 30 phút mỗi ngày; Monthly 50 giờ/30 ngày, 6 Months 100 giờ/30 ngày, Yearly không giới hạn; im lặng không tính | `vi/solutions-webinar.mjs` |
-| Đã thử | "Đã thử với video phát trong trình duyệt" (Chrome, Safari, Edge) và **thử một lần với YouTube Live** trên Chrome, macOS (25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. **TikTok LIVE**: chỉ có kết quả của một buổi live tiếng Việt có nhạc nền, nhạc làm nhận dạng sai nên phụ đề không dùng được (không nói "đã thử TikTok"). **Chưa** thử Facebook Live. Không đưa số thời gian xử lý trong log lên website (V1 xong 25/10/2026) | `vi/faq.mjs`, `docs/release/seo-theo-doi.md` mục 3 |
+| Đã thử | "Đã thử với video phát trong trình duyệt" (Chrome, Safari, Edge) và **thử một lần với YouTube Live** trên Chrome, macOS (25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. **TikTok LIVE**: chỉ có kết quả của một buổi live tiếng Việt có nhạc nền; app thu được tiếng nhưng nhận nhầm ngôn ngữ và lặp lại câu không ai nói nên phụ đề không dùng được (không khẳng định nguyên nhân là nhạc, không nói "đã thử TikTok"). **Chưa** thử Facebook Live. Không đưa số thời gian xử lý trong log lên website (V1 xong 25/10/2026) | `vi/faq.mjs`, `docs/release/seo-theo-doi.md` mục 3 |
 | Giới hạn | Chỉ macOS và Windows, không điện thoại; chỉ phụ đề cho người xem, không dịch live của người phát; không ghi âm/ghi hình, không xử lý file video; bản dịch có thể sai; nhạc nền lớn, tiếng ồn, nhiều người nói chồng làm kém đi | spec mục 4 |
 
-Cách viết câu "đã thử" (test `STALE_LIVE` ở kế hoạch 01 bắt sai): **luôn hai câu riêng**, ví dụ "Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng từng nền tảng livestream." Đừng nối thành một câu có chữ TikTok, YouTube, Facebook sau "đã thử".
+Cách viết câu "đã thử" (test `STALE_LIVE` ở kế hoạch 01 bắt sai): **luôn hai câu riêng**, ví dụ "Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử Facebook Live." Đừng nối thành một câu có chữ TikTok hay Facebook sau "đã thử" (YouTube được, vì đã đạt V1).
 
 ## Bản đồ file
 

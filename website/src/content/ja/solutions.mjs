@@ -22,7 +22,7 @@ ${sectionHead({ eyebrow: "主な使い方", title: "いちばん近い場面を�
 <div class="grid grid-2">
 ${linkCard({ href: "/ja/solutions/online-meeting-translation/", icon: "users", title: "オンライン会議：Zoom、Teams、Meet、Zalo", text: "海外の取引先との通話に翻訳字幕を。ボットは不要で、主催者に何かを有効にしてもらう必要もありません。通話前の準備、通話中のショートカット、通話後の文字起こしまで説明します。", more: "会議のソリューションを見る" })}
 ${linkCard({ href: "/ja/solutions/webinar-and-video-translation/", icon: "play", title: "ウェビナー、講座、動画", text: "ほかの言語のカンファレンスの講演、講座、動画を、何時間にもわたるセッションでも翻訳字幕を読みながら視聴し、あとで文字起こしをコピーしたり書き出したりして復習できます。", more: "ウェビナーと動画のソリューションを見る" })}
-${linkCard({ href: "/ja/solutions/livestream-translation/", icon: "video", title: "ライブ配信：TikTok、YouTube、Facebook", text: "英語、中国語、日本語、韓国語のライブ配信をパソコンで見ながら翻訳字幕を表示。ブラウザーに何かをインストールする必要はありません。正直な限界：スマホでは使えず、ご自身のライブ配信の翻訳もできません。", more: "ライブ配信のソリューションを見る" })}
+${linkCard({ href: "/ja/solutions/livestream-translation/", icon: "video", title: "パソコンで見るライブ配信", text: "英語、中国語、日本語、韓国語のライブ配信をパソコンで見ながら翻訳字幕を表示。ブラウザーに何かをインストールする必要はありません。正直な限界：スマホでは使えず、ご自身のライブ配信の翻訳もできません。", more: "ライブ配信のソリューションを見る" })}
 ${linkCard({ href: "/ja/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok ライブ", text: "パソコンのブラウザーで TikTok ライブを翻訳字幕付きで見る方法と、TikTok ライブならではの限界。", more: "TikTok ライブのガイドを見る" })}
 </div>
 </div></section>

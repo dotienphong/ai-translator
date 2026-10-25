@@ -15,7 +15,8 @@ Chủ dự án muốn website xuất hiện đầu kết quả Google, Bing và 
 | dịch live | vi | `solutions-livestream` | Mơ hồ (còn nghĩa phiên dịch viên); trang chủ hỗ trợ |
 | dịch live tiktok | vi | `solutions-tiktok-live` | Phần lớn xem trên điện thoại: phải nói thẳng giới hạn |
 | live video translator | en | `solutions-livestream` (en) | |
-| real time translator, real time translation, real-time translation, realtime translation | en | `home` (en), hỗ trợ `solutions-livestream` (en) | Cụm chung, cạnh tranh rất cao |
+| real time translator, real-time translation | en | `home` (en) | Cụm chung, cạnh tranh rất cao |
+| real time translation, realtime translation | en | `solutions-livestream` (en) | Cụm chung, cạnh tranh rất cao |
 | real-time translator for meetings | en | `solutions-meetings` (en) | |
 | ai meeting translator | en | `solutions-meetings` (en) | |
 | live meeting translation | en | `solutions-meetings` (en) | |
@@ -104,9 +105,9 @@ Câu `trademark` ở chân trang (`T[lang].trademark` trong `src/site.mjs`, năm
 
 ## 6. Test
 
-- Bảng `need` của `test/site.test.mjs`: cụm bắt buộc cho mỗi trang mới (câu giới hạn điện thoại, câu "chỉ làm phụ đề cho người xem", điều kiện của số độ trễ).
-- Test mới `SEO_TARGETS`: bảng mục 1 dưới dạng dữ liệu; kiểm cụm đích có trong `title` hoặc `description` hoặc H1 của trang đích (đúng ngôn ngữ của cụm). Sửa trang về sau mà làm mất cụm thì test đỏ.
-- Chặn câu cấm: test mới `STALE_LIVE` chỉ bắt câu nói đã thử (hoặc chạy tốt với) TikTok/YouTube/Facebook khi chưa có kết quả V1; nó quét title, mô tả, thân trang và JSON-LD của mọi trang đã dựng (năm ngôn ngữ). Câu nói app dịch live của người phát cho người xem chưa tự động hóa: cần luật loại trừ câu phủ định như `staleHits` của `site.test.mjs`, chưa làm; tạm thời câu đó chỉ được bảo vệ bằng các câu bắt buộc ở bảng `NEEDS` của test (hai trang mới) và kiểm bằng mắt khi sửa trang. Test "không lộ công nghệ lõi" và `test/i18n-content.test.mjs` (so khung ja/zh/ko với en) áp dụng cho trang mới như mọi trang.
+- Bảng `NEEDS` của `test/seo-targets.test.mjs`: cụm bắt buộc cho mỗi trang mới (câu giới hạn điện thoại, câu "chỉ làm phụ đề cho người xem", điều kiện của số độ trễ).
+- Test mới `SEO_TARGETS`: bảng mục 1 dưới dạng dữ liệu; kiểm cụm đích có ở **mọi** chỗ ghi trong cột `where` của dòng đó (`title`, `description`, H1, H2 hay thân trang) của trang đích, đúng ngôn ngữ của cụm. Sửa trang về sau mà làm mất cụm thì test đỏ.
+- Chặn câu cấm: Test STALE_LIVE (luật CLAIM, hằng V1_TESTED = ["YouTube"]) chặn câu nói đã thử hoặc chạy tốt với các nền tảng chưa đạt V1 (hiện là TikTok, Facebook) ở title, mô tả, thân trang và JSON-LD của năm ngôn ngữ. Câu nói app dịch live của người phát cho người xem chưa tự động hóa: cần luật loại trừ câu phủ định như `staleHits` của `site.test.mjs`, chưa làm; tạm thời câu đó chỉ được bảo vệ bằng các câu bắt buộc ở bảng `NEEDS` của test (hai trang mới) và kiểm bằng mắt khi sửa trang. Test "không lộ công nghệ lõi" và `test/i18n-content.test.mjs` (so khung ja/zh/ko với en) áp dụng cho trang mới như mọi trang.
 - Độ dài: `title` ≤ 70 ký tự (ja/zh/ko ≤ 40 gồm đuôi), description 90–165 (ja/zh/ko 50–120).
 - Chạy `pnpm test` ở `website/` sau mỗi nhóm thay đổi; deploy không nằm trong spec này.
 
@@ -116,7 +117,7 @@ Câu `trademark` ở chân trang (`T[lang].trademark` trong `src/site.mjs`, năm
 
 **Kết quả (2026-10-25)** (chi tiết ở mục 3 của `docs/release/seo-theo-doi.md`):
 - **YouTube Live: đạt.** Thử một lần ngày 25/10/2026 (22:01–22:12 giờ Việt Nam) trên Chrome, macOS, kênh tin tức tiếng Anh Al Jazeera English: phụ đề tiếng Việt hiện suốt khoảng 2 phút 45 giây với nguồn âm thanh mặc định, và cả khi chọn nguồn "Chỉ Google Chrome" (khoảng 1 phút 20 giây). Bản dịch nhìn chung khớp lời, vài lỗi nhỏ.
-- **TikTok LIVE trên web: không đạt, thử chưa đúng loại.** Chỉ xem được một buổi live tiếng Việt có nhạc nền (không tìm được buổi live tiếng Anh, Trung, Nhật, Hàn). App thu được tiếng, nhưng nhạc làm nhận dạng sai (nhận nhầm ngôn ngữ, câu ảo lặp lại) nên phụ đề không dùng được. Chưa có kết quả với live tiếng Anh, Trung, Nhật, Hàn.
+- **TikTok LIVE trên web: không đạt, thử chưa đúng loại.** Chỉ xem được một buổi live tiếng Việt có nhạc nền (không tìm được buổi live tiếng Anh, Trung, Nhật, Hàn). App thu được tiếng, nhưng nhạc làm nhận dạng sai (nhận nhầm ngôn ngữ, câu ảo lặp lại) nên phụ đề không dùng được. Buổi thử nghe qua loa với nguồn "Âm thanh máy + Micro", nên chưa chắc nguyên nhân là nhạc: website chỉ nêu hiện tượng (nhận nhầm ngôn ngữ, lặp câu không ai nói) và điều kiện "có nhạc nền", không khẳng định nguyên nhân. Chưa có kết quả với live tiếng Anh, Trung, Nhật, Hàn.
 - **Facebook Live: chưa thử.** Windows: chưa thử riêng livestream.
 - Số thời gian xử lý trong log app (p50 khoảng 0,5 giây) **không** đưa lên website: không phải số đo chính thức và khác điều kiện đo của trang Tính năng.
 

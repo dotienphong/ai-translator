@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Can I translate TikTok Live into my language?",
-    a: `<p>In principle, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a speaker using English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. But for TikTok Live we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music threw off speech recognition, so the subtitles were not usable. We have no result for TikTok Live in English, Chinese, Japanese or Korean. We have tested it with videos playing in a browser, and once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026). To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
+    a: `<p>In principle, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a speaker using English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. But for TikTok Live we only have the result of one Vietnamese livestream with background music: the app captured the sound, but it detected the wrong language and repeated sentences nobody said, so the subtitles were not usable. We have no result for TikTok Live in English, Chinese, Japanese or Korean. We have tested it with videos playing in a browser, and once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026). To do it: open the livestream in a browser, press Start in AI Translator and read translated subtitles on the floating bar.</p>`,
   },
   {
     q: "Does it work on a phone?",
@@ -44,7 +44,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Translate TikTok Live in real time when you watch on a computer",
-  lead: "To read translated subtitles while you watch TikTok Live in Chinese, Japanese, Korean or another of the app's five languages, open the livestream in your computer's browser and run AI Translator: it listens to the audio playing on your machine and shows the translation on a floating bar. It runs only on macOS and Windows, so it does not work inside the TikTok app on a phone, and it makes subtitles only for the viewer.",
+  lead: "To read translated subtitles while you watch TikTok Live in Chinese, Japanese, Korean or another of the app's five languages, open the livestream in your computer's browser and run AI Translator: it listens to the audio playing on your machine and shows the translation on a floating bar. It runs only on macOS and Windows, so it does not work inside the TikTok app on a phone, and it makes subtitles for the person using the app to read, not for your own audience.",
   meta: "<span>Updated {{updated}}</span><span>Runs on macOS and Windows computers, not on phones</span>",
 })}
 
@@ -82,7 +82,7 @@ ${checkList([
   "<strong>You need to record the livestream or download the video.</strong> The app does not record audio or video to disk and does not process video files; it only has a text transcript.",
   "<strong>The livestream is not in English, Chinese, Japanese, Korean or Vietnamese.</strong> The app supports only these five languages; a livestream in Thai, Indonesian or another language cannot be translated yet.",
 ], true)}
-${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, payments, contracts) without checking. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music threw off speech recognition, so the subtitles were not usable. We have tested it with videos playing in a browser, and once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026)." })}
+${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, payments, contracts) without checking. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but it detected the wrong language and repeated sentences nobody said, so the subtitles were not usable. We have tested it with videos playing in a browser, and once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026)." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

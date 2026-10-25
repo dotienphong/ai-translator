@@ -24,7 +24,7 @@ ${sectionHead({ eyebrow: "Các cách dùng chính", title: "Chọn tình huống
 <div class="grid grid-2">
 ${linkCard({ href: "/giai-phap/dich-hop-truc-tuyen/", icon: "users", title: "Họp trực tuyến: Zoom, Teams, Meet, Zalo", text: "Phụ đề dịch cho cuộc họp với đối tác nước ngoài mà không cần bot, không cần chủ họp bật gì. Có cách chuẩn bị trước họp, phím tắt khi họp và bản chép lời sau họp.", more: "Xem giải pháp cho họp trực tuyến" })}
 ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "Webinar, khóa học và video", text: "Đọc phụ đề dịch khi xem hội thảo, khóa học hay video bằng ngoại ngữ, kể cả phiên dài nhiều giờ, rồi sao chép hoặc xuất bản chép lời để học lại.", more: "Xem giải pháp cho webinar và video" })}
-${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream: TikTok, YouTube, Facebook", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cần cài gì vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch buổi live của chính bạn cho người xem.", more: "Xem giải pháp cho livestream" })}
+${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream trên máy tính", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cần cài gì vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch buổi live của chính bạn cho người xem.", more: "Xem giải pháp cho livestream" })}
 ${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "laptop", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
 </div>
 </div></section>

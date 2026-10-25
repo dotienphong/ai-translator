@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Dịch live TikTok sang tiếng Việt được không?",
-    a: `<p>Về cơ chế thì được: app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt khi người nói dùng tiếng Anh, Trung, Nhật hay Hàn. Nhưng với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, có điều nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa có kết quả với TikTok LIVE bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026). Cách làm: mở buổi live trong trình duyệt, bấm Bắt đầu ở AI Translator và đọc phụ đề tiếng Việt trên thanh nổi.</p>`,
+    a: `<p>Về cơ chế thì được: app nghe âm thanh phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt khi người nói dùng tiếng Anh, Trung, Nhật hay Hàn. Nhưng với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, có điều app nhận nhầm ngôn ngữ và lặp lại câu không ai nói nên phụ đề không dùng được. Chúng tôi chưa có kết quả với TikTok LIVE bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026). Cách làm: mở buổi live trong trình duyệt, bấm Bắt đầu ở AI Translator và đọc phụ đề tiếng Việt trên thanh nổi.</p>`,
   },
   {
     q: "Dùng trên điện thoại được không?",
@@ -44,7 +44,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Dịch live TikTok sang tiếng Việt khi xem trên máy tính",
-  lead: "Muốn đọc phụ đề tiếng Việt khi xem TikTok LIVE bằng tiếng Anh, Trung, Nhật hay Hàn, bạn mở buổi live trên trình duyệt máy tính rồi dùng AI Translator: app nghe âm thanh phát ra từ máy và hiện bản dịch trên một thanh nổi. App chỉ có bản cho macOS và Windows nên không dùng được trong ứng dụng TikTok trên điện thoại, và chỉ làm phụ đề cho người xem.",
+  lead: "Muốn đọc phụ đề tiếng Việt khi xem TikTok LIVE bằng tiếng Anh, Trung, Nhật hay Hàn, bạn mở buổi live trên trình duyệt máy tính rồi dùng AI Translator: app nghe âm thanh phát ra từ máy và hiện bản dịch trên một thanh nổi. App chỉ có bản cho macOS và Windows nên không dùng được trong ứng dụng TikTok trên điện thoại, và làm phụ đề để chính người dùng app đọc, không dịch buổi live của bạn cho người xem của bạn.",
   meta: "<span>Cập nhật {{updated}}</span><span>Chạy trên máy tính macOS và Windows, không chạy trên điện thoại</span>",
 })}
 
@@ -82,7 +82,7 @@ ${checkList([
   "<strong>Bạn cần ghi lại buổi live hoặc tải video.</strong> App không ghi âm hay ghi hình xuống đĩa và không xử lý file video; nó chỉ có bản chép lời bằng chữ.",
   "<strong>Buổi live không nói tiếng Anh, Trung, Nhật, Hàn hay Việt.</strong> App chỉ hỗ trợ năm ngôn ngữ này; live bằng tiếng Thái, tiếng Indonesia hay ngôn ngữ khác chưa dịch được.",
 ], true)}
-${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (mua bán, thanh toán, hợp đồng) mà chưa kiểm tra lại. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026)." })}
+${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (mua bán, thanh toán, hợp đồng) mà chưa kiểm tra lại. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhận nhầm ngôn ngữ và lặp lại câu không ai nói nên phụ đề không dùng được. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026)." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

@@ -3,10 +3,10 @@
 //  - hai trang mới nói thẳng giới hạn (chỉ máy tính, chỉ phụ đề cho người xem, không ghi hình) và số đo kèm điều kiện;
 //  - không trang nào nói "đã thử" một nền tảng livestream chưa đạt V1 (V1_TESTED, kế hoạch 06; hiện chỉ YouTube đạt): quét title, mô tả, thân trang, JSON-LD;
 //  - chân trang nêu nhãn hiệu; menu, chân trang, trang Giải pháp và llms.txt liên kết tới hai trang mới.
-//   node --test test/seo-targets.test.mjs        (đang viết dở, thiếu trang ja/zh/ko: ALLOW_PARTIAL=1)
-import { test, before } from "node:test";
+//   node --test test/seo-targets.test.mjs        (ALLOW_PARTIAL=1: chỉ kiểm vi, en khi đang viết dở)
+import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PUBLISHED, fromEn } from "../src/langs.mjs";
@@ -17,6 +17,7 @@ process.env.WEBSITE_DIST = mkdtempSync(path.join(tmpdir(), "seo-targets-"));
 const { build, DIST } = await import("../src/build/build.mjs");
 const { pages } = await import("../src/content/index.mjs");
 const { SITE, T, NAV, FOOTER } = await import("../src/site.mjs");
+after(() => rmSync(DIST, { recursive: true, force: true }));
 
 const PARTIAL = process.env.ALLOW_PARTIAL === "1";
 /** Ngôn ngữ được kiểm: đủ các ngôn ngữ đã mở; đang viết dở thì chỉ vi và en. */
@@ -162,15 +163,19 @@ const UNTESTED = ["TikTok", "YouTube", "Facebook"].filter((n) => !V1_TESTED.incl
 /**
  * Câu nói đã thử một nền tảng livestream chưa đạt V1 (hoặc chạy tốt với nó). Ranh giới là dấu chấm: một câu có "đã thử …" rồi tới TikTok/Facebook
  * trước dấu chấm kế tiếp thì bị bắt, kể cả câu nối bằng dấu phẩy ("đã thử …, nhưng chưa thử riêng TikTok"). Vì vậy luôn viết hai câu riêng (xem kế hoạch 00).
- * ja/zh/ko chỉ bắt dấu hiệu khẳng định mạnh; câu phủ định (試していません, 尚未测试, 테스트하지 않았) không chứa các chuỗi này.
+ * ja/zh/ko chỉ bắt dấu hiệu khẳng định (テストしました, 確認しました, 测试过, 테스트해 보았, 확인했…); câu phủ định (試していません, 尚未测试, 没有测试过,
+ * 테스트하지 않았) không chứa các chuỗi này hoặc bị loại bằng lookbehind. Bắt thêm cách nói mới thì thêm câu vào SHOULD_CATCH và SHOULD_PASS cùng lúc.
  */
+const JA = "(?:テスト済み|試しました|確認済み|テストしました|確認しました|検証しました)";
+const ZH = "(?:已(?:经)?(?:测试|验证|试过)|(?<![没未尚]有?(?:经)?)验证过|(?<![没未尚]有?)测试过|(?<![没未尚]有?测?)试过)";
+const KO = String.raw`(?:테스트했|검증했|시험했|테스트해\s?(?:보았|봤)|확인했|사용해\s?봤)`;
 const P = `(?:${UNTESTED.join("|")})`;
 const CLAIM = {
   vi: new RegExp(String.raw`(?<!(?:chưa|không)\s)(?<![\p{L}])(?:đã|được)\s(?:[^.]{0,20}?\s)?(?:thử|test|kiểm\s?(?:tra|thử|chứng)|chạy|đo|xác\s?(?:nhận|minh))[^.]{0,80}?${P}|(?<!(?:chưa|không)\s)(?<![\p{L}])(?:chạy|hoạt động)\s+tốt\s+(?:với|trên)\s[^.]{0,20}?${P}`, "iu"),
   en: new RegExp(String.raw`\b(?:we|team|it|translator)(?:'ve|\s+(?:have|has|had))?\s+(?:(?:also|already|successfully|been|now)\s+)*(?:tested|tried|checked|verified|measured|confirmed|ran|run|used)\b[^.]{0,80}?${P}|(?<!(?:\bnot|\bnever|n't)\s(?:(?:yet|been)\s)*)\b(?:tested|verified|confirmed)\s+(?:on|with|against)\s[^.]{0,20}?${P}|(?<!(?:\bnot|\bnever|n't)\s)\bworks?\s+(?:well|fine|great)\s+(?:with|on)\s[^.]{0,20}?${P}`, "i"),
-  ja: new RegExp(String.raw`(?:テスト済み|試しました|確認済み)[^。]{0,60}?${P}|${P}[^。]{0,60}?(?:テスト済み|試しました|確認済み)`, "u"),
-  zh: new RegExp(String.raw`(?:已(?:经)?(?:测试|验证|试过)|(?<![没未尚]有?(?:经)?)验证过)[^。]{0,60}?${P}|${P}[^。]{0,60}?(?:已(?:经)?(?:测试|验证|试过)|(?<![没未尚]有?(?:经)?)验证过)`, "u"),
-  ko: new RegExp(String.raw`(?:테스트했|검증했|시험했)[^.]{0,60}?${P}|${P}[^.]{0,60}?(?:테스트했|검증했|시험했)`, "u"),
+  ja: new RegExp(String.raw`${JA}[^。]{0,60}?${P}|${P}[^。]{0,60}?${JA}`, "u"),
+  zh: new RegExp(String.raw`${ZH}[^。]{0,60}?${P}|${P}[^。]{0,60}?${ZH}`, "u"),
+  ko: new RegExp(String.raw`${KO}[^.]{0,60}?${P}|${P}[^.]{0,60}?${KO}`, "u"),
 };
 const claimsLiveTested = (lang, s) => CLAIM[lang]?.test(s) ?? false;
 
@@ -206,17 +211,24 @@ const SHOULD_CATCH = [
   ["ja", "TikTok でテスト済み"],
   ["zh", "已测试 TikTok 直播"],
   ["ko", "TikTok에서 테스트했습니다"],
+  ["ja", "TikTok ライブでテストしました"],
+  ["ja", "Facebook Live で動作を確認しました"],
+  ["zh", "我们在 TikTok 直播上测试过一次"],
+  ["zh", "我们在 Facebook 直播上试过"],
+  ["ko", "TikTok 라이브에서 테스트해 보았습니다"],
+  ["ko", "TikTok 라이브에서 확인했습니다"],
+  ["ko", "Facebook 라이브에서 사용해 봤습니다"],
 ];
 /** Câu trung thực mà luật không được bắt (kể cả câu nói đã thử YouTube Live, vì YouTube đã đạt V1). */
 const SHOULD_PASS = [
   ["vi", "Chúng tôi đã thử với video phát trong trình duyệt. Chúng tôi chưa thử riêng TikTok LIVE."],
   ["vi", "Chúng tôi đã thử một lần với YouTube Live."],
   ["vi", "Chúng tôi chưa thử Facebook Live."],
-  ["vi", "Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live trên Chrome (macOS, 25/10/2026): phụ đề hiện ra, kể cả khi chỉ nghe Chrome. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live."],
+  ["vi", "Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live: một kênh tin tức tiếng Anh, xem trên Chrome (Mac M4 Pro, 25/10/2026). Phụ đề tiếng Việt hiện suốt khoảng 4 phút xem, kể cả khi đặt nguồn Chỉ Google Chrome; bản dịch nhìn chung khớp lời, có vài lỗi nhỏ. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhận nhầm ngôn ngữ và lặp lại câu không ai nói nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live."],
   ["en", "We have tested it with videos playing in a browser. We have not tested TikTok Live itself."],
   ["en", "We tested it once with YouTube Live."],
   ["en", "We have not tested Facebook Live."],
-  ["en", "We have tested it with videos playing in a browser, and once with YouTube Live in Chrome on macOS (25 October 2026): subtitles appeared, including when listening to Chrome only. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but the music made recognition fail, so the subtitles were not usable. We have not tested Facebook Live."],
+  ["en", "We have tested it with videos playing in a browser, and once with YouTube Live: an English-language news channel watched in Chrome (Mac M4 Pro, 25 October 2026). Vietnamese subtitles appeared throughout about 4 minutes of viewing, including with the audio source set to Only Google Chrome; the translation broadly matched the speech, with a few small errors. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but it detected the wrong language and repeated sentences nobody said, so the subtitles were not usable. We have not tested Facebook Live."],
   ["en", "We have not tested TikTok Live itself; what we have tested is described on the livestream translation page."],
   ["en", "We have not tested on TikTok Live."],
   ["en", "This has not been tested with Facebook Live yet."],
@@ -229,6 +241,19 @@ const SHOULD_PASS = [
   ["ja", "TikTok ライブはまだ試していません"],
   ["zh", "尚未测试 TikTok 直播"],
   ["ko", "TikTok 라이브는 아직 테스트하지 않았습니다"],
+  ["zh", "我们没有测试过 Facebook 直播"],
+  ["zh", "我们没有试过 TikTok 直播"],
+  ["zh", "我们在 YouTube 直播上测试过一次"],
+  ["ko", "Facebook 라이브에서는 테스트하지 않았습니다"],
+  ["ko", "YouTube 라이브로도 한 번 테스트했습니다"],
+  ["ja", "Facebook Live では試していません"],
+  ["ja", "YouTube Live で動作を確認しました"],
+  // Câu ở Hỏi đáp về video trong trình duyệt (2026-10-25, sau V1).
+  ["vi", "Chúng tôi đã thử thu âm thanh từ Google Meet chạy trên Chrome, Safari và Edge (macOS 26.6.2), và thử một lần với YouTube Live. Chúng tôi chưa thử riêng từng nền tảng video khác."],
+  ["en", "We have tested capturing audio from Google Meet running in Chrome, Safari and Edge (macOS 26.6.2), and once with YouTube Live. We have not tested other video platforms individually."],
+  ["ja", "Chrome、Safari、Edge で動く Google Meet の音声取り込みを確認済みです（macOS 26.6.2）。YouTube Live でも 1 回試しました。そのほかの動画サービスは個別にはテストしていません。"],
+  ["zh", "我们测试过在 Chrome、Safari 和 Edge 中运行的 Google Meet 的音频采集（macOS 26.6.2），还用 YouTube Live 测试过一次。其他视频平台没有逐一测试。"],
+  ["ko", "Chrome, Safari, Edge에서 실행되는 Google Meet의 오디오 캡처를 테스트했습니다(macOS 26.6.2). YouTube 라이브로도 한 번 테스트했습니다. 그 밖의 동영상 플랫폼은 따로 테스트하지 않았습니다."],
 ];
 
 test("luật STALE_LIVE bắt câu nói đã thử nền tảng livestream và không bắt câu trung thực", () => {

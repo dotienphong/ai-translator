@@ -22,7 +22,7 @@ ${sectionHead({ eyebrow: "主要用途", title: "选择最接近你的情况", c
 <div class="grid grid-2">
 ${linkCard({ href: "/zh/solutions/online-meeting-translation/", icon: "users", title: "在线会议：Zoom、Teams、Meet、Zalo", text: "与海外合作伙伴通话时显示翻译字幕，不需要机器人，也不需要请主持人开启任何功能。包括通话前如何准备、通话中的快捷键以及通话后的转写内容。", more: "查看会议解决方案" })}
 ${linkCard({ href: "/zh/solutions/webinar-and-video-translation/", icon: "play", title: "网络研讨会、课程和视频", text: "观看其他语言的会议演讲、课程或视频时阅读翻译字幕，即使是长达数小时的会话也可以，之后还能复制或导出转写内容来复习。", more: "查看网络研讨会和视频解决方案" })}
-${linkCard({ href: "/zh/solutions/livestream-translation/", icon: "video", title: "直播：TikTok、YouTube、Facebook", text: "在电脑上观看英语、中文、日语或韩语直播时显示翻译字幕，不需要在浏览器中安装任何东西。坦诚说明局限：不支持手机，也不能翻译你自己的直播。", more: "查看直播解决方案" })}
+${linkCard({ href: "/zh/solutions/livestream-translation/", icon: "video", title: "在电脑上观看直播", text: "在电脑上观看英语、中文、日语或韩语直播时显示翻译字幕，不需要在浏览器中安装任何东西。坦诚说明局限：不支持手机，也不能翻译你自己的直播。", more: "查看直播解决方案" })}
 ${linkCard({ href: "/zh/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok 直播", text: "如何在电脑浏览器中观看带翻译字幕的 TikTok 直播，以及它特有的局限。", more: "查看 TikTok 直播指南" })}
 </div>
 </div></section>

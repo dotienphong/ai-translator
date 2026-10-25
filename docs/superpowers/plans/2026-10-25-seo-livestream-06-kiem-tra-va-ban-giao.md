@@ -1,5 +1,7 @@
 # SEO từ khóa livestream 06: README, bảng theo dõi, V1, kiểm tra cuối và bàn giao
 
+> Ghi chú (sau V1): hằng LIVE_TESTED đã được thay bằng V1_TESTED = ["YouTube"] (xem commit b8f3c714 và website/README.md mục "SEO từ khóa"); các đoạn nhắc LIVE_TESTED bên dưới là lịch sử.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ghi cách giữ SEO từ khóa vào README, tạo bảng theo dõi thứ hạng và kết quả V1, thử (nếu chủ dự án cho phép) app với livestream thật để biết có được nói "đã thử" không, kiểm giao diện bằng ảnh, chạy đủ test và bàn giao cho chủ dự án duyệt và deploy.

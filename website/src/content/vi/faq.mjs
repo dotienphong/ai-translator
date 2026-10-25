@@ -34,11 +34,11 @@ const GROUPS = [
       },
       {
         q: "Dịch video tiếng Anh trên trình duyệt sang tiếng Việt được không?",
-        a: `<p>Được. App nghe âm thanh đang phát trên máy nên dùng được với video phát trong trình duyệt mà không cần tiện ích nào. Chúng tôi đã thử thu âm thanh từ Google Meet chạy trên Chrome, Safari và Edge (macOS 26.6.2); chưa thử riêng từng nền tảng video.</p>`,
+        a: `<p>Được. App nghe âm thanh đang phát trên máy nên dùng được với video phát trong trình duyệt mà không cần tiện ích nào. Chúng tôi đã thử thu âm thanh từ Google Meet chạy trên Chrome, Safari và Edge (macOS 26.6.2), và thử một lần với YouTube Live. Chúng tôi chưa thử riêng từng nền tảng video khác.</p>`,
       },
       {
         q: "Dịch livestream ra tiếng Việt được không? Có dịch live TikTok không?",
-        a: `<p>Về cơ chế thì được, nếu bạn xem trên máy tính: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (một kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026): phụ đề tiếng Việt hiện suốt buổi thử, bản dịch nhìn chung khớp lời. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhạc làm nhận dạng sai nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live. App không có bản cho điện thoại và không đưa phụ đề vào buổi live của chính bạn cho khán giả của bạn. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
+        a: `<p>Về cơ chế thì được, nếu bạn xem trên máy tính: app nghe âm thanh đang phát ra từ máy nên không phụ thuộc trang web, và hiện phụ đề tiếng Việt cho livestream bằng tiếng Anh, Trung, Nhật hay Hàn. Chúng tôi đã thử với video phát trong trình duyệt, và thử một lần với YouTube Live (một kênh tin tức tiếng Anh, Chrome trên macOS, 25/10/2026): phụ đề tiếng Việt hiện suốt buổi thử, bản dịch nhìn chung khớp lời. Với TikTok LIVE, chúng tôi chỉ có kết quả của một buổi live tiếng Việt có nhạc nền: app thu được tiếng, nhưng nhận nhầm ngôn ngữ và lặp lại câu không ai nói nên phụ đề không dùng được. Chúng tôi chưa thử Facebook Live. App không có bản cho điện thoại và không đưa phụ đề vào buổi live của chính bạn cho khán giả của bạn. Xem <a href="/giai-phap/dich-livestream/">dịch livestream ra tiếng Việt</a> và <a href="/giai-phap/dich-live-tiktok/">dịch live TikTok</a>.</p>`,
       },
       {
         q: "Có dùng AI Translator trên điện thoại để dịch live được không?",

@@ -1,5 +1,7 @@
 # SEO từ khóa livestream 01: hạ tầng và test
 
+> Ghi chú (sau V1): hằng LIVE_TESTED đã được thay bằng V1_TESTED = ["YouTube"] (xem commit b8f3c714 và website/README.md mục "SEO từ khóa"); các đoạn nhắc LIVE_TESTED bên dưới là lịch sử.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Viết trước `test/seo-targets.test.mjs` (đỏ), rồi đăng ký hai id mới trong bộ sinh, cho chúng dùng ảnh chia sẻ nhóm `solutions`, và thêm TikTok, YouTube, Facebook vào câu nhãn hiệu ở chân trang năm ngôn ngữ.
