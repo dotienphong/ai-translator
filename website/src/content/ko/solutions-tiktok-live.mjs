@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "TikTok 라이브를 내 언어로 번역할 수 있나요?",
-    a: `<p>컴퓨터에서는 가능합니다. 앱은 컴퓨터에서 재생되는 오디오를 들으므로 웹사이트에 좌우되지 않고, 영어, 중국어, 일본어, 한국어, 베트남어로 말하는 사람의 말을 이 다섯 언어 중 다른 언어의 자막으로 보여 줄 수 있습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다. TikTok 라이브 자체로는 테스트하지 않았습니다. 브라우저에서 라이브 방송을 열고 AI Translator에서 ‘시작’을 누른 다음, 떠 있는 바의 번역 자막을 읽으면 됩니다.</p>`,
+    a: `<p>컴퓨터에서는 가능합니다. 앱은 컴퓨터에서 재생되는 오디오를 들으므로 웹사이트에 좌우되지 않고, 영어, 중국어, 일본어, 한국어, 베트남어로 말하는 사람의 말을 이 다섯 언어 중 다른 언어의 자막으로 보여 줄 수 있습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다. TikTok 라이브 자체에서는 테스트하지 않았습니다. 브라우저에서 라이브 방송을 열고 AI Translator에서 ‘시작’을 누른 다음, 떠 있는 바의 번역 자막을 읽으면 됩니다.</p>`,
   },
   {
     q: "휴대폰에서도 되나요?",
@@ -32,7 +32,7 @@ export default {
   path: "/ko/solutions/tiktok-live-translation/",
   title: "TikTok 라이브 실시간 번역",
   description:
-    "컴퓨터 브라우저에서 TikTok 라이브를 보며 번역 자막을 표시하는 방법. AI Translator에는 휴대폰 버전이 없습니다. 방법과 제한을 안내합니다.",
+    "컴퓨터 브라우저에서 TikTok 라이브를 보며 번역 자막을 표시하는 방법. AI Translator에는 휴대폰 버전이 없습니다. 단계와 제한을 안내합니다.",
   type: "article",
   published: "2026-10-25",
   breadcrumbs: crumbs,
@@ -42,7 +42,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "컴퓨터로 보는 TikTok 라이브를 실시간 번역하기",
-  lead: "중국어, 일본어, 한국어를 비롯해 앱이 지원하는 다섯 언어 중 하나로 진행되는 TikTok 라이브를 번역 자막과 함께 보려면, 컴퓨터 브라우저에서 라이브 방송을 열고 AI Translator를 실행하세요. 앱이 기기에서 재생되는 오디오를 듣고 번역을 떠 있는 바에 보여 줍니다. macOS와 Windows에서만 실행되므로 휴대폰의 TikTok 앱 안에서는 쓸 수 없으며, 자막은 앱으로 방송을 보는 본인이 읽기 위한 것일 뿐입니다.",
+  lead: "중국어, 일본어, 한국어를 비롯해 앱이 지원하는 다섯 언어 중 하나로 진행되는 TikTok 라이브를 번역 자막과 함께 보려면, 컴퓨터 브라우저에서 라이브 방송을 열고 AI Translator를 실행하세요. 앱이 기기에서 재생되는 오디오를 듣고 번역을 떠 있는 바에 보여 줍니다. macOS와 Windows에서만 실행되므로 휴대폰의 TikTok 앱 안에서는 쓸 수 없으며, 자막은 앱을 쓰는 본인이 읽기 위한 것일 뿐입니다.",
   meta: "<span>업데이트 {{updated}}</span><span>macOS와 Windows 컴퓨터에서 실행, 휴대폰은 지원하지 않음</span>",
 })}
 
@@ -53,9 +53,9 @@ ${callout({ kind: "warn", title: "써 보기 전에 알아 두세요. 컴퓨터�
 <section class="section"><div class="container narrow">
 ${sectionHead({ eyebrow: "시작하기", title: "번역 자막과 함께 TikTok 라이브를 보는 네 단계" })}
 ${steps([
-  { title: "AI Translator 설치하고 열기", text: "<a href=\"/ko/download/\">다운로드</a> 페이지의 설치 명령을 터미널(macOS) 또는 PowerShell(Windows)에 붙여 넣으세요. <em>번역 언어</em>를 읽고 싶은 언어로 정합니다." },
+  { title: "AI Translator 설치하고 열기", text: "<a href=\"/ko/download/\">다운로드</a> 페이지의 설치 명령을 터미널(macOS) 또는 PowerShell(Windows)에 붙여 넣으세요. <em>번역 언어</em>를 읽고 싶은 언어로 정하세요." },
   { title: "컴퓨터에서 TikTok 라이브 열기", text: "컴퓨터 브라우저에서 TikTok 웹사이트로 라이브 방송을 열고(TikTok이 웹에서 볼 수 있게 허용하는 경우) 소리가 나게 합니다. 로그인 여부와 누가 볼 수 있는지는 TikTok이 정하며 AI Translator와는 관계가 없습니다." },
-  { title: "라이브 방송이 재생되는 동안 ‘시작’ 누르기", text: "<strong>시작</strong>을 누릅니다(단축키 ⌃⌥T, Windows: Ctrl+Alt+T). macOS에서는 처음에 시스템이 <em>시스템 오디오 녹음</em> 권한을 요청합니다. <a href=\"/ko/guide/macos-audio-permission/\">권한 허용 방법</a>을 참고하세요. 앱은 처음 몇 초 동안 모델을 불러옵니다(설치나 업데이트 직후 첫 실행은 더 오래 걸려 몇 분이 걸릴 수도 있습니다)." },
+  { title: "라이브 방송이 재생되는 동안 ‘시작’ 누르기", text: "<strong>시작</strong>을 누릅니다(단축키 ⌃⌥T, Windows: Ctrl+Alt+T). macOS에서는 처음에 시스템이 <em>시스템 오디오 녹음</em> 권한을 요청합니다. <a href=\"/ko/guide/macos-audio-permission/\">권한 허용 방법</a>을 참고하세요. 앱은 처음 몇 초 동안 모델을 불러옵니다(설치나 업데이트 직후 첫 실행은 더 오래, 최대 몇 분까지 걸릴 수 있습니다)." },
   { title: "자막 바를 영상 가까이 끌어 놓기", text: "바를 라이브 방송 바로 아래로 끌어 놓고 ‘설정 › 자막’에서 글자 크기를 정한 다음, <em>잠금(클릭 통과)</em>을 누르면 마우스가 바를 통과합니다." },
 ], true)}
 </div></section>
@@ -66,21 +66,21 @@ ${checkList([
   "<strong>문장이 중간에 끊길 때(화자가 머뭇거리거나 숨을 쉴 때):</strong> <em>문장을 끝내는 정지 시간</em>(50~800 ms)을 올리면 문장이 덜 끊깁니다. 자막은 조금 늦게 나타납니다. 변경 사항은 다음 세션부터 적용됩니다.",
   "<strong>배경 음악이나 소음이 클 때:</strong> 인식이 나빠지고 번역이 틀릴 가능성이 커집니다. 말소리가 또렷한 라이브 방송일수록 잘 작동합니다.",
   "<strong>여러 사람이 동시에 말할 때:</strong> 앱은 들리는 소리를 문장 단위로 번역하며, 누가 말하는지는 구분하지 않습니다.",
-  "<strong>브라우저 소리만 듣기(macOS):</strong> 시스템 알림이 번역되지 않도록 먼저 라이브 방송을 재생한 다음, ‘설정 › 오디오’에서 <em>목록 새로 고침</em>을 누르고 <em>{브라우저 이름}만</em>을 고른 뒤에 ‘시작’을 누르세요. Safari 항목의 이름은 <em>Safari 및 다른 앱 안의 웹 페이지만</em>입니다. 새 소스는 다음 세션부터 적용되며, 그 브라우저의 다른 탭 소리도 들립니다.",
+  "<strong>브라우저 소리만 듣기(macOS):</strong> 시스템 알림이 번역되지 않도록 먼저 라이브 방송을 재생한 다음, ‘설정 › 오디오’에서 <em>목록 새로 고침</em>을 누르고 <em>{브라우저 이름}만</em>을 고른 뒤에 ‘시작’을 누르세요. Safari는 목록에 ‘Safari 및 다른 앱 안의 웹 페이지만’으로 표시됩니다. 새 소스는 다음 세션부터 적용되며, 그 브라우저의 다른 탭 소리도 들립니다.",
   "<strong>Windows는 아직 앱 하나만 고를 수 없습니다.</strong> 보는 동안 시스템 알림을 음소거하세요.",
-  "<strong>중국어, 한국어, 일본어, 영어 라이브 방송:</strong> <em>번역 언어</em>를 내 언어(영어, 베트남어, 중국어, 일본어, 한국어)로 정합니다. 말하는 언어를 안다면 <em>원본 언어</em>를 정하고, 화자가 언어를 바꾼다면 자동 감지를 그대로 두세요. 번역 품질은 베트남어가 포함된 언어 쌍만 측정했습니다(<a href=\"/ko/features/#quality-by-direction\">표 보기</a>). 다른 쌍도 작동하지만 측정한 점수는 없습니다.",
+  "<strong>중국어, 한국어, 일본어, 영어 라이브 방송:</strong> <em>번역 언어</em>를 내 언어(영어, 베트남어, 중국어, 일본어, 한국어)로 정합니다. 방송에서 쓰는 언어를 안다면 <em>원본 언어</em>를 그 언어로 정하고, 화자가 언어를 바꾼다면 자동 감지를 그대로 두세요. 번역 품질은 베트남어가 포함된 언어 쌍만 측정했습니다(<a href=\"/ko/features/#quality-by-direction\">표 보기</a>). 다른 쌍도 작동하지만 측정한 점수는 없습니다.",
 ])}
 </div></section>
 
 <section class="section" id="not-a-fit"><div class="container narrow">
-${sectionHead({ eyebrow: "솔직한 한계", title: "TikTok 라이브에 AI Translator가 맞지 않는 경우는?", text: "한계를 미리 알면 소득 없는 체험을 피할 수 있습니다." })}
+${sectionHead({ eyebrow: "솔직한 한계", title: "TikTok 라이브에 AI Translator가 맞지 않는 경우는?", text: "한계를 미리 알면 괜히 써 보는 수고를 덜 수 있습니다." })}
 ${checkList([
   "<strong>휴대폰으로 TikTok 라이브를 본다.</strong> AI Translator는 macOS와 Windows에서만 실행되므로 휴대폰의 TikTok 앱 안에는 자막을 표시하지 않습니다.",
   "<strong>내가 방송하는 사람이고, 시청자를 위해 번역하고 싶다.</strong> 앱이 만드는 자막은 앱을 쓰는 사람이 자기 컴퓨터의 떠 있는 바에서 읽기 위한 것입니다. 내 라이브 방송에 자막이나 번역된 음성을 더하지 않습니다.",
   "<strong>라이브 방송을 녹화하거나 동영상을 내려받아야 한다.</strong> 앱은 오디오나 영상을 디스크에 녹음·녹화하지 않고 동영상 파일을 처리하지도 않습니다. 남는 것은 텍스트 대본뿐입니다.",
   "<strong>라이브 방송이 영어, 중국어, 일본어, 한국어, 베트남어가 아니다.</strong> 앱은 이 다섯 언어만 지원합니다. 태국어, 인도네시아어 등 다른 언어의 라이브 방송은 아직 번역할 수 없습니다.",
 ], true)}
-${callout({ kind: "warn", title: "기계 번역은 틀릴 수 있습니다.", text: "중요한 결정(구매, 결제, 계약)에서는 확인 없이 AI Translator에 의존하지 마세요. TikTok 라이브 자체로는 테스트하지 않았습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다." })}
+${callout({ kind: "warn", title: "기계 번역은 틀릴 수 있습니다.", text: "중요한 결정(구매, 결제, 계약)에서는 확인 없이 AI Translator에 의존하지 마세요. TikTok 라이브 자체에서는 테스트하지 않았습니다. 브라우저에서 재생한 동영상으로 테스트해 보았습니다." })}
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

@@ -22,7 +22,7 @@ ${sectionHead({ eyebrow: "주요 용도", title: "가장 가까운 상황을 고
 <div class="grid grid-2">
 ${linkCard({ href: "/ko/solutions/online-meeting-translation/", icon: "users", title: "온라인 회의: Zoom, Teams, Meet, Zalo", text: "해외 파트너와의 통화에 번역 자막을. 봇도 필요 없고, 주최자에게 무언가를 켜 달라고 부탁할 필요도 없습니다. 통화 전 준비, 통화 중 단축키, 통화 후 대본까지 다룹니다.", more: "회의 솔루션 보기" })}
 ${linkCard({ href: "/ko/solutions/webinar-and-video-translation/", icon: "play", title: "웨비나, 강좌, 동영상", text: "다른 언어로 된 콘퍼런스 발표, 강좌, 동영상을 몇 시간짜리 세션이라도 번역 자막을 읽으며 보고, 나중에 대본을 복사하거나 내보내 다시 공부할 수 있습니다.", more: "웨비나와 동영상 솔루션 보기" })}
-${linkCard({ href: "/ko/solutions/livestream-translation/", icon: "video", title: "라이브 방송: TikTok, YouTube, Facebook", text: "영어, 중국어, 일본어, 한국어 라이브 방송을 컴퓨터로 보면서 번역 자막을 읽을 수 있으며, 브라우저에 설치할 것이 없습니다. 솔직한 한계로, 휴대폰에서는 쓸 수 없고 내 라이브 방송을 번역하지도 않습니다.", more: "라이브 방송 솔루션 보기" })}
+${linkCard({ href: "/ko/solutions/livestream-translation/", icon: "video", title: "라이브 방송: TikTok, YouTube, Facebook", text: "영어, 중국어, 일본어, 한국어 라이브 방송을 컴퓨터로 보면서 번역 자막을 읽을 수 있으며, 브라우저에 설치할 것이 없습니다. 솔직한 한계: 휴대폰에서는 쓸 수 없고, 내 라이브 방송을 번역해 주지도 않습니다.", more: "라이브 방송 솔루션 보기" })}
 ${linkCard({ href: "/ko/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok 라이브", text: "컴퓨터 브라우저에서 TikTok 라이브를 번역 자막과 함께 보는 방법과 TikTok 라이브만의 한계.", more: "TikTok 라이브 가이드 보기" })}
 </div>
 </div></section>
@@ -61,7 +61,7 @@ ${sectionHead({ eyebrow: "빠른 선택", title: "어떤 상황에 어떤 설정
 </div></section>
 
 <section class="section section-alt" id="not-a-fit"><div class="container narrow">
-${sectionHead({ eyebrow: "솔직한 한계", title: "AI Translator가 맞지 않는 경우", text: "한계를 미리 알면 소득 없는 체험을 피할 수 있습니다." })}
+${sectionHead({ eyebrow: "솔직한 한계", title: "AI Translator가 맞지 않는 경우", text: "한계를 미리 알면 괜히 써 보는 수고를 덜 수 있습니다." })}
 ${checkList([
   "<strong>번역된 내 목소리를 다른 사람이 들어야 한다.</strong> AI Translator의 자막은 한 방향으로만, 컴퓨터에서 재생되는 오디오를 사용자의 언어로 번역합니다. 사용자의 목소리를 번역해 회의에 내보내지는 않습니다. 글로 답할 때는 <a href=\"/ko/guide/type-and-translate/\">입력 번역</a>을 쓸 수 있습니다.",
   "<strong>회의를 녹음해야 한다.</strong> 앱은 오디오를 디스크에 녹음하지 않습니다. 텍스트 대본만 남기며, 기록 저장은 기본적으로 꺼져 있는 Pro 기능입니다.",
