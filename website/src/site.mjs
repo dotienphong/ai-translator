@@ -56,7 +56,7 @@ export const T = {
     provider: "Bên cung cấp",
     updated: "Cập nhật",
     trademark:
-      "Zoom, Microsoft Teams, Google Meet, Zalo và các tên sản phẩm khác thuộc về chủ sở hữu tương ứng; AI Translator không liên kết với họ.",
+      "Zoom, Microsoft Teams, Google Meet, Zalo, TikTok, YouTube, Facebook và các tên sản phẩm khác thuộc về chủ sở hữu tương ứng; AI Translator không liên kết với họ.",
   },
   en: {
     language: "Language",
@@ -72,7 +72,7 @@ export const T = {
     provider: "Provider",
     updated: "Updated",
     trademark:
-      "Zoom, Microsoft Teams, Google Meet, Zalo and other product names belong to their respective owners; AI Translator is not affiliated with them.",
+      "Zoom, Microsoft Teams, Google Meet, Zalo, TikTok, YouTube, Facebook and other product names belong to their respective owners; AI Translator is not affiliated with them.",
   },
   ja: {
     language: "言語",
@@ -87,7 +87,7 @@ export const T = {
     provider: "提供者",
     colon: "：",
     updated: "更新日",
-    trademark: "Zoom、Microsoft Teams、Google Meet、Zalo などの製品名は各所有者に帰属します。AI Translator はこれらの企業と提携していません。",
+    trademark: "Zoom、Microsoft Teams、Google Meet、Zalo、TikTok、YouTube、Facebook などの製品名は各所有者に帰属します。AI Translator はこれらの企業と提携していません。",
   },
   zh: {
     language: "语言",
@@ -102,7 +102,7 @@ export const T = {
     provider: "提供方",
     colon: "：",
     updated: "更新于",
-    trademark: "Zoom、Microsoft Teams、Google Meet、Zalo 等产品名称归各自所有者所有；AI Translator 与它们没有关联。",
+    trademark: "Zoom、Microsoft Teams、Google Meet、Zalo、TikTok、YouTube、Facebook 等产品名称归各自所有者所有；AI Translator 与它们没有关联。",
   },
   ko: {
     language: "언어",
@@ -116,7 +116,7 @@ export const T = {
     footerAbout: "내 컴퓨터에서 실행되는 AI로 번역 자막을 만듭니다. 회의 데이터는 클라우드로 보내지 않습니다. 봇, 계정, 광고가 없습니다.",
     provider: "제공자",
     updated: "업데이트",
-    trademark: "Zoom, Microsoft Teams, Google Meet, Zalo 및 기타 제품 이름은 각 소유자의 자산이며, AI Translator는 이들과 제휴 관계가 없습니다.",
+    trademark: "Zoom, Microsoft Teams, Google Meet, Zalo, TikTok, YouTube, Facebook 및 기타 제품 이름은 각 소유자의 자산이며, AI Translator는 이들과 제휴 관계가 없습니다.",
   },
 };
 
@@ -325,7 +325,7 @@ export const FOOTER = {
 const OG_GROUP = {
   home: "default", features: "features", pricing: "pricing", download: "download", faq: "faq", about: "about", contact: "contact",
   "data-security": "security", "compare-offline-cloud": "compare", solutions: "solutions", "solutions-meetings": "solutions",
-  "solutions-webinar": "solutions", terms: "legal", privacy: "legal",
+  "solutions-webinar": "solutions", "solutions-livestream": "solutions", "solutions-tiktok-live": "solutions", terms: "legal", privacy: "legal",
 };
 export const ogFor = (page) => page.ogImage ?? `/assets/og/${page.id.startsWith("guide") ? "guide" : (OG_GROUP[page.id] ?? "default")}-${page.lang}.jpg`;
 
