@@ -2078,7 +2078,10 @@ mod tests {
             cfg.streaming_supported && cfg.streaming_enabled,
             "công tắc bật, máy đủ sức"
         );
-        assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 50);
+        assert_eq!(
+            cfg.pipeline.segmenter.end_silence_ms, 100,
+            "mặc định `vadEndSilenceMs` 100 ms"
+        );
         let cfg = engine_config(
             &settings,
             &system(),
