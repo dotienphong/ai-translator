@@ -18,6 +18,10 @@ export const HOME_FAQ = [
     a: `<p>可以。应用采集的是电脑的系统音频，所以不受你使用哪款会议应用、网络研讨会或视频的影响，也不需要机器人或插件。我们在 macOS 上测试过 Zoom、Google Meet、Microsoft Teams 和 Zalo PC 的音频采集（内部测试，不是这些公司的认证）。在 macOS 上，你还可以选择只收听某一个应用的声音。</p>`,
   },
   {
+    q: "能把直播翻译成我的语言吗？",
+    a: "<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把英语、中文、日语、韩语或越南语的直播翻译成这五种语言中的另一种并显示为字幕。我们用浏览器中播放的视频做过测试。我们没有针对任何一个直播平台单独做过测试。没有手机版，应用也不会为你自己的直播添加给观众看的字幕。请参阅<a href=\"/zh/solutions/livestream-translation/\">直播翻译</a>。</p>",
+  },
+  {
     q: "我的会议音频会被发送到别处吗？",
     a: `<p>不会。翻译时，音频只存在于内存（RAM）中，从不写入磁盘，也从不通过网络发送。我们在 macOS 上用网络代理做过检查：翻译期间，应用没有向外发送任何音频或转写文本。</p>`,
   },
@@ -35,11 +39,11 @@ export default {
   id: "home",
   lang: "zh",
   path: "/zh/",
-  title: "会议实时翻译字幕，离线运行 | AI Translator",
+  title: "直播与会议实时翻译字幕，离线运行 | AI Translator",
   description:
-    "在 Zoom、Teams、Google Meet 或任何应用中阅读实时翻译字幕。支持英语、中文、日语、韩语、越南语。AI 在你的电脑上运行，不经过云端。",
+    "为直播、视频和 Zoom、Teams、Meet 会议提供实时翻译字幕，支持英语、中文、日语、韩语、越南语。AI 在你的电脑上运行，不经过云端。",
   software: true,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     videoObject({ lang: "zh", name: "AI Translator 演示视频：会议翻译字幕与输入翻译", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
@@ -49,7 +53,7 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple 芯片）· Windows 10/11 · 免费试用 10 天</p>
 <h1 class="reveal">为<em>每一场会议</em><span class="nowrap">提供</span> AI 翻译字幕，在你的电脑上运行</h1>
-<p class="lead reveal"><strong>AI Translator</strong> 是一款桌面应用：把电脑上播放的音频变成悬浮在屏幕上的翻译字幕，并把你输入的消息翻译成对方的语言。AI 在你自己的电脑上运行，所以你的音频和会议内容不会被发送到云端。可用于 Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会和视频。</p>
+<p class="lead reveal"><strong>AI Translator</strong> 是一款适用于 macOS 和 Windows 的 AI 实时翻译桌面应用：把电脑上播放的音频实时变成悬浮在屏幕上的翻译字幕，并把你输入的消息翻译成对方的语言。AI 在你自己的电脑上运行，所以你的音频和会议内容不会被发送到云端。可用于 Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会、视频，以及你在电脑上观看的直播。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/zh/download/">下载 ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">了解使用方法</a>
@@ -95,6 +99,7 @@ ${checkList([
   "字幕条始终置顶：可以拖动，可以改字号和颜色，<strong>锁定</strong>后鼠标点击会直接穿过",
   "术语表把人名和行业术语的译法作为提示交给翻译（Pro 功能）",
   "线下或混合会议：把采集来源选为<strong>麦克风</strong>或<strong>电脑音频 + 麦克风</strong>，会议室里的人说的话也能翻译（<a href=\"/zh/features/#microphone\">使用方法</a>）",
+  "直播和视频也可以：应用能听到电脑上播放的任何音频，所以也适用于浏览器中的直播视频（<a href=\"/zh/solutions/livestream-translation/\">直播翻译</a>）",
 ])}
 <p><a class="btn btn-secondary" href="/zh/features/">查看全部功能 ${icon("arrow-right")}</a></p>
 </div>

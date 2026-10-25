@@ -14,7 +14,7 @@ export default {
     "5 种语言的实时翻译字幕、字幕条、聊天用的输入翻译、术语表、历史记录以及 TXT/SRT/Markdown 导出。全部在你的电脑上离线运行。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   body: () => `
 ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", lead: "这里介绍 AI Translator 目前能做的事，与应用中的实际表现完全一致。只有付费套餐才有的功能都会明确标出。" })}
 
@@ -96,7 +96,7 @@ ${appShot({ slug: "app-settings-audio", lang: "zh", alt: "音频设置：采集�
 <div class="stack-lg reveal">
 <span class="eyebrow">音频来源</span>
 <h2>任何会议应用，无需机器人，无需插件</h2>
-<p>由于应用采集的是系统音频，AI Translator 适用于任何能发出声音的内容：Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会、视频和在线课程。</p>
+<p>由于应用采集的是系统音频，AI Translator 适用于任何能发出声音的内容：Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会、视频、在线课程，以及你在电脑上观看的直播（<a href="/zh/solutions/livestream-translation/">直播翻译</a>）。</p>
 ${checkList([
   "<strong>macOS：</strong>收听整个系统（应用本身除外），或只收听一个正在播放声音的应用，这样其他应用的提示音就不会被误翻译",
   "<strong>Windows：</strong>默认播放设备，或你选择的设备",

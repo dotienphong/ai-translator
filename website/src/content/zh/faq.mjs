@@ -37,6 +37,18 @@ const GROUPS = [
         a: `<p>能。应用收听的是电脑上正在播放的音频，所以不需要任何扩展就能用于浏览器中的视频。我们测试过在 Chrome、Safari 和 Edge 中运行的 Google Meet 的音频采集（macOS 26.6.2）；没有测试过具体的视频平台。</p>`,
       },
       {
+        q: "能把直播翻译成我的语言吗？TikTok 直播呢？",
+        a: `<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把英语、中文、日语、韩语或越南语的直播翻译成这五种语言中的另一种并显示为字幕。我们用浏览器中播放的视频做过测试。我们没有针对任何一个直播平台（TikTok Live、YouTube Live、Facebook Live）单独做过测试。请参阅<a href="/zh/solutions/livestream-translation/">直播翻译</a>和<a href="/zh/solutions/tiktok-live-translation/">翻译 TikTok 直播</a>。</p>`,
+      },
+      {
+        q: "能在手机上用 AI Translator 翻译直播吗？",
+        a: `<p>不能。AI Translator 只能在 macOS（Apple 芯片）和 Windows 10/11 上运行。要为直播显示字幕，请在电脑上打开直播。</p>`,
+      },
+      {
+        q: "我在做直播，能为我的观众翻译吗？",
+        a: `<p>不能。AI Translator 没有为你的直播添加字幕或翻译语音的功能。它生成的字幕是给使用该应用的人本人阅读的，显示在这个人自己电脑上的悬浮字幕条上。</p>`,
+      },
+      {
         q: "可以用于 Zoom、Teams、Google Meet 和 Zalo 吗？",
         a: `<p>可以。应用采集的是系统音频，所以不受会议应用影响，也不需要针对每个应用进行设置：只要点“开始”即可。在 macOS 上，你还可以选择只收听一个应用（设置 › 音频），这样提示音就不会被翻译。</p><p>我们在 macOS 26 上检查过 Zoom、Google Meet（Chrome、Safari、Edge）、Microsoft Teams 和 Zalo PC 的系统音频采集：说话人的声音都能清晰采集。这是测试人员确认过的采集组件检查，不是在发布版本上进行的正式验收测试，我们也没有试过所有 macOS 版本或所有应用。这些名称仅用于说明兼容性，AI Translator 与它们没有关联。请参阅<a href="/zh/solutions/online-meeting-translation/">会议翻译</a>。</p>`,
       },
@@ -239,7 +251,7 @@ export default {
   description:
     "关于 AI Translator 的简短回答：在 Zoom、Teams 和 Meet 中使用、语言、离线运行、隐私、系统要求、套餐、付款和日常使用。",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-10-25",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   body: () => `
 ${pageHero({

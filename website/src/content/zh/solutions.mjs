@@ -9,19 +9,21 @@ export default {
   id: "solutions",
   lang: "zh",
   path: "/zh/solutions/",
-  title: "解决方案：会议和视频翻译字幕",
+  title: "解决方案：会议、直播和视频翻译字幕",
   description:
-    "AI Translator 为 Zoom、Teams、Meet 和 Zalo 通话、网络研讨会、课程和视频显示翻译字幕。了解如何使用，以及哪些情况不适合。",
+    "AI Translator 为 Zoom、Teams、Meet 和 Zalo 通话、直播、网络研讨会和视频显示翻译字幕。了解如何使用，以及哪些情况不适合。",
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-10-25",
   body: () => `
-${pageHero({ crumbs, title: "AI Translator 可以用来做什么？", lead: "AI Translator 为电脑上播放的任何音频显示实时翻译字幕，语音识别和翻译都在你自己的电脑上运行。两大主要用途是在线会议，以及观看你听不懂的语言的网络研讨会、课程或视频。本页帮助你选择合适的设置，也会告诉你哪些情况不适合使用这款应用。" })}
+${pageHero({ crumbs, title: "AI Translator 可以用来做什么？", lead: "AI Translator 为电脑上播放的任何音频显示实时翻译字幕，语音识别和翻译都在你自己的电脑上运行。主要用途包括在线会议、观看直播，以及观看你听不懂的语言的网络研讨会、课程或视频。本页帮助你选择合适的设置，也会告诉你哪些情况不适合使用这款应用。" })}
 
 <section class="section-tight"><div class="container">
-${sectionHead({ eyebrow: "两大主要用途", title: "选择最接近你的情况", center: true })}
+${sectionHead({ eyebrow: "主要用途", title: "选择最接近你的情况", center: true })}
 <div class="grid grid-2">
 ${linkCard({ href: "/zh/solutions/online-meeting-translation/", icon: "users", title: "在线会议：Zoom、Teams、Meet、Zalo", text: "与海外合作伙伴通话时显示翻译字幕，不需要机器人，也不需要请主持人开启任何功能。包括通话前如何准备、通话中的快捷键以及通话后的转写内容。", more: "查看会议解决方案" })}
 ${linkCard({ href: "/zh/solutions/webinar-and-video-translation/", icon: "play", title: "网络研讨会、课程和视频", text: "观看其他语言的会议演讲、课程或视频时阅读翻译字幕，即使是长达数小时的会话也可以，之后还能复制或导出转写内容来复习。", more: "查看网络研讨会和视频解决方案" })}
+${linkCard({ href: "/zh/solutions/livestream-translation/", icon: "video", title: "直播：TikTok、YouTube、Facebook", text: "在电脑上观看英语、中文、日语或韩语直播时显示翻译字幕，不需要在浏览器中安装任何东西。坦诚说明局限：不支持手机，也不能翻译你自己的直播。", more: "查看直播解决方案" })}
+${linkCard({ href: "/zh/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok 直播", text: "如何在电脑浏览器中观看带翻译字幕的 TikTok 直播，以及它特有的局限。", more: "查看 TikTok 直播指南" })}
 </div>
 </div></section>
 
@@ -52,6 +54,7 @@ ${sectionHead({ eyebrow: "快速选择", title: "什么情况，用什么设置�
 <tbody>
 <tr><th scope="row">与合作伙伴的 Zoom、Teams 或 Meet 通话</th><td>锁定源语言，把专有名词加入术语表（Pro），把字幕条放在视频正下方</td></tr>
 <tr><th scope="row">Zalo PC 通话</th><td>保持“自动检测”，如果知道对方的语言也可以锁定</td></tr>
+<tr><th scope="row">直播或 TikTok 直播</th><td>在电脑浏览器中观看，只听取浏览器的声音（macOS），如果句子被切得零碎，就调高“结束一句话的停顿”；不支持手机</td></tr>
 <tr><th scope="row">网络研讨会或会议演讲</th><td>保留原文显示（默认开启），并且只听取播放器的声音（macOS）</td></tr>
 <tr><th scope="row">课程或讲座视频</th><td>导出转写内容以便复习（Pro），把专业术语加入术语表（Pro）</td></tr>
 </tbody></table></div>
@@ -66,6 +69,7 @@ ${checkList([
   "<strong>你使用的是 Intel Mac、Windows ARM64，或者 CPU 不支持 AVX2 的 Windows 电脑。</strong>AI Translator 可在 Apple 芯片上的 macOS 14.2 或更高版本，以及 CPU 支持 AVX2 的 Windows 10/11 64 位（x64）上运行。",
   "<strong>你的电脑内存不足 8 GB，</strong>或者你需要上述五种语言以外的语言：应用目前还无法满足。",
   "<strong>你没有越南银行账户，而且所在国家不在 Creem 接受银行卡付款的范围内。</strong>国际银行卡通过 Creem 付款，而 Creem 不接受部分国家的买家（按 Creem 的列表），也没有 PayPal。这种情况下目前无法为付费套餐付款；Free 试用仍然可以使用。",
+  "<strong>你用手机观看直播，或者想为你的观众翻译你自己的直播。</strong>AI Translator 不能在手机上运行，也不会为你的直播添加字幕或翻译语音；请参阅<a href=\"/zh/solutions/livestream-translation/\">直播翻译</a>。",
 ], true)}
 ${callout({ kind: "warn", title: "自动翻译可能出错。", text: "在重要决策（合同、医疗、法律、财务）中，请不要在未经专业人士核实的情况下依赖 AI Translator。" })}
 </div></section>

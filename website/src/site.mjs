@@ -198,6 +198,8 @@ export const NAV = {
       children: [
         { label: "Zoom、Teams、Meet 会议", href: "/zh/solutions/online-meeting-translation/", hint: "为任何会议应用提供翻译字幕" },
         { label: "网络研讨会和视频", href: "/zh/solutions/webinar-and-video-translation/", hint: "看懂外语内容" },
+        { label: "直播", href: "/zh/solutions/livestream-translation/", hint: "为直播画面显示翻译字幕" },
+        { label: "TikTok 直播", href: "/zh/solutions/tiktok-live-translation/", hint: "在电脑浏览器中观看" },
       ],
     },
     {
@@ -319,7 +321,7 @@ export const FOOTER = {
   ],
   zh: [
     { title: "产品", links: [{ label: "功能", href: "/zh/features/" }, { label: "价格", href: "/zh/pricing/" }, { label: "下载", href: "/zh/download/" }, { label: "离线翻译与云端翻译", href: "/zh/compare/offline-vs-cloud-translation/" }] },
-    { title: "解决方案", links: [{ label: "Zoom、Teams、Meet 会议", href: "/zh/solutions/online-meeting-translation/" }, { label: "网络研讨会和视频", href: "/zh/solutions/webinar-and-video-translation/" }] },
+    { title: "解决方案", links: [{ label: "Zoom、Teams、Meet 会议", href: "/zh/solutions/online-meeting-translation/" }, { label: "网络研讨会和视频", href: "/zh/solutions/webinar-and-video-translation/" }, { label: "直播", href: "/zh/solutions/livestream-translation/" }, { label: "TikTok 直播", href: "/zh/solutions/tiktok-live-translation/" }] },
     { title: "支持", links: [{ label: "使用指南", href: "/zh/guide/" }, { label: "常见问题", href: "/zh/faq/" }, { label: "故障排除", href: "/zh/guide/troubleshooting/" }, { label: "联系我们", href: "/zh/contact/" }] },
     { title: "公司", links: [{ label: "关于 AI Translator", href: "/zh/about/" }, { label: "数据与安全", href: "/zh/data-security/" }, { label: "使用条款（英文）", href: "/en/terms/" }, { label: "隐私政策（英文）", href: "/en/privacy/" }] },
   ],
