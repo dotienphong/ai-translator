@@ -19,10 +19,13 @@ use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
 use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
     AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, DEVICE_STATE_ACTIVE, EDataFlow, ERole,
-    IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVEFORMATEX, eCapture,
-    eCommunications, eConsole, eRender,
+    IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVEFORMATEX,
+    WAVEFORMATEXTENSIBLE, WAVEFORMATEXTENSIBLE_0, eCapture, eCommunications, eConsole, eRender,
 };
-use windows::Win32::Media::Multimedia::WAVE_FORMAT_IEEE_FLOAT;
+use windows::Win32::Media::KernelStreaming::{
+    SPEAKER_FRONT_CENTER, SPEAKER_FRONT_LEFT, SPEAKER_FRONT_RIGHT, WAVE_FORMAT_EXTENSIBLE,
+};
+use windows::Win32::Media::Multimedia::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
 use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, STGM_READ,
 };
@@ -327,6 +330,37 @@ impl AudioSource for InputSource {
     }
 }
 
+/// Số byte phần mở rộng của `WAVEFORMATEXTENSIBLE` sau `WAVEFORMATEX` (`cbSize`).
+const EXTENSIBLE_CB_SIZE: u16 = (size_of::<WAVEFORMATEXTENSIBLE>() - size_of::<WAVEFORMATEX>()) as u16;
+
+/// Định dạng float32 xin WASAPI, cùng tần số và số kênh với định dạng mix; WASAPI tự đổi định dạng nếu cần. Luôn dùng
+/// `WAVEFORMATEXTENSIBLE`: `WAVEFORMATEX` thường chỉ hợp lệ tới 2 kênh, nên micro mảng 4 kênh (Intel Smart Sound) hay loa
+/// 5.1 bị `Initialize` từ chối bằng `E_INVALIDARG` (0.2.10). `mask` là `dwChannelMask` của định dạng mix nếu có.
+fn float_format(rate: u32, channels: u16, mask: Option<u32>) -> WAVEFORMATEXTENSIBLE {
+    let mask = mask.unwrap_or(match channels {
+        1 => SPEAKER_FRONT_CENTER,
+        2 => SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT,
+        // Không gán loa nào cho kênh (KSAUDIO_SPEAKER_DIRECTOUT): hợp lệ với mọi số kênh.
+        _ => 0,
+    });
+    WAVEFORMATEXTENSIBLE {
+        Format: WAVEFORMATEX {
+            wFormatTag: WAVE_FORMAT_EXTENSIBLE as u16,
+            nChannels: channels,
+            nSamplesPerSec: rate,
+            nAvgBytesPerSec: rate * channels as u32 * 4,
+            nBlockAlign: channels * 4,
+            wBitsPerSample: 32,
+            cbSize: EXTENSIBLE_CB_SIZE,
+        },
+        Samples: WAVEFORMATEXTENSIBLE_0 {
+            wValidBitsPerSample: 32,
+        },
+        dwChannelMask: mask,
+        SubFormat: KSDATAFORMAT_SUBTYPE_IEEE_FLOAT,
+    }
+}
+
 fn capture_thread(
     target: &Target,
     mut sink: rtrb::Producer<f32>,
@@ -340,23 +374,29 @@ fn capture_thread(
         let client: IAudioClient = unsafe { device.Activate(CLSCTX_ALL, None)? };
 
         let mix = unsafe { client.GetMixFormat()? };
-        let (rate, channels) = unsafe { ((*mix).nSamplesPerSec, (*mix).nChannels) };
-        unsafe { CoTaskMemFree(Some(mix as *const _)) };
-        // Xin float32 ở cùng tần số và số kênh; WASAPI tự đổi định dạng nếu cần.
-        let wanted = WAVEFORMATEX {
-            wFormatTag: WAVE_FORMAT_IEEE_FLOAT as u16,
-            nChannels: channels,
-            nSamplesPerSec: rate,
-            nAvgBytesPerSec: rate * channels as u32 * 4,
-            nBlockAlign: channels * 4,
-            wBitsPerSample: 32,
-            cbSize: 0,
+        // SAFETY: `mix` do `GetMixFormat` cấp, hợp lệ tới `CoTaskMemFree`; phần mở rộng chỉ đọc khi tag và `cbSize` nói có.
+        let (rate, channels, mask) = unsafe {
+            let m = std::ptr::read_unaligned(mix);
+            let extensible = m.wFormatTag as u32 == WAVE_FORMAT_EXTENSIBLE && m.cbSize >= EXTENSIBLE_CB_SIZE;
+            let mask = extensible.then(|| std::ptr::read_unaligned(mix.cast::<WAVEFORMATEXTENSIBLE>()).dwChannelMask);
+            (m.nSamplesPerSec, m.nChannels, mask)
         };
+        unsafe { CoTaskMemFree(Some(mix as *const _)) };
+        let wanted = float_format(rate, channels, mask);
         let mut flags = AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
         if matches!(target, Target::Loopback(_)) {
             flags |= AUDCLNT_STREAMFLAGS_LOOPBACK;
         }
-        unsafe { client.Initialize(AUDCLNT_SHAREMODE_SHARED, flags, 1_000_000, 0, &wanted, None)? };
+        unsafe {
+            client.Initialize(
+                AUDCLNT_SHAREMODE_SHARED,
+                flags,
+                1_000_000,
+                0,
+                (&raw const wanted).cast(),
+                None,
+            )?
+        };
         let capture: IAudioCaptureClient = unsafe { client.GetService()? };
         unsafe { client.Start()? };
         let _ = ready.send(Ok(AudioFormat {
@@ -439,5 +479,36 @@ mod tests {
         let devices = list_render_devices().unwrap();
         let default = default_endpoint_id(Role::Console).unwrap();
         assert!(devices.iter().any(|d| d.id == default), "{devices:?}");
+    }
+
+    /// Định dạng xin WASAPI luôn là `WAVEFORMATEXTENSIBLE` float32 đủ phần mở rộng, kể cả khi hơn 2 kênh (micro mảng 4
+    /// kênh bị `E_INVALIDARG` ở 0.2.10 khi xin `WAVEFORMATEX` thường).
+    #[test]
+    fn the_requested_format_is_extensible_float() {
+        for (channels, mix_mask, mask) in [(1, None, 0x4), (2, None, 0x3), (4, None, 0), (4, Some(0x33), 0x33)] {
+            let f = float_format(48_000, channels, mix_mask);
+            assert_eq!({ f.Format.wFormatTag } as u32, WAVE_FORMAT_EXTENSIBLE);
+            assert_eq!({ f.Format.cbSize }, 22);
+            assert_eq!({ f.Format.nChannels }, channels);
+            assert_eq!({ f.Format.nBlockAlign }, channels * 4);
+            assert_eq!({ f.Format.nAvgBytesPerSec }, 48_000 * channels as u32 * 4);
+            assert_eq!(unsafe { f.Samples.wValidBitsPerSample }, 32);
+            assert_eq!({ f.dwChannelMask }, mask);
+            assert_eq!({ f.SubFormat }, KSDATAFORMAT_SUBTYPE_IEEE_FLOAT);
+        }
+    }
+
+    /// Cần Windows có micro: mọi micro đang hoạt động mở được (khởi tạo WASAPI rồi dừng ngay).
+    #[test]
+    #[ignore = "cần máy Windows có micro"]
+    fn every_active_mic_opens() {
+        for device in list_capture_devices().unwrap() {
+            let (ready, _) = mpsc::channel();
+            let (sink, _source) = rtrb::RingBuffer::<f32>::new(48_000);
+            let stop = Arc::new(AtomicBool::new(true));
+            let target = Target::Mic(MicEndpoint::Device(device.id.clone()));
+            let result = capture_thread(&target, sink, stop, Arc::new(CaptureStats::default()), &ready);
+            assert!(result.is_ok(), "{}: {result:?}", device.name);
+        }
     }
 }
