@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RULES } from "../../scripts/release/take-artifact.mjs";
+import { pinInstallSh } from "../src/build/pin-installers.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const SCRIPT = join(ROOT, "website/src/public/install.sh");
@@ -103,13 +104,19 @@ if [ -n "$out" ]; then cp "${site}/$path" "$out"; else cat "${site}/$path"; fi
   writeFileSync(join(bin, "osascript"), "#!/bin/sh\necho false\n");
   chmodSync(join(bin, "osascript"), 0o755);
 
-  const run = (args = [], extra = {}) =>
-    spawnSync("bash", [SCRIPT, ...args], {
+  const run = (args = [], extra = {}, file = SCRIPT) =>
+    spawnSync("bash", [file, ...args], {
       encoding: "utf8",
       timeout: 120_000,
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: dir, AI_TRANSLATOR_LANG: "en", AI_TRANSLATOR_INSTALL_DIR: inst, AI_TRANSLATOR_NO_OPEN: "1", ...extra },
     });
-  return { dir, site, inst, run, version };
+  /** Chạy bản đã ghim (cách `pnpm deploy` ghim script, xem build/pin-installers.mjs): `sha` mặc định là mã thật của .dmg dựng sẵn. */
+  const runPinned = (args = [], { pinVersion = version, pinSha = sha, text } = {}) => {
+    const file = join(dir, "install-pinned.sh");
+    writeFileSync(file, text ?? pinInstallSh(script, pinVersion, pinSha));
+    return run(args, {}, file);
+  };
+  return { dir, site, inst, run, runPinned, version, dmg, sha };
 }
 
 const leftovers = (dir) => readdirSync(dir).filter((n) => n.startsWith("ai-translator-install."));
@@ -176,4 +183,67 @@ test("thư mục cài không ghi được và do người dùng chỉ định: b
   const r = f.run([], { AI_TRANSLATOR_INSTALL_DIR: join(f.dir, "khong-co", "thu-muc") });
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /cannot write/);
+});
+
+// --- Ghim bản cài (kiểm toán bảo mật 2026-10-25): version và SHA-256 do website đưa, không lấy từ R2 --------------------------
+
+test("đã ghim: cài đúng bản ghim, không cần latest.json hay SHA256SUMS của R2", { skip }, (t) => {
+  const f = fixture(t);
+  rmSync(join(f.site, "stable/latest.json"));
+  rmSync(join(f.site, f.version, "SHA256SUMS-macos.txt"));
+  const r = f.runPinned();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /Installed AI Translator 9\.9\.9/);
+  assert.ok(existsSync(join(f.inst, "AI Translator.app/Contents/MacOS/meeting-translator")));
+  assert.deepEqual(leftovers(f.dir), []);
+});
+
+test("đã ghim: R2 bị đổi cả file lẫn SHA256SUMS thì vẫn từ chối (bản chưa ghim thì lọt qua bước kiểm này)", { skip }, (t) => {
+  const f = fixture(t);
+  // Kẻ ghi được vào R2 thay file cài và sửa SHA256SUMS cho khớp file mới.
+  const evil = Buffer.from("không phải .dmg thật, mà là file do kẻ tấn công đặt vào R2");
+  writeFileSync(f.dmg, evil);
+  writeFileSync(join(f.site, f.version, "SHA256SUMS-macos.txt"), `${createHash("sha256").update(evil).digest("hex")}  AI Translator_${f.version}_aarch64.dmg\n`);
+  const pinned = f.runPinned();
+  assert.notEqual(pinned.status, 0);
+  assert.match(pinned.stderr, /SHA-256 .*does not match/);
+  assert.ok(!/SHA-256 checked/.test(pinned.stdout), "không được đi tiếp sau khi lệch mã ghim");
+  assert.deepEqual(readdirSync(f.inst), []);
+  assert.deepEqual(leftovers(f.dir), []);
+  // Đối chứng: không ghim thì bước SHA-256 qua được (mã nằm cạnh file), chỉ vấp ở bước mở .dmg.
+  const plain = f.run();
+  assert.match(plain.stdout, /SHA-256 checked/, "đối chứng: bản chưa ghim tin mã nằm cạnh file");
+});
+
+test("đã ghim: bỏ qua latest.json của R2 (R2 báo bản khác thì vẫn cài bản ghim)", { skip }, (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.site, "stable/latest.json"), JSON.stringify({ version: "9.9.10" }));
+  const r = f.runPinned();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /Installed AI Translator 9\.9\.9/);
+});
+
+test("đã ghim nhưng chạy kênh beta: ghim không áp dụng, vẫn theo R2", { skip }, (t) => {
+  const f = fixture(t);
+  const r = f.runPinned(["--beta"]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /beta\/latest\.json/);
+  assert.deepEqual(readdirSync(f.inst), []);
+});
+
+test("đã ghim nhưng mã ghim hỏng trong script: từ chối trước khi tải gì", { skip }, (t) => {
+  const f = fixture(t);
+  const broken = script.replace('PIN_VERSION=""', 'PIN_VERSION="9.9.9"').replace('PIN_SHA256=""', 'PIN_SHA256="khong-phai-sha"');
+  const r = f.runPinned([], { text: broken });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /pinned in this script is not valid/);
+  assert.deepEqual(readdirSync(f.inst), []);
+});
+
+test("đã ghim: phiên bản ghim sai dạng (chống chèn đường dẫn) bị từ chối", { skip }, (t) => {
+  const f = fixture(t);
+  const broken = script.replace('PIN_VERSION=""', 'PIN_VERSION="9.9.9/../../x"').replace('PIN_SHA256=""', `PIN_SHA256="${f.sha}"`);
+  const r = f.runPinned([], { text: broken });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /valid version/);
 });

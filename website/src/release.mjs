@@ -84,6 +84,44 @@ export async function fetchStableLatest(fetchImpl = fetch) {
   }
 }
 
+/** Tên file bộ cài và file SHA256SUMS của từng nền tảng cho một phiên bản (khớp scripts/release/take-artifact.mjs và hai script cài). */
+export function installerFiles(version) {
+  return {
+    mac: { sums: `${RELEASES_URL}/${version}/SHA256SUMS-macos.txt`, file: `AI Translator_${version}_aarch64.dmg` },
+    win: { sums: `${RELEASES_URL}/${version}/SHA256SUMS-windows.txt`, file: `AI Translator_${version}_x64-setup.exe` },
+  };
+}
+
+/** SHA-256 (chữ thường) của `fileName` trong nội dung SHA256SUMS (dòng `<64 hex>  <tên>`, tên có thể có dấu `*`); không có thì null. */
+export function installerHash(sumsText, fileName) {
+  for (const line of String(sumsText).split(/\r?\n/)) {
+    const m = /^([0-9a-fA-F]{64})\s+\*?(.+?)\s*$/.exec(line);
+    if (m && m[2] === fileName) return m[1].toLowerCase();
+  }
+  return null;
+}
+
+/**
+ * SHA-256 của hai bộ cài của `version` để ghim vào script cài (website/src/build/pin-installers.mjs). Thiếu file, lỗi mạng hay
+ * không có dòng của bộ cài đều ném lỗi: không có mã đúng thì không deploy, thay vì để script cài tự tải mã từ R2.
+ */
+export async function fetchInstallerPins(version, fetchImpl = fetch) {
+  const out = { version };
+  for (const [key, { sums, file }] of Object.entries(installerFiles(version))) {
+    let res;
+    try {
+      res = await fetchImpl(sums, { signal: AbortSignal.timeout(15_000) });
+    } catch (e) {
+      throw new Error(`không đọc được ${sums}: ${e.message}; không ghim được script cài nên không deploy`);
+    }
+    if (res.status !== 200) throw new Error(`${sums} trả mã ${res.status}; không ghim được script cài nên không deploy`);
+    const hash = installerHash(await res.text(), file);
+    if (!hash) throw new Error(`${sums} không có dòng của ${file}; không ghim được script cài nên không deploy`);
+    out[key] = hash;
+  }
+  return out;
+}
+
 /** Ngày commit gần nhất đổi dòng `"version"` của tauri.conf.json (`YYYY-MM-DD`); null khi không có git hay không phải repo. */
 export function gitCommitDate({ cwd = REPO_ROOT } = {}) {
   try {
@@ -104,9 +142,14 @@ export async function resolveRelease({
   readConf = () => JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8")),
   gitDate = gitCommitDate,
   fetchLatest = () => fetchStableLatest(),
+  fetchPins = (version) => fetchInstallerPins(version),
   today = () => vnDate(new Date().toISOString()),
 } = {}) {
   const confVersion = readConf().version;
-  if (deploy) return deployRelease({ confVersion, latest: await fetchLatest() });
+  if (deploy) {
+    const released = deployRelease({ confVersion, latest: await fetchLatest() });
+    // `pins`: SHA-256 hai bộ cài của đúng bản này, để build ghim vào script cài (chỉ chế độ deploy).
+    return { ...released, pins: await fetchPins(released.version) };
+  }
   return previewRelease({ confVersion, gitDate: gitDate(), today: today() });
 }

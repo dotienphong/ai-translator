@@ -10,6 +10,7 @@ import { SITE, T } from "../site.mjs";
 import { renderPage, THEME_INIT_HASH } from "./layout.mjs";
 import { pages, notFound } from "../content/index.mjs";
 import { htmlToText } from "./text.mjs";
+import { pinInstallers } from "./pin-installers.mjs";
 import { PLANS, usd, vnd } from "../plans.mjs";
 import { LANG_CODES, PUBLISHED, tagOf, homeOf, isHome } from "../langs.mjs";
 import { API as CHAT_API } from "../assets/chat-core.js";
@@ -271,6 +272,8 @@ export async function build() {
   } catch {
     /* chưa có */
   }
+  // Bản deploy: ghim số phiên bản và SHA-256 bộ cài vào hai script cài (xem pin-installers.mjs). Bản dựng thử để trống.
+  if (SITE.pins) await pinInstallers(DIST, SITE.pins);
   const css = await readFile(path.join(SRC, "assets", "site.css"));
   const js = await readFile(path.join(SRC, "assets", "site.js"));
   const assets = { css: `/assets/bundle/site.${sha(css)}.css`, js: `/assets/bundle/site.${sha(js)}.js`, chat: await chatAssets() };

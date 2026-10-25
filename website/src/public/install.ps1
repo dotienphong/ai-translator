@@ -7,8 +7,10 @@
 #
 # Script làm gì (và chỉ làm vậy):
 #   1. Kiểm máy: Windows 10/11 bản 64-bit (x64).
-#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.vn/<kênh>/latest.json.
-#   3. Tải bộ cài .exe của phiên bản đó và mã SHA-256 của nó từ cùng nơi, rồi đối chiếu.
+#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.vn/<kênh>/latest.json. Riêng kênh stable, số phiên bản và mã
+#      SHA-256 của bộ cài đã được ghim sẵn trong script này lúc đăng website (xem $PinVersion bên dưới), nên bước này bỏ qua.
+#   3. Tải bộ cài .exe của phiên bản đó từ releases.aitranslator.vn và đối chiếu SHA-256 (với mã ghim sẵn ở kênh stable; kênh
+#      beta thì với mã tải từ cùng nơi).
 #   4. Chạy bộ cài ở chế độ im lặng (cài cho riêng tài khoản của bạn, không cần quyền quản trị, không UAC).
 #   5. Mở AI Translator, rồi xóa file tải về.
 # Script không sửa gì ngoài thư mục cài và thư mục tạm của nó, không gửi dữ liệu nào đi.
@@ -38,6 +40,13 @@ function Install-AiTranslator {
     $BaseUrl = 'https://releases.aitranslator.vn'
     $Product = 'AI Translator'
     $MainExe = 'meeting-translator.exe'
+    # Ghim bản cài (điền lúc deploy website, xem website/src/build/pin-installers.mjs và website/README.md): số phiên bản stable
+    # và SHA-256 của bộ cài của nó, lấy từ nơi phát hành đúng lúc deploy. Có ghim thì kênh stable cài đúng bản đó và so với mã ghim
+    # này thay vì mã tải về cùng nơi với file, nên người ghi được vào nơi phát hành (hay token CI) cũng không đổi được file mà
+    # `irm | iex` nhận: script nằm ở website, một nơi tin cậy khác. Hai dòng để trống (bản dựng thử, kênh beta) thì theo nơi phát
+    # hành như trước. Bản mới ra thì website phải deploy lại để script cài bản đó; chưa deploy thì script vẫn cài bản đã ghim.
+    $PinVersion = ''
+    $PinSha256 = ''
 
     # ---------------------------------------------------------------- hàm thuần (test được trên mọi hệ điều hành)
     function Test-VersionText([string]$Text) {
@@ -117,17 +126,23 @@ function Install-AiTranslator {
         # TLS 1.2 (Windows PowerShell 5.1 trên máy cũ mặc định TLS 1.0/1.1, R2 không nhận)
         try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
 
-        # --- 2. Phiên bản mới nhất của kênh ---
-        Say "Đang tìm phiên bản mới nhất ($channel)..." "Looking up the latest version ($channel)..."
-        $manifestUrl = "$BaseUrl/$channel/latest.json"
-        $manifest = $null
-        try { $manifest = Invoke-RestMethod -UseBasicParsing -Uri $manifestUrl } catch {
-            $hint = if ($channel -eq 'stable') { '; nếu bạn đang dùng bản beta thì thêm -Beta' } else { '' }
-            $hintEn = if ($channel -eq 'stable') { '; if you are on the beta, add -Beta' } else { '' }
-            Fail "không đọc được $manifestUrl (mất mạng, hoặc kênh $channel chưa có bản nào). Kiểm tra mạng và thử lại$hint." `
-                "could not read $manifestUrl (no network, or the $channel channel has no release yet). Check your network and try again$hintEn."
+        # --- 2. Phiên bản mới nhất của kênh (kênh stable có ghim thì dùng bản ghim) ---
+        $pinned = ($channel -eq 'stable' -and $PinVersion -ne '')
+        if ($pinned) {
+            $version = $PinVersion
+            if ($PinSha256 -notmatch '^[0-9a-f]{64}$') { Fail 'mã SHA-256 ghim trong script không hợp lệ.' 'the SHA-256 pinned in this script is not valid.' }
+        } else {
+            Say "Đang tìm phiên bản mới nhất ($channel)..." "Looking up the latest version ($channel)..."
+            $manifestUrl = "$BaseUrl/$channel/latest.json"
+            $manifest = $null
+            try { $manifest = Invoke-RestMethod -UseBasicParsing -Uri $manifestUrl } catch {
+                $hint = if ($channel -eq 'stable') { '; nếu bạn đang dùng bản beta thì thêm -Beta' } else { '' }
+                $hintEn = if ($channel -eq 'stable') { '; if you are on the beta, add -Beta' } else { '' }
+                Fail "không đọc được $manifestUrl (mất mạng, hoặc kênh $channel chưa có bản nào). Kiểm tra mạng và thử lại$hint." `
+                    "could not read $manifestUrl (no network, or the $channel channel has no release yet). Check your network and try again$hintEn."
+            }
+            $version = [string]$manifest.version
         }
-        $version = [string]$manifest.version
         if (-not (Test-VersionText $version)) { Fail 'latest.json không có số phiên bản hợp lệ.' 'latest.json has no valid version number.' }
 
         $setupName = "${Product}_${version}_x64-setup.exe"
@@ -140,11 +155,15 @@ function Install-AiTranslator {
         $setup = Join-Path $work $setupName
         Say "Đang tải $Product $version (khoảng 22 MB)..." "Downloading $Product $version (about 22 MB)..."
         try { Invoke-WebRequest -UseBasicParsing -Uri $setupUrl -OutFile $setup } catch { Fail "không tải được $setupUrl" "could not download $setupUrl" }
-        $sumsText = ''
-        try { $sumsText = (Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl).Content } catch { Fail "không tải được $sumsUrl" "could not download $sumsUrl" }
-        if ($sumsText -is [byte[]]) { $sumsText = [Text.Encoding]::UTF8.GetString($sumsText) }
-        $expected = Get-ExpectedHash $sumsText $setupName
-        if (-not $expected) { Fail "SHA256SUMS-windows.txt không có mã của $setupName." "SHA256SUMS-windows.txt has no checksum for $setupName." }
+        if ($pinned) {
+            $expected = $PinSha256
+        } else {
+            $sumsText = ''
+            try { $sumsText = (Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl).Content } catch { Fail "không tải được $sumsUrl" "could not download $sumsUrl" }
+            if ($sumsText -is [byte[]]) { $sumsText = [Text.Encoding]::UTF8.GetString($sumsText) }
+            $expected = Get-ExpectedHash $sumsText $setupName
+            if (-not $expected) { Fail "SHA256SUMS-windows.txt không có mã của $setupName." "SHA256SUMS-windows.txt has no checksum for $setupName." }
+        }
         $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $setup).Hash.ToLowerInvariant()
         if ($actual -ne $expected) {
             Fail "SHA-256 của file tải về không khớp (mong đợi $expected, nhận $actual). Không cài; thử lại, nếu vẫn lệch thì báo support@aitranslator.vn." `

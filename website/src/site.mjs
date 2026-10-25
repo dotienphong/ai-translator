@@ -17,6 +17,8 @@ export const SITE = {
   securityExpires: "2027-10-08T00:00:00.000Z",
   version: release.version,
   releaseDate: release.releaseDate,
+  // Chỉ có khi deploy (`--deploy`): SHA-256 hai bộ cài của `version`, build ghim vào install.sh và install.ps1 (build/pin-installers.mjs).
+  pins: release.pins ?? null,
   llmSummaryEn:
     "AI Translator is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
   llmSummaryVi:

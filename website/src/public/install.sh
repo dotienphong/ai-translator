@@ -8,8 +8,10 @@
 #
 # Script làm gì (và chỉ làm vậy):
 #   1. Kiểm máy: macOS 14.2 trở lên, chip Apple Silicon.
-#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.vn/<kênh>/latest.json.
-#   3. Tải file .dmg của phiên bản đó và mã SHA-256 của nó từ cùng nơi, rồi đối chiếu.
+#   2. Đọc số phiên bản mới nhất ở https://releases.aitranslator.vn/<kênh>/latest.json. Riêng kênh stable, số phiên bản và mã
+#      SHA-256 của .dmg đã được ghim sẵn trong script này lúc đăng website (xem PIN_VERSION bên dưới), nên bước này bỏ qua.
+#   3. Tải file .dmg của phiên bản đó từ releases.aitranslator.vn và đối chiếu SHA-256 (với mã ghim sẵn ở kênh stable; kênh
+#      beta thì với mã tải từ cùng nơi).
 #   4. Mở .dmg, kiểm app trong đó (đúng mã định danh, chữ ký còn nguyên), chép vào /Applications
 #      (không có quyền ghi thì vào ~/Applications), đóng .dmg, xóa file tải về.
 #   5. Mở AI Translator.
@@ -26,6 +28,14 @@
 #
 # Toàn bộ script nằm trong hàm main và chỉ chạy ở dòng cuối: nếu đường truyền đứt giữa chừng khi `curl | bash`,
 # bash không chạy một nửa script.
+
+# Ghim bản cài (điền lúc deploy website, xem website/src/build/pin-installers.mjs và website/README.md): số phiên bản stable
+# và SHA-256 của .dmg của nó, lấy từ nơi phát hành đúng lúc deploy. Có ghim thì kênh stable cài đúng bản đó và so với mã ghim
+# này thay vì mã tải về cùng nơi với file, nên người ghi được vào nơi phát hành (hay token CI) cũng không đổi được file mà
+# `curl | bash` nhận: script nằm ở website, một nơi tin cậy khác. Hai dòng để trống (bản dựng thử, kênh beta) thì theo nơi phát
+# hành như trước. Bản mới ra thì website phải deploy lại để script cài bản đó; chưa deploy thì script vẫn cài bản đã ghim.
+PIN_VERSION=""
+PIN_SHA256=""
 
 main() {
   set -eu
@@ -79,14 +89,22 @@ main() {
     command -v "$tool" >/dev/null 2>&1 || fail "thiếu lệnh $tool của macOS." "missing macOS tool: $tool"
   done
 
-  # --- 2. Phiên bản mới nhất của kênh ---
+  # --- 2. Phiên bản mới nhất của kênh (kênh stable có ghim thì dùng bản ghim) ---
   curl_opts="-fL --proto =https --tlsv1.2 --retry 3 --connect-timeout 15"
-  say "Đang tìm phiên bản mới nhất ($channel)..." "Looking up the latest version ($channel)..."
-  # shellcheck disable=SC2086
-  manifest=$(curl $curl_opts -sS "$BASE_URL/$channel/latest.json" 2>/dev/null) || fail \
-    "không đọc được $BASE_URL/$channel/latest.json (mất mạng, hoặc kênh $channel chưa có bản nào). Kiểm tra mạng và thử lại$([ "$channel" = stable ] && echo '; nếu bạn đang dùng bản beta thì thêm --beta')." \
-    "could not read $BASE_URL/$channel/latest.json (no network, or the $channel channel has no release yet). Check your network and try again$([ "$channel" = stable ] && echo '; if you are on the beta, add --beta')."
-  version=$(printf '%s' "$manifest" | plutil -extract version raw -o - - 2>/dev/null) || version=""
+  pinned=0
+  if [ "$channel" = stable ] && [ -n "$PIN_VERSION" ]; then pinned=1; fi
+  if [ "$pinned" -eq 1 ]; then
+    version=$PIN_VERSION
+    printf '%s' "$PIN_SHA256" | grep -Eq '^[0-9a-f]{64}$' || fail "mã SHA-256 ghim trong script không hợp lệ." \
+      "the SHA-256 pinned in this script is not valid."
+  else
+    say "Đang tìm phiên bản mới nhất ($channel)..." "Looking up the latest version ($channel)..."
+    # shellcheck disable=SC2086
+    manifest=$(curl $curl_opts -sS "$BASE_URL/$channel/latest.json" 2>/dev/null) || fail \
+      "không đọc được $BASE_URL/$channel/latest.json (mất mạng, hoặc kênh $channel chưa có bản nào). Kiểm tra mạng và thử lại$([ "$channel" = stable ] && echo '; nếu bạn đang dùng bản beta thì thêm --beta')." \
+      "could not read $BASE_URL/$channel/latest.json (no network, or the $channel channel has no release yet). Check your network and try again$([ "$channel" = stable ] && echo '; if you are on the beta, add --beta')."
+    version=$(printf '%s' "$manifest" | plutil -extract version raw -o - - 2>/dev/null) || version=""
+  fi
   printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$' || fail \
     "latest.json không có số phiên bản hợp lệ." "latest.json has no valid version number."
 
@@ -108,11 +126,15 @@ main() {
   say "Đang tải $PRODUCT $version (khoảng 9 MB)..." "Downloading $PRODUCT $version (about 9 MB)..."
   # shellcheck disable=SC2086
   curl $curl_opts --progress-bar -S -o "$work/$dmg_name" "$dmg_url" || fail "không tải được $dmg_url" "could not download $dmg_url"
-  # shellcheck disable=SC2086
-  curl $curl_opts -sS -o "$work/SHA256SUMS-macos.txt" "$sums_url" || fail "không tải được $sums_url" "could not download $sums_url"
-  expected=$(awk -v f="$dmg_name" '{ h = $1; $1 = ""; sub(/^ +\*?/, ""); if ($0 == f) { print h; exit } }' "$work/SHA256SUMS-macos.txt")
-  printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || fail "SHA256SUMS-macos.txt không có mã của $dmg_name." \
-    "SHA256SUMS-macos.txt has no checksum for $dmg_name."
+  if [ "$pinned" -eq 1 ]; then
+    expected=$PIN_SHA256
+  else
+    # shellcheck disable=SC2086
+    curl $curl_opts -sS -o "$work/SHA256SUMS-macos.txt" "$sums_url" || fail "không tải được $sums_url" "could not download $sums_url"
+    expected=$(awk -v f="$dmg_name" '{ h = $1; $1 = ""; sub(/^ +\*?/, ""); if ($0 == f) { print h; exit } }' "$work/SHA256SUMS-macos.txt")
+    printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || fail "SHA256SUMS-macos.txt không có mã của $dmg_name." \
+      "SHA256SUMS-macos.txt has no checksum for $dmg_name."
+  fi
   actual=$(shasum -a 256 "$work/$dmg_name" | awk '{print $1}')
   [ "$actual" = "$expected" ] || fail "SHA-256 của file tải về không khớp (mong đợi $expected, nhận $actual). Không cài; thử lại, nếu vẫn lệch thì báo support@aitranslator.vn." \
     "the downloaded file's SHA-256 does not match (expected $expected, got $actual). Nothing was installed; retry, and if it still differs write to support@aitranslator.vn."

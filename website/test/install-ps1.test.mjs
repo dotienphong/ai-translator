@@ -71,3 +71,21 @@ test("chạy trên hệ điều hành không phải Windows: báo lỗi rõ, kh�
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /Windows only/);
 });
+
+test("ghim bản cài (kiểm toán 2026-10-25): hai biến trống ở bản nguồn; chỉ kênh stable dùng ghim; mã ghim thay mã tải từ R2", () => {
+  assert.equal(psVar("PinVersion"), "");
+  assert.equal(psVar("PinSha256"), "");
+  assert.ok(script.includes("$pinned = ($channel -eq 'stable' -and $PinVersion -ne '')"), "chỉ kênh stable mới ghim");
+  assert.ok(script.includes("$version = $PinVersion"), "bản ghim thay số phiên bản đọc từ latest.json");
+  assert.ok(script.includes("$expected = $PinSha256"), "mã ghim thay mã đọc từ SHA256SUMS");
+  // Khi đã ghim thì không được đọc latest.json hay SHA256SUMS: hai lệnh tải nằm trong nhánh `else` của `if ($pinned)`.
+  const inElse = (needle) => {
+    const at = script.indexOf(needle);
+    assert.ok(at > 0, `thiếu ${needle}`);
+    const before = script.slice(0, at);
+    return before.lastIndexOf("} else {") > before.lastIndexOf("if ($pinned) {");
+  };
+  assert.ok(inElse("Invoke-RestMethod -UseBasicParsing -Uri $manifestUrl"), "latest.json chỉ được đọc khi không ghim");
+  assert.ok(inElse("Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl"), "SHA256SUMS chỉ được tải khi không ghim");
+  assert.ok(script.includes("$PinSha256 -notmatch '^[0-9a-f]{64}$'"), "mã ghim hỏng phải bị từ chối trước khi tải");
+});
