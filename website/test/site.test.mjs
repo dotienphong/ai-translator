@@ -1149,8 +1149,8 @@ function sectionErrors(urlPath, wants, forbids = {}) {
 test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng hàng, hai cách trả, Creem là bên bán lại (merchant of record) và đơn hoàn tiền thì rút ngắn hạn hay thu hồi", () => {
   const vi = textOf(htmlByPath.get("/dieu-khoan/"));
   const en = textOf(htmlByPath.get("/en/terms/"));
-  const viNeeds = ["Phiên bản 1.4", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
-  const enNeeds = ["Version 1.4", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
+  const viNeeds = ["Phiên bản 1.5", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
+  const enNeeds = ["Version 1.5", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/dieu-khoan/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/terms/: thiếu "${n}"`),
@@ -1230,8 +1230,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.7", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.7", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.8", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.8", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1411,14 +1411,14 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA lên 1.4 và chính sách lên 1.7 (tên miền aitranslator.vn, spec 2026-10-23-ten-mien-aitranslator-vn §2.7), cùng một ngày
-  // hiệu lực, không sớm hơn ngày của chính sách 1.6 (2026-10-23). Đặt ngày ở mục "Chuyển sang aitranslator.vn" của
-  // docs/release/phat-hanh.md, vào ngày deploy website và phát hành 0.2.7, trước khi build app.
+  // EULA lên 1.5 và chính sách lên 1.8 (nguồn micro, spec 2026-10-24-nguon-micro §8), cùng một ngày hiệu lực, không sớm hơn
+  // ngày nhánh nguồn micro sẵn sàng (2026-10-24). Đặt ngày ở kế hoạch 2026-10-24-nguon-micro-04, Task 12, vào ngày phát hành
+  // 0.2.9, trước khi build app.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.4" || privacyHead?.version !== "1.7") errors.push("EULA 1.4 và chính sách 1.7");
-  if (!privacyHead || privacyHead.iso < "2026-10-23" || eulaHead?.iso !== privacyHead.iso) {
-    errors.push(`EULA 1.4 và chính sách 1.7 phải cùng ngày hiệu lực, từ 2026-10-23 trở đi, đang ghi ${eulaHead?.iso} và ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
+  if (eulaHead?.version !== "1.5" || privacyHead?.version !== "1.8") errors.push("EULA 1.5 và chính sách 1.8");
+  if (!privacyHead || privacyHead.iso < "2026-10-24" || eulaHead?.iso !== privacyHead.iso) {
+    errors.push(`EULA 1.5 và chính sách 1.8 phải cùng ngày hiệu lực, từ 2026-10-24 trở đi, đang ghi ${eulaHead?.iso} và ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   }
   assert.deepEqual(errors, []);
 });
@@ -1562,7 +1562,7 @@ test("trang pháp lý: `modified` do chính trang khai báo bằng ngày hiệu 
   assert.deepEqual(errors, []);
 });
 
-test("Dữ liệu và bảo mật khớp Chính sách quyền riêng tư 1.7: dòng phiên bản lấy từ docs/legal, hàng Creem, mục xóa dữ liệu, email gửi Creem viết chủ động, dấu phẩy", () => {
+test("Dữ liệu và bảo mật khớp Chính sách quyền riêng tư 1.8: dòng phiên bản lấy từ docs/legal, hàng Creem, mục xóa dữ liệu, email gửi Creem viết chủ động, dấu phẩy", () => {
   const errors = [];
   const cfg = {
     vi: {

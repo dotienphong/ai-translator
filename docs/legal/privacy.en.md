@@ -1,6 +1,6 @@
 # AI Translator Privacy Policy
 
-**Version 1.7, effective 23 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.8, effective 25 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 ## 1. Who is responsible for your data
 
