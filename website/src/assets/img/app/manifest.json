@@ -406,7 +406,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1193,
-  "bytes": 110202,
+  "bytes": 110228,
   "description": "Cài đặt âm thanh: thu từ âm thanh máy + micro, nguồn là một app đang phát tiếng như Zoom, chọn micro, lọc tiếng ồn micro, ngắt câu 100 ms."
  },
  {
@@ -416,7 +416,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1278,
-  "bytes": 117098,
+  "bytes": 117130,
   "description": "Audio settings: capture from computer audio + microphone, a source app such as Zoom, the microphone, microphone noise filtering and a 100 ms sentence pause."
  },
  {
@@ -426,7 +426,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1193,
-  "bytes": 109768,
+  "bytes": 109798,
   "description": "音声の設定：コンピューターの音声 + マイクから取り込み、Zoom などのアプリを音声ソースに、マイクの選択、マイクのノイズ除去、100 ms の文の区切り。"
  },
  {
@@ -436,7 +436,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1139,
-  "bytes": 99044,
+  "bytes": 99072,
   "description": "音频设置：从电脑音频 + 麦克风采集，以 Zoom 等应用为音频来源，选择麦克风，过滤麦克风噪音，断句停顿 100 ms。"
  },
  {
@@ -446,7 +446,7 @@
   "theme": "light",
   "width": 1440,
   "height": 1139,
-  "bytes": 90010,
+  "bytes": 89992,
   "description": "오디오 설정: 컴퓨터 오디오 + 마이크로 입력, Zoom 같은 앱을 오디오 소스로, 마이크 선택, 마이크 잡음 필터, 100 ms 문장 끊기."
  },
  {
