@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AX = os.path.join(HERE, "..", "axtrace", "axtrace")
+AX = os.path.join(HERE, "axtrace")
 B = "http://127.0.0.1:8765"
 
 # (giây bắt đầu tính từ t0, khách, bật/tắt)
