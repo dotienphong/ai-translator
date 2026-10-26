@@ -41,6 +41,7 @@ test/seo-targets.test.mjs   cụm từ khóa → trang đích, giới hạn ph�
 - Quy tắc dịch (văn phong, khoảng trắng giữa chữ CJK và số, giá `US$` kèm 税抜 / 不含税 / 세금 별도, hỗ trợ trả lời bằng tiếng Anh hoặc tiếng Việt, tên mục hệ điều hành): `docs/superpowers/plans/2026-10-22-website-ja-zh-ko-04-noi-dung.md`, mục "Quy tắc dịch". Bản dịch do Claude viết, chưa có người bản ngữ duyệt.
 - Pháp lý chỉ có vi, en: trang ja/zh/ko dẫn tới `/en/terms/`, `/en/privacy/` kèm chữ "(tiếng Anh)" của ngôn ngữ đó.
 - Phông: trang ja/zh/ko dùng phông CJK có sẵn của máy (không tải phông ngoài).
+- Video demo trên trang chủ là hai video mỗi ngôn ngữ (`src/assets/video/ai-translator-{meeting,typing}.<lang>.{mp4,webp}`: dịch cuộc họp, Gõ dịch). Cắt từ video 16:10 đã quay, không quay lại: `node scripts/demo-video/split.mjs --publish` (cần `target/demo-video/` của `render.mjs`, ffmpeg và cwebp). Quay lại video gốc thì chạy lại lệnh này rồi `pnpm test`.
 - Thêm ngôn ngữ thứ sáu: một mục trong `LANGS` (`published: false`), chuỗi trong `site.mjs` (`T`, `NAV`, `FOOTER`, `RELEASE`), `strings.mjs`, `plans.mjs` (`summary…`, `vnd`/`usd`), ảnh (`shoot.mjs --lang=`, `tools/og/render.mjs`), video (`scripts/demo-video`), rồi dịch trang và đổi `published: true`.
 
 ## Quy tắc

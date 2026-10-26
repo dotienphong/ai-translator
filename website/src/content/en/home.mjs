@@ -1,8 +1,12 @@
-import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = `A video meeting where a colleague speaks Vietnamese and English subtitles appear, then Type & Translate turns an English reply into Vietnamese for a chat message. ${videoMeta("en").seconds}-second video with sound.`;
+const VIDEO_INTRO = "Two short videos with sound: live meeting subtitles and Type & Translate.";
+const VIDEO_ITEMS = [
+  { kind: "meeting", title: "Live meeting translation", text: `A video meeting where a colleague speaks Vietnamese and English subtitles appear. ${videoMeta("en", "meeting").seconds}-second video with sound.`, label: "AI Translator demo video: live meeting translation", fallback: "Download the video (MP4, 1 MB)" },
+  { kind: "typing", title: "Type & Translate", text: `Type & Translate turns an English reply into Vietnamese for a chat message. ${videoMeta("en", "typing").seconds}-second video with sound.`, label: "AI Translator demo video: Type & Translate", fallback: "Download the video (MP4, 1 MB)" },
+];
 
 export const HOME_FAQ = [
   {
@@ -50,7 +54,7 @@ export default {
   llmTitle: "AI Translator: home",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "en", name: "AI Translator demo: translated meeting subtitles and Type & Translate", description: VIDEO_TEXT, uploadDate: "2026-10-21" }),
+    ...VIDEO_ITEMS.map((v) => videoObject({ lang: "en", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
@@ -87,8 +91,8 @@ ${demo({
 </div></section>
 
 <section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "Video demo", title: "See AI Translator in action", text: VIDEO_TEXT, center: true })}
-${demoVideo({ lang: "en", label: "AI Translator demo video: translated meeting subtitles and Type & Translate", fallback: "Download the demo video (MP4, 2 MB)" })}
+${sectionHead({ eyebrow: "Video demo", title: "See AI Translator in action", text: VIDEO_INTRO, center: true })}
+${demoVideoPair({ lang: "en", items: VIDEO_ITEMS })}
 </div></section>
 
 <section class="section" id="meeting-translation"><div class="container">

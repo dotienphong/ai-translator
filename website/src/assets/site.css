@@ -480,6 +480,20 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
   .video-play-btn .icon { width: 30px; height: 30px; margin-left: 4px; }
   .video-play-label { font-size: .85rem; padding: 6px 12px; }
 }
+/* Hai video cạnh nhau (spec 2026-10-26-tach-video-demo-hai-phan): dưới 1000 px xếp dọc, mỗi video rộng cả hàng (ở 900 px mỗi
+   video chỉ còn khoảng 400 px); từ 1000 px chia hai cột đều nhau, nên nút phát và nhãn nhỏ lại cho vừa khung hẹp. */
+.video-pair { display: grid; gap: clamp(32px, 5vw, 48px) 28px; max-width: calc(var(--maxw) - 80px); margin-inline: auto; }
+.video-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.video-col h3 { margin: 0; }
+.video-col p { margin: 0 0 8px; color: var(--ink-2); }
+.video-col .shot.video { width: 100%; max-width: none; margin: 0; }
+@media (min-width: 1000px) {
+  .video-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .video-pair .video-play { gap: 12px; }
+  .video-pair .video-play-btn { width: 72px; height: 72px; }
+  .video-pair .video-play-btn .icon { width: 30px; height: 30px; margin-left: 4px; }
+  .video-pair .video-play-label { font-size: .85rem; padding: 6px 12px; }
+}
 .facts { display: grid; gap: 0; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .split + .facts, .table-wrap + .facts, .grid + .facts { margin-top: clamp(28px, 4vw, 48px); }
 /* Hai khối hai cột liền nhau trong cùng một mục (Trang chủ: Một màn hình, rồi Gõ dịch). */

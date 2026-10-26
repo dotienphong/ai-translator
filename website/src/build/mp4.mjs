@@ -31,9 +31,19 @@ export function mp4DurationMs(buf) {
   return Math.round((duration / timescale) * 1000);
 }
 
-/** Thời lượng video demo của ngôn ngữ `lang` (src/assets/video/ai-translator-demo.<lang>.mp4): số giây làm tròn, "m:ss", "PT…S". */
-export function videoMeta(lang) {
-  const ms = mp4DurationMs(readFileSync(new URL(`../assets/video/ai-translator-demo.${lang}.mp4`, import.meta.url)));
+/** Hai video demo của trang chủ (spec 2026-10-26-tach-video-demo-hai-phan): dịch cuộc họp và Gõ dịch; tên nằm trong tên file. */
+export const VIDEO_KINDS = ["meeting", "typing"];
+
+/** Kiểm `kind` là một trong VIDEO_KINDS (nơi gọi nào cũng cần trước khi ghép tên file). */
+export function checkVideoKind(kind) {
+  if (!VIDEO_KINDS.includes(kind)) throw new Error(`kind phải là ${VIDEO_KINDS.join(" hoặc ")}, nhận ${kind}`);
+  return kind;
+}
+
+/** Thời lượng video `kind` của ngôn ngữ `lang` (src/assets/video/ai-translator-<kind>.<lang>.mp4): số giây làm tròn, "m:ss", "PT…S". */
+export function videoMeta(lang, kind) {
+  checkVideoKind(kind);
+  const ms = mp4DurationMs(readFileSync(new URL(`../assets/video/ai-translator-${kind}.${lang}.mp4`, import.meta.url)));
   const seconds = Math.round(ms / 1000);
   return { seconds, clock: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`, iso: `PT${seconds}S` };
 }

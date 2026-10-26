@@ -1,8 +1,12 @@
-import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = `英語で話す同僚の発言に日本語の字幕が表示され、続いて入力翻訳が日本語の返信を英語に変えてチャットで送ります。${videoMeta("ja").seconds} 秒、音声付きの動画です。`;
+const VIDEO_INTRO = "音声付きの短い動画が二つあります。会議のリアルタイム翻訳字幕と、入力翻訳です。";
+const VIDEO_ITEMS = [
+  { kind: "meeting", title: "会議をリアルタイム翻訳", text: `英語で話す同僚の発言に日本語の字幕が表示されます。${videoMeta("ja", "meeting").seconds} 秒、音声付きの動画です。`, label: "AI Translator デモ動画：会議のリアルタイム翻訳", fallback: "動画をダウンロード（MP4、1 MB）" },
+  { kind: "typing", title: "入力翻訳", text: `入力翻訳が日本語の返信を英語に変えてチャットで送ります。${videoMeta("ja", "typing").seconds} 秒、音声付きの動画です。`, label: "AI Translator デモ動画：入力翻訳", fallback: "動画をダウンロード（MP4、1 MB）" },
+];
 
 export const HOME_FAQ = [
   {
@@ -46,7 +50,7 @@ export default {
   modified: "2026-10-25",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "ja", name: "AI Translator デモ動画：会議の翻訳字幕と入力翻訳", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
+    ...VIDEO_ITEMS.map((v) => videoObject({ lang: "ja", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
@@ -83,8 +87,8 @@ ${demo({
 </div></section>
 
 <section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "デモ動画", title: "AI Translator の動きを見る", text: VIDEO_TEXT, center: true })}
-${demoVideo({ lang: "ja", label: "AI Translator デモ動画：会議の翻訳字幕と入力翻訳", fallback: "デモ動画をダウンロード（MP4、2 MB）" })}
+${sectionHead({ eyebrow: "デモ動画", title: "AI Translator の動きを見る", text: VIDEO_INTRO, center: true })}
+${demoVideoPair({ lang: "ja", items: VIDEO_ITEMS })}
 </div></section>
 
 <section class="section" id="meeting-translation"><div class="container">

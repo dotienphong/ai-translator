@@ -1,8 +1,12 @@
-import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = `영어로 말하는 동료의 발언에 한국어 자막이 표시되고, 이어서 입력 번역이 한국어로 쓴 답장을 영어로 바꿔 채팅으로 보냅니다. ${videoMeta("ko").seconds}초 분량, 소리가 있는 영상입니다.`;
+const VIDEO_INTRO = "소리가 있는 짧은 영상 두 편입니다. 회의 실시간 번역 자막과 입력 번역입니다.";
+const VIDEO_ITEMS = [
+  { kind: "meeting", title: "회의 실시간 번역", text: `영어로 말하는 동료의 발언에 한국어 자막이 표시됩니다. ${videoMeta("ko", "meeting").seconds}초 분량, 소리가 있는 영상입니다.`, label: "AI Translator 데모 영상: 회의 실시간 번역", fallback: "영상 내려받기(MP4, 1MB)" },
+  { kind: "typing", title: "입력 번역", text: `입력 번역이 한국어로 쓴 답장을 영어로 바꿔 채팅으로 보냅니다. ${videoMeta("ko", "typing").seconds}초 분량, 소리가 있는 영상입니다.`, label: "AI Translator 데모 영상: 입력 번역", fallback: "영상 내려받기(MP4, 1MB)" },
+];
 
 export const HOME_FAQ = [
   {
@@ -46,7 +50,7 @@ export default {
   modified: "2026-10-25",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "ko", name: "AI Translator 데모 영상: 회의 번역 자막과 입력 번역", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
+    ...VIDEO_ITEMS.map((v) => videoObject({ lang: "ko", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
@@ -83,8 +87,8 @@ ${demo({
 </div></section>
 
 <section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "데모 영상", title: "AI Translator가 작동하는 모습", text: VIDEO_TEXT, center: true })}
-${demoVideo({ lang: "ko", label: "AI Translator 데모 영상: 회의 번역 자막과 입력 번역", fallback: "데모 영상 내려받기(MP4, 2MB)" })}
+${sectionHead({ eyebrow: "데모 영상", title: "AI Translator가 작동하는 모습", text: VIDEO_INTRO, center: true })}
+${demoVideoPair({ lang: "ko", items: VIDEO_ITEMS })}
 </div></section>
 
 <section class="section" id="meeting-translation"><div class="container">

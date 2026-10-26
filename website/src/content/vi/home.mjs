@@ -1,8 +1,12 @@
-import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = `Một cuộc họp trực tuyến có phụ đề tiếng Việt dịch từ tiếng Anh, rồi Gõ dịch chuyển câu trả lời tiếng Việt thành tiếng Anh để gửi tin nhắn. Video ${videoMeta("vi").seconds} giây, có tiếng.`;
+const VIDEO_INTRO = "Hai video ngắn, có tiếng: phụ đề dịch cuộc họp trực tiếp và Gõ dịch.";
+const VIDEO_ITEMS = [
+  { kind: "meeting", title: "Dịch cuộc họp trực tiếp", text: `Một cuộc họp trực tuyến có phụ đề tiếng Việt dịch từ tiếng Anh. Video ${videoMeta("vi", "meeting").seconds} giây, có tiếng.`, label: "Video demo AI Translator: dịch cuộc họp trực tiếp", fallback: "Tải video (MP4, 1 MB)" },
+  { kind: "typing", title: "Gõ dịch", text: `Gõ dịch chuyển câu trả lời tiếng Việt thành tiếng Anh để gửi tin nhắn. Video ${videoMeta("vi", "typing").seconds} giây, có tiếng.`, label: "Video demo AI Translator: Gõ dịch", fallback: "Tải video (MP4, 1 MB)" },
+];
 
 export const HOME_FAQ = [
   {
@@ -48,7 +52,7 @@ export default {
   llmTitle: "AI Translator: trang chủ",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "vi", name: "Video demo AI Translator: phụ đề dịch cuộc họp và Gõ dịch", description: VIDEO_TEXT, uploadDate: "2026-10-21" }),
+    ...VIDEO_ITEMS.map((v) => videoObject({ lang: "vi", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
@@ -85,8 +89,8 @@ ${demo({
 </div></section>
 
 <section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "Video demo", title: "Xem AI Translator hoạt động", text: VIDEO_TEXT, center: true })}
-${demoVideo({ lang: "vi", label: "Video demo AI Translator: phụ đề dịch cuộc họp và Gõ dịch", fallback: "Tải video demo (MP4, 2 MB)" })}
+${sectionHead({ eyebrow: "Video demo", title: "Xem AI Translator hoạt động", text: VIDEO_INTRO, center: true })}
+${demoVideoPair({ lang: "vi", items: VIDEO_ITEMS })}
 </div></section>
 
 <section class="section" id="dich-cuoc-hop"><div class="container">

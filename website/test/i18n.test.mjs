@@ -9,7 +9,7 @@ import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
 import { S } from "../src/strings.mjs";
 import { renderPage, glue } from "../src/build/layout.mjs";
-import { plansGrid, dataFlow, demoVideo } from "../src/build/components.mjs";
+import { plansGrid, dataFlow, demoVideo, demoVideoPair } from "../src/build/components.mjs";
 import { softwareApplication, videoObject } from "../src/build/schema.mjs";
 import { readDict, strongLabels, appLabelsIn } from "../tools/i18n/labels.mjs";
 
@@ -87,9 +87,12 @@ test("mp4DurationMs đọc hộp mvhd (phiên bản 0 và 1); thiếu moov hay m
   assert.throws(() => mp4DurationMs(Buffer.from("00000008ftyp", "latin1")), /moov/);
 });
 
-test("videoMeta: thời lượng thật của video vi và en (làm tròn giây), dạng m:ss và ISO 8601", () => {
-  assert.deepEqual(videoMeta("vi"), { seconds: 40, clock: "0:40", iso: "PT40S" });
-  assert.deepEqual(videoMeta("en"), { seconds: 39, clock: "0:39", iso: "PT39S" });
+test("videoMeta: thời lượng thật của từng video (làm tròn giây), dạng m:ss và ISO 8601", () => {
+  assert.deepEqual(videoMeta("vi", "meeting"), { seconds: 24, clock: "0:24", iso: "PT24S" });
+  assert.deepEqual(videoMeta("en", "meeting"), { seconds: 22, clock: "0:22", iso: "PT22S" });
+  assert.deepEqual(videoMeta("vi", "typing"), { seconds: 19, clock: "0:19", iso: "PT19S" });
+  assert.deepEqual(videoMeta("en", "typing"), { seconds: 19, clock: "0:19", iso: "PT19S" });
+  assert.throws(() => videoMeta("vi", "demo"), /kind/);
 });
 
 test("strings.mjs: mỗi ngôn ngữ có đủ khóa như bản en (cùng cấu trúc, không chuỗi rỗng)", () => {
@@ -157,18 +160,39 @@ test("dataFlow và softwareApplication đọc chuỗi theo ngôn ngữ; app nêu
   assert.equal(app.screenshot[0].url, "https://aitranslator.vn/assets/img/app/overlay-default.ja.webp");
 });
 
-test("videoObject tự lấy thời lượng từ file; demoVideo có nút phát ẩn sẵn kèm nhãn và thời lượng", () => {
-  const v = videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "2026-10-21" });
-  assert.equal(v.duration, "PT40S");
-  assert.equal(v["@id"], "https://aitranslator.vn/#demo-video");
+test("videoObject tự lấy thời lượng từ file theo loại video; demoVideo có nút phát ẩn sẵn kèm nhãn và thời lượng", () => {
+  const v = videoObject({ lang: "vi", kind: "meeting", name: "x", description: "y", uploadDate: "2026-10-26" });
+  assert.equal(v.duration, "PT24S");
+  assert.equal(v["@id"], "https://aitranslator.vn/#video-meeting");
+  assert.equal(v.contentUrl, "https://aitranslator.vn/assets/video/ai-translator-meeting.vi.mp4");
+  assert.equal(v.thumbnailUrl, "https://aitranslator.vn/assets/video/ai-translator-meeting.vi.webp");
   assert.equal(v.inLanguage, "vi");
-  assert.equal(v.uploadDate, "2026-10-21T00:00:00+07:00");
-  assert.throws(() => videoObject({ lang: "vi", name: "x", description: "y", uploadDate: "21/10/2026" }), /uploadDate/);
-  const html = demoVideo({ lang: "en", label: "Demo", fallback: "Download" });
+  assert.equal(v.uploadDate, "2026-10-26T00:00:00+07:00");
+  const t = videoObject({ lang: "en", kind: "typing", name: "x", description: "y", uploadDate: "2026-10-26" });
+  assert.equal(t.duration, "PT19S");
+  assert.equal(t["@id"], "https://aitranslator.vn/en/#video-typing");
+  assert.equal(t.contentUrl, "https://aitranslator.vn/assets/video/ai-translator-typing.en.mp4");
+  assert.throws(() => videoObject({ lang: "vi", kind: "meeting", name: "x", description: "y", uploadDate: "21/10/2026" }), /uploadDate/);
+  assert.throws(() => videoObject({ lang: "vi", kind: "demo", name: "x", description: "y", uploadDate: "2026-10-26" }), /kind/);
+  const html = demoVideo({ lang: "en", kind: "meeting", label: "Demo", fallback: "Download" });
   assert.match(html, /<figure class="shot video reveal" data-video>/);
-  assert.match(html, /<video controls preload="none" playsinline width="1920" height="1200" poster="/);
-  assert.match(html, /<button class="video-play" type="button" hidden aria-label="Play the demo video \(0:39, with sound\)">/);
-  assert.ok(html.includes('<span class="video-play-label" aria-hidden="true">Watch the demo · 0:39 · with sound</span>'));
+  assert.match(html, /<video controls preload="none" playsinline width="1920" height="1200" poster="\/assets\/video\/ai-translator-meeting\.en\.webp\?v=[0-9a-f]{10}"/);
+  assert.match(html, /<source src="\/assets\/video\/ai-translator-meeting\.en\.mp4\?v=[0-9a-f]{10}" type="video\/mp4">/);
+  assert.match(html, /<button class="video-play" type="button" hidden aria-label="Play the demo video \(0:22, with sound\)">/);
+  assert.ok(html.includes('<span class="video-play-label" aria-hidden="true">Watch the demo · 0:22 · with sound</span>'));
+  assert.match(demoVideo({ lang: "en", kind: "typing", label: "Demo", fallback: "Download" }), /ai-translator-typing\.en\.mp4/);
+});
+
+test("demoVideoPair: lưới hai cột, mỗi cột có tiêu đề h3, câu mô tả rồi video của đúng loại; thiếu một loại thì báo lỗi", () => {
+  const item = (kind) => ({ kind, title: `T-${kind}`, text: `X-${kind}`, label: `L-${kind}`, fallback: `F-${kind}` });
+  const html = demoVideoPair({ lang: "vi", items: [item("meeting"), item("typing")] });
+  assert.match(html, /^<div class="video-pair">/);
+  const cols = html.split('<div class="video-col">').slice(1);
+  assert.equal(cols.length, 2);
+  assert.match(cols[0], /<h3>T-meeting<\/h3>\s*<p>X-meeting<\/p>\s*<figure class="shot video reveal" data-video>[\s\S]*ai-translator-meeting\.vi\.mp4/);
+  assert.match(cols[1], /<h3>T-typing<\/h3>\s*<p>X-typing<\/p>\s*<figure class="shot video reveal" data-video>[\s\S]*ai-translator-typing\.vi\.mp4/);
+  assert.equal((html.match(/<video\b/g) ?? []).length, 2);
+  assert.throws(() => demoVideoPair({ lang: "vi", items: [item("meeting")] }), /meeting.*typing/);
 });
 
 test("WEBSITE_PREVIEW_LANGS thêm ngôn ngữ đang dịch khi dựng cục bộ; lệnh deploy bỏ qua; mã lạ thì báo lỗi", () => {

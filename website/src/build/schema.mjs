@@ -4,7 +4,7 @@ import { SITE, ogFor } from "../site.mjs";
 import { PLANS, planName, planSummary } from "../plans.mjs";
 import { LANGS, LANG_CODES, tagOf } from "../langs.mjs";
 import { S } from "../strings.mjs";
-import { videoMeta } from "./mp4.mjs";
+import { checkVideoKind, videoMeta } from "./mp4.mjs";
 
 const abs = (p) => (p.startsWith("http") ? p : SITE.origin + p);
 const ORG_ID = `${SITE.origin}/#organization`;
@@ -138,19 +138,20 @@ export function faqPage(items, id) {
   };
 }
 
-/** Video demo của trang chủ (spec 2026-10-21-website-demo-video; thời lượng đọc từ file MP4, spec 2026-10-22 §4). `uploadDate` truyền vào dạng ngày
- *  (YYYY-MM-DD), ghi ra ngày giờ kèm múi giờ Việt Nam vì Google báo lỗi khi `uploadDate` của VideoObject thiếu giờ hoặc múi giờ. */
-export function videoObject({ lang, name, description, uploadDate }) {
+/** Một trong hai video demo của trang chủ (`kind` meeting hoặc typing; spec 2026-10-26-tach-video-demo-hai-phan; thời lượng đọc từ file
+ *  MP4, spec 2026-10-22 §4). `uploadDate` truyền vào dạng ngày (YYYY-MM-DD), ghi ra ngày giờ kèm múi giờ Việt Nam vì Google báo lỗi
+ *  khi `uploadDate` của VideoObject thiếu giờ hoặc múi giờ. */
+export function videoObject({ lang, kind, name, description, uploadDate }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(uploadDate)) throw new Error(`videoObject: uploadDate phải dạng YYYY-MM-DD, nhận ${uploadDate}`);
-  const file = `/assets/video/ai-translator-demo.${lang}`;
+  const file = `/assets/video/ai-translator-${checkVideoKind(kind)}.${lang}`;
   return {
     "@type": "VideoObject",
-    "@id": `${base(lang)}#demo-video`,
+    "@id": `${base(lang)}#video-${kind}`,
     name,
     description,
     thumbnailUrl: abs(`${file}.webp`),
     contentUrl: abs(`${file}.mp4`),
-    duration: videoMeta(lang).iso,
+    duration: videoMeta(lang, kind).iso,
     uploadDate: `${uploadDate}T00:00:00+07:00`,
     inLanguage: tagOf(lang),
     publisher: { "@id": ORG_ID },

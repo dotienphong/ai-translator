@@ -6,7 +6,7 @@ import { icon } from "./icons.mjs";
 import { PLANS, usd, vnd, planName } from "../plans.mjs";
 import { T } from "../site.mjs";
 import { S } from "../strings.mjs";
-import { videoMeta } from "./mp4.mjs";
+import { VIDEO_KINDS, checkVideoKind, videoMeta } from "./mp4.mjs";
 
 export { esc, icon };
 
@@ -34,24 +34,40 @@ const hashed = (dir, file) => {
 const appImg = (file) => hashed("img/app", file);
 
 /**
- * Video demo của trang chủ (spec 2026-10-21-website-demo-video): file `ai-translator-demo.<lang>.{mp4,webp}` trong
- * src/assets/video/. `preload="none"`: chỉ tải khi người xem bấm phát; ảnh bìa là khung có phụ đề. `label` là tên đọc cho
- * trình đọc màn hình, `fallback` là chữ của liên kết tải MP4 khi trình duyệt không phát được video.
+ * Một video demo của trang chủ (spec 2026-10-21-website-demo-video; tách làm hai: spec 2026-10-26-tach-video-demo-hai-phan): file
+ * `ai-translator-<kind>.<lang>.{mp4,webp}` trong src/assets/video/, `kind` là meeting (dịch cuộc họp) hoặc typing (Gõ dịch).
+ * `preload="none"`: chỉ tải khi người xem bấm phát; ảnh bìa là một khung của video. `label` là tên đọc cho trình đọc màn hình,
+ * `fallback` là chữ của liên kết tải MP4 khi trình duyệt không phát được video.
  * Nút phát lớn giữa khung (spec 2026-10-22-website-ja-zh-ko §4) mặc định `hidden`: site.js bật nó và tạm bỏ `controls`, nên khi
  * tắt JS vẫn là `<video controls>` như cũ. Thời lượng trên nhãn đọc từ file MP4. Nút nằm trong `llm-skip`: nhãn của nó không vào
  * llms-full*.txt.
  */
-export const demoVideo = ({ lang, label, fallback }) => {
-  const mp4 = hashed("video", `ai-translator-demo.${lang}.mp4`);
-  const { clock } = videoMeta(lang);
+export const demoVideo = ({ lang, kind, label, fallback }) => {
+  const mp4 = hashed("video", `ai-translator-${checkVideoKind(kind)}.${lang}.mp4`);
+  const { clock } = videoMeta(lang, kind);
   const v = S[lang].video;
   return `<figure class="shot video reveal" data-video>
-<video controls preload="none" playsinline width="1920" height="1200" poster="${hashed("video", `ai-translator-demo.${lang}.webp`)}" aria-label="${esc(label)}">
+<video controls preload="none" playsinline width="1920" height="1200" poster="${hashed("video", `ai-translator-${kind}.${lang}.webp`)}" aria-label="${esc(label)}">
 <source src="${mp4}" type="video/mp4">
 <a href="${mp4}">${esc(fallback)}</a>
 </video>
 <!--llm-skip--><button class="video-play" type="button" hidden aria-label="${esc(`${v.play} (${clock}, ${v.sound})`)}"><span class="video-play-btn" aria-hidden="true">${icon("play")}</span><span class="video-play-label" aria-hidden="true">${esc(`${v.cta} · ${clock} · ${v.sound}`)}</span></button><!--/llm-skip-->
 </figure>`;
+};
+
+/**
+ * Hai video demo cạnh nhau (hai cột từ 900 px, một cột dưới đó): mỗi cột có tiêu đề `<h3>`, một câu mô tả rồi video. `items` là
+ * `[{ kind, title, text, label, fallback }]`, đúng thứ tự VIDEO_KINDS (họp rồi Gõ dịch); chữ là chữ thuần.
+ */
+export const demoVideoPair = ({ lang, items }) => {
+  const kinds = items.map((i) => i.kind);
+  if (kinds.join() !== VIDEO_KINDS.join()) throw new Error(`demoVideoPair: cần ${VIDEO_KINDS.join(" rồi ")}, nhận ${kinds.join(", ") || "không có gì"}`);
+  const cols = items.map((i) => `<div class="video-col">
+<h3>${esc(i.title)}</h3>
+<p>${esc(i.text)}</p>
+${demoVideo({ lang, kind: i.kind, label: i.label, fallback: i.fallback })}
+</div>`);
+  return `<div class="video-pair">\n${cols.join("\n")}\n</div>`;
 };
 
 /** Ảnh chụp cửa sổ chính của app (có thanh tiêu đề giả bằng CSS). */

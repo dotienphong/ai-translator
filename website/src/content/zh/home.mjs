@@ -1,8 +1,12 @@
-import { dataFlow, demo, demoVideo, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_TEXT = `一场在线会议中，同事说英语，屏幕上出现中文字幕；接着，输入翻译把你用中文写的回复转成英文，发到聊天里。视频时长 ${videoMeta("zh").seconds} 秒，有声音。`;
+const VIDEO_INTRO = "两个带声音的短视频：会议实时翻译字幕，以及输入翻译。";
+const VIDEO_ITEMS = [
+  { kind: "meeting", title: "会议实时翻译", text: `一场在线会议中，同事说英语，屏幕上出现中文字幕。视频时长 ${videoMeta("zh", "meeting").seconds} 秒，有声音。`, label: "AI Translator 演示视频：会议实时翻译", fallback: "下载视频（MP4，1 MB）" },
+  { kind: "typing", title: "输入翻译", text: `输入翻译把你用中文写的回复转成英文，发到聊天里。视频时长 ${videoMeta("zh", "typing").seconds} 秒，有声音。`, label: "AI Translator 演示视频：输入翻译", fallback: "下载视频（MP4，1 MB）" },
+];
 
 export const HOME_FAQ = [
   {
@@ -46,7 +50,7 @@ export default {
   modified: "2026-10-25",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
-    videoObject({ lang: "zh", name: "AI Translator 演示视频：会议翻译字幕与输入翻译", description: VIDEO_TEXT, uploadDate: "2026-10-22" }),
+    ...VIDEO_ITEMS.map((v) => videoObject({ lang: "zh", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
   ],
   body: () => `
 <section class="hero"><div class="container hero-grid">
@@ -83,8 +87,8 @@ ${demo({
 </div></section>
 
 <section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "演示视频", title: "看看 AI Translator 如何工作", text: VIDEO_TEXT, center: true })}
-${demoVideo({ lang: "zh", label: "AI Translator 演示视频：会议翻译字幕与输入翻译", fallback: "下载演示视频（MP4，2 MB）" })}
+${sectionHead({ eyebrow: "演示视频", title: "看看 AI Translator 如何工作", text: VIDEO_INTRO, center: true })}
+${demoVideoPair({ lang: "zh", items: VIDEO_ITEMS })}
 </div></section>
 
 <section class="section" id="meeting-translation"><div class="container">
