@@ -1,0 +1,12 @@
+[package]
+name = "segdump"
+version = "0.1.0"
+edition = "2021"
+
+# Công cụ đo riêng, không thuộc workspace của repo.
+[workspace]
+
+[dependencies]
+pipeline = { path = "../../../../crates/pipeline" }
+hound = "3"
+anyhow = "1"

@@ -1,0 +1,12 @@
+[package]
+name = "candle-test"
+version = "0.1.0"
+edition = "2021"
+
+# Công cụ đo riêng, không thuộc workspace của repo.
+[workspace]
+
+[dependencies]
+candle-core = "0.11.0"
+candle-onnx = "0.11.0"
+anyhow = "1"
