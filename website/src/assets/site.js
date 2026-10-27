@@ -166,7 +166,14 @@
     if (!list || tabs.length === 0 || panels.some((p) => !p)) return;
     const hashId = () => { try { return decodeURIComponent(location.hash.slice(1)); } catch { return ""; } };
     const byHash = () => tabs.find((t) => t.getAttribute("aria-controls") === hashId());
-    const select = (tab, { focus = false, hash = false } = {}) => {
+    // Neo #id trỏ vào panel còn thanh tab nằm trên nó: đặt --ftabs-lift (CSS dùng làm scroll-margin-top của panel) bằng khoảng từ đỉnh thanh tab
+    // tới đỉnh panel, để cả chỗ trình duyệt tự cuộn tới cũng dừng với thanh tab dưới header. offsetTop không tính transform của hiệu ứng vào.
+    const setLift = () => {
+      const open = panels.find((p) => !p.hidden);
+      if (open) root.style.setProperty("--ftabs-lift", `${open.offsetTop - list.offsetTop}px`);
+    };
+    const select = (tab, { focus = false, hash = false, user = false } = {}) => {
+      if (user && tab.getAttribute("aria-selected") !== "true") root.classList.add("is-switched"); // hiệu ứng vào chỉ khi người dùng đổi tab
       root.classList.add("is-enhanced");
       list.hidden = false;
       tabs.forEach((t, i) => {
@@ -176,24 +183,31 @@
         if (!on) panels[i].querySelectorAll("video").forEach((v) => v.pause());
         panels[i].hidden = !on;
       });
+      setLift();
       if (focus) tab.focus();
       if (hash) history.replaceState(null, "", "#" + tab.getAttribute("aria-controls"));
     };
-    // Lúc trình duyệt xử lý neo, panel đích còn ẩn nên nó không tự cuộn tới: cuộn tới khối tab sau khi đã mở đúng tab.
-    const toRoot = () => requestAnimationFrame(() => root.scrollIntoView({ block: "start" }));
+    // Cuộn tới đỉnh khối tab (thanh tab dưới header nhờ scroll-padding-top của html). Lúc đổi neo, panel đích còn ẩn nên trình duyệt không tự cuộn
+    // tới. Lúc tải trang, trình duyệt tự cuộn theo neo (mượt) và có thể làm vậy trước khi --ftabs-lift được đặt (panel đầu hiện sẵn): cuộn lại
+    // tức thì, một lần ngay và một lần khi trang tải xong; hai cách cuộn dừng cùng một chỗ nên không giằng co.
+    const toRoot = (behavior) => requestAnimationFrame(() => root.scrollIntoView({ block: "start", behavior }));
     const first = byHash();
     select(first ?? tabs[0]);
-    if (first) toRoot();
-    tabs.forEach((t) => t.addEventListener("click", () => select(t, { hash: true })));
+    if (first) {
+      toRoot("instant");
+      if (document.readyState !== "complete") window.addEventListener("load", () => toRoot("instant"), { once: true });
+    }
+    if (typeof ResizeObserver === "function") new ResizeObserver(setLift).observe(list);
+    tabs.forEach((t) => t.addEventListener("click", () => select(t, { hash: true, user: true })));
     list.addEventListener("keydown", (e) => {
       const i = tabs.indexOf(document.activeElement);
       if (i < 0) return;
       const next = { ArrowRight: (i + 1) % tabs.length, ArrowDown: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length, ArrowUp: (i - 1 + tabs.length) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
       if (next === undefined) return;
       e.preventDefault();
-      select(tabs[next], { focus: true, hash: true });
+      select(tabs[next], { focus: true, hash: true, user: true });
     });
-    window.addEventListener("hashchange", () => { const t = byHash(); if (t) { select(t); toRoot(); } });
+    window.addEventListener("hashchange", () => { const t = byHash(); if (t) { select(t, { user: true }); toRoot(); } });
   });
 
   // Video demo (spec 2026-10-22-website-ja-zh-ko §4): nút phát lớn giữa khung thay thanh điều khiển gốc cho tới khi bấm. Trên máy

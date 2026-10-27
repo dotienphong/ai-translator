@@ -606,7 +606,6 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 
 /* ---------- Trang chủ: khối tab "Tính năng chính" (spec 2026-10-27-trang-chu-ba-viec-tab) ----------
    Không JS: thanh tab ẩn, ba panel xếp dọc. Có JS (site.js, initFeatureTabs): thanh tab hiện, panel không chọn có `hidden`. */
-.ftabs { scroll-margin-top: calc(var(--header-h) + 16px); }
 .ftabs-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 720px; margin: 0 auto clamp(28px, 4vw, 44px); padding: 6px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: calc(var(--r-lg) + 6px); }
 .ftabs-list[hidden] { display: none; }
 /* Có JS nhưng script chưa chạy: giữ chỗ cho thanh tab (không hiện) và chỉ hiện panel đầu, để lúc nâng cấp không đẩy trang (CLS). */
@@ -620,7 +619,10 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .ftab:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 .ftabs-panel[hidden] { display: none; }
 .ftabs-panel + .ftabs-panel { margin-top: clamp(40px, 6vw, 72px); }
-.ftabs.is-enhanced .ftabs-panel { margin-top: 0; animation: panel-in .28s var(--ease); }
+/* Neo #id trỏ vào panel còn thanh tab nằm trên nó: site.js đặt --ftabs-lift = khoảng từ đỉnh thanh tab tới đỉnh panel, để chỗ trình duyệt tự cuộn tới
+   (html có scroll-padding-top chừa header) dừng với thanh tab dưới header chứ không phải panel. Hiệu ứng chỉ chạy khi người dùng đổi tab. */
+.ftabs.is-enhanced .ftabs-panel { margin-top: 0; scroll-margin-top: var(--ftabs-lift, 0px); }
+.ftabs.is-switched .ftabs-panel { animation: panel-in .28s var(--ease); }
 /* Ảnh và video trong panel mang lớp .reveal: panel ẩn không bao giờ vào IntersectionObserver, nên ép chúng luôn hiện. */
 .js .ftabs-panel .reveal { opacity: 1; transform: none; transition: none; }
 .ftabs-panel .split { gap: clamp(24px, 4vw, 56px); }
