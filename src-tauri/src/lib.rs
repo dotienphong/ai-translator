@@ -143,7 +143,12 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
     db::install(&handle)?;
     app.manage(glossary::ActiveGlossary::default());
-    app.manage(transcript::store::TranscriptStore::default());
+    // Nhãn "Người N" theo ngôn ngữ giao diện (spec 2026-10-26-phan-biet-nguoi-noi §9): đặt một lần ở đây, trước khi có cửa sổ;
+    // từ đó chỉ `speaker::language_changed` đổi (rà soát mã 03, mục 1).
+    let transcript = transcript::store::TranscriptStore::default();
+    transcript.set_ui_language(settings.ui_language);
+    app.manage(transcript);
+    app.manage(speaker::Running::default());
     files::install(&handle);
     app.manage(debug::DebugLog::default());
     app.manage(HotkeyRegistry::default());

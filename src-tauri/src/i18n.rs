@@ -38,6 +38,8 @@ pub struct Strings {
     pub export_translation: &'static str,
     pub export_dropped: &'static str,
     pub export_failed: &'static str,
+    /// Nhãn tự động của một giọng chưa có tên (spec 2026-10-26-phan-biet-nguoi-noi §9): `{n}` là thứ tự xuất hiện trong phiên.
+    pub speaker_voice: &'static str,
 }
 
 pub const EN: Strings = Strings {
@@ -64,6 +66,7 @@ pub const EN: Strings = Strings {
     export_translation: "Translation",
     export_dropped: "[segment skipped]",
     export_failed: "(not translated)",
+    speaker_voice: "Speaker {n}",
 };
 
 pub const VI: Strings = Strings {
@@ -90,6 +93,7 @@ pub const VI: Strings = Strings {
     export_translation: "Bản dịch",
     export_dropped: "[bỏ qua đoạn]",
     export_failed: "(chưa dịch được)",
+    speaker_voice: "Người {n}",
 };
 
 pub const JA: Strings = Strings {
@@ -116,6 +120,7 @@ pub const JA: Strings = Strings {
     export_translation: "翻訳",
     export_dropped: "[区間をスキップ]",
     export_failed: "（未翻訳）",
+    speaker_voice: "話者{n}",
 };
 
 pub const ZH: Strings = Strings {
@@ -142,6 +147,7 @@ pub const ZH: Strings = Strings {
     export_translation: "翻译",
     export_dropped: "[已跳过片段]",
     export_failed: "（未翻译）",
+    speaker_voice: "说话人{n}",
 };
 
 pub const KO: Strings = Strings {
@@ -168,6 +174,7 @@ pub const KO: Strings = Strings {
     export_translation: "번역",
     export_dropped: "[구간 건너뜀]",
     export_failed: "(번역 안 됨)",
+    speaker_voice: "화자 {n}",
 };
 
 impl Strings {
@@ -198,6 +205,7 @@ impl Strings {
             export_translation,
             export_dropped,
             export_failed,
+            speaker_voice,
         } = *self;
         vec![
             ("tray_start", tray_start),
@@ -223,6 +231,7 @@ impl Strings {
             ("export_translation", export_translation),
             ("export_dropped", export_dropped),
             ("export_failed", export_failed),
+            ("speaker_voice", speaker_voice),
         ]
     }
 
@@ -391,5 +400,16 @@ mod tests {
             assert_eq!(ui_language_from_locale(Some(locale)), expected, "{locale}");
         }
         assert_eq!(ui_language_from_locale(None), En);
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §9: nhãn tự động "Người N" theo ngôn ngữ giao diện. Cùng nhãn với lời giải thích của
+    /// "Lấy tên" ở `src/i18n/speakers.test.ts`.
+    #[test]
+    fn the_automatic_speaker_label_has_its_number() {
+        let got: Vec<String> = LANGUAGES
+            .iter()
+            .map(|(_, s)| s.speaker_voice.replace("{n}", "3"))
+            .collect();
+        assert_eq!(got, ["Speaker 3", "Người 3", "話者3", "说话人3", "화자 3"]);
     }
 }

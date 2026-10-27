@@ -462,6 +462,9 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     }
     let n = session.sessions.fetch_add(1, Ordering::SeqCst) + 1;
     if let Some(transcript) = app.try_state::<TranscriptStore>() {
+        // Ngôn ngữ của nhãn "Người N" (spec 2026-10-26-phan-biet-nguoi-noi §9) không đặt ở đây: `begin` giữ ngôn ngữ đặt lúc khởi
+        // động (`lib.rs`) hay lần đổi gần nhất (`speaker::language_changed`). `settings` đọc trước `prepare` (có thể hàng chục
+        // giây): đặt lại từ nó sẽ đè ngôn ngữ người dùng vừa đổi trong lúc nạp model (rà soát mã 03, mục 1).
         transcript.begin(n, now_ms(), code_of(settings.target_language));
     }
     let source = session.deps.capture(&plan, capture_events(app, n));
@@ -604,6 +607,8 @@ fn stop_engine<R: Runtime>(app: &AppHandle<R>, session: &Session) -> bool {
         debug.record(DebugSession::new(n, now_ms(), &metrics));
     }
     session.deps.end_session();
+    // Nhận giọng dừng cùng engine: bỏ handle của phiên (kế hoạch 03 phân biệt người nói, rà soát A-N4).
+    crate::speaker::session_ended(app);
     // Lưu lịch sử nếu bật "Lưu lịch sử" và là Pro (F4). Chạy ngay ở đây, cả khi thoát app, để không mất phiên cuối.
     end_transcript(app, session);
     true
@@ -990,13 +995,24 @@ impl<R: Runtime> EventSink for TauriSink<R> {
         events::subtitle_live_end(&self.app, end);
     }
 
-    /// Nhãn đổi muộn (spec 2026-10-26-phan-biet-nguoi-noi §4.3). Kế hoạch 03 cập nhật cả bản chép lời trong bộ nhớ.
+    /// Nhãn đổi muộn (spec 2026-10-26-phan-biet-nguoi-noi §4.3): sửa câu trong bản chép lời rồi báo hai cửa sổ.
     fn speaker(&self, label: &SpeakerLabel) {
+        if let Some(transcript) = self.app.try_state::<TranscriptStore>() {
+            transcript.set_speaker(self.session, label);
+        }
         events::subtitle_speaker(&self.app, label);
     }
 
+    /// Bảng giọng của worker: bảng người nói của phiên (nhãn "Người N", màu, tên đổi tay) tính lại trong một lần khóa (QĐ 25); chỉ báo
+    /// giao diện khi có gì đổi. Phát sau khi nhả khóa; `rev` cho giao diện bỏ bảng tới muộn.
     fn roster(&self, roster: &Roster) {
-        events::speaker_roster(&self.app, roster);
+        if let Some(view) = self
+            .app
+            .try_state::<TranscriptStore>()
+            .and_then(|t| t.roster(self.session, roster))
+        {
+            events::speaker_roster(&self.app, &view);
+        }
     }
 
     /// Đếm phút cho hạn mức (§6.8): `Break` khi chạm hạn mức, engine dừng phiên với `quotaExhausted`.
@@ -1803,6 +1819,7 @@ mod tests {
             got
         };
         let (to_overlay, to_main) = (heard(overlay::LABEL), heard(window::MAIN));
+        app.state::<TranscriptStore>().begin(1, 0, "vi");
         let sink = TauriSink {
             app: app.handle().clone(),
             session: 1,
@@ -1815,16 +1832,28 @@ mod tests {
         sink.roster(&Roster {
             voices: vec![RosterVoice { id: 2, room: false }],
         });
+        // Cùng bảng lần nữa: không có gì đổi, không phát lại.
+        sink.roster(&Roster {
+            voices: vec![RosterVoice { id: 2, room: false }],
+        });
         let since = Instant::now();
         while to_overlay.lock().unwrap().len() < 2 || to_main.lock().unwrap().len() < 2 {
             assert!(since.elapsed() < Duration::from_secs(10), "chưa nhận đủ");
             std::thread::sleep(Duration::from_millis(5));
         }
+        std::thread::sleep(Duration::from_millis(50));
         for got in [to_overlay, to_main] {
             let got = got.lock().unwrap().clone();
+            assert_eq!(got.len(), 2, "{got:?}");
             assert_eq!(got[0], r#"subtitle://speaker {"id":1000007,"speaker":2}"#);
-            assert_eq!(got[1], r#"speaker://roster {"voices":[{"id":2,"room":false}]}"#);
+            // Giọng 2 là giọng đầu tiên của phiên: "Người 1" (QĐ 2), nhãn English vì app giả chưa đặt ngôn ngữ cho bản chép lời.
+            // `rev` 2: `begin` tăng lên 1 (QĐ 25), bảng đầu tiên dựng ra là 2.
+            assert_eq!(
+                got[1],
+                r#"speaker://roster {"voices":[{"id":2,"label":"Speaker 1","color":0,"source":"voice","room":false,"mergedInto":null}],"participants":[],"askAccess":false,"rev":2}"#
+            );
         }
+        assert_eq!(app.state::<TranscriptStore>().roster_view().voices.len(), 1);
     }
 
     /// N-6 của review 02 lần 2: bấm Bắt đầu thì quên lý do bỏ cuộc cũ, mã lỗi giữa phiên về mặc định.
@@ -2238,6 +2267,49 @@ mod tests {
         gate.open();
         assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
         assert_eq!(*prepares.lock().unwrap(), 2);
+        toggle(app.handle()).unwrap();
+    }
+
+    /// Rà soát mã 03, mục 1: người dùng đổi ngôn ngữ giao diện trong lúc phiên đang nạp model (`prepare`, có thể hàng chục giây).
+    /// Lần bắt đầu phiên không được đè lại ngôn ngữ cũ đọc trước `prepare`: nhãn "Người N" của phiên theo ngôn ngữ mới.
+    #[test]
+    fn a_ui_language_change_while_the_session_starts_is_kept() {
+        use crate::test_support::{FakeDeps, PrepareGate, mock_app_with};
+        use pipeline::subtitle::RosterVoice;
+        let gate = Arc::new(PrepareGate::default());
+        let app = mock_app_with(FakeDeps {
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        });
+        assert_eq!(app.state::<AppState>().settings().ui_language, UiLanguage::Vi);
+        let store = app.state::<TranscriptStore>();
+        // Như `lib.rs` lúc khởi động: ngôn ngữ giao diện của cài đặt.
+        store.set_ui_language(UiLanguage::Vi);
+        let handle = app.handle().clone();
+        let starting = std::thread::spawn(move || toggle(&handle));
+        let since = Instant::now();
+        while gate.waiting() == 0 {
+            assert!(
+                since.elapsed() < Duration::from_secs(10),
+                "lần bắt đầu không tới prepare"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let mut next = app.state::<AppState>().settings();
+        next.ui_language = UiLanguage::En;
+        actions::commit_settings(app.handle(), next);
+        gate.open();
+        assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
+        let session = store.snapshot().session;
+        let view = store
+            .roster(
+                session,
+                &Roster {
+                    voices: vec![RosterVoice { id: 1, room: false }],
+                },
+            )
+            .unwrap();
+        assert_eq!(view.voices[0].label, "Speaker 1", "theo ngôn ngữ vừa đổi");
         toggle(app.handle()).unwrap();
     }
 

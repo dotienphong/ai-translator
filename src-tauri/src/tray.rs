@@ -206,6 +206,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             events::Navigate {
                 screen: "settings",
                 settings_group: Some("hotkeys"),
+                focus: None,
             },
         ),
         Some(TrayItem::Session) => actions::run_hotkey(app, HotkeyAction::ToggleSession),
@@ -220,6 +221,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 events::Navigate {
                     screen: "settings",
                     settings_group: Some("general"),
+                    focus: None,
                 },
             );
             let app = app.clone();
@@ -233,6 +235,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             events::Navigate {
                 screen: "home",
                 settings_group: None,
+                focus: None,
             },
         ),
         Some(TrayItem::RestartToUpdate) => {

@@ -514,18 +514,22 @@ pub fn open_main<R: Runtime>(app: &AppHandle<R>, screen: MainScreen) {
         MainScreen::Models => events::Navigate {
             screen: "settings",
             settings_group: Some("model"),
+            focus: None,
         },
         MainScreen::Upgrade => events::Navigate {
             screen: "upgrade",
             settings_group: None,
+            focus: None,
         },
         MainScreen::License => events::Navigate {
             screen: "settings",
             settings_group: Some("license"),
+            focus: None,
         },
         MainScreen::Home => events::Navigate {
             screen: "home",
             settings_group: None,
+            focus: None,
         },
     };
     actions::open_main_at(app, target);

@@ -146,6 +146,9 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::SUPPORT_CLOSED,
     errors::SUPPORT_EXPIRED,
     errors::SUPPORT_INVALID,
+    // Đổi tên, gộp người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2): phiên đã dừng hay giọng không còn, giao diện tự báo.
+    errors::SPEAKER_NOT_FOUND,
+    errors::SPEAKER_SAME,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.

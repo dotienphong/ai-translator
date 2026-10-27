@@ -129,24 +129,40 @@ struct State {
     round_ms: Vec<f32>,
 }
 
-/// Nhìn trạng thái của client từ ngoài (test, `latency-bench`). App không cần nó.
+/// Nhìn trạng thái của client từ ngoài (test, `latency-bench`), và dừng nó giữa phiên (app: người dùng tắt "Phân biệt người nói",
+/// kế hoạch 03).
 #[derive(Clone, Default)]
-pub struct SpeakerHandle(Arc<(Mutex<State>, Condvar)>);
+pub struct SpeakerHandle {
+    shared: Arc<(Mutex<State>, Condvar)>,
+    /// Cùng cờ với `StopOnDrop` của `SpeakerLink`: đặt thì luồng giám sát tắt worker và thoát.
+    stop: Arc<AtomicBool>,
+}
 
 impl SpeakerHandle {
     fn update(&self, f: impl FnOnce(&mut State)) {
-        let (m, cv) = &*self.0;
+        let (m, cv) = &*self.shared;
         f(&mut m.lock().unwrap_or_else(|e| e.into_inner()));
         cv.notify_all();
     }
 
     fn get<T>(&self, f: impl FnOnce(&State) -> T) -> T {
-        f(&self.0.0.lock().unwrap_or_else(|e| e.into_inner()))
+        f(&self.shared.0.lock().unwrap_or_else(|e| e.into_inner()))
+    }
+
+    /// Dừng worker ngay và không chạy lại tới hết phiên, như khi phiên dừng (worker nhận `Shutdown`, luồng VAD thấy kênh đóng rồi
+    /// thôi gửi đoạn). Không chờ. Phụ đề không bị ảnh hưởng: đoạn còn chờ nhãn thì không có nhãn.
+    pub fn stop(&self) {
+        self.stop.store(true, Ordering::SeqCst);
+    }
+
+    /// Đã gọi [`Self::stop`] chưa (test).
+    pub fn is_stopped(&self) -> bool {
+        self.stop.load(Ordering::SeqCst)
     }
 
     /// Chờ worker sẵn sàng (hay client tắt) tối đa `timeout`; `true` khi đang sẵn sàng.
     pub fn wait_ready(&self, timeout: Duration) -> bool {
-        let (m, cv) = &*self.0;
+        let (m, cv) = &*self.shared;
         let guard = m.lock().unwrap_or_else(|e| e.into_inner());
         let (guard, _) = cv
             .wait_timeout_while(guard, timeout, |s| !s.ready && s.disabled.is_none())
@@ -187,8 +203,8 @@ impl Drop for StopOnDrop {
 /// qua `keep`), [`SpeakerHandle`] để nhìn trạng thái.
 pub fn start(launch: SpeakerLaunch, before_spawn: BeforeSpawn) -> (SpeakerLink, SpeakerHandle) {
     let (mut link, ends) = SpeakerLink::pair();
-    let stop = Arc::new(AtomicBool::new(false));
     let handle = SpeakerHandle::default();
+    let stop = handle.stop.clone();
     let spawned = {
         let (stop, handle) = (stop.clone(), handle.clone());
         std::thread::Builder::new()

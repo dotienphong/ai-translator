@@ -147,6 +147,10 @@ pub const SUPPORT_CLOSED: &str = "supportClosed";
 pub const SUPPORT_EXPIRED: &str = "supportExpired";
 /// Tin rỗng hay dài quá 1000 ký tự, email sai dạng (`field`), hay server từ chối thân request.
 pub const SUPPORT_INVALID: &str = "supportInvalid";
+/// Đổi tên hay gộp người nói khi phiên đã dừng, chưa có phiên, hay giọng không còn (spec 2026-10-26-phan-biet-nguoi-noi §8.2).
+pub const SPEAKER_NOT_FOUND: &str = "speakerNotFound";
+/// Gộp một người nói vào chính họ (giao diện không cho làm; lỗi phòng hờ, rà soát A-N11).
+pub const SPEAKER_SAME: &str = "speakerSame";
 
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
@@ -290,6 +294,8 @@ mod tests {
                 SUPPORT_CLOSED,
                 SUPPORT_EXPIRED,
                 SUPPORT_INVALID,
+                SPEAKER_NOT_FOUND,
+                SPEAKER_SAME,
             ]
             .map(String::from),
         );

@@ -25,6 +25,7 @@ use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
 use crate::support::{self, chat::SupportView};
 use crate::transcript::export::{Format, SrtText};
 use crate::transcript::history::SessionSummary;
+use crate::transcript::speakers::RosterView;
 use crate::transcript::store::Transcript;
 
 #[tauri::command]
@@ -89,6 +90,7 @@ pub fn get_app_info<R: Runtime>(app: AppHandle<R>, state: State<'_, AppState>) -
         identifier: app.config().identifier.clone(),
         platform: if cfg!(target_os = "macos") { "macos" } else { "windows" },
         launched_at_login: state.launched_at_login(),
+        speaker_available: crate::speaker::enabled(),
     }
 }
 
@@ -181,19 +183,50 @@ pub async fn transcript_text<R: Runtime>(
     blocking(app, move |app| data::transcript_text(app, source, utc_offset_minutes)).await
 }
 
-/// Xuất ra file (Pro). Trả đường dẫn đã ghi, `null` nếu người dùng bấm Hủy ở hộp thoại lưu.
+/// Xuất ra file (Pro). `srt_speakers`: SRT có tên người nói (không gửi thì `false`). Trả đường dẫn đã ghi, `null` nếu người dùng bấm
+/// Hủy ở hộp thoại lưu.
 #[tauri::command]
 pub async fn export_transcript<R: Runtime>(
     app: AppHandle<R>,
     source: TranscriptRef,
     format: Format,
     srt_text: SrtText,
+    srt_speakers: Option<bool>,
     utc_offset_minutes: i32,
 ) -> Result<Option<String>, CommandError> {
     blocking(app, move |app| {
-        data::export_transcript(app, source, format, srt_text, utc_offset_minutes)
+        data::export_transcript(
+            app,
+            source,
+            format,
+            srt_text,
+            srt_speakers.unwrap_or(false),
+            utc_offset_minutes,
+        )
     })
     .await
+}
+
+// ---- Người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2, §8.4). ----
+
+/// Đổi tên một giọng (≤ 40 ký tự; rỗng là trở về tên tự động), áp cho mọi câu của giọng trong phiên đang chạy. Trả bảng người nói
+/// mới (cũng phát `speaker://roster`). Chỉ cửa sổ chính.
+#[tauri::command]
+pub fn rename_speaker<R: Runtime>(app: AppHandle<R>, id: u32, name: String) -> Result<RosterView, CommandError> {
+    crate::speaker::rename(&app, id, &name)
+}
+
+/// Gộp tay giọng `from` vào `into` trong phiên đang chạy. Chỉ cửa sổ chính.
+#[tauri::command]
+pub fn merge_speakers<R: Runtime>(app: AppHandle<R>, from: u32, into: u32) -> Result<RosterView, CommandError> {
+    crate::speaker::merge(&app, from, into)
+}
+
+/// Nút "Mở Cài đặt" của dòng mời cấp quyền trên thanh phụ đề: không tham số, chỉ hiện cửa sổ chính ở Cài đặt › Phụ đề › Người
+/// nói. Lệnh duy nhất kế hoạch 03 thêm cho cửa sổ `overlay` (spec §8.4).
+#[tauri::command]
+pub fn open_speaker_settings<R: Runtime>(app: AppHandle<R>) {
+    crate::speaker::open_settings(&app);
 }
 
 #[tauri::command]
@@ -545,6 +578,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "get_transcript",
     "transcript_text",
     "export_transcript",
+    "rename_speaker",
+    "merge_speakers",
     "list_history",
     "get_history_session",
     "delete_history_session",
@@ -596,6 +631,7 @@ pub const OVERLAY_COMMANDS: &[&str] = &[
     "begin_overlay_resize",
     "overlay_resize_move",
     "end_overlay_resize",
+    "open_speaker_settings",
 ];
 
 /// Lệnh của cửa sổ `compose` (Gõ dịch).
@@ -635,6 +671,8 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         get_transcript,
         transcript_text,
         export_transcript,
+        rename_speaker,
+        merge_speakers,
         list_history,
         get_history_session,
         delete_history_session,
@@ -673,6 +711,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         begin_overlay_resize,
         overlay_resize_move,
         end_overlay_resize,
+        open_speaker_settings,
         get_compose_view,
         compose_translate,
         compose_submit,
