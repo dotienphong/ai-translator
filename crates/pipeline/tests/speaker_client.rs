@@ -539,3 +539,23 @@ fn the_stop_flag_shuts_the_worker_down_quickly() {
     assert!(t0.elapsed() < Duration::from_secs(1), "{:?}", t0.elapsed());
     drop(probe);
 }
+
+/// Kế hoạch 03 (QĐ 8): người dùng tắt "Phân biệt người nói" giữa phiên thì app dừng worker ngay qua `SpeakerHandle::stop`, như khi
+/// phiên dừng: client thoát (luồng VAD thấy kênh đóng), worker không chạy lại, và đây không phải lỗi (`disabled` vẫn `None`).
+#[test]
+fn stop_from_the_handle_ends_the_worker_for_the_rest_of_the_session() {
+    let f = Fixture::new("handle-stop", &["ok"]);
+    let (link, handle) = speaker_client::start(f.launch(), allow());
+    assert!(handle.wait_ready(Duration::from_secs(5)));
+    assert!(!handle.is_stopped());
+    let probe = link.segments.clone();
+    handle.stop();
+    assert!(handle.is_stopped());
+    wait_until("client thoát", || {
+        matches!(probe.try_send(segment(9, 0, 1_000)), Err(TrySendError::Disconnected(_)))
+    });
+    wait_until("worker thoát", || handle.pid().is_none());
+    assert_eq!(handle.starts(), 1, "không chạy lại");
+    assert_eq!(handle.disabled(), None, "dừng theo yêu cầu không phải lỗi");
+    drop(link);
+}

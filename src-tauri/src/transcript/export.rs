@@ -11,6 +11,9 @@
 //! Câu theo trạng thái (§6.6): `dropped` hiện "[bỏ qua đoạn]"; `failed` có bản dịch là "(chưa dịch được)"; `same_lang` và
 //! `skipped` chỉ có câu gốc. SRT bản dịch: câu không có bản dịch thì hiện câu gốc. Chữ theo ngôn ngữ giao diện (`i18n.rs`).
 //!
+//! Người nói (spec 2026-10-26-phan-biet-nguoi-noi §9): câu có nhãn thì TXT ghi `[giờ] Lan: câu gốc`, Markdown `**Lan:** câu gốc`
+//! (tên được thoát), SRT thêm `Lan: ` trước chữ khi người dùng chọn. Câu không có nhãn như cũ.
+//!
 //! Giờ địa phương: app không kèm cơ sở dữ liệu múi giờ; giao diện gửi độ lệch so với UTC lúc xuất (`utc_offset_minutes`,
 //! từ `Date.getTimezoneOffset()` của webview).
 
@@ -119,8 +122,9 @@ fn translation(line: &Subtitle, s: &Strings) -> Option<String> {
 pub fn txt(t: &Transcript, utc_offset_minutes: i32, s: &Strings) -> String {
     let mut out = String::new();
     for line in &t.lines {
+        let who = t.speaker_label(line).map(|l| format!("{l}: ")).unwrap_or_default();
         out.push_str(&format!(
-            "[{}] {}\n",
+            "[{}] {who}{}\n",
             clock(t, line, utc_offset_minutes),
             source(line, s)
         ));
@@ -132,7 +136,8 @@ pub fn txt(t: &Transcript, utc_offset_minutes: i32, s: &Strings) -> String {
     out
 }
 
-pub fn srt(t: &Transcript, text: SrtText, s: &Strings) -> String {
+/// `speakers`: thêm `Lan: ` trước chữ của câu có nhãn (ô "Thêm tên người nói").
+pub fn srt(t: &Transcript, text: SrtText, speakers: bool, s: &Strings) -> String {
     let mut out = String::new();
     let mut n = 0;
     for line in &t.lines {
@@ -146,9 +151,13 @@ pub fn srt(t: &Transcript, text: SrtText, s: &Strings) -> String {
         if body.trim().is_empty() {
             continue;
         }
+        let who = match t.speaker_label(line) {
+            Some(label) if speakers => format!("{label}: "),
+            _ => String::new(),
+        };
         n += 1;
         out.push_str(&format!(
-            "{n}\n{} --> {}\n{}\n\n",
+            "{n}\n{} --> {}\n{who}{}\n\n",
             srt_time(line.start_ms),
             srt_time(line.end_ms.max(line.start_ms)),
             body.trim()
@@ -188,8 +197,12 @@ pub fn markdown(t: &Transcript, utc_offset_minutes: i32, s: &Strings) -> String 
         s.export_translation
     );
     for line in &t.lines {
+        let who = t
+            .speaker_label(line)
+            .map(|l| format!("**{}:** ", escape_markdown(l)))
+            .unwrap_or_default();
         out.push_str(&format!(
-            "| {} | {} | {} |\n",
+            "| {} | {who}{} | {} |\n",
             clock(t, line, utc_offset_minutes),
             escape_markdown(&source(line, s)),
             translation(line, s).map(|t| escape_markdown(&t)).unwrap_or_default()
@@ -216,6 +229,7 @@ pub fn file_name(t: &Transcript, format: Format, utc_offset_minutes: i32) -> Str
 mod tests {
     use super::*;
     use crate::i18n::{EN, VI};
+    use crate::transcript::speakers::VoiceView;
 
     /// 2026-10-02 07:05:00 UTC, tức 14:05:00 giờ Việt Nam (UTC+7).
     const STARTED: u64 = 1_790_924_700_000;
@@ -254,6 +268,8 @@ mod tests {
                 line(3, 15_000, "", "", Status::Dropped),
                 line(4, 3_600_000 + 61_234, "The *final* | answer", "", Status::Failed),
             ],
+            speakers: Vec::new(),
+            speakers_rev: 0,
         }
     }
 
@@ -291,19 +307,23 @@ mod tests {
     #[test]
     fn srt_uses_session_offsets_and_the_chosen_text() {
         assert_eq!(
-            srt(&transcript(), SrtText::Translation, &VI),
+            srt(&transcript(), SrtText::Translation, false, &VI),
             "1\n00:00:01,000 --> 00:00:03,500\nChào buổi sáng mọi người.\n\n\
              2\n00:00:09,450 --> 00:00:11,950\nXin chào.\n\n\
              3\n00:00:15,000 --> 00:00:17,500\n[bỏ qua đoạn]\n\n\
              4\n01:01:01,234 --> 01:01:03,734\nThe *final* | answer\n\n"
         );
-        let source = srt(&transcript(), SrtText::Source, &EN);
+        let source = srt(&transcript(), SrtText::Source, false, &EN);
         assert!(source.starts_with("1\n00:00:01,000 --> 00:00:03,500\nGood morning, everyone.\n\n"));
         let empty = Transcript {
             lines: vec![line(1, 0, "  ", "", Status::SameLang)],
             ..transcript()
         };
-        assert_eq!(srt(&empty, SrtText::Source, &VI), "", "câu rỗng không thành mục SRT");
+        assert_eq!(
+            srt(&empty, SrtText::Source, false, &VI),
+            "",
+            "câu rỗng không thành mục SRT"
+        );
     }
 
     #[test]
@@ -331,5 +351,107 @@ mod tests {
             file_name(&transcript(), Format::Srt, 0),
             "transcript-2026-10-02-0705.srt"
         );
+    }
+
+    fn with_speakers() -> Transcript {
+        let mut t = transcript();
+        t.lines[0].speaker = Some(1);
+        t.lines[1].speaker = Some(2);
+        t.speakers = vec![
+            VoiceView::saved(1, "Lan".into()),
+            VoiceView::saved(2, "Minh *Trần*".into()),
+        ];
+        t
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §9: có nhãn thì TXT `[giờ] Lan: câu gốc`, Markdown `**Lan:** …` (tên được thoát), SRT
+    /// thêm `Lan: ` chỉ khi chọn; câu không có nhãn như cũ.
+    #[test]
+    fn speaker_labels_prefix_the_lines_that_have_one() {
+        let t = with_speakers();
+        let txt = txt(&t, HANOI, &VI);
+        assert!(
+            txt.starts_with(
+                "[14:05:01] Lan: Good morning, everyone.\n→ Chào buổi sáng mọi người.\n\n\
+                 [14:05:09] Minh *Trần*: Xin chào.\n\n\
+                 [14:05:15] [bỏ qua đoạn]\n\n"
+            ),
+            "{txt}"
+        );
+        let md = markdown(&t, HANOI, &VI);
+        assert!(
+            md.contains("| 14:05:01 | **Lan:** Good morning, everyone. | Chào buổi sáng mọi người. |\n"),
+            "{md}"
+        );
+        assert!(
+            md.contains("| 14:05:09 | **Minh \\*Trần\\*:** Xin chào. |  |\n"),
+            "{md}"
+        );
+        assert!(md.contains("| 14:05:15 | \\[bỏ qua đoạn\\] |  |\n"), "{md}");
+        assert_eq!(
+            srt(&t, SrtText::Translation, false, &VI),
+            srt(&transcript(), SrtText::Translation, false, &VI),
+            "không chọn tiền tố: như cũ"
+        );
+        let named = srt(&t, SrtText::Translation, true, &VI);
+        assert!(
+            named.starts_with(
+                "1\n00:00:01,000 --> 00:00:03,500\nLan: Chào buổi sáng mọi người.\n\n\
+                 2\n00:00:09,450 --> 00:00:11,950\nMinh *Trần*: Xin chào.\n\n\
+                 3\n00:00:15,000 --> 00:00:17,500\n[bỏ qua đoạn]\n\n"
+            ),
+            "{named}"
+        );
+    }
+
+    /// Tên đi vào file xuất đã qua `clean_name` (xuống dòng, tab, ký tự điều khiển hướng chữ, ký tự rộng 0 bị bỏ): mỗi câu vẫn một
+    /// dòng ở TXT, một ô ở Markdown, và SRT không có dòng trống chen giữa mục (dòng trống làm trình phát tách mục sai).
+    #[test]
+    fn a_name_with_odd_characters_cannot_break_the_files() {
+        use crate::transcript::speakers::clean_name;
+        let raw = "Lan\n\n9\r\n0:0 --> 1\u{202E}\tNguyễn\u{200B} ｜ 山田 | 🙂";
+        let name = clean_name(raw).unwrap().unwrap();
+        assert!(
+            !name
+                .chars()
+                .any(|c| c.is_control() || c == '\u{202E}' || c == '\u{200B}'),
+            "{name:?}"
+        );
+        let mut t = transcript();
+        for line in &mut t.lines {
+            line.speaker = Some(1);
+        }
+        t.speakers = vec![VoiceView::saved(1, name.clone())];
+
+        let txt = txt(&t, HANOI, &VI);
+        let who = format!("{name}: ");
+        // 4 câu, câu nào cũng đúng một dòng `[giờ] tên: …`.
+        assert_eq!(txt.lines().filter(|l| l.starts_with('[')).count(), 4, "{txt}");
+        assert!(
+            txt.lines()
+                .filter(|l| l.starts_with('['))
+                .all(|l| l[11..].starts_with(&who)),
+            "{txt}"
+        );
+
+        let md = markdown(&t, HANOI, &VI);
+        assert!(
+            md.lines()
+                .skip(4)
+                .all(|l| l.starts_with("| ") && l.ends_with(" |") && l.contains("**")),
+            "{md}"
+        );
+        assert_eq!(md.lines().count(), 4 + 4, "mỗi câu một dòng bảng: {md}");
+
+        let srt = srt(&t, SrtText::Translation, true, &VI);
+        let entries: Vec<&str> = srt.trim_end().split("\n\n").collect();
+        assert_eq!(entries.len(), 4, "dòng trống chỉ ngăn các mục: {srt:?}");
+        for (i, entry) in entries.iter().enumerate() {
+            let rows: Vec<&str> = entry.lines().collect();
+            assert_eq!(rows.len(), 3, "mục {i}: số thứ tự, thời gian, một dòng chữ: {entry:?}");
+            assert_eq!(rows[0], (i + 1).to_string());
+            assert!(rows[1].contains(" --> "), "{entry:?}");
+            assert!(rows[2].starts_with(&who), "{entry:?}");
+        }
     }
 }

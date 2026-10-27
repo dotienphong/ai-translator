@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "overlay",
-  "description": "Thanh phụ đề: chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo, kéo cạnh để đổi kích thước và ẩn cửa sổ của chính nó (spec §4.4, §10.2).",
+  "description": "Thanh phụ đề: chỉ đọc phần cài đặt của nó, nghe sự kiện, kéo, kéo cạnh để đổi kích thước, ẩn cửa sổ của chính nó (spec §4.4, §10.2), và mở Cài đặt › Phụ đề › Người nói từ dòng mời cấp quyền (spec 2026-10-26-phan-biet-nguoi-noi §8.4).",
   "windows": ["overlay"],
   "permissions": [
     "allow-get-overlay-view",
@@ -9,6 +9,7 @@
     "allow-begin-overlay-resize",
     "allow-overlay-resize-move",
     "allow-end-overlay-resize",
+    "allow-open-speaker-settings",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:window:allow-start-dragging"

@@ -78,12 +78,13 @@ pub fn transcript_text<R: Runtime>(
     Ok(export::txt(&t, utc_offset_minutes, strings(app)))
 }
 
-/// Xuất ra file (Pro): hỏi chỗ lưu rồi ghi. Trả đường dẫn đã ghi, `None` nếu người dùng hủy.
+/// Xuất ra file (Pro): hỏi chỗ lưu rồi ghi. `srt_speakers`: SRT có tên người nói. Trả đường dẫn đã ghi, `None` nếu người dùng hủy.
 pub fn export_transcript<R: Runtime>(
     app: &AppHandle<R>,
     source: TranscriptRef,
     format: Format,
     srt_text: SrtText,
+    srt_speakers: bool,
     utc_offset_minutes: i32,
 ) -> Result<Option<String>, CommandError> {
     pro::require(app)?;
@@ -92,7 +93,7 @@ pub fn export_transcript<R: Runtime>(
     let s = strings(app);
     let (content, kind) = match format {
         Format::Txt => (export::txt(&t, utc_offset_minutes, s), files::TXT),
-        Format::Srt => (export::srt(&t, srt_text, s), files::SRT),
+        Format::Srt => (export::srt(&t, srt_text, srt_speakers, s), files::SRT),
         Format::Markdown => (export::markdown(&t, utc_offset_minutes, s), files::MARKDOWN),
     };
     files::save_as(app, &export::file_name(&t, format, utc_offset_minutes), kind, &content)
@@ -181,6 +182,8 @@ pub fn clear_all_data<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError
     if let Some(transcript) = app.try_state::<TranscriptStore>() {
         transcript.clear();
     }
+    // Tên người dùng đặt cho người nói cũng đã bỏ (QĐ 18 của kế hoạch 03 phân biệt người nói): hai cửa sổ vẽ lại nhãn tự động.
+    crate::speaker::emit_roster(app);
     // Không nạp lại từ DB ở đây: đọc DB sẽ tạo ngay file và khóa mới.
     glossary::forget(app);
     log::info!("đã xóa toàn bộ lịch sử và từ điển theo yêu cầu của người dùng");

@@ -136,6 +136,20 @@ pub struct PackView {
     pub enough_space: bool,
 }
 
+/// Model nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.5), cho Cài đặt › Phụ đề › Người nói và Cài đặt › Model (kế hoạch 03).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SpeakerModel {
+    /// Manifest không có mục `speaker` dùng được (chưa đăng: kế hoạch 07; hay cần app mới hơn). Bản dev dùng model của thư mục model
+    /// dev, không hiện gì.
+    Unavailable,
+    /// Có trong manifest, máy chưa tải: tải nền khi bắt đầu phiên.
+    Missing,
+    /// Đang tải. Việc tải này giữ khóa bảo trì (`begin_work`): tải, xóa, kiểm gói trong lúc đó gặp `modelsBusy` (kế hoạch 07 bỏ).
+    Downloading,
+    Ready,
+}
+
 /// Trạng thái gửi giao diện.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,6 +168,8 @@ pub struct ModelsView {
     pub job: Job,
     /// Gói đang dùng có bản mới trong manifest, người dùng chưa bấm "Để sau".
     pub update_available: bool,
+    /// Model nhận giọng (kế hoạch 03).
+    pub speaker: SpeakerModel,
 }
 
 struct Inner {
@@ -170,6 +186,8 @@ struct Inner {
     /// Cờ "có bản cập nhật gói model" mà menu khay đang hiện (spec 2026-10-23 §6.1); `None` khi khay chưa đọc lần nào. Để
     /// `changed()` (chạy mỗi 250 ms lúc tải) chỉ dựng lại menu khay khi cờ đổi: dựng lại menu đóng menu đang mở.
     tray_shown: Option<bool>,
+    /// Đang tải model nhận giọng (`download_speaker_model`), cho `ModelsView::speaker`.
+    speaker_downloading: bool,
     /// Số lần `changed()` đã yêu cầu dựng lại menu khay (cho test).
     #[cfg(test)]
     tray_refreshes: u64,
@@ -189,6 +207,22 @@ struct Work<'a>(&'a ModelService);
 impl Drop for Work<'_> {
     fn drop(&mut self) {
         self.0.lock().maintenance = None;
+    }
+}
+
+/// Cờ "đang tải model nhận giọng" (`ModelsView::speaker`) bật trong lúc giữ; thả ra (kể cả lối ra sớm hay panic) thì tắt.
+struct SpeakerDownloading<'a>(&'a ModelService);
+
+impl<'a> SpeakerDownloading<'a> {
+    fn start(service: &'a ModelService) -> Self {
+        service.lock().speaker_downloading = true;
+        Self(service)
+    }
+}
+
+impl Drop for SpeakerDownloading<'_> {
+    fn drop(&mut self) {
+        self.0.lock().speaker_downloading = false;
     }
 }
 
@@ -242,6 +276,7 @@ impl ModelService {
                 maintenance: None,
                 rev: 0,
                 tray_shown: None,
+                speaker_downloading: false,
                 #[cfg(test)]
                 tray_refreshes: 0,
             }),
@@ -428,6 +463,12 @@ impl ModelService {
             }
             _ => false,
         };
+        let speaker = match manifest.and_then(|m| m.speaker_model(&self.cfg.app_version)) {
+            None => SpeakerModel::Unavailable,
+            Some(entry) if self.store.is_installed(&entry) => SpeakerModel::Ready,
+            Some(_) if inner.speaker_downloading => SpeakerModel::Downloading,
+            Some(_) => SpeakerModel::Missing,
+        };
         ModelsView {
             rev: inner.rev,
             has_source: self.cfg.source.is_some(),
@@ -441,6 +482,7 @@ impl ModelService {
             used_bytes: self.store.used_bytes(),
             job: inner.job.clone(),
             update_available,
+            speaker,
         }
     }
 
@@ -860,8 +902,8 @@ impl ModelService {
     }
 
     /// Tải model nhận giọng nếu manifest có mà máy chưa có. Là một việc bảo trì: không chạy cùng lúc với việc tải, xóa hay kiểm
-    /// gói (`begin_work`); đang bận thì bỏ, lần bắt đầu phiên sau thử lại. Kế hoạch 02 chưa có giao diện tiến độ. Trả `true` khi
-    /// file đã có (sẵn hay vừa tải xong và đúng SHA-256).
+    /// gói (`begin_work`); đang bận thì bỏ, lần bắt đầu phiên sau thử lại. Trạng thái "đang tải" tới giao diện qua
+    /// `ModelsView::speaker` (kế hoạch 03), chưa có tiến độ theo byte. Trả `true` khi file đã có (sẵn hay vừa tải xong và đúng SHA-256).
     pub fn download_speaker_model<R: Runtime>(&self, app: &AppHandle<R>) -> bool {
         let Some(manifest) = self.manifest() else {
             return false;
@@ -888,6 +930,8 @@ impl ModelService {
         if std::fs::create_dir_all(self.store.dir()).is_err() {
             return false;
         }
+        let downloading = SpeakerDownloading::start(self);
+        self.changed(app);
         let mut job = self.store.job(&entry, url);
         job.keep_part = true;
         let pause = Pause::default();
@@ -912,7 +956,9 @@ impl ModelService {
                 false
             }
         };
+        drop(downloading);
         drop(work);
+        self.changed(app);
         installed
     }
 
@@ -1975,6 +2021,47 @@ mod tests {
         // Không thuộc gói nào: trạng thái các gói như cũ.
         let view = h.call("get_models_state", json!({})).unwrap();
         assert_eq!(view["packs"][0]["usable"], false);
+    }
+
+    /// Kế hoạch 03 (QĐ 15): trạng thái model nhận giọng tới giao diện, để Cài đặt ghi "đang tải" (spec §4.5) và lỗi `modelsBusy`
+    /// lúc đang tải có lý do nhìn thấy.
+    #[test]
+    fn the_speaker_model_state_reaches_the_ui() {
+        let state = |h: &Harness| h.call("get_models_state", json!({})).unwrap()["speaker"].clone();
+        let plain = harness(|_| {});
+        publish(&plain.server, &real_sample());
+        plain.call("load_models", json!({})).unwrap();
+        assert_eq!(state(&plain), "unavailable", "manifest chưa có mục speaker");
+
+        let h = harness(|_| {});
+        let bytes = 64u64;
+        let sha: String = Sha256::digest(content("eres2net-voxceleb", bytes))
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        let mut body = real_sample();
+        body["speaker"] = json!({
+            "id": "eres2net-voxceleb", "version": "1", "file": "eres2net.onnx", "url": "files/eres2net.onnx",
+            "bytes": bytes, "sha256": sha, "license_id": "Apache-2.0", "min_app_version": "0.1.0"
+        });
+        publish(&h.server, &body);
+        h.server
+            .put("files/eres2net.onnx", &content("eres2net-voxceleb", bytes));
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(state(&h), "missing");
+        h.service().lock().speaker_downloading = true;
+        assert_eq!(state(&h), "downloading");
+        h.service().lock().speaker_downloading = false;
+        assert!(h.service().download_speaker_model(h.app.handle()));
+        assert_eq!(state(&h), "ready");
+        assert!(!h.service().lock().speaker_downloading, "tải xong thì hết cờ");
+        // Rà soát A-N1: thả guard (lối ra sớm, panic) là hết cờ.
+        let service = h.service();
+        {
+            let _guard = SpeakerDownloading::start(&service);
+            assert!(service.lock().speaker_downloading);
+        }
+        assert!(!service.lock().speaker_downloading);
     }
 
     #[test]

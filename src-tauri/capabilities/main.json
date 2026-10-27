@@ -27,6 +27,8 @@
     "allow-get-transcript",
     "allow-transcript-text",
     "allow-export-transcript",
+    "allow-rename-speaker",
+    "allow-merge-speakers",
     "allow-list-history",
     "allow-get-history-session",
     "allow-delete-history-session",

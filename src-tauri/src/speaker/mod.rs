@@ -1,21 +1,29 @@
-//! Nhận giọng người nói trong app (spec 2026-10-26-phan-biet-nguoi-noi §4; kế hoạch 02): bật cho phiên nào, tìm `speaker-worker`
+//! Nhận giọng người nói trong app (spec 2026-10-26-phan-biet-nguoi-noi §4; kế hoạch 02, 03): bật cho phiên nào, tìm `speaker-worker`
 //! và model, kiểm SHA-256 trước mỗi lần chạy (§10.2), rồi chạy `pipeline::speaker_client` cho phiên. Phiên không chờ worker.
 //!
-//! **Kế hoạch 02: tính năng TẮT với người dùng cuối.** Chỉ bản debug bật được, bằng `AI_TRANSLATOR_DEV_SPEAKER=true` trong
-//! `.env` (đọc qua `scripts/run-dev-app.sh`, cùng cơ chế `AI_TRANSLATOR_DEV_PRO`, spec 2026-10-04 §2). Mã đọc biến nằm sau
-//! `cfg(debug_assertions)`; bản phát hành không có chuỗi tên biến (`release-check.mjs no-dev-gate` chặn). Kế hoạch 03 thay cờ này
-//! bằng cài đặt `speakerDiarization` (mặc định bật).
+//! **Tới kế hoạch 07: tính năng TẮT với người dùng cuối.** Công tắc nội bộ [`enabled`]: chỉ bản debug bật được, bằng
+//! `AI_TRANSLATOR_DEV_SPEAKER=true` trong `.env` (đọc qua `scripts/run-dev-app.sh`, cùng cơ chế `AI_TRANSLATOR_DEV_PRO`, spec
+//! 2026-10-04 §2). Mã đọc biến nằm sau `cfg(debug_assertions)`; bản phát hành không có chuỗi tên biến (`release-check.mjs
+//! no-dev-gate` chặn). Kế hoạch 03 thêm cài đặt `speakerDiarization` (mặc định bật): phiên có nhận giọng khi [`active`], tức công
+//! tắc nội bộ bật **và** cài đặt bật; giao diện chỉ hiện nhóm Cài đặt "Người nói" khi [`enabled`] (`AppInfo::speaker_available`).
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use pipeline::speaker::SpeakerLink;
-use pipeline::speaker_client::{self, BeforeSpawn, SpeakerLaunch};
+use pipeline::speaker_client::{self, BeforeSpawn, SpeakerHandle, SpeakerLaunch};
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::actions;
+use crate::errors::{self, CommandError};
+use crate::events;
 use crate::models::service::ModelService;
+use crate::settings::{Invalid, Reason, Settings, UiLanguage};
 use crate::sidecar::{integrity, paths};
+use crate::state::AppState;
+use crate::transcript::speakers::{RosterView, SpeakerError};
+use crate::transcript::store::TranscriptStore;
 
 /// Biến môi trường của cờ dev: đúng `true` thì bản debug chạy nhận giọng. Chỉ bản debug có biến này.
 #[cfg(debug_assertions)]
@@ -24,7 +32,7 @@ pub const DEV_SPEAKER_ENV: &str = "AI_TRANSLATOR_DEV_SPEAKER";
 /// Tên file model trong thư mục model của bản dev (`MT_MODELS_DIR` hay `<repo>/models`), dùng khi kho chưa có.
 pub const DEV_MODEL_FILE: &str = "eres2net-sv-en-voxceleb-16k.onnx";
 
-/// Nhận giọng có bật cho phiên mới không. Bản phát hành: luôn `false` ở kế hoạch 02.
+/// Bản này có tính năng không (công tắc nội bộ). Bản phát hành: luôn `false` tới kế hoạch 07; bản debug: theo cờ dev.
 pub fn enabled() -> bool {
     #[cfg(debug_assertions)]
     {
@@ -42,10 +50,26 @@ fn switch_on(value: Option<&str>) -> bool {
     value == Some("true")
 }
 
+/// Phiên mới có nhận giọng không: bản này có tính năng ([`enabled`]) và người dùng bật "Phân biệt người nói" (spec §8.3).
+pub fn active(settings: &Settings) -> bool {
+    wanted(enabled(), settings)
+}
+
+/// Phần quyết định của [`active`], nhận công tắc nội bộ làm tham số: trong `cargo test` [`enabled`] luôn `false` (không có cờ dev),
+/// nên test cần hàm này để thử nhánh "bản có tính năng" (rà soát lần 2, A-N2).
+fn wanted(enabled: bool, settings: &Settings) -> bool {
+    enabled && settings.speaker_diarization
+}
+
+/// Client nhận giọng của phiên gần nhất, để tắt giữa phiên ([`turn_off`]). `start_for_session` thay ở mỗi phiên.
+#[derive(Default)]
+pub struct Running(Mutex<Option<SpeakerHandle>>);
+
 /// Chạy nhận giọng cho phiên vừa bắt đầu nếu bật; không chờ worker. Chưa có model trong kho thì tải nền (bản dev dùng model của
 /// thư mục model dev nếu có). Lỗi gì cũng chỉ ghi log: phụ đề chạy như thường.
 pub fn start_for_session<R: Runtime>(app: &AppHandle<R>) -> Option<SpeakerLink> {
-    if !enabled() {
+    let settings = app.try_state::<AppState>()?.settings();
+    if !active(&settings) {
         return None;
     }
     let models = app.try_state::<Arc<ModelService>>()?.inner().clone();
@@ -74,16 +98,134 @@ pub fn start_for_session<R: Runtime>(app: &AppHandle<R>) -> Option<SpeakerLink> 
     // Worker băm lại đúng các byte nó đọc (`Load.model_sha256`): file bị thay sau lần kiểm dưới đây cũng bị từ chối.
     launch.model_sha256 = sha256;
     let locks: Arc<Mutex<Vec<File>>> = Arc::default();
-    let app = app.clone();
+    let check_app = app.clone();
     let before_spawn: BeforeSpawn = Box::new(move |launch: &SpeakerLaunch| {
         let expected = launch.model_sha256.as_deref();
         // Model của kho hỏng mà đúng kích thước: bỏ để phiên sau tải lại (không thì tính năng tắt lặng lẽ mãi).
-        let discard = || expected.is_some_and(|sha| models.discard_speaker_model(&app, sha));
+        let discard = || expected.is_some_and(|sha| models.discard_speaker_model(&check_app, sha));
         check_before_spawn(launch, expected, integrity::SIDECAR_HASHES, &locks, &discard)
     });
-    let (link, _handle) = speaker_client::start(launch, before_spawn);
+    let (link, handle) = speaker_client::start(launch, before_spawn);
     log::info!("nhận giọng: bật cho phiên này");
+    keep_running(app, &handle);
     Some(link)
+}
+
+/// Người dùng tắt "Phân biệt người nói" (Cài đặt › Phụ đề; QĐ 8 của kế hoạch 03): dừng worker của phiên ngay (không chạy lại tới hết
+/// phiên), bỏ bảng người nói và báo hai cửa sổ thôi vẽ nhãn. Bật lại thì có tác dụng từ phiên sau. Không có phiên thì chỉ bỏ bảng
+/// người nói của phiên vừa dừng. Chỉ phát bảng rỗng khi bảng vừa bỏ có giọng: bản phát hành không phát sự kiện mới nào (QĐ 9).
+pub fn turn_off<R: Runtime>(app: &AppHandle<R>) {
+    let handle = app
+        .try_state::<Running>()
+        .and_then(|r| r.0.lock().unwrap_or_else(|e| e.into_inner()).take());
+    if let Some(handle) = handle
+        && !handle.is_stopped()
+    {
+        handle.stop();
+        log::info!("nhận giọng: người dùng tắt, dừng worker của phiên");
+    }
+    if let Some(store) = app.try_state::<TranscriptStore>()
+        && let Some(view) = store.speakers_off()
+    {
+        events::speaker_roster(app, &view);
+    }
+}
+
+/// Giữ handle của phiên để tắt được giữa phiên ([`turn_off`]). Người dùng vừa tắt công tắc trong lúc phiên đang bắt đầu (`turn_off` chưa
+/// thấy handle, rà soát A-N3): dừng ngay, để không phân tích giọng khi người dùng đã tắt (ưu tiên 3). Đọc cài đặt **sau** khi giữ
+/// handle, nên mọi lần tắt hoặc thấy handle, hoặc bị lần đọc này thấy.
+fn keep_running<R: Runtime>(app: &AppHandle<R>, handle: &SpeakerHandle) {
+    keep_running_with(app, handle, enabled());
+}
+
+/// [`keep_running`] với công tắc nội bộ làm tham số (để test, xem [`wanted`]).
+fn keep_running_with<R: Runtime>(app: &AppHandle<R>, handle: &SpeakerHandle, enabled: bool) {
+    if let Some(running) = app.try_state::<Running>() {
+        *running.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle.clone());
+    }
+    let on = app
+        .try_state::<AppState>()
+        .is_some_and(|s| wanted(enabled, &s.settings()));
+    if !on {
+        handle.stop();
+        log::info!("nhận giọng: công tắc đã tắt lúc phiên bắt đầu, dừng worker");
+    }
+}
+
+/// Phiên dừng (`session::stop_engine`): bỏ handle của phiên (client đã dừng cùng `SpeakerLink`), để lần tắt công tắc sau đó không dừng
+/// nhầm và không ghi log sai (rà soát A-N4).
+pub fn session_ended<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(running) = app.try_state::<Running>()
+        && let Some(handle) = running.0.lock().unwrap_or_else(|e| e.into_inner()).take()
+    {
+        handle.stop();
+    }
+}
+
+/// Ngôn ngữ giao diện vừa đổi: nhãn "Người N" theo ngôn ngữ mới (spec §9: nhãn tính sẵn ở phía Rust).
+pub fn language_changed<R: Runtime>(app: &AppHandle<R>, lang: UiLanguage) {
+    let Some(store) = app.try_state::<TranscriptStore>() else {
+        return;
+    };
+    store.set_ui_language(lang);
+    if store.has_speakers() {
+        events::speaker_roster(app, &store.roster_view());
+    }
+}
+
+/// Gửi lại bảng người nói hiện có cho hai cửa sổ (sau "Xóa toàn bộ dữ liệu", QĐ 18), chỉ khi phiên có giọng: bản phát hành (không có
+/// nhận giọng) không phát sự kiện mới nào (QĐ 9).
+pub fn emit_roster<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(store) = app.try_state::<TranscriptStore>()
+        && store.has_speakers()
+    {
+        events::speaker_roster(app, &store.roster_view());
+    }
+}
+
+/// Nút "Mở Cài đặt" của dòng mời cấp quyền trên thanh phụ đề (spec §6.7, §8.4): hiện cửa sổ chính ở Cài đặt › Phụ đề và cuộn tới
+/// nhóm Người nói. Không đọc hay đổi dữ liệu gì (việc menu khay vốn làm được).
+pub fn open_settings<R: Runtime>(app: &AppHandle<R>) {
+    actions::open_main_at(
+        app,
+        events::Navigate {
+            screen: "settings",
+            settings_group: Some("subtitles"),
+            focus: Some("speakers"),
+        },
+    );
+}
+
+// ---- Đổi tên, gộp (spec 2026-10-26-phan-biet-nguoi-noi §8.2) trong phiên đang chạy. Không phải tính năng Pro. Chỉ một lần khóa ngắn
+// của `TranscriptStore`, nên lệnh chạy thẳng, không qua `spawn_blocking`. ----
+
+/// Lỗi của đổi tên, gộp cho giao diện; thông báo không có tên người.
+fn speaker_error(e: SpeakerError) -> CommandError {
+    match e {
+        SpeakerError::TooLong => Invalid::new("name", Reason::TooLong).into(),
+        SpeakerError::Same => CommandError::new(errors::SPEAKER_SAME, None, e.to_string()),
+        SpeakerError::NotFound => CommandError::new(errors::SPEAKER_NOT_FOUND, None, e.to_string()),
+    }
+}
+
+/// Đổi tên một giọng, áp cho mọi câu của giọng trong phiên; phát bảng mới cho hai cửa sổ. Tên không vào log.
+pub fn rename<R: Runtime>(app: &AppHandle<R>, id: u32, name: &str) -> Result<RosterView, CommandError> {
+    let store = app
+        .try_state::<TranscriptStore>()
+        .ok_or_else(|| speaker_error(SpeakerError::NotFound))?;
+    let view = store.rename_speaker(id, name).map_err(speaker_error)?;
+    events::speaker_roster(app, &view);
+    Ok(view)
+}
+
+/// Gộp tay giọng `from` vào `into` (chỉ đổi cách hiện, không gửi worker); phát bảng mới cho hai cửa sổ.
+pub fn merge<R: Runtime>(app: &AppHandle<R>, from: u32, into: u32) -> Result<RosterView, CommandError> {
+    let store = app
+        .try_state::<TranscriptStore>()
+        .ok_or_else(|| speaker_error(SpeakerError::NotFound))?;
+    let view = store.merge_speakers(from, into).map_err(speaker_error)?;
+    events::speaker_roster(app, &view);
+    Ok(view)
 }
 
 /// Model của thư mục model dev, chỉ ở bản dev.
@@ -271,5 +413,183 @@ mod tests {
         assert!(check_before_spawn(&launch, Some(&wrong), &table, &locks, &discard).is_err());
         assert_eq!(calls.get(), 1, "binary sai: không đụng model");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Kế hoạch 03 (QĐ 9): cài đặt "Phân biệt người nói" bật sẵn; tắt thì không phiên nào có nhận giọng; bật thì theo công tắc nội bộ
+    /// của bản này (bản phát hành: tắt).
+    #[test]
+    fn the_settings_switch_only_turns_speaker_off() {
+        let mut s = Settings::defaults(UiLanguage::Vi);
+        assert!(s.speaker_diarization && s.speaker_names, "bật sẵn (spec §8.3)");
+        assert_eq!(active(&s), enabled());
+        assert!(wanted(true, &s), "bản có tính năng, cài đặt bật");
+        assert!(!wanted(false, &s), "bản không có tính năng");
+        s.speaker_diarization = false;
+        assert!(!active(&s));
+        assert!(!wanted(true, &s), "cài đặt tắt thắng công tắc nội bộ");
+    }
+
+    /// Kế hoạch 03: bản phát hành không chạy nhận giọng dù cài đặt bật (CI chạy test này ở bản release, bộ lọc `speaker::`).
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn release_builds_never_activate_speaker_whatever_the_settings() {
+        assert!(!active(&Settings::defaults(UiLanguage::Vi)));
+    }
+
+    /// Các bảng `speaker://roster` mà cửa sổ `label` nhận được.
+    fn rosters(app: &tauri::App<tauri::test::MockRuntime>, label: &str) -> Arc<Mutex<Vec<String>>> {
+        use tauri::Listener;
+        let got = Arc::new(Mutex::new(Vec::new()));
+        let sink = got.clone();
+        crate::test_support::window(app, label).listen(events::SPEAKER_ROSTER, move |e| {
+            sink.lock().unwrap().push(e.payload().to_string());
+        });
+        got
+    }
+
+    fn wait_for(got: &Mutex<Vec<String>>, n: usize) -> Vec<String> {
+        let since = std::time::Instant::now();
+        while got.lock().unwrap().len() < n {
+            assert!(
+                since.elapsed() < std::time::Duration::from_secs(10),
+                "chưa nhận đủ {n} bảng"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        got.lock().unwrap().clone()
+    }
+
+    /// Phiên 1 của app giả có một giọng ("Người 1").
+    fn one_voice(app: &tauri::App<tauri::test::MockRuntime>) {
+        use pipeline::subtitle::{Roster, RosterVoice};
+        let store = app.state::<TranscriptStore>();
+        store.begin(1, 0, "vi");
+        store.set_ui_language(UiLanguage::Vi);
+        let view = store.roster(
+            1,
+            &Roster {
+                voices: vec![RosterVoice { id: 1, room: false }],
+            },
+        );
+        assert!(view.is_some());
+    }
+
+    /// QĐ 8: tắt "Phân biệt người nói" giữa phiên thì dừng worker ngay, bỏ bảng người nói, hai cửa sổ nhận bảng rỗng.
+    #[test]
+    fn turning_the_switch_off_mid_session_stops_the_worker_and_clears_the_labels() {
+        let app = crate::test_support::mock_app();
+        one_voice(&app);
+        let handle = SpeakerHandle::default();
+        *app.state::<Running>().0.lock().unwrap() = Some(handle.clone());
+        let (to_main, to_overlay) = (rosters(&app, crate::window::MAIN), rosters(&app, crate::overlay::LABEL));
+        let mut next = app.state::<AppState>().settings();
+        next.speaker_diarization = false;
+        crate::actions::commit_settings(app.handle(), next);
+        assert!(handle.is_stopped(), "worker của phiên bị dừng");
+        assert!(app.state::<Running>().0.lock().unwrap().is_none());
+        for got in [wait_for(&to_main, 1), wait_for(&to_overlay, 1)] {
+            let view: serde_json::Value = serde_json::from_str(&got[0]).unwrap();
+            assert_eq!(view["voices"], serde_json::json!([]), "{view}");
+            assert!(
+                view["rev"].as_u64().unwrap() > 1,
+                "bảng mới hơn bảng của giọng đầu: {view}"
+            );
+        }
+        assert!(app.state::<TranscriptStore>().roster_view().voices.is_empty());
+    }
+
+    /// QĐ 9, rà soát mã 03, mục 2: tắt công tắc khi phiên chưa có giọng nào (mọi phiên của bản phát hành, vì bản phát hành không có
+    /// nhận giọng) thì không phát `speaker://roster`: không có nhãn nào cần xóa.
+    #[test]
+    fn turning_the_switch_off_without_voices_announces_nothing() {
+        let app = crate::test_support::mock_app();
+        let (to_main, to_overlay) = (rosters(&app, crate::window::MAIN), rosters(&app, crate::overlay::LABEL));
+        app.state::<TranscriptStore>().begin(1, 0, "vi");
+        let mut next = app.state::<AppState>().settings();
+        next.speaker_diarization = false;
+        crate::actions::commit_settings(app.handle(), next);
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert!(to_main.lock().unwrap().is_empty(), "cửa sổ chính");
+        assert!(to_overlay.lock().unwrap().is_empty(), "thanh phụ đề");
+    }
+
+    /// Rà soát A-N3: công tắc tắt đúng lúc phiên đang bắt đầu (trước khi handle được giữ, `turn_off` chưa thấy nó): worker vừa chạy
+    /// bị dừng ngay. Thử như bản có tính năng (`enabled = true`; trong `cargo test` [`enabled`] luôn `false`), nên test đỏ nếu
+    /// `keep_running` bỏ qua cài đặt (rà soát lần 2, A-N2) hay dừng cả khi cài đặt bật.
+    #[test]
+    fn a_worker_started_after_the_switch_went_off_is_stopped_at_once() {
+        let app = crate::test_support::mock_app();
+        let kept = SpeakerHandle::default();
+        keep_running_with(app.handle(), &kept, true);
+        assert!(!kept.is_stopped(), "cài đặt bật: worker chạy tiếp");
+        let mut next = app.state::<AppState>().settings();
+        next.speaker_diarization = false;
+        crate::actions::commit_settings(app.handle(), next);
+        assert!(kept.is_stopped(), "tắt giữa phiên: `turn_off` dừng worker đang giữ");
+        let late = SpeakerHandle::default();
+        keep_running_with(app.handle(), &late, true);
+        assert!(late.is_stopped(), "worker bắt đầu sau khi tắt: dừng ngay");
+        assert!(
+            app.state::<Running>().0.lock().unwrap().is_some(),
+            "vẫn giữ tới khi phiên dừng"
+        );
+    }
+
+    /// Rà soát A-N4: phiên dừng thì bỏ handle; tắt công tắc sau đó không dừng nhầm handle cũ, không ghi log sai.
+    #[test]
+    fn a_stopped_session_leaves_no_worker_handle_behind() {
+        let app = crate::test_support::mock_app();
+        let handle = SpeakerHandle::default();
+        *app.state::<Running>().0.lock().unwrap() = Some(handle.clone());
+        session_ended(app.handle());
+        assert!(app.state::<Running>().0.lock().unwrap().is_none());
+        assert!(handle.is_stopped());
+    }
+
+    /// QĐ 9: "Xóa toàn bộ dữ liệu" chỉ phát `speaker://roster` khi phiên có giọng (bản phát hành không phát sự kiện mới).
+    #[test]
+    fn clearing_data_announces_speakers_only_when_there_are_some() {
+        let app = crate::test_support::mock_app();
+        let to_main = rosters(&app, crate::window::MAIN);
+        emit_roster(app.handle());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert!(to_main.lock().unwrap().is_empty(), "chưa có giọng: không phát");
+        one_voice(&app);
+        emit_roster(app.handle());
+        assert_eq!(wait_for(&to_main, 1).len(), 1);
+    }
+
+    /// Spec §9: nhãn "Người N" tính sẵn theo ngôn ngữ giao diện; đổi ngôn ngữ thì hai cửa sổ nhận nhãn mới.
+    #[test]
+    fn a_new_ui_language_relabels_the_automatic_names() {
+        let app = crate::test_support::mock_app();
+        one_voice(&app);
+        let to_main = rosters(&app, crate::window::MAIN);
+        let mut next = app.state::<AppState>().settings();
+        next.ui_language = UiLanguage::En;
+        crate::actions::commit_settings(app.handle(), next);
+        let got = wait_for(&to_main, 1);
+        assert!(got[0].contains(r#""label":"Speaker 1""#), "{got:?}");
+    }
+
+    /// QĐ 9: giao diện chỉ hiện nhóm Cài đặt "Người nói" khi bản này có tính năng.
+    #[test]
+    fn the_app_info_says_whether_the_speaker_settings_show() {
+        let app = crate::test_support::mock_app();
+        let main = crate::test_support::window(&app, crate::window::MAIN);
+        let info = crate::test_support::invoke(&main, "get_app_info", serde_json::json!({})).unwrap();
+        assert_eq!(info["speakerAvailable"], serde_json::json!(enabled()));
+    }
+
+    /// Rà soát A-N11: lỗi của đổi tên, gộp có mã riêng, câu báo đúng việc; thông báo không có tên người.
+    #[test]
+    fn rename_and_merge_errors_have_their_own_codes() {
+        assert_eq!(speaker_error(SpeakerError::Same).code, crate::errors::SPEAKER_SAME);
+        assert_eq!(
+            speaker_error(SpeakerError::NotFound).code,
+            crate::errors::SPEAKER_NOT_FOUND
+        );
+        let long = speaker_error(SpeakerError::TooLong);
+        assert_eq!((long.code.as_str(), long.field.as_deref()), ("tooLong", Some("name")));
     }
 }

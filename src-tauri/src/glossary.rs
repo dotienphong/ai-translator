@@ -334,7 +334,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("mt-glossary-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        (open_with_key(&dir.join("data.db"), &[9; 32]).unwrap(), dir)
+        (open_with_key(&dir.join(crate::db::DB_FILE), &[9; 32]).unwrap(), dir)
     }
 
     fn code(e: GlossaryError) -> (String, Option<String>) {
