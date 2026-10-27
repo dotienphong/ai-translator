@@ -370,6 +370,7 @@ dependencies = [
  "rubato",
  "serde",
  "serde_json",
+ "speaker-protocol",
  "windows",
 ]
 
@@ -3050,6 +3051,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sonora",
+ "speaker-protocol",
+ "speaker-worker",
  "sysinfo",
 ]
 
@@ -3226,6 +3229,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "speaker-protocol",
  "sys-locale",
  "tauri",
  "tauri-build",
@@ -4172,6 +4176,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "speaker-protocol",
  "thiserror 2.0.21",
  "unicode-normalization",
  "windows",
@@ -5405,6 +5410,32 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "speaker-protocol"
+version = "0.1.0"
+dependencies = [
+ "postcard",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "speaker-worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candle-core",
+ "candle-onnx",
+ "libc",
+ "prost",
+ "rayon",
+ "realfft",
+ "serde_json",
+ "sha2 0.11.0",
+ "speaker-protocol",
+ "windows",
 ]
 
 [[package]]

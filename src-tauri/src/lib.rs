@@ -33,6 +33,7 @@ pub mod security;
 pub mod session;
 pub mod settings;
 pub mod sidecar;
+pub mod speaker;
 pub mod state;
 pub mod support;
 pub mod system;

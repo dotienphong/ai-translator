@@ -20,6 +20,7 @@ use pipeline::config::PipelineConfig;
 use reqwest::Url;
 use reqwest::blocking::Client;
 use serde::Serialize;
+use speaker_protocol::SpeakerConfig;
 use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
 use super::download::{self, DownloadError, Pause, Retry};
@@ -31,6 +32,7 @@ use super::source::{self, FetchError};
 use super::store::{self, PackStatus, ResolveError, Store};
 use crate::errors::{self, CommandError};
 use crate::settings::Settings;
+use crate::sidecar::integrity;
 use crate::sidecar::paths::ModelFiles;
 use crate::sidecar::probe::GpuInfo;
 use crate::state::{AppState, SessionStatus};
@@ -840,6 +842,123 @@ impl ModelService {
             .map(|s| s.manifest.pipeline_config())
             .unwrap_or_default()
     }
+
+    /// Model nhận giọng đã tải và đúng kích thước (spec 2026-10-26-phan-biet-nguoi-noi §4.5): đường dẫn và SHA-256 theo manifest
+    /// (worker chỉ chạy sau khi SHA-256 đầy đủ khớp, `speaker::check_before_spawn`). `None` khi manifest không có mục dùng được
+    /// hay file chưa tải.
+    pub fn speaker_model(&self) -> Option<(PathBuf, String)> {
+        let manifest = self.manifest()?;
+        let entry = manifest.manifest.speaker_model(&self.cfg.app_version)?;
+        self.store
+            .is_installed(&entry)
+            .then(|| (self.store.path(&entry.file), entry.sha256.clone()))
+    }
+
+    /// Ngưỡng nhận giọng theo manifest (`speaker_config`), sai thì mặc định.
+    pub fn speaker_config(&self) -> SpeakerConfig {
+        self.manifest().map(|s| s.manifest.speaker_config()).unwrap_or_default()
+    }
+
+    /// Tải model nhận giọng nếu manifest có mà máy chưa có. Là một việc bảo trì: không chạy cùng lúc với việc tải, xóa hay kiểm
+    /// gói (`begin_work`); đang bận thì bỏ, lần bắt đầu phiên sau thử lại. Kế hoạch 02 chưa có giao diện tiến độ. Trả `true` khi
+    /// file đã có (sẵn hay vừa tải xong và đúng SHA-256).
+    pub fn download_speaker_model<R: Runtime>(&self, app: &AppHandle<R>) -> bool {
+        let Some(manifest) = self.manifest() else {
+            return false;
+        };
+        let Some(entry) = manifest.manifest.speaker_model(&self.cfg.app_version) else {
+            return false;
+        };
+        if self.store.is_installed(&entry) {
+            return true;
+        }
+        let Some(url) = self.cfg.source.as_ref().and_then(|u| source::file_url(u, &entry)) else {
+            return false;
+        };
+        let Some(client) = self.client() else {
+            return false;
+        };
+        let work = match self.begin_work(app, Some(&manifest.manifest), |_| false) {
+            Ok((work, _)) => work,
+            Err(e) => {
+                log::info!("chưa tải model nhận giọng: {}", e.message);
+                return false;
+            }
+        };
+        if std::fs::create_dir_all(self.store.dir()).is_err() {
+            return false;
+        }
+        let mut job = self.store.job(&entry, url);
+        job.keep_part = true;
+        let pause = Pause::default();
+        let result = download::download(
+            client,
+            &job,
+            &pause,
+            &self.cfg.retry,
+            &mut |wait| {
+                std::thread::sleep(wait);
+                true
+            },
+            &mut |_| {},
+        );
+        let installed = match result {
+            Ok(()) => {
+                std::fs::rename(self.store.part(&entry), self.store.path(&entry.file)).is_ok()
+                    && self.store.mark_installed(&entry).is_ok()
+            }
+            Err(e) => {
+                log::warn!("không tải được model nhận giọng: {e}");
+                false
+            }
+        };
+        drop(work);
+        installed
+    }
+
+    /// Như [`Self::download_speaker_model`], trên luồng nền.
+    pub fn download_speaker_model_in_background<R: Runtime>(self: &Arc<Self>, app: &AppHandle<R>) {
+        let (service, app) = (self.clone(), app.clone());
+        std::thread::spawn(move || {
+            if service.download_speaker_model(&app) {
+                log::info!("đã có model nhận giọng");
+            }
+        });
+    }
+
+    /// Model nhận giọng đã tải với SHA-256 `sha256` mà file trên đĩa băm ra khác (hỏng hay bị thay, cùng kích thước nên
+    /// [`Self::speaker_model`] vẫn đưa ra và `speaker::check_before_spawn` từ chối mãi): băm lại, sai thì bỏ khỏi `installed.json`
+    /// và xóa file, để lần bắt đầu phiên sau tải lại (như [`Store::verify_pack`] với file của gói). Việc bảo trì như
+    /// [`Self::verify_selected`]: đang bận thì bỏ qua, lần kiểm sau làm lại. Trả `true` khi đã bỏ.
+    pub fn discard_speaker_model<R: Runtime>(&self, app: &AppHandle<R>, sha256: &str) -> bool {
+        let work = match self.begin_work(app, None, |_| false) {
+            Ok((work, _)) => work,
+            Err(e) => {
+                log::info!("chưa bỏ được model nhận giọng hỏng: {}", e.message);
+                return false;
+            }
+        };
+        let broken: Vec<store::Installed> = self
+            .store
+            .installed()
+            .into_iter()
+            .filter(|i| i.sha256 == sha256)
+            .filter(|i| integrity::sha256_file(&self.store.path(&i.file)).ok().as_deref() != Some(sha256))
+            .collect();
+        for record in &broken {
+            log::warn!("{} sai SHA-256, bỏ để tải lại", record.file);
+            let _ = std::fs::remove_file(self.store.path(&record.file));
+        }
+        let ids: Vec<String> = broken.into_iter().map(|i| i.id).collect();
+        let discarded = !ids.is_empty()
+            && self
+                .store
+                .forget(&ids)
+                .inspect_err(|e| log::warn!("không ghi được danh sách model đã tải: {e}"))
+                .is_ok();
+        drop(work);
+        discarded
+    }
 }
 
 /// Lúc khởi động: đọc manifest đã lưu và kiểm bản mới (tối đa mỗi ngày một lần), trên luồng nền; rồi xem lại mỗi giờ.
@@ -893,7 +1012,7 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use serde_json::{Value, json};
-    use sha2::Digest;
+    use sha2::{Digest, Sha256};
     use tauri::Listener;
     use tauri::test::MockRuntime;
 
@@ -1818,5 +1937,92 @@ mod tests {
         let view = h.call("pause_models_download", json!({})).unwrap();
         assert_eq!(view["job"]["state"], "idle");
         assert!(!h.service().busy());
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.5: model nhận giọng tải vào kho như file khác (kiểm SHA-256), không thuộc gói nào;
+    /// đã có thì không tải lại; ngưỡng đọc từ `speaker_config`.
+    #[test]
+    fn the_speaker_model_is_downloaded_once() {
+        let h = harness(|_| {});
+        let bytes = 64u64;
+        let sha: String = Sha256::digest(content("eres2net-voxceleb", bytes))
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        let mut body = real_sample();
+        body["speaker"] = json!({
+            "id": "eres2net-voxceleb", "version": "1", "file": "eres2net.onnx", "url": "files/eres2net.onnx",
+            "bytes": bytes, "sha256": sha, "license_id": "Apache-2.0", "min_app_version": "0.1.0"
+        });
+        body["speaker_config"] = json!({ "theta": 0.4 });
+        publish(&h.server, &body);
+        h.server
+            .put("files/eres2net.onnx", &content("eres2net-voxceleb", bytes));
+        h.call("load_models", json!({})).unwrap();
+        let service = h.service();
+        assert_eq!(service.speaker_model(), None);
+        assert!(service.download_speaker_model(h.app.handle()));
+        let (path, got) = service.speaker_model().unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), content("eres2net-voxceleb", bytes));
+        assert_eq!(got, sha);
+        assert_eq!(service.speaker_config().theta, 0.4);
+        let before = h.server.requests().len();
+        assert!(
+            service.download_speaker_model(h.app.handle()),
+            "đã có thì không tải lại"
+        );
+        assert_eq!(h.server.requests().len(), before);
+        // Không thuộc gói nào: trạng thái các gói như cũ.
+        let view = h.call("get_models_state", json!({})).unwrap();
+        assert_eq!(view["packs"][0]["usable"], false);
+    }
+
+    #[test]
+    fn a_wrong_speaker_model_is_not_installed() {
+        let h = harness(|_| {});
+        let mut body = real_sample();
+        body["speaker"] = json!({
+            "id": "eres2net-voxceleb", "version": "1", "file": "eres2net.onnx", "url": "files/eres2net.onnx",
+            "bytes": 64, "sha256": "ab".repeat(32), "license_id": "Apache-2.0", "min_app_version": "0.1.0"
+        });
+        publish(&h.server, &body);
+        h.server.put("files/eres2net.onnx", &content("eres2net-voxceleb", 64));
+        h.call("load_models", json!({})).unwrap();
+        assert!(!h.service().download_speaker_model(h.app.handle()));
+        assert_eq!(h.service().speaker_model(), None);
+    }
+
+    /// Kế hoạch 02 Task 17: model nhận giọng hỏng mà đúng kích thước vẫn được `speaker_model` đưa ra (chỉ so kích thước), nên
+    /// `speaker::check_before_spawn` từ chối mãi. `discard_speaker_model` băm lại, bỏ file sai khỏi `installed.json` và khỏi đĩa;
+    /// lần tải sau lấy lại bản đúng. File đúng thì không bỏ.
+    #[test]
+    fn a_corrupt_speaker_model_of_the_right_size_is_discarded_and_downloaded_again() {
+        let h = harness(|_| {});
+        let bytes = 64u64;
+        let good = content("eres2net-voxceleb", bytes);
+        let sha: String = Sha256::digest(&good).iter().map(|b| format!("{b:02x}")).collect();
+        let mut body = real_sample();
+        body["speaker"] = json!({
+            "id": "eres2net-voxceleb", "version": "1", "file": "eres2net.onnx", "url": "files/eres2net.onnx",
+            "bytes": bytes, "sha256": sha, "license_id": "Apache-2.0", "min_app_version": "0.1.0"
+        });
+        publish(&h.server, &body);
+        h.server.put("files/eres2net.onnx", &good);
+        h.call("load_models", json!({})).unwrap();
+        let service = h.service();
+        assert!(service.download_speaker_model(h.app.handle()));
+        let (path, _) = service.speaker_model().unwrap();
+        assert!(!service.discard_speaker_model(h.app.handle(), &sha), "file đúng: giữ");
+        assert!(path.is_file());
+        std::fs::write(&path, vec![0u8; bytes as usize]).unwrap();
+        assert!(
+            service.speaker_model().is_some(),
+            "cùng kích thước: kho vẫn coi là đã tải"
+        );
+        assert!(service.discard_speaker_model(h.app.handle(), &sha));
+        assert!(!path.exists(), "xóa file hỏng");
+        assert_eq!(service.speaker_model(), None, "bỏ khỏi installed.json");
+        assert!(service.download_speaker_model(h.app.handle()), "tải lại");
+        assert_eq!(std::fs::read(&path).unwrap(), good);
     }
 }

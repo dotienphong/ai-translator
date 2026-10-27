@@ -5,6 +5,9 @@
 //!   nghỉ ở giữa (§6.3, hạn mức §6.8).
 //! - [`MtQueue`], câu chờ dịch: tối đa 3 câu; đầy thì gộp các câu liên tiếp cùng ngôn ngữ thành một request (phụ đề cũng gộp
 //!   thành một, lấy `start_ms` của câu đầu và `end_ms` của câu cuối); câu chờ quá 20 giây thì bỏ bước dịch (`skipped`).
+//!   Có nhận giọng: gộp trước các câu không lẫn hai giọng đã biết khác nhau; còn nhiều câu hơn cách gộp lúc tắt để lại thì gộp
+//!   tiếp như khi tắt, kể cả câu khác giọng (QĐ 12 của kế hoạch 02 phân biệt người nói). Nên hàng đầy thì câu nào vào request
+//!   nào y hệt khi tắt; giọng chỉ quyết câu gộp có lẫn giọng (không nhãn) hay không.
 //!
 //! "Hiện tại" là giờ âm thanh của phiên (ms), cùng gốc với `start_ms` và `end_ms`.
 
@@ -202,6 +205,12 @@ pub struct MtItem {
     /// Câu đang mở (còn có thể ghép thêm đoạn, §6.3): chưa được gộp với câu khác.
     pub open: bool,
     pub replaces: Vec<u64>,
+    /// Giọng của câu (spec 2026-10-26-phan-biet-nguoi-noi §4.4): hai câu đã biết khác giọng chỉ được gộp khi gộp các câu cùng
+    /// giọng xong mà hàng còn dài hơn khi tắt (QĐ 12 của kế hoạch 02). Luồng phụ đề giữ trường này bằng giọng đang hiện của phụ
+    /// đề (`set_voice`, `mark_mixed`).
+    pub voice: Option<u32>,
+    /// Câu lẫn hai giọng đã biết (hàng đợi gộp câu khác giọng, QĐ 12 của kế hoạch 02; hay nhãn tới muộn): luôn không nhãn.
+    pub mixed: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -215,6 +224,18 @@ pub enum Ready {
 pub struct MtQueue {
     items: VecDeque<MtItem>,
     cfg: QueueConfig,
+    /// Số lần `merge_runs` gộp hai câu đã biết khác giọng (lượt 2: hàng còn dài hơn khi tắt).
+    merged_across_voices: usize,
+}
+
+/// Gộp `b` vào `a` có lẫn hai giọng đã biết khác nhau không. Câu đã lẫn giọng coi như khác mọi giọng đã biết.
+fn mixes_voices(a: &MtItem, b: &MtItem) -> bool {
+    match (a.voice, b.voice) {
+        (Some(x), Some(y)) => x != y,
+        (Some(_), None) => b.mixed,
+        (None, Some(_)) => a.mixed,
+        (None, None) => false,
+    }
 }
 
 impl MtQueue {
@@ -222,6 +243,7 @@ impl MtQueue {
         Self {
             items: VecDeque::new(),
             cfg,
+            merged_across_voices: 0,
         }
     }
 
@@ -237,8 +259,8 @@ impl MtQueue {
         self.items.iter()
     }
 
-    /// Thêm một câu. Đầy (`mt_max_waiting`) thì trước đó gộp mọi dãy câu liên tiếp cùng ngôn ngữ đã chốt. Trả các câu vừa
-    /// được gộp (đã có `replaces` và `version` mới), để phụ đề của chúng được gửi lại.
+    /// Thêm một câu. Đầy (`mt_max_waiting`) thì trước đó gộp các dãy câu liên tiếp cùng ngôn ngữ đã chốt (`merge_runs`). Trả các
+    /// câu vừa được gộp (đã có `replaces` và `version` mới), để phụ đề của chúng được gửi lại.
     pub fn push(&mut self, item: MtItem) -> Vec<MtItem> {
         let merged = if self.items.len() >= self.cfg.mt_max_waiting {
             self.merge_runs()
@@ -276,6 +298,37 @@ impl MtQueue {
         }
     }
 
+    /// Nhãn tới muộn cho một câu đang chờ dịch; câu lẫn giọng giữ không nhãn. Trả `false` nếu câu không còn trong hàng.
+    pub fn set_voice(&mut self, sub_id: u64, voice: Option<u32>) -> bool {
+        match self.items.iter_mut().find(|i| i.sub_id == sub_id) {
+            Some(item) => {
+                if !item.mixed {
+                    item.voice = voice;
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Câu đang chờ dịch hóa ra lẫn hai giọng đã biết (nhãn tới muộn, `VoiceBook::is_mixed`): từ giờ không nhãn, và lượt 1 của
+    /// `merge_runs` coi nó khác mọi giọng đã biết. Trả `false` nếu câu không còn trong hàng.
+    pub fn mark_mixed(&mut self, sub_id: u64) -> bool {
+        match self.items.iter_mut().find(|i| i.sub_id == sub_id) {
+            Some(item) => {
+                item.mixed = true;
+                item.voice = None;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Số lần hàng đợi gộp hai câu đã biết khác giọng (lượt 2 của `merge_runs`) từ đầu phiên.
+    pub fn merges_across_voices(&self) -> usize {
+        self.merged_across_voices
+    }
+
     /// Lấy câu kế tiếp để dịch; câu đã chờ quá `mt_skip_after_ms` thì trả `Skip`.
     pub fn pop(&mut self, now_ms: u64) -> Option<Ready> {
         let item = self.items.pop_front()?;
@@ -286,12 +339,52 @@ impl MtQueue {
         })
     }
 
+    /// Hàng đầy. Lượt 1 gộp mọi dãy câu liên tiếp cùng ngôn ngữ đã chốt mà không lẫn hai giọng đã biết khác nhau (spec
+    /// 2026-10-26-phan-biet-nguoi-noi §4.4). Sau lượt 1 hàng còn nhiều câu hơn cách gộp lúc tắt nhận giọng để lại
+    /// ([`MtQueue::runs_when_off`]) thì lượt 2 gộp như khi tắt, kể cả câu khác giọng: đuổi kịp quan trọng hơn nhãn (ưu tiên 1;
+    /// QĐ 12 của kế hoạch 02, sửa theo Q1 của rà soát cuối). Lượt 1 chỉ gộp bên trong các dãy mà cách gộp lúc tắt gộp, nên sau
+    /// hai lượt câu nào vào request nào y hệt khi tắt, với mọi kiểu lượt nói: hàng không bao giờ dài hơn và câu không chờ lâu hơn
+    /// khi tắt. Câu gộp lẫn giọng thì không nhãn. Khi mọi câu chưa biết giọng, lượt 1 đã gộp như khi tắt và lượt 2 không chạy.
     fn merge_runs(&mut self) -> Vec<MtItem> {
-        let mut out: VecDeque<MtItem> = VecDeque::new();
+        let off_len = self.runs_when_off();
         let mut merged_ids = Vec::new();
+        self.merge_pass(false, &mut merged_ids);
+        if self.items.len() > off_len {
+            self.merge_pass(true, &mut merged_ids);
+        }
+        self.items
+            .iter()
+            .filter(|i| merged_ids.contains(&i.sub_id))
+            .cloned()
+            .collect()
+    }
+
+    /// Số câu còn lại nếu gộp như khi tắt nhận giọng (`merge_pass(true)`, không sửa gì): mỗi dãy câu liền nhau đã chốt cùng
+    /// ngôn ngữ thành một.
+    fn runs_when_off(&self) -> usize {
+        let mut prev: Option<&MtItem> = None;
+        let mut runs = 0;
+        for item in &self.items {
+            if !prev.is_some_and(|p| !p.open && !item.open && p.lang == item.lang) {
+                runs += 1;
+            }
+            prev = Some(item);
+        }
+        runs
+    }
+
+    /// Một lượt gộp; `allow_across`: được gộp hai câu đã biết khác giọng. Ghi id của các câu vừa nhận câu khác vào `merged_ids`.
+    fn merge_pass(&mut self, allow_across: bool, merged_ids: &mut Vec<u64>) {
+        let mut out: VecDeque<MtItem> = VecDeque::new();
         for item in self.items.drain(..) {
+            let across = out.back().is_some_and(|last| mixes_voices(last, &item));
             match out.back_mut() {
-                Some(last) if !last.open && !item.open && last.lang == item.lang => {
+                Some(last) if !last.open && !item.open && last.lang == item.lang && (allow_across || !across) => {
+                    if across {
+                        self.merged_across_voices += 1;
+                    }
+                    last.mixed = last.mixed || item.mixed || across;
+                    last.voice = if last.mixed { None } else { last.voice.or(item.voice) };
                     last.text = format!("{}{}{}", last.text.trim_end(), joiner(&last.lang), item.text.trim());
                     last.end_ms = item.end_ms;
                     last.speech_ms += item.speech_ms;
@@ -307,11 +400,6 @@ impl MtQueue {
             }
         }
         self.items = out;
-        self.items
-            .iter()
-            .filter(|i| merged_ids.contains(&i.sub_id))
-            .cloned()
-            .collect()
     }
 }
 
@@ -405,6 +493,8 @@ mod tests {
             enqueued_ms,
             open: false,
             replaces: Vec::new(),
+            voice: None,
+            mixed: false,
         }
     }
 
@@ -600,5 +690,330 @@ mod tests {
         assert_eq!((first.ids, first.speech_ms), (vec![0, 1], 4_000));
         assert!((first.mean_prob - 0.8).abs() < 1e-6, "{}", first.mean_prob);
         assert!((first.speech_ratio - 0.875).abs() < 1e-6, "{}", first.speech_ratio);
+    }
+
+    fn voiced(id: u64, voice: Option<u32>) -> MtItem {
+        MtItem {
+            voice,
+            ..item(id, "en", "x.", 0)
+        }
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.4, QĐ 12 của kế hoạch 02 (sửa theo Q1 của rà soát cuối): hàng chưa đầy (dịch kịp)
+    /// thì không gộp gì; hàng đầy mà gộp các câu cùng giọng (lượt 1) đã gộp được như lúc tắt (mỗi dãy câu gộp được chỉ có một
+    /// giọng) thì không gộp hai câu đã biết khác giọng.
+    #[test]
+    fn different_known_voices_stay_apart_while_same_voice_merges_match_merging_when_off() {
+        let mut q = MtQueue::new(QueueConfig::default());
+        assert!(q.push(voiced(1, Some(1))).is_empty());
+        assert!(q.push(voiced(2, Some(2))).is_empty(), "hàng chưa đầy: không gộp gì");
+        // Câu 3 (giọng 2) còn mở: lúc tắt cũng chỉ gộp được câu 1 và câu 2.
+        let mut q = MtQueue::new(QueueConfig::default());
+        q.push(voiced(1, Some(1)));
+        q.push(voiced(2, Some(1)));
+        q.push(MtItem {
+            open: true,
+            ..voiced(3, Some(2))
+        });
+        let merged = q.push(voiced(4, Some(2)));
+        assert_eq!(merged.len(), 1);
+        assert_eq!((merged[0].sub_id, merged[0].replaces.clone()), (1, vec![2]));
+        assert_eq!((merged[0].voice, merged[0].mixed), (Some(1), false));
+        assert_eq!(q.iter().map(|i| i.sub_id).collect::<Vec<_>>(), [1, 3, 4]);
+        assert_eq!(q.merges_across_voices(), 0);
+        // Chưa biết giọng thì gộp như cũ, và câu gộp lấy giọng đã biết.
+        let mut q = MtQueue::new(QueueConfig::default());
+        q.push(voiced(1, Some(1)));
+        q.push(voiced(2, None));
+        q.push(voiced(3, Some(1)));
+        let merged = q.push(voiced(4, None));
+        assert_eq!(merged[0].replaces, [2, 3]);
+        assert_eq!(merged[0].voice, Some(1));
+        assert_eq!(q.merges_across_voices(), 0);
+    }
+
+    /// QĐ 12 của kế hoạch 02 (ưu tiên 1: tốc độ hơn đúng tên; sửa theo Q1 của rà soát cuối): gộp các câu cùng giọng (lượt 1) xong
+    /// mà hàng còn nhiều câu hơn cách gộp lúc tắt để lại thì gộp ngay cả câu khác giọng (lượt 2), như khi tắt nhận giọng; câu gộp
+    /// lẫn giọng (`mixed`), không nhãn, nhãn tới muộn cũng không gắn lại. Hai kiểu: xen kẽ 2-1-2 (lượt 1 không gộp được gì) và
+    /// 1-1-2-2 (lượt 1 gộp được, hàng hết đầy nhưng vẫn dài hơn khi tắt: luật cũ "hàng vẫn đầy" bỏ sót kiểu này).
+    #[test]
+    fn a_queue_longer_than_when_off_after_same_voice_merges_merges_different_voices_without_a_label() {
+        let mut q = MtQueue::new(QueueConfig::default());
+        q.push(voiced(1, Some(1)));
+        q.push(voiced(2, Some(1)));
+        q.push(voiced(3, Some(2)));
+        let merged = q.push(voiced(4, Some(2)));
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].replaces, [2, 3]);
+        assert_eq!((merged[0].voice, merged[0].mixed), (None, true));
+        assert_eq!(q.len(), 2, "1-1-2-2 như khi tắt: một câu gộp và câu mới");
+        assert_eq!(q.merges_across_voices(), 1, "một chỗ đổi giọng");
+
+        let mut q = MtQueue::new(QueueConfig::default());
+        for id in 1..=3 {
+            assert!(q.push(voiced(id, Some(id as u32 % 2 + 1))).is_empty());
+        }
+        let merged = q.push(voiced(4, Some(1)));
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].replaces, [2, 3]);
+        assert_eq!((merged[0].voice, merged[0].mixed), (None, true));
+        assert_eq!(q.len(), 2, "như khi tắt: một câu gộp và câu mới");
+        assert_eq!(q.merges_across_voices(), 2);
+        q.set_voice(1, Some(2));
+        assert!(matches!(q.pop(0), Some(Ready::Translate(i)) if i.voice.is_none() && i.mixed));
+        // Câu 4 không lẫn giọng: nhận nhãn như thường.
+        q.set_voice(4, Some(2));
+        assert!(matches!(q.pop(0), Some(Ready::Translate(i)) if i.voice == Some(2)));
+    }
+
+    /// Câu lẫn giọng vì nhãn tới muộn (N4 của rà soát): không nhãn, và lượt 1 không gộp nó với câu đã biết giọng (chỉ lượt 2 gộp,
+    /// vì lúc tắt cả ba câu gộp làm một: một lần gộp khác giọng).
+    #[test]
+    fn a_sentence_marked_mixed_keeps_no_label_and_stays_apart_from_known_voices() {
+        let mut q = MtQueue::new(QueueConfig::default());
+        q.push(voiced(1, Some(1)));
+        assert!(q.mark_mixed(1));
+        assert!(!q.mark_mixed(9), "câu không còn trong hàng");
+        q.set_voice(1, Some(1));
+        assert_eq!(q.iter().next().map(|i| (i.voice, i.mixed)), Some((None, true)));
+        q.push(voiced(2, Some(1)));
+        q.push(voiced(3, Some(1)));
+        let merged = q.push(voiced(4, Some(1)));
+        assert_eq!((merged[0].sub_id, merged[0].replaces.clone()), (1, vec![2, 3]));
+        assert_eq!((merged[0].voice, merged[0].mixed), (None, true));
+        assert_eq!(
+            q.merges_across_voices(),
+            1,
+            "lượt 1 gộp 2 với 3, lượt 2 gộp câu lẫn giọng với chúng"
+        );
+    }
+
+    /// Dịch chậm hơn lời nói (mỗi giây một câu, dịch xong một câu mỗi 2 s), hai người nói xen kẽ: hàng đợi dịch không bao giờ dài
+    /// hơn `mt_max_waiting`, câu chờ lâu nhất và số câu bỏ bước dịch không hơn khi tắt nhận giọng (QĐ 12, ưu tiên 1). Dịch kịp thì
+    /// không có lần gộp khác giọng nào.
+    #[test]
+    fn overload_with_two_alternating_speakers_queues_no_longer_than_when_off() {
+        /// (hàng dài nhất, câu chờ lâu nhất ms, số câu `Skip`, số lần gộp khác giọng).
+        fn run(voices: bool, mt_ms: u64) -> (usize, u64, usize, usize) {
+            let cfg = QueueConfig::default();
+            let mut q = MtQueue::new(cfg);
+            let (mut longest, mut waited, mut skipped) = (0, 0, 0);
+            let mut busy_until = 0;
+            for now in (0..=120_000u64).step_by(100) {
+                if now % 1_000 == 0 && now < 60_000 {
+                    let id = now / 1_000;
+                    let voice = voices.then_some(id as u32 % 2 + 1);
+                    q.push(MtItem {
+                        voice,
+                        enqueued_ms: now,
+                        ..item(id, "en", "x.", now)
+                    });
+                    longest = longest.max(q.len());
+                }
+                if now >= busy_until {
+                    match q.pop(now) {
+                        Some(Ready::Translate(i)) => {
+                            waited = waited.max(now - i.enqueued_ms);
+                            busy_until = now + mt_ms;
+                        }
+                        Some(Ready::Skip(i)) => {
+                            waited = waited.max(now - i.enqueued_ms);
+                            skipped += 1;
+                        }
+                        None => {}
+                    }
+                }
+            }
+            (longest, waited, skipped, q.merges_across_voices())
+        }
+        let max = QueueConfig::default().mt_max_waiting;
+        let off = run(false, 2_000);
+        let on = run(true, 2_000);
+        assert!(on.0 <= max, "bật: hàng dài nhất {} > {max}", on.0);
+        assert!(
+            on.0 <= off.0 && on.1 <= off.1 && on.2 <= off.2,
+            "bật {on:?}, tắt {off:?}"
+        );
+        assert!(on.3 > 0, "quá tải và người nói xen kẽ: phải gộp khác giọng");
+        assert_eq!(run(true, 500).3, 0, "dịch kịp: không gộp khác giọng");
+    }
+
+    /// Kết quả một lần mô phỏng dịch quá tải ([`overload`]).
+    struct Overload {
+        /// Số câu chờ dịch nhiều nhất (ngay sau `push`).
+        longest: usize,
+        /// Độ chờ (ms giờ âm thanh) của từng request ra khỏi hàng, theo thứ tự.
+        waits: Vec<u64>,
+        /// Số câu (kể cả câu đã gộp) bị `Skip`.
+        skipped: usize,
+        /// Số lần gộp hai câu đã biết khác giọng.
+        across: usize,
+    }
+
+    /// Mô phỏng hàng đợi dịch bằng `MtQueue` thật (như `mtqueue_sim.py` của rà soát cuối kế hoạch 02, Q1): mỗi giây một câu đã
+    /// chốt mang giọng `voices[i]` (`None` hết: tắt nhận giọng); luồng dịch rảnh thì lấy câu đầu hàng, dịch mất `base_ms` +
+    /// `per_ms` × số câu trong request.
+    fn overload(voices: &[Option<u32>], base_ms: u64, per_ms: u64) -> Overload {
+        let mut q = MtQueue::new(QueueConfig::default());
+        let mut out = Overload {
+            longest: 0,
+            waits: Vec::new(),
+            skipped: 0,
+            across: 0,
+        };
+        let (n, mut now, mut busy_until) = (voices.len() as u64, 0u64, 0u64);
+        while now < n * 1_000 || !q.is_empty() {
+            if now % 1_000 == 0 && now < n * 1_000 {
+                let id = now / 1_000;
+                q.push(MtItem {
+                    voice: voices[id as usize],
+                    ..item(id, "en", "x.", now)
+                });
+                out.longest = out.longest.max(q.len());
+            }
+            if now >= busy_until {
+                match q.pop(now) {
+                    Some(Ready::Translate(i)) => {
+                        out.waits.push(now - i.enqueued_ms);
+                        busy_until = now + base_ms + per_ms * (1 + i.replaces.len() as u64);
+                    }
+                    Some(Ready::Skip(i)) => {
+                        out.waits.push(now - i.enqueued_ms);
+                        out.skipped += 1 + i.replaces.len();
+                    }
+                    None => {}
+                }
+            }
+            now += 100;
+        }
+        out.across = q.merges_across_voices();
+        out
+    }
+
+    /// Bật chậm hơn tắt: hàng dài hơn, câu chờ lâu nhất lâu hơn, tổng độ chờ lớn hơn, hay nhiều câu `Skip` hơn.
+    fn slower(on: &Overload, off: &Overload) -> bool {
+        on.longest > off.longest
+            || on.waits.iter().max() > off.waits.iter().max()
+            || on.waits.iter().sum::<u64>() > off.waits.iter().sum::<u64>()
+            || on.skipped > off.skipped
+    }
+
+    /// xorshift64: sinh kịch bản tất định, không cần crate `rand`.
+    fn xorshift(mut seed: u64) -> impl FnMut(u64) -> u64 {
+        move |n| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed % n
+        }
+    }
+
+    /// Q1 của rà soát cuối kế hoạch 02 (ưu tiên 1, QĐ 12): với MỌI kiểu lượt nói, không chỉ xen kẽ 1-2-1-2, bật nhận giọng không
+    /// bao giờ làm hàng đợi dịch dài hơn, câu chờ lâu hơn hay nhiều câu `Skip` hơn khi tắt. Luật cũ ("hàng vẫn đầy sau lượt 1 mới
+    /// gộp khác giọng") cho kiểu 1-1-2-2, 1-1-2-3, 1-1-1-2 câu chờ lâu nhất 5 000 ms so với 3 000 ms khi tắt.
+    #[test]
+    fn overload_is_never_slower_than_when_off_whatever_the_turns() {
+        for pattern in [&[1u32, 2][..], &[1, 1, 2, 2], &[1, 1, 2, 3], &[1, 1, 1, 2]] {
+            for (base_ms, per_ms) in [(2_000, 0), (1_200, 400), (1_500, 300)] {
+                let voices: Vec<Option<u32>> = (0..60).map(|i| Some(pattern[i % pattern.len()])).collect();
+                let off = overload(&[None; 60], base_ms, per_ms);
+                let on = overload(&voices, base_ms, per_ms);
+                assert!(
+                    !slower(&on, &off),
+                    "{pattern:?}, dịch {base_ms} + {per_ms}/câu: bật (hàng {}, chờ lâu nhất {:?}, Skip {}), tắt (hàng {}, chờ lâu \
+                     nhất {:?}, Skip {})",
+                    on.longest,
+                    on.waits.iter().max(),
+                    on.skipped,
+                    off.longest,
+                    off.waits.iter().max(),
+                    off.skipped
+                );
+                assert!(
+                    on.across > 0,
+                    "{pattern:?}: quá tải, nhiều người nói: phải gộp khác giọng"
+                );
+            }
+        }
+    }
+
+    /// Q1 của rà soát cuối: 300 cuộc họp ngẫu nhiên (3 người, mỗi lượt nói 1–3 câu, 120 câu, dịch 2 s mỗi request). Bật không
+    /// chậm hơn tắt ở cuộc nào (luật cũ: gần như mọi cuộc có câu chờ lâu nhất khi bật lâu hơn khi tắt).
+    #[test]
+    fn three_hundred_random_meetings_are_never_slower_with_voices_on() {
+        let mut next = xorshift(7);
+        let off = overload(&[None; 120], 2_000, 0);
+        let mean = |o: &Overload| o.waits.iter().sum::<u64>() as i64 / o.waits.len() as i64;
+        let (mut worse, mut longer_max_wait, mut mean_delta_max) = (0, 0, 0i64);
+        for _ in 0..300 {
+            let mut voices = Vec::new();
+            while voices.len() < 120 {
+                let voice = next(3) as u32 + 1;
+                for _ in 0..=next(3) {
+                    voices.push(Some(voice));
+                }
+            }
+            voices.truncate(120);
+            let on = overload(&voices, 2_000, 0);
+            worse += usize::from(slower(&on, &off));
+            longer_max_wait += usize::from(on.waits.iter().max() > off.waits.iter().max());
+            mean_delta_max = mean_delta_max.max(mean(&on) - mean(&off));
+        }
+        assert_eq!(
+            worse, 0,
+            "{worse}/300 cuộc họp bật chậm hơn tắt ({longer_max_wait}/300 có câu chờ lâu nhất lâu hơn); chờ trung bình lệch nhiều \
+             nhất {mean_delta_max:+} ms"
+        );
+    }
+
+    /// Hệ quả của luật hai lượt đã sửa (Q1 của rà soát cuối): hàng đầy thì cách gộp (câu nào vào request nào) y hệt khi tắt, với
+    /// mọi giọng, ngôn ngữ và câu đang mở; giọng chỉ quyết câu gộp có lẫn giọng (không nhãn) hay không.
+    #[test]
+    fn a_full_queue_groups_sentences_exactly_as_when_off() {
+        let mut next = xorshift(11);
+        let groups = |q: &MtQueue| q.iter().map(|i| (i.sub_id, i.replaces.clone())).collect::<Vec<_>>();
+        let popped = |r: Option<Ready>| {
+            r.map(|r| match r {
+                Ready::Translate(i) | Ready::Skip(i) => (i.sub_id, i.replaces),
+            })
+        };
+        for _ in 0..300 {
+            let (mut on, mut off) = (
+                MtQueue::new(QueueConfig::default()),
+                MtQueue::new(QueueConfig::default()),
+            );
+            let mut open: Option<u64> = None;
+            for id in 0..40u64 {
+                if let Some(sub) = open.take() {
+                    on.close(sub);
+                    off.close(sub);
+                }
+                let lang = if next(5) == 0 { "ja" } else { "en" };
+                let base = MtItem {
+                    open: next(5) == 0,
+                    ..item(id, lang, "x.", id * 1_000)
+                };
+                if base.open {
+                    open = Some(id);
+                }
+                on.push(MtItem {
+                    voice: [None, Some(1), Some(2), Some(3)][next(4) as usize],
+                    ..base.clone()
+                });
+                off.push(base);
+                assert_eq!(groups(&on), groups(&off), "sau câu {id}");
+                if next(3) == 0 {
+                    assert_eq!(popped(on.pop(id * 1_000)), popped(off.pop(id * 1_000)));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_late_voice_reaches_the_waiting_sentence() {
+        let mut q = MtQueue::new(QueueConfig::default());
+        q.push(item(1, "en", "One.", 0));
+        q.set_voice(1, Some(5));
+        assert!(matches!(q.pop(0), Some(Ready::Translate(i)) if i.voice == Some(5)));
     }
 }

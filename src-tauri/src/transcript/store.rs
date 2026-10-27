@@ -125,6 +125,7 @@ mod tests {
             status,
             provisional: false,
             replaces: Vec::new(),
+            speaker: None,
         }
     }
 

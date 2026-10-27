@@ -11,12 +11,17 @@
 //! - `recommend`: RAM tối thiểu và luật đề xuất gói, xét theo thứ tự, luật đầu tiên khớp thắng; không luật nào khớp thì
 //!   dùng `fallback` (§8, Đ7).
 //! - `pipeline`: các ngưỡng của `PipelineConfig` muốn đổi (02a QĐ21). Sai thì giữ mặc định, manifest vẫn dùng được.
+//! - `speaker`, `speaker_config` (spec 2026-10-26-phan-biet-nguoi-noi §4.5): model nhúng giọng ở khóa gốc (một mục file, không
+//!   thuộc gói nào; app ≤ 0.3.1 bỏ qua khóa lạ ở gốc, còn `kind` lạ trong `files` làm nó từ chối cả manifest) và ngưỡng của nhận
+//!   giọng. Đọc lỏng: mục sai, hay cần app mới hơn, thì chỉ mất phần nhận giọng ([`Manifest::speaker_model`],
+//!   [`Manifest::speaker_config`]).
 //!
 //! Khóa lạ trong phần thân bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
 
 use pipeline::config::PipelineConfig;
 use pipeline::prompt::PromptFamily;
 use serde::{Deserialize, Serialize};
+use speaker_protocol::SpeakerConfig;
 
 /// Phiên bản định dạng phần thân mà app này đọc được.
 pub const SCHEMA: u32 = 1;
@@ -34,6 +39,10 @@ pub enum Kind {
     Mt,
     Vad,
     License,
+    /// Model nhúng giọng (khóa gốc `speaker`). Chỉ dùng trong app; không bao giờ đọc từ `files` (`skip`), để manifest có `kind`
+    /// này trong `files` vẫn bị từ chối như với app cũ (test `an_unknown_kind_in_files_breaks_this_app`).
+    #[serde(skip)]
+    Speaker,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,6 +139,12 @@ pub struct Manifest {
     pub recommend: Recommend,
     #[serde(default)]
     pub pipeline: Option<serde_json::Value>,
+    /// Mục model nhúng giọng, thô; đọc qua [`Manifest::speaker_model`].
+    #[serde(default)]
+    pub speaker: Option<serde_json::Value>,
+    /// Ngưỡng của nhận giọng, thô; đọc qua [`Manifest::speaker_config`].
+    #[serde(default)]
+    pub speaker_config: Option<serde_json::Value>,
 }
 
 /// Trường đầu tiên không hợp lệ, dạng `files[2].sha256`.
@@ -203,6 +218,22 @@ fn is_model_url(url: &str) -> bool {
 
 fn is_text(text: &str) -> bool {
     !text.trim().is_empty() && text.chars().count() <= MAX_TEXT
+}
+
+/// Model nhúng giọng không lớn hơn chừng này (ERes2Net sau onnxsim: 26,5 MB).
+pub const MAX_SPEAKER_BYTES: u64 = 200 << 20;
+
+/// Mục `speaker` của manifest (spec 2026-10-26-phan-biet-nguoi-noi §4.5).
+#[derive(Deserialize)]
+struct SpeakerEntry {
+    id: String,
+    version: String,
+    file: String,
+    url: String,
+    bytes: u64,
+    sha256: String,
+    license_id: String,
+    min_app_version: String,
 }
 
 impl Manifest {
@@ -360,6 +391,77 @@ impl Manifest {
             }
         }
     }
+
+    /// Model nhúng giọng cho app bản `app_version`, dạng `FileEntry` (`kind` `Speaker`, không thuộc gói nào) để kho tải và kiểm
+    /// như file khác. `None` khi không có khóa, mục sai (ghi log), hay cần app mới hơn.
+    pub fn speaker_model(&self, app_version: &str) -> Option<FileEntry> {
+        let value = self.speaker.as_ref()?;
+        let entry = match self.speaker_entry(value) {
+            Ok(entry) => entry,
+            Err(field) => {
+                log::warn!("manifest: mục `speaker.{field}` không hợp lệ, bỏ qua nhận giọng");
+                return None;
+            }
+        };
+        (version(&entry.min_app_version)? <= version(app_version)?).then_some(entry)
+    }
+
+    fn speaker_entry(&self, value: &serde_json::Value) -> Result<FileEntry, String> {
+        let e: SpeakerEntry = serde_json::from_value(value.clone()).map_err(|_| "json".to_string())?;
+        let checks = [
+            ("id", is_id(&e.id, 64) && !self.files.iter().any(|f| f.id == e.id)),
+            ("version", !e.version.is_empty() && e.version.len() <= 32),
+            (
+                "file",
+                is_safe_file_name(&e.file) && !self.files.iter().any(|f| f.file.eq_ignore_ascii_case(&e.file)),
+            ),
+            ("url", is_model_url(&e.url)),
+            ("bytes", e.bytes > 0 && e.bytes <= MAX_SPEAKER_BYTES),
+            ("sha256", is_sha256(&e.sha256)),
+            (
+                "license_id",
+                !e.license_id.trim().is_empty() && e.license_id.len() <= 64,
+            ),
+            ("min_app_version", version(&e.min_app_version).is_some()),
+        ];
+        if let Some((field, _)) = checks.iter().find(|(_, ok)| !ok) {
+            return Err((*field).to_string());
+        }
+        Ok(FileEntry {
+            id: e.id,
+            tier: Vec::new(),
+            kind: Kind::Speaker,
+            version: e.version,
+            file: e.file,
+            url: e.url,
+            bytes: e.bytes,
+            sha256: e.sha256,
+            license_id: e.license_id,
+            min_app_version: e.min_app_version,
+            prompt: None,
+        })
+    }
+
+    /// Ngưỡng của nhận giọng: mặc định, đè bằng `speaker_config` nếu đọc được và hợp lệ (`SpeakerConfig::validate`, cùng luật
+    /// worker dùng).
+    pub fn speaker_config(&self) -> SpeakerConfig {
+        let Some(value) = &self.speaker_config else {
+            return SpeakerConfig::default();
+        };
+        match serde_json::from_value::<SpeakerConfig>(value.clone()) {
+            Ok(config) => match config.validate() {
+                Ok(()) => config,
+                Err(field) => {
+                    log::warn!("manifest: ngưỡng nhận giọng `{field}` vô lý, dùng mặc định");
+                    SpeakerConfig::default()
+                }
+            },
+            Err(e) => {
+                log::warn!("manifest: không đọc được speaker_config ({e}), dùng mặc định");
+                SpeakerConfig::default()
+            }
+        }
+    }
 }
 
 /// File model (`asr`, `mt`, `vad`) của một gói đổi `id` giữa hai bản manifest. Kho tìm file đã tải theo `id`, nên đổi
@@ -466,6 +568,98 @@ pub(crate) mod tests {
         let mut value = sample();
         value["files"][0].as_object_mut().unwrap().remove("sha256");
         assert!(matches!(parse(&value), Err(Invalid(e)) if e.starts_with("json:")));
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.5: model nhúng giọng đi ở khóa mới `speaker` ở gốc phần thân; app không biết
+    /// khóa này (bản 0.3.1 trở về trước) vẫn đọc được manifest và các gói như cũ.
+    #[test]
+    fn a_speaker_entry_at_the_root_does_not_break_this_app() {
+        let mut value = sample();
+        value["speaker"] = json!({
+            "id": "eres2net-voxceleb", "version": "1", "file": "eres2net-sv-en-voxceleb-16k.onnx",
+            "url": "files/eres2net-sv-en-voxceleb-16k.onnx", "bytes": 26_000_000, "sha256": "cd".repeat(32),
+            "license_id": "Apache-2.0", "min_app_version": "0.4.0"
+        });
+        value["speaker_config"] = json!({ "theta": 0.4 });
+        let m = parse(&value).unwrap();
+        assert_eq!(m.files_of("standard").len(), 4);
+    }
+
+    /// Vì sao không đưa model nhúng giọng vào `files`: một `kind` lạ làm app hiện tại từ chối cả manifest.
+    #[test]
+    fn an_unknown_kind_in_files_breaks_this_app() {
+        let mut value = sample();
+        value["files"][0]["kind"] = json!("speaker");
+        assert!(matches!(parse(&value), Err(Invalid(e)) if e.starts_with("json:")));
+    }
+
+    /// Mục `speaker` hợp lệ, `bytes` và `sha256` tùy ý.
+    fn speaker_entry(min_app_version: &str) -> Value {
+        json!({
+            "id": "eres2net-voxceleb", "version": "1", "file": "eres2net-sv-en-voxceleb-16k.onnx",
+            "url": "files/eres2net-sv-en-voxceleb-16k.onnx", "bytes": 26_496_496, "sha256": "be".repeat(32),
+            "license_id": "Apache-2.0", "min_app_version": min_app_version
+        })
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.5: model nhúng giọng ở khóa gốc `speaker`, chỉ dùng khi app đủ mới.
+    #[test]
+    fn the_speaker_entry_is_read_when_valid_and_new_enough() {
+        let mut value = sample();
+        value["speaker"] = speaker_entry("0.4.0");
+        let m = parse(&value).unwrap();
+        assert_eq!(m.speaker_model("0.3.1"), None, "app cũ hơn min_app_version");
+        let e = m.speaker_model("0.4.0").unwrap();
+        assert_eq!(
+            (e.id.as_str(), e.kind, e.bytes),
+            ("eres2net-voxceleb", Kind::Speaker, 26_496_496)
+        );
+        assert!(e.tier.is_empty(), "không thuộc gói nào");
+        assert!(m.files_of("standard").iter().all(|f| f.kind != Kind::Speaker));
+        assert_eq!(
+            parse(&sample()).unwrap().speaker_model("9.0.0"),
+            None,
+            "manifest không có khóa"
+        );
+    }
+
+    /// Mục sai chỉ làm mất phần nhận giọng; manifest và các gói vẫn dùng được.
+    #[test]
+    fn a_bad_speaker_entry_is_ignored_without_breaking_the_manifest() {
+        for (field, bad) in [
+            ("sha256", json!("xyz")),
+            ("file", json!("../thoat.onnx")),
+            ("file", json!("SILERO_VAD_V6.2.3.ONNX")),
+            ("id", json!("silero-vad")),
+            ("bytes", json!(0)),
+            ("url", json!("http://khong-an-toan/x.onnx")),
+            ("min_app_version", json!("moi")),
+        ] {
+            let mut value = sample();
+            value["speaker"] = speaker_entry("0.1.0");
+            value["speaker"][field] = bad;
+            let m = parse(&value).unwrap();
+            assert_eq!(m.speaker_model("9.0.0"), None, "{field}");
+            assert_eq!(m.files_of("standard").len(), 4);
+        }
+        let mut value = sample();
+        value["speaker"] = json!("không phải object");
+        assert_eq!(parse(&value).unwrap().speaker_model("9.0.0"), None);
+    }
+
+    #[test]
+    fn speaker_config_comes_from_the_manifest_when_sane() {
+        let with = |config: Value| {
+            let mut value = sample();
+            value["speaker_config"] = config;
+            parse(&value).unwrap().speaker_config()
+        };
+        assert_eq!(with(json!({ "theta": 0.4 })).theta, 0.4);
+        assert_eq!(with(json!({ "theta": 0.4 })).max_voices, 8, "khóa thiếu giữ mặc định");
+        assert_eq!(with(json!({ "theta": -1.0 })), SpeakerConfig::default());
+        assert_eq!(with(json!({ "theta": "cao" })), SpeakerConfig::default());
+        assert_eq!(with(json!({ "min_embed_ms": 100 })), SpeakerConfig::default());
+        assert_eq!(parse(&sample()).unwrap().speaker_config(), SpeakerConfig::default());
     }
 
     #[test]
@@ -600,6 +794,14 @@ pub(crate) mod tests {
         let m = Manifest::parse(&std::fs::read(path).unwrap()).unwrap();
         let late = m.prompt_needs_newer_app();
         assert!(late.is_empty(), "{late:?}");
+        if m.speaker.is_some() {
+            assert!(m.speaker_model("999.0.0").is_some(), "mục `speaker` không hợp lệ");
+        }
+        if let Some(config) = &m.speaker_config {
+            let config: speaker_protocol::SpeakerConfig =
+                serde_json::from_value(config.clone()).expect("speaker_config đọc được");
+            config.validate().expect("speaker_config hợp lệ");
+        }
         if let Ok(previous) = std::env::var("MANIFEST_PREVIOUS") {
             let old = Manifest::parse(&std::fs::read(previous).unwrap()).unwrap();
             assert!(old.sequence < m.sequence, "sequence phải tăng");

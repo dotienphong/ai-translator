@@ -152,6 +152,7 @@ pub fn get(conn: &Connection, id: i64) -> Result<Transcript, HistoryError> {
             status: status_from(&r.get::<_, String>(6)?),
             provisional: false,
             replaces: Vec::new(),
+            speaker: None,
         })
     })?;
     Ok(Transcript {
@@ -212,6 +213,7 @@ mod tests {
             status,
             provisional: false,
             replaces: Vec::new(),
+            speaker: None,
         }
     }
 

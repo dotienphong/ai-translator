@@ -17,6 +17,8 @@ miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-a
 reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "json"] }
 serde.workspace = true
 serde_json.workspace = true
+# Giao thức với speaker-worker (spec 2026-10-26-phan-biet-nguoi-noi §4.2): kiểu dữ liệu và khung, không I/O mạng.
+speaker-protocol = { path = "../speaker-protocol" }
 thiserror.workspace = true
 # Chuẩn hóa NFC khi so khớp thuật ngữ (spec §6.5, `glossary.rs`).
 unicode-normalization = "0.1.25"

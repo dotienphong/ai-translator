@@ -27,7 +27,8 @@ use pipeline::config::{MtConfig, PipelineConfig};
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, Usage, VadFactory};
 use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
-use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Subtitle};
+use pipeline::speaker::SpeakerLink;
+use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Roster, SpeakerLabel, Subtitle};
 use pipeline::supervisor::{Asr, GiveUpCause, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
 use pipeline::translate::Mt;
 use pipeline::vad::SileroVad;
@@ -63,6 +64,11 @@ pub trait SessionDeps: Send + Sync {
     fn asr(&self) -> Box<dyn Asr>;
     fn mt(&self) -> Box<dyn Mt>;
     fn vad(&self) -> VadFactory;
+    /// Nhận giọng cho phiên vừa bắt đầu (spec 2026-10-26-phan-biet-nguoi-noi §4.1): `None` khi tắt hay chưa đủ điều kiện. Không
+    /// chờ worker. Bản giả của test: `None`.
+    fn speaker(&self) -> Option<SpeakerLink> {
+        None
+    }
     /// Mở nguồn âm thanh theo `plan`. Việc của nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_event`.
     fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource>;
     /// Quyền micro lúc này (chỉ đọc). Bản giả của test trả giá trị đặt trước, để test không chạm quyền thật của máy.
@@ -478,7 +484,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     let streaming_supported = session.deps.streaming_supported();
     state.update_status(|s| s.streaming_too_slow = !streaming_supported);
     log::info!("phiên dịch {n}: máy đủ sức dịch trong lúc nói: {streaming_supported}");
-    let engine = match Engine::start(
+    let engine = match Engine::start_with_speaker(
         engine_config(
             &settings,
             &plan,
@@ -492,6 +498,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         session.deps.asr(),
         session.deps.mt(),
         sink,
+        session.deps.speaker(),
     ) {
         Ok(engine) => engine,
         Err(e) => {
@@ -983,6 +990,15 @@ impl<R: Runtime> EventSink for TauriSink<R> {
         events::subtitle_live_end(&self.app, end);
     }
 
+    /// Nhãn đổi muộn (spec 2026-10-26-phan-biet-nguoi-noi §4.3). Kế hoạch 03 cập nhật cả bản chép lời trong bộ nhớ.
+    fn speaker(&self, label: &SpeakerLabel) {
+        events::subtitle_speaker(&self.app, label);
+    }
+
+    fn roster(&self, roster: &Roster) {
+        events::speaker_roster(&self.app, roster);
+    }
+
     /// Đếm phút cho hạn mức (§6.8): `Break` khi chạm hạn mức, engine dừng phiên với `quotaExhausted`.
     fn usage(&self, usage: &Usage) -> ControlFlow<()> {
         crate::license::app::add_usage(&self.app, usage.speech_ms)
@@ -1242,6 +1258,10 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     fn vad(&self) -> VadFactory {
         let path = self.vad_model();
         Box::new(move || Ok(Box::new(SileroVad::load(&path)?) as _))
+    }
+
+    fn speaker(&self) -> Option<SpeakerLink> {
+        crate::speaker::start_for_session(&self.app)
     }
 
     fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource> {
@@ -1743,6 +1763,7 @@ mod tests {
             tgt_stable: "Xin chào".into(),
             tgt_tail: " mọi".into(),
             tgt_src_units: 1,
+            speaker: None,
         });
         sink.live_end(&LiveEnd { id: 1_000_007 });
         let since = Instant::now();
@@ -1762,6 +1783,48 @@ mod tests {
             app.state::<TranscriptStore>().snapshot().lines.is_empty(),
             "không vào bản chép lời"
         );
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.3, §8.4: nhãn đổi muộn và bảng giọng tới cả cửa sổ chính lẫn thanh phụ đề.
+    #[test]
+    fn speaker_events_reach_both_windows() {
+        use pipeline::subtitle::{Roster, RosterVoice, SpeakerLabel};
+        use tauri::Listener;
+        let app = crate::test_support::mock_app();
+        let heard = |label: &str| {
+            let got = Arc::new(Mutex::new(Vec::<String>::new()));
+            let w = crate::test_support::window(&app, label);
+            for event in [events::SUBTITLE_SPEAKER, events::SPEAKER_ROSTER] {
+                let sink = got.clone();
+                w.listen(event, move |e| {
+                    sink.lock().unwrap().push(format!("{event} {}", e.payload()))
+                });
+            }
+            got
+        };
+        let (to_overlay, to_main) = (heard(overlay::LABEL), heard(window::MAIN));
+        let sink = TauriSink {
+            app: app.handle().clone(),
+            session: 1,
+            asr_code: Arc::new(crate::test_support::FakeDeps::default()),
+        };
+        sink.speaker(&SpeakerLabel {
+            id: 1_000_007,
+            speaker: Some(2),
+        });
+        sink.roster(&Roster {
+            voices: vec![RosterVoice { id: 2, room: false }],
+        });
+        let since = Instant::now();
+        while to_overlay.lock().unwrap().len() < 2 || to_main.lock().unwrap().len() < 2 {
+            assert!(since.elapsed() < Duration::from_secs(10), "chưa nhận đủ");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        for got in [to_overlay, to_main] {
+            let got = got.lock().unwrap().clone();
+            assert_eq!(got[0], r#"subtitle://speaker {"id":1000007,"speaker":2}"#);
+            assert_eq!(got[1], r#"speaker://roster {"voices":[{"id":2,"room":false}]}"#);
+        }
     }
 
     /// N-6 của review 02 lần 2: bấm Bắt đầu thì quên lý do bỏ cuộc cũ, mã lỗi giữa phiên về mặc định.
