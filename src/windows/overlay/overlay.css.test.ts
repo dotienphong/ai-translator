@@ -61,4 +61,24 @@ describe("overlay.css", () => {
     const source = /\.overlay\s+\.source\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(source).toMatch(/margin-bottom:\s*[\d.]+em/);
   });
+
+  // Spec 2026-10-26-phan-biet-nguoi-noi §8.1: đúng bảng 8 màu của spec cho nền tối, tên 0,56 em đậm, vạch 0,16 em; câu không giọng
+  // trong phiên có giọng chừa cùng lề (QĐ 7 của kế hoạch 03).
+  it("người nói: bảng 8 màu của spec, tên 0,56 em đậm, vạch 0,16 em, cùng lề", async () => {
+    const fs = (await import("node:fs" as string)) as Fs;
+    const css = fs.readFileSync(new URL("./overlay.css", import.meta.url), "utf8");
+    const root = /:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const colors = [...root.matchAll(/--spk-\d:\s*(#[0-9a-f]{6})/g)].map((m) => m[1]);
+    expect(colors).toEqual(["#7cc4ff", "#ffb86b", "#9be38f", "#f59fd5", "#c7a6ff", "#ffe27a", "#6fe0d2", "#ff8f8f"]);
+    const label = /\.overlay\s+\.spk-label\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(label).toMatch(/font-size:\s*0\.56em/);
+    expect(label).toMatch(/font-weight:\s*700/);
+    // Dòng `.sourceOnly`, `.failed`, `.dropped` nghiêng cả dòng; tên người nói không nghiêng theo (nghiệm thu bằng ảnh, Task 21).
+    expect(label).toMatch(/font-style:\s*normal/);
+    const body = /\.overlay\s+\.spk-body\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(body).toMatch(/border-left:\s*0\.16em solid var\(--spk\)/);
+    expect(body).toMatch(/padding-left:\s*0\.45em/);
+    const gutter = /\.overlay\s+\.lines\.has-speakers\s*>\s*\.line:not\(\.spk\)\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(gutter).toMatch(/padding-left:\s*0\.61em/);
+  });
 });

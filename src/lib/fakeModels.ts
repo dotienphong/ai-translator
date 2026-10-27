@@ -32,6 +32,7 @@ export function fakeModelsView(extra: Partial<ModelsView> = {}): ModelsView {
     usedBytes: 0,
     job: { state: "idle", pack: null, doneBytes: 0, totalBytes: 0, error: null, replacesInUse: false },
     updateAvailable: false,
+    speaker: "unavailable",
     ...extra,
   };
 }

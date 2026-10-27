@@ -50,6 +50,9 @@ export interface AppStoreState {
   info: AppInfo | null;
   screen: Screen;
   settingsGroup: SettingsGroup;
+  // Phần cần cuộn tới sau khi mở màn hình (`app://navigate` có `focus`: nút "Mở Cài đặt" của dòng mời người nói, spec
+  // 2026-10-26-phan-biet-nguoi-noi §6.7); `null` là không có. Màn hình cuộn tới rồi gọi `clearSettingsFocus`.
+  settingsFocus: "speakers" | null;
   onboardingStep: number;
   // Đã tick đồng ý EULA và chính sách ở bước Điều khoản; chỉ trong phiên onboarding, không ghi xuống đĩa.
   termsAccepted: boolean;
@@ -78,7 +81,8 @@ export interface AppStoreState {
   // macOS: đã có quyền Trợ năng chưa (Cài đặt › Gõ dịch, spec 2026-10-17-go-dich §1.4); `null` là chưa đọc.
   accessibilityTrusted: boolean | null;
   init(): Promise<() => void>;
-  navigate(screen: Screen, settingsGroup?: SettingsGroup | null): void;
+  navigate(screen: Screen, settingsGroup?: SettingsGroup | null, focus?: "speakers" | null): void;
+  clearSettingsFocus(): void;
   setOnboardingStep(step: number): void;
   setTermsAccepted(accepted: boolean): void;
   setErrorReportsConsent(consent: boolean): void;
@@ -200,6 +204,7 @@ export function createAppStore(ipc: Ipc) {
       info: null,
       screen: "home",
       settingsGroup: "general",
+      settingsFocus: null,
       onboardingStep: 0,
       termsAccepted: false,
       errorReportsConsent: true,
@@ -222,7 +227,7 @@ export function createAppStore(ipc: Ipc) {
           ipc.listen("settings://changed", (settings) => setSettings(settings)),
           ipc.listen("app://status", (status) => setStatus(status)),
           ipc.listen("audio://level", (level) => set({ level })),
-          ipc.listen("app://navigate", (target: Navigate) => get().navigate(target.screen, target.settingsGroup)),
+          ipc.listen("app://navigate", (target: Navigate) => get().navigate(target.screen, target.settingsGroup, target.focus ?? null)),
           ipc.listen("app://notice", (notice) => set({ notice })),
         ]);
         const offs = listening.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
@@ -248,8 +253,12 @@ export function createAppStore(ipc: Ipc) {
         return off;
       },
 
-      navigate(screen, settingsGroup) {
-        set(settingsGroup ? { screen, settingsGroup } : { screen });
+      navigate(screen, settingsGroup, focus = null) {
+        set({ ...(settingsGroup ? { screen, settingsGroup } : { screen }), settingsFocus: focus });
+      },
+
+      clearSettingsFocus() {
+        set({ settingsFocus: null });
       },
 
       setOnboardingStep(onboardingStep) {

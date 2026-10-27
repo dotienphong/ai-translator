@@ -299,3 +299,76 @@ body {
   background: rgba(255, 255, 255, 0.55);
   border-radius: 3px;
 }
+
+/* Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.1): bảng 8 màu đọc rõ trên nền tối của thanh; giọng thứ N lấy màu
+   `--spk-<(N − 1) mod 8>` (`speakerColor`). Tên có màu ở dòng đầu mỗi lượt nói (0,56 em, đậm), vạch màu 0,16 em bên trái mọi câu
+   của giọng. Câu chưa xác định không nhãn, không vạch; khi phiên đã có giọng thì mọi câu chừa cùng một lề (QĐ 7 của kế hoạch 03). */
+:root {
+  --spk-0: #7cc4ff;
+  --spk-1: #ffb86b;
+  --spk-2: #9be38f;
+  --spk-3: #f59fd5;
+  --spk-4: #c7a6ff;
+  --spk-5: #ffe27a;
+  --spk-6: #6fe0d2;
+  --spk-7: #ff8f8f;
+}
+
+.overlay .spk-label {
+  margin: 0 0 0.08em 0.05em;
+  color: var(--spk);
+  font-size: 0.56em;
+  /* Câu cùng ngôn ngữ, lỗi hay bỏ qua (`.sourceOnly`, `.failed`, `.dropped`) nghiêng cả dòng; tên người nói thì luôn đứng, như nhau
+     ở mọi lượt (nghiệm thu bằng ảnh, Task 21). */
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  /* Tên viết từ phải sang trái hay có ký tự định dạng lạ không đảo phần xung quanh (QĐ 11). */
+  unicode-bidi: isolate;
+}
+
+.overlay .spk-body {
+  padding-left: 0.45em;
+  border-left: 0.16em solid var(--spk);
+}
+
+/* Câu không có giọng trong phiên đã có giọng: cùng lề với câu có vạch (0,16 em vạch + 0,45 em đệm). */
+.overlay .lines.has-speakers > .line:not(.spk) {
+  padding-left: 0.61em;
+}
+
+/* Dòng mời cấp quyền Trợ năng (spec §6.7, §8.1): trên cùng, nền mờ, chữ nhỏ cố định (không theo cỡ chữ phụ đề); nút "Mở Cài đặt"
+   và ✕. Chỉ hiện khi thanh chưa khóa. Đỉnh ở 0,7 rem đệm + 1,25 rem = 1,95 rem, thấp hơn đáy hàng chỉ báo ở góc phải (`top: 0.45rem`,
+   cao ~1,3 rem với lời nhắc), nên lời nhắc dài không đè lên dòng mời (rà soát B-N3). */
+.overlay .ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.3rem 0.55rem;
+  max-width: calc(100% - 3.5rem);
+  margin: 1.25rem 0 0.15rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  text-shadow: none;
+}
+.overlay .ask button {
+  padding: 0.1rem 0.45rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #ffe27a;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.overlay .ask button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.overlay .ask .ask-close {
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 400;
+}

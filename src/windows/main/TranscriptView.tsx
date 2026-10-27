@@ -1,30 +1,55 @@
-import { useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
 import { errorKey } from "../../i18n";
-import type { ExportFormat, SrtText, Transcript, TranscriptRef } from "../../lib/ipc";
-import { clockTime, lineView, localOffsetMinutes } from "../../lib/subtitleView";
+import type { ExportFormat, SpeakerVoice, SrtText, Transcript, TranscriptRef } from "../../lib/ipc";
+import { NO_VOICES, type VoiceMap, decorate, mergeVoices } from "../../lib/speakers";
+import { clockTime, localOffsetMinutes } from "../../lib/subtitleView";
 import { searchLines } from "../../store/transcript";
-import { useApp, useT } from "./appStore";
+import { fallbackLanguage, useApp, useT } from "./appStore";
 import { useTranscript } from "./dataStores";
+import { SpeakerMenu } from "./SpeakerMenu";
+import { TranscriptRow } from "./TranscriptRow";
+
+// Bảng giọng của bản chép lời, giữ nguyên đối tượng của giọng không đổi giữa hai lần vẽ (dòng memo của giọng đó không vẽ lại).
+function useVoiceMap(speakers: readonly SpeakerVoice[]): VoiceMap {
+  const previous = useRef<VoiceMap>(NO_VOICES);
+  return useMemo(() => {
+    previous.current = mergeVoices(previous.current, speakers);
+    return previous.current;
+  }, [speakers]);
+}
 
 // Một bản chép lời (§4.3): mỗi câu có giờ, câu gốc và bản dịch; tìm kiếm; sao chép (mọi gói); xuất TXT, SRT, Markdown
-// (Pro). Dùng cho phiên hiện tại (màn hình Bản chép lời) và cho một phiên trong Lịch sử.
+// (Pro). Dùng cho phiên hiện tại (màn hình Bản chép lời) và cho một phiên trong Lịch sử. Người nói (spec
+// 2026-10-26-phan-biet-nguoi-noi §8.2): nhãn dạng chip có chấm màu ở câu đầu mỗi lượt nói, vạch màu bên trái các câu của giọng; bấm
+// nhãn (phiên đang chạy) mở menu đổi tên, chọn người trong cuộc họp, gộp; Lịch sử và phiên đã dừng chỉ đọc.
 export function TranscriptView({ transcript, source }: { transcript: Transcript; source: TranscriptRef }) {
   const t = useT();
+  const lang = useApp((s) => s.settings?.uiLanguage ?? fallbackLanguage);
   const pro = useApp((s) => s.status?.pro ?? false);
   const navigate = useApp((s) => s.navigate);
   const copy = useTranscript((s) => s.copy);
   const exportTo = useTranscript((s) => s.exportTo);
+  const participants = useTranscript((s) => s.participants);
+  const renameSpeaker = useTranscript((s) => s.renameSpeaker);
+  const mergeSpeakers = useTranscript((s) => s.mergeSpeakers);
   const notice = useTranscript((s) => s.notice);
   const error = useTranscript((s) => s.error);
   const dismiss = useTranscript((s) => s.dismiss);
   const [query, setQuery] = useState("");
   const [format, setFormat] = useState<ExportFormat>("txt");
   const [srtText, setSrtText] = useState<SrtText>("translation");
+  const [srtSpeakers, setSrtSpeakers] = useState(false);
+  const [menuLine, setMenuLine] = useState<number | null>(null);
+  const voices = useVoiceMap(transcript.speakers);
+  // Đổi tên, gộp chỉ trong phiên đang chạy (QĐ 10 của kế hoạch 03).
+  const editable = source.kind === "current" && transcript.session !== 0 && transcript.endedAt === null;
+  const openMenu = useCallback((lineId: number) => setMenuLine((open) => (open === lineId ? null : lineId)), []);
+  const closeMenu = useCallback(() => setMenuLine(null), []);
   // Giờ theo độ lệch múi giờ lúc bắt đầu phiên, như trong file xuất (N4 của review 03).
   const offset = localOffsetMinutes(transcript.startedAt);
-  const lines = searchLines(transcript.lines, query);
+  const rows = decorate(searchLines(transcript.lines, query), (l) => l.speaker, voices);
   return (
     <>
       <div className="card">
@@ -67,9 +92,15 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
               <option value="source">{t("transcript.export.source")}</option>
             </select>
           )}
+          {format === "srt" && transcript.speakers.length > 0 && (
+            <label className="toolbar-check">
+              <input type="checkbox" checked={srtSpeakers} onChange={(e) => setSrtSpeakers(e.target.checked)} />
+              {t("transcript.export.srtSpeakers")}
+            </label>
+          )}
           <button
             disabled={!pro || transcript.lines.length === 0}
-            onClick={() => void exportTo(source, format, srtText, transcript.startedAt)}
+            onClick={() => void exportTo(source, format, srtText, transcript.startedAt, srtSpeakers)}
           >
             <Icon name="download" size={16} />
             {t("transcript.export.button")}
@@ -105,25 +136,35 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
           )}
         </div>
       </div>
-      {transcript.lines.length > 0 && lines.length === 0 && <EmptyState icon="search" text={t("transcript.noMatch")} />}
-      {lines.length > 0 && <ol className="transcript">
-        {lines.map((l) => {
-          const v = lineView(l, true);
-          const translation =
-            v.kind === "translated" || v.kind === "translating" ? v.main : v.kind === "failed" ? t("subtitle.failed") : null;
-          return (
-            <li key={l.id} className={`${v.kind}${v.provisional ? " provisional" : ""}`}>
-              <time>{clockTime(transcript.startedAt + l.start_ms, offset)}</time>
-              <div>
-                <div className="src" lang={l.src_lang}>
-                  {v.kind === "dropped" ? t("subtitle.dropped") : l.src_text}
-                </div>
-                {translation && <div className="tgt">{translation}</div>}
-              </div>
-            </li>
-          );
-        })}
-      </ol>}
+      {transcript.lines.length > 0 && rows.length === 0 && <EmptyState icon="search" text={t("transcript.noMatch")} />}
+      {rows.length > 0 && (
+        <ol className="transcript">
+          {rows.map(({ item: l, voice, turnStart }) => (
+            <TranscriptRow
+              key={l.id}
+              line={l}
+              lang={lang}
+              time={clockTime(transcript.startedAt + l.start_ms, offset)}
+              voice={voice}
+              turnStart={turnStart}
+              onSpeaker={editable ? openMenu : undefined}
+              menu={
+                editable && voice && menuLine === l.id ? (
+                  <SpeakerMenu
+                    lang={lang}
+                    voice={voice}
+                    voices={voices}
+                    participants={participants}
+                    onClose={closeMenu}
+                    onRename={(name) => void renameSpeaker(voice.id, name).then((ok) => ok && closeMenu())}
+                    onMerge={(into) => void mergeSpeakers(voice.id, into).then((ok) => ok && closeMenu())}
+                  />
+                ) : null
+              }
+            />
+          ))}
+        </ol>
+      )}
     </>
   );
 }

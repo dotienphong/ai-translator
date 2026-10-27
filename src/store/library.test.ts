@@ -12,7 +12,7 @@ const summary = (id: number): SessionSummary => ({
   lines: 3,
   preview: `câu ${id}`,
 });
-const transcript: Transcript = { session: 0, startedAt: 1000, endedAt: 61_000, targetLang: "vi", lines: [] };
+const transcript: Transcript = { session: 0, startedAt: 1000, endedAt: 61_000, targetLang: "vi", lines: [], speakers: [], speakersRev: 0 };
 
 describe("history store", () => {
   it("đọc danh sách, mở một phiên, xóa phiên đang mở thì đóng nó, xóa tất cả", async () => {

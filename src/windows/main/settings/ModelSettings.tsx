@@ -35,6 +35,12 @@ export function ModelSettings() {
     <>
       <ModelsError />
       <UpdateNotice />
+      {view.speaker === "downloading" && (
+        <p className="note speaker-downloading" role="status">
+          <Icon name="download" size={16} />
+          <span>{t("settings.model.speakerDownloading")}</span>
+        </p>
+      )}
       <div className="card list">
         <Field
           label={

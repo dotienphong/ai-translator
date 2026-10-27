@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
-import type { AppStatus, LiveLine, OverlayView, Subtitle } from "../lib/ipc";
+import type { AppStatus, LiveLine, OverlayView, SpeakerRoster, SpeakerVoice, Subtitle } from "../lib/ipc";
 import {
   MAX_LINES,
   type OverlayRow,
@@ -24,6 +24,7 @@ const sub = (id: number, tgt: string, provisional = false): Subtitle => ({
   status: "done",
   provisional,
   replaces: [],
+  speaker: null,
 });
 
 const view: OverlayView = {
@@ -255,6 +256,7 @@ const live = (id: number, patch: Partial<LiveLine> = {}): LiveLine => ({
   tgt_stable: `dịch ${id}`,
   tgt_tail: " tạm",
   tgt_src_units: 2,
+  speaker: null,
   ...patch,
 });
 
@@ -393,5 +395,71 @@ describe("kéo cạnh để đổi kích thước (§4.4)", () => {
       { cmd: "overlay_resize_move", args: undefined },
       { cmd: "end_overlay_resize", args: undefined },
     ]);
+  });
+});
+
+describe("người nói trên thanh phụ đề (spec 2026-10-26-phan-biet-nguoi-noi §8.1)", () => {
+  const voice = (id: number, label = `Người ${id}`): SpeakerVoice => ({
+    id,
+    label,
+    color: id - 1,
+    source: "voice",
+    room: false,
+    mergedInto: null,
+  });
+  let rev = 0;
+  const roster = (voices: SpeakerVoice[], askAccess = false): SpeakerRoster => ({
+    voices,
+    participants: [],
+    askAccess,
+    rev: ++rev,
+  });
+
+  it("nhãn tới muộn sửa đúng dòng; bảng giọng mới giữ đối tượng của giọng không đổi", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    fake.emit("subtitle://upsert", sub(1, "một"));
+    fake.emit("subtitle://upsert", sub(2, "hai"));
+    const before = store.getState().lines;
+    fake.emit("subtitle://speaker", { id: 2, speaker: 1 });
+    const after = store.getState().lines;
+    expect(after[0]).toBe(before[0]);
+    expect(after[1]?.speaker).toBe(1);
+    fake.emit("subtitle://speaker", { id: 99, speaker: 1 });
+    expect(store.getState().lines).toBe(after);
+    fake.emit("speaker://roster", roster([voice(1), voice(2)]));
+    const first = store.getState().voices;
+    fake.emit("speaker://roster", roster([voice(1), voice(2, "Minh")]));
+    expect(store.getState().voices.get(1)).toBe(first.get(1));
+    expect(store.getState().voices.get(2)?.label).toBe("Minh");
+  });
+
+  it("dòng mời: hiện theo phía Rust, ✕ ẩn tới hết phiên; phiên mới thì bỏ bảng giọng và dòng mời", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    fake.emit("speaker://roster", roster([voice(1)], true));
+    expect(store.getState().askAccess).toBe(true);
+    store.getState().dismissAsk();
+    expect(store.getState().askDismissed).toBe(true);
+    fake.emit("speaker://roster", roster([voice(1), voice(2)], true));
+    expect(store.getState().askDismissed).toBe(true);
+    fake.emit("app://status", status("starting", 5));
+    expect(store.getState().voices.size).toBe(0);
+    expect(store.getState().askAccess).toBe(false);
+    expect(store.getState().askDismissed).toBe(false);
+  });
+
+  // QĐ 25 (rà soát A-N2): bảng tính trên hai luồng có thể tới không theo thứ tự; bảng cũ hơn tới muộn thì bỏ, tên vừa đổi không quay lại.
+  it("bảng người nói có rev nhỏ hơn bảng đã nhận thì bỏ", async () => {
+    const fake = fakeIpc({ get_overlay_view: () => view });
+    const store = createOverlayStore(fake.ipc);
+    await store.getState().init();
+    fake.emit("speaker://roster", { voices: [voice(1, "Lan")], participants: [], askAccess: false, rev: 50 });
+    fake.emit("speaker://roster", { voices: [voice(1)], participants: [], askAccess: false, rev: 49 });
+    expect(store.getState().voices.get(1)?.label).toBe("Lan");
+    fake.emit("speaker://roster", { voices: [voice(1, "Hoa")], participants: [], askAccess: false, rev: 51 });
+    expect(store.getState().voices.get(1)?.label).toBe("Hoa");
   });
 });

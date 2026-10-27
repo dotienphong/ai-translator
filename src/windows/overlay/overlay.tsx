@@ -5,6 +5,7 @@ import { useStore } from "zustand";
 import { htmlLang, translate } from "../../i18n";
 import { type ResizeEdge, tauriIpc as ipc } from "../../lib/ipc";
 import { atBottom, pagedScrollTop } from "../../lib/overlayScroll";
+import { decorate } from "../../lib/speakers";
 import {
   HEARING_RMS,
   TEXT_COLORS,
@@ -14,9 +15,10 @@ import {
   overlayNotes,
   streamingEffective,
 } from "../../lib/subtitleView";
-import { createOverlayStore, createResizeDrag, visibleRows } from "../../store/overlay";
+import { type OverlayRow, createOverlayStore, createResizeDrag, visibleRows } from "../../store/overlay";
 import { LiveLineView } from "./LiveLineView";
 import { OverlayLine } from "./OverlayLine";
+import { SpeakerAsk } from "./SpeakerAsk";
 
 const store = createOverlayStore(ipc);
 // Thuộc tính `lang` của trang theo ngôn ngữ giao diện, để WebView chọn đúng font CJK và trình đọc màn hình đọc đúng giọng.
@@ -65,6 +67,9 @@ function ResizeEdges() {
   );
 }
 
+// Giọng của một dòng thanh phụ đề: phụ đề, hay dòng đang nói (giọng của câu nó nối tiếp, QĐ 5 của kế hoạch 03 phân biệt người nói).
+const rowSpeaker = (r: OverlayRow) => (r.kind === "live" ? r.live.speaker : r.line.speaker);
+
 // Thanh phụ đề (§4.4): mọi câu của phiên (tối đa `MAX_LINES`) trong một vùng cuộn, bản dịch hiện dần, phụ đề tạm màu nhạt hơn,
 // câu gốc chữ nhỏ ở trên nếu bật. Đang dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.1) thì có thêm dòng đang nói hai
 // tầng (`LiveLineView`), đặt đúng chỗ theo `visibleRows`, và phụ đề tạm không nhạt cả dòng (`dimProvisional`). Đang ở đáy thì
@@ -76,14 +81,20 @@ function ResizeEdges() {
 // Khi chưa khóa: kéo được cả thanh (`data-tauri-drag-region="deep"`), kéo cạnh để đổi kích thước, và rê chuột vào thì hiện
 // nút ✕ ở góc trên bên phải (ẩn thanh và dừng phiên dịch). Khi khóa thì click xuyên qua (phía Rust đặt),
 // không có nút nào (§4.4). Nâng gói, xem lỗi ở cửa sổ chính.
+// Người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.1): tên có màu ở dòng đầu mỗi lượt, vạch màu mọi câu của giọng (tra bảng giọng của
+// phiên, không chờ gì); dòng mời cấp quyền Trợ năng ở trên cùng khi phía Rust bảo và thanh chưa khóa.
 function Overlay() {
   const view = useStore(store, (s) => s.view);
   const lines = useStore(store, (s) => s.lines);
   const live = useStore(store, (s) => s.live);
   const status = useStore(store, (s) => s.status);
   const level = useStore(store, (s) => s.level);
-  // Phụ đề và dòng đang nói theo đúng chỗ; chỉ tính lại khi một trong hai đổi.
-  const rows = useMemo(() => visibleRows(lines, live), [lines, live]);
+  const voices = useStore(store, (s) => s.voices);
+  const askAccess = useStore(store, (s) => s.askAccess);
+  const askDismissed = useStore(store, (s) => s.askDismissed);
+  // Phụ đề và dòng đang nói theo đúng chỗ, cùng giọng và cờ dòng đầu lượt; chỉ tính lại khi phụ đề, dòng đang nói hay bảng giọng
+  // đổi. Đối tượng phụ đề, dòng đang nói và giọng giữ nguyên tham chiếu, nên các dòng memo không đổi thì không vẽ lại.
+  const rows = useMemo(() => decorate(visibleRows(lines, live), rowSpeaker, voices), [lines, live, voices]);
   const scroller = useRef<HTMLDivElement>(null);
   // `follow` (ref) để các hàm cuộn đọc ngay; `following` (state) để vẽ nút "Mới nhất".
   const follow = useRef(true);
@@ -130,6 +141,8 @@ function Overlay() {
   const hearing = running && level >= HEARING_RMS;
   // Đang dịch trong lúc người nói chưa dừng: phụ đề tạm không nhạt cả dòng, chỉ phần tạm của dòng đang nói nhạt (§6.1).
   const dimProvisional = !streamingEffective(view.translateWhileSpeaking, status);
+  // Dòng mời cấp quyền (spec §6.7): đang dịch, phía Rust bảo hiện, chưa bấm ✕ trong phiên, thanh chưa khóa.
+  const showAsk = running && askAccess && !askDismissed && !view.locked;
   return (
     <div
       className={view.locked ? "overlay" : "overlay unlocked"}
@@ -170,11 +183,24 @@ function Overlay() {
           </span>
         ))}
       </div>
-      <div className="lines" ref={scroller} onScroll={syncFollow}>
+      {showAsk && (
+        <SpeakerAsk
+          uiLanguage={view.uiLanguage}
+          onOpen={() => void ipc.invoke("open_speaker_settings").catch(() => {})}
+          onDismiss={() => store.getState().dismissAsk()}
+        />
+      )}
+      <div className={voices.size > 0 ? "lines has-speakers" : "lines"} ref={scroller} onScroll={syncFollow}>
         {rows.length === 0 && notes.length === 0 && <div className="waiting">{t("overlay.waiting")}</div>}
-        {rows.map((r) =>
+        {rows.map(({ item: r, voice, turnStart }) =>
           r.kind === "live" ? (
-            <LiveLineView key={`live-${r.live.id}`} live={r.live} showSource={view.showSource} />
+            <LiveLineView
+              key={`live-${r.live.id}`}
+              live={r.live}
+              showSource={view.showSource}
+              voice={voice}
+              turnStart={turnStart}
+            />
           ) : (
             <OverlayLine
               key={r.line.id}
@@ -182,6 +208,8 @@ function Overlay() {
               showSource={view.showSource}
               uiLanguage={view.uiLanguage}
               dimProvisional={dimProvisional}
+              voice={voice}
+              turnStart={turnStart}
             />
           ),
         )}

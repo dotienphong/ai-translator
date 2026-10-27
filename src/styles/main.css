@@ -1301,10 +1301,11 @@ fieldset {
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .transcript li {
+  position: relative;
   display: grid;
   grid-template-columns: 4.5rem minmax(0, 1fr);
   gap: 0.9rem;
@@ -1349,6 +1350,164 @@ fieldset {
 .transcript .failed .tgt {
   color: var(--faint);
   font-style: italic;
+}
+
+/* Người nói trong bản chép lời (spec 2026-10-26-phan-biet-nguoi-noi §8.2): vạch màu bên trái các câu của một giọng, nhãn dạng chip
+   có chấm màu ở câu đầu mỗi lượt, câu sau của cùng lượt không có đường kẻ trên. `--spk` đặt theo từng dòng (`speakerColor`). */
+.transcript li.spk::before {
+  content: "";
+  position: absolute;
+  top: 0.65rem;
+  bottom: 0.65rem;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--spk);
+}
+
+.transcript li.spk-cont {
+  border-top: none;
+  padding-top: 0.15rem;
+}
+
+.spk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 0;
+  margin: 0 0 0.35rem;
+  padding: 0.05rem 0.7rem 0.05rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--spk) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--spk) 9%, transparent);
+  box-shadow: none;
+  color: var(--spk);
+  /* QĐ 24: chữ pha 80% màu giọng với 20% màu chữ để đạt 4,5:1 trên nền sáng (thấp nhất 4,95; 4,55 khi rê chuột); dòng trên là dự
+     phòng cho WebView không có color-mix. Chấm, vạch, viền giữ đúng màu spec. */
+  color: color-mix(in srgb, var(--spk) 80%, var(--text));
+  font-size: 0.93rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.spk-chip::before {
+  content: "";
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--spk);
+}
+
+.spk-chip .label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Tên viết từ phải sang trái hay có ký tự định dạng lạ không đảo phần xung quanh (QĐ 11). */
+  unicode-bidi: isolate;
+}
+
+.spk-chip .caret {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+button.spk-chip {
+  cursor: pointer;
+}
+
+button.spk-chip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--spk) 16%, transparent);
+}
+
+.toolbar-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.93rem;
+}
+
+/* Menu của nhãn người nói (spec §8.2): popover ngay dưới nhãn, trong dòng (QĐ 20). */
+.speaker-menu {
+  position: absolute;
+  z-index: 20;
+  top: 2.6rem;
+  left: 6.4rem;
+  width: min(20rem, calc(100% - 7.5rem));
+  padding: 0.35rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.speaker-menu .menu-head {
+  display: block;
+  padding: 0.4rem 0.6rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  /* Tên 40 ký tự không có dấu cách (chữ Hán, tên dài liền) vẫn xuống dòng trong menu (rà soát B-Q3). */
+  overflow-wrap: anywhere;
+}
+
+.speaker-menu .menu-row {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.1rem 0.4rem 0.4rem;
+}
+
+.speaker-menu .menu-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.speaker-menu .menu-sep {
+  height: 1px;
+  margin: 0.25rem 0.4rem;
+  background: var(--border);
+}
+
+.speaker-menu .menu-item {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  height: auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  /* Nút của app không xuống dòng (`white-space: nowrap`): tên dài phải xuống dòng trong menu, không tràn (rà soát B-Q3); tên viết từ
+     phải sang trái không đảo phần xung quanh (QĐ 11). */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  unicode-bidi: isolate;
+}
+
+.speaker-menu .menu-item[aria-current="true"] {
+  background: var(--accent-soft);
+}
+
+.speaker-menu .menu-item.sub {
+  padding-left: 1.4rem;
+}
+
+.speaker-menu .menu-item .dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--spk);
+}
+
+/* `.transcript` không còn cắt phần tràn (QĐ 20): chuỗi dài liền (URL, số dài) xuống dòng trong ô, không tràn ra ngoài thẻ (rà soát
+   B-N2). */
+.transcript .src,
+.transcript .tgt {
+  overflow-wrap: anywhere;
 }
 
 .history,

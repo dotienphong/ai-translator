@@ -24,6 +24,7 @@ const sub = (status: Subtitle["status"], tgt = "", provisional = false): Subtitl
   status,
   provisional,
   replaces: [],
+  speaker: null,
 });
 
 const status = (patch: Partial<AppStatus>): AppStatus => ({
