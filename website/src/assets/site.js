@@ -157,6 +157,45 @@
     if (copyLink) wireCopy(copyLink, () => location.origin + location.pathname);
   });
 
+  // Khối tab "Tính năng chính" ở trang chủ (spec 2026-10-27-trang-chu-ba-viec-tab): tab đầu mở sẵn; neo # mở đúng tab; mũi tên,
+  // Home, End đổi tab; chuyển tab thì tạm dừng video của panel vừa rời. Tắt JS: thanh tab ẩn, ba panel hiện nối nhau.
+  document.querySelectorAll("[data-ftabs]").forEach((root) => {
+    const list = root.querySelector('[role="tablist"]');
+    const tabs = [...root.querySelectorAll('[role="tab"]')];
+    const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
+    if (!list || tabs.length === 0 || panels.some((p) => !p)) return;
+    const hashId = () => { try { return decodeURIComponent(location.hash.slice(1)); } catch { return ""; } };
+    const byHash = () => tabs.find((t) => t.getAttribute("aria-controls") === hashId());
+    const select = (tab, { focus = false, hash = false } = {}) => {
+      root.classList.add("is-enhanced");
+      list.hidden = false;
+      tabs.forEach((t, i) => {
+        const on = t === tab;
+        t.setAttribute("aria-selected", String(on));
+        t.tabIndex = on ? 0 : -1;
+        if (!on) panels[i].querySelectorAll("video").forEach((v) => v.pause());
+        panels[i].hidden = !on;
+      });
+      if (focus) tab.focus();
+      if (hash) history.replaceState(null, "", "#" + tab.getAttribute("aria-controls"));
+    };
+    // Lúc trình duyệt xử lý neo, panel đích còn ẩn nên nó không tự cuộn tới: cuộn tới khối tab sau khi đã mở đúng tab.
+    const toRoot = () => requestAnimationFrame(() => root.scrollIntoView({ block: "start" }));
+    const first = byHash();
+    select(first ?? tabs[0]);
+    if (first) toRoot();
+    tabs.forEach((t) => t.addEventListener("click", () => select(t, { hash: true })));
+    list.addEventListener("keydown", (e) => {
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      const next = { ArrowRight: (i + 1) % tabs.length, ArrowDown: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length, ArrowUp: (i - 1 + tabs.length) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      select(tabs[next], { focus: true, hash: true });
+    });
+    window.addEventListener("hashchange", () => { const t = byHash(); if (t) { select(t); toRoot(); } });
+  });
+
   // Video demo (spec 2026-10-22-website-ja-zh-ko §4): nút phát lớn giữa khung thay thanh điều khiển gốc cho tới khi bấm. Trên máy
   // tính (chuột, rộng từ 900 px, không giảm chuyển động), lần đầu hơn nửa khung vào màn hình thì nút đập nhịp mời xem, một lần.
   document.querySelectorAll("[data-video]").forEach((fig) => {
