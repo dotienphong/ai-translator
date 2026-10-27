@@ -144,7 +144,7 @@ ${steps([
 ], true)}
 ${appShot({ slug: "app-home-running", lang: "ko", alt: "세션 중인 AI Translator 메인 화면: 번역 중 상태, 언어, 오디오 소스, 남은 번역 시간", caption: "세션 중인 메인 화면(Monthly 요금제)." })}
 </div>
-<p class="disclaimer">macOS 버전은 애드혹 서명이며 공증(notarize)을 받지 않았고, Windows 버전은 아직 코드 서명이 되어 있지 않습니다. 명령으로 설치하면 macOS에서는 앱이 바로 열리고 SmartScreen도 묻지 않습니다. 브라우저로 내려받은 파일은 처음 실행할 때 막히거나 경고가 나올 수 있습니다. <a href="/ko/guide/install-macos/">macOS</a>와 <a href="/ko/guide/install-windows/">Windows</a> 설치 가이드를 참조하세요.</p>
+<p class="disclaimer">macOS 버전은 애드혹 서명이며 공증(notarize)을 받지 않았고, Windows 버전은 아직 코드 서명이 되어 있지 않습니다. 명령으로 설치하면 macOS에서는 앱이 바로 열리고 SmartScreen도 묻지 않습니다. 브라우저로 내려받은 파일은 처음 실행할 때 막히거나 경고가 나올 수 있습니다. 차단 모드의 스마트 앱 컨트롤은 설치 방법과 상관없이 Windows 버전을 차단합니다. <a href="/ko/guide/install-macos/">macOS</a>와 <a href="/ko/guide/install-windows/">Windows</a> 설치 가이드를 참조하세요.</p>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/ko/guide/quick-start/">빠른 시작 가이드 읽기 ${icon("arrow-right")}</a></p>
 </div></section>
 

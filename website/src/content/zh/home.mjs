@@ -144,7 +144,7 @@ ${steps([
 ], true)}
 ${appShot({ slug: "app-home-running", lang: "zh", alt: "会话进行中的 AI Translator 主页：翻译中状态、语言、音频来源和剩余翻译时间", caption: "会话进行中的主页（Monthly 套餐）。" })}
 </div>
-<p class="disclaimer">macOS 版是临时签名（ad-hoc），尚未经过公证（notarize）；Windows 版还没有代码签名。用命令安装时，macOS 会直接打开应用，SmartScreen 也不会询问；用浏览器下载的文件在首次启动时可能被阻止或收到警告。请查看 <a href="/zh/guide/install-macos/">macOS</a> 和 <a href="/zh/guide/install-windows/">Windows</a> 安装指南。</p>
+<p class="disclaimer">macOS 版是临时签名（ad-hoc），尚未经过公证（notarize）；Windows 版还没有代码签名。用命令安装时，macOS 会直接打开应用，SmartScreen 也不会询问；用浏览器下载的文件在首次启动时可能被阻止或收到警告；处于阻止模式的智能应用控制无论怎样安装都会阻止 Windows 版。请查看 <a href="/zh/guide/install-macos/">macOS</a> 和 <a href="/zh/guide/install-windows/">Windows</a> 安装指南。</p>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/zh/guide/quick-start/">阅读快速入门指南 ${icon("arrow-right")}</a></p>
 </div></section>
 

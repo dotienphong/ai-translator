@@ -144,7 +144,7 @@ ${steps([
 ], true)}
 ${appShot({ slug: "app-home-running", lang: "ja", alt: "セッション中の AI Translator のメイン画面：翻訳中の状態、言語、音声ソース、翻訳の残り時間", caption: "セッション中のメイン画面（Monthly プラン）。" })}
 </div>
-<p class="disclaimer">macOS 版はアドホック署名で、公証（notarize）を受けていません。Windows 版はまだコード署名されていません。コマンドでインストールすれば、macOS ではアプリが直接開き、SmartScreen の確認も出ません。ブラウザーでダウンロードしたファイルは初回起動時にブロックや警告が出ることがあります。<a href="/ja/guide/install-macos/">macOS</a> と <a href="/ja/guide/install-windows/">Windows</a> のインストールガイドをご覧ください。</p>
+<p class="disclaimer">macOS 版はアドホック署名で、公証（notarize）を受けていません。Windows 版はまだコード署名されていません。コマンドでインストールすれば、macOS ではアプリが直接開き、SmartScreen の確認も出ません。ブラウザーでダウンロードしたファイルは初回起動時にブロックや警告が出ることがあります。ブロックモードのスマート アプリ コントロールは、インストール方法にかかわらず Windows 版をブロックします。<a href="/ja/guide/install-macos/">macOS</a> と <a href="/ja/guide/install-windows/">Windows</a> のインストールガイドをご覧ください。</p>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/ja/guide/quick-start/">クイックスタートガイドを読む ${icon("arrow-right")}</a></p>
 </div></section>
 

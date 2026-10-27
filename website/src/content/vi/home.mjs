@@ -146,7 +146,7 @@ ${steps([
 ], true)}
 ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính của AI Translator khi đang dịch: trạng thái Đang dịch, ngôn ngữ, nguồn âm thanh và số phút còn lại", caption: "Màn hình chính khi đang dịch (gói Monthly)." })}
 </div>
-<p class="disclaimer">Bản macOS ký ad-hoc, chưa notarize; bản Windows chưa ký mã. Cài bằng dòng lệnh thì macOS mở app thẳng và SmartScreen không hỏi; file tải bằng trình duyệt có thể bị chặn hoặc cảnh báo ở lần mở đầu. Xem hướng dẫn cài trên <a href="/huong-dan/cai-dat-macos/">macOS</a> và <a href="/huong-dan/cai-dat-windows/">Windows</a>.</p>
+<p class="disclaimer">Bản macOS ký ad-hoc, chưa notarize; bản Windows chưa ký mã. Cài bằng dòng lệnh thì macOS mở app thẳng và SmartScreen không hỏi; file tải bằng trình duyệt có thể bị chặn hoặc cảnh báo ở lần mở đầu; Smart App Control ở chế độ chặn thì chặn bản Windows dù cài cách nào. Xem hướng dẫn cài trên <a href="/huong-dan/cai-dat-macos/">macOS</a> và <a href="/huong-dan/cai-dat-windows/">Windows</a>.</p>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/huong-dan/bat-dau-nhanh/">Đọc hướng dẫn bắt đầu nhanh ${icon("arrow-right")}</a></p>
 </div></section>
 
