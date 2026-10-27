@@ -14,9 +14,9 @@
 **Spec:** `docs/superpowers/specs/2026-10-26-phan-biet-nguoi-noi-design.md` mục 3, 5, 6.2, 6.4, 6.8, 11, 12, 13 (kế hoạch 01), 14.
 
 **Quy ước:**
-- `W=/Users/dtphong/Desktop/software_business/meeting-translator-work/phan-biet-nguoi-noi` (worktree, nhánh `phan-biet-nguoi-noi`).
-- `M=/Users/dtphong/Desktop/software_business/ai-translator` (thư mục chính: `models/silero_vad_v6.2.3.onnx`, không có trong git).
-- `DATA=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi` (ngoài mọi repo: venv, model nhúng giọng, AMI, Common Voice, kết quả thô).
+- `W=$HOME/Desktop/software_business/meeting-translator-work/phan-biet-nguoi-noi` (worktree, nhánh `phan-biet-nguoi-noi`).
+- `M=$HOME/Desktop/software_business/ai-translator` (thư mục chính: `models/silero_vad_v6.2.3.onnx`, không có trong git).
+- `DATA=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi` (ngoài mọi repo: venv, model nhúng giọng, AMI, Common Voice, kết quả thô).
 - `B=$W/bench/2026-10-26-nguoi-noi` (script và kết quả tóm tắt, có trong git). Công cụ của nghiên cứu trước spec ở `$B/truoc-spec/`.
 - Mọi lệnh bắt đầu bằng `cd $W &&` (hay đường dẫn tuyệt đối), vì shell trở về thư mục chính sau mỗi lệnh.
 - Không push, không merge, không deploy.
@@ -63,12 +63,12 @@ Expected: `phan-biet-nguoi-noi`; mọi test `ok`. Có test đỏ thì dừng, b�
 
 - [ ] **Step 2: Kiểm build Windows của crate sẽ có code Windows**
 
-Run: `cd $W && cargo check -p pipeline --target x86_64-pc-windows-msvc 2>&1 | tail -2`
-Expected: `Finished`. Target đã cài sẵn; `check` không link nên không cần MSVC.
+Run: `cd $W && export PKG_CONFIG_x86_64_pc_windows_msvc="$W/scripts/fake-pkg-config" PKG_CONFIG_ALLOW_CROSS=1 RUSTONIG_DYNAMIC_LIBONIG=1 && cargo check -p pipeline --target x86_64-pc-windows-msvc 2>&1 | tail -2`
+Expected: `Finished`. Target đã cài sẵn; `check` không link nên không cần MSVC. Ba biến môi trường là của `scripts/check-windows.sh`: không có chúng thì `onig_sys` (candle-core → tokenizers) cố biên dịch thư viện C oniguruma cho Windows và báo `'stdlib.h' file not found`. Mọi lệnh `--target x86_64-pc-windows-msvc` trong kế hoạch này đều cần đặt chúng.
 
 - [ ] **Step 3: Tạo thư mục dữ liệu ngoài repo**
 
-Run: `mkdir -p /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/{models,ami,cv-vi,out} && ls /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi`
+Run: `mkdir -p $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/{models,ami,cv-vi,out} && ls $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi`
 Expected: `ami cv-vi models out`.
 
 ---
@@ -83,7 +83,7 @@ Expected: `ami cv-vi models out`.
 #!/bin/sh
 # Môi trường Python cho các script đo của kế hoạch 01 (ngoài repo, ở $DATA/venv).
 set -eu
-DATA=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi
+DATA=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi
 uv venv -q -p 3.12 "$DATA/venv"
 uv pip install -q -p "$DATA/venv/bin/python" \
   kaldi-native-fbank==1.22.4 onnx==1.23.2 onnxsim==0.8.1 onnxruntime==1.31.0 \
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Run: `cd $W && /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -I bench/2026-10-26-nguoi-noi/prepare_model.py /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/models`
+Run: `cd $W && $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -I bench/2026-10-26-nguoi-noi/prepare_model.py $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/models`
 Expected: in đường dẫn `…/models/eres2net-sv-en-voxceleb-16k.onnx`, một dòng `sha256 …`, cỡ ≈ 26 MB. Ghi SHA-256 vào `$B/results/toc-do.md` ở Task 9.
 
 - [ ] **Step 3: Viết `$B/make_fixtures.py`**
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Run: `cd $W && D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && $D/venv/bin/python -I bench/2026-10-26-nguoi-noi/make_fixtures.py $D/models/eres2net-sv-en-voxceleb-16k.onnx crates/speaker-worker/testdata && ls -la crates/speaker-worker/testdata`
+Run: `cd $W && D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && $D/venv/bin/python -I bench/2026-10-26-nguoi-noi/make_fixtures.py $D/models/eres2net-sv-en-voxceleb-16k.onnx crates/speaker-worker/testdata && ls -la crates/speaker-worker/testdata`
 Expected: `signal 24000, fbank (148, 80), embed (192,)`; ba file, tổng ≈ 144 KB.
 
 - [ ] **Step 4: Commit**
@@ -562,8 +562,9 @@ use crate::fbank::{Fbank, NUM_BINS};
 pub const DIM: usize = 192;
 /// Ngắn hơn 0,5 s thì không nhúng (spec §5.2).
 pub const MIN_SAMPLES: usize = 8_000;
-/// Đoạn dài hơn chỉ lấy 30 s đầu.
-pub const MAX_SAMPLES: usize = 16_000 * 30;
+/// Đoạn dài hơn chỉ lấy 8 s đầu: giao thức chỉ nhận đoạn ≤ 8 s (spec §4.2), và `candle_onnx::simple_eval` giữ mọi tensor
+/// trung gian suốt một lượt chạy nên RSS tăng theo độ dài đoạn (đo M4 Pro release: 2 s ≈ 0,5 GB, 8 s ≈ 1,3 GB, 30 s ≈ 3,8 GB).
+pub const MAX_SAMPLES: usize = 16_000 * 8;
 const INPUT: &str = "x";
 const OUTPUT: &str = "embedding";
 
@@ -616,7 +617,7 @@ pub fn cosine(a: &[f32], b: &[f32]) -> f32 {
 
 - [ ] **Step 4: Chạy test thường và test cần model**
 
-Run: `cd $W && cargo test -p speaker-worker embed 2>&1 | tail -3 && SPEAKER_MODEL=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/models/eres2net-sv-en-voxceleb-16k.onnx cargo test -p speaker-worker --release embedding_matches_onnxruntime -- --ignored 2>&1 | tail -3`
+Run: `cd $W && cargo test -p speaker-worker embed 2>&1 | tail -3 && SPEAKER_MODEL=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/models/eres2net-sv-en-voxceleb-16k.onnx cargo test -p speaker-worker --release embedding_matches_onnxruntime -- --ignored 2>&1 | tail -3`
 Expected: cả hai `ok`. Trượt cosine thì kiểm lại fixture (Task 1 Step 3 dùng đúng file `.onnx` đã rút gọn) trước khi sửa code.
 
 - [ ] **Step 5: Clippy, fmt, commit**
@@ -908,6 +909,8 @@ cd $W && cargo fmt -p speaker-worker && cargo clippy -p speaker-worker --all-tar
 
 ### Task 5: Lệnh `latency-bench speaker-eval`
 
+*Mã mẫu bên dưới là bản đầu; bản đã rà và sửa là file trong repo (`crates/latency-bench/src/speaker_eval.rs`; `bench/2026-10-26-nguoi-noi/{score_spk,test_score_spk,tune}.py`).*
+
 **Files:** Tạo `crates/latency-bench/src/speaker_eval.rs`; sửa `crates/latency-bench/src/main.rs`, `crates/latency-bench/Cargo.toml`
 
 - [ ] **Step 1: Thêm phụ thuộc**
@@ -1093,12 +1096,12 @@ Sửa dòng mô tả đầu file thành: `//! Công cụ đo: `latency` (S6), `a
 
 Tải trước một file (Task 7 tải đủ):
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && curl -sSfL -o $D/ami/IS1009a.Mix-Headset.wav https://groups.inf.ed.ac.uk/ami/AMICorpusMirror//amicorpus/IS1009a/audio/IS1009a.Mix-Headset.wav && cd $W && cargo build --release -p latency-bench 2>&1 | tail -1 && RAYON_NUM_THREADS=2 target/release/latency-bench speaker-eval --wav $D/ami/IS1009a.Mix-Headset.wav --vad-model /Users/dtphong/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --embeddings-out $D/out/IS1009a.Mix-Headset.emb.json --out $D/out/IS1009a.Mix-Headset.jsonl && head -2 $D/out/IS1009a.Mix-Headset.jsonl`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && curl -sSfL -o $D/ami/IS1009a.Mix-Headset.wav https://groups.inf.ed.ac.uk/ami/AMICorpusMirror//amicorpus/IS1009a/audio/IS1009a.Mix-Headset.wav && cd $W && cargo build --release -p latency-bench 2>&1 | tail -1 && RAYON_NUM_THREADS=2 target/release/latency-bench speaker-eval --wav $D/ami/IS1009a.Mix-Headset.wav --vad-model $HOME/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --embeddings-out $D/out/IS1009a.Mix-Headset.emb.json --out $D/out/IS1009a.Mix-Headset.jsonl && head -2 $D/out/IS1009a.Mix-Headset.jsonl`
 Expected: dòng tóm tắt dạng `261 đoạn, … có nhúng, … giọng; nhúng p50 … ms`; số đoạn bằng 261 (khớp nghiên cứu trước spec); hai dòng JSON có `voice`.
 
 - [ ] **Step 5: Chạy lại từ cache với ngưỡng khác**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && target/release/latency-bench speaker-eval --embeddings-in $D/out/IS1009a.Mix-Headset.emb.json --theta 0.5 --out /dev/null`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && target/release/latency-bench speaker-eval --embeddings-in $D/out/IS1009a.Mix-Headset.emb.json --theta 0.5 --out /dev/null`
 Expected: in dòng tóm tắt trong < 1 s, không cần model.
 
 - [ ] **Step 6: Clippy, fmt, commit**
@@ -1111,12 +1114,15 @@ cd $W && cargo fmt -p latency-bench && cargo clippy -p latency-bench --all-targe
 
 ### Task 6: Chấm điểm và chọn ngưỡng (Python)
 
+*Mã mẫu bên dưới là bản đầu; bản đã rà và sửa là file trong repo (`crates/latency-bench/src/speaker_eval.rs`; `bench/2026-10-26-nguoi-noi/{score_spk,test_score_spk,tune}.py`).*
+
 **Files:** Tạo `$B/score_spk.py`, `$B/test_score_spk.py`, `$B/tune.py`
 
 - [ ] **Step 1: Viết test `$B/test_score_spk.py`**
 
 ```python
-"""python -I -m unittest test_score_spk (chạy trong bench/2026-10-26-nguoi-noi)."""
+"""cd bench/2026-10-26-nguoi-noi && python -m unittest test_score_spk (hay `python -I test_score_spk.py`;
+`-I -m unittest` không tìm thấy module test vì chế độ cô lập bỏ thư mục hiện tại khỏi đường dẫn)."""
 import os
 import sys
 import unittest
@@ -1162,7 +1168,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Chạy test, thấy lỗi**
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi && /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -m unittest test_score_spk 2>&1 | tail -2`
+Run: `cd $W/bench/2026-10-26-nguoi-noi && $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -m unittest test_score_spk 2>&1 | tail -2`
 Expected: `ModuleNotFoundError: No module named 'score_spk'`.
 
 - [ ] **Step 3: Viết `$B/score_spk.py`**
@@ -1261,7 +1267,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Chạy test, thấy đạt**
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi && /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -m unittest test_score_spk 2>&1 | tail -2`
+Run: `cd $W/bench/2026-10-26-nguoi-noi && $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -m unittest test_score_spk 2>&1 | tail -2`
 Expected: `OK` (5 test).
 
 - [ ] **Step 5: Viết `$B/tune.py`**
@@ -1270,7 +1276,8 @@ Expected: `OK` (5 test).
 """Chọn θ và ngưỡng gộp trên phần dev, báo trên phần kiểm với đúng ngưỡng đó (kế hoạch 01, chốt tham số; spec §5.3, §5.4).
 Chạy `latency-bench speaker-eval --embeddings-in` (không cần model) cho mỗi bộ ngưỡng.
 
-python -I tune.py <latency-bench> <thư mục có <tên>.emb.json và <tên>.rttm> --dev a,b --test c,d [--out kết-quả.json]
+cd bench/2026-10-26-nguoi-noi && python tune.py <latency-bench> <thư mục có <tên>.emb.json và <tên>.rttm> --dev a,b --test c,d [--out kết-quả.json]
+(không dùng `-I`: chế độ cô lập không thêm thư mục của script vào đường dẫn nên `from score_spk import ...` không tìm thấy.)
 Mục tiêu trên dev: trung bình line_all, trừ 0,03 cho mỗi giọng thừa (so với số người thật).
 """
 import argparse
@@ -1353,7 +1360,9 @@ cd $W && git add bench/2026-10-26-nguoi-noi/score_spk.py bench/2026-10-26-nguoi-
 #!/bin/sh
 # Tải 4 cuộc họp AMI (CC BY 4.0) và nhãn người nói của pyannote AMI-diarization-setup (spec 2026-10-26-phan-biet-nguoi-noi §3).
 set -eu
-DATA=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/ami
+# Mặc định: thư mục `data-nguoi-noi` cạnh worktree (…/meeting-translator-work/), như `setup_env.sh`; đặt DATA để dùng chỗ khác.
+here=$(cd "$(dirname "$0")" && pwd)
+DATA="${DATA:-$here/../../../data-nguoi-noi}/ami"
 M=https://groups.inf.ed.ac.uk/ami/AMICorpusMirror//amicorpus
 R=https://raw.githubusercontent.com/pyannote/AMI-diarization-setup/main/only_words/rttms/test
 mkdir -p "$DATA"
@@ -1372,12 +1381,12 @@ Expected: 6 file `.wav`, 4 file `.rttm`.
 
 - [ ] **Step 2: Nhúng mọi bản ghi (một lần), lưu cache**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && for w in $D/ami/*.wav; do n=$(basename $w .wav); m=${n%%.*}; cp $D/ami/$m.rttm $D/out/$n.rttm; RAYON_NUM_THREADS=2 target/release/latency-bench speaker-eval --wav $w --vad-model /Users/dtphong/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --embeddings-out $D/out/$n.emb.json --out $D/out/$n.jsonl; done`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && for w in $D/ami/*.wav; do n=$(basename $w .wav); m=${n%%.*}; cp $D/ami/$m.rttm $D/out/$n.rttm; RAYON_NUM_THREADS=2 target/release/latency-bench speaker-eval --wav $w --vad-model $HOME/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --embeddings-out $D/out/$n.emb.json --out $D/out/$n.jsonl; done`
 Expected: 6 dòng tóm tắt; số đoạn: EN2002a.Mix-Headset 961, ES2004a.Array1-01 315, ES2004a.Mix-Headset 360, IS1009a.Array1-01 260, IS1009a.Mix-Headset 261, TS3003a.Mix-Headset 549 (khớp `truoc-spec/nhan-giong/score-es50.txt`). Lệch thì kiểm `end_silence_ms` = 50.
 
 - [ ] **Step 3: Chọn ngưỡng trên dev, báo trên phần kiểm**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python -I tune.py $W/target/release/latency-bench $D/out --dev ES2004a.Mix-Headset,TS3003a.Mix-Headset --test IS1009a.Mix-Headset,EN2002a.Mix-Headset,IS1009a.Array1-01,ES2004a.Array1-01 --out $D/out/tune-ami.json`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python tune.py $W/target/release/latency-bench $D/out --dev ES2004a.Mix-Headset,TS3003a.Mix-Headset --test IS1009a.Mix-Headset,EN2002a.Mix-Headset,IS1009a.Array1-01,ES2004a.Array1-01 --out $D/out/tune-ami.json`
 Expected: dòng `chọn trên dev: θ=… gộp=…` và 6 dòng kết quả. So với nghiên cứu trước spec (ERes2Net Python: dòng ≥ 1 s 87–96%, mọi dòng 81–88% trên phần kiểm). Thấp hơn rõ (> 3 điểm) thì kiểm luật độ dài đoạn (Rust lấy giọng trước cho đoạn 0,5–1,5 s không giống ai; Python chọn giọng gần nhất): chạy thêm một lượt với `--min-new-ms 1000` để xem ảnh hưởng, ghi cả hai.
 
 - [ ] **Step 4: Ghi `$B/results/nhan-giong-ami.md`**
@@ -1400,7 +1409,7 @@ cd $W && git add bench/2026-10-26-nguoi-noi/fetch_ami.sh bench/2026-10-26-nguoi-
 
 Common Voice (CC0) phát hành qua Mozilla Data Collective, cần tài khoản và đồng ý điều khoản. Hỏi chủ dự án tải bộ "Common Voice Scripted Speech – Vietnamese" (bản mới nhất), giải nén vào `$DATA/cv-vi/` sao cho có `$DATA/cv-vi/validated.tsv` và `$DATA/cv-vi/clips/*.mp3`. Không có dữ liệu thì bỏ Step 2–4, ghi A-spk2 "chưa đo, chờ dữ liệu" và chuyển sang Task 9.
 
-Run (sau khi có dữ liệu): `head -1 /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/cv-vi/validated.tsv | tr '\t' '\n' | head -12 && ffmpeg -hide_banner -encoders 2>/dev/null | grep -c libopus`
+Run (sau khi có dữ liệu): `head -1 $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/cv-vi/validated.tsv | tr '\t' '\n' | head -12 && ffmpeg -hide_banner -encoders 2>/dev/null | grep -c libopus`
 Expected: có cột `client_id`, `path`; `1` (ffmpeg có libopus).
 
 - [ ] **Step 2: Viết `$B/build_cv_vi.py`**
@@ -1526,17 +1535,17 @@ if __name__ == "__main__":
 
 - [ ] **Step 3: Dựng 6 hội thoại, nhúng, chấm với ngưỡng đã chọn ở Task 7**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python -I build_cv_vi.py $D/cv-vi $D/out/cv && for w in $D/out/cv/*.wav; do n=$(basename $w .wav); RAYON_NUM_THREADS=2 $W/target/release/latency-bench speaker-eval --wav $w --vad-model /Users/dtphong/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --embeddings-out $D/out/cv/$n.emb.json --out $D/out/cv/$n.jsonl; done`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python -I build_cv_vi.py $D/cv-vi $D/out/cv && for w in $D/out/cv/*.wav; do n=$(basename $w .wav); RAYON_NUM_THREADS=2 $W/target/release/latency-bench speaker-eval --wav $w --vad-model $HOME/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --embeddings-out $D/out/cv/$n.emb.json --out $D/out/cv/$n.jsonl; done`
 Expected: `… người có ≥ 15 câu` (cần ≥ 8), 6 dòng hội thoại, 12 dòng tóm tắt nhúng.
 
 Rồi chấm bằng ngưỡng của Task 7 (đọc `theta`, `merge` trong `$D/out/tune-ami.json`), cho cả bản thường và bản Opus:
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && TH=$($D/venv/bin/python -c "import json;print(json.load(open('$D/out/tune-ami.json'))['theta'])") && MG=$($D/venv/bin/python -c "import json;print(json.load(open('$D/out/tune-ami.json'))['merge'])") && for e in $D/out/cv/*.emb.json; do n=$(basename $e .emb.json); $W/target/release/latency-bench speaker-eval --embeddings-in $e --theta $TH --merge-theta $MG --out $D/out/cv/$n.jsonl > /dev/null; echo "$n $($D/venv/bin/python -I score_spk.py $D/out/cv/$n.jsonl $D/out/cv/$n.rttm)"; done`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && TH=$($D/venv/bin/python -c "import json;print(json.load(open('$D/out/tune-ami.json'))['theta'])") && MG=$($D/venv/bin/python -c "import json;print(json.load(open('$D/out/tune-ami.json'))['merge'])") && for e in $D/out/cv/*.emb.json; do n=$(basename $e .emb.json); $W/target/release/latency-bench speaker-eval --embeddings-in $e --theta $TH --merge-theta $MG --out $D/out/cv/$n.jsonl > /dev/null; echo "$n $($D/venv/bin/python -I score_spk.py $D/out/cv/$n.jsonl $D/out/cv/$n.rttm)"; done`
 Expected: 12 dòng JSON chỉ số.
 
 - [ ] **Step 4: Kiểm ngưỡng có hợp tiếng Việt không**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python -I tune.py $W/target/release/latency-bench $D/out/cv --dev cv-vi-01,cv-vi-02,cv-vi-01-opus,cv-vi-02-opus --test cv-vi-03,cv-vi-04,cv-vi-05,cv-vi-06,cv-vi-03-opus,cv-vi-04-opus,cv-vi-05-opus,cv-vi-06-opus --out $D/out/tune-cv.json`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python tune.py $W/target/release/latency-bench $D/out/cv --dev cv-vi-01,cv-vi-02,cv-vi-01-opus,cv-vi-02-opus --test cv-vi-03,cv-vi-04,cv-vi-05,cv-vi-06,cv-vi-03-opus,cv-vi-04-opus,cv-vi-05-opus,cv-vi-06-opus --out $D/out/tune-cv.json`
 Expected: ngưỡng chọn trên tiếng Việt và kết quả phần kiểm. Ghi cả hai cách (ngưỡng AMI và ngưỡng tiếng Việt) vào kết quả.
 
 - [ ] **Step 5: Ghi `$B/results/nhan-giong-tieng-viet.md`**
@@ -1557,14 +1566,14 @@ cd $W && git add bench/2026-10-26-nguoi-noi/build_cv_vi.py bench/2026-10-26-nguo
 
 - [ ] **Step 1: Đo với 1 và 2 luồng, lấy RAM đỉnh**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && for n in 1 2; do echo "== $n luồng"; RAYON_NUM_THREADS=$n /usr/bin/time -l target/release/latency-bench speaker-eval --wav $D/ami/IS1009a.Mix-Headset.wav --vad-model /Users/dtphong/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --out /dev/null 2>&1 | grep -E "đoạn|maximum resident"; done`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && for n in 1 2; do echo "== $n luồng"; RAYON_NUM_THREADS=$n /usr/bin/time -l target/release/latency-bench speaker-eval --wav $D/ami/IS1009a.Mix-Headset.wav --vad-model $HOME/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --out /dev/null 2>&1 | grep -E "đoạn|maximum resident"; done`
 Expected: hai dòng tóm tắt (p50, p90 nhúng; phần trăm thời gian nhúng / thời lượng tiếng nói) và RAM đỉnh mỗi lượt. RAM đỉnh gồm cả Silero và âm thanh của cả cuộc họp nên chỉ là cận trên.
 
 - [ ] **Step 2: Đo khi máy bận như lúc họp**
 
 Chạy song song một tải giả (4 luồng `yes > /dev/null`) để mô phỏng nhận dạng, dịch và app họp cùng chạy, rồi đo lại với 2 luồng:
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && for i in 1 2 3 4; do (yes > /dev/null &) ; done; RAYON_NUM_THREADS=2 target/release/latency-bench speaker-eval --wav $D/ami/IS1009a.Mix-Headset.wav --vad-model /Users/dtphong/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --out /dev/null; pkill -x yes`
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && for i in 1 2 3 4; do (yes > /dev/null &) ; done; RAYON_NUM_THREADS=2 target/release/latency-bench speaker-eval --wav $D/ami/IS1009a.Mix-Headset.wav --vad-model $HOME/Desktop/software_business/ai-translator/models/silero_vad_v6.2.3.onnx --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --out /dev/null; pkill -x yes`
 Expected: dòng tóm tắt; `pkill -x yes` chỉ tắt các tiến trình `yes` vừa mở.
 
 - [ ] **Step 3: Ghi `$B/results/toc-do.md`**
@@ -1576,6 +1585,61 @@ Nội dung: SHA-256 và cỡ model (Task 1), bảng p50/p90 mỗi đoạn và % 
 ```bash
 cd $W && git add bench/2026-10-26-nguoi-noi/results/toc-do.md && git commit -m "docs(bench): tốc độ và RAM nhận giọng trên macOS"
 ```
+
+---
+
+### Task 9b: Giảm RAM của nhúng giọng (spike thêm)
+
+**Vì sao thêm task này:** `candle_onnx::simple_eval` giữ mọi tensor trung gian suốt một lượt chạy, và Task 9 (`$B/results/toc-do.md`) đo trên tiếng nói thật (M4 Pro, release, 2 luồng) cho thấy **cả hai ngân sách của spec §11 đều không đạt**: (1) RAM ≤ 150 MB: chỉ nạp model + Silero đã 228 MB; một đoạn 1,9 s ≈ 342 MB, 3,7 s ≈ 580 MB, 7,9 s ≈ 1,1 GB, chạy lâu ≈ 1,5 GB; (2) CPU ≤ 5% một lõi: 8,1–8,6% một lõi mỗi giây tiếng nói (chi phí tuyến tính theo độ dài, ≈ 52 ms mỗi giây tiếng nói với 2 luồng); (3) nhận giọng kịp trước nhận dạng (~230 ms) chỉ với đoạn ngắn hơn ≈ 4,4 s (86% số đoạn với 2 luồng). `speaker-worker` chạy suốt buổi họp cạnh `asr-worker` + `llama-server` (~3 GB), và ưu tiên số 1 của chủ dự án là không làm chậm dịch và nhả chữ, nên cần cách giảm CPU và RAM. Task này tìm cách và đo xem cách nào đáng làm. Kết quả quyết định cách viết kế hoạch 02 (nghiên cứu, không phải việc đã chốt). Số đo ban đầu của Task 9 cũng cho thấy RSS chạy lâu (1,5 GB) cao hơn một đoạn đơn lẻ (1,1 GB) khoảng 0,4 GB chưa rõ nguyên nhân: tìm hiểu (allocator giữ lại hay tensor chưa giải phóng).
+
+**Files:**
+- Sửa `crates/speaker-worker/src/embed.rs` (thêm `Embedder::embed_windowed`, có test)
+- Sửa `crates/latency-bench/src/speaker_eval.rs`, `crates/latency-bench/src/main.rs` (cờ `--window-s`; lệnh `embed-probe`), tạo `crates/latency-bench/src/embed_probe.rs`
+- Tạo `$B/rss_ort.py` (mốc onnxruntime)
+- Tạo `$B/results/ram.md`
+- Thí nghiệm ngoài repo: `$DATA/ram-probe/` (dự án cargo riêng, bản `candle-onnx` đã vá)
+
+Mọi lệnh đo RSS dùng `/usr/bin/time -l` (macOS, "maximum resident set size", đơn vị byte); lặp ít nhất 2 lần, ghi cả hai số nếu lệch hơn 5%. Mọi lượt đo dùng cùng một đoạn tiếng nói thật (cắt từ `$DATA/ami/IS1009a.Mix-Headset.wav`, bắt đầu ở giây 120, độ dài 2 s, 4 s, 8 s), cùng `RAYON_NUM_THREADS=2`.
+
+- [ ] **Step 1: Lệnh `embed-probe` của `latency-bench`**
+
+Tạo `crates/latency-bench/src/embed_probe.rs`: lệnh `embed-probe --wav <WAV 16 kHz> --speaker-model <onnx> --start-s <giây> --seconds <giây> --repeat <N> [--window-s <giây>]`. Đọc đoạn `[start, start+seconds)` bằng `crate::wavio::read_wav_mono`, nạp `Embedder`, chạy `embed` (hoặc `embed_windowed` khi có `--window-s`) `repeat` lần liên tiếp trên cùng đoạn, in một dòng: `độ dài <s> s, <N> lần; p50 <ms> ms, p90 <ms> ms; cosine so với nhúng cả đoạn: <c>` (cosine chỉ in khi có `--window-s`: so với `embed` cả đoạn). Dùng `crate::stats::percentile`. Đăng ký lệnh trong `main.rs` (mô tả một dòng). Không in đường dẫn cá nhân.
+
+- [ ] **Step 2: Mốc hiện tại (candle-onnx nguyên bản) theo độ dài đoạn**
+
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W && cargo build --release -p latency-bench 2>&1 | tail -1 && for s in 2 4 8; do echo "== $s s"; RAYON_NUM_THREADS=2 /usr/bin/time -l target/release/latency-bench embed-probe --wav $D/ami/IS1009a.Mix-Headset.wav --speaker-model $D/models/eres2net-sv-en-voxceleb-16k.onnx --start-s 120 --seconds $s --repeat 20 2>&1 | grep -E "độ dài|maximum resident"; done`
+Expected: ba cặp dòng; RSS đỉnh xấp xỉ 0,5 / 0,7 / 1,3 GB. Ghi vào `$B/results/ram.md`.
+
+- [ ] **Step 3: Mốc onnxruntime (sàn có thể đạt)**
+
+Tạo `$B/rss_ort.py`: dùng `onnxruntime` (đã có trong venv) với model `$DATA/models/eres2net-sv-en-voxceleb-16k.onnx`, fbank bằng `kaldi_native_fbank` (như `make_fixtures.py`), chạy đoạn 2 s, 4 s, 8 s như Step 2 (`--repeat 20`), in p50 ms và RSS đỉnh (`resource.getrusage(resource.RUSAGE_SELF).ru_maxrss`, byte trên macOS). Chạy mỗi độ dài trong một tiến trình riêng để RSS không cộng dồn. Ghi bảng cạnh Step 2. Đây là mốc cho hướng onnxruntime (crate `ort` còn bản RC, spec chính §6.12; `sherpa-onnx` 2.0.0 đóng gói onnxruntime), không phải đề xuất.
+
+- [ ] **Step 4: Cách A, nhúng theo cửa sổ rồi lấy trung bình**
+
+Viết test trước (TDD) rồi thêm `Embedder::embed_windowed(&self, samples: &[f32], window_samples: usize) -> Result<Vec<f32>>` vào `embed.rs`: chia đoạn thành các cửa sổ `window_samples` mẫu (cửa sổ cuối nếu ngắn hơn `MIN_SAMPLES` thì gộp vào cửa sổ trước), nhúng từng cửa sổ bằng `embed`, chuẩn hóa L2 từng vector rồi lấy trung bình; ngắn hơn một cửa sổ thì như `embed`. Test không cần model dùng `synthetic_embedder` có sẵn trong `embed.rs` (kiểm: số cửa sổ và việc gộp cửa sổ cuối, kết quả bằng trung bình các vector đã chuẩn hóa tự tính, đoạn ngắn hơn một cửa sổ cho đúng `embed`) và một test `#[ignore]` với model thật (cosine so với `embed` cả đoạn, in ra, không đặt ngưỡng ở test này). Thêm cờ `--window-s` cho `speaker-eval` (không có cờ thì như cũ) để đo độ chính xác trên AMI. Rồi đo:
+- RSS và p50 với `embed-probe --window-s 1`, `--window-s 2` cho đoạn 8 s (và cosine so với nhúng cả đoạn);
+- độ chính xác A-spk1 trên 4 bản ghi kiểm với `--window-s 2` (nhúng lại từ WAV bằng `speaker-eval --wav … --window-s 2 --embeddings-out <cache mới>`, rồi `tune.py` hoặc `speaker-eval --embeddings-in … --theta 0.35 --merge-theta 1.1` + `score_spk.py`; đặt cache mới ở `$DATA/out/win2/`, đừng ghi đè cache cũ).
+
+- [ ] **Step 4b: Cách A2, chỉ nhúng tối đa X giây của đoạn dài (giảm cả CPU lẫn RAM, vì cả hai tăng theo độ dài)**
+
+Thêm cờ `--max-embed-s <giây>` cho `speaker-eval` (cắt phần tiếng nói của đoạn còn X giây đầu trước khi nhúng; thời lượng dùng cho phân cụm vẫn là thời lượng thật của đoạn; không có cờ thì như cũ; có test cho phần cắt). Đo A-spk1 trên 4 bản ghi kiểm với X = 2, 3, 4 giây (cache mới ở `$DATA/out/cap<X>/`) và ghi CPU/RAM theo `embed-probe --seconds <X>` (đã có ở Step 2 cho 2 s, 4 s). Nếu đoạn dài nên lấy phần giữa hay phần có năng lượng cao thay vì X giây đầu thì thử thêm một biến thể (nêu rõ cách chọn) và so.
+
+- [ ] **Step 5: Cách B, vá candle-onnx để giải phóng tensor trung gian ngay sau lần dùng cuối**
+
+Thí nghiệm ngoài repo: chép mã nguồn `candle-onnx` 0.11.0 từ `~/.cargo/registry/src/*/candle-onnx-0.11.0` vào `$DATA/ram-probe/candle-onnx-free/` (giữ LICENSE). Trong hàm duyệt đồ thị (`simple_eval_` ở `src/eval.rs`), tính trước với mỗi tên giá trị chỉ số node dùng nó lần cuối (kể cả đầu vào của nút con trong các graph lồng nhau như `If`/`Loop` nếu có: đồ thị ERes2Net không có, chỉ cần đúng cho đồ thị này và nói rõ giới hạn), rồi sau mỗi node `values.remove(...)` các tên đã hết lần dùng (trừ đầu ra của đồ thị và các tensor khởi tạo/trọng số, vì trọng số được dùng lại ở mọi lượt gọi). Dự án thí nghiệm `$DATA/ram-probe/Cargo.toml`: một binary `probe` phụ thuộc `speaker-worker = { path = "<$W>/crates/speaker-worker" }` (đường dẫn viết trong file ngoài repo là được) cùng `[patch.crates-io] candle-onnx = { path = "candle-onnx-free" }`; đặt `CARGO_TARGET_DIR=$W/target` để dùng lại phần đã biên dịch (kiểm đĩa trước và sau, còn ≥ 25 GB). `probe` làm đúng việc của `embed-probe` (đọc WAV đoạn, nhúng lặp, in p50 và cosine so với kết quả của candle-onnx nguyên bản trên cùng đoạn: phải ≥ 0,99999). Đo RSS và p50 cho 2 s, 4 s, 8 s; thử cả B + A (cửa sổ 2 s).
+
+- [ ] **Step 6: Ghi `$B/results/ram.md` và khuyến nghị**
+
+Bảng: cách (nguyên bản / onnxruntime / A cửa sổ 1 s, 2 s / A2 cắt X giây / B / B+A / B+A2) × độ dài đoạn (2 s, 4 s, 8 s): RSS đỉnh (MB), p50 và p90 (ms), cosine so với nhúng nguyên bản; độ chính xác A-spk1 (bảng như `nhan-giong-ami.md`) cho cách có đổi kết quả (A, A2); điều kiện đo (máy, nguồn điện, bản build, SHA model). Rồi khuyến nghị cho kế hoạch 02, nêu rõ đánh đổi của từng cách: RAM đạt được so với ngân sách ≤ 150 MB (nếu không cách nào đạt thì nói thẳng và đề xuất mức ngân sách thực tế), độ chính xác, tốc độ, độ phức tạp bảo trì (vá thư viện bên thứ ba phải có thư mục `third_party/` và README như `third_party/README.md` của whisper; giấy phép MIT/Apache-2.0 của candle-onnx), tương thích spec chính §6.12 (bản ổn định, không hai bản ggml). Không tự đổi ngân sách trong spec; chỉ đề xuất cho Task 15 và chủ dự án. **Chỉ ghi số thật; không bịa.**
+
+- [ ] **Step 6b: Sửa chú thích số đo ở đầu `embed.rs`**
+
+Chú thích đầu `crates/speaker-worker/src/embed.rs` ghi RSS 2 s ≈ 0,5 GB và 8 s ≈ 1,3 GB (đo bằng tín hiệu tổng hợp); Task 9 đo bằng tiếng nói thật cho 1,9 s ≈ 342 MB, 3,7 s ≈ 580 MB, 7,9 s ≈ 1,1 GB. Sửa chú thích theo số đo thật và dẫn `bench/2026-10-26-nguoi-noi/results/ram.md`, `toc-do.md`.
+
+- [ ] **Step 7: Kiểm cuối**
+
+Run: `cd $W && cargo test -p speaker-worker -p latency-bench 2>&1 | tail -6 && cargo clippy -p speaker-worker -p latency-bench --all-targets -- -D warnings 2>&1 | tail -2 && cargo fmt --check -p speaker-worker -p latency-bench && echo FMT_OK`
+Expected: test đạt (có test mới của `embed_windowed`), clippy và fmt sạch. Dọn: không file thí nghiệm nào trong repo ngoài các file đã liệt kê; `$DATA/ram-probe/` ở ngoài repo.
 
 ---
 
@@ -1871,19 +1935,19 @@ Thêm vào `.gitignore` (dưới dòng của Task 11): `/bench/2026-10-26-nguoi-
 
 Teams vừa mở lại (chưa bị đặt `AXEnhancedUserInterface`). Chạy cùng lúc lấy mẫu CPU và kịch bản nói (khách tắt mic lúc bắt đầu):
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi && D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && ($D/venv/bin/python -I cpu_sample.py 95 $D/out/teams-A.csv MSTeams "Teams WebView" &) && cd truoc-spec/doc-ten && $D/venv/bin/python -I run_schedule.py com.microsoft.teams2 teams-A 'sel:#mic-button[aria-label="Unmute mic"]||#mic-button[aria-label="Mute mic"]' 1.0`
+Run: `cd $W/bench/2026-10-26-nguoi-noi && D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && ($D/venv/bin/python -I cpu_sample.py 95 $D/out/teams-A.csv MSTeams "Teams WebView" &) && cd truoc-spec/doc-ten && $D/venv/bin/python -I run_schedule.py com.microsoft.teams2 teams-A 'sel:#mic-button[aria-label="Unmute mic"]||#mic-button[aria-label="Mute mic"]' 1.0`
 Expected: `xong teams-A: 90 s, 26 lần bật/tắt`. (`run_schedule.py` vẫn chạy `axtrace watch` nhịp 1 s nhưng không đặt `AXTRACE_EUI`, nên cây web của Teams không được dựng; lượt này chỉ dùng số CPU.)
 
 - [ ] **Step 5: Teams, lượt B (bật trợ năng, đọc 4 lần mỗi giây, bảng People mở)**
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi && D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && AXTRACE_EUI=1 truoc-spec/doc-ten/axtrace find com.microsoft.teams2 "^People$" && ($D/venv/bin/python -I cpu_sample.py 95 $D/out/teams-B.csv MSTeams "Teams WebView" &) && cd truoc-spec/doc-ten && AXTRACE_WIN="^Meeting" $D/venv/bin/python -I run_schedule.py com.microsoft.teams2 teams-B 'sel:#mic-button[aria-label="Unmute mic"]||#mic-button[aria-label="Mute mic"]' 0.25`
+Run: `cd $W/bench/2026-10-26-nguoi-noi && D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && AXTRACE_EUI=1 truoc-spec/doc-ten/axtrace find com.microsoft.teams2 "^People$" && ($D/venv/bin/python -I cpu_sample.py 95 $D/out/teams-B.csv MSTeams "Teams WebView" &) && cd truoc-spec/doc-ten && AXTRACE_WIN="^Meeting" $D/venv/bin/python -I run_schedule.py com.microsoft.teams2 teams-B 'sel:#mic-button[aria-label="Unmute mic"]||#mic-button[aria-label="Mute mic"]' 0.25`
 Expected: `xong teams-B`. Mở bảng People trước lượt này (bấm "People" trong cửa sổ họp). `axtrace` phải được build trước: `cd $B/truoc-spec/doc-ten && swiftc -O -o axtrace axtrace.swift`.
 
 - [ ] **Step 6: Teams, lượt C (bật trợ năng, bảng People đóng): tìm chỉ báo ở ô video**
 
 Đóng bảng People, chạy lại như Step 5 với tag `teams-C` (không cần `cpu_sample`), rồi dò:
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi && D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && $D/venv/bin/python -I find_indicators.py truoc-spec/doc-ten/out/teams-C-watch.jsonl truoc-spec/doc-ten/out/teams-C-truth.json`
+Run: `cd $W/bench/2026-10-26-nguoi-noi && D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && $D/venv/bin/python -I find_indicators.py truoc-spec/doc-ten/out/teams-C-watch.jsonl truoc-spec/doc-ten/out/teams-C-truth.json`
 Expected: danh sách dòng tương quan cao nhất cho Lan và Minh. Điều cần biết: có dòng nào (không phải nhãn mic "Muted/Unmuted") tương quan ≥ 0,6 với lúc nói không. Ghi vai trò, id, lớp CSS và vị trí so với chữ tên của dòng đó; không ghi tên người.
 
 - [ ] **Step 7: Trả Teams về như cũ**
@@ -1895,13 +1959,13 @@ Expected: in hai mã (Teams có thể không cho đặt lại; ghi lại). Chủ
 
 Trình duyệt vừa khởi động lại. Lượt A: lấy mẫu 95 s trong lúc cửa sổ thứ hai phát giọng đọc máy (dùng `$B/truoc-spec/doc-ten/say_run.py` hay `say` lặp), không đọc cây. Lượt B: đặt trợ năng và đọc cây cửa sổ Meet 4 lần mỗi giây trong 95 s, cùng phát giọng đọc:
 
-Run (A): `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python -I cpu_sample.py 95 $D/out/chrome-A.csv "Google Chrome"`
-Run (B): `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && P=$(pgrep -f "^/Applications/Google Chrome.app/Contents/MacOS/Google Chrome$" | head -1) && (AXTRACE_PID=$P AXTRACE_WIN="^Meet" timeout 95 truoc-spec/doc-ten/axtrace watch com.google.Chrome $D/out/chrome-B-watch.jsonl 0.25 &) && $D/venv/bin/python -I cpu_sample.py 95 $D/out/chrome-B.csv "Google Chrome"`
+Run (A): `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && $D/venv/bin/python -I cpu_sample.py 95 $D/out/chrome-A.csv "Google Chrome"`
+Run (B): `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && cd $W/bench/2026-10-26-nguoi-noi && P=$(pgrep -f "^/Applications/Google Chrome.app/Contents/MacOS/Google Chrome$" | head -1) && (AXTRACE_PID=$P AXTRACE_WIN="^Meet" timeout 95 truoc-spec/doc-ten/axtrace watch com.google.Chrome $D/out/chrome-B-watch.jsonl 0.25 &) && $D/venv/bin/python -I cpu_sample.py 95 $D/out/chrome-B.csv "Google Chrome"`
 Expected: hai file CSV. `"Google Chrome"` gồm cả tiến trình Helper (Renderer). Không có `timeout` (macOS) thì dùng `gtimeout` hay tự dừng `axtrace` bằng `kill` sau 95 s.
 
 - [ ] **Step 9: Tính và ghi `$B/results/teams-chrome.md`**
 
-Run: `D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && $D/venv/bin/python -c "
+Run: `D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && $D/venv/bin/python -c "
 import csv,statistics as st,sys
 for f in ['teams-A','teams-B','chrome-A','chrome-B']:
     rows=list(csv.DictReader(open('$D/out/'+f+'.csv')))
@@ -2117,13 +2181,13 @@ mod win {
 
 - [ ] **Step 2: Kiểm biên dịch cho Windows và macOS**
 
-Run: `cd $W && cargo check -p speaker-worker --bins --target x86_64-pc-windows-msvc 2>&1 | tail -3 && cargo build -p speaker-worker --bins 2>&1 | tail -1 && target/debug/uia-probe; echo "mã $?"`
+Run: `cd $W && export PKG_CONFIG_x86_64_pc_windows_msvc="$W/scripts/fake-pkg-config" PKG_CONFIG_ALLOW_CROSS=1 RUSTONIG_DYNAMIC_LIBONIG=1 && cargo check -p speaker-worker --bins --target x86_64-pc-windows-msvc 2>&1 | tail -3 && cargo build -p speaker-worker --bins 2>&1 | tail -1 && target/debug/uia-probe; echo "mã $?"`
 Expected: `Finished` hai lần; trên macOS in `uia-probe chỉ chạy trên Windows`, `mã 2`. Lỗi kiểu dữ liệu của crate `windows` thì đối chiếu chữ ký trong `~/.cargo/registry/src/*/windows-0.62.2/src/Windows/Win32/...` và sửa.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd $W && cargo fmt -p speaker-worker && cargo clippy -p speaker-worker --all-targets -- -D warnings && cargo clippy -p speaker-worker --bins --target x86_64-pc-windows-msvc -- -D warnings && git add crates/speaker-worker Cargo.lock && git commit -m "feat(speaker): công cụ thăm dò UI Automation trên Windows"
+cd $W && export PKG_CONFIG_x86_64_pc_windows_msvc="$W/scripts/fake-pkg-config" PKG_CONFIG_ALLOW_CROSS=1 RUSTONIG_DYNAMIC_LIBONIG=1 && cargo fmt -p speaker-worker && cargo clippy -p speaker-worker --all-targets -- -D warnings && cargo clippy -p speaker-worker --bins --target x86_64-pc-windows-msvc -- -D warnings && git add crates/speaker-worker Cargo.lock && git commit -m "feat(speaker): công cụ thăm dò UI Automation trên Windows"
 ```
 
 - [ ] **Step 4: Có binary Windows (cần chủ dự án)**
@@ -2142,9 +2206,10 @@ Chủ dự án chạy trong PowerShell, gửi lại đầu ra:
 ```powershell
 $env:RAYON_NUM_THREADS=1; .\latency-bench.exe speaker-eval --wav IS1009a.Mix-Headset.wav --vad-model silero_vad_v6.2.3.onnx --speaker-model eres2net-sv-en-voxceleb-16k.onnx --out out1.jsonl
 $env:RAYON_NUM_THREADS=2; .\latency-bench.exe speaker-eval --wav IS1009a.Mix-Headset.wav --vad-model silero_vad_v6.2.3.onnx --speaker-model eres2net-sv-en-voxceleb-16k.onnx --out out2.jsonl
+$env:RAYON_NUM_THREADS=2; .\latency-bench.exe speaker-eval --wav IS1009a.Mix-Headset.wav --vad-model silero_vad_v6.2.3.onnx --speaker-model eres2net-sv-en-voxceleb-16k.onnx --max-embed-s 4 --out out2-cap4.jsonl
 ```
 
-Ghi vào `$B/results/toc-do.md` phần Windows: tên CPU, p50/p90, % thời gian nhúng / thời lượng tiếng nói; so với ngân sách ≤ 10% một lõi (spec §11).
+Ghi vào `$B/results/toc-do.md` phần Windows: tên CPU, p50/p90, % thời gian nhúng / thời lượng tiếng nói; so với ngân sách ≤ 10% một lõi (spec §11). Lượt thứ ba (`--max-embed-s 4`, cách A2 của Task 9b, `results/ram.md`) cho CPU và độ trễ của A2 trên i5; ghi cạnh hai lượt đầu. RAM của cách B' (chạy đồ thị từng nút) trên Windows không đo ở đây: B' mới có trong dự án thí nghiệm ngoài repo, chỉ chạy trên macOS; kế hoạch 02 đo sau khi B' được viết trong repo.
 
 - [ ] **Step 6: Teams trên Windows (cần chủ dự án)**
 
@@ -2153,13 +2218,13 @@ Ghi vào `$B/results/toc-do.md` phần Windows: tên CPU, p50/p90, % thời gian
 - Chủ dự án chạy `.\uia-probe.exe list`, gửi dòng của `ms-teams.exe`; rồi `.\uia-probe.exe watch ms-teams.exe "<chữ trong tiêu đề cửa sổ họp>" teams-win.jsonl 0.25` và để chạy.
 - Trên Mac, Claude chạy kịch bản nói của khách mà không ghi cây: `run_schedule.py` với bundle id giả để `axtrace watch` không tìm thấy app (ví dụ `none.app`), tag `teams-win`:
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi/truoc-spec/doc-ten && /Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -I run_schedule.py none.app teams-win 'sel:#mic-button[aria-label="Unmute mic"]||#mic-button[aria-label="Mute mic"]'`
+Run: `cd $W/bench/2026-10-26-nguoi-noi/truoc-spec/doc-ten && $HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi/venv/bin/python -I run_schedule.py none.app teams-win 'sel:#mic-button[aria-label="Unmute mic"]||#mic-button[aria-label="Mute mic"]'`
 Expected: `xong teams-win`; `axtrace` in "app không chạy" (bình thường).
 
 - Lặp lại khi bảng People đóng (tag `teams-win-c`, file `teams-win-c.jsonl`).
 - Chủ dự án dừng `uia-probe` (Ctrl+C), gửi hai file `.jsonl` về; chép vào `$DATA/out/`.
 
-Run: `cd $W/bench/2026-10-26-nguoi-noi && D=/Users/dtphong/Desktop/software_business/meeting-translator-work/data-nguoi-noi && for t in teams-win teams-win-c; do $D/venv/bin/python -I find_indicators.py $D/out/$t.jsonl truoc-spec/doc-ten/out/$t-truth.json; done`
+Run: `cd $W/bench/2026-10-26-nguoi-noi && D=$HOME/Desktop/software_business/meeting-translator-work/data-nguoi-noi && for t in teams-win teams-win-c; do $D/venv/bin/python -I find_indicators.py $D/out/$t.jsonl truoc-spec/doc-ten/out/$t-truth.json; done`
 Expected: dòng tương quan cao nhất cho Lan, Minh ở hai lượt; tên người tham dự có nằm trong `Name` không; thời gian mỗi lượt đọc (`walk_ms`).
 
 - [ ] **Step 7: Meet trên Chrome Windows (cần chủ dự án)**

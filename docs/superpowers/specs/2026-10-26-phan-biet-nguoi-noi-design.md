@@ -1,7 +1,9 @@
 # Phân biệt người nói: tên người đang nói trên phụ đề (thiết kế)
 
 Ngày 2026-10-26. Nhánh `phan-biet-nguoi-noi` (worktree `meeting-translator-work/phan-biet-nguoi-noi`). Trạng thái: chủ dự
-án duyệt thiết kế từng phần ngày 2026-10-26 (mục 1–13); spec viết lại từ các phần đã duyệt.
+án duyệt thiết kế từng phần ngày 2026-10-26 (mục 1–13); spec viết lại từ các phần đã duyệt. Kế hoạch 01 (spike) đã ghi tham số
+chốt vào spec ngày 2026-10-26, phần Windows còn chờ (tổng hợp: `bench/2026-10-26-nguoi-noi/results/tong-hop.md`); chủ dự án
+đã duyệt các chỗ sửa ngày 2026-10-26.
 
 Phạm vi code: crate mới `crates/speaker-worker` và `crates/speaker-protocol`; `crates/pipeline` (gửi đoạn sang nhận giọng,
 luật ghép câu, `Subtitle`); `crates/audio-capture` (cờ nguồn của khung ở bộ trộn); `crates/latency-bench` (lệnh đo người
@@ -109,6 +111,9 @@ Accessibility 4 lần mỗi giây):
 
 - Dò "đang nói" **không dùng tên lớp CSS nào** (chỉ dùng id có nghĩa của Teams và vị trí cạnh chữ tên của Meet): Teams khớp
   sự thật 88% số lần chụp; Meet: ô của người đang nói khớp 74–81%, ô của người im lặng không bị nhận nhầm lần nào.
+- Kế hoạch 01 đo lại (chốt ở kế hoạch 01, `results/teams-chrome.md`): Chrome 156 không nhận `AXManualAccessibility` nữa (không
+  dựng cây web), phải đặt `AXEnhancedUserInterface` như Teams (6.2); ô video của Teams **có** chỉ báo nói khi bảng People đóng
+  (6.4), khác hàng "Tín hiệu" của bảng trên.
 - Khách chưa đăng nhập Google không vào được phòng Meet của tài khoản cá nhân, kể cả không dùng micro giả.
 - Teams cho khách vào bằng trình duyệt không cần tài khoản.
 
@@ -127,17 +132,39 @@ Thu âm ─► Tiền xử lý ─► VAD, cắt câu ──► Nhận dạng (a
 - Crate `crates/speaker-worker`, binary `speaker-worker`. **Không chứa ggml.** Nhận giọng bằng `candle-onnx` (cùng bản với
   `pipeline`). Đọc cây giao diện bằng `ApplicationServices` (macOS, qua `objc2`/FFI như Gõ dịch) và UI Automation
   (Windows, crate `windows` thêm feature `Win32_UI_Accessibility`, `Win32_System_Com`).
+- **Chạy đồ thị từng nút (cách B'):** `candle_onnx::simple_eval` giữ mọi tensor trung gian tới hết lượt, nên RSS chạy lâu lên
+  1,47–1,51 GB. Lúc nạp, worker tách đồ thị ONNX thành các graph con một nút, chuyển trọng số thành tensor một lần; mỗi lần nhúng
+  gọi `candle_onnx::simple_eval` cho từng nút và bỏ mỗi tensor ngay sau lần dùng cuối. Chỉ dùng API công khai, không vá thư viện;
+  nhúng giống hệt từng bit `simple_eval` cả đồ thị (test). B' cùng A2 (5.2): RSS chạy lâu 198–208 MB (chốt ở kế hoạch 01,
+  `results/ram.md`). B' trong repo (`crates/speaker-worker/src/onnx_steps.rs`) giống từng bit `simple_eval` ở 1, 2, 4, 8 s và
+  khớp onnxruntime (cosine ≥ 0,999) với model thật. Trong worker thật, phát theo thời gian thực như app, RSS đỉnh 137–198 MB
+  (soak 92 phút: 141,8 MB, không rò); gửi đoạn liền nhau như cách đo của kế hoạch 01 thì 163–260 MB tùy bản ghi (chốt ở kế
+  hoạch 02, `results/02-tong-hop.md`, `results/02-soak.md`, `results/02-nhan-giong-worker.md`).
 - **Ưu tiên thấp:** macOS `setpriority(PRIO_PROCESS, 0, 10)` và QoS `utility` cho các luồng; Windows
-  `BELOW_NORMAL_PRIORITY_CLASS`. Bộ luồng tính toán giới hạn 2 luồng (`RAYON_NUM_THREADS=2` khi chạy). Lý do có tiến trình
-  riêng: không tranh bộ luồng `rayon` với Silero VAD của tiến trình chính, đặt được ưu tiên thấp cho riêng nó, và app họp
-  treo hay lỗi khi bị đọc thì chỉ tiến trình này chết.
+  `BELOW_NORMAL_PRIORITY_CLASS`. Bộ luồng tính toán giới hạn 2 luồng: app đặt `RAYON_NUM_THREADS=2` trong môi trường lúc chạy
+  worker, không truyền qua giao thức (`candle-core` 0.11 đọc biến này ở mỗi lần nhân ma trận, pool `rayon` toàn cục chỉ đọc một
+  lần lúc tạo). QoS `utility` đặt cho luồng của pool toàn cục bằng `start_handler`; worker không gọi `Device::with_context`, vì
+  pool riêng của `candle-core` tự đặt QoS user-interactive (chốt ở kế hoạch 01, `results/ram.md`). Với 1 luồng chỉ 69% số đoạn
+  nhúng xong trước 230 ms (`results/toc-do.md`). Lý do có tiến trình riêng: không tranh bộ luồng `rayon` với Silero VAD của tiến trình
+  chính, đặt được ưu tiên thấp cho riêng nó, và app họp treo hay lỗi khi bị đọc thì chỉ tiến trình này chết. Đã kiểm trong worker
+  thật: log mọi lượt đo ghi "2 luồng tính toán"; thiếu hay sai biến `RAYON_NUM_THREADS` thì worker vẫn dùng 2 luồng; test
+  `the_worker_lowers_its_priority` (chốt ở kế hoạch 02, `results/02-soak.md`, `results/02-nhan-giong-worker.md`).
 - **Kiểm trước khi chạy** như `asr-worker` (§10.2): SHA-256 theo danh sách build sẵn; ký cùng app; Windows chỉ nạp DLL từ thư
-  mục app và System32 (`SetDefaultDllDirectories`).
-- **Không có mã mạng:** CI kiểm `cargo tree -p speaker-worker` không có `reqwest`, `hyper`, `ureq`, `tokio`, socket.
+  mục app và System32 (`SetDefaultDllDirectories`). Trước mỗi lần chạy app kiểm cả thư mục `binaries/` như `asr-worker` (mọi file
+  trong bảng SHA-256 build sẵn, từ chối thư viện lạ) và SHA-256 của model; worker tự băm đúng các byte model nó đọc và dựng đồ thị
+  từ chính các byte đó (`Load.model_sha256`), nên model bị thay giữa hai lần cũng bị từ chối. Đóng gói như `asr-worker`: binary
+  macOS 2 867 152 byte, `.dmg` ước tính ~10,99 MB và bộ cài Windows ~22,16 MB (giới hạn 60 MB), `minos 14.2`, ký ad-hoc thử đạt;
+  macOS chỉ liên kết `libSystem`, `libiconv`, Windows chỉ nhập DLL hệ thống (chốt ở kế hoạch 02, `results/02-tong-hop.md`,
+  `results/02-windows.md`).
+- **Không có mã mạng:** CI kiểm `cargo tree -p speaker-worker` không có `reqwest`, `hyper`, `ureq`, `tokio`, socket. Làm bằng
+  `scripts/release/check-no-network.sh`, bốn lớp: cây phụ thuộc lúc chạy (macOS arm64 và Windows x64) không có crate mạng, không
+  bật feature `Win32_Networking`, mã nguồn không nhắc API mạng, binary không nhập hàm socket; ba lần thử âm tính đều bị bắt
+  (chốt ở kế hoạch 02, `results/02-tong-hop.md`).
 - **Khởi động:** chạy song song khi bắt đầu phiên nếu tính năng bật; **phiên không chờ nó**. Chưa sẵn sàng thì đoạn gửi tới
   bị bỏ (không nhãn). Dừng khi hết phiên; mọi giọng bị xóa.
 - **Khi lỗi:** khởi động lại sau 1, 2, 5 s như `asr-worker`. Chết 3 lần trong phiên thì tắt tính năng tới hết phiên, ghi log
-  (không có tên), phụ đề chạy bình thường.
+  (không có tên), phụ đề chạy bình thường. Kế hoạch 02 đọc hai câu này là hai lần chạy lại (sau 1 s, 2 s), tắt ở lần chết thứ 3;
+  muốn đủ 1, 2, 5 s thì nâng số lần chết lên 4 (chờ chủ dự án quyết, `results/02-tong-hop.md`).
 
 ### 4.2 Giao thức (`crates/speaker-protocol`)
 
@@ -147,11 +174,13 @@ worker build cùng nhau. Log không bao giờ chứa âm thanh hay tên người
 
 App gửi:
 
-- `Load {model_path, threads, names_enabled, recipe_json}` → `Ready {protocol_version, model_ok, reader_platform}`.
-  `recipe_json` là phần thân công thức đọc **đã được app kiểm chữ ký** (mục 7.1); worker kiểm lại cấu trúc.
+- `Load {model_path, names_enabled, recipe_json}` → `Ready {protocol_version, model_ok, reader_platform}`.
+  `recipe_json` là phần thân công thức đọc **đã được app kiểm chữ ký** (mục 7.1); worker kiểm lại cấu trúc. Số luồng không đi
+  qua giao thức (4.1).
 - `SessionStart {unix_ms}`: giờ hệ thống lúc bắt đầu phiên, mốc chung để so thời gian đoạn với dấu "đang nói".
-- `Segment {segment_id, start_ms, end_ms, source, pcm}`: `pcm` 16 kHz `i16`, chỉ phần tiếng nói `[start_ms, end_ms)` (không
-  đệm), tối đa 8 s; `source` là `System`, `Mic` hay `Mixed` (mục 5.5).
+- `Segment {segment_id, start_ms, end_ms, source, pcm}`: `pcm` 16 kHz `i16`, tối đa 4 s đầu của phần tiếng nói
+  `[start_ms, end_ms)` (không đệm; A2, mục 5.2); thời lượng thật để phân cụm là `end_ms − start_ms` (đoạn tối đa 8 s); `source`
+  là `System`, `Mic` hay `Mixed` (mục 5.5).
 - `Speech {start_ms, end_ms}`: khoảng có tiếng nói của âm thanh máy theo VAD (kể cả đoạn ngắn bị bỏ), cho phần tự hiệu chỉnh.
 - `SetNames {enabled}`, `Shutdown`.
 
@@ -164,11 +193,20 @@ Worker trả:
 - `ReaderState {app, app_version, state, recipe_version, learned}`: trạng thái bộ đọc (mục 7.2), không có tên người.
 - `Error {kind, message}`.
 
+**Phần làm ở kế hoạch 02** (`PROTOCOL_VERSION = 1`; chốt ở kế hoạch 02, `results/02-tong-hop.md`): `Load {model_path, config,
+model_sha256}` → `Ready {protocol_version, model_ok}`; `config` là `SpeakerConfig` lấy từ `speaker_config` của manifest (4.5),
+`model_sha256` để worker tự kiểm các byte model đã đọc (4.1). `SessionStart`, `Segment`, `Shutdown` như trên. Worker trả
+`Assign`, `Voices {voices: [VoiceInfo {voice, speech_ms, mic}]}` (tối đa 64 giọng mỗi khung), `Merged`, `Error {segment_id, kind,
+message}` (`segment_id` để app biết đoạn nào lỗi mà không phải chờ hết giờ). Thời lượng khai báo của đoạn tối đa 30 s
+(`MAX_SEGMENT_MS`, vì bộ cắt câu nhận tới 28 s), `pcm` dài hơn 4 s bị từ chối. **Để kế hoạch 04** (thêm biến thể ở cuối, trường
+mới kèm tăng `PROTOCOL_VERSION`): `names_enabled`, `recipe_json` của `Load`; `reader_platform` của `Ready`; `Speech`, `SetNames`,
+`ReaderState`; `name`, `name_source`, `room_index` của `VoiceInfo`; `participants`.
+
 ### 4.3 Luồng dữ liệu, không bao giờ chờ nhãn
 
-- Khi `Segmenter` chốt một đoạn, luồng VAD vẫn đưa đoạn vào hàng đợi nhận dạng như cũ. Ngay sau đó nó chép phần tiếng nói
-  của đoạn vào **kênh giới hạn 4 đoạn** sang luồng client của `speaker-worker` bằng `try_send`. **Đầy thì bỏ đoạn đó.** Luồng
-  VAD không bao giờ chờ.
+- Khi `Segmenter` chốt một đoạn, luồng VAD vẫn đưa đoạn vào hàng đợi nhận dạng như cũ. Ngay sau đó nó chép tối đa 4 s đầu
+  phần tiếng nói của đoạn (4.2) vào **kênh giới hạn 4 đoạn** sang luồng client của `speaker-worker` bằng `try_send`. **Đầy
+  thì bỏ đoạn đó.** Luồng VAD không bao giờ chờ.
 - Luồng client ghi khung xuống stdin của worker; một luồng đọc nhận `Assign`, `Voices`, `Merged` và chuyển cho luồng phụ đề
   qua kênh.
 - Luồng phụ đề (nơi duy nhất phát sự kiện phụ đề, §7 spec chính):
@@ -181,8 +219,19 @@ Worker trả:
 
 - `OpenSentence` nhớ giọng của từng đoạn (`Option<u32>`). `accepts` thêm điều kiện: **hai đoạn đều đã biết giọng và khác
   giọng thì không ghép.** Giọng của một đoạn là `Assign` đã nhận tới lúc kết quả nhận dạng của đoạn đó về; chưa có thì `None`
-  và luật cũ áp dụng. Trên M4 Pro nhận giọng (~100 ms) thường xong trước nhận dạng (~230 ms).
-- Hàng đợi dịch gộp câu khi đầy (§7 spec chính): không gộp hai câu đã biết khác giọng.
+  và luật cũ áp dụng. Trên M4 Pro, với B' + A2 4 s, nhúng p50 ~90 ms và 452/452 lần xong ≤ 230 ms, mốc nhận dạng của spec (một
+  bản ghi AMI, worker chạy một mình; chốt ở kế hoạch 01, `results/ram.md`). Khi chạy cùng `asr-worker`, `llama-server` (12 lượt,
+  954 đoạn): khứ hồi của nhãn p50 81–152 ms, p90 202–227 ms, 97,6% số đoạn xong ≤ 230 ms, 99,6% nhãn tới trước kết quả nhận dạng;
+  soak 92 phút: 96,6% và 99,7% (chốt ở kế hoạch 02, `results/02-do-tre.md`, `results/02-soak.md`). Nhãn vẫn có lúc đến muộn,
+  nên luật phải đúng cả khi nhãn đến muộn.
+- Hàng đợi dịch gộp câu khi đầy (§7 spec chính) theo **hai lượt**: lượt 1 gộp các dãy câu liên tiếp không lẫn hai giọng đã biết
+  khác nhau; nếu sau lượt 1 hàng còn **nhiều câu hơn số câu mà cách gộp lúc tắt tính năng để lại** thì lượt 2 gộp như khi tắt, kể
+  cả câu khác giọng. Câu gộp từ hai giọng đã biết khác nhau **không mang nhãn** (nhãn tới muộn cũng không gắn lại). Nhờ đó hàng
+  đợi dịch không bao giờ dài hơn, câu không chờ lâu hơn và không thêm câu `Skip` so với khi tắt tính năng (ưu tiên 1, tốc độ, hơn
+  ưu tiên 2, đúng tên). Hệ quả: "không gộp hai câu đã biết khác giọng" chỉ còn đúng khi dịch kịp, hoặc khi dãy câu gộp được chỉ có
+  một giọng. Đo trên M4 Pro: dịch kịp thì không gộp gì; dịch quá tải (mỗi lần dịch chờ thêm 2000 và 3000 ms) thì bật y hệt tắt
+  (hàng dài nhất 3, câu chờ lâu nhất 5,4 s và 8,9 s, 0 câu `Skip`), ở 3000 ms mỗi lượt bật có 1 nhóm gộp khác giọng và câu đó không
+  nhãn (chốt ở kế hoạch 02, `results/02-do-tre.md`; test và mô phỏng: quyết định 12 của kế hoạch 02).
 - Hàng đợi đoạn âm thanh gộp đoạn khi đầy (§7): giữ nguyên; đoạn gộp lấy giọng chiếm nhiều thời lượng hơn.
 - Dòng đang nói (chế độ dịch trong lúc nói): mang giọng của câu đang mở (`extends`) nếu có; lượt nói mới chưa có nhãn cho tới
   khi đoạn đóng và có `Assign`.
@@ -192,7 +241,9 @@ Worker trả:
 - File ONNX của ERes2Net VoxCeleb đã qua `onnxsim` (26 MB) cùng LICENSE, NOTICE của 3D-Speaker, host trên R2 như model khác.
 - Manifest model thêm **khóa mới ở gốc phần thân** `speaker` (một mục file: `id`, `version`, `file`, `url`, `bytes`, `sha256`,
   `license_id`, `min_app_version`). **Không** thêm loại `kind` mới vào danh sách `files`, vì app ≤ 0.3.1 sẽ lỗi khi đọc giá trị
-  enum lạ; khóa lạ ở gốc thì app cũ bỏ qua (spike kiểm lại trên 0.3.1).
+  enum lạ; khóa lạ ở gốc thì app cũ bỏ qua. Đã kiểm trên 0.3.1 (chốt ở kế hoạch 01, test
+  `a_speaker_entry_at_the_root_does_not_break_this_app` và `an_unknown_kind_in_files_breaks_this_app` của
+  `src-tauri/src/models/manifest.rs`; `results/tong-hop.md`).
 - Tải cùng gói model đang dùng (mọi gói), kiểm SHA-256, lưu cạnh model khác. Chưa có file thì tính năng tắt lặng lẽ, Cài đặt
   ghi "đang tải".
 - Các ngưỡng ở mục 5 nằm trong `SpeakerConfig`, đổi được qua khóa `speaker_config` của manifest (sai thì giữ mặc định), như
@@ -202,10 +253,11 @@ Worker trả:
 
 ### 5.1 Model và đặc trưng
 
-- ERes2Net VoxCeleb (3D-Speaker, Apache-2.0), nhúng 192 chiều, chạy bằng `candle-onnx`.
+- ERes2Net VoxCeleb (3D-Speaker, Apache-2.0), nhúng 192 chiều, chạy bằng `candle-onnx` (từng nút, 4.1).
 - Đặc trưng: fbank kiểu Kaldi 80 dải, khung 25 ms, bước 10 ms, cửa sổ povey, không dither, trừ trung bình theo thời gian
   (`feature_normalize_type: global-mean`), mẫu trong khoảng [-1, 1]. Viết bằng Rust (`realfft`); test so với
-  `kaldi-native-fbank` trên các clip mẫu, sai lệch ≤ 1e-3, và nhúng cuối cùng cosine ≥ 0,999 so với onnxruntime.
+  `kaldi-native-fbank` trên các clip mẫu, sai lệch ≤ 1e-3, và nhúng cuối cùng cosine ≥ 0,999 so với onnxruntime (kế hoạch 01:
+  cả hai đạt, fbank lệch lớn nhất ≈ 2,3e-4); nhúng từng nút giống hệt từng bit `simple_eval` cả đồ thị.
 
 ### 5.2 Theo độ dài đoạn
 
@@ -215,18 +267,37 @@ Worker trả:
 | 0,5–1,5 s | Tính nhúng; chỉ được chọn một giọng đã có khi độ giống ≥ θ; không mở giọng mới; không giống ai thì lấy giọng trước |
 | ≥ 1,5 s | Giống một giọng ≥ θ thì vào giọng đó; không thì mở giọng mới |
 
+**Chỉ nhúng tối đa 4 s đầu** của phần tiếng nói mỗi đoạn (cách A2, hằng `MAX_EMBED_SAMPLES`); thời lượng dùng cho phân cụm (bảng
+trên, trọng số của tâm, gộp) vẫn là thời lượng thật của đoạn. CPU và RAM của nhúng tăng tuyến tính theo độ dài đoạn. Trên AMI, A2
+4 s giữ độ chính xác trong sai số (trung bình −0,2 điểm), hạ CPU từ 8,3% xuống 7,3% một lõi và cho mọi lần nhúng xong ≤ 230 ms
+(một bản ghi); A2 3 s tụt nhẹ, 2 s tụt rõ (chốt ở kế hoạch 01, `results/ram.md`).
+
 ### 5.3 Phân cụm trực tuyến
 
 - Mỗi giọng có tâm là tổng nhúng đã chuẩn hóa, nhân theo thời lượng; chỉ đoạn ≥ 1,0 s mới cập nhật tâm.
-- Độ giống là cosine với tâm đã chuẩn hóa. Mặc định θ = 0,40 (chọn trên dev AMI), tối đa 8 giọng mỗi phiên; giọng thứ 9 thì
-  vào giọng gần nhất.
+- Độ giống là cosine với tâm đã chuẩn hóa. Mặc định **θ = 0,35** (chọn trên dev AMI, dev tiếng Việt cũng ra 0,35; chốt ở kế
+  hoạch 01, `results/nhan-giong-ami.md`, `results/nhan-giong-tieng-viet.md`), tối đa 8 giọng mỗi phiên; giọng thứ 9 thì vào giọng
+  gần nhất. θ = 0,40 tách một người thành nhiều giọng hơn (tiếng Việt trung bình 87,4% so với 93,9%) và làm A-spk1 thiếu 2 đoạn ở
+  EN2002a; θ ≤ 0,30 gộp người trên dữ liệu tiếng Việt.
 - Mã giọng tăng dần từ 1 trong phiên; "Người N" lấy N theo thứ tự xuất hiện.
 - Kết quả tất định với cùng chuỗi đoạn (test).
+- **Đã duyệt 2026-10-26 (chủ dự án), làm ở kế hoạch 04; chưa có số đo, ngưỡng và cách tách phải chốt bằng số đo ở kế hoạch 04** (đề xuất của kế hoạch 01): dùng tên thật để phát hiện và tách giọng bị gộp. Lỗi chính
+  đo được là hai người giống giọng bị gộp một cụm, và phân cụm trực tuyến không tự tách lại (mục 14). Khi bộ đọc tên chạy (6.6), một
+  giọng liên tục trùng với hai tên khác nhau (mỗi tên một phần đáng kể thời gian trùng, xen kẽ theo thời gian) là dấu hiệu đã gộp;
+  worker tách: mở giọng mới cho tên thứ hai, dựng tâm từ các đoạn trùng tên đó (cần giữ nhúng của các đoạn gần đây trong RAM của
+  phiên, xóa như 5.6). Lợi: sửa đúng lỗi đo được, chỉ chạy khi có tên thật, không tốn gì khi không có. Rủi ro: dấu "đang nói" trễ
+  0,4–1,3 s tùy app và nói chồng có thể làm tách nhầm (trái ưu tiên 2); không giúp giọng trong phòng hay máy chung phòng. Hiện nay
+  luật 6.6 (một tên ≥ 60%) không gán tên nào cho giọng gộp, nên không sai tên nhưng mất tên. Ngưỡng và cách tách chốt ở
+  kế hoạch 04 bằng dòng thời gian giả và bản ghi cây; không đạt thì giữ như hiện nay (không gán tên cho giọng gộp).
 
 ### 5.4 Gộp giọng
 
-- **Tự gộp** khi hai tâm có độ giống ≥ 0,70 và cả hai đã có ≥ 10 s tiếng nói; giọng ít thời lượng hơn gộp vào giọng nhiều hơn,
-  worker gửi `Merged`. Ngưỡng chỉnh trong spike trên AMI và dữ liệu tiếng Việt.
+- **Tự gộp: mặc định tắt** (`merge_theta` = 1,10; lớn hơn 1 là không bao giờ gộp; chốt ở kế hoạch 01,
+  `results/nhan-giong-ami.md`, `results/nhan-giong-tieng-viet.md`). Mã giữ luật và bật lại được qua `speaker_config`: hai tâm có
+  độ giống ≥ `merge_theta` và cả hai đã có ≥ `merge_min_ms` (10 s, không chỉnh vì luật tắt) tiếng nói thì giọng ít thời lượng hơn
+  gộp vào giọng nhiều hơn, worker gửi `Merged`. Lý do tắt: ở 0,70 luật không kích hoạt lần nào trên 6 bản ghi AMI (θ 0,35 và
+  0,40); trên dev tiếng Việt mọi mức 0,70–1,10 cho cùng kết quả; hạ xuống 0,50 làm EN2002a kém đi; và lỗi chính đo được là gộp
+  nhầm hai người (mục 14).
 - **Gộp tay** từ cửa sổ chính (mục 8.2): chỉ đổi cách hiện ở app (giọng A hiện như giọng B), không gửi lại worker.
 
 ### 5.5 Có micro
@@ -260,16 +331,27 @@ Danh sách app **viết cứng trong app** (công thức đọc chỉ được t
 
 ### 6.2 Đọc cây
 
-- **macOS:** `AXUIElementCreateApplication(pid)`, `AXUIElementSetMessagingTimeout` 0,2 s. Teams: đặt
+- **macOS:** `AXUIElementCreateApplication(pid)`, `AXUIElementSetMessagingTimeout` 0,2 s. Teams, Chrome, Edge: đặt
   `AXEnhancedUserInterface = true` khi gặp cửa sổ họp, đặt lại `false` khi dừng phiên; có dấu trong thư mục dữ liệu để lần mở
-  app sau trả lại nếu app thoát đột ngột. Chrome, Edge: đặt `AXManualAccessibility = true` khi gặp cửa sổ Meet (trình duyệt
-  không cho đặt lại; còn bật tới khi khởi động lại trình duyệt).
+  app sau trả lại nếu app thoát đột ngột. Chrome 156 không nhận `AXManualAccessibility` (mã -25205, không dựng cây web); với
+  `AXEnhancedUserInterface` cây web dựng sau ~2 s lần đầu và Chrome gỡ cây khi đặt lại `false`; Teams thì giữ cây tới khi Teams
+  khởi động lại (chốt ở kế hoạch 01, `results/teams-chrome.md`; Edge chưa kiểm).
 - **Windows:** `IUIAutomation::ElementFromHandle` trên cửa sổ họp, `CacheRequest` lấy `Name`, `ControlType`, `AutomationId`,
-  `ClassName`, duyệt bằng `TreeWalker`. Không cần đặt thuộc tính nào.
-- **Giới hạn mỗi lượt:** ≤ 3 000 phần tử, ≤ 30 ms; vượt thì dừng lượt đó, lượt sau đọc tiếp. Nhịp: 4 lần mỗi giây khi có tiếng
-  nói (theo `Speech`), 1 lần mỗi giây khi im.
-- Tiến trình con hưởng quyền Trợ năng của app chính trên macOS (tiến trình chịu trách nhiệm là app); spike kiểm trên bản ký
-  ad-hoc. Không thì phương án dự phòng là chạy phần đọc trong tiến trình chính ở luồng riêng (mục 14).
+  `ClassName`, duyệt bằng `TreeWalker`. Không cần đặt thuộc tính nào. Tên và chỉ báo đọc được tới đâu: chờ Task 13 của kế
+  hoạch 01.
+- **Cách đọc:** đọc cả cửa sổ họp bằng bộ đọc thử của kế hoạch 01 (mọi nút, 9 thuộc tính, mỗi thuộc tính một lần gọi) mất 46–65 ms
+  mỗi lượt với Teams (133–184 nút) và 92–121 ms với hai cửa sổ Meet (390 nút), vượt 30 ms (chốt ở kế hoạch 01,
+  `results/teams-chrome.md`). Vì vậy bộ đọc tìm ô và neo cạnh chữ tên bằng một lượt đầy đủ mỗi vài giây (hoặc khi cây đổi cấu
+  trúc), còn ở nhịp nhanh chỉ đọc các phần tử chỉ báo đã biết, gom thuộc tính bằng `AXUIElementCopyMultipleAttributeValues`. Đây
+  là hướng, chưa phải số đo: phải đo lại bằng bộ đọc thật (kế hoạch 04).
+- **Giới hạn mỗi lượt:** ≤ 3 000 phần tử, ≤ 30 ms; vượt thì dừng lượt đó, lượt sau đọc tiếp. **Nhịp:** mặc định 1 lần mỗi giây;
+  4 lần mỗi giây chỉ khi có tiếng nói (theo `Speech`) và đang cần gán tên (có giọng chưa có tên hay chưa đủ bằng chứng; kế hoạch
+  04 định cụ thể) (6.8).
+- **Quyền Trợ năng:** tiến trình con hưởng quyền Trợ năng của app chính trên macOS. Đã kiểm trên app thử ký ad-hoc kèm hardened
+  runtime: khi app cha có quyền, tiến trình con trong gói đọc được cây (chốt ở kế hoạch 01, `results/quyen-tro-nang.md`); phần
+  đọc tên ở lại trong `speaker-worker`. Quyền mất, cả ở app lẫn tiến trình con, khi cdhash đổi, tức sau mỗi bản cập nhật ký
+  ad-hoc: dùng chung nút `tccutil reset` và dòng mời đã có (6.7, có từ bản 0.1.14), không tạo luồng riêng. Thử lại một lần với binary
+  `speaker-worker` thật khi có bộ đọc tên (kế hoạch 04); kế hoạch 02 chưa có bộ đọc tên nên chưa có gì để thử.
 
 ### 6.3 Thứ lấy ra
 
@@ -281,14 +363,24 @@ ra khỏi hàm đọc: không chat, không nội dung cửa sổ khác, không �
 
 1. **Chữ rõ ràng:** mẫu chữ trong nhãn của ô video (Zoom: "active speaker", "đang nói" theo ngôn ngữ giao diện).
 2. **Hành vi:** phần tử neo cạnh tên (theo công thức: cùng ô, cách chữ tên ≤ k nút) đổi trạng thái nhiều lần trong 1 s, hoặc
-   khác trạng thái thường gặp nhất của chính nó (Teams: phần tử id `roster-avatar-img-*`; Meet: nhóm có lớp CSS ngay trước chữ
-   tên). Không cần biết tên lớp CSS.
+   khác trạng thái thường gặp nhất của chính nó, hoặc chỉ có mặt khi nói (Teams: phần tử con không tên trong ô video, xem dưới;
+   bảng People `roster-avatar-img-*` khi đang mở; Meet: nhóm có lớp CSS ngay trước chữ tên). Không cần biết tên lớp CSS.
 3. **Bật/tắt mic:** nhãn trợ năng "muted/unmuted" theo ngôn ngữ; chỉ dùng khi đúng một người ở xa đang mở mic.
 4. **Tự hiệu chỉnh** (mục 6.5) khi ba tín hiệu trên không tìm thấy hoặc ngừng khớp.
 
-Riêng Teams: ô video chỉ cho biết bật/tắt mic, chỉ báo nói đo được nằm ở bảng People. Spike tìm thêm chỉ báo ở ô video khi
-bảng People đóng; không thấy thì Teams dùng bảng People khi mở, tín hiệu 3 và 6.5 khi đóng, và Cài đặt ghi mẹo "mở bảng
-Người tham gia trong Teams để tên chính xác hơn". App không tự bấm gì trong Teams.
+Riêng Teams (chốt ở kế hoạch 01, `results/teams-chrome.md`): khi bảng People đóng, ô video **có** chỉ báo nói, không phải nhãn
+mic: một phần tử con không tên trong ô (ô là `AXMenuItem` có mô tả bắt đầu bằng tên), chỉ có mặt khi người đó nói (như khung viền
+sáng quanh ô). Đo trên Mac: khớp sự thật 95–97% khi bảng People đóng (95–99% ở mọi lượt, dời 0,6 s), hiện sau nhãn mic 0,2–0,65 s
+(Teams phải nghe thấy tiếng), nói chồng thì cả hai ô có, ô có mic tắt không lần nào có. Vì vậy tín hiệu 2 của Teams dùng neo là
+ô video; bảng People là tín hiệu bổ sung khi đang mở; không cần mẹo "mở bảng Người tham gia". Chưa thử: mic mở mà im lặng, họp
+đông hơn số ô hiển thị (người không có ô), có video, tài khoản công việc; kế hoạch 04 thử trước khi dựa hẳn vào nó. App không
+tự bấm gì trong Teams.
+
+Meet (kế hoạch 01, cùng bản ghi): chỉ ô trong cửa sổ của chính người nói đổi (nhóm ngay trước chữ tên, khớp 69–80%); ô của người
+nói trong cửa sổ chủ phòng không đổi lần nào, chưa giải thích được (khác nghiên cứu trước spec). Đây là hạn chế đã biết; kế hoạch
+04 tìm hiểu, tự hiệu chỉnh (6.5) là đường lùi.
+
+Windows (Teams, Meet): chờ Task 13 của kế hoạch 01.
 
 ### 6.5 Tự hiệu chỉnh
 
@@ -303,6 +395,10 @@ Người tham gia trong Teams để tên chính xác hơn". App không tự bấ
 
 - Với mỗi giọng, cộng dồn thời gian trùng giữa các đoạn của giọng đó và khoảng "đang nói" của từng người tham dự, sau khi dời
   mốc theo độ trễ của app (công thức; mặc định 0,6 s).
+- Độ trễ của dấu "đang nói" so với lúc bắt đầu nói (trung vị, gồm nhịp đọc 0,25 s) đo được trên macOS: Zoom 0,44 s (xem Speaker),
+  0,56 s (Gallery); Teams bảng People ~0,75 s; Meet ~0,5–1,2 s (nghiên cứu trước spec, mục 3); Teams ô video 0,76–1,28 s sau lúc
+  bật mic, sau nhãn mic 0,2–0,65 s, khớp 95–97% khi dời 0,6 s (chốt ở kế hoạch 01, `results/teams-chrome.md`). Công thức build
+  sẵn đặt độ trễ theo app từ các số này; kế hoạch 04 chốt lại bằng bộ đọc thật. Windows: chờ Task 13 của kế hoạch 01.
 - **Gán tên khi đủ cả ba:** một tên chiếm ≥ 60% thời gian trùng của giọng, có ≥ 3 s bằng chứng, từ ≥ 2 đoạn. Mỗi tên một giọng
   (ghép cặp Hungarian theo thời gian trùng).
 - **Một tên khớp nhiều giọng** (máy chung phòng họp): giữ tên kèm số, "Phòng A · giọng 1", "Phòng A · giọng 2" theo thứ tự nói.
@@ -314,17 +410,29 @@ Người tham gia trong Teams để tên chính xác hơn". App không tự bấ
 ### 6.7 Quyền Trợ năng (macOS)
 
 - Dùng lại luồng của Gõ dịch: kiểm `AXIsProcessTrusted`, mở System Settings, nút `tccutil reset Accessibility` khi quyền cũ sau
-  cập nhật.
+  cập nhật. `speaker-worker` dùng quyền của app và mất quyền cùng app sau mỗi bản cập nhật (6.2), nên không có luồng xin quyền
+  riêng.
 - **Dòng mời trên thanh phụ đề** hiện khi đủ: đang dịch, worker thấy cửa sổ họp của app trong danh sách, chưa có quyền, công tắc
   "Lấy tên" bật, thanh chưa khóa. Nút "Mở Cài đặt" và ✕ (ẩn tới hết phiên). Thanh đã khóa thì không hiện (click đi xuyên).
 - Cài đặt › Phụ đề › Người nói hiện trạng thái quyền và nút cấp quyền. Windows không có dòng này.
 
 ### 6.8 Tác động lên app khác
 
-- Teams: `AXEnhancedUserInterface` chỉ bật trong phiên dịch có cửa sổ họp Teams. Spike đo CPU của Teams và hiệu ứng cửa sổ;
-  ảnh hưởng rõ thì chỉ bật quanh mỗi lượt đọc.
-- Chrome, Edge: `AXManualAccessibility` còn bật tới khi khởi động lại trình duyệt. Spike đo CPU, RAM của trình duyệt khi bật. Nói
-  rõ trong chính sách quyền riêng tư và trang hỗ trợ.
+Chốt ở kế hoạch 01, `results/teams-chrome.md` (macOS, Teams và Chrome; Edge chưa kiểm):
+
+- **Bật trợ năng suốt phiên** có cửa sổ họp (`AXEnhancedUserInterface`, 6.2), đặt lại `false` khi dừng phiên. Bật mà không đọc thì
+  không tốn gì đo được (số lệnh, năng lượng, RAM) ở cả Teams và Chrome. Teams không gỡ cây khi đặt lại `false` (cây còn tới khi
+  Teams khởi động lại), nên bật quanh lượt đọc không có tác dụng; Chrome gỡ cây nhưng dựng lại mất 0,25–2 s, quá chậm cho nhịp
+  0,25–1 s. Tác dụng phụ đã biết của `AXEnhancedUserInterface` với cửa sổ (hiệu ứng, kéo cửa sổ) chưa kiểm có chủ đích; kế hoạch
+  04 kiểm.
+- **Chi phí nằm ở số lần đọc nhân với số phần tử đọc mỗi lần.** Đọc cả cửa sổ 4 lần mỗi giây bằng bộ đọc thử: Teams thêm ~0,45 W
+  (số lệnh gấp 2,5), Chrome hai cửa sổ Meet thêm ~1,26 W (số lệnh gấp 2,7; luồng chính của trình duyệt 27% một lõi); 1 lần mỗi
+  giây: 0,09–0,26 W. Vì vậy nhịp mặc định 1 lần mỗi giây, 4 lần mỗi giây chỉ khi có tiếng và đang cần gán tên, và ở nhịp nhanh
+  chỉ đọc các phần tử chỉ báo (6.2).
+- Chính sách quyền riêng tư và trang hỗ trợ nói đúng việc này: với trình duyệt, trợ năng chỉ bật trong lúc dịch có cửa sổ Meet;
+  với Teams, đã bật thì còn bật tới khi Teams khởi động lại (không tốn gì khi không ai đọc).
+- Đo tải (mục 11, A-spk5) dùng số lệnh và năng lượng của tiến trình, không dùng %CPU: khi đọc, chip lên xung nên %CPU của Teams và
+  Chrome lại giảm (Chrome 1,3 → 2,9 GHz).
 - Không bấm, không gõ, không đổi gì khác trong app họp.
 
 ## 7. Chống vỡ và vận hành
@@ -442,7 +550,7 @@ Mẫu đã duyệt (dựng trên giao diện thật bằng `scripts/ui-preview`)
 
 - Chính sách quyền riêng tư lên phiên bản mới (vi, en): app tạm thời phân tích đặc điểm giọng ngay trên máy để phân biệt người
   nói, không để xác định danh tính, không lưu, không gửi đi; app đọc tên người tham dự hiển thị trên cửa sổ cuộc họp để gắn nhãn;
-  tên chỉ lưu khi người dùng bật Lưu lịch sử; nói về chế độ trợ năng của trình duyệt (6.8). EULA không đổi trừ khi rà soát thấy cần.
+  tên chỉ lưu khi người dùng bật Lưu lịch sử; nói về chế độ trợ năng của trình duyệt và Teams (6.8). EULA không đổi trừ khi rà soát thấy cần.
 - Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 (hiệu lực 01/01/2026) và Nghị định 356/2025: dữ liệu sinh trắc học dùng để xác định
   người là dữ liệu nhạy cảm. Thiết kế không lưu, không gửi, không xác định danh tính; **chủ dự án hỏi luật sư trước khi phát
   hành.**
@@ -452,11 +560,31 @@ Mẫu đã duyệt (dựng trên giao diện thật bằng `scripts/ui-preview`)
 ## 11. Hiệu năng
 
 - **Độ trễ (ưu tiên số 1):** đo xen kẽ bật/tắt tính năng như nghiệm thu A2 của nguồn micro (`latency-bench session`, cùng đoạn
-  âm thanh, nhiều lượt). So với tắt: A2 p50 chậm thêm ≤ 20 ms, p90 ≤ 50 ms; chữ dịch đầu tiên p50 ≤ 20 ms.
-- **Tải:** `speaker-worker` trung bình ≤ 5% một lõi trên M4 Pro và ≤ 10% trên Windows i5 khi người nói liên tục; RAM ≤ 150 MB.
-  Đọc giao diện ≤ 30 ms mỗi lượt. Đo thêm phần tốn của Teams và trình duyệt khi bật trợ năng (6.8).
+  âm thanh, nhiều lượt). So với tắt: A2 p50 chậm thêm ≤ 20 ms, p90 ≤ 50 ms; chữ dịch đầu tiên p50 ≤ 20 ms. **Kết quả kế hoạch 02
+  (M4 Pro, đạt):** 6 cặp xen kẽ trên S6 `en`, `mixed`: A2 p50 −11,8 ms (KTC 95% −22,4 đến −1,2), p90 −26,4 ms, chữ đầu −18,2 ms;
+  cận trên của KTC dưới mức cả khi tách từng session. Lượt bật nhanh hơn chưa rõ vì sao (nghi xung nhịp, chưa kiểm): chỉ kết luận
+  "bật không làm chậm", không coi là lợi ích. Windows i5 chưa đo (nghiệm thu ở kế hoạch 05, 07) (chốt ở kế hoạch 02,
+  `results/02-do-tre.md`).
+- **Tải** (chốt ở kế hoạch 01, `results/ram.md`, `results/toc-do.md`; chủ dự án duyệt 2026-10-26): `speaker-worker` trung bình
+  **≤ 8% một lõi** trên M4 Pro khi người nói liên tục, **RAM ≤ 250 MB** (cách B' + A2 4 s, 4.1 và 5.2, không dùng Accelerate). Đo
+  được cho phần nhúng (chạy lâu 452 lần trên một bản ghi AMI, worker chạy một mình): RSS đỉnh 198–208 MB, CPU 7,3% một lõi, nhúng
+  p50 ~90 ms, 452/452 lần xong ≤ 230 ms. Đọc cây chưa đo (kế hoạch 04). Ngân sách cũ không đạt: RAM 150 MB không đạt khi đưa cả
+  đoạn vào model một lượt bằng bất kỳ cách nào đã đo (kể cả onnxruntime); 5% một lõi chỉ đạt khi bật Accelerate (4,6%), chủ dự án
+  không chọn. **Windows i5: ≤ 10% một lõi** (giữ), chờ số đo: gói gộp Task 13 của kế hoạch 01 và Task 8 của kế hoạch 02b (RAM
+  của B' và allocator Windows) chờ chủ dự án chạy trên i5 (`results/02-windows.md`).
+- **Kết quả kế hoạch 02** (worker thật qua giao thức; chốt ở kế hoạch 02, `results/02-nhan-giong-worker.md`,
+  `results/02-soak.md`): **RAM:** phát theo thời gian thực như app, RSS đỉnh 137–198 MB; soak 92 phút cùng `asr-worker`,
+  `llama-server`: 141,8 MB, đỉnh 10% cuối thấp hơn 10% đầu 20,5 MB (không rò). Gửi đoạn liền nhau (cách đo của kế hoạch 01):
+  163–260 MB, **vượt 250 MB ở 2/12 bản ghi** (259,8 và 251,5 MB). **CPU mỗi giây tiếng nói:** gửi liền nhau, AMI trung bình 7,6%,
+  tiếng Việt 8,3–8,6% (đoạn ngắn, A2 hầu như không cắt); soak 8,55% trên đoạn IS1009a so với 7,09% khi gửi liền nhau, với cùng số
+  lệnh (1,45 tỉ) và năng lượng (~445 mJ), chỉ khác xung nhịp (3,46 so với 4,01 GHz); theo giờ đồng hồ 5,8% một lõi, 255 mW. Theo
+  %CPU thì **vượt 8%** ở tiếng Việt và soak; theo số lệnh, năng lượng thì bằng cách đo của kế hoạch 01. Ngân sách không đổi;
+  **chờ chủ dự án chốt** cách chấm RAM (theo thời gian thực hay gửi liền nhau) và CPU (%CPU hay số lệnh, năng lượng như 6.8).
+- **Đọc giao diện** ≤ 30 ms mỗi lượt (đọc cả cửa sổ không đạt, 6.2). Phần tốn thêm của Teams và trình duyệt khi bật trợ năng và
+  khi đọc (6.8) đo bằng số lệnh và năng lượng, không dùng %CPU.
 - **Khi quá tải:** kênh 4 đoạn đầy thì bỏ đoạn; worker xử lý chậm hơn thời gian thực trong 30 s liền thì tạm dừng đọc tên, chỉ
-  nhận giọng; vẫn chậm thì báo app tắt tính năng tới hết phiên. Không bao giờ làm chậm pipeline.
+  nhận giọng; vẫn chậm thì báo app tắt tính năng tới hết phiên. Không bao giờ làm chậm pipeline. Khi mọi lõi bận (12 tiến trình
+  chiếm hết M4 Pro), mỗi lần nhúng chậm khoảng 17 lần ở p50 (`results/toc-do.md`).
 
 ## 12. Kiểm thử và nghiệm thu
 
@@ -475,13 +603,37 @@ Mẫu đã duyệt (dựng trên giao diện thật bằng `scripts/ui-preview`)
 
 | # | Tiêu chí | Mức đạt |
 |---|---|---|
-| A-spk1 | Nhận giọng offline trên AMI (4 bản ghi kiểm, tham số cố định) | Dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80%; làm mốc chống thụt lùi |
-| A-spk2 | Nhận giọng tiếng Việt: hội thoại dựng từ Common Voice tiếng Việt (CC0, có mã người nói), 3–4 người | Dòng ≥ 1 s đúng người ≥ 85% |
+| A-spk1 | Nhận giọng offline trên AMI (4 bản ghi kiểm, tham số cố định) | Dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80%, tính theo trung bình các bản ghi kiểm (chủ dự án chốt 2026-10-26); làm mốc chống thụt lùi |
+| A-spk2 | Nhận giọng tiếng Việt: hội thoại dựng từ Common Voice tiếng Việt (CC0, có mã người nói), 3–4 người | Dòng ≥ 1 s đúng người ≥ 85%, tính theo trung bình các bản ghi kiểm (chủ dự án chốt 2026-10-26) |
 | A-spk3 | Tên thật: kịch bản tự động, Zoom, Teams, Meet × macOS, Windows; tính sau khi mỗi người đã nói ≥ 2 lượt | Dòng ≥ 1 s đúng tên ≥ 90%; sai tên ≤ 5% |
 | A-spk4 | Độ trễ (mục 11) | A2 p50 ≤ +20 ms, p90 ≤ +50 ms, chữ đầu ≤ +20 ms |
-| A-spk5 | Tải (mục 11) | CPU, RAM trong ngân sách; Teams và trình duyệt không chậm rõ |
+| A-spk5 | Tải (mục 11) | CPU, RAM trong ngân sách; Teams và trình duyệt không chậm rõ (đo bằng số lệnh và năng lượng, 6.8) |
 | A-spk6 | Họp thật tiếng Việt ≥ 3 người do chủ dự án thử, macOS và Windows | Chủ dự án đánh giá đạt |
 | A-spk7 | Bảo mật | `cargo deny`, `cargo audit`, kiểm không có mã mạng trong worker, capability `overlay` chỉ thêm `open_speaker_settings`, báo cáo không có tên |
+
+**Kết quả kế hoạch 01** (macOS, θ = 0,35, không gộp; mức đạt không đổi):
+
+- **A-spk1** (chốt ở kế hoạch 01, `results/nhan-giong-ami.md`, `results/ram.md`): nhúng cả đoạn, trung bình 4 bản ghi kiểm dòng
+  ≥ 1 s 92,0%, mọi dòng 85,1%; thấp nhất (EN2002a) 87,3% và 80,2%, hơn mức 80% đúng 1 đoạn trên 959: đạt cả theo trung bình lẫn
+  theo từng bản ghi. Với A2 4 s (cấu hình đã chốt, 5.2): trung bình 91,8% và 84,9%; EN2002a mọi dòng 767/959, thiếu 1 đoạn nếu đọc
+  theo từng bản ghi. **Chủ dự án chốt 2026-10-26: A-spk1 tính theo trung bình các bản ghi kiểm, như A-spk2** (A2 4 s đạt: 91,8% và 84,9%); mức đạt giữ nguyên.
+- **A-spk2** (chốt ở kế hoạch 01, `results/nhan-giong-tieng-viet.md`): trung bình 8 bản ghi kiểm (4 hội thoại, bản thường và bản qua
+  Opus 24 kbps) dòng ≥ 1 s 93,9%: **đạt theo trung bình**, cách đọc chủ dự án chọn. **Không đạt theo từng hội thoại:** 7/8 bản
+  ≥ 85%, thấp nhất 67,7%; cộng 6 hội thoại bổ sung thì 20/24 bản đạt, 4 bản rơi xuống 67–76%, đều vì hai người giống giọng bị gộp
+  một giọng (rủi ro ở mục 14). Dữ liệu là giọng đọc sạch, mỗi người một micro; chưa đại diện cho phòng họp ồn hay chung micro.
+
+**Kết quả kế hoạch 02** (macOS, qua `speaker-worker` thật: cắt đoạn như app, PCM 16 bit của giao thức, A2 4 s, θ = 0,35, không
+gộp; mức đạt không đổi):
+
+- **A-spk1** (chốt ở kế hoạch 02, `results/02-nhan-giong-worker.md`): trung bình 4 bản ghi kiểm dòng ≥ 1 s 91,6%, mọi dòng 84,8%:
+  **đạt** (mốc A2 4 s của kế hoạch 01: 91,8% và 84,9%). Ba bản ghi trùng mốc từng đoạn; EN2002a mọi dòng 762/959 (79,5%), thiếu 6
+  đoạn nếu đọc theo từng bản ghi, vì PCM 16 bit lật vài đoạn có độ tin sát θ. Hai lượt cho kết quả giống nhau từng đoạn.
+- **A-spk2** (chốt ở kế hoạch 02, `results/02-nhan-giong-worker.md`): trung bình 8 bản ghi kiểm dòng ≥ 1 s 93,9%: **đạt**, nhãn
+  trùng mốc nhúng cả đoạn từng đoạn; theo từng hội thoại vẫn 7/8 bản ≥ 85%, thấp nhất 67,7%. A2 hầu như không cắt gì trên dữ liệu
+  này (đoạn dài nhất 5,06 s).
+- **A-spk4** đạt, **A-spk5** phần `speaker-worker` (RAM, CPU) chờ chủ dự án chốt cách chấm: mục 11 (`results/02-do-tre.md`,
+  `results/02-soak.md`). **A-spk7** phần worker: `cargo deny`, `cargo audit` sạch, kiểm không mã mạng bốn lớp đạt (4.1;
+  `results/02-tong-hop.md`). Windows i5: chờ chủ dự án (`results/02-windows.md`).
 
 ## 13. Kế hoạch
 
@@ -494,7 +646,7 @@ Một lần phát hành cho cả macOS và Windows. Mỗi kế hoạch viết sa
 2. **02 Worker và pipeline:** `speaker-protocol`, `speaker-worker` (nhận giọng), client trong app, cờ nguồn ở bộ trộn, luật ghép
    câu, `Subtitle.speaker`, sự kiện; lệnh `latency-bench` đo A-spk1/A-spk2; đo A-spk4.
 3. **03 Giao diện và dữ liệu:** thanh phụ đề, bản chép lời, menu đổi tên và gộp, Cài đặt, Lịch sử, xuất file, 5 ngôn ngữ.
-4. **04 Đọc tên macOS:** bộ đọc Zoom, Teams, Meet (Chrome, Edge), tự hiệu chỉnh, ghép tên vào giọng, dòng mời cấp quyền, công thức
+4. **04 Đọc tên macOS:** bộ đọc Zoom, Teams, Meet (Chrome, Edge), tự hiệu chỉnh, ghép tên vào giọng, tách giọng bị gộp theo tên (5.3, đã duyệt), dòng mời cấp quyền, công thức
    build sẵn, bộ test cây giao diện ghi sẵn.
 5. **05 Đọc tên Windows:** bộ đọc UI Automation cho ba app; chủ dự án thử trên máy Windows.
 6. **06 Vận hành:** công thức ký số (`pnpm recipes:update`, CI, R2), báo cáo `speaker_health` (app, server, D1, Web Admin, cron),
@@ -506,14 +658,22 @@ A-spk6; hỏi luật sư (mục 10).
 
 ## 14. Rủi ro và phương án
 
+Cập nhật theo kế hoạch 01 (2026-10-26; tổng hợp ở `results/tong-hop.md`).
+
 | Rủi ro | Phương án |
 |---|---|
-| Nhận giọng tiếng Việt kém hơn tiếng Anh | Đo ở spike (A-spk2); kém thì thử TitaNet-small, CAM++ zh_en (vá đồ thị cho `candle-onnx`), chỉnh θ. |
-| Windows i5 chạy nhận giọng chậm | Đo ở spike; chậm thì 1 luồng, bỏ đoạn < 1 s, hoặc tự tắt trên máy yếu như chế độ dịch trong lúc nói. |
+| **Hai người giống giọng bị gộp thành một giọng** (mới): tiếng Việt 4/24 bản ghi rơi xuống 67–76%, cosine tâm của cặp 0,60–0,70 ở ba bản; một lần gộp không tự tách lại, hai người mang chung một nhãn tới hết phiên (`results/nhan-giong-tieng-viet.md`) | θ đã chỉnh (0,35 là điểm tốt nhất, không θ nào hết lỗi). Người dùng đổi tên tay được nhưng chưa có thao tác tách một giọng thành hai (8.2). Tách bằng tên thật (5.3, đã duyệt, làm ở kế hoạch 04). Thử model khác (TitaNet-small, CAM++ zh_en, vá đồ thị cho `candle-onnx`) chưa làm; để lại nếu họp thật cho thấy cần. |
+| Nhận giọng tiếng Việt kém hơn tiếng Anh: **không thấy** ở kế hoạch 01 | Trung bình tiếng Việt 93,9% so với AMI 92,0% (dữ liệu tiếng Việt sạch hơn); rủi ro thật là gộp giọng (dòng trên). |
+| **Windows chưa đo** (còn): tốc độ trên i5, RAM của B' và allocator của Windows, UI Automation; A-spk4 trên i5 | Task 13 của kế hoạch 01 và Task 8 của kế hoạch 02b gộp một gói, chờ chủ dự án chạy trên i5 (chốt ở kế hoạch 02, `results/02-windows.md`); A-spk4 trên i5 nghiệm thu ở kế hoạch 05, 07. Chậm thì 1 luồng, bỏ đoạn < 1 s, hoặc tự tắt trên máy yếu như chế độ dịch trong lúc nói. |
+| RAM của `candle-onnx` (`simple_eval` giữ mọi tensor trung gian; chạy lâu 1,47–1,51 GB): **đã giảm** | B' + A2 4 s: 198–208 MB, nhúng giống từng bit (4.1, 5.2; `results/ram.md`). B' dựa vào hành vi chưa ghi thành tài liệu (graph con không khai `input` vẫn chạy): chạy lại test giống từng bit mỗi lần nâng `candle-onnx`; dự phòng là vá `candle-onnx` (cách B, cần `third_party/`). |
+| Allocator của macOS giữ bộ nhớ đã trả, RSS chạy lâu cao hơn một lần nhúng: **đã đo soak trên macOS** | Với B' + A2 4 s, RSS chạy lâu 198–208 MB (một đoạn 4 s lặp 20 lần: 154–159 MB; bản gốc dôi 0,4 GB). mimalloc không giúp với A2 4 s (`results/ram.md`). Soak 92 phút phát theo thời gian thực (cùng `asr-worker`, `llama-server`): RSS đỉnh 141,8 MB, đỉnh 10% cuối thấp hơn 10% đầu 20,5 MB, không rò; gửi đoạn liền nhau thì cao hơn, tới 260 MB (chốt ở kế hoạch 02, `results/02-soak.md`, `results/02-nhan-giong-worker.md`). Windows dùng allocator khác, chưa đo (`results/02-windows.md`). |
 | Teams, Meet đổi giao diện | Năm lớp ở mục 7 và 6.4–6.5; hỏng thì lùi về "Người N". |
-| Tiến trình con không hưởng quyền Trợ năng | Chạy phần đọc tên trong tiến trình chính ở luồng riêng, giữ giới hạn thời gian; nhận giọng vẫn ở worker. |
-| Bật trợ năng làm Teams hay trình duyệt chậm | Chỉ bật quanh lượt đọc (Teams); giảm nhịp đọc; ghi rõ cho người dùng. |
-| Người dùng Teams không mở bảng People | Tín hiệu bật/tắt mic, tự hiệu chỉnh, mẹo trong Cài đặt; chấp nhận độ đúng thấp hơn trên Teams. |
+| Tiến trình con không hưởng quyền Trợ năng: **đã hết** | Tiến trình con hưởng quyền của app (6.2, `results/quyen-tro-nang.md`); không cần chạy phần đọc tên trong tiến trình chính. |
+| **Quyền Trợ năng mất sau mỗi bản cập nhật** (ký ad-hoc, cdhash đổi; cả app lẫn `speaker-worker`) | Dùng chung nút `tccutil reset` và dòng mời (6.7), không luồng riêng; công thức đọc tải từ xa (7.1) sửa được bộ đọc mà không phát hành app nên không làm mất quyền. |
+| Đọc cây làm Teams, trình duyệt tốn thêm: đọc cả cửa sổ 4 lần mỗi giây thêm ~0,45 W (Teams) đến ~1,26 W (Chrome), mỗi lượt 46–121 ms | Trợ năng bật suốt phiên (bật không tốn); ở nhịp nhanh chỉ đọc phần tử chỉ báo, mặc định 1 lần mỗi giây (6.2, 6.8); đo lại bằng bộ đọc thật ở kế hoạch 04; ghi rõ cho người dùng. |
+| Teams: chỉ báo ở ô video chưa thử khi mic mở mà im lặng, họp đông hơn số ô, có video, tài khoản công việc | Kế hoạch 04 thử; bảng People là tín hiệu bổ sung; tín hiệu mic, tự hiệu chỉnh; hỏng thì "Người N". |
+| Meet: ô trong cửa sổ chủ phòng không đổi khi người khác nói (kế hoạch 01), chưa giải thích | Kế hoạch 04 tìm hiểu; tự hiệu chỉnh (6.5); hỏng thì "Người N". |
+| Edge chưa kiểm (`AXEnhancedUserInterface`, cây của Meet) | Kiểm ở kế hoạch 04 (macOS) và 05 (Windows). |
 | Nhiều người nói chồng, máy chung phòng | Thà "Người N" hay "Phòng A · giọng N" còn hơn sai tên; người dùng đổi tay. |
 
 ## 15. Sửa spec chính khi phát hành (kế hoạch 07)
@@ -522,6 +682,7 @@ A-spk6; hỏi luật sư (mục 10).
 - §3.1: thêm F13. §3.2: bỏ "Phân biệt ai đang nói". §3.3: thêm A-spk1–A-spk7.
 - §5: thêm tiến trình phụ `speaker-worker` vào sơ đồ.
 - §6.3: luật ghép câu không ghép hai giọng khác nhau. §6.6: `Subtitle.speaker`, sự kiện mới, Lịch sử, xuất file.
-- §7: luồng client `speaker-worker`, kênh 4 đoạn bỏ khi đầy; hàng đợi không gộp hai giọng khác nhau.
+- §7: luồng client `speaker-worker`, kênh 4 đoạn bỏ khi đầy; hàng đợi không gộp hai giọng khác nhau khi dịch kịp, dịch quá tải
+  thì gộp như khi tắt tính năng và câu gộp lẫn giọng không nhãn (4.4).
 - §8: ngân sách CPU, RAM của `speaker-worker`.
 - §10.1: dữ liệu giọng và tên người tham dự, báo cáo tình trạng. §10.2: các dòng ở mục 10 của spec này.
