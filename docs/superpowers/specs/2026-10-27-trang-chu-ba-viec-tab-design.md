@@ -106,6 +106,10 @@ Mỗi chỗ cắt phải chạy `pnpm test` và, nếu test bắt một câu, gi
 - Ảnh chụp 1280 px năm ngôn ngữ và 375 px giao diện tối: không tràn ngang, tab đọc được, hình rõ.
 - Chưa push, chưa deploy; chủ dự án tự quyết (quy trình `website/README.md`, `pnpm deploy`).
 
+Số đo (2026-10-27, `node tools/measure-home.mjs --browser`, trang chủ tiếng Việt): tổng chữ trong HTML 2.163 → 1.777; chữ hiện sẵn 1.671 → 1.151; chiều cao trang ở 1280 px 11.108 → 8.231 px, ở 375 px 16.397 → 12.369 px. Tiếng Anh: tổng chữ 1.936 → 1.582. Số test: 304 (298 đạt, 6 bỏ qua) → 331 (325 đạt, 6 bỏ qua).
+
+Bản vi lệch +4,5% (tổng) và +4,6% (hiện sẵn) so với mục tiêu 1.700 và 1.100, trong ngưỡng 10%, nên giữ nguyên số mục tiêu. Các ngôn ngữ còn lại (trước → sau): en chữ hiện sẵn 1.487 → 997, cao 1280 / 375 px 11.551 / 17.234 → 8.499 / 12.990; ja cao 11.302 / 16.699 → 8.250 / 12.532; zh cao 10.520 / 14.852 → 7.896 / 11.322; ko cao 10.541 / 15.225 → 7.895 / 11.526 (chữ hiện sẵn của ja, zh, ko không tách bằng khoảng trắng nên chỉ để so trước và sau: ja 351 → 288, zh 352 → 291, ko 1.108 → 762).
+
 ## Ngoài phạm vi
 
 Hero, Bảng giá, lời mời cuối trang, các trang con (Tính năng, Hướng dẫn, Hỏi đáp…), nội dung hai video, ảnh app, chat hỗ trợ, header và chân trang, tên model và công nghệ lõi (vẫn không công bố).
