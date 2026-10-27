@@ -1,11 +1,14 @@
-// Kiểm chính công cụ tools/browser/cdp.mjs: nhiều Chrome mở cùng lúc không dùng chung nhau, click() trúng nút đang di chuyển,
-// không để lại thư mục hồ sơ cdp-* trong thư mục tạm.
+// Kiểm chính công cụ tools/browser/cdp.mjs: nhiều Chrome mở cùng lúc không dùng chung nhau, click() trúng nút đang di chuyển
+// (cả khi tắt JS hay trang không ở trước), lệnh gửi sau khi trang đóng không làm sập tiến trình, không để lại thư mục hồ sơ cdp-*.
 //   node --test test/cdp-helper.test.mjs        (không có Chrome: bỏ qua; đặt CHROME=<đường dẫn> nếu Chrome ở chỗ khác)
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { findChrome, launch } from "../tools/browser/cdp.mjs";
+
+const CDP = new URL("../tools/browser/cdp.mjs", import.meta.url).href;
 
 const skip = findChrome() ? false : "cần Google Chrome (hoặc biến CHROME)";
 const dirs = []; // mọi thư mục hồ sơ test này tạo ra, để kiểm đã dọn hết
@@ -18,9 +21,11 @@ after(() => {
 });
 
 test("launch() song song: mỗi Chrome một cổng riêng, đóng một cái không làm hỏng cái khác", { skip }, async () => {
-  const browsers = await Promise.all(Array.from({ length: 5 }, () => launch()));
+  const settled = await Promise.allSettled(Array.from({ length: 5 }, () => launch()));
+  const browsers = settled.filter((r) => r.status === "fulfilled").map((r) => r.value);
   try {
     dirs.push(...browsers.map((b) => b.dir));
+    for (const r of settled) if (r.status === "rejected") { if (r.reason?.dir) dirs.push(r.reason.dir); throw r.reason; }
     assert.equal(new Set(browsers.map((b) => b.port)).size, browsers.length, `cổng trùng: ${browsers.map((b) => b.port)}`);
     const pages = await Promise.all(browsers.map(async (b, i) => {
       const p = await b.newPage({ width: 400, height: 300 });
@@ -52,28 +57,29 @@ test("launch({ port }) trùng cổng của Chrome khác: báo lỗi rõ và dọ
   const a = await launch();
   dirs.push(a.dir);
   try {
-    const err = await launch({ port: a.port, timeout: 1500 }).then(() => null, (e) => e);
+    const t = Date.now();
+    const err = await launch({ port: a.port, timeout: 1500 }).then(async (b) => { dirs.push(b.dir); await b.close(); return null; }, (e) => e);
     assert.ok(err, "launch() trùng cổng phải ném lỗi");
-    dirs.push(err.dir);
-    assert.match(err.message, new RegExp(`cổng ${a.port} đang bị một Chrome khác chiếm|thoát sớm`));
-    assert.ok(!existsSync(err.dir), "launch() hỏng phải xoá thư mục hồ sơ của nó");
+    assert.match(err.message, new RegExp(`cổng ${a.port} đang bị một Chrome khác chiếm`));
+    assert.ok(Date.now() - t < 1000, `phải báo ngay, không chờ hết hạn (${Date.now() - t} ms)`);
+    if (err.dir) { dirs.push(err.dir); assert.ok(!existsSync(err.dir), "launch() hỏng phải xoá thư mục hồ sơ của nó"); }
   } finally {
     await a.close();
   }
 });
 
 test("click() chờ trang thôi cuộn rồi mới bấm: trúng nút đang bị cuộn đi và nút đập nhịp", { skip }, async () => {
-  // Trang tự cuộn 12000 px trong 500 ms (mỗi tác vụ một bước, qua MessageChannel), bắt đầu ngay trước lúc goto() trả về
-  // (goto chờ 250 ms sau load): nút #t dời đi giữa lúc đo và lúc bấm. click() kiểu cũ (đo hộp một lần) trượt 30/30 lần.
+  // Trang tự cuộn 12000 px trong 800 ms (mỗi tác vụ một bước, qua MessageChannel) từ lúc load, nên vẫn đang cuộn khi goto()
+  // trả về (250 ms sau load): nút #t dời đi giữa lúc đo và lúc bấm. click() kiểu cũ (đo hộp một lần) trượt gần như mọi lần.
   const html = `<!doctype html><meta charset=utf-8><style>body{margin:0;height:14000px}
     #t{position:absolute;top:1200px;left:100px;width:90px;height:40px}
     #p{position:absolute;top:100px;left:300px;width:90px;height:40px;animation:beat .4s ease-in-out infinite alternate}
     @keyframes beat{to{transform:scale(1.15)}}</style>
     <button id=t onclick="window.__hit='t';event.stopPropagation()">t</button><button id=p onclick="window.__hit='p';event.stopPropagation()">p</button>
     <script>window.__hit='none';document.addEventListener('click',()=>{window.__hit='trượt'});
-    addEventListener('load',()=>setTimeout(()=>{const t0=performance.now(),ch=new MessageChannel();
-      ch.port1.onmessage=()=>{const k=Math.min(1,(performance.now()-t0)/500);scrollTo(0,12000*k);if(k<1)ch.port2.postMessage(0)};
-      ch.port2.postMessage(0)},150));</script>`;
+    addEventListener('load',()=>{const t0=performance.now(),ch=new MessageChannel();
+      ch.port1.onmessage=()=>{const k=Math.min(1,(performance.now()-t0)/800);scrollTo(0,12000*k);if(k<1)ch.port2.postMessage(0)};
+      ch.port2.postMessage(0)});</script>`;
   const server = createServer((_, res) => { res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); res.end(html); });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${server.address().port}/`;
@@ -96,4 +102,55 @@ test("click() chờ trang thôi cuộn rồi mới bấm: trúng nút đang bị
     server.closeAllConnections();
     server.close();
   }
+});
+
+test("click() khi tắt JS và trên trang không ở trước: trúng và xong nhanh, không treo", { skip }, async () => {
+  const b = await launch();
+  dirs.push(b.dir);
+  const limit = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${what} treo quá ${ms} ms`)), ms).unref())]);
+  try {
+    // Tắt JS: rAF và setTimeout trong trang không chạy, click() phải rơi về đo một lần
+    const p = await b.newPage({ width: 600, height: 400 });
+    await p.goto("data:text/html,<details id=d><summary id=s>mở</summary>nội dung</details>");
+    await p.setJS(false);
+    let t = Date.now();
+    await limit(p.click("#s"), 5000, "click() khi tắt JS");
+    assert.ok(Date.now() - t < 1000, `click() khi tắt JS mất ${Date.now() - t} ms`);
+    assert.equal(await p.eval("document.getElementById('d').open"), true, "bấm <summary> khi tắt JS phải mở <details>");
+    // Trang cũ khi đã có trang mới mở sau nó (rAF của trang nền dừng)
+    const a = await b.newPage({ width: 600, height: 400 });
+    await a.goto(`data:text/html,<button id=t onclick="window.__hit=1">t</button>`);
+    const c = await b.newPage({ width: 600, height: 400 });
+    await c.goto("data:text/html,khác");
+    t = Date.now();
+    await limit(a.click("#t"), 5000, "click() trên trang nền");
+    assert.ok(Date.now() - t < 1000, `click() trên trang không ở trước mất ${Date.now() - t} ms`);
+    assert.equal(await a.eval("window.__hit"), 1);
+  } finally {
+    await b.close();
+  }
+});
+
+test("handler async gửi lệnh sau khi trang đã đóng không làm sập tiến trình (như Fetch.requestPaused của chat-widget)", { skip }, async () => {
+  // Chạy trong tiến trình con: lỗi không ai bắt sẽ làm nó thoát mã khác 0. Cổng chặn (gate) giữ handler lại tới khi trang đóng.
+  const code = `
+    const { launch } = await import(${JSON.stringify(CDP)});
+    const b = await launch();
+    try {
+      const p = await b.newPage();
+      let release; const gate = new Promise((r) => { release = r; });
+      p.s.handlers.push(async (m) => { if (m.method !== "Page.loadEventFired") return; await gate; return p.s.send("Runtime.evaluate", { expression: "1" }); });
+      const waiting = p.s.once("Page.javascriptDialogOpening", 60000); // lời chờ còn dở lúc đóng: phải bị từ chối ngay (không giữ tiến trình 60 s)
+      waiting.catch(() => {});
+      await p.goto("data:text/html,x");
+      await p.close();
+      release();
+      await new Promise((r) => setTimeout(r, 200));
+      console.log("sống:" + b.dir);
+    } finally { await b.close(); }`;
+  const r = await new Promise((resolve) => execFile(process.execPath, ["--input-type=module", "-e", code], { timeout: 20000 }, (error, stdout, stderr) => resolve({ error, stdout, stderr })));
+  const dir = r.stdout.match(/sống:(\S+)/)?.[1];
+  if (dir) dirs.push(dir);
+  assert.equal(r.error, null, `tiến trình con lỗi: ${r.error?.message}\n${r.stderr.slice(-800)}`);
+  assert.ok(dir, `tiến trình con không chạy tới cuối: ${r.stdout}`);
 });

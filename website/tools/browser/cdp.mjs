@@ -30,6 +30,8 @@ class Session {
       this.closed = true;
       for (const { reject } of this.pending.values()) reject(new Error("mất kết nối tới Chrome (WebSocket đã đóng)"));
       this.pending.clear();
+      for (const w of this.waiters) w(null); // null: phiên đã đóng
+      this.waiters = [];
     });
     ws.addEventListener("message", (e) => {
       const m = JSON.parse(e.data);
@@ -39,7 +41,11 @@ class Session {
         m.error ? reject(new Error(`${m.error.message}`)) : resolve(m.result);
       } else if (m.method) {
         this.waiters = this.waiters.filter((w) => !w(m));
-        for (const h of this.handlers) h(m);
+        for (const h of this.handlers) {
+          // Handler async của người gọi (ví dụ trả lời Fetch.requestPaused) có thể gửi lệnh sau khi trang đã đóng: lỗi đó bỏ qua,
+          // còn lỗi lúc phiên vẫn mở thì để lộ như trước
+          h(m)?.catch?.((err) => { if (!this.closed) throw err; });
+        }
       }
     });
   }
@@ -50,17 +56,28 @@ class Session {
     return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
   }
   once(method, ms = 15000) {
+    if (this.closed) return Promise.reject(new Error(`mất kết nối tới Chrome, không chờ được ${method}`));
     return new Promise((resolve, reject) => {
       const t = setTimeout(() => reject(new Error(`hết giờ chờ ${method}`)), ms);
-      this.waiters.push((m) => (m.method === method ? (clearTimeout(t), resolve(m.params), true) : false));
+      this.waiters.push((m) => {
+        if (m === null) return clearTimeout(t), reject(new Error(`mất kết nối tới Chrome khi đang chờ ${method}`)), true;
+        return m.method === method ? (clearTimeout(t), resolve(m.params), true) : false;
+      });
     });
   }
 }
 
+// Chạy trong trang (đồng bộ): toạ độ điểm giữa phần tử và điểm đó có trúng chính phần tử (hay con của nó) không.
+const point = (e) => {
+  const r = e.getBoundingClientRect();
+  const x = r.x + r.width / 2, y = r.y + r.height / 2;
+  const at = document.elementFromPoint(x, y);
+  return { x, y, hit: Boolean(at && (at === e || e.contains(at))) };
+};
+
 // Chạy trong trang: cuộn phần tử vào giữa, chờ tới khi vị trí cuộn không đổi và điểm giữa cũ vẫn nằm trong hộp mới suốt 3 khung
-// hình liền nhau (nút "đập nhịp" phóng to thu nhỏ tại chỗ vẫn coi là đứng yên), tối đa 2,5 s; trả toạ độ điểm giữa và điểm đó
-// có trúng chính phần tử (hay con của nó) không.
-const settle = async (sel) => {
+// hình liền nhau (nút "đập nhịp" phóng to thu nhỏ tại chỗ vẫn coi là đứng yên), tối đa 2,5 s; trả kết quả của point().
+const settle = async (sel, point) => {
   const e = document.querySelector(sel);
   if (!e) return null;
   const frame = () => new Promise((r) => { const t = setTimeout(r, 100); requestAnimationFrame(() => { clearTimeout(t); r(); }); }); // trang nền không có rAF
@@ -82,9 +99,7 @@ const settle = async (sel) => {
       prev = look();
     }
   }
-  const root = e.getRootNode().elementFromPoint ? e.getRootNode() : document;
-  const at = root.elementFromPoint(prev.x, prev.y);
-  return { x: prev.x, y: prev.y, hit: Boolean(at && (at === e || e.contains(at))) };
+  return point(e);
 };
 
 class Page {
@@ -103,9 +118,11 @@ class Page {
   /** Tắt hay bật JavaScript của trang (kiểm bản hoạt động không cần JS). */
   async setJS(enabled) {
     await this.s.send("Emulation.setScriptExecutionDisabled", { value: !enabled });
+    this.jsOff = !enabled;
   }
   async goto(url) {
     const loaded = this.s.once("Page.loadEventFired");
+    loaded.catch(() => {}); // navigate lỗi thì lỗi đó được ném ra; lời chờ load bị bỏ dở không được thành lỗi không ai bắt
     await this.s.send("Page.navigate", { url });
     await loaded;
     await sleep(250); // cho site.js (defer) chạy xong
@@ -118,14 +135,24 @@ class Page {
   async click(selector) {
     // Trang có thể còn đang cuộn mượt (neo #, scrollIntoView trong rAF) khi goto() trả về: đo hộp một lần thì toạ độ gửi đi
     // có thể lệch và cú bấm trượt. Chờ hộp đứng yên rồi kiểm điểm giữa đúng là phần tử; trượt thì đo lại vài lần.
+    // Trang không phải tab trước nhất thì rAF dừng và timer chậm lại: đưa lên trước để việc chờ không mất vài giây.
+    await this.s.send("Page.bringToFront").catch(() => {});
+    const sel = JSON.stringify(selector);
+    // Đo một lần, đồng bộ (như click() cũ): dùng khi JS bị tắt, vì khi đó rAF và setTimeout trong trang không chạy
+    const once = `(() => { const e = document.querySelector(${sel}); if (!e) return null; e.scrollIntoView({block:"center", behavior:"instant"}); return (${point})(e); })()`;
     const deadline = Date.now() + 3000;
     let box;
-    for (let i = 0; ; i++) {
-      box = await this.eval(`(${settle})(${JSON.stringify(selector)})`);
+    for (let i = 0; !this.jsOff; i++) {
+      let t;
+      const late = new Promise((r) => { t = setTimeout(() => r(undefined), Math.max(0, deadline - Date.now()) + 500); });
+      box = await Promise.race([this.eval(`(${settle})(${sel}, ${point})`), late]).finally(() => clearTimeout(t));
+      if (box === undefined) break; // phần chờ trong trang không trả về (timer không chạy): rơi về đo một lần
       if (!box) throw new Error(`không thấy ${selector}`);
       if (box.hit || i >= 4 || Date.now() > deadline) break; // vẫn trượt (bị che, pointer-events: none…): bấm như cũ
       await sleep(50);
     }
+    if (box === undefined) box = await this.eval(once);
+    if (!box) throw new Error(`không thấy ${selector}`);
     for (const type of ["mousePressed", "mouseReleased"]) await this.s.send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
     await sleep(120);
   }
@@ -154,6 +181,9 @@ class Page {
   }
 }
 
+// Cổng này có trình duyệt nào đang trả lời /json/version không (mỗi lần hỏi tối đa 1 s)
+const answers = (port) => fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(1000) }).then(async (r) => (await r.body?.cancel(), r.ok), () => false);
+
 /**
  * Mở một Chrome không đầu riêng. Mặc định để Chrome tự chọn cổng trống (--remote-debugging-port=0) rồi đọc cổng thật từ tệp
  * DevToolsActivePort trong thư mục hồ sơ: chọn cổng ngẫu nhiên thì hai tiến trình có thể trùng cổng và một bên âm thầm dùng
@@ -163,6 +193,8 @@ class Page {
 export async function launch({ port, timeout = 10000 } = {}) {
   const chrome = findChrome();
   if (!chrome) return null;
+  // Cổng truyền tay đã có ai trả lời thì báo ngay, khỏi mở Chrome rồi chờ hết hạn
+  if (port && (await answers(port))) throw new Error(`không mở được Chrome điều khiển: cổng ${port} đang bị một Chrome khác chiếm`);
   const dir = mkdtempSync(join(tmpdir(), "cdp-"));
   const proc = spawn(chrome, [`--remote-debugging-port=${port ?? 0}`, `--user-data-dir=${dir}`, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
   let stderr = "";
@@ -196,7 +228,7 @@ export async function launch({ port, timeout = 10000 } = {}) {
     if (exited) return fail(`Chrome thoát sớm (${how()})`);
     if (Date.now() > end) {
       // Cổng truyền tay đã có Chrome khác giữ thì Chrome này lặng lẽ lùi sang [::1] và không ghi tệp: nói rõ lý do
-      const taken = port && (await fetch(`http://127.0.0.1:${port}/json/version`).then((r) => r.ok, () => false));
+      const taken = port && (await answers(port));
       return fail(taken ? `cổng ${port} đang bị một Chrome khác chiếm` : `quá ${timeout} ms chưa thấy ${file}`);
     }
     try {
@@ -211,7 +243,7 @@ export async function launch({ port, timeout = 10000 } = {}) {
     if (exited) return fail(`Chrome thoát sớm (${how()})`);
     if (Date.now() > end) return fail(`quá ${timeout} ms cổng ${active.port} chưa trả lời`);
     try {
-      const r = await fetch(`http://127.0.0.1:${active.port}/json/version`);
+      const r = await fetch(`http://127.0.0.1:${active.port}/json/version`, { signal: AbortSignal.timeout(1000) });
       if (r.ok) version = await r.json();
     } catch { /* chưa lên */ }
     if (!version) await sleep(50);
