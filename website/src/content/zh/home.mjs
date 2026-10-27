@@ -4,14 +4,14 @@ import { videoMeta } from "../../build/mp4.mjs";
 
 const VIDEO_ITEMS = [
   { kind: "meeting", text: `一场在线会议中，同事说英语，屏幕上出现中文字幕。视频时长 ${videoMeta("zh", "meeting").seconds} 秒，有声音。`, label: "AI Translator 演示视频：会议实时翻译", fallback: "下载视频（MP4，1 MB）" },
-  { kind: "typing", text: `输入翻译把你用中文写的回复转成英文，发到聊天里。视频时长 ${videoMeta("zh", "typing").seconds} 秒，有声音。`, label: "AI Translator 演示视频：输入翻译", fallback: "下载视频（MP4，1 MB）" },
+  { kind: "typing", text: `输入翻译把你用中文写的回复转成英文并粘贴到聊天框。视频时长 ${videoMeta("zh", "typing").seconds} 秒，有声音。`, label: "AI Translator 演示视频：输入翻译", fallback: "下载视频（MP4，1 MB）" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
 
 export const HOME_FAQ = [
   {
     q: "可以用于 Zoom、Teams、Google Meet 和 Zalo 吗？",
-    a: `<p>可以，无需机器人或插件：应用采集的是电脑的系统音频，所以不受你使用哪款会议应用的影响。我们在 macOS 上测试过 Zoom、Google Meet、Microsoft Teams 和 Zalo PC 的音频采集（内部测试，不是这些公司的认证）。其他参会者不会收到通知，如果你的规定要求告知，请自行告诉他们。</p>`,
+    a: `<p>可以，无需机器人或插件：应用采集的是电脑的系统音频，所以不受你使用哪款会议应用的影响。我们在 macOS 上测试过 Zoom、Google Meet、Microsoft Teams 和 Zalo PC 的音频采集（内部测试，不是这些公司的认证）。其他参会者不会收到通知，如果相关规定要求告知，请自行告诉他们。</p>`,
   },
   {
     q: "使用 AI Translator 需要联网吗？",

@@ -80,6 +80,9 @@ for (const page of PAGES) {
       assert.deepEqual(s.selected, [id]);
       assert.equal(await p.eval("location.hash"), `#${id}`);
       await sleep(400);
+      // Chính panel (hiệu ứng panel-in khi đổi tab) cũng phải hiện rõ, không kẹt ở opacity 0.
+      const panelOpacity = await p.eval(`getComputedStyle(document.getElementById("${id}")).opacity`);
+      assert.equal(panelOpacity, "1", `${page.lang} ${id}: panel vừa mở kẹt opacity ${panelOpacity} sau 400 ms`);
       const opacity = await p.eval(`[...document.querySelectorAll("#${id} .reveal")].map((e) => getComputedStyle(e).opacity)`);
       assert.ok(opacity.length > 0 && opacity.every((o) => o === "1"), `${page.lang} ${id}: opacity ${opacity}`);
     }

@@ -611,7 +611,7 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 /* Có JS nhưng script chưa chạy: giữ chỗ cho thanh tab (không hiện) và chỉ hiện panel đầu, để lúc nâng cấp không đẩy trang (CLS). */
 .js .ftabs:not(.is-enhanced) .ftabs-list[hidden] { display: grid; visibility: hidden; }
 .js .ftabs:not(.is-enhanced) .ftabs-panel + .ftabs-panel { display: none; }
-.ftab { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; padding: 13px 14px; border: 1px solid transparent; border-radius: var(--r-lg); background: transparent; color: var(--ink-3); font: inherit; font-weight: 600; font-size: 1.02rem; line-height: 1.25; text-align: center; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .2s, border-color .2s; }
+.ftab { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; padding: 13px 14px; border: 1px solid transparent; border-radius: var(--r-lg); background: transparent; color: var(--ink-3); font: inherit; font-weight: 600; font-size: 1.02rem; line-height: 1.25; text-align: center; text-wrap: balance; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .2s, border-color .2s; }
 .ftab .icon { flex: none; width: 22px; height: 22px; }
 .ftab:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .ftab[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: var(--shadow-md); }

@@ -4,7 +4,7 @@ import { videoMeta } from "../../build/mp4.mjs";
 
 const VIDEO_ITEMS = [
   { kind: "meeting", text: `英語で話す同僚の発言に日本語の字幕が表示されます。${videoMeta("ja", "meeting").seconds} 秒、音声付きの動画です。`, label: "AI Translator デモ動画：会議のリアルタイム翻訳", fallback: "動画をダウンロード（MP4、1 MB）" },
-  { kind: "typing", text: `入力翻訳が日本語の返信を英語に変えてチャットで送ります。${videoMeta("ja", "typing").seconds} 秒、音声付きの動画です。`, label: "AI Translator デモ動画：入力翻訳", fallback: "動画をダウンロード（MP4、1 MB）" },
+  { kind: "typing", text: `入力翻訳が日本語の返信を英語に変えてチャット欄に貼り付けます。${videoMeta("ja", "typing").seconds} 秒、音声付きの動画です。`, label: "AI Translator デモ動画：入力翻訳", fallback: "動画をダウンロード（MP4、1 MB）" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
 
@@ -153,7 +153,7 @@ ${sectionHead({ eyebrow: "データはあなたのパソコンに残ります", 
 ${dataFlow("ja")}
 <div class="grid grid-2">
 ${feature({ icon: "lock", title: "音声はパソコンから出ません", text: "音声は RAM 上にだけ存在し、ディスクに書き込まれることもネットワークに送られることもありません。macOS でネットワークプロキシを使って確認しました。接続が途切れても字幕は表示され続けます。", accent: true })}
-${feature({ icon: "shield", title: "サーバーに会議の内容はありません", text: "サーバーが保存するのは、プランの販売、端末の有効化、サポートに必要なデータだけで（詳細は下記）、会議の内容は保存しません。" })}
+${feature({ icon: "shield", title: "サーバーに会議の内容はありません", text: "サーバーが保存するのは、プランの販売、デバイスの有効化、サポートに必要なデータだけで（詳細は下記）、会議の内容は保存しません。" })}
 </div>
 <details class="more-details reveal"><summary>サーバーは正確には何を保存しますか？</summary><p>サーバーに保存するのは、メールアドレス（購入時、またはサポートチャットにご自身で残したとき）、注文、ライセンス、デバイスの有効化情報（ハッシュ化したマシン ID とデバイス名）、Free お試しの開始（ハッシュ化したマシン ID）、ライセンス変更の記録、個人情報を除いたエラーレポート（30 日間保存）、チャットを使った場合のサポートチャットのメッセージ（90 日間保存）だけで、会議の内容は一切保存しません。</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/ja/data-security/">データの行き先を詳しく見る ${icon("arrow-right")}</a></p>

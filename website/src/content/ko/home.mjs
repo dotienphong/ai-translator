@@ -4,7 +4,7 @@ import { videoMeta } from "../../build/mp4.mjs";
 
 const VIDEO_ITEMS = [
   { kind: "meeting", text: `영어로 말하는 동료의 발언에 한국어 자막이 표시됩니다. ${videoMeta("ko", "meeting").seconds}초 분량, 소리가 있는 영상입니다.`, label: "AI Translator 데모 영상: 회의 실시간 번역", fallback: "영상 내려받기(MP4, 1MB)" },
-  { kind: "typing", text: `입력 번역이 한국어로 쓴 답장을 영어로 바꿔 채팅으로 보냅니다. ${videoMeta("ko", "typing").seconds}초 분량, 소리가 있는 영상입니다.`, label: "AI Translator 데모 영상: 입력 번역", fallback: "영상 내려받기(MP4, 1MB)" },
+  { kind: "typing", text: `입력 번역이 한국어로 쓴 답장을 영어로 바꿔 채팅 입력란에 붙여 넣습니다. ${videoMeta("ko", "typing").seconds}초 분량, 소리가 있는 영상입니다.`, label: "AI Translator 데모 영상: 입력 번역", fallback: "영상 내려받기(MP4, 1MB)" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
 
