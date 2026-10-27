@@ -6,7 +6,7 @@ import { icon } from "./icons.mjs";
 import { PLANS, usd, vnd, planName } from "../plans.mjs";
 import { T } from "../site.mjs";
 import { S } from "../strings.mjs";
-import { VIDEO_KINDS, checkVideoKind, videoMeta } from "./mp4.mjs";
+import { checkVideoKind, videoMeta } from "./mp4.mjs";
 
 export { esc, icon };
 
@@ -53,21 +53,6 @@ export const demoVideo = ({ lang, kind, label, fallback }) => {
 </video>
 <!--llm-skip--><button class="video-play" type="button" hidden aria-label="${esc(`${v.play} (${clock}, ${v.sound})`)}"><span class="video-play-btn" aria-hidden="true">${icon("play")}</span><span class="video-play-label" aria-hidden="true">${esc(`${v.cta} · ${clock} · ${v.sound}`)}</span></button><!--/llm-skip-->
 </figure>`;
-};
-
-/**
- * Hai video demo cạnh nhau (hai cột từ 900 px, một cột dưới đó): mỗi cột có tiêu đề `<h3>`, một câu mô tả rồi video. `items` là
- * `[{ kind, title, text, label, fallback }]`, đúng thứ tự VIDEO_KINDS (họp rồi Gõ dịch); chữ là chữ thuần.
- */
-export const demoVideoPair = ({ lang, items }) => {
-  const kinds = items.map((i) => i.kind);
-  if (kinds.join() !== VIDEO_KINDS.join()) throw new Error(`demoVideoPair: cần ${VIDEO_KINDS.join(" rồi ")}, nhận ${kinds.join(", ") || "không có gì"}`);
-  const cols = items.map((i) => `<div class="video-col">
-<h3>${esc(i.title)}</h3>
-<p>${esc(i.text)}</p>
-${demoVideo({ lang, kind: i.kind, label: i.label, fallback: i.fallback })}
-</div>`);
-  return `<div class="video-pair">\n${cols.join("\n")}\n</div>`;
 };
 
 /** Ảnh chụp cửa sổ chính của app (có thanh tiêu đề giả bằng CSS). */

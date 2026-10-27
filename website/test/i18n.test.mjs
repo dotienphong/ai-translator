@@ -9,7 +9,7 @@ import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
 import { S } from "../src/strings.mjs";
 import { renderPage, glue } from "../src/build/layout.mjs";
-import { plansGrid, dataFlow, demoVideo, demoVideoPair, featureTabs } from "../src/build/components.mjs";
+import { plansGrid, dataFlow, demoVideo, featureTabs } from "../src/build/components.mjs";
 import { softwareApplication, videoObject } from "../src/build/schema.mjs";
 import { readDict, strongLabels, appLabelsIn } from "../tools/i18n/labels.mjs";
 
@@ -181,18 +181,6 @@ test("videoObject tự lấy thời lượng từ file theo loại video; demoVi
   assert.match(html, /<button class="video-play" type="button" hidden aria-label="Play the demo video \(0:22, with sound\)">/);
   assert.ok(html.includes('<span class="video-play-label" aria-hidden="true">Watch the demo · 0:22 · with sound</span>'));
   assert.match(demoVideo({ lang: "en", kind: "typing", label: "Demo", fallback: "Download" }), /ai-translator-typing\.en\.mp4/);
-});
-
-test("demoVideoPair: lưới hai cột, mỗi cột có tiêu đề h3, câu mô tả rồi video của đúng loại; thiếu một loại thì báo lỗi", () => {
-  const item = (kind) => ({ kind, title: `T-${kind}`, text: `X-${kind}`, label: `L-${kind}`, fallback: `F-${kind}` });
-  const html = demoVideoPair({ lang: "vi", items: [item("meeting"), item("typing")] });
-  assert.match(html, /^<div class="video-pair">/);
-  const cols = html.split('<div class="video-col">').slice(1);
-  assert.equal(cols.length, 2);
-  assert.match(cols[0], /<h3>T-meeting<\/h3>\s*<p>X-meeting<\/p>\s*<figure class="shot video reveal" data-video>[\s\S]*ai-translator-meeting\.vi\.mp4/);
-  assert.match(cols[1], /<h3>T-typing<\/h3>\s*<p>X-typing<\/p>\s*<figure class="shot video reveal" data-video>[\s\S]*ai-translator-typing\.vi\.mp4/);
-  assert.equal((html.match(/<video\b/g) ?? []).length, 2);
-  assert.throws(() => demoVideoPair({ lang: "vi", items: [item("meeting")] }), /meeting.*typing/);
 });
 
 test("featureTabs: thanh tab ẩn sẵn (trong llm-skip), mỗi panel có id, h3, câu dẫn, gạch đầu dòng, nút và hình; không panel nào ẩn sẵn", () => {

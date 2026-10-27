@@ -227,12 +227,6 @@
       // Phát lỗi (mạng, trình duyệt chặn): thanh điều khiển gốc đã hiện, người xem bấm lại ở đó.
       video.play()?.catch(() => {});
     });
-    // Hai video cạnh nhau (spec 2026-10-26-tach-video-demo-hai-phan): phát video này thì tạm dừng video kia, khỏi chồng tiếng.
-    video.addEventListener("play", () => {
-      document.querySelectorAll("[data-video] video").forEach((other) => {
-        if (other !== video && !other.paused) other.pause();
-      });
-    });
     const desktop = matchMedia("(hover: hover) and (pointer: fine) and (min-width: 900px)").matches;
     if (!desktop || matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
     fig.classList.add("can-invite");
