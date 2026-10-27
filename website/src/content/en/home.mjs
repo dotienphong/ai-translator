@@ -1,45 +1,39 @@
-import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_INTRO = "Two short videos with sound: live meeting subtitles and Type & Translate.";
 const VIDEO_ITEMS = [
-  { kind: "meeting", title: "Live meeting translation", text: `A video meeting where a colleague speaks Vietnamese and English subtitles appear. ${videoMeta("en", "meeting").seconds}-second video with sound.`, label: "AI Translator demo video: live meeting translation", fallback: "Download the video (MP4, 1 MB)" },
-  { kind: "typing", title: "Type & Translate", text: `Type & Translate turns an English reply into Vietnamese for a chat message. ${videoMeta("en", "typing").seconds}-second video with sound.`, label: "AI Translator demo video: Type & Translate", fallback: "Download the video (MP4, 1 MB)" },
+  { kind: "meeting", text: `A video meeting where a colleague speaks Vietnamese and English subtitles appear. ${videoMeta("en", "meeting").seconds}-second video with sound.`, label: "AI Translator demo video: live meeting translation", fallback: "Download the video (MP4, 1 MB)" },
+  { kind: "typing", text: `Type & Translate turns an English reply into Vietnamese for a chat message. ${videoMeta("en", "typing").seconds}-second video with sound.`, label: "AI Translator demo video: Type & Translate", fallback: "Download the video (MP4, 1 MB)" },
 ];
+const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
 
 export const HOME_FAQ = [
   {
+    q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
+    a: `<p>Yes, with no bot and no plugin: the app captures your computer's system audio, so it does not depend on which meeting app you use. We tested audio capture on macOS with Zoom, Google Meet, Microsoft Teams and Zalo PC (internal testing, not a certification by those companies). Other participants are not notified, so tell them yourself if your rules require it.</p>`,
+  },
+  {
     q: "Does AI Translator need an internet connection?",
     a: `<p>Not while it is translating. Speech recognition, translation and subtitles all run on your computer. You only need the internet to download the app and the models the first time (about 1.3 GB or 2.5 GB), to register the free trial, to buy a plan, to verify your license (paid plans work offline for up to 14 days between checks) and to update the app.</p>`,
-  },
-  {
-    q: "How do I translate a Zoom meeting into my language without a bot?",
-    a: "<p>Open AI Translator, choose the language you want to read and press Start. The app listens to the Zoom audio playing on your computer and shows translated subtitles in a floating bar. No bot joins the meeting and the host does not need to enable anything; other participants are not notified, so tell them yourself if your rules require it.</p>",
-  },
-  {
-    q: "Does it work with Zoom, Teams, Google Meet and Zalo?",
-    a: `<p>Yes. The app captures your computer's system audio, so it does not depend on which meeting app, webinar or video you use, and it needs no bot and no plugin. We tested audio capture on macOS with Zoom, Google Meet, Microsoft Teams and Zalo PC (internal testing, not a certification by those companies). On macOS you can also choose to listen to one specific app only.</p>`,
-  },
-  {
-    q: "Can I translate a livestream into my language?",
-    a: "<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website, and it can subtitle a livestream in English, Chinese, Japanese, Korean or Vietnamese into another of those five languages. We have tested it with videos playing in a browser, and once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026): Vietnamese subtitles appeared throughout the test and the translation broadly matched the speech. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but it detected the wrong language and repeated sentences nobody said, so the subtitles were not usable. We have not tested Facebook Live. There is no phone version, and the app does not add subtitles to your own livestream for your audience. See <a href=\"/en/solutions/livestream-translation/\">livestream translation</a>.</p>",
   },
   {
     q: "Is my meeting audio sent anywhere?",
     a: `<p>No. While you translate, audio exists only in memory (RAM). It is never written to disk and never sent over the network. We checked with a network proxy on macOS: during translation, the app sent no audio and no transcript text out.</p>`,
   },
   {
+    q: "Can I translate a livestream into my language?",
+    a: `<p>On a computer, yes: the app listens to the audio your computer plays, so it does not depend on the website. We tested it once with YouTube Live (an English-language news channel, Chrome on macOS, 25 October 2026): Vietnamese subtitles appeared throughout the test. For TikTok Live, we only have the result of one Vietnamese livestream with background music: the app captured the sound, but it detected the wrong language and repeated sentences nobody said, so the subtitles were not usable. We have not tested Facebook Live. There is no phone version, and the app does not add subtitles to your own livestream for your audience. See <a href="/en/solutions/livestream-translation/">livestream translation</a>.</p>`,
+  },
+  {
     q: "Can I get translated meeting subtitles for free?",
-    a: "<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days), 6 Months 269,000 ₫ (100 hours per 30 days, for 180 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>",
+    a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. It is a trial, not a permanent free plan; after that you need a prepaid plan: Monthly 50,000 ₫, 6 Months 269,000 ₫ or Yearly 500,000 ₫.</p>`,
   },
   {
     q: "Can I pay from outside Vietnam?",
     a: `<p>Yes. Besides VietQR bank transfer in VND (from a Vietnamese bank), the Upgrade screen in the app lets you pay by international card in US dollars, on the Creem payment page: Monthly $3.99, 6 Months $21.99, Yearly $39.99, excluding tax. Cards are not accepted in some countries, per Creem's list. The Free trial needs no payment method.</p>`,
   },
 ];
-
-const plain = (html) => html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");
 
 export default {
   id: "home",
@@ -49,7 +43,7 @@ export default {
   description:
     "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean and Vietnamese. AI runs offline on your computer.",
   software: true,
-  modified: "2026-10-25",
+  modified: "2026-10-27",
   llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [
@@ -90,93 +84,80 @@ ${demo({
 </div>
 </div></section>
 
-<section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "Video demo", title: "See AI Translator in action", text: VIDEO_INTRO, center: true })}
-${demoVideoPair({ lang: "en", items: VIDEO_ITEMS })}
-</div></section>
-
-<section class="section" id="meeting-translation"><div class="container">
-<div class="split wide-right">
-<div class="stack-lg reveal">
-<span class="eyebrow">Meeting translation</span>
-<h2>Hear the meeting in another language, read it in yours</h2>
-<p class="lead">The app listens to the audio playing on your computer and shows the translation on a floating subtitle bar, with the original in small type above. No bot joins the meeting, and nobody else has to install anything.</p>
-${checkList([
-  "Five languages, translated between any two of them: English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt); the spoken language is detected automatically",
-  "Subtitles appear right after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href=\"/en/features/#performance\">test conditions</a>)",
-  "The subtitle bar stays on top: drag it, change the text size and colors, and <strong>Lock</strong> it so clicks pass through",
-  "A glossary gives the translator hints for names and industry terms (a Pro feature)",
-  "In-person or hybrid meetings: choose the <strong>Microphone</strong> or <strong>Computer audio + Microphone</strong> source to translate people in the room too (<a href=\"/en/features/#microphone\">how it works</a>)",
-  "Livestreams and videos too: the app hears any audio playing on your computer, so it works with live video in a browser (<a href=\"/en/solutions/livestream-translation/\">livestream translation</a>)",
-])}
-<p><a class="btn btn-secondary" href="/en/features/">See all features ${icon("arrow-right")}</a></p>
-</div>
-<div>
-${overlayShot({ slug: "overlay-default", lang: "en", alt: "The AI Translator subtitle bar showing the original sentence in small type above its English translation", caption: "The real subtitle bar: original text in small type above, translation below." })}
-</div>
-</div>
-</div></section>
-
-<section class="section section-alt" id="type-and-translate"><div class="container">
-<div class="split wide-right reverse">
-<div class="stack-lg reveal">
-<span class="eyebrow">Type &amp; Translate</span>
-<h2>Reply in the other person's language</h2>
-<p class="lead">Press ⌃⌥G (Windows: Ctrl+Alt+G) in the chat box you are using, type in your own language and press Enter: the translation is pasted into the chat box for you to check and send.</p>
-${checkList([
-  "Pastes into the box you are typing in, in any app that accepts pasting (⌘V, Ctrl+V)",
-  "Translated on your computer: what you type never leaves it",
-  "Included in every plan, and it does not use translation time",
-])}
-<p><a class="btn btn-secondary" href="/en/guide/type-and-translate/">Read the Type &amp; Translate guide ${icon("arrow-right")}</a></p>
-</div>
-<div>
-${overlayShot({ slug: "compose-done", lang: "en", alt: "The Type & Translate box with an English message and its Vietnamese translation below", caption: "The Type & Translate box: press Enter to paste the translation into the chat box." })}
-</div>
-</div>
-</div></section>
-
-<section class="section" id="history"><div class="container">
-<div class="split wide-right">
-<div class="stack-lg reveal">
-<span class="eyebrow">History</span>
-<h2>Look back at a meeting after it ends</h2>
-<p class="lead">Every session has a transcript with the time, the original and the translation of each sentence. Turn on history to reopen past meetings, find a sentence, copy it or export it to a file.</p>
-${checkList([
-  "Every plan: view, search and copy the transcript of your latest session",
-  "Pro feature: save the history of your sessions, reopen past ones, export as TXT, SRT or Markdown",
-  "Saving history is off by default; when you turn it on, it is encrypted and stays on your computer",
-])}
-<p><a class="btn btn-secondary" href="/en/guide/history-and-export/">Read the History guide ${icon("arrow-right")}</a></p>
-</div>
-<div>
-${appShot({ slug: "app-history", lang: "en", alt: "The History screen: a list of saved sessions with date and time, minutes, sentence count, a preview and Open and Delete buttons", caption: "History: sessions saved on your computer." })}
-</div>
-</div>
+<section class="section" id="main-features"><div class="container">
+${sectionHead({ eyebrow: "Main features", title: "Meeting translation, Type & Translate, History", center: true })}
+${featureTabs({
+  listLabel: "Choose a feature",
+  tabs: [
+    {
+      id: "meeting-translation",
+      icon: "captions",
+      label: "Meetings",
+      title: "Hear the meeting in another language, read it in yours",
+      lead: "The app listens to the audio playing on your computer and shows the translation on a floating subtitle bar. No bot joins the meeting.",
+      bullets: [
+        "Five languages, translated between any two of them: English, Chinese, Japanese, Korean, Vietnamese; the spoken language is detected automatically",
+        `Subtitles appear after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href="/en/features/#performance">test conditions</a>)`,
+        `Works with Zoom, Teams, Meet and Zalo; in-person meetings through the <strong>Microphone</strong> source (<a href="/en/features/#microphone">how it works</a>); livestreams you watch on a computer (<a href="/en/solutions/livestream-translation/">livestream translation</a>)`,
+      ],
+      cta: { href: "/en/features/", label: "See all features" },
+      media: demoVideo({ lang: "en", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "type-and-translate",
+      icon: "keyboard",
+      label: "Type &amp; Translate",
+      title: "Reply in the other person's language",
+      lead: "Press ⌃⌥G (Windows: Ctrl+Alt+G) in the chat box you are using, type in your own language and press Enter: the translation is pasted into the chat box for you to check and send.",
+      bullets: [
+        "Pastes into the box you are typing in, in any app that accepts pasting (⌘V, Ctrl+V)",
+        "Translated on your computer: what you type never leaves it",
+        "Included in every plan, and it does not use translation time",
+      ],
+      cta: { href: "/en/guide/type-and-translate/", label: "Read the Type &amp; Translate guide" },
+      media: demoVideo({ lang: "en", kind: TYPING_VIDEO.kind, label: TYPING_VIDEO.label, fallback: TYPING_VIDEO.fallback }),
+    },
+    {
+      id: "history",
+      icon: "history",
+      label: "History",
+      title: "Look back at a meeting after it ends",
+      lead: "Every session has a transcript with the time, the original and the translation of each sentence.",
+      bullets: [
+        "Every plan: view, search and copy the transcript of your latest session",
+        "Pro feature: save the history of your sessions, reopen past ones, export as TXT, SRT or Markdown",
+        "Saving history is off by default; when you turn it on, it is encrypted and stays on your computer",
+      ],
+      cta: { href: "/en/guide/history-and-export/", label: "Read the History guide" },
+      media: appShot({ slug: "app-history", lang: "en", alt: "The History screen: a list of saved sessions with date and time, minutes, sentence count, a preview and Open and Delete buttons", caption: "History: sessions saved on your computer." }),
+    },
+  ],
+})}
 </div></section>
 
 <section class="section section-alt" id="how-to-use"><div class="container">
 ${sectionHead({ eyebrow: "How to use it", title: "Get started in four steps", text: "Install and set up once; after that, every meeting only takes a press of Start.", center: true })}
 <div class="split wide-left">
 ${steps([
-  { title: "Install with one command", text: "Paste the install command from the <a href=\"/en/download/\">Download page</a> into Terminal (macOS) or PowerShell (Windows). The app downloads, checks itself and opens." },
-  { title: "Set it up the first time", text: "Choose your language, accept the terms, download the models (about 1.3 GB or 2.5 GB), allow system audio recording (macOS only) and play a sample sentence." },
-  { title: "Press Start in your meeting", text: "Choose the language you want to read in <strong>Translate into</strong> and press <strong>Start</strong> (shortcut ⌃⌥T, Windows: Ctrl+Alt+T). Subtitles appear on the floating bar; drag it wherever it is easy to read." },
-  { title: "Reply and look back", text: "Press ⌃⌥G (Windows: Ctrl+Alt+G) to Type &amp; Translate a message. When the meeting ends, press <strong>Stop</strong> and open <strong>Transcript</strong> or <strong>History</strong> in the sidebar." },
+  { title: "Install with one command", text: `Paste the command from the <a href="/en/download/">Download page</a> into Terminal (macOS) or PowerShell (Windows).` },
+  { title: "Set it up the first time", text: "Choose your language, download the models (about 1.3 GB or 2.5 GB) and allow system audio recording (macOS only)." },
+  { title: "Press Start in your meeting", text: "Choose a language in <strong>Translate into</strong> and press <strong>Start</strong> (⌃⌥T, Windows: Ctrl+Alt+T)." },
+  { title: "Reply and look back", text: "Press ⌃⌥G (Windows: Ctrl+Alt+G) to Type &amp; Translate; when the meeting ends, open <strong>Transcript</strong> or <strong>History</strong>." },
 ], true)}
 ${appShot({ slug: "app-home-running", lang: "en", alt: "AI Translator main screen during a session: status Translating, languages, audio source and the translation time left", caption: "The main screen during a session (Monthly plan)." })}
 </div>
-<p class="disclaimer">The macOS build is signed ad-hoc and not notarized; the Windows build is not code-signed yet. Installed with the command, macOS opens the app directly and SmartScreen does not ask; a file downloaded in a browser may be blocked or warned about on first launch, and Smart App Control in blocking mode blocks the Windows build. See the installation guides for <a href="/en/guide/install-macos/">macOS</a> and <a href="/en/guide/install-windows/">Windows</a>.</p>
-<p class="center-text reveal"><a class="btn btn-secondary" href="/en/guide/quick-start/">Read the quick-start guide ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/en/guide/">All guides</a></p>
+<p class="disclaimer">The macOS build is signed ad-hoc and not notarized; the Windows build is not code-signed yet. Installed with the command, macOS opens the app directly and SmartScreen does not ask; a file downloaded in a browser may be blocked or warned about on first launch. See the installation guides for <a href="/en/guide/install-macos/">macOS</a> and <a href="/en/guide/install-windows/">Windows</a>.</p>
+<p class="center-text reveal"><a class="btn btn-secondary" href="/en/guide/quick-start/">Read the quick-start guide ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section band-dark" id="private-on-device"><div class="container">
-${sectionHead({ eyebrow: "Your data stays on your computer", title: "The AI runs on your machine, so your meeting never leaves it", text: "Speech recognition, translation and subtitles all happen on your own computer, with no cloud AI service involved.", center: true })}
+${sectionHead({ eyebrow: "Your data stays on your computer", title: "The AI runs on your machine, so your meeting never leaves it", center: true })}
 ${dataFlow("en")}
 <div class="grid grid-2">
-${feature({ icon: "lock", title: "Audio never leaves your computer", text: "Audio lives only in RAM: it is never written to disk and never sent over the network, which we checked with a network proxy on macOS. No server is needed to translate, so subtitles keep coming even when your connection is flaky or drops.", accent: true })}
-${feature({ icon: "shield", title: "No meeting content on our server", text: "Our server only stores your email (when you buy, or when you choose to leave it in the support chat), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes, error reports with personal data scrubbed out (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), never meeting content." })}
+${feature({ icon: "lock", title: "Audio never leaves your computer", text: "Audio lives only in RAM: it is never written to disk and never sent over the network, which we checked with a network proxy on macOS. Subtitles keep coming even when your connection drops.", accent: true })}
+${feature({ icon: "shield", title: "No meeting content on our server", text: "Our server only stores what it needs to sell plans, activate devices and support you (details below), never meeting content." })}
 </div>
+<details class="more-details reveal"><summary>What exactly does the server store?</summary><p>Our server only stores your email (when you buy, or when you choose to leave it in the support chat), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes, error reports with personal data scrubbed out (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), never meeting content.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>
 </div></section>
 

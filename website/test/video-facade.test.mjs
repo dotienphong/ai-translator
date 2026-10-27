@@ -1,4 +1,5 @@
-// Kiểm nút phát video demo của trang chủ (spec 2026-10-22-website-ja-zh-ko §4) bằng Chrome không đầu, qua tools/browser/cdp.mjs.
+// Kiểm nút phát video demo của trang chủ (spec 2026-10-22-website-ja-zh-ko §4; hai video nằm trong hai tab của khối "Tính năng
+// chính", spec 2026-10-27-trang-chu-ba-viec-tab) bằng Chrome không đầu, qua tools/browser/cdp.mjs.
 //   node --test test/video-facade.test.mjs        (không có Chrome: bỏ qua; đặt CHROME=<đường dẫn> nếu Chrome ở chỗ khác)
 // Dựng website vào một thư mục tạm riêng (WEBSITE_DIST) để không đụng bài test dựng chung dist/.
 import { test, before, after } from "node:test";
@@ -69,8 +70,8 @@ test("máy tính: nút lớn thay thanh điều khiển; cuộn tới thì mời
   await sleep(500);
   s = await state(p);
   assert.equal(s.inviting, true, "cuộn tới mà không mời");
-  // Hai khung cạnh nhau cùng vào màn hình: khung thứ hai cũng được mời.
-  assert.equal(await p.eval(`document.querySelectorAll("[data-video]")[1].classList.contains("is-inviting")`), true, "khung video thứ hai không được mời");
+  // Video Gõ dịch nằm ở tab ẩn (display: none): không vào màn hình nên không được mời.
+  assert.equal(await p.eval(`document.querySelectorAll("[data-video]")[1].classList.contains("is-inviting")`), false, "video ở tab ẩn lại được mời");
   // Chỉ một lần: bỏ lớp, cuộn đi rồi cuộn lại, lớp không được gắn lại.
   await p.eval(`document.querySelector("[data-video]").classList.remove("is-inviting"); scrollTo(0, 0)`);
   await sleep(300);
@@ -99,45 +100,53 @@ test("bấm nút: phát có tiếng, hiện thanh điều khiển gốc, ẩn n�
   await p.close();
 });
 
-test("hai video: bấm nút nào phát đúng video đó; phát video này thì video kia tạm dừng", { skip }, async () => {
+test("hai video nằm ở hai tab: chuyển tab thì video đang phát tạm dừng; bấm phát ở tab Gõ dịch phát đúng file", { skip }, async () => {
   const p = await browser.newPage({ width: 1280, height: 800 });
   await p.goto(base + "/en/");
   assert.equal(await p.eval(`document.querySelectorAll("[data-video]").length`), 2);
   const info = (i) =>
     p.eval(`(() => { const v = document.querySelectorAll("[data-video] video")[${i}]; return { paused: v.paused, src: v.currentSrc || v.querySelector("source").src, controls: v.controls }; })()`);
-  await p.click(".video-col:nth-child(1) .video-play");
+  await p.click("#meeting-translation .video-play");
   await sleep(1200);
   let [a, b] = [await info(0), await info(1)];
   assert.equal(a.paused, false, "video họp không phát");
   assert.match(a.src, /ai-translator-meeting\.en\.mp4/);
   assert.equal(b.paused, true);
-  assert.equal(b.controls, false, "bấm nút video họp mà video Gõ dịch mất nút phát");
-  await p.click(".video-col:nth-child(2) .video-play");
+  await p.click('[role="tab"][aria-controls="type-and-translate"]');
+  await sleep(300);
+  a = await info(0);
+  assert.equal(a.paused, true, "chuyển sang tab Gõ dịch mà video họp vẫn phát");
+  await p.click("#type-and-translate .video-play");
   await sleep(1200);
   [a, b] = [await info(0), await info(1)];
   assert.equal(b.paused, false, "video Gõ dịch không phát");
   assert.match(b.src, /ai-translator-typing\.en\.mp4/);
-  assert.equal(a.paused, true, "video họp vẫn phát khi video Gõ dịch bắt đầu");
+  assert.equal(a.paused, true);
+  await p.click('[role="tab"][aria-controls="meeting-translation"]');
+  await sleep(300);
+  b = await info(1);
+  assert.equal(b.paused, true, "chuyển về tab họp mà video Gõ dịch vẫn phát");
   assert.deepEqual(p.errors, []);
   await p.close();
 });
 
-test("bố cục: 1280 px hai video cạnh nhau cùng cỡ, 375 px xếp dọc và trang không tràn ngang", { skip }, async () => {
-  const boxes = (p) =>
-    p.eval(`[...document.querySelectorAll("[data-video]")].map((f) => { const r = f.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) }; })`);
+test("bố cục: 1280 px video họp rộng cạnh chữ và chỉ panel đang mở hiện; 375 px xếp dọc và trang không tràn ngang", { skip }, async () => {
+  const box = (p, sel) =>
+    p.eval(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) }; })()`);
   const wide = await browser.newPage({ width: 1280, height: 800 });
   await wide.goto(base + "/");
-  const [l, r] = await boxes(wide);
-  assert.equal(l.y, r.y, "hai video không cùng hàng");
-  assert.ok(r.x > l.x + l.w - 1, "hai video chồng lên nhau");
-  assert.ok(Math.abs(l.w - r.w) <= 1 && Math.abs(l.h - r.h) <= 1, "hai video khác cỡ");
-  assert.ok(l.w >= 500, `video quá hẹp: ${l.w} px`);
+  const v = await box(wide, "#dich-cuoc-hop [data-video]");
+  const t = await box(wide, "#dich-cuoc-hop h3");
+  assert.ok(v.w >= 600, `video họp quá hẹp: ${v.w} px`);
+  assert.ok(v.x >= t.x + t.w, "video họp không nằm bên phải chữ");
+  assert.equal(await wide.eval(`getComputedStyle(document.querySelector("#go-dich")).display`), "none", "panel Gõ dịch phải ẩn khi tab Dịch họp mở");
   await wide.close();
   const narrow = await browser.newPage({ width: 375, height: 800, mobile: true });
   await narrow.goto(base + "/");
-  const [t, u] = await boxes(narrow);
-  assert.ok(u.y > t.y + t.h - 1, "ở 375 px hai video không xếp dọc");
-  assert.equal(t.x, u.x);
+  const nv = await box(narrow, "#dich-cuoc-hop [data-video]");
+  const nt = await box(narrow, "#dich-cuoc-hop h3");
+  assert.ok(nv.y > nt.y + nt.h - 1, "ở 375 px video không nằm dưới chữ");
+  assert.ok(Math.abs(nv.x - nt.x) <= 1, "ở 375 px video và chữ không cùng mép trái");
   assert.ok(await narrow.eval(`document.documentElement.scrollWidth <= innerWidth`), "trang tràn ngang ở 375 px");
   await narrow.close();
 });

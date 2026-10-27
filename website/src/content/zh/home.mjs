@@ -1,37 +1,33 @@
-import { dataFlow, demo, demoVideoPair, feature, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot, overlayShot, checkList } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
-const VIDEO_INTRO = "两个带声音的短视频：会议实时翻译字幕，以及输入翻译。";
 const VIDEO_ITEMS = [
-  { kind: "meeting", title: "会议实时翻译", text: `一场在线会议中，同事说英语，屏幕上出现中文字幕。视频时长 ${videoMeta("zh", "meeting").seconds} 秒，有声音。`, label: "AI Translator 演示视频：会议实时翻译", fallback: "下载视频（MP4，1 MB）" },
-  { kind: "typing", title: "输入翻译", text: `输入翻译把你用中文写的回复转成英文，发到聊天里。视频时长 ${videoMeta("zh", "typing").seconds} 秒，有声音。`, label: "AI Translator 演示视频：输入翻译", fallback: "下载视频（MP4，1 MB）" },
+  { kind: "meeting", text: `一场在线会议中，同事说英语，屏幕上出现中文字幕。视频时长 ${videoMeta("zh", "meeting").seconds} 秒，有声音。`, label: "AI Translator 演示视频：会议实时翻译", fallback: "下载视频（MP4，1 MB）" },
+  { kind: "typing", text: `输入翻译把你用中文写的回复转成英文，发到聊天里。视频时长 ${videoMeta("zh", "typing").seconds} 秒，有声音。`, label: "AI Translator 演示视频：输入翻译", fallback: "下载视频（MP4，1 MB）" },
 ];
+const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
 
 export const HOME_FAQ = [
   {
+    q: "可以用于 Zoom、Teams、Google Meet 和 Zalo 吗？",
+    a: `<p>可以，无需机器人或插件：应用采集的是电脑的系统音频，所以不受你使用哪款会议应用的影响。我们在 macOS 上测试过 Zoom、Google Meet、Microsoft Teams 和 Zalo PC 的音频采集（内部测试，不是这些公司的认证）。其他参会者不会收到通知，如果你的规定要求告知，请自行告诉他们。</p>`,
+  },
+  {
     q: "使用 AI Translator 需要联网吗？",
     a: `<p>翻译时不需要。语音识别、翻译和字幕显示都在你的电脑上完成。只有在以下情况下需要联网：第一次下载应用和模型（约 1.3 GB 或 2.5 GB）、登记免费试用、购买套餐、验证许可证（付费套餐在两次验证之间最多可离线使用 14 天）以及更新应用。</p>`,
-  },
-  {
-    q: "如何不用机器人就把 Zoom 会议翻译成我的语言？",
-    a: "<p>打开 AI Translator，选择你想阅读的语言，然后点“开始”。应用会收听电脑上正在播放的 Zoom 音频，并在悬浮字幕条中显示翻译字幕。不会有机器人加入会议，主持人也无需开启任何功能；其他参会者不会收到通知，如果你的规定要求告知，请自行告诉他们。</p>",
-  },
-  {
-    q: "可以用于 Zoom、Teams、Google Meet 和 Zalo 吗？",
-    a: `<p>可以。应用采集的是电脑的系统音频，所以不受你使用哪款会议应用、网络研讨会或视频的影响，也不需要机器人或插件。我们在 macOS 上测试过 Zoom、Google Meet、Microsoft Teams 和 Zalo PC 的音频采集（内部测试，不是这些公司的认证）。在 macOS 上，你还可以选择只收听某一个应用的声音。</p>`,
-  },
-  {
-    q: "能把直播翻译成我的语言吗？",
-    a: "<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站，能把英语、中文、日语、韩语或越南语的直播翻译成这五种语言中的另一种并显示为字幕。我们用浏览器中播放的视频做过测试，还在 macOS 的 Chrome 中用 YouTube Live 上的一个英语新闻频道测试过一次（2026年10月25日），测试期间越南语字幕一直正常显示，译文大体与讲话内容相符。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果。应用采集到了声音，但识别错了语言，还重复了没有人说过的句子，所以字幕无法使用。我们没有测试过 Facebook Live。没有手机版，应用也不会为你自己的直播添加给观众看的字幕。请参阅<a href=\"/zh/solutions/livestream-translation/\">直播翻译</a>。</p>",
   },
   {
     q: "我的会议音频会被发送到别处吗？",
     a: `<p>不会。翻译时，音频只存在于内存（RAM）中，从不写入磁盘，也从不通过网络发送。我们在 macOS 上用网络代理做过检查：翻译期间，应用没有向外发送任何音频或转写文本。</p>`,
   },
   {
+    q: "能把直播翻译成我的语言吗？",
+    a: `<p>在电脑上可以。应用收听的是电脑播放的音频，所以不依赖网站。我们在 macOS 的 Chrome 中用 YouTube Live 上的一个英语新闻频道测试过一次（2026年10月25日），测试期间越南语字幕一直正常显示。对于 TikTok 直播，我们只有一场带背景音乐的越南语直播的结果。应用采集到了声音，但识别错了语言，还重复了没有人说过的句子，所以字幕无法使用。我们没有测试过 Facebook Live。没有手机版，应用也不会为你自己的直播添加给观众看的字幕。请参阅<a href="/zh/solutions/livestream-translation/">直播翻译</a>。</p>`,
+  },
+  {
     q: "可以免费获得会议翻译字幕吗？",
-    a: "<p>AI Translator 提供 10 天免费试用，每天最多翻译 30 分钟，无需银行卡，也无需账号。之后需要购买预付套餐：Monthly 50,000 ₫（每 30 天 50 小时）、6 Months 269,000 ₫（180 天内每 30 天 100 小时）或 Yearly 500,000 ₫（365 天不限时长）。Free 是试用，不是永久免费的套餐。</p>",
+    a: `<p>AI Translator 提供 10 天免费试用，每天最多翻译 30 分钟，无需银行卡，也无需账号。这是试用，不是永久免费的套餐；之后需要购买预付套餐：Monthly 50,000 ₫、6 Months 269,000 ₫ 或 Yearly 500,000 ₫。</p>`,
   },
   {
     q: "在越南境外可以付款吗？",
@@ -47,7 +43,7 @@ export default {
   description:
     "为直播、视频和 Zoom、Teams、Meet 会议提供实时翻译字幕，支持英语、中文、日语、韩语、越南语。AI 在你的电脑上运行，不经过云端。",
   software: true,
-  modified: "2026-10-25",
+  modified: "2026-10-27",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "zh", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -86,93 +82,80 @@ ${demo({
 </div>
 </div></section>
 
-<section class="section-tight" id="video-demo"><div class="container">
-${sectionHead({ eyebrow: "演示视频", title: "看看 AI Translator 如何工作", text: VIDEO_INTRO, center: true })}
-${demoVideoPair({ lang: "zh", items: VIDEO_ITEMS })}
-</div></section>
-
-<section class="section" id="meeting-translation"><div class="container">
-<div class="split wide-right">
-<div class="stack-lg reveal">
-<span class="eyebrow">会议翻译</span>
-<h2>会议说外语，字幕用你的语言</h2>
-<p class="lead">应用收听电脑上正在播放的音频，把译文显示在悬浮字幕条上，原文以小字显示在上方。不会有机器人加入会议，其他参会者也不需要安装任何东西。</p>
-${checkList([
-  "五种语言，任意两种之间互译：英语、中文、日语（日本語）、韩语（한국어）、越南语（Tiếng Việt）；自动检测说话的语言",
-  "说话人说完一句话后，字幕很快就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href=\"/zh/features/#performance\">测试条件</a>）",
-  "字幕条始终置顶：可以拖动，可以改字号和颜色，<strong>锁定</strong>后鼠标点击会直接穿过",
-  "术语表把人名和行业术语的译法作为提示交给翻译（Pro 功能）",
-  "线下或混合会议：把采集来源选为<strong>麦克风</strong>或<strong>电脑音频 + 麦克风</strong>，会议室里的人说的话也能翻译（<a href=\"/zh/features/#microphone\">使用方法</a>）",
-  "直播和视频也可以：应用能听到电脑上播放的任何音频，所以也适用于浏览器中的直播视频（<a href=\"/zh/solutions/livestream-translation/\">直播翻译</a>）",
-])}
-<p><a class="btn btn-secondary" href="/zh/features/">查看全部功能 ${icon("arrow-right")}</a></p>
-</div>
-<div>
-${overlayShot({ slug: "overlay-default", lang: "zh", alt: "AI Translator 字幕条：原文以小字显示在上方，下方是中文译文", caption: "真实的字幕条：上方是小字原文，下方是译文。" })}
-</div>
-</div>
-</div></section>
-
-<section class="section section-alt" id="type-and-translate"><div class="container">
-<div class="split wide-right reverse">
-<div class="stack-lg reveal">
-<span class="eyebrow">输入翻译</span>
-<h2>用对方的语言回复</h2>
-<p class="lead">在你正在使用的聊天框中按 ⌃⌥G（Windows：Ctrl+Alt+G），用自己的语言输入并按 Enter：译文会被粘贴到聊天框中，你检查后再发送。</p>
-${checkList([
-  "在任何支持粘贴（⌘V、Ctrl+V）的应用中，粘贴到你正在输入的框里",
-  "在你的电脑上翻译：你输入的内容从不离开电脑",
-  "所有套餐都包含，而且不消耗翻译时间",
-])}
-<p><a class="btn btn-secondary" href="/zh/guide/type-and-translate/">阅读输入翻译指南 ${icon("arrow-right")}</a></p>
-</div>
-<div>
-${overlayShot({ slug: "compose-done", lang: "zh", alt: "输入翻译框：上方是中文消息，下方是英文译文", caption: "输入翻译框：按 Enter 把译文粘贴到聊天框中。" })}
-</div>
-</div>
-</div></section>
-
-<section class="section" id="history"><div class="container">
-<div class="split wide-right">
-<div class="stack-lg reveal">
-<span class="eyebrow">历史记录</span>
-<h2>会议结束后回看内容</h2>
-<p class="lead">每次会话都有转写记录，包含每句话的时间、原文和译文。开启保存历史记录后，你可以重新打开以前的会议，查找某句话，复制或导出为文件。</p>
-${checkList([
-  "所有套餐：查看、搜索和复制最近一次会话的转写记录",
-  "Pro 功能：保存会话的历史记录，重新打开以前的会话，导出为 TXT、SRT 或 Markdown",
-  "保存历史记录默认关闭；开启后会加密，只保存在你的电脑上",
-])}
-<p><a class="btn btn-secondary" href="/zh/guide/history-and-export/">阅读历史记录指南 ${icon("arrow-right")}</a></p>
-</div>
-<div>
-${appShot({ slug: "app-history", lang: "zh", alt: "历史记录页面：已保存会话的列表，显示日期和时间、分钟数、句子数、预览，以及打开和删除按钮", caption: "历史记录：保存在你电脑上的会话。" })}
-</div>
-</div>
+<section class="section" id="main-features"><div class="container">
+${sectionHead({ eyebrow: "主要功能", title: "会议翻译、输入翻译、历史记录", center: true })}
+${featureTabs({
+  listLabel: "选择功能",
+  tabs: [
+    {
+      id: "meeting-translation",
+      icon: "captions",
+      label: "会议翻译",
+      title: "会议说外语，字幕用你的语言",
+      lead: "应用收听电脑上正在播放的音频，把译文显示在悬浮字幕条上。不会有机器人加入会议。",
+      bullets: [
+        "五种语言，任意两种之间互译：英语、中文、日语、韩语、越南语；自动检测说话的语言",
+        `说话人说完一句话后，字幕就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href="/zh/features/#performance">测试条件</a>）`,
+        `可用于 Zoom、Teams、Meet 和 Zalo；线下会议把采集来源选为<strong>麦克风</strong>（<a href="/zh/features/#microphone">使用方法</a>）；也适用于你在电脑上观看的直播（<a href="/zh/solutions/livestream-translation/">直播翻译</a>）`,
+      ],
+      cta: { href: "/zh/features/", label: "查看全部功能" },
+      media: demoVideo({ lang: "zh", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "type-and-translate",
+      icon: "keyboard",
+      label: "输入翻译",
+      title: "用对方的语言回复",
+      lead: "在你正在使用的聊天框中按 ⌃⌥G（Windows：Ctrl+Alt+G），用自己的语言输入并按 Enter：译文会被粘贴到聊天框中，你检查后再发送。",
+      bullets: [
+        "在任何支持粘贴（⌘V、Ctrl+V）的应用中，粘贴到你正在输入的框里",
+        "在你的电脑上翻译：你输入的内容从不离开电脑",
+        "所有套餐都包含，而且不消耗翻译时间",
+      ],
+      cta: { href: "/zh/guide/type-and-translate/", label: "阅读输入翻译指南" },
+      media: demoVideo({ lang: "zh", kind: TYPING_VIDEO.kind, label: TYPING_VIDEO.label, fallback: TYPING_VIDEO.fallback }),
+    },
+    {
+      id: "history",
+      icon: "history",
+      label: "历史记录",
+      title: "会议结束后回看内容",
+      lead: "每次会话都有转写记录，包含每句话的时间、原文和译文。",
+      bullets: [
+        "所有套餐：查看、搜索和复制最近一次会话的转写记录",
+        "Pro 功能：保存会话的历史记录，重新打开以前的会话，导出为 TXT、SRT 或 Markdown",
+        "保存历史记录默认关闭；开启后会加密，只保存在你的电脑上",
+      ],
+      cta: { href: "/zh/guide/history-and-export/", label: "阅读历史记录指南" },
+      media: appShot({ slug: "app-history", lang: "zh", alt: "历史记录页面：已保存会话的列表，显示日期和时间、分钟数、句子数、预览，以及打开和删除按钮", caption: "历史记录：保存在你电脑上的会话。" }),
+    },
+  ],
+})}
 </div></section>
 
 <section class="section section-alt" id="how-to-use"><div class="container">
 ${sectionHead({ eyebrow: "使用方法", title: "四步开始使用", text: "安装和设置只需一次，之后每次会议只要点“开始”。", center: true })}
 <div class="split wide-left">
 ${steps([
-  { title: "一行命令安装", text: "把<a href=\"/zh/download/\">下载页面</a>上的安装命令粘贴到终端（macOS）或 PowerShell（Windows）。应用会自动下载、校验，然后打开。" },
-  { title: "首次设置", text: "选择语言，同意条款，下载模型（约 1.3 GB 或 2.5 GB），允许录制系统音频（仅 macOS），再播放一句例句试听。" },
-  { title: "开会时点“开始”", text: "在<strong>目标语言</strong>中选择你想阅读的语言，然后点<strong>开始</strong>（快捷键 ⌃⌥T，Windows：Ctrl+Alt+T）。字幕显示在悬浮字幕条上，把它拖到便于阅读的位置即可。" },
-  { title: "回复和回看", text: "按 ⌃⌥G（Windows：Ctrl+Alt+G）用输入翻译翻译消息。会议结束后点<strong>停止</strong>，再打开侧边栏中的<strong>转写记录</strong>或<strong>历史记录</strong>。" },
+  { title: "一行命令安装", text: `把<a href="/zh/download/">下载页面</a>上的命令粘贴到终端（macOS）或 PowerShell（Windows）。` },
+  { title: "首次设置", text: "选择语言，下载模型（约 1.3 GB 或 2.5 GB），允许录制系统音频（仅 macOS）。" },
+  { title: "开会时点“开始”", text: "在<strong>目标语言</strong>中选择语言，然后点<strong>开始</strong>（⌃⌥T，Windows：Ctrl+Alt+T）。" },
+  { title: "回复和回看", text: "按 ⌃⌥G（Windows：Ctrl+Alt+G）使用输入翻译；会议结束后打开<strong>转写记录</strong>或<strong>历史记录</strong>。" },
 ], true)}
 ${appShot({ slug: "app-home-running", lang: "zh", alt: "会话进行中的 AI Translator 主页：翻译中状态、语言、音频来源和剩余翻译时间", caption: "会话进行中的主页（Monthly 套餐）。" })}
 </div>
-<p class="disclaimer">macOS 版是临时签名（ad-hoc），尚未经过公证（notarize）；Windows 版还没有代码签名。用命令安装时，macOS 会直接打开应用，SmartScreen 也不会询问；用浏览器下载的文件在首次启动时可能被阻止或收到警告，处于阻止模式的智能应用控制会阻止 Windows 版。请查看 <a href="/zh/guide/install-macos/">macOS</a> 和 <a href="/zh/guide/install-windows/">Windows</a> 安装指南。</p>
-<p class="center-text reveal"><a class="btn btn-secondary" href="/zh/guide/quick-start/">阅读快速入门指南 ${icon("arrow-right")}</a> <a class="btn btn-ghost" href="/zh/guide/">全部指南</a></p>
+<p class="disclaimer">macOS 版是临时签名（ad-hoc），尚未经过公证（notarize）；Windows 版还没有代码签名。用命令安装时，macOS 会直接打开应用，SmartScreen 也不会询问；用浏览器下载的文件在首次启动时可能被阻止或收到警告。请查看 <a href="/zh/guide/install-macos/">macOS</a> 和 <a href="/zh/guide/install-windows/">Windows</a> 安装指南。</p>
+<p class="center-text reveal"><a class="btn btn-secondary" href="/zh/guide/quick-start/">阅读快速入门指南 ${icon("arrow-right")}</a></p>
 </div></section>
 
 <section class="section band-dark" id="private-on-device"><div class="container">
-${sectionHead({ eyebrow: "你的数据留在你的电脑上", title: "AI 在你的电脑上运行，会议内容不会离开它", text: "语音识别、翻译和字幕显示都在你自己的电脑上完成，不使用任何云端 AI 服务。", center: true })}
+${sectionHead({ eyebrow: "你的数据留在你的电脑上", title: "AI 在你的电脑上运行，会议内容不会离开它", center: true })}
 ${dataFlow("zh")}
 <div class="grid grid-2">
-${feature({ icon: "lock", title: "音频不离开你的电脑", text: "音频只存在于 RAM 中：从不写入磁盘，也从不通过网络发送，我们已在 macOS 上用网络代理验证过。翻译不需要服务器，所以即使网络不稳定或断开，字幕也会继续出现。", accent: true })}
-${feature({ icon: "shield", title: "服务器上没有会议内容", text: "我们的服务器只保存你的电子邮箱（购买时，或你在客服聊天中自愿留下时）、订单、许可证、设备激活信息（经过哈希处理的设备 ID 和设备名称）、Free 试用的开始时间（经过哈希处理的设备 ID）、许可证变更记录、去除了个人数据的错误报告（保存 30 天），以及你使用客服聊天时的聊天消息（保存 90 天），从不保存会议内容。" })}
+${feature({ icon: "lock", title: "音频不离开你的电脑", text: "音频只存在于 RAM 中：从不写入磁盘，也从不通过网络发送，我们已在 macOS 上用网络代理验证过。网络断开时字幕也会继续出现。", accent: true })}
+${feature({ icon: "shield", title: "服务器上没有会议内容", text: "服务器只保存销售套餐、激活设备和提供支持所需的数据（详见下方），从不保存会议内容。" })}
 </div>
+<details class="more-details reveal"><summary>服务器具体保存哪些数据？</summary><p>我们的服务器只保存你的电子邮箱（购买时，或你在客服聊天中自愿留下时）、订单、许可证、设备激活信息（经过哈希处理的设备 ID 和设备名称）、Free 试用的开始时间（经过哈希处理的设备 ID）、许可证变更记录、去除了个人数据的错误报告（保存 30 天），以及你使用客服聊天时的聊天消息（保存 90 天），从不保存会议内容。</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/zh/data-security/">详细了解你的数据去向 ${icon("arrow-right")}</a></p>
 </div></section>
 
