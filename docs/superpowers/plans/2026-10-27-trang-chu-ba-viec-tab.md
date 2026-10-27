@@ -23,9 +23,9 @@
 
 ### Chỗ khác với spec đã duyệt (Task 1 sửa spec cho khớp)
 
-1. **Mục tiêu chữ:** spec ghi 1.200–1.300 chữ là ước lượng nhẩm. Soạn chữ thật cho thấy hero (192), Bảng giá (279), sơ đồ dữ liệu (98) và lời mời cuối trang (33) không đổi đã chiếm 602 chữ, nên tổng khoảng **1.700** chữ trong HTML (từ 2.162), và chữ **nhìn thấy ngay** khi mở trang (chưa bấm tab, chưa mở mục) khoảng **1.100**. Muốn xuống 1.300 phải bỏ các câu nói thẳng mà test bắt buộc.
+1. **Mục tiêu chữ:** spec ghi 1.200–1.300 chữ là ước lượng nhẩm. Soạn chữ thật cho thấy hero (192), Bảng giá (279), sơ đồ dữ liệu (98) và lời mời cuối trang (33) không đổi đã chiếm 602 chữ, nên tổng khoảng **1.700** chữ trong HTML (từ 2.163), và chữ **hiện sẵn** (không ẩn trong tab hay mục gập; câu Hỏi đáp đầu mở sẵn; là `innerText` của `<main>`) khoảng **1.100** (từ 1.671). Muốn xuống 1.300 phải bỏ các câu nói thẳng mà test bắt buộc.
 2. **id phần:** `tinh-nang-chinh` (vi) / `main-features` (en, ja, zh, ko) thay cho `ba-viec` / `three-things`, khớp tiêu đề "Tính năng chính" hiện trên trang.
-3. **Hỏi đáp:** hai câu bị ràng buộc dài hơn mức 45 chữ (livestream ≤ ~110 chữ; "ngoài Việt Nam" ≤ ~70 chữ); các câu còn lại ≤ ~60 chữ.
+3. **Hỏi đáp:** mức 45 chữ mỗi câu của bản duyệt đầu không giữ được vì hai câu bị ràng buộc (câu livestream ≤ ~125 chữ; câu "ngoài Việt Nam" ≤ ~70 chữ); các câu còn lại ≤ ~70 chữ; sáu câu cộng lại khoảng 420 chữ.
 4. **Panel không có `tabindex="0"`** (bên trong đã có liên kết và video để Tab tới).
 
 ## Cấu trúc file
@@ -185,30 +185,30 @@ EOF
 **Files:**
 - Modify: `docs/superpowers/specs/2026-10-27-trang-chu-ba-viec-tab-design.md`
 
-- [ ] **Step 1: Năm chỗ sửa (dùng Edit, mỗi chỗ `old_string` khớp đúng một lần)**
+- [ ] **Step 1: Sáu chỗ sửa (dùng Edit, mỗi chỗ `old_string` khớp đúng một lần)**
 
 1. id của khối:
    - old: ``| 2 | **Ba việc** (tab) | `ba-viec` / `three-things`; panel giữ id cũ: ``
    - new: ``| 2 | **Ba việc** (tab; tiêu đề hiện trên trang: "Tính năng chính") | `tinh-nang-chinh` / `main-features`; panel giữ id cũ: ``
 2. Mục tiêu chữ:
    - old: `Mục tiêu chữ: khoảng **1.200–1.300** (từ 2.162; hero 191 và Bảng giá 279 không đổi).`
-   - new: ``Mục tiêu chữ (bản vi, đo bằng `website/tools/measure-home.mjs`): tổng khoảng **1.700** chữ trong HTML (từ 2.162), trong đó chữ **nhìn thấy ngay** khi mở trang (chưa bấm tab, chưa mở mục, câu trả lời Hỏi đáp đóng) khoảng **1.100**. Hero (192), Bảng giá (279), sơ đồ dữ liệu (98) và lời mời cuối trang (33) không đổi, nên không xuống tới 1.300 nếu không bỏ các câu nói thẳng mà test bắt buộc. Con số 1.200–1.300 trong bản duyệt đầu là ước lượng nhẩm, đã sửa sau khi soạn chữ thật.``
+   - new: ``Mục tiêu chữ (bản vi, đo bằng `website/tools/measure-home.mjs`): tổng khoảng **1.700** chữ trong HTML (từ 2.163), trong đó chữ **hiện sẵn** (không ẩn trong tab hay mục gập, chỉ câu Hỏi đáp đầu mở sẵn, tính cả phần dưới màn hình đầu: là `innerText` của `<main>`) khoảng **1.100** (từ 1.671). Hero (192), Bảng giá (279), sơ đồ dữ liệu (98) và lời mời cuối trang (33) không đổi, nên không xuống tới 1.300 nếu không bỏ các câu nói thẳng mà test bắt buộc.``
 3. Ngân sách Hỏi đáp:
    - old: `Mỗi câu trả lời ≤ ~45 chữ, riêng livestream ≤ ~60 chữ (đúng ý V1: YouTube Live đã thử một lần, TikTok LIVE tiếng Việt có nhạc nền chưa dùng được, Facebook Live chưa thử; còn liên kết trang livestream).`
-   - new: `Mỗi câu trả lời ≤ ~60 chữ, riêng câu livestream ≤ ~110 chữ (giữ nguyên các câu V1 đã rà soát: YouTube Live đã thử một lần, TikTok LIVE tiếng Việt có nhạc nền chưa dùng được, Facebook Live chưa thử; không có bản điện thoại, không đưa phụ đề vào buổi live của người phát; còn liên kết trang livestream).`
+   - new: `Mỗi câu trả lời ≤ ~70 chữ, riêng câu livestream ≤ ~125 chữ; sáu câu cộng lại khoảng 420 chữ. Livestream giữ đủ các ý và điều kiện thử V1 (rút gọn lời, không đổi nghĩa): YouTube Live đã thử một lần, TikTok LIVE tiếng Việt có nhạc nền chưa dùng được, Facebook Live chưa thử; không có bản điện thoại, không đưa phụ đề vào buổi live của người phát; còn liên kết trang livestream.`
 4. Câu "ngoài Việt Nam":
    - old: `Câu "ngoài Việt Nam" giữ giá USD, "chưa gồm thuế" và câu giới hạn thẻ của Creem.`
-   - new: `Câu "ngoài Việt Nam" giữ giá USD, "chưa gồm thuế" và câu giới hạn thẻ của Creem, nên dài hơn mức trên (≤ ~70 chữ).`
+   - new: không đổi so với old (ràng buộc ≤ ~70 chữ đã nằm trong mức chung ≤ ~70 chữ ở chỗ 3, nên không cần Edit riêng). Chỗ 3 và chỗ 4 nằm trên cùng một dòng của spec nên được áp bằng một Edit gộp hai `old_string` liền nhau.
 5. `.reveal` trong panel:
    - old: ``- **Không dùng `.reveal` trong panel** (IntersectionObserver không bao giờ hiện phần tử trong panel ẩn; lỗi đã gặp ở trang Tải xuống).``
-   - new: ``- **`.reveal` trong panel:** ảnh và video do `appShot`/`demoVideo` mang sẵn lớp `.reveal`, nhưng IntersectionObserver không bao giờ hiện phần tử trong panel ẩn (lỗi đã gặp ở trang Tải xuống), nên CSS ép chúng luôn hiện (`.ftabs-panel .reveal`); không thêm `.reveal` vào chính panel.``
+   - new: ``- **`.reveal` trong panel:** ảnh và video do `appShot`/`demoVideo` mang sẵn lớp `.reveal`, nhưng IntersectionObserver không bao giờ hiện phần tử trong panel ẩn (lỗi đã gặp ở trang Tải xuống), nên CSS ép chúng luôn hiện (`.js .ftabs-panel .reveal`, độ ưu tiên cao hơn `.js .reveal`, không phụ thuộc thứ tự trong file); không thêm `.reveal` vào chính panel.``
 6. Mục Kiểm:
    - old: `- Đo trước và sau: số chữ từng phần (cùng cách đo như bảng trên) và chiều cao trang ở 1280 px, năm ngôn ngữ. Mục tiêu chữ tiếng Việt ≤ ~1.300.`
-   - new: ``- Đo trước và sau bằng `node tools/measure-home.mjs --browser` (trong `website/`): số chữ từng phần (cùng cách đo như bảng trên), chữ nhìn thấy ngay và chiều cao trang ở 1280 và 375 px, năm ngôn ngữ. Số đo thực ghi ở cuối mục này khi làm xong.``
+   - new: ``- Đo trước và sau bằng `node tools/measure-home.mjs --browser` (trong `website/`): số chữ từng phần (vi và en, cùng cách đo như bảng trên), chữ hiện sẵn và chiều cao trang ở 1280 và 375 px (cả năm ngôn ngữ; chữ ja/zh/ko không tách bằng khoảng trắng nên chỉ để so trước và sau). Đạt khi số đo không lệch quá 10% so với mục tiêu chữ ở trên; lệch hơn thì sửa số mục tiêu cho khớp số đo. Số đo thực ghi ở cuối mục này khi làm xong.``
 
 - [ ] **Step 2: Kiểm các chỗ sửa đã vào**
 
-Run: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/trang-chu-ba-viec && grep -c "tinh-nang-chinh\|≤ ~110 chữ\|ép chúng luôn hiện\|measure-home" docs/superpowers/specs/2026-10-27-trang-chu-ba-viec-tab-design.md`
+Run: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/trang-chu-ba-viec && grep -c "tinh-nang-chinh\|≤ ~125 chữ\|ép chúng luôn hiện\|measure-home" docs/superpowers/specs/2026-10-27-trang-chu-ba-viec-tab-design.md`
 Expected: `4` hoặc nhiều hơn (mỗi mẫu xuất hiện trong dòng của nó; không được là `0`).
 
 - [ ] **Step 3: Commit**
@@ -1913,7 +1913,7 @@ Expected: `# fail 0`, `# skipped` bằng số nền.
 Run: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/trang-chu-ba-viec/website && node tools/measure-home.mjs --shots=/private/tmp/claude-502/-Users-dtphong-Desktop-software-business-ai-translator/bca4f07d-56d1-42c7-8e5c-5e7f98c410a3/scratchpad/trang-chu-shots`
 (Nếu phiên làm việc khác có thư mục scratchpad khác thì dùng thư mục scratchpad của phiên đó.)
 Expected: bảng chữ từng phần của vi và en (có phần `tinh-nang-chinh` / `main-features`, không còn `video-demo`, `dich-cuoc-hop`, `go-dich`, `lich-su` đứng riêng), năm dòng JSON `cao1280`, `cao375`, `thayNgay`, và dòng `Ảnh đã lưu ở …`.
-So với bảng "trước" của Task 0: tổng chữ vi khoảng 1.700 (từ 2.162), `thayNgay` của vi khoảng 1.100.
+So với bảng "trước" của Task 0: tổng chữ vi khoảng 1.700 (từ 2.163), `thayNgay` của vi khoảng 1.100.
 
 - [ ] **Step 3: Xem ảnh bằng mắt**
 
@@ -1931,9 +1931,9 @@ Nếu thấy lỗi bố cục: sửa CSS ở `site.css` (khối `.ftabs*`) hoặ
 Thêm vào **cuối** mục `## Kiểm` của spec (ngay trước mục `## Ngoài phạm vi`) một đoạn có số thật lấy từ Step 2 và bảng "trước" của Task 0, đúng khuôn:
 
 ```markdown
-Số đo (2026-10-27, `node tools/measure-home.mjs --browser`, trang chủ tiếng Việt): tổng chữ trong HTML <TRƯỚC> → <SAU>; chữ nhìn thấy ngay <TRƯỚC> → <SAU>; chiều cao trang ở 1280 px <TRƯỚC> → <SAU> px, ở 375 px <TRƯỚC> → <SAU> px. Tiếng Anh: tổng chữ <TRƯỚC> → <SAU>. Số test: <NỀN> → <SAU>.
+Số đo (2026-10-27, `node tools/measure-home.mjs --browser`, trang chủ tiếng Việt): tổng chữ trong HTML <TRƯỚC> → <SAU>; chữ hiện sẵn <TRƯỚC> → <SAU>; chiều cao trang ở 1280 px <TRƯỚC> → <SAU> px, ở 375 px <TRƯỚC> → <SAU> px. Tiếng Anh: tổng chữ <TRƯỚC> → <SAU>. Số test: <NỀN> → <SAU>.
 ```
-Thay từng `<…>` bằng số đo thật (đây là bước ghi dữ liệu đo được, không để lại `<` `>` trong spec). Nếu tổng chữ hoặc chữ nhìn thấy ngay lệch quá 10% so với số trong mục tiêu của spec (1.700 và 1.100), sửa luôn số mục tiêu cho khớp số đo và nói rõ trong tin nhắn bàn giao.
+Thay từng `<…>` bằng số đo thật (đây là bước ghi dữ liệu đo được, không để lại `<` `>` trong spec). Nếu tổng chữ hoặc chữ hiện sẵn lệch quá 10% so với số trong mục tiêu của spec (1.700 và 1.100), sửa luôn số mục tiêu cho khớp số đo và nói rõ trong tin nhắn bàn giao.
 
 Kiểm: `cd /Users/dtphong/Desktop/software_business/meeting-translator-work/trang-chu-ba-viec && grep -n "<TRƯỚC>\|<SAU>\|<NỀN>" docs/superpowers/specs/2026-10-27-trang-chu-ba-viec-tab-design.md` → không in dòng nào.
 
@@ -1951,7 +1951,7 @@ Expected: danh sách commit của nhánh (từ spec tới số đo), `git status
 
 - [ ] **Step 6: Bàn giao (không push, không deploy)**
 
-Báo chủ dự án bằng tiếng Việt: nhánh `trang-chu-ba-viec` (worktree riêng) đã xong và test xanh; nêu số đo trước/sau (chữ trong HTML, chữ nhìn thấy ngay, chiều cao), các chỗ khác với spec đã duyệt (mục tiêu chữ, id phần, ngân sách Hỏi đáp), đường dẫn ảnh chụp để xem, và hỏi: gộp vào `main` bằng cách nào (fast-forward như lần `trang-chu-gon`), có push không, và khi nào `pnpm deploy` (chủ dự án tự chạy). **Không tự gộp, push hay deploy.**
+Báo chủ dự án bằng tiếng Việt: nhánh `trang-chu-ba-viec` (worktree riêng) đã xong và test xanh; nêu số đo trước/sau (chữ trong HTML, chữ hiện sẵn, chiều cao), các chỗ khác với spec đã duyệt (mục tiêu chữ, id phần, ngân sách Hỏi đáp), đường dẫn ảnh chụp để xem, và hỏi: gộp vào `main` bằng cách nào (fast-forward như lần `trang-chu-gon`), có push không, và khi nào `pnpm deploy` (chủ dự án tự chạy). **Không tự gộp, push hay deploy.**
 
 ---
 

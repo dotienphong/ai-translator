@@ -6,11 +6,11 @@ Ngày: 2026-10-27. Nhánh `trang-chu-ba-viec` (tách từ main 8de55fda). Phạm
 
 Chủ dự án (2026-10-27): trang chủ `aitranslator.vn` có quá nhiều thông tin và chữ, người đọc bị rối. Lần làm gọn 23/10 (spec `2026-10-23-trang-chu-gon-design.md`) đã bỏ khối thừa, nhưng từ đó trang có thêm hai video và các câu về livestream, nên chữ tăng lại.
 
-Số đo trên bản đã dựng (`dist/index.html`, tiếng Việt, 2026-10-27): **2.162 chữ, 10 phần**.
+Số đo trên bản đã dựng (`dist/index.html`, tiếng Việt, 2026-10-27): **2.163 chữ, 10 phần**.
 
 | Phần | Chữ |
 |---|---|
-| Hero | 191 |
+| Hero | 192 |
 | Video demo | 94 |
 | Dịch cuộc họp | 224 |
 | Gõ dịch | 90 |
@@ -46,7 +46,7 @@ Số đo trên bản đã dựng (`dist/index.html`, tiếng Việt, 2026-10-27)
 | 6 | Hỏi đáp | | 7 → 6 câu, mỗi câu trả lời ngắn |
 | 7 | Lời mời cuối trang | | Giữ nguyên |
 
-Mục tiêu chữ (bản vi, đo bằng `website/tools/measure-home.mjs`): tổng khoảng **1.700** chữ trong HTML (từ 2.162), trong đó chữ **nhìn thấy ngay** khi mở trang (chưa bấm tab, chưa mở mục, câu trả lời Hỏi đáp đóng) khoảng **1.100**. Hero (192), Bảng giá (279), sơ đồ dữ liệu (98) và lời mời cuối trang (33) không đổi, nên không xuống tới 1.300 nếu không bỏ các câu nói thẳng mà test bắt buộc. Con số 1.200–1.300 trong bản duyệt đầu là ước lượng nhẩm, đã sửa sau khi soạn chữ thật.
+Mục tiêu chữ (bản vi, đo bằng `website/tools/measure-home.mjs`): tổng khoảng **1.700** chữ trong HTML (từ 2.163), trong đó chữ **hiện sẵn** (không ẩn trong tab hay mục gập, chỉ câu Hỏi đáp đầu mở sẵn, tính cả phần dưới màn hình đầu: là `innerText` của `<main>`) khoảng **1.100** (từ 1.671). Hero (192), Bảng giá (279), sơ đồ dữ liệu (98) và lời mời cuối trang (33) không đổi, nên không xuống tới 1.300 nếu không bỏ các câu nói thẳng mà test bắt buộc.
 
 ## Khối "Ba việc"
 
@@ -72,14 +72,14 @@ Mỗi panel: hai cột từ 900 px (chữ trái, hình phải, hình rộng hơn
 - **Có JS:** thanh tab hiện, panel không chọn có `hidden`. `role="tablist"/"tab"/"tabpanel"`, `aria-selected`, `aria-controls`, `tabindex` luân phiên; mũi tên, Home, End chuyển tab (tab tự kích hoạt, tiêu điểm đi theo).
 - **Neo:** `#dich-cuoc-hop`, `#go-dich`, `#lich-su` (và id en/ja/zh/ko) mở đúng tab khi vào trang và khi đổi `hashchange`.
 - **Video:** chuyển tab thì tạm dừng video của panel vừa rời. Giữ nguyên cơ chế nút phát (`data-video`, `preload="none"`).
-- **`.reveal` trong panel:** ảnh và video do `appShot`/`demoVideo` mang sẵn lớp `.reveal`, nhưng IntersectionObserver không bao giờ hiện phần tử trong panel ẩn (lỗi đã gặp ở trang Tải xuống), nên CSS ép chúng luôn hiện (`.ftabs-panel .reveal`); không thêm `.reveal` vào chính panel.
+- **`.reveal` trong panel:** ảnh và video do `appShot`/`demoVideo` mang sẵn lớp `.reveal`, nhưng IntersectionObserver không bao giờ hiện phần tử trong panel ẩn (lỗi đã gặp ở trang Tải xuống), nên CSS ép chúng luôn hiện (`.js .ftabs-panel .reveal`, độ ưu tiên cao hơn `.js .reveal`, không phụ thuộc thứ tự trong file); không thêm `.reveal` vào chính panel.
 - Dưới 900 px thanh tab nằm trọn một hàng ở 320 px (nhãn ngắn), không cuộn ngang.
 
 ## Các phần còn lại
 
 - **Cách dùng:** bốn bước, mỗi bước một câu ≤ ~20 chữ, giữ ảnh màn hình chính. Đoạn ký mã còn một câu nói thẳng (macOS ký ad-hoc chưa notarize, Windows chưa ký mã nên hệ điều hành có thể cảnh báo ở lần mở đầu) và hai liên kết tới bài cài macOS, Windows; chi tiết SmartScreen/Smart App Control đã nằm ở các bài đó. Một nút ("hướng dẫn bắt đầu nhanh").
 - **Dữ liệu:** giữ `dataFlow` và hai thẻ, mỗi thẻ ≤ ~25 chữ. Câu liệt kê dữ liệu máy chủ lưu (test bắt nguyên văn "tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày)", "không có nội dung cuộc họp") đặt trong `<details>` "Máy chủ lưu những gì?" gập sẵn; chữ không đổi. Liên kết `/bao-mat-du-lieu/` giữ.
-- **Hỏi đáp (6 câu):** gộp hai câu Zoom thành "Dùng được với Zoom, Teams, Google Meet, Zalo không?" (không cần bot, thử nghiệm nội bộ, không phải chứng nhận); giữ internet, âm thanh có bị gửi đi không, livestream, miễn phí, ngoài Việt Nam. Mỗi câu trả lời ≤ ~60 chữ, riêng câu livestream ≤ ~110 chữ (giữ nguyên các câu V1 đã rà soát: YouTube Live đã thử một lần, TikTok LIVE tiếng Việt có nhạc nền chưa dùng được, Facebook Live chưa thử; không có bản điện thoại, không đưa phụ đề vào buổi live của người phát; còn liên kết trang livestream). Câu "ngoài Việt Nam" giữ giá USD, "chưa gồm thuế" và câu giới hạn thẻ của Creem, nên dài hơn mức trên (≤ ~70 chữ). JSON-LD `FAQPage` tự theo `HOME_FAQ`.
+- **Hỏi đáp (6 câu):** gộp hai câu Zoom thành "Dùng được với Zoom, Teams, Google Meet, Zalo không?" (không cần bot, thử nghiệm nội bộ, không phải chứng nhận); giữ internet, âm thanh có bị gửi đi không, livestream, miễn phí, ngoài Việt Nam. Mỗi câu trả lời ≤ ~70 chữ, riêng câu livestream ≤ ~125 chữ; sáu câu cộng lại khoảng 420 chữ. Livestream giữ đủ các ý và điều kiện thử V1 (rút gọn lời, không đổi nghĩa): YouTube Live đã thử một lần, TikTok LIVE tiếng Việt có nhạc nền chưa dùng được, Facebook Live chưa thử; không có bản điện thoại, không đưa phụ đề vào buổi live của người phát; còn liên kết trang livestream. Câu "ngoài Việt Nam" giữ giá USD, "chưa gồm thuế" và câu giới hạn thẻ của Creem. JSON-LD `FAQPage` tự theo `HOME_FAQ`.
 - `modified` của trang đổi thành 2026-10-27.
 
 ## Ràng buộc (test hiện có)
@@ -102,7 +102,7 @@ Mỗi chỗ cắt phải chạy `pnpm test` và, nếu test bắt một câu, gi
 ## Kiểm
 
 - `pnpm test` (website) xanh; số test chỉ khác ở phần test thay/thêm.
-- Đo trước và sau bằng `node tools/measure-home.mjs --browser` (trong `website/`): số chữ từng phần (cùng cách đo như bảng trên), chữ nhìn thấy ngay và chiều cao trang ở 1280 và 375 px, năm ngôn ngữ. Số đo thực ghi ở cuối mục này khi làm xong.
+- Đo trước và sau bằng `node tools/measure-home.mjs --browser` (trong `website/`): số chữ từng phần (vi và en, cùng cách đo như bảng trên), chữ hiện sẵn và chiều cao trang ở 1280 và 375 px (cả năm ngôn ngữ; chữ ja/zh/ko không tách bằng khoảng trắng nên chỉ để so trước và sau). Đạt khi số đo không lệch quá 10% so với mục tiêu chữ ở trên; lệch hơn thì sửa số mục tiêu cho khớp số đo. Số đo thực ghi ở cuối mục này khi làm xong.
 - Ảnh chụp 1280 px năm ngôn ngữ và 375 px giao diện tối: không tràn ngang, tab đọc được, hình rõ.
 - Chưa push, chưa deploy; chủ dự án tự quyết (quy trình `website/README.md`, `pnpm deploy`).
 
