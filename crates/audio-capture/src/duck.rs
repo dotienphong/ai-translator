@@ -9,9 +9,13 @@
 //! - Cổng kép (spec mục 17): ngoài năng lượng, một [`SpeechDetector`] tùy chọn (app: Silero VAD) nghe Playback theo khung
 //!   [`SPEECH_FRAME`] mẫu; khung có tiếng nói thì cổng hạ như một khung to. Kết quả áp từ mẫu kế tiếp, không đọc trước, nên
 //!   không thêm độ trễ; giọng nhỏ có thể lọt tối đa một hai khung đầu câu.
+//! - Cờ nguồn (spec 2026-10-26-phan-biet-nguoi-noi §5.5), bật bằng [`DuckingMixer::set_tagging`]: mỗi mẫu ra mang `System`
+//!   (micro bị hạ hay im), `Mic` (âm thanh máy dưới ngưỡng nhường lời, micro có tiếng) hay `Mixed` (cả hai có tiếng), quyết theo
+//!   khung 10 ms như cổng và áp từ khung sau. Lấy ra bằng [`DuckingMixer::take_tags`], thẳng hàng với `out`.
 //!
 //! Mọi số đều ở 16 kHz.
 
+use speaker_protocol::Source;
 use std::collections::VecDeque;
 
 /// Một khung đo năng lượng: 10 ms.
@@ -155,6 +159,67 @@ impl MicGate {
     }
 }
 
+/// Micro "có tiếng" cho cờ nguồn: mức của khung 10 ms (sau hệ số cổng) từ chừng này trở lên.
+pub const MIC_ACTIVE_DBFS: f32 = -50.0;
+
+/// Cờ nguồn cho từng mẫu ra (spec 2026-10-26-phan-biet-nguoi-noi §5.5).
+struct Tagger {
+    on: bool,
+    /// Cờ của khung đang chạy (quyết ở cuối khung trước).
+    tag: Source,
+    pb_sq: f32,
+    mic_sq: f32,
+    ducked: bool,
+    n: usize,
+    /// Ngưỡng "âm thanh máy có tiếng" của cổng (bình phương trung bình).
+    loud_sq: f32,
+    mic_active_sq: f32,
+    out: Vec<Source>,
+}
+
+impl Tagger {
+    fn new(loud_sq: f32) -> Self {
+        Self {
+            on: false,
+            tag: Source::System,
+            pb_sq: 0.0,
+            mic_sq: 0.0,
+            ducked: false,
+            n: 0,
+            loud_sq,
+            mic_active_sq: 10f32.powf(MIC_ACTIVE_DBFS / 10.0),
+            out: Vec::new(),
+        }
+    }
+
+    /// Một mẫu ra: Playback `playback`, hệ số cổng `gain`, micro `mic` (0 khi không có micro ở vị trí này).
+    fn sample(&mut self, playback: f32, gain: f32, mic: f32) {
+        if !self.on {
+            return;
+        }
+        self.out.push(self.tag);
+        let m = gain * mic;
+        self.pb_sq += playback * playback;
+        self.mic_sq += m * m;
+        self.ducked |= gain < 1.0;
+        self.n += 1;
+        if self.n == GATE_FRAME {
+            let n = GATE_FRAME as f32;
+            self.tag = if self.ducked || self.mic_sq / n < self.mic_active_sq {
+                Source::System
+            } else if self.pb_sq / n >= self.loud_sq {
+                Source::Mixed
+            } else {
+                Source::Mic
+            };
+            self.pb_sq = 0.0;
+            self.mic_sq = 0.0;
+            self.ducked = false;
+            self.n = 0;
+        }
+    }
+}
+
 pub struct DuckingMixer {
     playback: VecDeque<f32>,
     mic: VecDeque<f32>,
@@ -173,17 +238,20 @@ pub struct DuckingMixer {
     /// Bộ phát hiện đã lỗi: từ đó cổng chỉ còn theo năng lượng.
     speech_failed: bool,
     speech_error: Option<String>,
+    tagger: Tagger,
 }
 
 impl DuckingMixer {
     /// `max_skew_samples`: lệch tối đa giữa hai luồng trước khi phần dư được phát riêng (app: 100 ms, như `Mixer2`;
     /// đo offline trên hai file thì `usize::MAX`, ghép theo chỉ số).
     pub fn new(params: GateParams, max_skew_samples: usize) -> Self {
+        let gate = MicGate::new(params);
+        let tagger = Tagger::new(gate.loud_sq());
         Self {
             playback: VecDeque::new(),
             mic: VecDeque::new(),
             mic_vad: VecDeque::new(),
-            gate: MicGate::new(params),
+            gate,
             max_skew: max_skew_samples,
             mic_samples: 0,
             ducked_samples: 0,
@@ -193,7 +261,19 @@ impl DuckingMixer {
             speech_skips: 0,
             speech_failed: false,
             speech_error: None,
+            tagger,
         }
+    }
+
+    /// Bật hay tắt cờ nguồn cho từng mẫu ra. Tắt (mặc định) thì không ghi gì.
+    pub fn set_tagging(&mut self, on: bool) {
+        self.tagger.on = on;
+    }
+
+    /// Chuyển cờ của các mẫu đã ra từ lần lấy trước vào `tags`: thẳng hàng với `out` của `drain_into*`, `flush_into*`,
+    /// `release_mic`. Gọi sau mỗi lần xả, để bộ nhớ không lớn dần.
+    pub fn take_tags(&mut self, tags: &mut Vec<Source>) {
+        tags.append(&mut self.tagger.out);
     }
 
     pub fn push_playback(&mut self, samples: &[f32]) {
@@ -236,6 +316,7 @@ impl DuckingMixer {
             out.push((p + g * m).clamp(-1.0, 1.0));
             out_vad.push((p + g * v).clamp(-1.0, 1.0));
             self.listen(p, &mut speech);
+            self.tagger.sample(p, g, m);
         }
         let extra = self.playback.len().saturating_sub(self.max_skew);
         self.flush_playback(extra, out, out_vad, &mut speech);
@@ -338,6 +419,7 @@ impl DuckingMixer {
             };
             self.gate.next(p);
             self.listen(p, speech);
+            self.tagger.sample(p, 1.0, 0.0);
             let p = p.clamp(-1.0, 1.0);
             out.push(p);
             out_vad.push(p);
@@ -354,6 +436,7 @@ impl DuckingMixer {
             }
             out.push((g * m).clamp(-1.0, 1.0));
             out_vad.push((g * v).clamp(-1.0, 1.0));
+            self.tagger.sample(0.0, g, m);
         }
     }
 }
@@ -740,5 +823,85 @@ mod tests {
         let mut s = FakeSpeech::default();
         let (_, m) = mix_with(APP, &playback, &vec![0.0; playback.len()], &mut s);
         assert_eq!(m.speech_stats(), (2, 2));
+    }
+
+    /// Mẫu 300 Hz biên độ `amp` (micro hay âm thanh máy có tiếng).
+    fn tone(len: usize, amp: f32) -> Vec<f32> {
+        (0..len)
+            .map(|i| amp * (2.0 * std::f32::consts::PI * 300.0 * i as f32 / 16_000.0).sin())
+            .collect()
+    }
+
+    /// Trộn `playback` với micro `mic`, bật cờ nguồn; trả (mẫu ra, cờ).
+    fn tagged(params: GateParams, playback: &[f32], mic: &[f32]) -> (Vec<f32>, Vec<Source>) {
+        let mut m = DuckingMixer::new(params, usize::MAX);
+        m.set_tagging(true);
+        m.push_playback(playback);
+        m.push_mic(mic, mic);
+        let (mut out, mut vad, mut tags) = (Vec::new(), Vec::new(), Vec::new());
+        m.flush_into(&mut out, &mut vad);
+        m.take_tags(&mut tags);
+        (out, tags)
+    }
+
+    #[test]
+    fn tags_are_off_by_default() {
+        let mut m = DuckingMixer::new(GateParams::default(), usize::MAX);
+        m.push_playback(&[0.1; 1_600]);
+        m.push_mic(&[0.1; 1_600], &[0.1; 1_600]);
+        let (mut out, mut vad, mut tags) = (Vec::new(), Vec::new(), Vec::new());
+        m.drain_into(&mut out, &mut vad);
+        m.take_tags(&mut tags);
+        assert!(tags.is_empty());
+    }
+
+    /// Âm thanh máy im, micro có tiếng: `Mic` từ khung 10 ms thứ hai (cờ áp từ khung sau, như cổng).
+    #[test]
+    fn a_speaking_mic_over_silent_playback_is_mic() {
+        let (out, tags) = tagged(GateParams::default(), &[0.0; 3_200], &tone(3_200, 0.1));
+        assert_eq!(tags.len(), out.len());
+        assert!(tags[..GATE_FRAME].iter().all(|&t| t == Source::System));
+        assert!(
+            tags[GATE_FRAME..].iter().all(|&t| t == Source::Mic),
+            "{:?}",
+            &tags[GATE_FRAME..GATE_FRAME + 4]
+        );
+    }
+
+    /// Âm thanh máy to: cổng hạ micro, mẫu là `System`. Khung 10 ms đầu cổng chưa kịp hạ (cổng áp từ khung sau) nên khung thứ
+    /// hai mang `Mixed`; từ khung thứ ba micro đã bị hạ.
+    #[test]
+    fn a_loud_playback_ducks_the_mic_and_is_system() {
+        let (_, tags) = tagged(GateParams::default(), &tone(3_200, 0.1), &tone(3_200, 0.1));
+        assert!(tags[GATE_FRAME..2 * GATE_FRAME].iter().all(|&t| t == Source::Mixed));
+        assert!(tags[2 * GATE_FRAME..].iter().all(|&t| t == Source::System));
+    }
+
+    /// Cổng không hạ (`duck_db` 0) mà cả hai có tiếng: `Mixed`.
+    #[test]
+    fn both_speaking_without_ducking_is_mixed() {
+        let params = GateParams {
+            duck_db: 0.0,
+            ..GateParams::default()
+        };
+        let (_, tags) = tagged(params, &tone(3_200, 0.1), &tone(3_200, 0.1));
+        assert!(tags[GATE_FRAME..].iter().all(|&t| t == Source::Mixed));
+    }
+
+    /// Phần chỉ có một luồng: âm thanh máy dư ra là `System`; micro được xả khi âm thanh máy im (`release_mic`) là `Mic` nếu có
+    /// tiếng.
+    #[test]
+    fn unpaired_samples_are_tagged_by_their_stream() {
+        let mut m = DuckingMixer::new(GateParams::default(), 0);
+        m.set_tagging(true);
+        m.push_playback(&[0.0; 800]);
+        let (mut out, mut vad, mut tags) = (Vec::new(), Vec::new(), Vec::new());
+        m.drain_into(&mut out, &mut vad);
+        m.push_mic(&tone(1_600, 0.1), &tone(1_600, 0.1));
+        m.release_mic(&mut out, &mut vad);
+        m.take_tags(&mut tags);
+        assert_eq!(tags.len(), out.len());
+        assert!(tags[..800].iter().all(|&t| t == Source::System));
+        assert!(tags[800 + GATE_FRAME..].iter().all(|&t| t == Source::Mic));
     }
 }

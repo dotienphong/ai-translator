@@ -42,6 +42,8 @@ use audio_capture::mic_chain::MicPreprocessor;
 use audio_capture::preprocess::{ClockFiller, MAX_SKEW_SAMPLES, Preprocessor, RING_SAMPLES, drain_when_ready};
 use audio_capture::{AudioSource as Source, CaptureStats, MicPermission};
 use pipeline::engine::FrameSource;
+// `Source` đã là tên của `audio_capture::AudioSource` trong file này: cờ nguồn của giao thức nhận giọng đặt tên khác.
+use speaker_protocol::Source as SourceTag;
 
 use crate::errors;
 use crate::settings::AudioSource;
@@ -582,6 +584,8 @@ struct Frames {
     vad: Vec<f32>,
     playback: Vec<f32>,
     mic: Vec<f32>,
+    /// Cờ nguồn của từng mẫu của `asr` (spec 2026-10-26-phan-biet-nguoi-noi §5.5).
+    tags: Vec<SourceTag>,
 }
 
 impl Frames {
@@ -590,6 +594,7 @@ impl Frames {
         self.vad.clear();
         self.playback.clear();
         self.mic.clear();
+        self.tags.clear();
     }
 }
 
@@ -610,12 +615,14 @@ impl Pre {
                 p.drain(&mut f.asr)?;
                 f.vad.extend_from_slice(&f.asr[from..]);
                 f.playback.extend_from_slice(&f.asr[from..]);
+                f.tags.resize(f.tags.len() + (f.asr.len() - from), SourceTag::System);
                 Ok(())
             }
             Pre::Mic(m) => {
                 let from = f.asr.len();
                 m.drain(&mut f.asr, &mut f.vad)?;
                 f.mic.extend_from_slice(&f.asr[from..]);
+                f.tags.resize(f.tags.len() + (f.asr.len() - from), SourceTag::Mic);
                 Ok(())
             }
             Pre::Both(b) => b.drain(f, speech),
@@ -637,6 +644,15 @@ struct BothPre {
     /// Phần bộ trộn xả khi gỡ micro, chờ lần `drain` kế tiếp để không mất.
     pending_asr: Vec<f32>,
     pending_vad: Vec<f32>,
+    /// Cờ nguồn của phần xả chờ `pending_asr`.
+    pending_tags: Vec<SourceTag>,
+}
+
+/// Bộ trộn của chế độ âm thanh máy + micro, có cờ nguồn (spec 2026-10-26-phan-biet-nguoi-noi §5.5).
+fn tagging_mixer() -> DuckingMixer {
+    let mut mixer = DuckingMixer::new(GATE, MAX_SKEW_SAMPLES);
+    mixer.set_tagging(true);
+    mixer
 }
 
 impl BothPre {
@@ -644,7 +660,7 @@ impl BothPre {
         Self {
             playback,
             mic: None,
-            mixer: DuckingMixer::new(GATE, MAX_SKEW_SAMPLES),
+            mixer: tagging_mixer(),
             pb: Vec::new(),
             mic_asr: Vec::new(),
             mic_vad: Vec::new(),
@@ -652,11 +668,12 @@ impl BothPre {
             idle_after: PLAYBACK_IDLE,
             pending_asr: Vec::new(),
             pending_vad: Vec::new(),
+            pending_tags: Vec::new(),
         }
     }
 
     fn attach_mic(&mut self, mic: MicPreprocessor) {
-        self.mixer = DuckingMixer::new(GATE, MAX_SKEW_SAMPLES);
+        self.mixer = tagging_mixer();
         self.mic = Some(mic);
     }
 
@@ -664,6 +681,7 @@ impl BothPre {
     fn detach_mic(&mut self) {
         self.mic = None;
         self.mixer.flush_into(&mut self.pending_asr, &mut self.pending_vad);
+        self.mixer.take_tags(&mut self.pending_tags);
     }
 
     /// Tỉ lệ thời gian micro bị hạ, để ghi log (spec §5.6).
@@ -674,6 +692,7 @@ impl BothPre {
     fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>) -> anyhow::Result<()> {
         f.asr.append(&mut self.pending_asr);
         f.vad.append(&mut self.pending_vad);
+        f.tags.append(&mut self.pending_tags);
         self.pb.clear();
         self.playback.drain(&mut self.pb)?;
         if !self.pb.is_empty() {
@@ -683,6 +702,7 @@ impl BothPre {
         let Some(mic) = self.mic.as_mut() else {
             f.asr.extend_from_slice(&self.pb);
             f.vad.extend_from_slice(&self.pb);
+            f.tags.resize(f.tags.len() + self.pb.len(), SourceTag::System);
             return Ok(());
         };
         self.mic_asr.clear();
@@ -695,6 +715,7 @@ impl BothPre {
         if self.last_pb.elapsed() >= self.idle_after {
             self.mixer.release_mic(&mut f.asr, &mut f.vad);
         }
+        self.mixer.take_tags(&mut f.tags);
         if let Some(e) = self.mixer.take_speech_error() {
             log::warn!("nhường lời: VAD lỗi, chỉ hạ micro theo mức âm thanh máy tới lần mở nguồn sau: {e}");
         }
@@ -1133,16 +1154,16 @@ impl LiveCapture {
     }
 }
 
-impl FrameSource for LiveCapture {
-    fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
-        let mut unused = std::mem::take(&mut self.unused);
-        unused.clear();
-        let more = self.read_with_vad(out, &mut unused, timeout);
-        self.unused = unused;
-        more
-    }
-
-    fn read_with_vad(&mut self, out: &mut Vec<f32>, vad_out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
+impl LiveCapture {
+    /// Thân của `read_with_vad` và `read_tagged`. `tags`: nơi nhận cờ nguồn của từng mẫu mới của `out` (spec
+    /// 2026-10-26-phan-biet-nguoi-noi §5.5); `None` thì không ghi cờ nào (tính năng tắt: hành vi thu y hệt trước).
+    fn read_into(
+        &mut self,
+        out: &mut Vec<f32>,
+        vad_out: &mut Vec<f32>,
+        tags: Option<&mut Vec<SourceTag>>,
+        timeout: Duration,
+    ) -> anyhow::Result<bool> {
         self.frames.clear();
         // `drain_when_ready` chờ tới khi vector nó giữ có mẫu: cho nó giữ bản cho whisper, và trong mỗi lần đọc thì đổi bản đó
         // vào `frames` để `Pre::drain` ghi đủ bốn phần.
@@ -1179,7 +1200,35 @@ impl FrameSource for LiveCapture {
         out.extend_from_slice(&self.frames.asr);
         vad_out.extend(std::iter::repeat_n(0.0, silence));
         vad_out.extend_from_slice(&self.frames.vad);
+        if let Some(tags) = tags {
+            tags.resize(tags.len() + silence, SourceTag::System);
+            tags.extend_from_slice(&self.frames.tags);
+        }
         Ok(!self.stop.load(Ordering::SeqCst))
+    }
+}
+
+impl FrameSource for LiveCapture {
+    fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
+        let mut unused = std::mem::take(&mut self.unused);
+        unused.clear();
+        let more = self.read_with_vad(out, &mut unused, timeout);
+        self.unused = unused;
+        more
+    }
+
+    fn read_with_vad(&mut self, out: &mut Vec<f32>, vad_out: &mut Vec<f32>, timeout: Duration) -> anyhow::Result<bool> {
+        self.read_into(out, vad_out, None, timeout)
+    }
+
+    fn read_tagged(
+        &mut self,
+        out: &mut Vec<f32>,
+        vad_out: &mut Vec<f32>,
+        tags: &mut Vec<SourceTag>,
+        timeout: Duration,
+    ) -> anyhow::Result<bool> {
+        self.read_into(out, vad_out, Some(tags), timeout)
     }
 }
 
@@ -1758,5 +1807,54 @@ mod tests {
             )
             .is_some()
         );
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §5.5: mỗi mẫu của bản cho whisper có đúng một cờ nguồn. Âm thanh máy đi thẳng là
+    /// `System`; micro là `Mic`; micro bị hạ dưới âm thanh máy to là `System`.
+    #[test]
+    fn every_drained_sample_has_one_source_tag() {
+        let format = AudioFormat {
+            sample_rate: 16_000,
+            channels: 1,
+        };
+        let (mut producer, consumer) = rtrb::RingBuffer::new(16_000);
+        let mut pre = Pre::Both(Box::new(BothPre::new(
+            Preprocessor::new(vec![(consumer, format)]).unwrap(),
+        )));
+        for _ in 0..1_600 {
+            producer.push(0.25).unwrap();
+        }
+        let mut f = Frames::default();
+        pre.drain(&mut f, None).unwrap();
+        assert_eq!(f.tags.len(), f.asr.len());
+        assert!(f.tags.iter().all(|&t| t == SourceTag::System));
+
+        let (mut mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+        let mut pre = Pre::Mic(Box::new(MicPreprocessor::new(mic_out, format, false).unwrap()));
+        for i in 0..8_000 {
+            mic_in
+                .push(0.1 * (2.0 * std::f32::consts::PI * 300.0 * i as f32 / 16_000.0).sin())
+                .unwrap();
+        }
+        let mut f = Frames::default();
+        pre.drain(&mut f, None).unwrap();
+        assert_eq!(f.tags.len(), f.asr.len());
+        assert!(f.tags.iter().all(|&t| t == SourceTag::Mic));
+
+        let (mut pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
+        let (mut mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+        let mut both = BothPre::new(Preprocessor::new(vec![(pb_out, format)]).unwrap());
+        both.attach_mic(MicPreprocessor::new(mic_out, format, false).unwrap());
+        let mut pre = Pre::Both(Box::new(both));
+        for i in 0..8_000 {
+            pb_in.push(if i % 2 == 0 { 0.1 } else { -0.1 }).unwrap();
+            mic_in
+                .push(0.1 * (2.0 * std::f32::consts::PI * 300.0 * i as f32 / 16_000.0).sin())
+                .unwrap();
+        }
+        let mut f = Frames::default();
+        pre.drain(&mut f, None).unwrap();
+        assert_eq!(f.tags.len(), f.asr.len());
+        assert!(f.tags[1_600..].iter().all(|&t| t == SourceTag::System));
     }
 }

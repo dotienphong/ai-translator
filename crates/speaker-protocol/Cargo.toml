@@ -1,0 +1,13 @@
+[package]
+name = "speaker-protocol"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Giao thức giữa app và `speaker-worker` (spec 2026-10-26-phan-biet-nguoi-noi §4.2): chỉ kiểu dữ liệu và mã hóa khung.
+# Không I/O mạng, không luồng. `audio-capture`, `pipeline`, `speaker-worker` và app cùng dùng.
+[dependencies]
+postcard.workspace = true
+serde.workspace = true
+thiserror.workspace = true

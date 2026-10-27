@@ -27,6 +27,8 @@ getrandom = "0.4.3"
 keyring-core = "1.0.0"
 log = "0.4.34"
 pipeline = { path = "../crates/pipeline" }
+# Giao thức nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.2): cờ nguồn, `SpeakerConfig` của manifest.
+speaker-protocol = { path = "../crates/speaker-protocol" }
 rtrb.workspace = true
 # SQLite mã hóa bằng SQLCipher (spec §6.6, §10.2): SQLCipher 4.14 (SQLite 3.51.3) build kèm. macOS dùng CommonCrypto của
 # hệ thống; Windows thêm OpenSSL build tĩnh từ mã nguồn (bên dưới). Không bật `cache` mặc định (không cần `hashlink`).

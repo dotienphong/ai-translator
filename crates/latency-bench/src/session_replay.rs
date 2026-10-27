@@ -467,6 +467,7 @@ pub(crate) mod tests {
                 status,
                 provisional,
                 replaces: Vec::new(),
+                speaker: None,
             }),
         }
     }
@@ -527,6 +528,7 @@ pub(crate) mod tests {
             tgt_stable: tgt.0.into(),
             tgt_tail: tgt.1.into(),
             tgt_src_units: units,
+            speaker: None,
         }
     }
 

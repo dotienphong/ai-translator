@@ -3,19 +3,46 @@
 use anyhow::{Context, Result, anyhow, bail};
 use std::path::{Path, PathBuf};
 
+type WavFileReader = hound::WavReader<std::io::BufReader<std::fs::File>>;
+
 /// Đọc WAV bất kỳ tần số (16 hay 24 bit nguyên, hay 32 bit thực), gộp các kênh về mono. Trả mẫu trong [-1, 1] và tần số.
 pub fn read_wav_mono(path: &Path) -> Result<(Vec<f32>, u32)> {
+    let reader = hound::WavReader::open(path).with_context(|| format!("không mở được {}", path.display()))?;
+    read_frames(reader, path, usize::MAX)
+}
+
+/// Như `read_wav_mono` nhưng chỉ đọc `frames` khung (mỗi khung một mẫu mỗi kênh) từ khung `start_frame`, không nạp cả file
+/// vào bộ nhớ. Khoảng vượt cuối file thì chỉ trả phần còn lại; `start_frame` sau cuối file là lỗi.
+pub fn read_wav_mono_range(path: &Path, start_frame: u32, frames: usize) -> Result<(Vec<f32>, u32)> {
     let mut reader = hound::WavReader::open(path).with_context(|| format!("không mở được {}", path.display()))?;
+    let duration = reader.duration();
+    if start_frame > duration {
+        bail!(
+            "{}: khung bắt đầu {start_frame} nằm sau cuối file ({duration} khung)",
+            path.display()
+        );
+    }
+    reader
+        .seek(start_frame)
+        .with_context(|| format!("không tua được {} tới khung {start_frame}", path.display()))?;
+    read_frames(reader, path, frames)
+}
+
+/// Đọc tối đa `frames` khung từ vị trí hiện tại của `reader`, gộp các kênh về mono.
+fn read_frames(mut reader: WavFileReader, path: &Path, frames: usize) -> Result<(Vec<f32>, u32)> {
     let spec = reader.spec();
     let channels = spec.channels.max(1) as usize;
+    let n = frames.saturating_mul(channels);
     let interleaved: Vec<f32> = match (spec.sample_format, spec.bits_per_sample) {
-        (hound::SampleFormat::Float, 32) => reader.samples::<f32>().collect::<Result<_, _>>()?,
+        (hound::SampleFormat::Float, 32) => reader.samples::<f32>().take(n).collect::<Result<_, _>>()?,
         (hound::SampleFormat::Int, 16) => reader
             .samples::<i16>()
+            .take(n)
             .map(|s| s.map(|v| v as f32 / 32_768.0))
             .collect::<Result<_, _>>()?,
         (hound::SampleFormat::Int, 24) => reader
             .samples::<i32>()
+            .take(n)
             .map(|s| s.map(|v| v as f32 / 8_388_608.0))
             .collect::<Result<_, _>>()?,
         (format, bits) => bail!("{}: định dạng {format:?} {bits} bit chưa hỗ trợ", path.display()),
@@ -228,6 +255,57 @@ mod tests {
         let (x, rate) = read_wav_mono(&path).unwrap();
         assert_eq!(rate, 16_000);
         assert!((x[1] - 0.5).abs() < 1e-3 && (x[2] + 0.5).abs() < 1e-3);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn read_wav_mono_range_reads_only_the_requested_frames() {
+        let dir = std::env::temp_dir().join(format!("wavio-range-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("x.wav");
+        let x: Vec<f32> = (0..100).map(|i| i as f32 / 200.0).collect();
+        write_wav16(&path, &x).unwrap();
+        let (all, _) = read_wav_mono(&path).unwrap();
+
+        let (part, rate) = read_wav_mono_range(&path, 10, 5).unwrap();
+        assert_eq!(rate, 16_000);
+        assert_eq!(part, all[10..15]);
+        // Khoảng vượt cuối file: chỉ phần còn lại.
+        assert_eq!(read_wav_mono_range(&path, 95, 50).unwrap().0, all[95..]);
+        // Bắt đầu đúng ở cuối file: không lỗi, không có mẫu nào.
+        assert_eq!(read_wav_mono_range(&path, 100, 5).unwrap().0, Vec::<f32>::new());
+        // Bắt đầu sau cuối file: lỗi, nêu tên file.
+        let err = read_wav_mono_range(&path, 101, 5).unwrap_err();
+        assert!(format!("{err:#}").contains("x.wav"), "{err:#}");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn read_wav_mono_range_counts_frames_not_samples_in_a_stereo_file() {
+        let dir = std::env::temp_dir().join(format!("wavio-range-stereo-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("stereo.wav");
+        let spec = hound::WavSpec {
+            channels: 2,
+            sample_rate: 16_000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut w = hound::WavWriter::create(&path, spec).unwrap();
+        // Khung i: trái 100·i, phải 300·i; mono là trung bình 200·i.
+        for i in 0..50i16 {
+            w.write_sample(100 * i).unwrap();
+            w.write_sample(300 * i).unwrap();
+        }
+        w.finalize().unwrap();
+
+        let (part, _) = read_wav_mono_range(&path, 10, 5).unwrap();
+        let expected: Vec<f32> = (10..15).map(|i| (200 * i) as f32 / 32_768.0).collect();
+        assert_eq!(
+            part, expected,
+            "tua và đọc theo khung (mỗi khung hai mẫu), không theo mẫu"
+        );
+        assert_eq!(read_wav_mono_range(&path, 48, 10).unwrap().0.len(), 2);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

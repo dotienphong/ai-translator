@@ -15,6 +15,9 @@ pipeline = { path = "../pipeline" }
 rubato.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# Nhận giọng người nói (spec 2026-10-26-phan-biet-nguoi-noi §12, lệnh `speaker-eval`).
+speaker-protocol = { path = "../speaker-protocol" }
+speaker-worker = { path = "../speaker-worker" }
 # AEC3 của WebRTC bằng Rust (BSD-3-Clause), chỉ để đo phương án C của spike nguồn micro.
 sonora = "0.2.0"
 sysinfo = "0.39.6"

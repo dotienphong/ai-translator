@@ -54,6 +54,9 @@ pub struct Segment {
     /// của đoạn sau (đều là khung im lặng), nên không được ghép `samples` của hai đoạn liền nhau mà coi như
     /// không chồng nhau.
     pub samples: Vec<f32>,
+    /// Số mẫu đệm đứng trước tiếng nói trong `samples` (0 ở phần dư sau cắt cưỡng bức). Phần tiếng nói là
+    /// `samples[lead_samples..lead_samples + speech_ms × 16]` (spec 2026-10-26-phan-biet-nguoi-noi §4.2).
+    pub lead_samples: usize,
 }
 
 /// Đoạn đang mở, không kèm âm thanh (spec 2026-10-10 §4.1): luồng VAD xét mỗi khung có nên chép từng phần không.
@@ -292,6 +295,7 @@ impl Segmenter {
             mean_prob: speech.iter().sum::<f32>() / n,
             speech_ratio: speech.iter().filter(|&&p| p >= self.cfg.threshold).count() as f32 / n,
             samples,
+            lead_samples: pre_roll.iter().map(Vec::len).sum(),
         }
     }
 }
@@ -307,6 +311,7 @@ impl std::fmt::Debug for Segment {
             .field("mean_prob", &self.mean_prob)
             .field("speech_ratio", &self.speech_ratio)
             .field("samples", &format_args!("<{} mẫu>", self.samples.len()))
+            .field("lead_samples", &self.lead_samples)
             .finish()
     }
 }
@@ -758,5 +763,37 @@ mod tests {
         f.run(&[(0.9, 0.5, 20), (0.0, 0.0, 9)]);
         let s = f.seg.flush().expect("còn đoạn đang dở");
         f.assert_samples(&s, 0, 20 + 7); // đệm đuôi 7 khung, không phải 9
+    }
+
+    /// `lead_samples`: số mẫu đệm trước tiếng nói (spec 2026-10-26-phan-biet-nguoi-noi §4.2: worker nhận phần tiếng nói, không đệm).
+    #[test]
+    fn lead_samples_mark_where_the_speech_starts() {
+        let quiet = [0.0f32; FRAME_SAMPLES];
+        let loud = [0.5f32; FRAME_SAMPLES];
+        let run = |silent_before: usize| {
+            let mut s = Segmenter::new(SegmenterConfig::default());
+            for _ in 0..silent_before {
+                assert!(s.push(&quiet, 0.0).is_empty());
+            }
+            let mut out = Vec::new();
+            for _ in 0..20 {
+                out.extend(s.push(&loud, 0.9));
+            }
+            for _ in 0..20 {
+                out.extend(s.push(&quiet, 0.0));
+            }
+            out.remove(0)
+        };
+        // Đệm 200 ms làm tròn lên 7 khung.
+        let seg = run(10);
+        assert_eq!(seg.lead_samples, 7 * FRAME_SAMPLES);
+        assert!(seg.samples[..seg.lead_samples].iter().all(|&v| v == 0.0));
+        assert!(
+            seg.samples[seg.lead_samples..seg.lead_samples + FRAME_SAMPLES]
+                .iter()
+                .all(|&v| v == 0.5)
+        );
+        // Đầu phiên chỉ có 2 khung trước tiếng nói: đệm trước ngắn hơn.
+        assert_eq!(run(2).lead_samples, 2 * FRAME_SAMPLES);
     }
 }

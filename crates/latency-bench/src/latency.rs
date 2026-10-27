@@ -535,6 +535,8 @@ fn piece_of(rec: &SegmentRecord) -> Piece<'_> {
         end_ms: rec.end_ms,
         lang: &rec.lang,
         text: &rec.text,
+        // S6 cũ không có nhận giọng.
+        voice: None,
     }
 }
 

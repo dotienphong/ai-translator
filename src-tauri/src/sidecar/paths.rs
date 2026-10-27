@@ -12,6 +12,9 @@ use std::path::{Path, PathBuf};
 /// Target triple lúc build (build.rs đặt).
 pub const TARGET: &str = env!("SIDECAR_TARGET");
 
+/// Tên của tiến trình phụ nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.1); file theo quy ước `file_name`.
+pub const SPEAKER_WORKER: &str = "speaker-worker";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SidecarFiles {
     /// Bản `asr-worker` chạy GPU. macOS: cùng file với `asr_cpu`. Windows: `asr-worker-vulkan`.
@@ -140,7 +143,13 @@ mod tests {
     #[test]
     fn bundled_names_match_the_release_file_names() {
         for (target, windows) in [("aarch64-apple-darwin", false), ("x86_64-pc-windows-msvc", true)] {
-            for base in ["asr-worker", "asr-worker-vulkan", "asr-worker-cpu", "llama-server"] {
+            for base in [
+                "asr-worker",
+                "asr-worker-vulkan",
+                "asr-worker-cpu",
+                "llama-server",
+                SPEAKER_WORKER,
+            ] {
                 let dev = file_name(base, target, true, windows);
                 assert_eq!(
                     crate::sidecar::bundled_name::bundled_name(&dev, target, false),

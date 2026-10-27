@@ -17,6 +17,9 @@ pub struct Piece<'a> {
     /// Ngôn ngữ do `asr-worker` chọn (§6.4).
     pub lang: &'a str,
     pub text: &'a str,
+    /// Giọng của đoạn (spec 2026-10-26-phan-biet-nguoi-noi §4.4): `Assign` đã nhận tới lúc kết quả nhận dạng của đoạn về;
+    /// `None` khi chưa có, khi đó luật cũ áp dụng.
+    pub voice: Option<u32>,
 }
 
 /// Cửa sổ ghép: max(700 ms, `vadEndSilenceMs` + 400 ms) với mặc định.
@@ -50,6 +53,11 @@ pub struct OpenSentence {
     closed: bool,
     max_speech_ms: u64,
     max_segments: usize,
+    /// Giọng của câu (giọng của phụ đề, do luồng phụ đề tính bằng `VoiceBook`).
+    voice: Option<u32>,
+    /// Câu đã ghép hai giọng đã biết khác nhau (nhãn tới muộn, `VoiceBook::is_mixed`): không nhãn, không ghép thêm đoạn đã biết
+    /// giọng.
+    mixed: bool,
 }
 
 impl OpenSentence {
@@ -64,6 +72,8 @@ impl OpenSentence {
             closed: ends_sentence(first.text),
             max_speech_ms: cfg.max_speech_ms,
             max_segments: cfg.max_segments,
+            voice: first.voice,
+            mixed: false,
         }
     }
 
@@ -75,6 +85,9 @@ impl OpenSentence {
             && next.start_ms.saturating_sub(self.last_end_ms) <= window_ms
             && self.segments < self.max_segments
             && self.speech_ms + next.end_ms.saturating_sub(next.start_ms) <= self.max_speech_ms
+            // Không nới khi dịch chậm: ghép câu không có hàng chờ; đuổi kịp là việc của hàng đợi dịch (QĐ 12 của kế hoạch 02).
+            && !matches!((self.voice, next.voice), (Some(a), Some(b)) if a != b)
+            && !(self.mixed && next.voice.is_some())
     }
 
     pub fn push(&mut self, next: &Piece) {
@@ -83,6 +96,9 @@ impl OpenSentence {
         self.speech_ms += next.end_ms.saturating_sub(next.start_ms);
         self.last_end_ms = next.end_ms;
         self.closed = ends_sentence(next.text);
+        if !self.mixed {
+            self.voice = self.voice.or(next.voice);
+        }
     }
 
     pub fn lang(&self) -> &str {
@@ -109,6 +125,22 @@ impl OpenSentence {
     /// Có dấu câu kết thúc ở đoạn cuối.
     pub fn is_closed(&self) -> bool {
         self.closed
+    }
+
+    pub fn voice(&self) -> Option<u32> {
+        self.voice
+    }
+
+    /// Luồng phụ đề đặt lại giọng của câu khi nhãn của một đoạn trong câu tới muộn hay giọng bị gộp (câu hết lẫn giọng).
+    pub fn set_voice(&mut self, voice: Option<u32>) {
+        self.voice = voice;
+        self.mixed = false;
+    }
+
+    /// Nhãn tới muộn lộ ra câu đã ghép hai giọng đã biết khác nhau: từ giờ không nhãn, chỉ ghép thêm đoạn chưa biết giọng.
+    pub fn mark_mixed(&mut self) {
+        self.voice = None;
+        self.mixed = true;
     }
 }
 
@@ -143,6 +175,7 @@ mod tests {
             end_ms,
             lang: "en",
             text,
+            voice: None,
         }
     }
 
@@ -320,5 +353,55 @@ mod tests {
                 "{lang}"
             );
         }
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.4: hai đoạn đều đã biết giọng và khác giọng thì không ghép; chưa biết thì luật cũ.
+    #[test]
+    fn two_known_different_voices_never_merge() {
+        let with = |voice| Piece {
+            voice,
+            ..piece(2_100, 3_000, "and more")
+        };
+        let mut open = OpenSentence::new(&piece(0, 2_000, "so we went"), &cfg());
+        assert!(open.accepts(&with(Some(2)), 700), "câu chưa biết giọng: luật cũ");
+        open.set_voice(Some(1));
+        assert!(!open.accepts(&with(Some(2)), 700));
+        assert!(open.accepts(&with(Some(1)), 700));
+        assert!(open.accepts(&with(None), 700), "đoạn chưa có nhãn: luật cũ");
+        open.push(&with(None));
+        assert_eq!(open.voice(), Some(1));
+    }
+
+    /// N4 của rà soát: nhãn tới muộn lộ ra câu đang mở đã ghép hai giọng: câu không nhãn và không ghép thêm đoạn đã biết giọng
+    /// (đoạn đó mở câu mới, giữ nhãn của nó); worker gộp hai giọng làm một thì luồng phụ đề đặt lại giọng như thường.
+    #[test]
+    fn a_sentence_found_to_mix_voices_takes_no_more_known_voices() {
+        let with = |voice| Piece {
+            voice,
+            ..piece(2_100, 3_000, "and more")
+        };
+        let mut open = OpenSentence::new(&piece(0, 2_000, "so we went"), &cfg());
+        open.set_voice(Some(2));
+        open.mark_mixed();
+        assert_eq!(open.voice(), None);
+        assert!(!open.accepts(&with(Some(1)), 700));
+        assert!(!open.accepts(&with(Some(2)), 700));
+        assert!(open.accepts(&with(None), 700), "đoạn chưa có nhãn: luật cũ");
+        open.push(&with(None));
+        assert_eq!(open.voice(), None);
+        open.set_voice(Some(1));
+        assert!(open.accepts(&with(Some(1)), 700));
+    }
+
+    #[test]
+    fn a_new_sentence_takes_the_voice_of_its_first_piece() {
+        let first = Piece {
+            voice: Some(3),
+            ..piece(0, 1_000, "hi")
+        };
+        assert_eq!(OpenSentence::new(&first, &cfg()).voice(), Some(3));
+        let mut open = OpenSentence::new(&piece(0, 1_000, "hi"), &cfg());
+        open.push(&first);
+        assert_eq!(open.voice(), Some(3), "câu chưa có giọng nhận giọng của đoạn ghép thêm");
     }
 }
