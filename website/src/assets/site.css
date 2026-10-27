@@ -599,7 +599,7 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 
 /* ---------- Trang chủ: khối tab "Tính năng chính" (spec 2026-10-27-trang-chu-ba-viec-tab) ----------
    Không JS: thanh tab ẩn, ba panel xếp dọc. Có JS (site.js, initFeatureTabs): thanh tab hiện, panel không chọn có `hidden`. */
-.ftabs-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 860px; margin: 0 auto clamp(28px, 4vw, 44px); padding: 0; background: transparent; border: 0; }
+.ftabs-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 860px; margin: 0 auto 10px; padding: 0; background: transparent; border: 0; }
 .ftabs-list[hidden] { display: none; }
 /* Có JS nhưng script chưa chạy: giữ chỗ cho thanh tab (không hiện) và chỉ hiện panel đầu, để lúc nâng cấp không đẩy trang (CLS). */
 .js .ftabs:not(.is-enhanced) .ftabs-list[hidden] { display: grid; visibility: hidden; }
@@ -607,26 +607,51 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 /* Mỗi tab một màu theo thứ tự (xanh dương, xanh ngọc, hổ phách): --tab là màu nhấn (viền, icon, tiêu điểm), --tab-from/--tab-to là
    hai đầu gradient của tab đang chọn, --tab-on là chữ trên nền đó (đạt 4.5:1 với cả hai đầu; test/feature-tabs.test.mjs kiểm),
    --tab-glow là quầng sáng. Nền tab chưa chọn pha --tab vào --tab-base (mặc định --surface); ở chế độ tối tab hổ phách có nền gốc
-   nâu ấm riêng, vì vàng pha vào nền navy triệt tiêu sắc thành xám. Thêm tab thứ tư phải thêm bộ màu :nth-child(4) ở cả ba chỗ (sáng và hai khối tối). */
-.ftab:nth-child(1) { --tab: #1d63c9; --tab-from: #2b6fdb; --tab-to: #174fa3; --tab-on: #ffffff; --tab-glow: rgba(29, 99, 201, .45); }
-.ftab:nth-child(2) { --tab: #0a8579; --tab-from: #0a8276; --tab-to: #08665e; --tab-on: #ffffff; --tab-glow: rgba(10, 133, 121, .45); }
-.ftab:nth-child(3) { --tab: #ad6700; --tab-from: #f7b84b; --tab-to: #e8921a; --tab-on: #2b1a00; --tab-glow: rgba(232, 146, 26, .5); }
-:root[data-theme="dark"] .ftab { --tab-tint: 14%; }
-:root[data-theme="dark"] .ftab:nth-child(1) { --tab: #4d9bff; --tab-from: #5aa8ff; --tab-to: #3b84f0; --tab-on: #04122b; --tab-glow: rgba(77, 155, 255, .45); }
-:root[data-theme="dark"] .ftab:nth-child(2) { --tab: #2fd0c0; --tab-from: #3ddccb; --tab-to: #1fb5a6; --tab-on: #03201d; --tab-glow: rgba(47, 208, 192, .4); }
-:root[data-theme="dark"] .ftab:nth-child(3) { --tab: #f2c15a; --tab-from: #f7cd6c; --tab-to: #ecae35; --tab-on: #2a1a00; --tab-glow: rgba(242, 193, 90, .4); --tab-base: #1f180b; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ftab { --tab-tint: 14%; }
-  :root:not([data-theme="light"]) .ftab:nth-child(1) { --tab: #4d9bff; --tab-from: #5aa8ff; --tab-to: #3b84f0; --tab-on: #04122b; --tab-glow: rgba(77, 155, 255, .45); }
-  :root:not([data-theme="light"]) .ftab:nth-child(2) { --tab: #2fd0c0; --tab-from: #3ddccb; --tab-to: #1fb5a6; --tab-on: #03201d; --tab-glow: rgba(47, 208, 192, .4); }
-  :root:not([data-theme="light"]) .ftab:nth-child(3) { --tab: #f2c15a; --tab-from: #f7cd6c; --tab-to: #ecae35; --tab-on: #2a1a00; --tab-glow: rgba(242, 193, 90, .4); --tab-base: #1f180b; }
+   nâu ấm riêng, vì vàng pha vào nền navy triệt tiêu sắc thành xám. Bộ màu khai báo một lần thành token --tab-<n>-* trên .ftabs (sáng và
+   hai khối tối), rồi .ftab:nth-child(n) và chỉ báo tab đang mở (thanh trên nội dung, cần màu ở mức .ftabs) cùng đọc từ đó.
+   Thêm tab thứ tư phải thêm token --tab-4-* ở cả ba chỗ, một dòng :nth-child(4) và một dòng :has(… :nth-child(4) …) bên dưới. */
+.ftabs {
+  --tab-1: #1d63c9; --tab-1-from: #2b6fdb; --tab-1-to: #174fa3; --tab-1-on: #ffffff; --tab-1-glow: rgba(29, 99, 201, .45);
+  --tab-2: #0a8579; --tab-2-from: #0a8276; --tab-2-to: #08665e; --tab-2-on: #ffffff; --tab-2-glow: rgba(10, 133, 121, .45);
+  --tab-3: #ad6700; --tab-3-from: #f7b84b; --tab-3-to: #e8921a; --tab-3-on: #2b1a00; --tab-3-glow: rgba(232, 146, 26, .5);
 }
-.ftab { display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; min-height: 64px; padding: 12px 18px; border: 1.5px solid color-mix(in srgb, var(--tab) 30%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--tab) var(--tab-tint, 10%), var(--tab-base, var(--surface))); color: var(--ink); font: inherit; font-weight: 700; font-size: 1.08rem; line-height: 1.25; text-align: center; text-wrap: balance; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .25s var(--ease), transform .2s var(--ease), border-color .2s; }
+:root[data-theme="dark"] .ftabs {
+  --tab-tint: 14%;
+  --tab-1: #4d9bff; --tab-1-from: #5aa8ff; --tab-1-to: #3b84f0; --tab-1-on: #04122b; --tab-1-glow: rgba(77, 155, 255, .45);
+  --tab-2: #2fd0c0; --tab-2-from: #3ddccb; --tab-2-to: #1fb5a6; --tab-2-on: #03201d; --tab-2-glow: rgba(47, 208, 192, .4);
+  --tab-3: #f2c15a; --tab-3-from: #f7cd6c; --tab-3-to: #ecae35; --tab-3-on: #2a1a00; --tab-3-glow: rgba(242, 193, 90, .4); --tab-3-base: #1f180b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ftabs {
+    --tab-tint: 14%;
+    --tab-1: #4d9bff; --tab-1-from: #5aa8ff; --tab-1-to: #3b84f0; --tab-1-on: #04122b; --tab-1-glow: rgba(77, 155, 255, .45);
+    --tab-2: #2fd0c0; --tab-2-from: #3ddccb; --tab-2-to: #1fb5a6; --tab-2-on: #03201d; --tab-2-glow: rgba(47, 208, 192, .4);
+    --tab-3: #f2c15a; --tab-3-from: #f7cd6c; --tab-3-to: #ecae35; --tab-3-on: #2a1a00; --tab-3-glow: rgba(242, 193, 90, .4); --tab-3-base: #1f180b;
+  }
+}
+.ftab:nth-child(1) { --tab: var(--tab-1); --tab-from: var(--tab-1-from); --tab-to: var(--tab-1-to); --tab-on: var(--tab-1-on); --tab-glow: var(--tab-1-glow); }
+.ftab:nth-child(2) { --tab: var(--tab-2); --tab-from: var(--tab-2-from); --tab-to: var(--tab-2-to); --tab-on: var(--tab-2-on); --tab-glow: var(--tab-2-glow); }
+.ftab:nth-child(3) { --tab: var(--tab-3); --tab-from: var(--tab-3-from); --tab-to: var(--tab-3-to); --tab-on: var(--tab-3-on); --tab-glow: var(--tab-3-glow); --tab-base: var(--tab-3-base); }
+.ftab { display: flex; align-items: center; justify-content: center; gap: 12px; position: relative; min-width: 0; min-height: 64px; padding: 12px 18px; border: 1.5px solid color-mix(in srgb, var(--tab) 30%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--tab) var(--tab-tint, 10%), var(--tab-base, var(--surface))); color: var(--ink); font: inherit; font-weight: 700; font-size: 1.08rem; line-height: 1.25; text-align: center; text-wrap: balance; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .25s var(--ease), transform .2s var(--ease), border-color .2s; }
 .ftab .icon { flex: none; width: 38px; height: 38px; padding: 9px; border-radius: 50%; background: color-mix(in srgb, var(--tab) 16%, transparent); color: var(--tab); transition: background .2s, color .2s; }
 .ftab:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--tab) calc(var(--tab-tint, 10%) + 8%), var(--tab-base, var(--surface))); border-color: color-mix(in srgb, var(--tab) 55%, transparent); transform: translateY(-1px); }
 .ftab[aria-selected="true"] { background: linear-gradient(135deg, var(--tab-from), var(--tab-to)); background-origin: border-box; color: var(--tab-on); border-color: transparent; box-shadow: 0 14px 30px -10px var(--tab-glow), 0 2px 6px rgba(11, 19, 34, .12); transform: translateY(-2px); }
 .ftab[aria-selected="true"] .icon { background: rgba(255, 255, 255, .22); color: var(--tab-on); }
 .ftab:focus-visible { outline: 3px solid var(--tab); outline-offset: 3px; }
+/* Chỉ báo tab đang mở: mũi nhọn dưới tab chọn chỉ xuống thanh màu trên đỉnh panel, cả hai cùng màu tab đó. Mũi nhọn là hình vuông
+   --arrow xoay 45° chỉ giữ nửa dưới (clip-path), tâm nằm 1 px trong mép dưới tab cho liền mạch, đi theo tab khi tab nhô lên; màu là
+   màu của gradient 135deg ở giữa mép dưới tab (--arrow-mix là phần --tab-from: ô tab rộng và thấp thì điểm đó gần giữa gradient, ô tab
+   hẹp và cao ở điện thoại thì lệch về --tab-to). Thanh là ::before của panel, màu lấy từ --tone-from/--tone-to mà .ftabs:has(tab thứ n đang chọn) gán bằng
+   token --tab-n-*: chỉ CSS, nên đổi tab hay đổi giao diện sáng/tối lúc đang chạy thì màu cập nhật ngay. Khoảng từ đáy thanh tab tới nội
+   dung = margin dưới .ftabs-list + thanh + margin dưới thanh (≈ clamp(28px, 4vw, 44px) cũ). Thanh giữ chỗ ngay khi có JS (.js) để lúc
+   nâng cấp không đẩy trang, chỉ tô màu khi .is-enhanced; không JS thì không có. */
+.ftab { --arrow: 13px; --arrow-mix: 41%; }
+.ftab[aria-selected="true"]::after { content: ""; position: absolute; z-index: 1; left: calc(50% - var(--arrow) / 2); top: calc(100% + .5px - var(--arrow) / 2); width: var(--arrow); height: var(--arrow); border-bottom-right-radius: 3px; background: color-mix(in srgb, var(--tab-from) var(--arrow-mix), var(--tab-to)); clip-path: polygon(100% 0, 100% 100%, 0 100%); transform: rotate(45deg); pointer-events: none; }
+.ftabs { --tone-from: var(--tab-1-from); --tone-to: var(--tab-1-to); }
+.ftabs:has(> .ftabs-list > .ftab:nth-child(2)[aria-selected="true"]) { --tone-from: var(--tab-2-from); --tone-to: var(--tab-2-to); }
+.ftabs:has(> .ftabs-list > .ftab:nth-child(3)[aria-selected="true"]) { --tone-from: var(--tab-3-from); --tone-to: var(--tab-3-to); }
+.js .ftabs .ftabs-panel::before { content: ""; display: block; height: 4px; margin-bottom: clamp(20px, 2.2vw, 28px); border-radius: 999px; }
+.ftabs.is-enhanced .ftabs-panel::before { background: linear-gradient(90deg, var(--tone-from), var(--tone-to)); }
 .ftabs-panel[hidden] { display: none; }
 .ftabs-panel + .ftabs-panel { margin-top: clamp(40px, 6vw, 72px); }
 /* Neo #id trỏ vào panel còn thanh tab nằm trên nó: site.js đặt --ftabs-lift = khoảng từ đỉnh thanh tab tới đỉnh panel, để chỗ trình duyệt tự cuộn tới
@@ -644,15 +669,19 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
   .ftab .icon { width: 34px; height: 34px; padding: 8px; }
 }
 @media (max-width: 700px) {
-  .ftab { flex-direction: column; gap: 6px; min-height: 0; padding: 10px 6px; font-size: .92rem; }
+  .ftabs-list { margin-bottom: 8px; }
+  .js .ftabs .ftabs-panel::before { height: 3px; }
+  .ftab { --arrow: 9.5px; --arrow-mix: 29%; flex-direction: column; gap: 6px; min-height: 0; padding: 10px 6px; font-size: .92rem; }
   .ftab .icon { width: 32px; height: 32px; padding: 7px; }
 }
 /* Chế độ tương phản cao (Windows High Contrast, forced-colors): trình duyệt bỏ gradient và bóng, mọi tab thành ButtonText trên Canvas,
-   icon tab chọn (--tab-on, trắng ở chế độ sáng) thành trắng trên nền trắng. Tab đang chọn tô Highlight/HighlightText để vẫn thấy rõ. */
+   icon tab chọn (--tab-on, trắng ở chế độ sáng) thành trắng trên nền trắng. Tab đang chọn tô Highlight/HighlightText để vẫn thấy rõ;
+   mũi nhọn và thanh trên panel (gradient bị bỏ) cũng tô Highlight. */
 @media (forced-colors: active) {
   .ftab .icon { background: none; color: ButtonText; }
   .ftab[aria-selected="true"] { background: Highlight; color: HighlightText; border-color: Highlight; forced-color-adjust: none; box-shadow: none; }
   .ftab[aria-selected="true"] .icon { background: none; color: HighlightText; }
+  .ftab[aria-selected="true"]::after, .ftabs.is-enhanced .ftabs-panel::before { background: Highlight; forced-color-adjust: none; }
 }
 
 /* Mục "Máy chủ lưu những gì?" gập sẵn trong khối tối của phần Dữ liệu (trang chủ). */

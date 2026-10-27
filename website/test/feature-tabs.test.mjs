@@ -148,11 +148,13 @@ for (const page of PAGES) {
       titles: [...document.querySelectorAll('[data-ftabs] [role="tabpanel"] h3')].map((e) => getComputedStyle(e).display !== "none"),
       list: getComputedStyle(document.querySelector('[data-ftabs] [role="tablist"]')).display,
       videos: [...document.querySelectorAll("[data-ftabs] video")].map((v) => v.controls),
+      bars: [...document.querySelectorAll('[data-ftabs] [role="tabpanel"]')].map((e) => { const b = getComputedStyle(e, "::before"); return b.content + " " + b.backgroundImage; }),
     }))()`);
     assert.deepEqual(r.panels, [true, true, true]);
     assert.deepEqual(r.titles, [true, true, true]);
     assert.equal(r.list, "none");
     assert.deepEqual(r.videos, [true, true]);
+    for (const b of r.bars) assert.match(b, /^(none|normal) none$/, `không JS thì không có thanh màu trên panel (${b})`);
     await p.close();
   });
 }
@@ -259,14 +261,102 @@ test("vi: chế độ tương phản cao (forced-colors): tab đang chọn tô H
       await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
       const s = await p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => ({
         bg: getComputedStyle(t).backgroundColor, icon: getComputedStyle(t.querySelector(".icon")).color,
+        arrow: getComputedStyle(t, "::after").backgroundColor,
+        bar: getComputedStyle(document.getElementById(t.getAttribute("aria-controls")), "::before").backgroundColor,
         highlight: (() => { const d = document.createElement("div"); d.style.color = "Highlight"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })(),
       }))`);
       const sel = s[i];
       assert.equal(rgb(sel.bg), rgb(sel.highlight), `${mode} tab ${i + 1}: nền tab đang chọn phải là Highlight (${sel.bg})`);
       assert.notEqual(rgb(sel.icon), rgb(sel.bg), `${mode} tab ${i + 1}: icon cùng màu nền (${sel.icon})`);
+      assert.equal(rgb(sel.arrow), rgb(sel.highlight), `${mode} tab ${i + 1}: mũi nhọn phải là Highlight (${sel.arrow})`);
+      assert.equal(rgb(sel.bar), rgb(sel.highlight), `${mode} tab ${i + 1}: thanh trên panel phải là Highlight (${sel.bar})`);
       s.forEach((o, j) => j !== i && assert.notEqual(rgb(o.bg), rgb(sel.bg), `${mode}: tab ${j + 1} chưa chọn trùng nền tab đang chọn`));
     }
     assert.deepEqual(p.errors, []);
     await p.close();
   }
+});
+
+// Chỉ báo tab đang mở: mũi nhọn (::after của tab đang chọn) và thanh màu (::before của panel đang hiện), cùng màu tab đó.
+const indicator = (p) =>
+  p.eval(`(() => {
+    const tabs = [...document.querySelectorAll('[data-ftabs] [role="tab"]')];
+    const open = [...document.querySelectorAll('[data-ftabs] [role="tabpanel"]')].find((e) => !e.hidden);
+    const bar = getComputedStyle(open, "::before");
+    return {
+      arrows: tabs.map((t) => { const a = getComputedStyle(t, "::after"); return { content: a.content, w: parseFloat(a.width) || 0, h: parseFloat(a.height) || 0, bg: a.backgroundColor }; }),
+      froms: tabs.map((t) => getComputedStyle(t).getPropertyValue("--tab-from").trim().toLowerCase()),
+      selected: tabs.findIndex((t) => t.getAttribute("aria-selected") === "true"),
+      bar: { image: bar.backgroundImage, h: parseFloat(bar.height) || 0 },
+    };
+  })()`);
+const hexToRgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
+const hasContent = (c) => c !== "none" && c !== "normal";
+
+for (const page of PAGES.slice(0, 2)) {
+  test(`${page.lang}: chỉ tab đang chọn có mũi nhọn chỉ xuống nội dung, cho cả ba tab`, { skip }, async () => {
+    const p = await browser.newPage({ width: 1280, height: 900 });
+    await p.goto(base + page.path);
+    for (const i of [0, 1, 2, 0]) {
+      await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
+      const s = await indicator(p);
+      assert.equal(s.selected, i);
+      s.arrows.forEach((a, j) => {
+        if (j === i) {
+          assert.ok(hasContent(a.content) && a.w > 0 && a.h > 0, `${page.lang} tab ${i + 1}: tab đang chọn thiếu mũi nhọn (${JSON.stringify(a)})`);
+        } else {
+          assert.ok(!hasContent(a.content), `${page.lang}: tab ${j + 1} chưa chọn không được có mũi nhọn (content ${a.content})`);
+        }
+      });
+    }
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+}
+
+test("vi: thanh màu trên nội dung lấy màu tab đang chọn (1→2→3→1), sáng và tối, kể cả đổi giao diện lúc đang chạy", { skip }, async () => {
+  // Không bật giảm chuyển động: quy tắc giảm chuyển động cho mọi phần tử (kể cả ::before/::after) transition 0,01 ms trên mọi thuộc
+  // tính, đọc ngay sau khi đổi sẽ ra màu đang chuyển; mũi nhọn và thanh vốn không có transition nên đọc ngay là màu cuối.
+  const check = async (p, where) => {
+    const s = await indicator(p);
+    assert.ok(s.bar.h >= 3, `${where}: thanh quá mỏng hoặc không có (${s.bar.h}px)`);
+    const want = hexToRgb(s.froms[s.selected]);
+    assert.ok(s.bar.image.startsWith(`linear-gradient(90deg, ${want}`), `${where}: thanh "${s.bar.image}" phải bắt đầu bằng màu tab ${s.selected + 1} (${want})`);
+    return s;
+  };
+  for (const dark of [false, true]) {
+    const mode = dark ? "tối" : "sáng";
+    const p = await browser.newPage({ width: 1280, height: 900, dark });
+    await p.goto(base + "/");
+    const bars = [];
+    for (const i of [0, 1, 2, 0]) {
+      await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
+      bars.push((await check(p, `${mode} tab ${i + 1}`)).bar.image);
+    }
+    assert.equal(new Set(bars).size, 3, `${mode}: ba tab phải cho ba màu thanh khác nhau`);
+    assert.equal(bars[3], bars[0], `${mode}: quay về tab 1 thì thanh về màu tab 1`);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  }
+  // Đổi giao diện lúc đang chạy (nút đổi giao diện đặt data-theme) mà không đổi tab: thanh và mũi nhọn đổi theo, không kẹt màu cũ.
+  const ref = await browser.newPage({ width: 1280, height: 900, dark: true });
+  await ref.goto(base + "/");
+  await ref.click(`[data-ftabs] [role="tab"]:nth-child(2)`);
+  const sysDark = await indicator(ref);
+  await ref.eval(`document.documentElement.dataset.theme = "light"`);
+  const lightOnDark = await check(ref, `data-theme="light" trên máy tối`);
+  await ref.close();
+  const p = await browser.newPage({ width: 1280, height: 900, dark: false });
+  await p.goto(base + "/");
+  await p.click(`[data-ftabs] [role="tab"]:nth-child(2)`);
+  const light = await check(p, "sáng trước khi đổi");
+  await p.eval(`document.documentElement.dataset.theme = "dark"`);
+  const switched = await check(p, `sau khi đặt data-theme="dark"`);
+  assert.notEqual(switched.bar.image, light.bar.image, "đổi sang tối lúc đang chạy thì thanh phải đổi màu");
+  assert.equal(switched.bar.image, sysDark.bar.image, "thanh sau khi đổi sang tối phải đúng màu tối của tab");
+  assert.notEqual(switched.arrows[1].bg, light.arrows[1].bg, "đổi sang tối lúc đang chạy thì mũi nhọn phải đổi màu");
+  assert.equal(switched.arrows[1].bg, sysDark.arrows[1].bg, "mũi nhọn sau khi đổi sang tối phải đúng màu tối của tab");
+  assert.equal(lightOnDark.bar.image, light.bar.image, `data-theme="light" trên máy tối phải dùng màu sáng`);
+  assert.deepEqual(p.errors, []);
+  await p.close();
 });
