@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
-import type { AppStatus, Subtitle, Transcript } from "../lib/ipc";
+import type { AppStatus, SpeakerRoster, SpeakerVoice, Subtitle, Transcript } from "../lib/ipc";
 import { createTranscriptStore, mergeSnapshot, searchLines, upsertAll } from "./transcript";
 
 const sub = (id: number, tgt: string, src = `src ${id}`): Subtitle => ({
@@ -13,6 +13,7 @@ const sub = (id: number, tgt: string, src = `src ${id}`): Subtitle => ({
   status: "done",
   provisional: false,
   replaces: [],
+  speaker: null,
 });
 
 const status = (session: AppStatus["session"], rev: number): AppStatus => ({
@@ -43,6 +44,18 @@ const transcript = (lines: Subtitle[], session = 1): Transcript => ({
   endedAt: null,
   targetLang: "vi",
   lines,
+  speakers: [],
+  speakersRev: 0,
+});
+
+const voice = (id: number, patch: Partial<SpeakerVoice> = {}): SpeakerVoice => ({
+  id,
+  label: `Người ${id}`,
+  color: id - 1,
+  source: "voice",
+  room: false,
+  mergedInto: null,
+  ...patch,
 });
 
 describe("upsertAll, mergeSnapshot, searchLines", () => {
@@ -117,6 +130,7 @@ describe("transcript store", () => {
       tgt_stable: "Xin",
       tgt_tail: " chào",
       tgt_src_units: 1,
+      speaker: null,
     });
     expect(store.getState().transcript?.lines.map((l) => l.id)).toEqual([1]);
   });
@@ -155,6 +169,7 @@ describe("transcript store", () => {
       format: "markdown",
       srtText: "translation",
       utcOffsetMinutes: 420,
+      srtSpeakers: false,
     });
     await store.getState().exportTo({ kind: "current" }, "srt", "source", 9_000);
     expect(store.getState().notice).toBeNull();
@@ -180,5 +195,78 @@ describe("transcript store", () => {
     expect(store.getState().transcript?.lines).toEqual([]);
     fake.emit("subtitle://upsert", sub(3, "ba"));
     expect(store.getState().transcript?.lines.map((l) => l.id)).toEqual([3]);
+  });
+
+  // Spec 2026-10-26-phan-biet-nguoi-noi §8.2, §9.
+  it("theo nhãn tới muộn và bảng người nói; phiên mới thì bỏ", async () => {
+    const { fake, store } = setup(transcript([sub(1, "một"), sub(2, "hai")]));
+    await store.getState().init();
+    fake.emit("subtitle://speaker", { id: 2, speaker: 1 });
+    expect(store.getState().transcript?.lines.map((l) => l.speaker)).toEqual([null, 1]);
+    fake.emit("speaker://roster", { voices: [voice(1)], participants: ["Hoa Phạm"], askAccess: false, rev: 1 });
+    expect(store.getState().transcript?.speakers).toEqual([voice(1)]);
+    expect(store.getState().participants).toEqual(["Hoa Phạm"]);
+    fake.emit("app://status", status("starting", 2));
+    expect(store.getState().transcript?.speakers).toEqual([]);
+    expect(store.getState().participants).toEqual([]);
+  });
+
+  it("đổi tên, gộp qua phía Rust rồi dùng bảng trả về; lỗi thì hiện mã lỗi", async () => {
+    const renamed: SpeakerRoster = {
+      voices: [voice(1, { label: "Lan", source: "user" })],
+      participants: [],
+      askAccess: false,
+      rev: 1,
+    };
+    const merged: SpeakerRoster = {
+      voices: [voice(1), voice(2, { mergedInto: 1, label: "Người 1", color: 0 })],
+      participants: [],
+      askAccess: false,
+      rev: 2,
+    };
+    const fake = fakeIpc({
+      get_transcript: () => transcript([]),
+      rename_speaker: ({ name }) => {
+        if (name === "x") throw { code: "speakerNotFound", field: null, message: "…" };
+        return renamed;
+      },
+      merge_speakers: () => merged,
+    });
+    const store = createTranscriptStore({ ipc: fake.ipc, writeClipboard: async () => {} });
+    await store.getState().init();
+    expect(await store.getState().renameSpeaker(1, "Lan")).toBe(true);
+    expect(fake.calls.at(-1)).toEqual({ cmd: "rename_speaker", args: { id: 1, name: "Lan" } });
+    expect(store.getState().transcript?.speakers[0]?.label).toBe("Lan");
+    expect(await store.getState().mergeSpeakers(2, 1)).toBe(true);
+    expect(fake.calls.at(-1)).toEqual({ cmd: "merge_speakers", args: { from: 2, into: 1 } });
+    expect(store.getState().transcript?.speakers[1]?.mergedInto).toBe(1);
+    expect(await store.getState().renameSpeaker(1, "x")).toBe(false);
+    expect(store.getState().error).toEqual({ code: "speakerNotFound", field: null });
+  });
+
+  it("xuất SRT có tên người nói khi chọn", async () => {
+    const { fake, store } = setup(transcript([]));
+    await store.getState().init();
+    await store.getState().exportTo({ kind: "current" }, "srt", "translation", 9_000, true);
+    expect(fake.calls.at(-1)?.args).toMatchObject({ format: "srt", srtSpeakers: true });
+  });
+
+  // QĐ 25 (rà soát A-N2, B-N11): bảng cũ hơn tới muộn thì bỏ; bản chụp `get_transcript` cũ hơn không đè bảng mới hơn.
+  it("bảng người nói hay bản chụp cũ hơn tới muộn thì không đè bảng mới", async () => {
+    const { fake, store, setSnapshot } = setup(transcript([sub(1, "một")]));
+    await store.getState().init();
+    fake.emit("speaker://roster", { voices: [voice(1, { label: "Lan" })], participants: [], askAccess: false, rev: 7 });
+    fake.emit("speaker://roster", { voices: [voice(1)], participants: [], askAccess: false, rev: 6 });
+    expect(store.getState().transcript?.speakers[0]?.label).toBe("Lan");
+    setSnapshot({ ...transcript([sub(1, "một")]), speakers: [voice(1)], speakersRev: 5 });
+    fake.emit("app://status", status("running", 3));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getState().transcript?.speakers[0]?.label).toBe("Lan");
+    setSnapshot({ ...transcript([sub(1, "một")]), speakers: [voice(1, { label: "Hoa" })], speakersRev: 8 });
+    fake.emit("app://status", status("idle", 4));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getState().transcript?.speakers[0]?.label).toBe("Hoa");
   });
 });

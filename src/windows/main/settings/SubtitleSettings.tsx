@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, FieldSet } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
 import type { BackgroundColor, TextColor } from "../../../lib/ipc";
 import { BACKGROUND_COLORS, TEXT_COLORS, streamingEffective, streamingNote } from "../../../lib/subtitleView";
 import { useApp, useT } from "../appStore";
+import { useModels } from "../modelsStore";
 import { CommitRange } from "./CommitRange";
+import { SpeakerSettingsCard } from "./SpeakerSettings";
 import { SubtitlePreview } from "./SubtitlePreview";
 
 // Nhóm Cài đặt "Phụ đề" (§4.3, §6.9): công tắc "Dịch trong lúc người nói chưa dừng" (spec 2026-10-10 §6.3: mặc định bật, đổi
@@ -13,14 +15,40 @@ import { SubtitlePreview } from "./SubtitlePreview";
 // nút "Hiện thanh phụ đề" để xem thử khi chưa dịch. Mỗi ô màu là một nút radio, xem trước chữ "A" với màu chữ và màu nền sẽ
 // ra. Khung xem trước ở đầu nhóm (`SubtitlePreview`) vẽ một câu mẫu theo đúng cài đặt (cả lúc đang kéo thanh trượt, trước khi
 // gửi), hai tầng khi chế độ dịch trong lúc nói có hiệu lực.
+// Nhóm "Người nói" (spec 2026-10-26-phan-biet-nguoi-noi §8.3) ở cuối, chỉ khi bản này có tính năng (`info.speakerAvailable`); nút
+// "Mở Cài đặt" của dòng mời trên thanh phụ đề cuộn tới nhóm này (`settingsFocus`).
 export function SubtitleSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
   const status = useApp((s) => s.status);
   const update = useApp((s) => s.updateSettings);
   const setVisible = useApp((s) => s.setOverlayVisible);
+  const info = useApp((s) => s.info);
+  const trusted = useApp((s) => s.accessibilityTrusted);
+  const loadAccessibility = useApp((s) => s.loadAccessibility);
+  const openAccessibility = useApp((s) => s.openAccessibilitySettings);
+  const focus = useApp((s) => s.settingsFocus);
+  const clearFocus = useApp((s) => s.clearSettingsFocus);
+  const speakerModel = useModels((s) => s.view?.speaker ?? "unavailable");
   const [draftSize, setDraftSize] = useState<number | null>(null);
   const [draftOpacity, setDraftOpacity] = useState<number | null>(null);
+  const speakers = info?.speakerAvailable === true;
+  const mac = info?.platform === "macos";
+  // Quyền Trợ năng (macOS): đọc lại mỗi khi cửa sổ được focus lại, như Cài đặt › Gõ dịch.
+  useEffect(() => {
+    if (!speakers || !mac) return;
+    void loadAccessibility();
+    const onFocus = () => void loadAccessibility();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [speakers, mac, loadAccessibility]);
+  // Mở từ dòng mời trên thanh phụ đề: cuộn tới nhóm Người nói rồi quên.
+  const ready = settings !== null && status !== null;
+  useEffect(() => {
+    if (focus !== "speakers" || !ready) return;
+    document.getElementById("speaker-settings")?.scrollIntoView({ block: "start" });
+    clearFocus();
+  }, [focus, ready, clearFocus]);
   if (!settings || !status) return null;
   const o = settings.overlay;
   const slow = streamingNote(settings.translateWhileSpeaking, status);
@@ -126,6 +154,19 @@ export function SubtitleSettings() {
           </button>
         </Field>
       </div>
+      {speakers && info && (
+        <SpeakerSettingsCard
+          lang={settings.uiLanguage}
+          platform={info.platform}
+          diarization={settings.speakerDiarization}
+          names={settings.speakerNames}
+          trusted={trusted}
+          model={speakerModel}
+          onDiarization={(speakerDiarization) => void update({ speakerDiarization })}
+          onNames={(speakerNames) => void update({ speakerNames })}
+          onOpenAccessibility={() => void openAccessibility()}
+        />
+      )}
     </>
   );
 }

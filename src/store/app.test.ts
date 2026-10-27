@@ -26,6 +26,8 @@ const settings: Settings = {
     lastMonitor: null,
   },
   translateWhileSpeaking: true,
+  speakerDiarization: true,
+  speakerNames: true,
   compose: { enabled: true, target: "auto", autoPaste: true },
   modelTier: null,
   hotkeys: {
@@ -72,6 +74,7 @@ const info: AppInfo = {
   identifier: "com.aitranslator.desktop",
   platform: "macos",
   launchedAtLogin: false,
+  speakerAvailable: false,
 };
 
 // `toggle_session` lỗi: "model" là lỗi của phiên (trạng thái ra "error"), "acl" là lỗi khác.
@@ -170,6 +173,19 @@ describe("app store", () => {
     fake.emit("app://navigate", { screen: "settings", settingsGroup: "hotkeys" });
     expect(store.getState().screen).toBe("settings");
     expect(store.getState().settingsGroup).toBe("hotkeys");
+  });
+
+  // Spec 2026-10-26-phan-biet-nguoi-noi §6.7: nút "Mở Cài đặt" của dòng mời trên thanh phụ đề đưa tới nhóm Người nói.
+  it("app://navigate có focus thì nhớ để Cài đặt cuộn tới nhóm đó, rồi quên", async () => {
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://navigate", { screen: "settings", settingsGroup: "subtitles", focus: "speakers" });
+    const s = store.getState();
+    expect([s.screen, s.settingsGroup, s.settingsFocus]).toEqual(["settings", "subtitles", "speakers"]);
+    store.getState().clearSettingsFocus();
+    expect(store.getState().settingsFocus).toBeNull();
+    fake.emit("app://navigate", { screen: "settings", settingsGroup: "hotkeys" });
+    expect(store.getState().settingsFocus).toBeNull();
   });
 
   it("updateSettings gửi bản sửa và lấy cài đặt phía Rust trả về", async () => {

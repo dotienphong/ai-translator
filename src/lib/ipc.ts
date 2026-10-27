@@ -83,6 +83,10 @@ export interface Settings {
   // Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có tác
   // dụng từ đoạn kế tiếp.
   translateWhileSpeaking: boolean;
+  // "Phân biệt người nói" và "Lấy tên từ Teams, Meet, Zoom" (spec 2026-10-26-phan-biet-nguoi-noi §8.3), mặc định bật. Tắt "Phân biệt"
+  // giữa phiên thì dừng ngay; bật thì có tác dụng từ phiên sau.
+  speakerDiarization: boolean;
+  speakerNames: boolean;
   // Gõ dịch (spec 2026-10-17-go-dich §1.4): bật/tắt (tắt thì gỡ phím tắt), ngôn ngữ đích, tự dán (chỉ có tác dụng trên macOS).
   compose: { enabled: boolean; target: ComposeTarget; autoPaste: boolean };
   modelTier: ModelTier | null;
@@ -171,6 +175,9 @@ export interface AppInfo {
   identifier: string;
   platform: "macos" | "windows";
   launchedAtLogin: boolean;
+  // Bản này có "Phân biệt người nói" không (`speaker::enabled()`; bản phát hành: không, tới kế hoạch 07): chỉ khi có mới hiện nhóm
+  // Cài đặt "Người nói" (QĐ 9 của kế hoạch 03 phân biệt người nói).
+  speakerAvailable: boolean;
 }
 
 export interface OverlayView {
@@ -239,6 +246,9 @@ export interface Subtitle {
   provisional: boolean;
   // Id các phụ đề đã gộp vào phụ đề này khi hàng đợi dịch đầy (§7): xóa chúng đi.
   replaces: number[];
+  // Mã giọng (spec 2026-10-26-phan-biet-nguoi-noi §9): `null` khi chưa xác định hay phiên không có nhận giọng. Nhãn, màu ở
+  // `speaker://roster`.
+  speaker: number | null;
 }
 
 // Phần chữ dịch mới trong lúc đang dịch: nối vào `tgt_text` của phụ đề cùng `id`.
@@ -261,11 +271,46 @@ export interface LiveLine {
   tgt_tail: string;
   // Chỉ để đo (spec 2026-10-10 §10.1); giao diện bỏ qua.
   tgt_src_units: number;
+  // Giọng của câu mà dòng này nối tiếp (`extends`); lượt nói mới thì `null` tới khi đoạn đóng (spec 2026-10-26 §4.4).
+  speaker: number | null;
 }
 
 // Gỡ dòng đang nói có `id` này.
 export interface LiveEnd {
   id: number;
+}
+
+// Người nói (spec 2026-10-26-phan-biet-nguoi-noi §9; `transcript::speakers`). Tên từ đâu: đọc từ app họp, "Người N", người dùng đặt.
+export type NameSource = "name" | "voice" | "user";
+
+export interface SpeakerVoice {
+  id: number;
+  // Nhãn đã tính sẵn ở phía Rust: tên người dùng đặt, tên đọc từ app họp, hay "Người N" theo ngôn ngữ giao diện.
+  label: string;
+  // Chỉ số trong bảng 8 màu (0–7); mã màu theo nền ở CSS (`--spk-<n>`, `speakerColor` ở `speakers.ts`).
+  color: number;
+  source: NameSource;
+  // Giọng trong phòng (nói vào micro).
+  room: boolean;
+  // Đã gộp tay vào giọng này: nhãn, màu là của giọng đó; tính như cùng một lượt nói.
+  mergedInto: number | null;
+}
+
+// Bảng người nói của phiên (`speaker://roster`, kết quả của `rename_speaker`, `merge_speakers`).
+export interface SpeakerRoster {
+  voices: SpeakerVoice[];
+  // Tên người tham dự đọc được (kế hoạch 04), cho "Chọn người trong cuộc họp".
+  participants: string[];
+  // Hiện dòng mời cấp quyền Trợ năng trên thanh phụ đề (spec §6.7; kế hoạch 04 bật).
+  askAccess: boolean;
+  // Số thứ tự của bảng (QĐ 25 của kế hoạch 03): tăng dần; bảng có `rev` nhỏ hơn bảng đã nhận là cũ, bỏ.
+  rev: number;
+}
+
+// Giọng của một phụ đề đã phát vừa đổi (`subtitle://speaker`): nhãn tới muộn, gộp giọng.
+export interface SpeakerLabel {
+  id: number;
+  speaker: number | null;
 }
 
 // Bản chép lời của một phiên (`transcript::store::Transcript`). `startedAt`, `endedAt`: giờ Unix (ms); `start_ms`,
@@ -276,6 +321,10 @@ export interface Transcript {
   endedAt: number | null;
   targetLang: string;
   lines: Subtitle[];
+  // Người nói của phiên: `lines[i].speaker` là `id` trong danh sách này; Lịch sử: dựng lại từ nhãn đã lưu (chỉ đọc).
+  speakers: SpeakerVoice[];
+  // `rev` của bảng người nói lúc chụp: bản chụp tới muộn không đè bảng mới hơn (QĐ 25). Lịch sử: 0.
+  speakersRev: number;
 }
 
 // Bản chép lời nào: của phiên hiện tại (hoặc vừa dừng), hay một phiên trong lịch sử (`data::TranscriptRef`).
@@ -347,6 +396,8 @@ export type SettingsGroup =
 export interface Navigate {
   screen: Screen;
   settingsGroup: SettingsGroup | null;
+  // Phần cần cuộn tới: nhóm Người nói ở Cài đặt › Phụ đề (nút "Mở Cài đặt" của dòng mời trên thanh phụ đề).
+  focus?: "speakers";
 }
 
 // Lời nhắc trong app do phía Rust gửi (`events::Notice`).
@@ -524,13 +575,20 @@ export interface Commands {
   transcript_text: { args: { source: TranscriptRef; utcOffsetMinutes: number }; result: string };
   // Pro. Trả đường dẫn đã ghi, `null` nếu người dùng bấm Hủy ở hộp thoại lưu.
   export_transcript: {
-    args: { source: TranscriptRef; format: ExportFormat; srtText: SrtText; utcOffsetMinutes: number };
+    args: { source: TranscriptRef; format: ExportFormat; srtText: SrtText; utcOffsetMinutes: number; srtSpeakers?: boolean };
     result: string | null;
   };
   list_history: { args: undefined; result: SessionSummary[] };
   get_history_session: { args: { id: number }; result: Transcript };
   delete_history_session: { args: { id: number }; result: null };
   clear_history: { args: undefined; result: number };
+  // Người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2): đổi tên (≤ 40 ký tự; rỗng là trở về tên tự động), gộp, trong phiên đang
+  // chạy. Lỗi `speakerNotFound` khi phiên đã dừng hay giọng không còn; đổi tên: `tooLong` (field `name`); gộp: `speakerSame` khi gộp
+  // một giọng vào chính nó hay vào giọng nó đã được gộp vào.
+  rename_speaker: { args: { id: number; name: string }; result: SpeakerRoster };
+  merge_speakers: { args: { from: number; into: number }; result: SpeakerRoster };
+  // Chỉ thanh phụ đề: nút "Mở Cài đặt" của dòng mời cấp quyền; mở Cài đặt › Phụ đề › Người nói.
+  open_speaker_settings: { args: undefined; result: null };
   list_glossary: { args: undefined; result: GlossaryEntry[] };
   add_glossary_entry: { args: { source: string; target: string }; result: GlossaryEntry };
   update_glossary_entry: { args: { id: number; source: string; target: string }; result: GlossaryEntry };
@@ -620,6 +678,9 @@ export interface Events {
   // Dòng đang nói và lệnh gỡ nó (spec 2026-10-10 §6.2): chỉ tới thanh phụ đề; cửa sổ chính không nghe (QĐ5).
   "subtitle://live": LiveLine;
   "subtitle://live-end": LiveEnd;
+  // Người nói (spec 2026-10-26-phan-biet-nguoi-noi §4.3, §9): tới cả cửa sổ chính lẫn thanh phụ đề.
+  "subtitle://speaker": SpeakerLabel;
+  "speaker://roster": SpeakerRoster;
   // Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch; tới cả cửa sổ chính lẫn thanh phụ đề.
   "audio://level": number;
   // Trạng thái quản lý model (kế hoạch 04).

@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
-import type { AppStatus, ExportFormat, Ipc, SrtText, Subtitle, Transcript, TranscriptRef } from "../lib/ipc";
+import type { AppStatus, ExportFormat, Ipc, SpeakerRoster, SrtText, Subtitle, Transcript, TranscriptRef } from "../lib/ipc";
+import { setSpeaker } from "../lib/speakers";
 import { localOffsetMinutes } from "../lib/subtitleView";
 import { type UiError, toUiError } from "./app";
 import { appendDelta } from "./overlay";
@@ -7,6 +8,8 @@ import { appendDelta } from "./overlay";
 // Bản chép lời của phiên hiện tại trong cửa sổ chính (F4, §6.6): mọi câu của phiên, không giới hạn số dòng như thanh
 // phụ đề. Lúc mở thì đọc bản phía Rust giữ (`get_transcript`), rồi theo sự kiện phụ đề. Sao chép (mọi gói) và xuất file
 // (Pro) đều nhờ phía Rust dựng chữ (`transcript/export.rs`).
+// Người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2, §9): nhãn tới muộn, bảng người nói, đổi tên và gộp đi qua phía Rust (bảng
+// người nói của phiên ở `TranscriptStore`), store chỉ nhận bảng mới; bảng hay bản chụp cũ hơn (`rev`) thì bỏ.
 
 // Thêm hoặc thay phụ đề theo `id`, giữ thứ tự `id`; phụ đề đã được gộp vào nó (`replaces`) thì bỏ.
 export function upsertAll(lines: readonly Subtitle[], subtitle: Subtitle): Subtitle[] {
@@ -42,12 +45,25 @@ export type TranscriptNotice = { kind: "copied" } | { kind: "exported"; path: st
 
 export interface TranscriptStoreState {
   transcript: Transcript | null;
+  // Tên người tham dự của phiên hiện tại (kế hoạch 04 đọc), cho "Chọn người trong cuộc họp" (spec 2026-10-26-phan-biet-nguoi-noi
+  // §8.2).
+  participants: string[];
   notice: TranscriptNotice | null;
   error: UiError | null;
   init(): Promise<() => void>;
   // `startedAt`: giờ bắt đầu của phiên (`Transcript.startedAt`); giờ trong chữ dựng ra theo độ lệch múi giờ lúc đó.
   copy(source: TranscriptRef, startedAt: number): Promise<void>;
-  exportTo(source: TranscriptRef, format: ExportFormat, srtText: SrtText, startedAt: number): Promise<void>;
+  // `srtSpeakers`: SRT có tên người nói (ô "Thêm tên người nói", mặc định tắt).
+  exportTo(
+    source: TranscriptRef,
+    format: ExportFormat,
+    srtText: SrtText,
+    startedAt: number,
+    srtSpeakers?: boolean,
+  ): Promise<void>;
+  // Đổi tên, gộp người nói trong phiên đang chạy (spec §8.2). `true` khi xong; lỗi ở `error`.
+  renameSpeaker(id: number, name: string): Promise<boolean>;
+  mergeSpeakers(from: number, into: number): Promise<boolean>;
   dismiss(): void;
   // "Xóa toàn bộ dữ liệu" xong: bỏ bản chép lời đang hiện (N2 của review 03).
   reset(): void;
@@ -64,15 +80,41 @@ export function createTranscriptStore({ ipc, writeClipboard, offsetMinutes = loc
   // Id các phụ đề đã bị gộp đi trong phiên hiện tại, để bản đọc từ phía Rust tới muộn không thêm lại chúng.
   let removed = new Set<number>();
   let lastSession: AppStatus["session"] | null = null;
+  // Số thứ tự của bảng người nói đang hiện (`rev`, QĐ 25 của kế hoạch 03): bảng hay bản chụp cũ hơn tới muộn thì bỏ. Không đặt lại
+  // khi phiên mới (phía Rust tăng suốt lần chạy của app).
+  let rosterRev = 0;
 
   return createStore<TranscriptStoreState>()((set, get) => {
-    const empty = (): Transcript => ({ session: 0, startedAt: 0, endedAt: null, targetLang: "", lines: [] });
+    const empty = (): Transcript => ({ session: 0, startedAt: 0, endedAt: null, targetLang: "", lines: [], speakers: [], speakersRev: 0 });
+
+    // Bảng người nói mới (sự kiện, hay kết quả của lệnh đổi tên, gộp); bảng cũ hơn bảng đang hiện thì bỏ.
+    function applyRoster(roster: SpeakerRoster) {
+      if (roster.rev < rosterRev) return;
+      rosterRev = roster.rev;
+      const current = get().transcript ?? empty();
+      set({ transcript: { ...current, speakers: roster.voices }, participants: roster.participants });
+    }
+
+    async function speakerCall(call: () => Promise<SpeakerRoster>): Promise<boolean> {
+      try {
+        applyRoster(await call());
+        set({ error: null });
+        return true;
+      } catch (e) {
+        set({ error: toUiError(e), notice: null });
+        return false;
+      }
+    }
 
     async function refresh() {
       const snapshot = await ipc.invoke("get_transcript");
       const current = get().transcript;
       const lines = mergeSnapshot(current?.lines ?? [], snapshot.lines, removed);
-      set({ transcript: { ...snapshot, lines } });
+      // Bảng người nói của bản chụp chỉ thay bảng đang hiện khi không cũ hơn (rà soát B-N11).
+      const fresh = snapshot.speakersRev >= rosterRev;
+      if (fresh) rosterRev = snapshot.speakersRev;
+      const speakers = fresh || !current ? snapshot.speakers : current.speakers;
+      set({ transcript: { ...snapshot, lines, speakers } });
     }
 
     function onStatus(status: AppStatus) {
@@ -81,7 +123,7 @@ export function createTranscriptStore({ ipc, writeClipboard, offsetMinutes = loc
       // Phiên mới bắt đầu: bỏ bản của phiên trước; phiên vừa chạy hay vừa dừng: đọc lại để có giờ bắt đầu, giờ kết thúc.
       if (status.session === "starting" && previous !== "starting") {
         removed = new Set();
-        set({ transcript: empty() });
+        set({ transcript: empty(), participants: [] });
       } else if (status.session !== previous && (status.session === "running" || previous === "running")) {
         void refresh().catch(() => {});
       }
@@ -97,6 +139,7 @@ export function createTranscriptStore({ ipc, writeClipboard, offsetMinutes = loc
 
     return {
       transcript: null,
+      participants: [],
       notice: null,
       error: null,
 
@@ -111,6 +154,13 @@ export function createTranscriptStore({ ipc, writeClipboard, offsetMinutes = loc
             const current = get().transcript;
             if (current) set({ transcript: { ...current, lines: appendDelta(current.lines, delta) } });
           }),
+          ipc.listen("subtitle://speaker", (label) => {
+            const current = get().transcript;
+            if (!current) return;
+            const lines = setSpeaker(current.lines, label);
+            if (lines !== current.lines) set({ transcript: { ...current, lines } });
+          }),
+          ipc.listen("speaker://roster", applyRoster),
           ipc.listen("app://status", onStatus),
         ]);
         await refresh();
@@ -125,16 +175,25 @@ export function createTranscriptStore({ ipc, writeClipboard, offsetMinutes = loc
         });
       },
 
-      async exportTo(source, format, srtText, startedAt) {
+      async exportTo(source, format, srtText, startedAt, srtSpeakers = false) {
         await run(async () => {
           const path = await ipc.invoke("export_transcript", {
             source,
             format,
             srtText,
             utcOffsetMinutes: offsetMinutes(startedAt),
+            srtSpeakers,
           });
           return path === null ? null : { kind: "exported", path };
         });
+      },
+
+      renameSpeaker(id, name) {
+        return speakerCall(() => ipc.invoke("rename_speaker", { id, name }));
+      },
+
+      mergeSpeakers(from, into) {
+        return speakerCall(() => ipc.invoke("merge_speakers", { from, into }));
       },
 
       dismiss() {
@@ -143,7 +202,7 @@ export function createTranscriptStore({ ipc, writeClipboard, offsetMinutes = loc
 
       reset() {
         removed = new Set();
-        set({ transcript: empty(), notice: null, error: null });
+        set({ transcript: empty(), participants: [], notice: null, error: null });
       },
     };
   });
