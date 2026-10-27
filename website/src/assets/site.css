@@ -624,7 +624,7 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .ftab { display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; min-height: 64px; padding: 12px 18px; border: 1.5px solid color-mix(in srgb, var(--tab) 30%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--tab) var(--tab-tint, 10%), var(--tab-base, var(--surface))); color: var(--ink); font: inherit; font-weight: 700; font-size: 1.08rem; line-height: 1.25; text-align: center; text-wrap: balance; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .25s var(--ease), transform .2s var(--ease), border-color .2s; }
 .ftab .icon { flex: none; width: 38px; height: 38px; padding: 9px; border-radius: 50%; background: color-mix(in srgb, var(--tab) 16%, transparent); color: var(--tab); transition: background .2s, color .2s; }
 .ftab:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--tab) calc(var(--tab-tint, 10%) + 8%), var(--tab-base, var(--surface))); border-color: color-mix(in srgb, var(--tab) 55%, transparent); transform: translateY(-1px); }
-.ftab[aria-selected="true"] { background: linear-gradient(135deg, var(--tab-from), var(--tab-to)); color: var(--tab-on); border-color: transparent; box-shadow: 0 14px 30px -10px var(--tab-glow), 0 2px 6px rgba(11, 19, 34, .12); transform: translateY(-2px); }
+.ftab[aria-selected="true"] { background: linear-gradient(135deg, var(--tab-from), var(--tab-to)); background-origin: border-box; color: var(--tab-on); border-color: transparent; box-shadow: 0 14px 30px -10px var(--tab-glow), 0 2px 6px rgba(11, 19, 34, .12); transform: translateY(-2px); }
 .ftab[aria-selected="true"] .icon { background: rgba(255, 255, 255, .22); color: var(--tab-on); }
 .ftab:focus-visible { outline: 3px solid var(--tab); outline-offset: 3px; }
 .ftabs-panel[hidden] { display: none; }
@@ -637,14 +637,22 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .js .ftabs-panel .reveal { opacity: 1; transform: none; transition: none; }
 .ftabs-panel .split { gap: clamp(24px, 4vw, 56px); }
 .ftabs-panel h3 { margin: 0; font-size: clamp(1.35rem, 1.05rem + 1vw, 1.8rem); }
-/* Máy tính bảng (701–900 px): ô tab hẹp, thu padding, icon và chữ để nhãn dài ("Type & Translate") nằm một dòng. */
-@media (min-width: 701px) and (max-width: 900px) {
+/* Máy tính bảng (≤ 900 px): ô tab hẹp, thu padding, icon và chữ để nhãn dài ("Type & Translate") nằm một dòng. Khối ≤ 700 px ngay
+   dưới ghi đè mọi thuộc tính ở đây; đừng viết thành (min-width: 701px) vì để hở dải 700–701 px khi trình duyệt phóng to. */
+@media (max-width: 900px) {
   .ftab { gap: 10px; padding: 10px 12px; font-size: 1rem; }
   .ftab .icon { width: 34px; height: 34px; padding: 8px; }
 }
 @media (max-width: 700px) {
   .ftab { flex-direction: column; gap: 6px; min-height: 0; padding: 10px 6px; font-size: .92rem; }
   .ftab .icon { width: 32px; height: 32px; padding: 7px; }
+}
+/* Chế độ tương phản cao (Windows High Contrast, forced-colors): trình duyệt bỏ gradient và bóng, mọi tab thành ButtonText trên Canvas,
+   icon tab chọn (--tab-on, trắng ở chế độ sáng) thành trắng trên nền trắng. Tab đang chọn tô Highlight/HighlightText để vẫn thấy rõ. */
+@media (forced-colors: active) {
+  .ftab .icon { background: none; color: ButtonText; }
+  .ftab[aria-selected="true"] { background: Highlight; color: HighlightText; border-color: Highlight; forced-color-adjust: none; box-shadow: none; }
+  .ftab[aria-selected="true"] .icon { background: none; color: HighlightText; }
 }
 
 /* Mục "Máy chủ lưu những gì?" gập sẵn trong khối tối của phần Dữ liệu (trang chủ). */

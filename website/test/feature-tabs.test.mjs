@@ -218,3 +218,55 @@ test("vi: mỗi tab một màu; chữ trên nền tab đang chọn đạt 4.5:1 
     await p.close();
   }
 });
+
+// Bộ biến màu của ba tab (đọc trên chính nút tab).
+const TAB_VARS = ["--tab", "--tab-from", "--tab-to", "--tab-on", "--tab-glow", "--tab-base", "--tab-tint"];
+const tabVars = (p) =>
+  p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => {
+    const cs = getComputedStyle(t);
+    return Object.fromEntries(${JSON.stringify(TAB_VARS)}.map((n) => [n, cs.getPropertyValue(n).trim().toLowerCase()]));
+  })`);
+
+test("vi: màu tab tối giống nhau dù bật bằng nút (data-theme=\"dark\") hay theo hệ thống (prefers-color-scheme)", { skip }, async () => {
+  const sys = await browser.newPage({ width: 1280, height: 900, dark: true });
+  await sys.goto(base + "/");
+  const bySystem = await tabVars(sys);
+  await sys.close();
+  const btn = await browser.newPage({ width: 1280, height: 900, dark: false });
+  await btn.goto(base + "/");
+  const light = await tabVars(btn);
+  await btn.eval(`document.documentElement.dataset.theme = "dark"`);
+  const byButton = await tabVars(btn);
+  await btn.close();
+  assert.deepEqual(byButton, bySystem, "hai khối tối trong site.css lệch nhau");
+  assert.notDeepEqual(byButton, light, "data-theme=dark phải đổi màu tab");
+});
+
+test("vi: chế độ tương phản cao (forced-colors): tab đang chọn tô Highlight, khác tab chưa chọn; icon của nó không lẫn vào nền, sáng và tối", { skip }, async () => {
+  for (const dark of [false, true]) {
+    const mode = dark ? "tối" : "sáng";
+    // Giảm chuyển động để màu đọc được ngay sau khi bấm (không kẹt giữa transition).
+    const p = await browser.newPage({ width: 1280, height: 900, dark, reduceMotion: true });
+    await p.s.send("Emulation.setEmulatedMedia", { features: [
+      { name: "prefers-color-scheme", value: dark ? "dark" : "light" },
+      { name: "prefers-reduced-motion", value: "reduce" },
+      { name: "forced-colors", value: "active" },
+    ] });
+    await p.goto(base + "/");
+    assert.equal(await p.eval(`matchMedia("(forced-colors: active)").matches`), true, `${mode}: Chrome không giả lập được forced-colors`);
+    const rgb = (c) => c.replace(/^rgba?\(([^,]+),\s*([^,]+),\s*([^,)]+).*$/, "$1,$2,$3");
+    for (const i of [0, 1, 2]) {
+      await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
+      const s = await p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => ({
+        bg: getComputedStyle(t).backgroundColor, icon: getComputedStyle(t.querySelector(".icon")).color,
+        highlight: (() => { const d = document.createElement("div"); d.style.color = "Highlight"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })(),
+      }))`);
+      const sel = s[i];
+      assert.equal(rgb(sel.bg), rgb(sel.highlight), `${mode} tab ${i + 1}: nền tab đang chọn phải là Highlight (${sel.bg})`);
+      assert.notEqual(rgb(sel.icon), rgb(sel.bg), `${mode} tab ${i + 1}: icon cùng màu nền (${sel.icon})`);
+      s.forEach((o, j) => j !== i && assert.notEqual(rgb(o.bg), rgb(sel.bg), `${mode}: tab ${j + 1} chưa chọn trùng nền tab đang chọn`));
+    }
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  }
+});
