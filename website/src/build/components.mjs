@@ -139,6 +139,41 @@ ${t.body}
   .join("\n")}
 </div>`;
 
+/**
+ * Khối tab "Tính năng chính" của trang chủ (spec 2026-10-27-trang-chu-ba-viec-tab). Không JS: thanh tab ẩn, mọi panel hiện nối nhau,
+ * mỗi panel có `<h3>` của nó. Có JS (site.js, initFeatureTabs): thanh tab hiện, panel không chọn có `hidden`, hỗ trợ #hash, bàn phím,
+ * và chuyển tab thì tạm dừng video của panel vừa rời. Panel không mang lớp `.reveal` (ảnh và video bên trong thì có sẵn; CSS ép
+ * chúng luôn hiện vì panel ẩn không bao giờ vào IntersectionObserver). Thanh tab nằm trong `llm-skip`: nhãn tab không vào llms-full*.txt.
+ * tabs: [{ id (neo của panel), icon, label, title, lead, bullets (HTML[]), cta: { href, label }, media (HTML) }]. `label`, `title`,
+ * `lead`, `cta.label` là HTML (người viết tự dùng `&amp;`); `listLabel` là chữ thuần cho aria-label của thanh tab.
+ */
+export const featureTabs = ({ listLabel, tabs }) => `<div class="ftabs" data-ftabs>
+<!--llm-skip--><div class="ftabs-list" role="tablist" aria-label="${esc(listLabel)}" hidden>
+${tabs
+  .map(
+    (t) => `<button class="ftab" type="button" role="tab" id="tab-${t.id}" aria-controls="${t.id}" aria-selected="false" tabindex="-1">${icon(t.icon)}<span>${t.label}</span></button>`,
+  )
+  .join("\n")}
+</div><!--/llm-skip-->
+${tabs
+  .map(
+    (t) => `<div class="ftabs-panel" id="${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}">
+<div class="split wide-right">
+<div class="stack-lg">
+<h3>${t.title}</h3>
+<p class="lead">${t.lead}</p>
+${checkList(t.bullets)}
+<p><a class="btn btn-secondary" href="${t.cta.href}">${t.cta.label} ${icon("arrow-right")}</a></p>
+</div>
+<div>
+${t.media}
+</div>
+</div>
+</div>`,
+  )
+  .join("\n")}
+</div>`;
+
 /** Chip phím: keys(["⌃","⌥","T"]) */
 export const keys = (list) => `<span class="keys">${list.map((k) => `<kbd>${esc(k)}</kbd>`).join("")}</span>`;
 

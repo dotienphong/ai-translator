@@ -9,7 +9,7 @@ import { PLANS, usd, vnd, planName, planSummary } from "../src/plans.mjs";
 import { mp4DurationMs, videoMeta } from "../src/build/mp4.mjs";
 import { S } from "../src/strings.mjs";
 import { renderPage, glue } from "../src/build/layout.mjs";
-import { plansGrid, dataFlow, demoVideo, demoVideoPair } from "../src/build/components.mjs";
+import { plansGrid, dataFlow, demoVideo, demoVideoPair, featureTabs } from "../src/build/components.mjs";
 import { softwareApplication, videoObject } from "../src/build/schema.mjs";
 import { readDict, strongLabels, appLabelsIn } from "../tools/i18n/labels.mjs";
 
@@ -193,6 +193,22 @@ test("demoVideoPair: lưới hai cột, mỗi cột có tiêu đề h3, câu mô
   assert.match(cols[1], /<h3>T-typing<\/h3>\s*<p>X-typing<\/p>\s*<figure class="shot video reveal" data-video>[\s\S]*ai-translator-typing\.vi\.mp4/);
   assert.equal((html.match(/<video\b/g) ?? []).length, 2);
   assert.throws(() => demoVideoPair({ lang: "vi", items: [item("meeting")] }), /meeting.*typing/);
+});
+
+test("featureTabs: thanh tab ẩn sẵn (trong llm-skip), mỗi panel có id, h3, câu dẫn, gạch đầu dòng, nút và hình; không panel nào ẩn sẵn", () => {
+  const tab = (id, n) => ({ id, icon: "captions", label: `L${n}`, title: `T${n}`, lead: `Lead${n}`, bullets: [`B${n}a`, `B${n}b`], cta: { href: `/x${n}/`, label: `Go${n}` }, media: `<i>M${n}</i>` });
+  const html = featureTabs({ listLabel: 'Chọn "một"', tabs: [tab("a-1", 1), tab("b-2", 2), tab("c-3", 3)] });
+  assert.match(html, /^<div class="ftabs" data-ftabs>\n<!--llm-skip--><div class="ftabs-list" role="tablist" aria-label="Chọn &quot;một&quot;" hidden>/);
+  assert.match(html, /<\/div><!--\/llm-skip-->/);
+  assert.equal((html.match(/role="tab"/g) ?? []).length, 3);
+  assert.match(html, /<button class="ftab" type="button" role="tab" id="tab-b-2" aria-controls="b-2" aria-selected="false" tabindex="-1"><svg[^>]*><use href="#i-captions"\/><\/svg><span>L2<\/span><\/button>/);
+  const panels = html.split('<div class="ftabs-panel"').slice(1);
+  assert.equal(panels.length, 3);
+  assert.match(panels[1], /^ id="b-2" role="tabpanel" aria-labelledby="tab-b-2">/);
+  assert.match(panels[1], /<h3>T2<\/h3>\n<p class="lead">Lead2<\/p>\n<ul class="check-list"><li>B2a<\/li><li>B2b<\/li><\/ul>\n<p><a class="btn btn-secondary" href="\/x2\/">Go2 <svg/);
+  assert.match(panels[1], /<i>M2<\/i>/);
+  assert.ok(!/ftabs-panel[^>]*\bhidden\b/.test(html), "không panel nào được ẩn sẵn: tắt JS thì cả ba phải hiện");
+  assert.ok(!html.includes("reveal"), "khối tab không tự thêm lớp .reveal");
 });
 
 test("WEBSITE_PREVIEW_LANGS thêm ngôn ngữ đang dịch khi dựng cục bộ; lệnh deploy bỏ qua; mã lạ thì báo lỗi", () => {
