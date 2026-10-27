@@ -4,6 +4,7 @@
 //   - asr-worker-vulkan, asr-worker-cpu: whisper.cpp 1.8.3 đã vá, link tĩnh, shared-encode; CRT tĩnh (`+crt-static`, và
 //     `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` cho whisper.cpp), vì cờ /DEPENDENTLOADFLAG:0x800 chỉ cho DLL import thẳng
 //     nằm trong System32 (02a QĐ32; C9 của kế hoạch 00);
+//   - speaker-worker: nhận giọng người nói (Rust thuần, candle), CRT tĩnh như asr-worker.
 //   - llama-server: llama.cpp ở commit khóa trong versions.env, `GGML_BACKEND_DL` và `GGML_CPU_ALL_VARIANTS` (dòng 210),
 //     Vulkan, không OpenMP (vcomp140.dll là C runtime), không web UI, không HTTPS; mọi DLL đi cùng thư mục. CRT ĐỘNG
 //     (`/MD`), kèm vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll… chép từ bộ Redist của Visual Studio vào cùng thư
@@ -78,6 +79,9 @@ export function steps({ work, target, out, versions }) {
     { copy: [exe, join(out, `asr-worker-vulkan-${TRIPLE}.exe`)] },
     cargo("shared-encode"),
     { copy: [exe, join(out, `asr-worker-cpu-${TRIPLE}.exe`)] },
+    // speaker-worker (spec 2026-10-26-phan-biet-nguoi-noi §4.1): Rust thuần, không ggml; CRT tĩnh như asr-worker.
+    { run: ["cargo", "build", "--release", "--locked", "-p", "speaker-worker"], env: crt, cwd: root },
+    { copy: [join(target, "release", "speaker-worker.exe"), join(out, `speaker-worker-${TRIPLE}.exe`)] },
     {
       run: [
         "cmake",
@@ -240,7 +244,7 @@ function signAndCheck(out, msvc) {
   }
   const check = join(root, "scripts/release/release-check.mjs");
   const env = mergeEnv(process.env, msvc);
-  const workers = files.filter((f) => /asr-worker-(vulkan|cpu)-/.test(f));
+  const workers = files.filter((f) => /(asr-worker-(vulkan|cpu)|speaker-worker)-/.test(f));
   const rest = files.filter((f) => !workers.includes(f));
   execFileSync("node", [check, "deps-windows", "--no-local-libs", ...workers], { stdio: "inherit", env });
   execFileSync("node", [check, "deps-windows", ...rest], { stdio: "inherit", env });

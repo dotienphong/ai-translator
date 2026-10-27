@@ -29,7 +29,7 @@ import { checkBundle, checkSize, devGateErrors, embeddedErrors, sha256File, side
 import { TRIPLE } from "./build-sidecars-windows.mjs";
 import { root } from "./versions.mjs";
 
-const SIDECARS = ["asr-worker-vulkan", "asr-worker-cpu", "llama-server"];
+const SIDECARS = ["asr-worker-vulkan", "asr-worker-cpu", "speaker-worker", "llama-server"];
 
 /** Tham số của `tauri build --no-bundle` (phần `build`) và `tauri bundle` (phần `bundle`, kèm file cấu hình ký nếu có). */
 export function tauriArgs(phase, signConfig) {

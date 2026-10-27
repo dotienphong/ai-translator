@@ -1,9 +1,10 @@
 #!/bin/sh
-# Build hai tiến trình phụ của bản phát hành macOS (arm64) từ mã nguồn đã khóa, rồi chép vào src-tauri/binaries/ (kế hoạch
+# Build ba tiến trình phụ của bản phát hành macOS (arm64) từ mã nguồn đã khóa, rồi chép vào src-tauri/binaries/ (kế hoạch
 # 07a; spec §6.11, §6.12, §10.2):
 #   - asr-worker: whisper.cpp 1.8.3 đã vá trong third_party/, link tĩnh, Metal, shared-encode (dòng 119 của kế hoạch 00);
 #   - llama-server: llama.cpp ở commit khóa trong versions.env, build tĩnh (Metal nhúng sẵn shader, GGML_NATIVE=OFF, mức CPU
-#     như asr-worker), không web UI, không HTTPS; không có .dylib đi kèm (dòng 211 của kế hoạch 00).
+#     như asr-worker), không web UI, không HTTPS; không có .dylib đi kèm (dòng 211 của kế hoạch 00);
+#   - speaker-worker: nhận giọng người nói (Rust thuần, candle, không ggml), macOS tối thiểu 14.2 như asr-worker;
 # Rồi kiểm mọi thư viện mà hai file nạp đều là của hệ thống, macOS tối thiểu đúng 14.2 (không cao hơn, cũng không thấp hơn), và
 # không liên kết cứng với API chỉ có từ macOS mới hơn (`release-check.mjs deps-macos`).
 #
@@ -31,7 +32,7 @@ identity="${MT_SIGN_IDENTITY:--}"
 mkdir -p "$work"
 
 sign_and_check() {
-  for name in asr-worker llama-server; do
+  for name in asr-worker llama-server speaker-worker; do
     file="$out/$name-$triple"
     if [ "$identity" = "-" ]; then
       codesign --force --sign - --options runtime --identifier "com.aitranslator.desktop.$name" "$file"
@@ -43,6 +44,7 @@ sign_and_check() {
   done
   node "$root/scripts/release/release-check.mjs" deps-macos "$out"/*
   node "$root/scripts/release/release-check.mjs" table "$out" --target "$triple"
+  "$root/scripts/release/check-no-network.sh" --binary "$out/speaker-worker-$triple"
 }
 
 if [ "${1:-}" = "--sign-only" ]; then
@@ -56,6 +58,9 @@ echo "== asr-worker (metal, shared-encode)"
 # luôn-đúng, và dyld từ chối nạp asr-worker trên macOS 14 (báo cáo R-7048-CH57). Giữ cùng giá trị với LSMinimumSystemVersion.
 export MACOSX_DEPLOYMENT_TARGET=14.2
 (cd "$root" && cargo build --release --locked -p asr-worker --features metal,shared-encode)
+
+echo "== speaker-worker"
+(cd "$root" && cargo build --release --locked -p speaker-worker)
 
 echo "== llama.cpp $LLAMA_CPP_TAG"
 src="$work/llama.cpp"
@@ -100,5 +105,6 @@ echo "== src-tauri/binaries"
 mkdir -p "$out"
 rm -f "$out"/*
 cp "$target/release/asr-worker" "$out/asr-worker-$triple"
+cp "$target/release/speaker-worker" "$out/speaker-worker-$triple"
 cp "$work/llama-build/bin/llama-server" "$out/llama-server-$triple"
 sign_and_check

@@ -38,3 +38,14 @@ test("hằng DEV_REPORTS_ENV chỉ có ở bản debug (đứng sau cfg(debug_as
   assert.ok(at > 0, "không thấy hằng DEV_REPORTS_ENV");
   assert.equal(lines[at - 1].trim(), "#[cfg(debug_assertions)]", "hằng phải nằm ngay sau #[cfg(debug_assertions)]");
 });
+
+// Cờ bật nhận giọng của bản dev (spec 2026-10-26-phan-biet-nguoi-noi, kế hoạch 02): cùng cơ chế, hằng ở speaker/mod.rs.
+test("DEV_GATE_MARKERS có giá trị của DEV_SPEAKER_ENV, và hằng chỉ có ở bản debug", () => {
+  const source = readFileSync(fileURLToPath(new URL("../../src-tauri/src/speaker/mod.rs", import.meta.url)), "utf8");
+  const m = source.match(/pub const DEV_SPEAKER_ENV: &str = "([^"]*)";/);
+  assert.ok(m, 'không tìm thấy `pub const DEV_SPEAKER_ENV: &str = "...";` trong src-tauri/src/speaker/mod.rs');
+  assert.ok(DEV_GATE_MARKERS.includes(m[1]), `DEV_SPEAKER_ENV = "${m[1]}" chưa có trong DEV_GATE_MARKERS`);
+  const lines = source.split("\n");
+  const at = lines.findIndex((l) => l.startsWith("pub const DEV_SPEAKER_ENV"));
+  assert.equal(lines[at - 1].trim(), "#[cfg(debug_assertions)]", "hằng phải nằm ngay sau #[cfg(debug_assertions)]");
+});
