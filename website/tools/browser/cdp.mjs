@@ -136,6 +136,7 @@ class Page {
     // Trang có thể còn đang cuộn mượt (neo #, scrollIntoView trong rAF) khi goto() trả về: đo hộp một lần thì toạ độ gửi đi
     // có thể lệch và cú bấm trượt. Chờ hộp đứng yên rồi kiểm điểm giữa đúng là phần tử; trượt thì đo lại vài lần.
     // Trang không phải tab trước nhất thì rAF dừng và timer chậm lại: đưa lên trước để việc chờ không mất vài giây.
+    // Tác dụng phụ: trang đang ở trước (nếu mở nhiều trang cùng lúc) chuyển sang hidden và nhận visibilitychange.
     await this.s.send("Page.bringToFront").catch(() => {});
     const sel = JSON.stringify(selector);
     // Đo một lần, đồng bộ (như click() cũ): dùng khi JS bị tắt, vì khi đó rAF và setTimeout trong trang không chạy
@@ -181,22 +182,19 @@ class Page {
   }
 }
 
-// Cổng này có trình duyệt nào đang trả lời /json/version không (mỗi lần hỏi tối đa 1 s)
-const answers = (port) => fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(1000) }).then(async (r) => (await r.body?.cancel(), r.ok), () => false);
-
 /**
- * Mở một Chrome không đầu riêng. Mặc định để Chrome tự chọn cổng trống (--remote-debugging-port=0) rồi đọc cổng thật từ tệp
- * DevToolsActivePort trong thư mục hồ sơ: chọn cổng ngẫu nhiên thì hai tiến trình có thể trùng cổng và một bên âm thầm dùng
- * chung Chrome của bên kia (bên kia đóng là trang của mình chết). Truyền `port` thì dùng đúng cổng đó, nhưng nếu cổng đang có
- * Chrome khác trả lời thì báo lỗi. Chrome thoát sớm hay quá `timeout` ms chưa sẵn sàng: báo lỗi và dọn sạch.
+ * Mở một Chrome không đầu riêng: launch({ timeout } = {}). Chrome tự chọn cổng trống (--remote-debugging-port=0), cổng thật đọc
+ * từ tệp DevToolsActivePort trong thư mục hồ sơ (chọn cổng ngẫu nhiên thì hai tiến trình có thể trùng cổng và một bên âm thầm
+ * dùng chung Chrome của bên kia). Không có Chrome: trả null. Chrome thoát sớm hay quá `timeout` ms chưa sẵn sàng: báo lỗi và
+ * dọn sạch. Trả { port, proc, dir, newPage, close }.
  */
 export async function launch({ port, timeout = 10000 } = {}) {
+  // Chrome 156 chỉ ghi DevToolsActivePort khi cổng là 0, nên không nhận cổng truyền tay; báo ngay để lỗi cấu hình lộ ra
+  if (port !== undefined) throw new Error("launch(): tuỳ chọn port không còn được hỗ trợ (Chrome tự chọn cổng, đọc ở browser.port)");
   const chrome = findChrome();
   if (!chrome) return null;
-  // Cổng truyền tay đã có ai trả lời thì báo ngay, khỏi mở Chrome rồi chờ hết hạn
-  if (port && (await answers(port))) throw new Error(`không mở được Chrome điều khiển: cổng ${port} đang bị một Chrome khác chiếm`);
   const dir = mkdtempSync(join(tmpdir(), "cdp-"));
-  const proc = spawn(chrome, [`--remote-debugging-port=${port ?? 0}`, `--user-data-dir=${dir}`, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+  const proc = spawn(chrome, ["--remote-debugging-port=0", `--user-data-dir=${dir}`, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
   let stderr = "";
   proc.stderr.on("data", (d) => { stderr = (stderr + d).slice(-2000); });
   let exited = null;
@@ -226,18 +224,14 @@ export async function launch({ port, timeout = 10000 } = {}) {
   let active = null;
   while (!active) {
     if (exited) return fail(`Chrome thoát sớm (${how()})`);
-    if (Date.now() > end) {
-      // Cổng truyền tay đã có Chrome khác giữ thì Chrome này lặng lẽ lùi sang [::1] và không ghi tệp: nói rõ lý do
-      const taken = port && (await answers(port));
-      return fail(taken ? `cổng ${port} đang bị một Chrome khác chiếm` : `quá ${timeout} ms chưa thấy ${file}`);
-    }
+    if (Date.now() > end) return fail(`quá ${timeout} ms chưa thấy ${file}`);
     try {
       const [p, path] = readFileSync(file, "utf8").split("\n").map((s) => s.trim());
       if (/^\d+$/.test(p) && Number(p) > 0 && path) active = { port: Number(p), path };
     } catch { /* chưa có tệp */ }
     if (!active) await sleep(50);
   }
-  // Hỏi lại qua HTTP: cổng phải do chính Chrome này trả lời (cổng truyền tay có thể đang bị Chrome khác chiếm)
+  // Chờ cổng trả lời qua HTTP, và phòng hờ: đúng là chính Chrome này trả lời (đường dẫn WebSocket khớp dòng 2 của tệp)
   let version = null;
   while (!version) {
     if (exited) return fail(`Chrome thoát sớm (${how()})`);
@@ -248,7 +242,7 @@ export async function launch({ port, timeout = 10000 } = {}) {
     } catch { /* chưa lên */ }
     if (!version) await sleep(50);
   }
-  if (!version.webSocketDebuggerUrl?.endsWith(active.path)) return fail(`cổng ${active.port} đang bị một Chrome khác chiếm`);
+  if (!version.webSocketDebuggerUrl?.endsWith(active.path)) return fail(`cổng ${active.port} không do Chrome vừa mở trả lời`);
 
   const browser = { port: active.port, proc, dir };
   browser.newPage = async ({ width = 1280, height = 900, mobile = false, ua, dark = false, reduceMotion = false, dpr = 1, touch } = {}) => {

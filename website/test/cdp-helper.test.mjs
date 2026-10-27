@@ -4,7 +4,9 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "node:http";
 import { findChrome, launch } from "../tools/browser/cdp.mjs";
 
@@ -53,18 +55,20 @@ test("launch() song song: mỗi Chrome một cổng riêng, đóng một cái kh
   for (const b of browsers) assert.ok(!existsSync(b.dir), `chưa xoá ${b.dir}`);
 });
 
-test("launch({ port }) trùng cổng của Chrome khác: báo lỗi rõ và dọn sạch, không âm thầm dùng chung", { skip }, async () => {
-  const a = await launch();
-  dirs.push(a.dir);
+test("launch({ port }) ném lỗi rõ ngay, trước khi tạo thư mục hồ sơ hay mở Chrome", { skip }, async () => {
+  // Chạy trong tiến trình con với TMPDIR riêng: thư mục đó phải còn trống (không mkdtemp, nên cũng không spawn Chrome)
+  const tmp = mkdtempSync(join(tmpdir(), "cdp-port-opt-"));
   try {
-    const t = Date.now();
-    const err = await launch({ port: a.port, timeout: 1500 }).then(async (b) => { dirs.push(b.dir); await b.close(); return null; }, (e) => e);
-    assert.ok(err, "launch() trùng cổng phải ném lỗi");
-    assert.match(err.message, new RegExp(`cổng ${a.port} đang bị một Chrome khác chiếm`));
-    assert.ok(Date.now() - t < 1000, `phải báo ngay, không chờ hết hạn (${Date.now() - t} ms)`);
-    if (err.dir) { dirs.push(err.dir); assert.ok(!existsSync(err.dir), "launch() hỏng phải xoá thư mục hồ sơ của nó"); }
+    const code = `
+      const { launch } = await import(${JSON.stringify(CDP)});
+      const err = await launch({ port: 9999 }).then(() => null, (e) => e);
+      console.log(err ? "lỗi:" + err.message : "không lỗi");`;
+    const r = await new Promise((resolve) => execFile(process.execPath, ["--input-type=module", "-e", code], { timeout: 20000, env: { ...process.env, TMPDIR: tmp } }, (error, stdout, stderr) => resolve({ error, stdout, stderr })));
+    assert.equal(r.error, null, `tiến trình con lỗi: ${r.error?.message}\n${r.stderr.slice(-800)}`);
+    assert.match(r.stdout, /lỗi:.*tuỳ chọn port không còn được hỗ trợ/);
+    assert.deepEqual(readdirSync(tmp), [], "launch({ port }) không được tạo thư mục hồ sơ");
   } finally {
-    await a.close();
+    rmSync(tmp, { recursive: true, force: true });
   }
 });
 
@@ -81,11 +85,12 @@ test("click() chờ trang thôi cuộn rồi mới bấm: trúng nút đang bị
       ch.port1.onmessage=()=>{const k=Math.min(1,(performance.now()-t0)/800);scrollTo(0,12000*k);if(k<1)ch.port2.postMessage(0)};
       ch.port2.postMessage(0)});</script>`;
   const server = createServer((_, res) => { res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); res.end(html); });
-  await new Promise((r) => server.listen(0, "127.0.0.1", r));
-  const url = `http://127.0.0.1:${server.address().port}/`;
-  const b = await launch();
-  dirs.push(b.dir);
+  let b;
   try {
+    await new Promise((r) => server.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${server.address().port}/`;
+    b = await launch();
+    dirs.push(b.dir);
     for (let i = 0; i < 3; i++) {
       const p = await b.newPage({ width: 1000, height: 700 });
       await p.goto(url);
@@ -98,7 +103,7 @@ test("click() chờ trang thôi cuộn rồi mới bấm: trúng nút đang bị
       await p.close();
     }
   } finally {
-    await b.close();
+    await b?.close();
     server.closeAllConnections();
     server.close();
   }
