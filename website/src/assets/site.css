@@ -599,17 +599,33 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 
 /* ---------- Trang chủ: khối tab "Tính năng chính" (spec 2026-10-27-trang-chu-ba-viec-tab) ----------
    Không JS: thanh tab ẩn, ba panel xếp dọc. Có JS (site.js, initFeatureTabs): thanh tab hiện, panel không chọn có `hidden`. */
-.ftabs-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 720px; margin: 0 auto clamp(28px, 4vw, 44px); padding: 6px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: calc(var(--r-lg) + 6px); }
+.ftabs-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 860px; margin: 0 auto clamp(28px, 4vw, 44px); padding: 0; background: transparent; border: 0; }
 .ftabs-list[hidden] { display: none; }
 /* Có JS nhưng script chưa chạy: giữ chỗ cho thanh tab (không hiện) và chỉ hiện panel đầu, để lúc nâng cấp không đẩy trang (CLS). */
 .js .ftabs:not(.is-enhanced) .ftabs-list[hidden] { display: grid; visibility: hidden; }
 .js .ftabs:not(.is-enhanced) .ftabs-panel + .ftabs-panel { display: none; }
-.ftab { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; padding: 13px 14px; border: 1px solid transparent; border-radius: var(--r-lg); background: transparent; color: var(--ink-3); font: inherit; font-weight: 600; font-size: 1.02rem; line-height: 1.25; text-align: center; text-wrap: balance; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .2s, border-color .2s; }
-.ftab .icon { flex: none; width: 22px; height: 22px; }
-.ftab:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 60%, transparent); }
-.ftab[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: var(--shadow-md); }
-.ftab[aria-selected="true"] .icon { color: var(--brand); }
-.ftab:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+/* Mỗi tab một màu theo thứ tự (xanh dương, xanh ngọc, hổ phách): --tab là màu nhấn (viền, icon, tiêu điểm), --tab-from/--tab-to là
+   hai đầu gradient của tab đang chọn, --tab-on là chữ trên nền đó (đạt 4.5:1 với cả hai đầu; test/feature-tabs.test.mjs kiểm),
+   --tab-glow là quầng sáng. Thêm tab thứ tư phải thêm bộ màu :nth-child(4) ở cả ba chỗ (sáng và hai khối tối). */
+.ftab:nth-child(1) { --tab: #1d63c9; --tab-from: #2b6fdb; --tab-to: #174fa3; --tab-on: #ffffff; --tab-glow: rgba(29, 99, 201, .45); }
+.ftab:nth-child(2) { --tab: #0a8579; --tab-from: #0a8276; --tab-to: #08665e; --tab-on: #ffffff; --tab-glow: rgba(10, 133, 121, .45); }
+.ftab:nth-child(3) { --tab: #ad6700; --tab-from: #f7b84b; --tab-to: #e8921a; --tab-on: #2b1a00; --tab-glow: rgba(232, 146, 26, .5); }
+:root[data-theme="dark"] .ftab { --tab-tint: 14%; }
+:root[data-theme="dark"] .ftab:nth-child(1) { --tab: #4d9bff; --tab-from: #5aa8ff; --tab-to: #3b84f0; --tab-on: #04122b; --tab-glow: rgba(77, 155, 255, .45); }
+:root[data-theme="dark"] .ftab:nth-child(2) { --tab: #2fd0c0; --tab-from: #3ddccb; --tab-to: #1fb5a6; --tab-on: #03201d; --tab-glow: rgba(47, 208, 192, .4); }
+:root[data-theme="dark"] .ftab:nth-child(3) { --tab: #f2c15a; --tab-from: #f7cd6c; --tab-to: #ecae35; --tab-on: #2a1a00; --tab-glow: rgba(242, 193, 90, .4); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ftab { --tab-tint: 14%; }
+  :root:not([data-theme="light"]) .ftab:nth-child(1) { --tab: #4d9bff; --tab-from: #5aa8ff; --tab-to: #3b84f0; --tab-on: #04122b; --tab-glow: rgba(77, 155, 255, .45); }
+  :root:not([data-theme="light"]) .ftab:nth-child(2) { --tab: #2fd0c0; --tab-from: #3ddccb; --tab-to: #1fb5a6; --tab-on: #03201d; --tab-glow: rgba(47, 208, 192, .4); }
+  :root:not([data-theme="light"]) .ftab:nth-child(3) { --tab: #f2c15a; --tab-from: #f7cd6c; --tab-to: #ecae35; --tab-on: #2a1a00; --tab-glow: rgba(242, 193, 90, .4); }
+}
+.ftab { display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; min-height: 64px; padding: 12px 18px; border: 1.5px solid color-mix(in srgb, var(--tab) 30%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--tab) var(--tab-tint, 10%), var(--surface)); color: var(--ink); font: inherit; font-weight: 700; font-size: 1.08rem; line-height: 1.25; text-align: center; text-wrap: balance; cursor: pointer; transition: background .2s var(--ease), color .2s, box-shadow .25s var(--ease), transform .2s var(--ease), border-color .2s; }
+.ftab .icon { flex: none; width: 38px; height: 38px; padding: 9px; border-radius: 50%; background: color-mix(in srgb, var(--tab) 16%, transparent); color: var(--tab); transition: background .2s, color .2s; }
+.ftab:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--tab) calc(var(--tab-tint, 10%) + 8%), var(--surface)); border-color: color-mix(in srgb, var(--tab) 55%, transparent); transform: translateY(-1px); }
+.ftab[aria-selected="true"] { background: linear-gradient(135deg, var(--tab-from), var(--tab-to)); color: var(--tab-on); border-color: transparent; box-shadow: 0 14px 30px -10px var(--tab-glow), 0 2px 6px rgba(11, 19, 34, .12); transform: translateY(-2px); }
+.ftab[aria-selected="true"] .icon { background: rgba(255, 255, 255, .22); color: var(--tab-on); }
+.ftab:focus-visible { outline: 3px solid var(--tab); outline-offset: 3px; }
 .ftabs-panel[hidden] { display: none; }
 .ftabs-panel + .ftabs-panel { margin-top: clamp(40px, 6vw, 72px); }
 /* Neo #id trỏ vào panel còn thanh tab nằm trên nó: site.js đặt --ftabs-lift = khoảng từ đỉnh thanh tab tới đỉnh panel, để chỗ trình duyệt tự cuộn tới
@@ -621,7 +637,8 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .ftabs-panel .split { gap: clamp(24px, 4vw, 56px); }
 .ftabs-panel h3 { margin: 0; font-size: clamp(1.35rem, 1.05rem + 1vw, 1.8rem); }
 @media (max-width: 700px) {
-  .ftab { flex-direction: column; gap: 6px; padding: 10px 6px; font-size: .92rem; }
+  .ftab { flex-direction: column; gap: 6px; min-height: 0; padding: 10px 6px; font-size: .92rem; }
+  .ftab .icon { width: 32px; height: 32px; padding: 7px; }
 }
 
 /* Mục "Máy chủ lưu những gì?" gập sẵn trong khối tối của phần Dữ liệu (trang chủ). */

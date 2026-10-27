@@ -178,3 +178,43 @@ for (const page of PAGES.slice(0, 2)) {
     await p.close();
   });
 }
+
+// Độ tương phản WCAG 2 (độ chói tương đối) giữa hai màu hex "#rrggbb".
+const luminance = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+test("vi: mỗi tab một màu; chữ trên nền tab đang chọn đạt 4.5:1 với cả hai đầu gradient, sáng và tối", { skip }, async () => {
+  for (const dark of [false, true]) {
+    const mode = dark ? "tối" : "sáng";
+    const p = await browser.newPage({ width: 1280, height: 900, dark });
+    await p.goto(base + "/");
+    const froms = [];
+    for (const i of [0, 1, 2]) {
+      await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
+      const s = await p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => {
+        const cs = getComputedStyle(t);
+        const v = (n) => cs.getPropertyValue(n).trim().toLowerCase();
+        return { from: v("--tab-from"), to: v("--tab-to"), on: v("--tab-on"), image: cs.backgroundImage, selected: t.getAttribute("aria-selected") === "true" };
+      })`);
+      const t = s[i];
+      assert.ok(t.selected, `${mode}: tab ${i + 1} phải đang chọn`);
+      for (const c of [t.from, t.to, t.on]) assert.match(c, /^#[0-9a-f]{6}$/, `${mode} tab ${i + 1}: màu "${c}" phải là hex 6 chữ số`);
+      for (const end of [t.from, t.to]) {
+        const r = contrast(t.on, end);
+        assert.ok(r >= 4.5, `${mode} tab ${i + 1}: chữ ${t.on} trên ${end} chỉ ${r.toFixed(2)}:1`);
+      }
+      assert.match(t.image, /linear-gradient/, `${mode}: tab đang chọn phải đổ gradient`);
+      s.forEach((o, j) => j !== i && assert.equal(o.image, "none", `${mode}: tab ${j + 1} chưa chọn không được có gradient`));
+      froms.push(t.from);
+    }
+    assert.equal(new Set(froms).size, 3, `${mode}: ba tab phải có ba màu khác nhau (${froms})`);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  }
+});
