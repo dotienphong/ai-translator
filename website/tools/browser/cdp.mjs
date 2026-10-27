@@ -3,7 +3,7 @@
 //   const b = await launch(); const p = await b.newPage({ width: 390, height: 800, mobile: true, ua: "...", dark: true });
 //   await p.goto("http://127.0.0.1:4173/tai-xuong/"); await p.eval("document.title"); await p.screenshot("a.png", { full: true }); await b.close();
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -25,6 +25,12 @@ class Session {
     this.pending = new Map();
     this.waiters = [];
     this.handlers = [];
+    // Chrome chết hay trang bị đóng giữa chừng: báo lỗi ngay cho mọi lệnh đang chờ thay vì treo tới hết giờ của test
+    ws.addEventListener("close", () => {
+      this.closed = true;
+      for (const { reject } of this.pending.values()) reject(new Error("mất kết nối tới Chrome (WebSocket đã đóng)"));
+      this.pending.clear();
+    });
     ws.addEventListener("message", (e) => {
       const m = JSON.parse(e.data);
       if (m.id && this.pending.has(m.id)) {
@@ -38,6 +44,7 @@ class Session {
     });
   }
   send(method, params = {}) {
+    if (this.closed) return Promise.reject(new Error(`mất kết nối tới Chrome, không gửi được ${method}`));
     const id = ++this.id;
     this.ws.send(JSON.stringify({ id, method, params }));
     return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
@@ -49,6 +56,36 @@ class Session {
     });
   }
 }
+
+// Chạy trong trang: cuộn phần tử vào giữa, chờ tới khi vị trí cuộn không đổi và điểm giữa cũ vẫn nằm trong hộp mới suốt 3 khung
+// hình liền nhau (nút "đập nhịp" phóng to thu nhỏ tại chỗ vẫn coi là đứng yên), tối đa 2,5 s; trả toạ độ điểm giữa và điểm đó
+// có trúng chính phần tử (hay con của nó) không.
+const settle = async (sel) => {
+  const e = document.querySelector(sel);
+  if (!e) return null;
+  const frame = () => new Promise((r) => { const t = setTimeout(r, 100); requestAnimationFrame(() => { clearTimeout(t); r(); }); }); // trang nền không có rAF
+  const look = () => { const r = e.getBoundingClientRect(); return { r, x: r.x + r.width / 2, y: r.y + r.height / 2, sx: scrollX, sy: scrollY }; };
+  const end = performance.now() + 2500;
+  e.scrollIntoView({ block: "center", behavior: "instant" });
+  let prev = look(), still = 0, rescroll = 2;
+  while (still < 3 && performance.now() < end) {
+    await frame();
+    const cur = look();
+    const same = cur.sx === prev.sx && cur.sy === prev.sy && prev.x >= cur.r.left && prev.x <= cur.r.right && prev.y >= cur.r.top && prev.y <= cur.r.bottom;
+    still = same ? still + 1 : 0;
+    prev = cur;
+    // Đứng yên nhưng đã bị cuộn ra khỏi khung nhìn (một lần cuộn khác chạy sau lúc ta cuộn): cuộn lại rồi chờ tiếp
+    if (still >= 3 && rescroll > 0 && (cur.x < 0 || cur.y < 0 || cur.x >= innerWidth || cur.y >= innerHeight)) {
+      rescroll--;
+      e.scrollIntoView({ block: "center", behavior: "instant" });
+      still = 0;
+      prev = look();
+    }
+  }
+  const root = e.getRootNode().elementFromPoint ? e.getRootNode() : document;
+  const at = root.elementFromPoint(prev.x, prev.y);
+  return { x: prev.x, y: prev.y, hit: Boolean(at && (at === e || e.contains(at))) };
+};
 
 class Page {
   constructor(session, targetId, browser, opts) {
@@ -79,8 +116,16 @@ class Page {
     return r.result.value;
   }
   async click(selector) {
-    const box = await this.eval(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return null; e.scrollIntoView({block:"center", behavior:"instant"}); const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
-    if (!box) throw new Error(`không thấy ${selector}`);
+    // Trang có thể còn đang cuộn mượt (neo #, scrollIntoView trong rAF) khi goto() trả về: đo hộp một lần thì toạ độ gửi đi
+    // có thể lệch và cú bấm trượt. Chờ hộp đứng yên rồi kiểm điểm giữa đúng là phần tử; trượt thì đo lại vài lần.
+    const deadline = Date.now() + 3000;
+    let box;
+    for (let i = 0; ; i++) {
+      box = await this.eval(`(${settle})(${JSON.stringify(selector)})`);
+      if (!box) throw new Error(`không thấy ${selector}`);
+      if (box.hit || i >= 4 || Date.now() > deadline) break; // vẫn trượt (bị che, pointer-events: none…): bấm như cũ
+      await sleep(50);
+    }
     for (const type of ["mousePressed", "mouseReleased"]) await this.s.send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
     await sleep(120);
   }
@@ -109,20 +154,73 @@ class Page {
   }
 }
 
-export async function launch({ port = 9333 + Math.floor(Math.random() * 500) } = {}) {
+/**
+ * Mở một Chrome không đầu riêng. Mặc định để Chrome tự chọn cổng trống (--remote-debugging-port=0) rồi đọc cổng thật từ tệp
+ * DevToolsActivePort trong thư mục hồ sơ: chọn cổng ngẫu nhiên thì hai tiến trình có thể trùng cổng và một bên âm thầm dùng
+ * chung Chrome của bên kia (bên kia đóng là trang của mình chết). Truyền `port` thì dùng đúng cổng đó, nhưng nếu cổng đang có
+ * Chrome khác trả lời thì báo lỗi. Chrome thoát sớm hay quá `timeout` ms chưa sẵn sàng: báo lỗi và dọn sạch.
+ */
+export async function launch({ port, timeout = 10000 } = {}) {
   const chrome = findChrome();
   if (!chrome) return null;
   const dir = mkdtempSync(join(tmpdir(), "cdp-"));
-  const proc = spawn(chrome, [`--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "about:blank"], { stdio: "ignore" });
-  const browser = { port, proc };
-  for (let i = 0; i < 80; i++) {
+  const proc = spawn(chrome, [`--remote-debugging-port=${port ?? 0}`, `--user-data-dir=${dir}`, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+  let stderr = "";
+  proc.stderr.on("data", (d) => { stderr = (stderr + d).slice(-2000); });
+  let exited = null;
+  const how = () => exited.error?.message ?? `mã ${exited.code}, tín hiệu ${exited.signal}`;
+  const gone = new Promise((r) => proc.once("exit", (code, signal) => { exited = { code, signal }; r(); }));
+  proc.once("error", (e) => { exited ??= { error: e }; });
+  const waitGone = (ms) => { let t; return Promise.race([gone, new Promise((r) => { t = setTimeout(r, ms); })]).finally(() => clearTimeout(t)); };
+  let stopping = null;
+  const stop = () => (stopping ??= (async () => {
+    if (!exited) {
+      proc.kill();
+      await waitGone(3000);
+      if (!exited) { proc.kill("SIGKILL"); await waitGone(2000); }
+    }
+    proc.stderr.destroy();
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); // xoá sau khi Chrome đã thoát hẳn, không còn ai ghi vào
+  })());
+  const fail = async (why) => {
+    await stop();
+    const tail = stderr.trim().split("\n").slice(-5).join("\n");
+    throw Object.assign(new Error(`không mở được Chrome điều khiển (${chrome}): ${why}${tail ? `\n${tail}` : ""}`), { dir });
+  };
+
+  // Chờ Chrome ghi DevToolsActivePort: dòng 1 là cổng, dòng 2 là đường dẫn WebSocket của chính trình duyệt này
+  const file = join(dir, "DevToolsActivePort");
+  const end = Date.now() + timeout;
+  let active = null;
+  while (!active) {
+    if (exited) return fail(`Chrome thoát sớm (${how()})`);
+    if (Date.now() > end) {
+      // Cổng truyền tay đã có Chrome khác giữ thì Chrome này lặng lẽ lùi sang [::1] và không ghi tệp: nói rõ lý do
+      const taken = port && (await fetch(`http://127.0.0.1:${port}/json/version`).then((r) => r.ok, () => false));
+      return fail(taken ? `cổng ${port} đang bị một Chrome khác chiếm` : `quá ${timeout} ms chưa thấy ${file}`);
+    }
     try {
-      if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break;
-    } catch { /* chưa lên */ }
-    await sleep(100);
+      const [p, path] = readFileSync(file, "utf8").split("\n").map((s) => s.trim());
+      if (/^\d+$/.test(p) && Number(p) > 0 && path) active = { port: Number(p), path };
+    } catch { /* chưa có tệp */ }
+    if (!active) await sleep(50);
   }
+  // Hỏi lại qua HTTP: cổng phải do chính Chrome này trả lời (cổng truyền tay có thể đang bị Chrome khác chiếm)
+  let version = null;
+  while (!version) {
+    if (exited) return fail(`Chrome thoát sớm (${how()})`);
+    if (Date.now() > end) return fail(`quá ${timeout} ms cổng ${active.port} chưa trả lời`);
+    try {
+      const r = await fetch(`http://127.0.0.1:${active.port}/json/version`);
+      if (r.ok) version = await r.json();
+    } catch { /* chưa lên */ }
+    if (!version) await sleep(50);
+  }
+  if (!version.webSocketDebuggerUrl?.endsWith(active.path)) return fail(`cổng ${active.port} đang bị một Chrome khác chiếm`);
+
+  const browser = { port: active.port, proc, dir };
   browser.newPage = async ({ width = 1280, height = 900, mobile = false, ua, dark = false, reduceMotion = false, dpr = 1, touch } = {}) => {
-    const t = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
+    const t = await (await fetch(`http://127.0.0.1:${browser.port}/json/new?about:blank`, { method: "PUT" })).json();
     const ws = new WebSocket(t.webSocketDebuggerUrl);
     await new Promise((res, rej) => { ws.addEventListener("open", res); ws.addEventListener("error", rej); });
     const s = new Session(ws);
@@ -136,11 +234,7 @@ export async function launch({ port = 9333 + Math.floor(Math.random() * 500) } =
     await s.send("Browser.grantPermissions", { permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"] }).catch(() => {});
     return new Page(s, t.id, browser, { width, height });
   };
-  browser.close = async () => {
-    proc.kill();
-    await sleep(200);
-    rmSync(dir, { recursive: true, force: true });
-  };
+  browser.close = stop;
   return browser;
 }
 
