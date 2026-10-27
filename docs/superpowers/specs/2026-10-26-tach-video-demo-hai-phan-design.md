@@ -1,5 +1,7 @@
 # Tách video demo thành hai video: dịch cuộc họp và Gõ dịch — Design
 
+> Bố cục hai video cạnh nhau của spec này đã được thay bằng khối tab "Tính năng chính" (spec 2026-10-27-trang-chu-ba-viec-tab-design.md); các video và việc cắt video vẫn dùng như mô tả ở đây.
+
 **Ngày:** 2026-10-26
 **Trạng thái:** Chủ dự án duyệt qua hội thoại ngày 2026-10-26 (bố cục: hai video cạnh nhau; phần còn lại duyệt nguyên văn). Nhánh `video-tach-hai-phan`; deploy theo lời chủ dự án ("up lên website lại"), không push GitHub nếu chưa được bảo.
 **Quan hệ:** thay một phần `2026-10-21-website-demo-video-design.md` (một video mỗi ngôn ngữ) và `2026-10-22-website-ja-zh-ko-design.md` §4 (nút phát, ja/zh/ko). Nguồn video: `2026-10-21-demo-video-desktop-design.md`. Quy tắc nội dung website: `website/README.md`.

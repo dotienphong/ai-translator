@@ -480,6 +480,13 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
   .video-play-btn .icon { width: 30px; height: 30px; margin-left: 4px; }
   .video-play-label { font-size: .85rem; padding: 6px 12px; }
 }
+/* Cột video trong tab hẹp lại ở 900–1099 px (khoảng 475–560 px): nút phát và nhãn nhỏ lại cho vừa khung. */
+@media (min-width: 900px) and (max-width: 1099px) {
+  .video-play { gap: 12px; }
+  .video-play-btn { width: 72px; height: 72px; }
+  .video-play-btn .icon { width: 30px; height: 30px; margin-left: 4px; }
+  .video-play-label { font-size: .85rem; padding: 6px 12px; }
+}
 .facts { display: grid; gap: 0; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .split + .facts, .table-wrap + .facts, .grid + .facts { margin-top: clamp(28px, 4vw, 48px); }
 /* Hai khối hai cột liền nhau trong cùng một mục (Trang chủ: Một màn hình, rồi Gõ dịch). */
