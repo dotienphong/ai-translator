@@ -57,13 +57,15 @@ jobs:
         run: |
           cargo clippy --locked --workspace --all-targets -- -D warnings
           cargo clippy --locked -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
+      - name: speaker-worker không có mã mạng (spec 2026-10-26-phan-biet-nguoi-noi §4.1)
+        run: scripts/release/check-no-network.sh speaker-worker speaker-protocol
       - name: cargo test
         run: |
           cargo test --locked --workspace
           cargo test --locked -p asr-worker --features shared-encode
-      - name: Test bản quyền và báo cáo lỗi ở bản release (không có phần chỉ dành cho bản debug)
+      - name: Test bản quyền, báo cáo lỗi và nhận giọng ở bản release (không có phần chỉ dành cho bản debug)
         run: |
-          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: --test-threads=1
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: speaker:: --test-threads=1
       - name: asr-worker bản phát hành (Metal, shared-encode)
         run: cargo build --release --locked -p asr-worker --features metal,shared-encode
       - name: Code Windows biên dịch được (clippy cho target Windows)

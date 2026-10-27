@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Sinh THIRD_PARTY_NOTICES.txt (spec §10.1; kế hoạch 07a): giấy phép của mọi thư viện đi vào bản phát hành.
-//   - Rust: `cargo about generate --format json --frozen` cho app và cho asr-worker (hai binary được phát hành có code
-//     Rust), gộp theo văn bản giấy phép. `about.toml` chỉ nhận các giấy phép trong `[licenses] allow` của deny.toml.
+//   - Rust: `cargo about generate --format json --frozen` cho app, asr-worker và speaker-worker (ba binary được phát hành
+//     có code Rust), gộp theo văn bản giấy phép. `about.toml` chỉ nhận các giấy phép trong `[licenses] allow` của deny.toml.
 //   - JavaScript: `pnpm licenses list --prod --json` (gói nằm trong giao diện đã build), văn bản lấy từ file LICENSE của
 //     từng gói. Giấy phép phải nằm trong allow-list của deny.toml.
 //   - C/C++ trong tiến trình phụ: whisper.cpp và ggml (third_party/), llama.cpp cùng các thư viện nó nhúng (mã nguồn đã
@@ -232,7 +232,7 @@ export function main(argv) {
   if (JSON.stringify([...accepted].sort()) !== JSON.stringify([...allow].sort())) {
     errors.push("about.toml `accepted` khác deny.toml `[licenses] allow`");
   }
-  const rust = mergeAbout([cargoAbout("src-tauri/Cargo.toml"), cargoAbout("crates/asr-worker/Cargo.toml")]);
+  const rust = mergeAbout([cargoAbout("src-tauri/Cargo.toml"), cargoAbout("crates/asr-worker/Cargo.toml"), cargoAbout("crates/speaker-worker/Cargo.toml")]);
   const listing = JSON.parse(
     execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: root, encoding: "utf8", shell: process.platform === "win32" }),
   );

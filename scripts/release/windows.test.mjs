@@ -13,12 +13,12 @@ import { readVersions } from "./versions.mjs";
 
 const versions = readVersions();
 
-test("build Windows: asr-worker CRT tĩnh + DEPENDENTLOADFLAG; llama.cpp CRT động kèm runtime; đủ cờ llama.cpp đã chốt", () => {
+test("build Windows: asr-worker và speaker-worker CRT tĩnh + DEPENDENTLOADFLAG; llama.cpp CRT động kèm runtime; đủ cờ llama.cpp đã chốt", () => {
   const list = steps({ work: "W", target: "T", out: "O", versions });
   const cargo = list.filter((s) => s.run?.[0] === "cargo");
   assert.deepEqual(
     cargo.map((s) => s.run.at(-1)),
-    ["vulkan,shared-encode", "shared-encode"],
+    ["vulkan,shared-encode", "shared-encode", "speaker-worker"],
   );
   for (const s of cargo) {
     assert.equal(s.env.RUSTFLAGS, "-C target-feature=+crt-static -C link-arg=/DEPENDENTLOADFLAG:0x800");
@@ -29,6 +29,7 @@ test("build Windows: asr-worker CRT tĩnh + DEPENDENTLOADFLAG; llama.cpp CRT đ�
     [
       join("O", `asr-worker-vulkan-${TRIPLE}.exe`),
       join("O", `asr-worker-cpu-${TRIPLE}.exe`),
+      join("O", `speaker-worker-${TRIPLE}.exe`),
       join("O", `llama-server-${TRIPLE}.exe`),
     ],
   );

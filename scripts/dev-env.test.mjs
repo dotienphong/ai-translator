@@ -125,3 +125,21 @@ test("khóa chỉ giống tên công tắc báo cáo lỗi (tiền tố, hậu t
   const r = read(t, "AI_TRANSLATOR_DEV_REPORTS_X=true\nAI_TRANSLATOR_REPORTS=true\nai_translator_dev_reports=true\n");
   assert.equal(r.out, "");
 });
+
+// Cờ bật nhận giọng của bản dev (spec 2026-10-26-phan-biet-nguoi-noi, kế hoạch 02).
+test("nhận AI_TRANSLATOR_DEV_SPEAKER, giá trị lạ có cảnh báo không in giá trị", (t) => {
+  const r = read(t, "AI_TRANSLATOR_DEV_SPEAKER=true\nSECRET=x\n");
+  assert.equal(r.out, "AI_TRANSLATOR_DEV_SPEAKER=true\n");
+  assert.equal(read(t, "AI_TRANSLATOR_DEV_SPEAKER=false\n").err, "");
+  for (const value of ["1", "TRUE", "true ", ""]) {
+    const odd = read(t, `AI_TRANSLATOR_DEV_SPEAKER=${value}\n`);
+    assert.equal(odd.out, `AI_TRANSLATOR_DEV_SPEAKER=${value}\n`);
+    assert.match(odd.err, /AI_TRANSLATOR_DEV_SPEAKER có giá trị lạ/);
+    assert.ok(!odd.err.includes("TRUE"), "không in giá trị ra stderr");
+  }
+});
+
+test("khóa chỉ giống tên cờ nhận giọng không được nhận", (t) => {
+  const r = read(t, "AI_TRANSLATOR_DEV_SPEAKER_X=true\nAI_TRANSLATOR_SPEAKER=true\nai_translator_dev_speaker=true\n");
+  assert.equal(r.out, "");
+});
