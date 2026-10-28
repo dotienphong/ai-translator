@@ -173,3 +173,8 @@ export function taskXml({ node, script, configPath, app, hour, minute, startDate
 </Task>
 `;
 }
+
+/** Nội dung file `.xml` cho `schtasks /Create /XML`: `taskXml` khai `encoding="UTF-16"` nên phải ghi UTF-16LE có BOM (ghi UTF-8 sẽ bị báo "malformed"). */
+export function taskXmlFile(opts) {
+  return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(taskXml(opts), "utf16le")]);
+}

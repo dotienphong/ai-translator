@@ -66,7 +66,7 @@ Nhật ký mỗi lượt: `<logDir>/<ngày>-<app>.jsonl` (một dòng JSON: ngà
 
 ## Lịch chạy ban đêm
 
-Sinh file lịch bằng `lib.mjs` (`launchdPlist`, `taskXml`, `slots`): mỗi app một lượt, cách nhau 10 phút.
+Sinh file lịch bằng `lib.mjs` (`launchdPlist`, `taskXml`, `slots`; file `.xml` của Windows ghi bằng `writeFileSync(đường_dẫn, taskXmlFile(...))`, hàm này trả UTF-16LE có BOM như `taskXml` khai báo): mỗi app một lượt, cách nhau 10 phút.
 
 - macOS (launchd): đặt plist vào `~/Library/LaunchAgents/`, rồi `launchctl bootstrap gui/$(id -u) <plist>`. Máy phải đã đăng nhập và không khóa màn hình lúc chạy (đọc cây giao diện cần phiên người dùng).
 - Windows (Task Scheduler): `schtasks /Create /TN "AI Translator speaker-canary teams" /XML <file.xml>`; chỉ chạy khi người dùng đã đăng nhập.

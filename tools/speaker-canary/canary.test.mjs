@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dryAdapter, repoAppVersion, runCanary } from "./canary.mjs";
-import { APPS, canaryArgs, defaultSchedule, launchdPlist, logLine, osVersion, parseConfig, scheduleSeconds, slots, taskXml } from "./lib.mjs";
+import { APPS, canaryArgs, defaultSchedule, launchdPlist, logLine, osVersion, parseConfig, scheduleSeconds, slots, taskXml, taskXmlFile } from "./lib.mjs";
 
 const config = (over = {}) =>
   JSON.stringify({
@@ -294,4 +294,16 @@ test("kết quả không phải đối tượng JSON thì coi như không có", 
   const b = bench(t, { result: ["state"] });
   await runCanary({ app: "teams", cfg: parseConfig(config()), deps: b.deps });
   assert.equal(JSON.parse(b.state.files["2026-10-27-teams.jsonl"]).result, null);
+});
+
+test("taskXmlFile: UTF-16LE có BOM (FF FE), đọc lại ra đúng XML khai UTF-16, không mất chữ có dấu", () => {
+  const opts = { node: "C:\\Program Files\\nodejs\\node.exe", script: "C:\\repo\\tools\\speaker-canary\\canary.mjs", configPath: "C:\\cấu hình\\canary.json", app: "teams", hour: 2, minute: 30, startDate: "2026-11-01" };
+  const buf = taskXmlFile(opts);
+  assert.ok(Buffer.isBuffer(buf));
+  assert.deepEqual([...buf.subarray(0, 2)], [0xff, 0xfe]);
+  const text = new TextDecoder("utf-16le").decode(buf.subarray(2));
+  assert.equal(text, taskXml(opts));
+  assert.match(text, /^<\?xml version="1\.0" encoding="UTF-16"\?>/);
+  assert.ok(text.includes("cấu hình"));
+  assert.equal(buf.length, 2 + text.length * 2, "mỗi ký tự 2 byte (toàn ký tự BMP)");
 });
