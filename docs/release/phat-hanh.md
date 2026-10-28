@@ -1522,7 +1522,7 @@ PADMIN=https://admin.aitranslator.vn
 
 ## 15. Phân biệt người nói: công thức đọc tên và báo cáo tình trạng (migration D1 0007)
 
-Spec `2026-10-26-phan-biet-nguoi-noi-design.md` mục 7, kế hoạch `2026-10-27-phan-biet-nguoi-noi-06-van-hanh.md`. **Mỗi bước ghi vào production do chủ dự án chạy.** Tính năng còn **tắt** với người dùng cuối tới kế hoạch 07 (công tắc nội bộ `speaker::enabled`): các bước dưới đây đặt sẵn hạ tầng vận hành, chưa có người dùng thật nào gửi báo cáo hay tải công thức cho tới khi kế hoạch 07 bật tính năng.
+Spec `2026-10-26-phan-biet-nguoi-noi-design.md` mục 7, kế hoạch `2026-10-27-phan-biet-nguoi-noi-06-van-hanh.md`. **Mỗi bước ghi vào production do chủ dự án chạy.** Tính năng **"ngủ"** ở bản phát hành cho tới khi manifest có mục `speaker` (kế hoạch 07, mục 16): các bước dưới đây đặt sẵn hạ tầng vận hành, chưa có người dùng thật nào gửi báo cáo hay tải công thức cho tới khi chủ dự án đăng manifest bật tính năng (mục 16).
 
 ### 15.1. Đợt triển khai lần đầu (server, admin, công thức)
 
