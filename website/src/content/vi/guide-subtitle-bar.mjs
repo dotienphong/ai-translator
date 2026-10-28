@@ -90,7 +90,7 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <li><strong>Tên thật từ Microsoft Teams.</strong> Khi bạn dịch một cuộc họp trong app Teams cài trên máy, app đọc tên người tham dự từ cửa sổ cuộc họp và chỉ hiện tên khi đã đủ chắc. Chưa chắc thì giữ “Người N”: sai tên còn tệ hơn nhãn chung. App không đọc chat và không chụp màn hình. Google Meet và Zoom chưa có tên tự động.</li>
 <li><strong>Tự sửa.</strong> Ở bản chép lời trong cửa sổ chính, bấm một nhãn để đổi tên, <em>Chọn người trong cuộc họp</em>, hay <em>Gộp vào người khác</em> khi hai nhãn là cùng một người. Thay đổi áp cho cả phiên đang chạy.</li>
 <li><strong>Quyền.</strong> Để đọc tên, macOS hỏi quyền <em>Trợ năng</em>: thanh hiện một dòng mời ngắn (<em>Cho phép quyền Trợ năng để hiện tên người nói</em>) kèm nút mở Cài đặt; app không tự bật hộp thoại của hệ thống. Sau khi cập nhật app, macOS có thể hỏi lại. Không cấp quyền thì vẫn có màu và “Người N”.</li>
-<li><strong>Lịch sử và xuất file.</strong> Nhãn và tên chỉ được lưu vào Lịch sử và file xuất khi bạn có gói Pro và chỉ khi bạn bật Lưu lịch sử; nút sao chép và xuất file ở mọi gói có kèm nhãn trong văn bản.</li>
+<li><strong>Lịch sử và xuất file.</strong> Nhãn và tên được lưu vào Lịch sử chỉ khi bạn có gói Pro và chỉ khi bạn bật Lưu lịch sử. Ngoài ra, nút Sao chép (mọi gói) và Xuất ra file (chỉ Pro) đưa nhãn và tên vào văn bản: tên có thể nằm trong văn bản bạn sao chép hay file bạn xuất, kể cả khi chưa bật Lưu lịch sử (với file SRT, khi bạn chọn thêm tên người nói).</li>
 </ul>
 <p>Giới hạn: hai người có giọng rất giống có thể dùng chung một nhãn, và khi nhiều người nói chồng, nhãn có thể sai. Windows chưa hỗ trợ; ở Google Meet và Zoom app hiện màu và “Người N” nhưng chưa có tên tự động.</p>
 
