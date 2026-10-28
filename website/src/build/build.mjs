@@ -136,12 +136,13 @@ function llmsFull(list, ctx, lang) {
 function headers() {
   const csp = [
     "default-src 'self'",
-    `script-src 'self' '${THEME_INIT_HASH}'`,
+    // Google Analytics (chính sách 1.9, mục 14): site.js chỉ tải gtag.js sau khi khách bấm Đồng ý; không thêm nguồn nào khác.
+    `script-src 'self' '${THEME_INIT_HASH}' https://www.googletagmanager.com`,
     "style-src 'self'",
-    "img-src 'self' data:",
+    "img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com",
     "font-src 'self'",
     // Chat hỗ trợ gọi API của license server (spec chat hỗ trợ 2026-10-22, mục 3); không thêm nguồn nào khác.
-    `connect-src 'self' ${CHAT_API}`,
+    `connect-src 'self' ${CHAT_API} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com`,
     "base-uri 'self'",
     "form-action 'none'",
     "frame-ancestors 'none'",

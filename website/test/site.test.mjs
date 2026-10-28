@@ -1231,8 +1231,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.8", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.8", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.9", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.9", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1396,7 +1396,7 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
           paragraphs: lines.filter((l) => !/^(- |\d+\. |\||#)/.test(l)).length,
         };
       });
-  for (const [name, count] of [["eula", 16], ["privacy", 13]]) {
+  for (const [name, count] of [["eula", 16], ["privacy", 14]]) {
     const vi = skeleton(docs[`${name}.vi.md`]);
     const en = skeleton(docs[`${name}.en.md`]);
     if (vi.length !== count) errors.push(`${name}.vi.md: ${vi.length} mục (giữ ${count} mục)`);
@@ -1412,15 +1412,13 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA lên 1.5 và chính sách lên 1.8 (nguồn micro, spec 2026-10-24-nguon-micro §8), cùng một ngày hiệu lực, không sớm hơn
-  // ngày nhánh nguồn micro sẵn sàng (2026-10-24). Đặt ngày ở kế hoạch 2026-10-24-nguon-micro-04, Task 12, vào ngày phát hành
-  // 0.2.9, trước khi build app.
+  // EULA giữ 1.5 (nguồn micro, hiệu lực 2026-10-25); chính sách lên 1.9 (thêm Google Analytics cho website, mục 14, spec ở
+  // docs/legal/README.md), hiệu lực không sớm hơn 2026-10-28. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.5" || privacyHead?.version !== "1.8") errors.push("EULA 1.5 và chính sách 1.8");
-  if (!privacyHead || privacyHead.iso < "2026-10-24" || eulaHead?.iso !== privacyHead.iso) {
-    errors.push(`EULA 1.5 và chính sách 1.8 phải cùng ngày hiệu lực, từ 2026-10-24 trở đi, đang ghi ${eulaHead?.iso} và ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
-  }
+  if (eulaHead?.version !== "1.5" || privacyHead?.version !== "1.9") errors.push("EULA 1.5 và chính sách 1.9");
+  if (eulaHead?.iso !== "2026-10-25") errors.push(`EULA 1.5 hiệu lực 2026-10-25, đang ghi ${eulaHead?.iso}`);
+  if (!privacyHead || privacyHead.iso < "2026-10-28") errors.push(`chính sách 1.9 hiệu lực từ 2026-10-28 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
 });
 
@@ -2218,16 +2216,44 @@ test("manifest ảnh app: mỗi slug có đủ năm ngôn ngữ", async () => {
   for (const [slug, langs] of bySlug) assert.deepEqual(langs.sort(), [...LANG_CODES].sort(), slug);
 });
 
-test("CSP: connect-src chỉ thêm API của chat hỗ trợ; script-src, style-src, font-src, img-src giữ nguyên", async () => {
+test("CSP: chỉ thêm API của chat hỗ trợ và các nguồn của Google Analytics (gtag.js, đo lường); style-src, font-src giữ nguyên", async () => {
   const h = await readFile(path.join(DIST, "_headers"), "utf8");
   const csp = /Content-Security-Policy: (.+)/.exec(h)?.[1] ?? "";
   const dir = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1).join(" ")]));
-  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.vn");
-  assert.match(dir["script-src"], /^'self' 'sha256-[A-Za-z0-9+/=]+'$/);
+  assert.equal(dir["connect-src"], "'self' https://api.aitranslator.vn https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com");
+  assert.match(dir["script-src"], /^'self' 'sha256-[A-Za-z0-9+/=]+' https:\/\/www\.googletagmanager\.com$/);
   assert.equal(dir["style-src"], "'self'");
   assert.equal(dir["font-src"], "'self'");
-  assert.equal(dir["img-src"], "'self' data:");
+  assert.equal(dir["img-src"], "'self' data: https://*.google-analytics.com https://*.googletagmanager.com");
   assert.equal(dir["default-src"], "'self'");
+});
+
+test("Google Analytics: không có thẻ gtag hay kết nối Google trong HTML (chỉ tải sau khi khách đồng ý); mọi trang có thanh đồng ý và nút Cài đặt cookie đúng ngôn ngữ", async () => {
+  const { CONSENT, GA_ID } = await import("../src/consent.mjs");
+  assert.equal(GA_ID, "G-HSYP3R60BB");
+  const errors = [];
+  for (const p of pages) {
+    const html = htmlByPath.get(p.path);
+    if (/googletagmanager|google-analytics|gtag\(/.test(html)) errors.push(`${p.path}: có thẻ Google trong HTML, phải đợi khách đồng ý`);
+    const raw = /<script src="[^"]+" defer[^>]* data-consent="([^"]*)"/.exec(html)?.[1];
+    if (!raw) { errors.push(`${p.path}: thiếu data-consent`); continue; }
+    const cfg = JSON.parse(decode(raw));
+    const want = CONSENT[p.lang];
+    if (cfg.id !== GA_ID || cfg.accept !== want.accept || cfg.decline !== want.decline || cfg.text !== want.text) errors.push(`${p.path}: data-consent sai ngôn ngữ ${p.lang}`);
+    if (cfg.href !== (p.lang === "vi" ? "/chinh-sach-quyen-rieng-tu/" : "/en/privacy/")) errors.push(`${p.path}: data-consent dẫn sai trang chính sách: ${cfg.href}`);
+    if (!html.includes(`data-consent-open hidden>${want.settings}</button>`)) errors.push(`${p.path}: thiếu nút Cài đặt cookie`);
+  }
+  assert.deepEqual(errors, []);
+  for (const l of ["vi", "en", "ja", "zh", "ko"]) for (const k of ["text", "accept", "decline", "policy", "settings", "label"]) assert.ok(CONSENT[l][k], `${l}.${k}`);
+});
+
+test("Google Analytics: site.js chỉ tải gtag.js khi có lựa chọn Đồng ý, tắt tín hiệu quảng cáo và xóa cookie khi từ chối", async () => {
+  const js = await readFile(path.join(ROOT, "src/assets/site.js"), "utf8");
+  assert.match(js, /allow_google_signals: false/);
+  assert.match(js, /allow_ad_personalization_signals: false/);
+  assert.match(js, /saved === "granted"\) setGa\(true\)/);
+  assert.match(js, /wipeCookies/);
+  assert.equal((js.match(/googletagmanager\.com\/gtag\/js/g) ?? []).length, 1);
 });
 
 test("chat hỗ trợ: mọi trang (và 404) truyền đường dẫn đã băm của lõi chat, ngôn ngữ và nhãn bong bóng cho site.js; file có trong dist", async () => {

@@ -293,6 +293,71 @@
     watch(true);
   }
 
+  // Google Analytics 4 (chính sách quyền riêng tư 1.9, mục 14): chỉ tải sau khi khách bấm Đồng ý. Từ chối hay chưa chọn thì không
+  // có kết nối nào tới Google và không có cookie. Chữ và mã đo lường nằm ở thuộc tính data-consent của thẻ script (layout.mjs,
+  // src/consent.mjs). Lựa chọn lưu ở localStorage của khách; đổi ý bằng nút "Cài đặt cookie" ở chân trang.
+  const consent = (() => { try { return JSON.parse(document.querySelector("script[data-consent]")?.dataset.consent ?? "null"); } catch { return null; } })();
+  if (consent) {
+    const KEY = "ga-consent";
+    let gaLoaded = false;
+    const wipeCookies = () => {
+      const names = document.cookie.split(";").map((c) => c.split("=")[0].trim()).filter((n) => n === "_ga" || n.startsWith("_ga_") || n === "_gid" || n.startsWith("_gat"));
+      const labels = location.hostname.split(".");
+      const domains = [""];
+      for (let i = 0; i < labels.length - 1; i++) domains.push(`; domain=${i ? "." : ""}${labels.slice(i).join(".")}`);
+      for (const n of names) for (const d of domains) document.cookie = `${n}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${d}`;
+    };
+    const setGa = (on) => {
+      window[`ga-disable-${consent.id}`] = !on;
+      if (!on) { wipeCookies(); return; }
+      if (gaLoaded) return;
+      gaLoaded = true;
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      window.gtag("js", new Date());
+      window.gtag("config", consent.id, { allow_google_signals: false, allow_ad_personalization_signals: false });
+      const tag = document.createElement("script");
+      tag.async = true;
+      tag.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(consent.id)}`;
+      document.head.appendChild(tag);
+    };
+    let bar = null;
+    const hideBar = () => { bar?.remove(); bar = null; };
+    const choose = (granted) => { store.set(KEY, granted ? "granted" : "denied"); setGa(granted); hideBar(); };
+    const showBar = () => {
+      if (bar) return;
+      bar = document.createElement("div");
+      bar.className = "consent-bar";
+      bar.setAttribute("role", "region");
+      bar.setAttribute("aria-label", consent.label);
+      const text = document.createElement("p");
+      text.textContent = `${consent.text} `;
+      const link = document.createElement("a");
+      link.href = consent.href;
+      link.textContent = consent.policy;
+      text.appendChild(link);
+      const actions = document.createElement("div");
+      actions.className = "consent-actions";
+      for (const [granted, label, cls] of [[false, consent.decline, "btn btn-secondary"], [true, consent.accept, "btn btn-primary"]]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = cls;
+        b.textContent = label;
+        b.addEventListener("click", () => choose(granted));
+        actions.appendChild(b);
+      }
+      bar.append(text, actions);
+      document.body.appendChild(bar);
+    };
+    const saved = store.get(KEY);
+    if (saved === "granted") setGa(true);
+    else if (saved !== "denied") showBar();
+    document.querySelectorAll("[data-consent-open]").forEach((b) => {
+      b.hidden = false;
+      b.addEventListener("click", showBar);
+    });
+  }
+
   // Hiện dần khi cuộn tới
   const items = document.querySelectorAll(".reveal");
   if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {

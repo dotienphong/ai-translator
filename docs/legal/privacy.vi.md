@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.8, hiệu lực từ 25/10/2026.**
+**Phiên bản 1.9, hiệu lực từ 28/10/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -11,6 +11,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 - Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi bạn chọn nguồn có micro, ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
 - Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
 - Ứng dụng **không có tài khoản đăng nhập, không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
+- **Website** aitranslator.vn chỉ đo lượt truy cập bằng Google Analytics **khi bạn bấm "Đồng ý"** ở thanh thông báo. Không đồng ý thì website không tải Google Analytics và không đặt cookie đo lường (mục 14). Ứng dụng không dùng Google Analytics.
 - Nếu bạn nhắn ở **chat hỗ trợ** (trên website hay trong ứng dụng), tin nhắn được lưu trên máy chủ của chúng tôi, chuyển tới tài khoản Zalo của người vận hành để trả lời, và **tự xóa sau 90 ngày** kể từ tin cuối; bạn tự xóa được sớm hơn (mục 11).
 - Máy chủ của chúng tôi chỉ lưu **email** (khi bạn mua gói, hoặc khi bạn tự để lại trong chat hỗ trợ), thông tin đơn hàng, license, mã nhận diện máy đã băm, báo cáo lỗi (giữ 30 ngày) và tin nhắn chat hỗ trợ (giữ 90 ngày), để cấp key, kiểm tra bản quyền, bảo đảm mỗi máy chỉ dùng thử gói Free một lần, sửa lỗi và trả lời bạn.
 - Dữ liệu cá nhân trên máy chủ được **giữ cho tới khi bạn yêu cầu xóa** (mục 7), trừ báo cáo lỗi tự xóa sau 30 ngày (mục 10) và tin nhắn chat hỗ trợ tự xóa sau 90 ngày kể từ tin cuối (mục 11).
@@ -74,9 +75,10 @@ Chúng tôi **không** nhận số tài khoản ngân hàng, số thẻ hay thô
 | **Creem** (Armitage Labs OÜ, Estonia) | Bên bán lại (merchant of record) của đơn thẻ: xử lý thanh toán, thuế và biên lai | Chúng tôi gửi mã đơn, gói, số tiền, loại tiền và email bạn nhập, ngay khi bạn bấm thanh toán bằng thẻ (kể cả khi bạn không trả), để điền sẵn trang thanh toán và để Creem gửi biên lai. Ở trang thanh toán, Creem tự thu số thẻ, tên, địa chỉ thanh toán và nước (để tính thuế), địa chỉ IP (chống gian lận); chúng tôi không nhận số thẻ. Creem xử lý các dữ liệu đó theo chính sách riêng (https://www.creem.io/privacy). Thông báo thanh toán Creem gửi máy chủ của chúng tôi có tên và nước người mua; chúng tôi không lưu hai thông tin này |
 | **Cloudflare** | Máy chủ chạy license server, cơ sở dữ liệu, lưu trữ và phân phối bản cập nhật, model | Dữ liệu ở mục 5, kể cả báo cáo lỗi (mục 10) và chat hỗ trợ (mục 11); nhật ký kỹ thuật tự hết hạn |
 | **Resend** | Gửi email chứa key, và email chứa câu trả lời chat hỗ trợ khi bạn để lại email | Email bạn, nội dung thư (có key, hay câu trả lời chat); theo chính sách lưu của Resend |
+| **Google** (Google LLC, Hoa Kỳ; Google Ireland Limited với người dùng ở châu Âu) | Google Analytics 4 cho website, chỉ khi bạn bấm "Đồng ý" ở thanh thông báo (mục 14) | Trang bạn xem, trang giới thiệu, loại trình duyệt và thiết bị, ngôn ngữ, vị trí gần đúng, thời gian xem, mã nhận diện trong cookie. Không có email, license hay nội dung chat của bạn |
 | **Zalo** (Công ty Cổ phần VNG, Việt Nam; máy chủ ở Việt Nam) | Chuyển tin nhắn chat hỗ trợ của bạn tới tài khoản Zalo của người vận hành, và chuyển câu trả lời của người vận hành về máy chủ của chúng tôi | Nội dung tin, mã cuộc chat (3 ký tự), nguồn (website hay ứng dụng), ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email hay đã xóa cuộc chat. **Không có email của bạn** và không có địa chỉ IP của bạn. Zalo xử lý các dữ liệu đó theo điều khoản và chính sách riêng của Zalo |
 
-Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5, mục 10 và mục 11 có thể được xử lý ở nước ngoài; Zalo đặt máy chủ ở Việt Nam. Bằng việc mua gói và đồng ý xử lý email, hoặc gửi tin ở chat hỗ trợ, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
+Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5, mục 10 và mục 11 có thể được xử lý ở nước ngoài; Google đặt máy chủ ở nhiều nước, nên dữ liệu đo lường ở mục 14 cũng có thể được xử lý ở nước ngoài; Zalo đặt máy chủ ở Việt Nam. Bằng việc mua gói và đồng ý xử lý email, hoặc gửi tin ở chat hỗ trợ, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
 
 ## 7. Thời gian lưu và quyền của bạn
 
@@ -150,3 +152,14 @@ Khi chính sách thay đổi, chúng tôi cập nhật văn bản này và ngày
 ## 13. Liên hệ
 
 **Đỗ Tiến Phong**, support@aitranslator.vn.
+
+## 14. Website: cookie và đo lường truy cập
+
+Mục này chỉ nói về website aitranslator.vn. Ứng dụng không có analytics.
+
+- Website dùng **Google Analytics 4** để biết trang nào được xem, từ nước nào, bằng thiết bị nào, nhằm cải thiện nội dung.
+- Google Analytics **chỉ được tải sau khi bạn bấm "Đồng ý"** ở thanh thông báo. Bấm "Từ chối" hoặc chưa chọn thì trình duyệt của bạn không kết nối tới Google để đo lường và website không đặt cookie đo lường.
+- Khi bạn đồng ý, Google Analytics đặt cookie (tên bắt đầu bằng `_ga`) và nhận địa chỉ trang, trang giới thiệu, loại trình duyệt và thiết bị, ngôn ngữ, vị trí gần đúng (cấp nước hoặc thành phố) và thời gian xem. Google Analytics 4 không lưu địa chỉ IP đầy đủ. Chúng tôi tắt tín hiệu Google và cá nhân hóa quảng cáo, không dùng dữ liệu này để quảng cáo và không gắn nó với email hay license của bạn. Thời hạn lưu dữ liệu đo lường do chúng tôi đặt ở Google Analytics, không quá 14 tháng.
+- Bạn đổi ý bất cứ lúc nào bằng nút **"Cài đặt cookie"** ở chân trang. Khi bạn từ chối hoặc rút lại, website xóa cookie đo lường và ngừng gửi dữ liệu cho Google.
+- Lựa chọn của bạn được lưu trong bộ nhớ của trình duyệt (không gửi lên máy chủ của chúng tôi). Xóa dữ liệu trình duyệt thì website sẽ hỏi lại.
+- Chat hỗ trợ trên website không dùng Google Analytics.

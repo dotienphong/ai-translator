@@ -9,6 +9,7 @@ import { CHAT } from "../assets/chat-strings.js";
 
 export { formatDate };
 import { graph } from "./schema.mjs";
+import { CONSENT, GA_ID, privacyPath } from "../consent.mjs";
 
 /** Script chạy sớm trong <head> để áp giao diện sáng/tối đã lưu trước khi vẽ trang (tránh nháy). Băm SHA-256 vào CSP. */
 export const THEME_INIT = `try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}document.documentElement.classList.add("js")`;
@@ -146,6 +147,7 @@ ${f.map(col).join("")}
 <div class="footer-bottom">
 <span>© ${SITE.year} ${SITE.name} · ${esc(t.provider)}${t.colon ?? ": "}${esc(SITE.owner)} · ${esc(t.updated)} <time datetime="${iso}">${shown}</time></span>
 <span>${esc(t.trademark)}</span>
+<button class="footer-link-btn" type="button" data-consent-open hidden>${esc(CONSENT[page.lang].settings)}</button>
 </div>
 </div>
 </footer>`;
@@ -191,6 +193,12 @@ function chatAttrs(page, ctx) {
   return ` data-chat-core="${c.core}" data-chat-ui="${c.ui}" data-chat-css="${c.css}" data-chat-lang="${page.lang}" data-chat-label="${esc(t.open)}" data-chat-unread="${esc(t.unread)}"`;
 }
 
+/** Thuộc tính data-consent của thẻ script site.js: mã đo lường và chữ của thanh đồng ý (xem src/consent.mjs). */
+function consentAttr(page) {
+  const c = CONSENT[page.lang];
+  return ` data-consent="${esc(JSON.stringify({ id: GA_ID, ...c, href: privacyPath(page.lang) }))}"`;
+}
+
 export function renderPage(page, ctx) {
   // `{{updated}}` trong nội dung trang = ngày sửa lần cuối của chính trang đó (từ git), để dòng "Cập nhật" không lỗi thời.
   const body = glue(typeof page.body === "function" ? page.body(ctx) : page.body, page.lang).replaceAll("{{updated}}", formatDate(page.modified ?? SITE.updated, page.lang));
@@ -208,7 +216,7 @@ ${header(page, ctx)}
 ${body}
 </main>
 ${footer(page)}
-<script src="${ctx.assets.js}" defer${chatAttrs(page, ctx)}></script>
+<script src="${ctx.assets.js}" defer${chatAttrs(page, ctx)}${consentAttr(page)}></script>
 </body>
 </html>
 `;

@@ -1,6 +1,6 @@
 # AI Translator Privacy Policy
 
-**Version 1.8, effective 25 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.9, effective 28 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 ## 1. Who is responsible for your data
 
@@ -11,6 +11,7 @@ AI Translator (the "app") is developed and operated by **Do Tien Phong** (an ind
 - Audio (computer audio and, if you choose, the microphone) is processed **entirely on your computer**. Audio is **never** sent anywhere and is not written to disk. When you choose a source with the microphone, the app captures the microphone for the whole translation session, **even if you have muted yourself in the meeting app** (section 3).
 - Text you type in **Type & Translate** (a box for writing a message, translating it and pasting it into another app) is also translated **entirely on your computer**: it is not sent anywhere and not written to disk (section 3).
 - The app has **no sign-in accounts, no advertising and no analytics**. When it hits an error, it **automatically sends us an error report with personal data scrubbed out** so we can fix the problem; you can turn this off at any time (section 10).
+- The **website** aitranslator.vn measures visits with Google Analytics only **after you click "Accept"** on the notice bar. If you do not accept, the website does not load Google Analytics and sets no measurement cookies (section 14). The app does not use Google Analytics.
 - If you write to us in the **support chat** (on the website or in the app), your messages are stored on our server, forwarded to the operator's Zalo account so they can reply, and **deleted automatically 90 days** after the last message; you can delete them sooner yourself (section 11).
 - Our servers only store your **email** (when you buy a plan, or when you choose to leave it in the support chat), order details, your license, a hashed machine identifier, error reports (kept for 30 days) and support chat messages (kept for 90 days), in order to issue keys, check licenses, make sure each machine gets the Free trial only once, fix bugs and reply to you.
 - Personal data on our servers is **kept until you ask us to delete it** (section 7), except error reports, which are deleted automatically after 30 days (section 10), and support chat messages, which are deleted automatically 90 days after the last message (section 11).
@@ -74,9 +75,10 @@ We do **not** receive your bank account, card number or financial details (a ban
 | **Creem** (Armitage Labs OÜ, Estonia) | Merchant of record (reseller) for card orders: handles the payment, tax and receipt | We send the order code, plan, amount, currency and the email you entered as soon as you click to pay by card (even if you then do not pay), to pre-fill the payment page and so that Creem can email you a receipt. On its payment page, Creem itself collects your card number, name, billing address and country (to calculate tax) and IP address (to prevent fraud); we do not receive your card number. Creem processes that data under its own policy (https://www.creem.io/privacy). The payment notification Creem sends to our server includes the buyer's name and country; we do not store these two items |
 | **Cloudflare** | Hosts the license server, database, and the storage and delivery of updates and models | The data in section 5, including error reports (section 10) and the support chat (section 11); technical logs that expire on their own |
 | **Resend** | Sends the email containing your key, and the email containing our support chat reply when you left an email | Your email and the message (including the key, or our chat reply); retention per Resend's own policy |
+| **Google** (Google LLC, United States; Google Ireland Limited for users in Europe) | Google Analytics 4 for the website, only after you click "Accept" on the notice bar (section 14) | Pages you view, referrer, browser and device type, language, approximate location, viewing time, the identifier in the cookie. Never your email, license or chat messages |
 | **Zalo** (VNG Corporation, Vietnam; servers in Vietnam) | Carries your support chat messages to the operator's Zalo account and carries the operator's replies back to our server | The message text, the chat code (3 characters), the source (website or app), the language, the page you were on (website), the machine details line if you left it ticked (app), and notices that you left an email or deleted the chat. **Not your email** and not your IP address. Zalo processes this data under its own terms and policy |
 
-Cloudflare and Resend operate servers outside Vietnam and Creem is an Estonian company, so the data in sections 5, 10 and 11 may be processed abroad; Zalo's servers are in Vietnam. By buying a plan and consenting to email processing, or by sending a message in the support chat, you agree to this. We do not sell your data or share it for advertising.
+Cloudflare and Resend operate servers outside Vietnam and Creem is an Estonian company, so the data in sections 5, 10 and 11 may be processed abroad; Google operates servers in many countries, so the measurement data in section 14 may also be processed abroad; Zalo's servers are in Vietnam. By buying a plan and consenting to email processing, or by sending a message in the support chat, you agree to this. We do not sell your data or share it for advertising.
 
 ## 7. Retention and your rights
 
@@ -150,3 +152,14 @@ When the policy changes we update this text and the effective date, and announce
 ## 13. Contact
 
 **Do Tien Phong**, support@aitranslator.vn.
+
+## 14. Website: cookies and visit measurement
+
+This section covers the aitranslator.vn website only. The app has no analytics.
+
+- The website uses **Google Analytics 4** to learn which pages are viewed, from which countries and on which devices, so we can improve the content.
+- Google Analytics is **loaded only after you click "Accept"** on the notice bar. If you click "Decline" or have not chosen, your browser does not connect to Google for measurement and the website sets no measurement cookies.
+- If you accept, Google Analytics sets cookies (names starting with `_ga`) and receives the page address, referrer, browser and device type, language, approximate location (country or city level) and viewing time. Google Analytics 4 does not store full IP addresses. We turn off Google signals and ad personalization, do not use this data for advertising and do not link it to your email or license. We set the retention period for measurement data in Google Analytics to no more than 14 months.
+- You can change your mind at any time with the **"Cookie settings"** button in the page footer. If you decline or withdraw, the website deletes the measurement cookies and stops sending data to Google.
+- Your choice is stored in your browser's storage (it is not sent to our servers). If you clear your browser data, the website asks again.
+- The support chat on the website does not use Google Analytics.
