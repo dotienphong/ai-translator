@@ -1444,6 +1444,13 @@ button.spk-chip:hover:not(:disabled) {
   box-shadow: var(--shadow-lg);
 }
 
+/* Thiếu chỗ dưới nhãn mà đủ chỗ trên (`menuPlacement` trong SpeakerMenu.tsx): lật lên, cùng căn lề trái, mép dưới của menu cách mép
+   trên của nhãn (đệm trên của dòng 0.75rem) chừng bằng khoảng hở khi mở xuống. */
+.speaker-menu.up {
+  top: auto;
+  bottom: calc(100% - 0.5rem);
+}
+
 .speaker-menu .menu-head {
   display: block;
   padding: 0.4rem 0.6rem 0.25rem;

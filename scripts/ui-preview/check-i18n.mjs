@@ -14,7 +14,8 @@
 // trợ giữa Nâng cấp và Giới thiệu, chấm đỏ, chữ của hợp đồng phía khách, ô "Gửi kèm thông tin máy", gửi bằng Enter (Shift+Enter xuống
 // dòng), tin gửi lỗi và gửi lại, thẻ email, menu ⋯ xóa, đính kèm log, chính sách mở trong app, chat tắt và cuộc chat đóng.
 // Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §8; kế hoạch 03): bản chép lời có nhãn (sáng, tối), menu của nhãn (cả tên
-// 40 ký tự), bấm lại nhãn để đóng menu, Esc trả focus về nhãn, bấm nhãn dòng khác khi đã cuộn tới đáy, ô "Thêm tên người nói" của
+// 40 ký tự), menu đặt theo chỗ trống (lật lên khi nhãn gần đáy, cả khi `scrollIntoView` không có tác dụng như ở WKWebView thật; bung
+// danh sách gộp), bấm lại nhãn để đóng menu, Esc trả focus về nhãn, bấm nhãn dòng khác khi đã cuộn tới đáy, ô "Thêm tên người nói" của
 // SRT, Lịch sử chỉ đọc, nhóm Cài đặt "Người nói" (macOS, chưa cấp
 // quyền, Windows, tắt, đang tải), ghi chú ở Cài đặt › Model, thanh phụ đề có tên và vạch màu, dòng mời cấp quyền (bấm thật, không đè
 // lời nhắc), dòng đang nói nối tiếp; bản không có tính năng thì không có gì mới.
@@ -537,8 +538,12 @@ async function pressEscape(page) {
 //    đóng rồi mở lại). Không kiểm focus ở bước này: Chrome tự focus nút khi bấm chuột, WKWebView thì không, và menu cố ý không trả
 //    focus khi đóng bằng chuột;
 // 2. mở lại, Esc khi focus ở ô tên: menu đóng, focus về nhãn (đường thử được mã trả focus của `SpeakerMenu`);
-// 3. menu của dòng cuối mở, khung cuộn tới đáy (phần menu kéo dài vùng cuộn): bấm nhãn của dòng khác thì menu sang dòng đó (B-Q-mới 2:
-//    đóng menu lúc nhấn làm vùng cuộn co lại, nội dung dịch đi dưới con trỏ, cú bấm mất).
+// 3. menu của dòng cuối mở xuống, khung cuộn tới đáy (phần menu kéo dài vùng cuộn): bấm nhãn của dòng khác thì menu sang dòng đó
+//    (B-Q-mới 2: đóng menu lúc nhấn làm vùng cuộn co lại, nội dung dịch đi dưới con trỏ, cú bấm mất). Từ khi menu đặt theo chỗ trống
+//    (QĐ 20), menu của dòng cuối lật lên khi đủ chỗ trên nên không kéo dài vùng cuộn (và che các nhãn phía trên); ca B-Q-mới 2 vẫn
+//    xảy ra khi cả hai phía thiếu chỗ (cửa sổ thấp, menu cao: mở xuống rồi cuộn). Giả đúng ca đó ở mọi ngôn ngữ và cỡ cửa sổ: bỏ lớp
+//    `up` của menu vừa mở (React không đặt lại lớp khi hướng không đổi), menu về dưới nhãn dòng cuối. Nhãn được bấm là nhãn thấp nhất
+//    còn thấy và không bị menu che.
 async function speakerChipTwice(page, ck) {
   const chip = ".transcript li:nth-child(4) button.spk-chip";
   await page.click(chip);
@@ -557,11 +562,16 @@ async function speakerChipTwice(page, ck) {
   await ck(`document.activeElement === document.querySelector(${JSON.stringify(chip)})`, "Esc: focus về nhãn");
   await page.click(".transcript li:last-child button.spk-chip");
   await ck(`!!document.querySelector(".transcript li:last-child .speaker-menu")`, "menu của dòng cuối mở");
+  await page.eval(`document.querySelector(".transcript li:last-child .speaker-menu").classList.remove("up")`);
   await page.eval(`(() => { const c = document.querySelector("main.content"); c.scrollTop = c.scrollHeight; })()`);
   await sleep(150);
-  // Nhãn thấp nhất của một dòng khác còn nằm trọn trong khung khi đã cuộn tới đáy.
-  const other = `[...document.querySelectorAll(".transcript li:not(:last-child) button.spk-chip")].filter((c) => { const r = c.getBoundingClientRect(); const b = document.querySelector("main.content").getBoundingClientRect(); return r.top >= b.top && r.bottom <= b.bottom; }).at(-1)`;
-  await ck(`!!(${other})`, "đã cuộn tới đáy mà vẫn thấy nhãn của một dòng khác");
+  await ck(
+    `document.querySelector(".speaker-menu").getBoundingClientRect().bottom > document.querySelector(".transcript").getBoundingClientRect().bottom`,
+    "menu của dòng cuối mở xuống, kéo dài vùng cuộn",
+  );
+  // Nhãn thấp nhất của một dòng khác còn nằm trọn trong khung khi đã cuộn tới đáy, và điểm giữa của nó không bị menu che.
+  const other = `[...document.querySelectorAll(".transcript li:not(:last-child) button.spk-chip")].filter((c) => { const r = c.getBoundingClientRect(); const b = document.querySelector("main.content").getBoundingClientRect(); return r.top >= b.top && r.bottom <= b.bottom && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest("button.spk-chip") === c; }).at(-1)`;
+  await ck(`!!(${other})`, "đã cuộn tới đáy mà vẫn thấy nhãn của một dòng khác, không bị menu che");
   await page.eval(`(() => { const c = ${other}; if (c) c.closest("li").dataset.checkTarget = "1"; })()`);
   await clickInPlace(page, `document.querySelector("li[data-check-target] button.spk-chip")`);
   await ck(
@@ -569,6 +579,29 @@ async function speakerChipTwice(page, ck) {
     "bấm nhãn dòng khác lúc đã cuộn tới đáy: menu sang dòng đó, cú bấm không mất",
   );
 }
+
+// Mở menu của nhãn thứ `chip` (đếm từ 0) như trong app dev thật (03b Task 23, ảnh `m9d-*`). `noScrollIntoView`:
+// `Element.prototype.scrollIntoView` thành hàm rỗng trước khi mở (ở WKWebView thật menu không được cuộn vào khung), để chứng minh
+// menu nằm trọn mà không cần `scrollIntoView`. `nearBottom`: cuộn khung cho đáy nhãn cách mép dưới 14 px như ảnh m9d (trong giới hạn
+// cuộn được). `merge`: bấm tiếp "Gộp vào người khác ▸" (danh sách người bung ra). Vị trí cuộn ngay trước khi bấm nhãn ghi vào
+// `data-check-scroll` của khung.
+const openSpeakerMenu = (chip, { noScrollIntoView = false, nearBottom = false, merge = false } = {}) => `(async () => {
+  const c = document.querySelector("main.content");
+  const b = document.querySelectorAll(".transcript button.spk-chip")[${chip}];
+  if (${noScrollIntoView}) Element.prototype.scrollIntoView = function () {};
+  if (${nearBottom}) {
+    c.scrollTop += b.getBoundingClientRect().bottom - (c.getBoundingClientRect().bottom - 14);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  c.dataset.checkScroll = String(c.scrollTop);
+  b.click();
+  await ${until(`!!document.querySelector(".speaker-menu")`, 2000)};
+  if (${merge}) {
+    await new Promise((r) => setTimeout(r, 100));
+    document.querySelector(".speaker-menu .menu-item[aria-expanded]")?.click();
+    await ${until(`!!document.querySelector(".speaker-menu .menu-item.sub")`, 2000)};
+  }
+})()`;
 
 // [tên, tham số URL, tùy chọn { prepare: biểu thức chạy trước khi kiểm, wait: ms, interact: async (page, ck, lang) bấm thật }]
 const SCREENS = [
@@ -654,6 +687,14 @@ const SCREENS = [
     "screen=transcript&speakers=1",
     { prepare: `document.querySelectorAll(".transcript button.spk-chip")[3].click()`, wait: 500 },
   ],
+  // Như trong app dev thật (03b Task 23, ảnh m9d): `scrollIntoView` không có tác dụng, nhãn sát mép dưới khung. Menu tự nằm trọn nhờ
+  // lật lên (QĐ 20), không cuộn khung: nhãn dòng cuối, nhãn dòng thứ tư.
+  ["transcript-speakers-menu-noscroll", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(3, { noScrollIntoView: true, nearBottom: true }), wait: 300 }],
+  ["transcript-speakers-menu-noscroll-near", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(2, { noScrollIntoView: true, nearBottom: true }), wait: 300 }],
+  // Ảnh m9d-menu-gop: bấm "Gộp vào người khác ▸" thì cả danh sách người nằm trọn trong khung, vẫn không có `scrollIntoView`: menu lật
+  // lên của nhãn dòng cuối; menu mở xuống của nhãn dòng đầu (ở 720x480 thiếu chỗ cả hai phía nên mở xuống rồi cuộn khung).
+  ["transcript-speakers-menu-merge", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(3, { noScrollIntoView: true, nearBottom: true, merge: true }), wait: 300 }],
+  ["transcript-speakers-menu-merge-first", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(0, { noScrollIntoView: true, merge: true }), wait: 300 }],
   // Mở phiên đầu của Lịch sử: nhãn đã lưu, chỉ đọc.
   ["history-speakers", "screen=history&speakers=1", { prepare: `document.querySelector(".history .actions button").click()`, wait: 900 }],
   // Rà soát B-Q1, B-N7, rà soát lần 2: bấm lại chính nhãn thì menu đóng; Esc trả focus về nhãn; bấm nhãn dòng khác lúc đã cuộn tới
@@ -846,6 +887,21 @@ const menuFits = (lang) => [
     "mở menu thì thấy mục Gộp vào người khác ▸ trọn trong khung và cửa sổ",
   ],
 ];
+// Nhãn sát mép dưới khung, `scrollIntoView` không có tác dụng (như ở WKWebView thật): menu tự nằm trọn nhờ lật lên, khung không cuộn
+// (`openSpeakerMenu` ghi vị trí cuộn trước khi bấm).
+const menuFlipsUp = (lang) => [
+  has(".speaker-menu.up", "nhãn sát mép dưới: menu lật lên"),
+  [`(() => { const c = document.querySelector("main.content"); return String(c.scrollTop) === c.dataset.checkScroll; })()`, "lật lên thì không cuộn khung"],
+  ...menuFits(lang),
+];
+// Bung "Gộp vào người khác ▸": mọi người trong danh sách cũng nằm trọn trong khung (ảnh m9d-menu-gop).
+const mergeFits = (lang) => [
+  [
+    `(() => { const s = [...document.querySelectorAll(".speaker-menu .menu-item.sub")]; return s.length > 0 && s.every((e) => (${MENU_VISIBLE})(e.getBoundingClientRect())); })()`,
+    "bung danh sách gộp: mọi người trong danh sách nằm trọn trong khung và cửa sổ",
+  ],
+  ...menuFits(lang),
+];
 const EXTRA = {
   // Phân biệt người nói (kế hoạch 03).
   "transcript-speakers": () => speakerTranscript(true),
@@ -866,6 +922,10 @@ const EXTRA = {
     ...menuFits(lang),
   ],
   "transcript-speakers-menu-last": (lang) => [has(".speaker-menu", "menu của nhãn cuối mở"), ...menuFits(lang)],
+  "transcript-speakers-menu-noscroll": (lang) => menuFlipsUp(lang),
+  "transcript-speakers-menu-noscroll-near": (lang) => menuFlipsUp(lang),
+  "transcript-speakers-menu-merge": (lang) => [has(".speaker-menu.up", "menu của nhãn dòng cuối lật lên"), ...mergeFits(lang)],
+  "transcript-speakers-menu-merge-first": (lang) => mergeFits(lang),
   "settings-subtitles": () => [[`!document.getElementById("speaker-settings")`, "bản không có tính năng: không có nhóm Người nói"]],
   "settings-subtitles-speakers": () => speakerSettings(3, true),
   "settings-subtitles-speakers-dark": () => speakerSettings(3, true),

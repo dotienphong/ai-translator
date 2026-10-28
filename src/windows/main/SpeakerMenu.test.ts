@@ -3,7 +3,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { SpeakerVoice } from "../../lib/ipc";
 import { NO_VOICES, mergeVoices } from "../../lib/speakers";
-import { SpeakerMenu, type SpeakerMenuProps, composing, dismissal, mergeTargets, revealMenu } from "./SpeakerMenu";
+import {
+  MENU_GAP,
+  MENU_MARGIN,
+  type MenuRoom,
+  SpeakerMenu,
+  type SpeakerMenuProps,
+  composing,
+  dismissal,
+  firstClick,
+  menuPlacement,
+  menuScroll,
+  mergeTargets,
+  revealMenu,
+} from "./SpeakerMenu";
 
 const v = (id: number, label: string, patch: Partial<SpeakerVoice> = {}): SpeakerVoice => ({
   id,
@@ -155,7 +168,8 @@ describe("dismissal", () => {
 });
 
 // Nghiệm thu Task 21: ở cửa sổ 960x640 nhãn dòng thứ tư đã nằm trong khung nên `focus()` không cuộn, nửa dưới menu (cả mục Gộp) ra
-// ngoài mép cửa sổ. Menu vừa mở thì cuộn vừa đủ để thấy trọn; màn hình `transcript-speakers-menu` của `check-i18n` đo bằng DOM thật.
+// ngoài mép cửa sổ. Từ khi menu đặt theo chỗ trống (`menuPlacement`), `revealMenu` chỉ còn là dự phòng: cuộn khung bằng `scrollTop`
+// mà khung không nhúc nhích. Màn hình `transcript-speakers-menu*` của `check-i18n` đo bằng DOM thật.
 describe("revealMenu", () => {
   it("cuộn vừa đủ (`nearest`): đã thấy trọn thì không cuộn, thiếu bao nhiêu cuộn bấy nhiêu, không canh giữa hay đầu khung", () => {
     const calls: (ScrollIntoViewOptions | undefined)[] = [];
@@ -167,5 +181,90 @@ describe("revealMenu", () => {
     expect(() => revealMenu(null)).not.toThrow();
     expect(() => revealMenu(undefined)).not.toThrow();
     expect(() => revealMenu({})).not.toThrow();
+  });
+});
+
+// Thử app dev thật (03b Task 23, ảnh `m9d-*`): ở WKWebView menu của nhãn gần đáy luôn mở xuống; bấm "Gộp vào người khác ▸" thì danh
+// sách người nằm hết dưới mép khung. Menu đặt theo chỗ trống (QĐ 20): đủ chỗ dưới thì mở xuống, thiếu dưới mà đủ trên thì lật lên,
+// thiếu cả hai thì mở xuống rồi cuộn đúng khung cuộn (không dựa vào `scrollIntoView`). Số đo lấy từ trang xem trước (Chrome không đầu,
+// 960x640 và 720x480; menu có bốn người tham dự cao 281 px).
+describe("menuPlacement, menuScroll", () => {
+  const room = (patch: Partial<MenuRoom>): MenuRoom => ({
+    menuHeight: 281,
+    labelTop: 205,
+    labelBottom: 228,
+    viewTop: 0,
+    viewBottom: 640,
+    ...patch,
+  });
+  // Chỗ menu cần ngoài chiều cao của nó: khoảng hở với nhãn và lề tới mép khung.
+  const extra = MENU_GAP + MENU_MARGIN;
+
+  it("đủ chỗ dưới nhãn: mở xuống, không cuộn", () => {
+    const r = room({});
+    expect(menuPlacement(r)).toBe("down");
+    expect(menuScroll(r, "down")).toBe(0);
+    // Vừa khít (đáy menu cộng lề đúng bằng mép dưới khung) vẫn là đủ.
+    const exact = room({ viewBottom: 228 + 281 + extra });
+    expect(menuPlacement(exact)).toBe("down");
+    expect(menuScroll(exact, "down")).toBe(0);
+  });
+
+  it("thiếu chỗ dưới, đủ chỗ trên (nhãn dòng gần đáy, dòng cuối): lật lên, không cuộn", () => {
+    for (const r of [room({ labelTop: 451, labelBottom: 474 }), room({ labelTop: 545, labelBottom: 568 })]) {
+      expect(menuPlacement(r)).toBe("up");
+      expect(menuScroll(r, "up")).toBe(0);
+    }
+    // Ảnh m9d: khung cuộn bắt đầu dưới thanh tiêu đề (32 px, cao 602 px), nhãn ở y≈588 của khung, đáy nhãn lấn mép dưới.
+    expect(menuPlacement(room({ menuHeight: 120, labelTop: 620, labelBottom: 643, viewTop: 32, viewBottom: 634 }))).toBe("up");
+    // Vừa khít phía trên vẫn là đủ.
+    expect(menuPlacement(room({ labelTop: 281 + extra, labelBottom: 281 + extra + 23, viewBottom: 400 }))).toBe("up");
+  });
+
+  it("thiếu cả hai phía (cửa sổ nhỏ 720x480): mở xuống, cuộn vừa đủ thấy cả menu kèm lề", () => {
+    const r = room({ viewBottom: 480 });
+    expect(menuPlacement(r)).toBe("down");
+    expect(menuScroll(r, "down")).toBe(228 + 281 + extra - 480);
+  });
+
+  it("cửa sổ nhỏ, nhãn gần đáy 720x480: vẫn lật lên được thì lật lên", () => {
+    const r = room({ labelTop: 451, labelBottom: 474, viewBottom: 480 });
+    expect(menuPlacement(r)).toBe("up");
+    expect(menuScroll(r, "up")).toBe(0);
+  });
+
+  it("menu cao hơn khung: cuộn tới khi nhãn sát mép trên (còn lề), không đẩy nhãn ra khỏi khung", () => {
+    const r = room({ menuHeight: 600, labelTop: 300, labelBottom: 323, viewBottom: 480 });
+    expect(menuPlacement(r)).toBe("down");
+    expect(menuScroll(r, "down")).toBe(300 - MENU_MARGIN);
+  });
+
+  it("nhãn nằm dưới mép khung (chưa cuộn tới): không lật lên ra ngoài khung, mở xuống rồi cuộn tới", () => {
+    const r = room({ labelTop: 545, labelBottom: 568, viewBottom: 480 });
+    expect(menuPlacement(r)).toBe("down");
+    expect(menuScroll(r, "down")).toBe(568 + 281 + extra - 480);
+  });
+
+  it("menu đổi chiều cao khi đang mở (bung danh sách gộp): mở xuống thì giữ, mở lên thì giữ khi còn đủ chỗ trên", () => {
+    // Đang mở xuống, bung ra thì thiếu chỗ dưới dù trên đủ: không nhảy lên trên nhãn, cuộn thêm.
+    const grown = room({ menuHeight: 345, labelTop: 400, labelBottom: 423, viewBottom: 640 });
+    expect(menuPlacement(grown)).toBe("up");
+    expect(menuPlacement(grown, "down")).toBe("down");
+    expect(menuScroll(grown, "down")).toBe(423 + 345 + extra - 640);
+    // Đang mở lên, còn đủ chỗ trên: giữ.
+    expect(menuPlacement(room({ menuHeight: 345, labelTop: 545, labelBottom: 568 }), "up")).toBe("up");
+    // Đang mở lên, bung ra thì tràn mép trên: mở xuống (cuộn được, phần menu dưới nhãn kéo dài vùng cuộn).
+    expect(menuPlacement(room({ menuHeight: 345, labelTop: 300, labelBottom: 323 }), "up")).toBe("down");
+  });
+});
+
+// Cú bấm thứ hai của một cú bấm đúp không gộp: bung danh sách gộp ở menu mở lên (hay cuộn khung để thấy danh sách) dời mục "Gộp vào
+// người khác ▸" khỏi con trỏ, cú bấm thứ hai rơi vào một người, mà gộp không tách lại được (QĐ 20).
+describe("firstClick", () => {
+  it("chuột bấm một lần hay phím (detail 0): nhận; cú bấm thứ hai, thứ ba liền nhau: bỏ", () => {
+    expect(firstClick(0)).toBe(true);
+    expect(firstClick(1)).toBe(true);
+    expect(firstClick(2)).toBe(false);
+    expect(firstClick(3)).toBe(false);
   });
 });
