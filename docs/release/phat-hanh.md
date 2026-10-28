@@ -1581,3 +1581,132 @@ Chi tiết trong `tools/speaker-canary/README.md`. Chủ dự án tạo tài kho
 - **Lịch chạy:** `lib.mjs` sinh plist launchd (`launchdPlist`) và tác vụ Task Scheduler (`taskXml`); `taskXml` khai báo `encoding="UTF-16"` nên file `.xml` phải ghi **UTF-16LE có BOM** trước khi `schtasks /Create /TN … /XML <file>`. Mỗi app một lượt, cách nhau 10 phút, lúc máy rảnh, đã đăng nhập và không khóa màn hình.
 - **Quyền Trợ năng (macOS):** cấp cho cả `node` và `speaker-canary`; cdhash đổi mỗi lần build lại nên phải cấp lại. Chưa kiểm là đủ khi chạy từ launchd (Task 19 của kế hoạch 06).
 - **Hỏng thì làm gì:** bảng "Khi hỏng" cuối `tools/speaker-canary/README.md` (`no_names` hay `no_speaking` thì ghi lại cây giao diện, sửa công thức, mục 15.2; mã thoát 5 nhiều ngày thì sửa bộ chuyển).
+
+## 16. Phân biệt người nói: phát hành "ngủ", bật, tắt khẩn, quay lại
+
+Spec `2026-10-26-phan-biet-nguoi-noi-design.md` (mục 4.5, 10, 11, 12, 13), kế hoạch `2026-10-28-phan-biet-nguoi-noi-07-phat-hanh.md` và `07b`. **Mọi bước ghi vào production (đẩy `main`, đẩy tag, ký, đăng R2, deploy) do chủ dự án chạy**; Claude chỉ chuẩn bị file và kiểm bằng lệnh chỉ-đọc. Hạ tầng vận hành (migration 0007, công thức, Web Admin, kiểm tra tự động) là mục 15; mục này là thứ tự đưa tính năng ra người dùng và cách rút lại.
+
+### 16.1. Hai bước tách rời và các công tắc
+
+| Bước | Việc | Người dùng thấy |
+|---|---|---|
+| 1. Phát hành app 0.3.2 **"ngủ"** | Mục 2, thêm mục 16.3. Manifest model **chưa có** mục `speaker` | Không gì đổi so với 0.3.1: app không tải model, không tải công thức, không gửi báo cáo tình trạng, Cài đặt › Phụ đề không có nhóm "Người nói" |
+| 2. **Bật** | Đăng manifest model số mới có mục `speaker` (`min_app_version` 0.3.2), mục 16.5 | App 0.3.2 nhận manifest, hiện nhóm "Người nói", tải model nền ở phiên dịch đầu, từ phiên sau có "Người N" (macOS, Teams có tên thật) |
+
+Các công tắc, từ xa tới gần người dùng:
+
+| Công tắc | Ở đâu | Đổi bằng |
+|---|---|---|
+| Mục `speaker` (và `speaker_config`) ở gốc phần thân manifest | `releases.aitranslator.vn/models/models.json` | `node scripts/models/speaker-manifest.mjs add` / `remove` rồi ký, đăng (16.5, 16.8) |
+| Công thức đọc tên | `releases.aitranslator.vn/speaker/recipes.json` | `pnpm recipes:update` (mục 15.2, 15.3) |
+| Bảng hệ điều hành của bản app | hằng `SHIPS_ON_WINDOWS` và hàm `ships_on` ở `src-tauri/src/speaker/mod.rs`: macOS bật, Windows tắt tới khi có số đo máy Windows i5 và bản ghi UI Automation thật | đổi hằng, phát hành bản app mới |
+| Công tắc của người dùng | Cài đặt › Phụ đề › Người nói ("Phân biệt người nói", "Lấy tên từ Teams") | người dùng |
+
+App "ngủ" khi `ModelService::speaker_offered` (`src-tauri/src/models/service.rs`) là `false`, tức manifest chưa có mục `speaker` dùng được cho bản này. Bản phát hành không đọc biến môi trường nào; `AI_TRANSLATOR_DEV_SPEAKER` chỉ có ở bản debug (`release-check.mjs no-dev-gate` chặn).
+
+### 16.2. Điều kiện trước khi phát hành app 0.3.2 (bước 1)
+
+- [ ] Nhánh `phan-biet-nguoi-noi` đã gộp vào `main` và đẩy (workflow `sign-recipes.yml` phải có sẵn trên `main`); CI của `main` xanh trên macOS và Windows, gồm `cargo test --release … -- pro:: license:: diagnostics:: speaker:: db::`.
+- [ ] Mục 15.1 và 15.2 xong: migration 0007 và hai Worker đã deploy, cron 5 phút chạy, công thức `version` 1 đã đăng (`curl -s https://releases.aitranslator.vn/speaker/recipes.json | head -c 200`).
+- [ ] `docs/legal`: nội dung chính sách 1.9 và EULA 1.6 đã duyệt; dòng phiên bản và ngày hiệu lực đã đổi vào **ngày phát hành**, trước khi build (`docs/legal/README.md`, mục "Đổi ngày hiệu lực"). Bản app ngủ có thể phát hành trước khi luật sư trả lời, vì tính năng chưa chạy với ai.
+- [ ] Biên bản `bench/2026-10-26-nguoi-noi/results/07-nghiem-thu.md`: A-spk1, A-spk2, A-spk4, A-spk7 đạt.
+- [ ] `SHIPS_ON_WINDOWS` là `false` trừ khi mục Windows của biên bản đạt.
+
+### 16.3. Phát hành app 0.3.2 "ngủ"
+
+Làm đúng mục 2 (nâng bốn file lên `0.3.2`, đợi CI vì `cancel-in-progress`, hỏi chủ dự án rồi đẩy tag `v0.3.2`, kiểm R2 và SHA-256, GitHub Release). **Khác một điểm: chưa `pnpm deploy` website sau khi phát hành** (website nói về tính năng đã bật; deploy ở 16.7).
+
+Kiểm "ngủ" trên bản đã cài (không phải bản dev), đọc `~/Library/Logs/com.aitranslator.desktop/app.log`:
+
+- Cài đặt › Phụ đề **không** có nhóm "Người nói".
+- Dịch một phiên ngắn: log có `nhận giọng: chưa có model, phiên này không bật`; `speaker-worker.log` (cùng thư mục) không được tạo.
+- Bằng `nettop` hay proxy (`bench/phase1/acceptance/RUNBOOK-mac.md`): không có kết nối tới `releases.aitranslator.vn/speaker/` và không có `POST /v1/diagnostics` loại `speaker_health`.
+
+### 16.4. Danh sách kiểm trước khi bật (bước 2)
+
+- [ ] Bản 0.3.2 đã lên R2 và ổn ít nhất một ngày (không có báo cáo lỗi lạ, không bị rút).
+- [ ] **Pháp lý:** chủ dự án xác nhận đã hỏi luật sư (dữ liệu sinh trắc theo Luật 91/2025/QH15 và Nghị định 356/2025; câu hỏi ở `docs/legal/README.md`) và ghi xác nhận vào biên bản; chính sách 1.9 và EULA 1.6 đã hiệu lực (đã nằm trong bản app 0.3.2).
+- [ ] **A-spk3** (tên thật trong cuộc họp Teams, bộ chấm của kế hoạch 07b Task 18) và **A-spk6** (họp thật tiếng Việt ≥ 3 người, chủ dự án thử trên macOS) đã đánh giá đạt.
+- [ ] Mục 15.1 vẫn chạy: Web Admin › Báo cáo lỗi › tab **Bộ đọc tên** mở được, cron 5 phút không có `reconcile_failed`.
+- [ ] Kiểm tra tự động hằng ngày (mục 15.5) đã chạy ít nhất một lượt đạt cho Teams trên macOS, hoặc chủ dự án chấp nhận bật khi chưa có.
+- [ ] File model `eres2net-sv-en-voxceleb-16k.onnx` do `bench/2026-10-26-nguoi-noi/prepare_model.py` chuẩn bị, có SHA-256 khớp biên bản `07-nghiem-thu.md`.
+- [ ] Website **chưa** deploy (deploy sau khi bật, 16.7).
+
+### 16.5. Bật: đăng manifest có mục `speaker`
+
+Điều kiện máy như mục 13.1 (thư mục chính, nhánh `main`, cây sạch, khớp `origin/main`, `gh` đăng nhập tài khoản `dotienphong`, wrangler đã đăng nhập). Đầu tiên so số manifest đang chạy với số body mới nhất trong repo; hai số phải bằng nhau (lệch thì có ai đã đăng manifest khác, dừng):
+
+```bash
+ls scripts/models/released
+curl -s https://releases.aitranslator.vn/models/models.json \
+  | node -e 'const e=JSON.parse(require("fs").readFileSync(0,"utf8"));const b=JSON.parse(Buffer.from(e.body,"base64url").toString());console.log("sequence",b.sequence,b.speaker?"có speaker":"chưa có speaker")'
+```
+
+1. **Dựng phần thân** (không chạm mạng, chỉ ghi `scripts/models/released/body-<N+1>.json` và in các việc tiếp theo; không ghi đè file có sẵn):
+   ```bash
+   node scripts/models/speaker-manifest.mjs add --file <đường dẫn file model .onnx> --min-app-version 0.3.2
+   ```
+   Tùy chọn: `--version <chuỗi>` (mặc định `1`), `--license-id <id>` (mặc định `Apache-2.0`), `--config <speaker_config.json>` (ngưỡng nhận giọng; bỏ thì app dùng mặc định). Lệnh in khóa R2 `models/speaker/<12 ký tự đầu SHA-256>/eres2net-sv-en-voxceleb-16k.onnx`. Lệnh từ chối khi manifest đang chạy đã có mục `speaker` (đổi sang model khác là việc riêng, chưa có lệnh).
+2. **Đặt model lên R2** (chủ dự án chạy; **trước** manifest, vì app tải model theo manifest). Dùng `wrangler` như mục 2, hay `rclone` như mục 13.1 (`--s3-no-check-bucket`):
+   ```bash
+   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/speaker/<12 ký tự SHA>/eres2net-sv-en-voxceleb-16k.onnx" \
+     --file <đường dẫn file model .onnx> --content-type application/octet-stream --remote
+   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/speaker/<12 ký tự SHA>/3D-Speaker-LICENSE.txt" \
+     --file licenses/models/3D-Speaker-LICENSE.txt --content-type text/plain --remote
+   curl -s https://releases.aitranslator.vn/models/speaker/<12 ký tự SHA>/eres2net-sv-en-voxceleb-16k.onnx | shasum -a 256
+   ```
+   SHA-256 in ra phải đúng bằng SHA-256 trong body (`speaker.sha256`). Bản giấy phép nằm cạnh model, **không** nằm trong `files` của manifest (thêm file vào `files` làm gói đang cài thiếu file); giấy phép đi theo app qua `THIRD_PARTY_NOTICES`.
+3. **Commit body, đẩy `main`, ký:** commit `scripts/models/released/body-<N+1>.json` (`chore(models): manifest số <N+1> có model nhận giọng`), đẩy `main`, chờ CI xanh, rồi chạy workflow **`Sign model manifest`** (`sign-manifest.yml`) với `body=scripts/models/released/body-<N+1>.json` và `previous=scripts/models/released/body-<N>.json` (job `check` chạy `check_manifest_body` bằng luật của app, job `sign` ký bằng secret `MANIFEST_SIGNING_KEY`); tải artifact `models-manifest` (`models.json` đã ký).
+4. **Đăng `models.json`** (sao lưu bản đang chạy trước; số manifest đang chạy vẫn phải là `<N>`):
+   ```bash
+   curl -s https://releases.aitranslator.vn/models/models.json > <thư mục sao lưu>/models-seq-<N>.json
+   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/models.json" --file <models.json đã ký> \
+     --content-type application/json --cache-control no-cache --remote
+   ```
+   Kiểm lại bằng lệnh `curl … | node -e …` ở đầu mục: `sequence <N+1>` và `có speaker`. Kiểm DNS bằng `dig @8.8.8.8 releases.aitranslator.vn` trước nếu `curl` lỗi (sự cố DNSSEC io.vn 2026-10-22).
+
+`pnpm models:update` về sau giữ nguyên mục `speaker` (`bumpBody` trải `...prev`; test `scripts/models/speaker-manifest.test.mjs`), nên các lượt cập nhật model khác không làm mất nó.
+
+**Khi nào người dùng nhận:** app 0.3.2 kiểm manifest tối đa **một lần mỗi ngày** (luồng nền thức dậy mỗi giờ và kiểm khi tới hạn 24 giờ; lúc khởi động cũng kiểm nếu đã quá hạn), nên tối đa khoảng 25 giờ sau khi đăng, không tức thì. Bản app cũ (≤ 0.3.1) bỏ qua khóa `speaker`.
+
+### 16.6. Kiểm sau khi bật
+
+1. **Máy chủ dự án (bản đã cài 0.3.2):** log có `nhận manifest model số <N+1>`; Cài đặt › Phụ đề hiện nhóm "Người nói", ghi chú "Chưa có dữ liệu nhận giọng. App tự tải khi bạn bắt đầu dịch". Ở phiên dịch đầu tiên log có `nhận giọng: chưa có model, phiên này không bật` và model (khoảng 26 MB) tải nền (Cài đặt hiện "Đang tải dữ liệu nhận giọng"); từ phiên kế tiếp log có `nhận giọng: bật cho phiên này`, phụ đề có "Người 1", "Người 2" (và tên thật trong cuộc họp Teams bản cài có Trợ năng), log công thức có `công thức đọc tên: …`. Nếu log có `manifest: mục `speaker.<trường>` không hợp lệ, bỏ qua nhận giọng` thì body sai, tính năng vẫn ngủ: sửa, đăng số mới.
+2. **A7 (không kết nối lạ):** chạy bằng proxy trên bản đã cài ở chế độ có người nói (`bench/phase1/acceptance/RUNBOOK-mac.md`); thêm vào `bench/phase1/results/acceptance/a7-allow.json` đường dẫn `/speaker/recipes.json` của `releases.aitranslator.vn` (`during_session: true`) và đường dẫn model nếu proxy thấy; **không thêm host mới** (`speaker-worker` không có mạng, mọi kết nối là của tiến trình chính). Ghi `bench/phase1/results/acceptance/a7-mac-nguoi-noi.{md,json}`. Có kết nối lạ hay tên người trong request thì tắt khẩn ngay (16.8, lớp 2).
+3. **Báo cáo tình trạng và Web Admin:** khi người dùng bật "Gửi báo cáo lỗi" và `speaker-worker` đã chạy, báo cáo `speaker_health` (không có tên người, mục 15.4) xuất hiện ở Web Admin › Báo cáo lỗi › tab **Bộ đọc tên** (`https://admin.aitranslator.vn/errors?tab=speaker`), tối đa một báo cáo mỗi ngày cho mỗi cặp (app họp, phiên bản); chưa thấy trong ngày đầu là bình thường. Báo cáo của bản dev (`build` khác `release`) không tính vào bảng chính.
+4. Một ngày sau: không có báo cáo lỗi mới liên quan `speaker-worker`/`asr-worker` chết hay `unclean_exit`, không có email `speaker_health_degraded` hay `speaker_canary_failed`.
+
+### 16.7. Website
+
+Chỉ sau 16.5 và A7 đạt (website nói về tính năng đã có với người dùng): cập nhật câu "chưa đo bằng proxy" của `data-security.mjs` năm ngôn ngữ bằng kết quả A7 thật (kế hoạch 07b, Task 23), rồi `cd website && pnpm test && pnpm run deploy` (chủ dự án chạy; `pnpm run` chạy đúng script `deploy` của `website/package.json`, không nhầm với lệnh `pnpm deploy` có sẵn của pnpm). Kiểm bản chạy thật:
+
+```bash
+curl -s https://aitranslator.vn/chinh-sach-quyen-rieng-tu/ | /usr/bin/grep -c "Phiên bản 1.9"          # ≥ 1
+curl -s https://aitranslator.vn/huong-dan/thanh-phu-de-va-phim-tat/ | /usr/bin/grep -c 'id="nguoi-noi"'  # ≥ 1
+```
+
+### 16.8. Tắt khẩn, từ nhẹ tới nặng
+
+Làm lớp nhẹ nhất đủ dùng trước, rồi tìm nguyên nhân; **không gỡ bản app** (bản đã phát hành không bao giờ bị ghi đè, mục 2).
+
+| Lớp | Muốn | Làm | Hiệu lực và giới hạn |
+|---|---|---|---|
+| 1 | Chỉ tắt đọc tên (còn "Người N") | Sửa `scripts/speaker-recipes/recipes.json` (`"apps": []`, **tăng `version`**), `pnpm recipes:update --check` rồi `pnpm recipes:update`; hay `pnpm recipes:update --revert-to <V>` (mục 15.3) | App tải công thức 20 giây sau khi mở rồi mỗi 6 giờ, chỉ khi tính năng bật và manifest còn mục `speaker`; áp dụng từ **phiên dịch sau** |
+| 2 | Tắt cả tính năng từ xa | `node scripts/models/speaker-manifest.mjs remove` → `body-<N+1>.json` không có `speaker`, `speaker_config`; commit, đẩy `main`, ký (`Sign model manifest`), đăng như 16.5 bước 3–4 (không cần model hay file R2 mới) | Khi app nhận manifest mới: **tối đa khoảng 25 giờ** (mỗi ngày một lần; app đang tắt hay ngoại tuyến nhận khi mở lại và quá hạn). Có hiệu lực từ **phiên dịch sau**; phiên đang chạy không bị dừng. App thôi tải công thức. Model đã tải vẫn nằm trong kho model của máy, không dùng tới. Không có cách đẩy tức thì |
+| 3 | Tắt hẳn trong một bản app (hay một hệ điều hành) | Đổi hằng `SHIPS_ON_WINDOWS` hay `ships_on` ở `src-tauri/src/speaker/mod.rs`, phát hành bản mới (mục 2) | Khi người dùng cập nhật (24 giờ trở lên) |
+| 4 | Người dùng tự tắt | Cài đặt › Phụ đề › Người nói | Ngay; tắt giữa phiên dừng worker của phiên (log `nhận giọng: người dùng tắt, dừng worker của phiên`) |
+
+Cần nhanh hơn 25 giờ thì chỉ lớp 1 (6 giờ) và chỉ tắt được phần đọc tên; phần nhận giọng chạy trên máy, không gửi gì đi, nên rủi ro còn lại là nhãn "Người N" sai, không phải lộ dữ liệu. Báo cáo tình trạng đã gửi nằm ở D1 (giữ 60 ngày, xóa tay bằng lệnh ở mục 15.4 nếu cần).
+
+### 16.9. Quay lại và bật lại
+
+- **Tắt lại tính năng:** `speaker-manifest.mjs remove` (16.8, lớp 2). `pnpm models:update --rollback-to <S>` (mục 13.4) chỉ đổi các mục trong `files`, **không** đổi hay bỏ mục `speaker`: không dùng nó để tắt.
+- **Bật lại sau khi tắt:** `speaker-manifest.mjs add` với cùng file model (số manifest mới, không bao giờ quay số cũ: app từ chối manifest có số nhỏ hơn bản đã nhận). Model và giấy phép đã ở R2 từ 16.5 thì chỉ cần kiểm SHA-256 qua URL công khai, không cần đặt lại.
+- **Công thức sai:** mục 15.3 (`pnpm recipes:update --revert-to <V>`: số mới mang nội dung cũ).
+- **Model nhận giọng hỏng hay cần thay:** chưa có lệnh riêng; `remove`, sửa, rồi `add` với file mới và `--version` mới; làm tay và hỏi chủ dự án.
+- **Đăng manifest nhầm:** manifest đã đăng không bị rút; đăng số mới sửa lại. File sao lưu `models-seq-<N>.json` chỉ để tham khảo: **không** đăng lại (app từ chối số nhỏ hơn).
+- **Lỗi trong app 0.3.2 (không phải dữ liệu):** tắt khẩn lớp 2, rồi ra bản sửa với số lớn hơn (mục 2, "Rút một bản đã đăng").
+
+### 16.10. Theo dõi 7 ngày sau khi bật
+
+Tab **Bộ đọc tên** của Web Admin (mục 15.4); email `speaker_health_degraded` và `speaker_canary_failed`; báo cáo lỗi mới (`asr-worker` hay `speaker-worker` chết, `unclean_exit`); chat và email hỗ trợ (tên sai được báo, phụ đề chậm đi). Điều kiện tắt khẩn: tên sai được báo lặp lại, phụ đề chậm đi sau khi bật, kết nối lạ, hay một phiên bản app họp có ≥ 30% báo cáo hỏng kéo dài.
