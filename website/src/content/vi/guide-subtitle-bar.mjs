@@ -12,6 +12,7 @@ const toc = [
   { level: 2, id: "an-hien", text: "Ẩn và hiện" },
   { level: 2, id: "cuon", text: "Cuộn xem câu cũ" },
   { level: 2, id: "tuy-chinh", text: "Chỉnh cỡ chữ, màu, độ mờ" },
+  { level: 2, id: "nguoi-noi", text: "Ai đang nói: màu và tên" },
   { level: 2, id: "chi-bao", text: "Chỉ báo trên thanh" },
   { level: 2, id: "phim-tat", text: "Phím tắt mặc định" },
   { level: 2, id: "doi-phim-tat", text: "Đổi phím tắt" },
@@ -81,6 +82,17 @@ ${callout({ title: "Đã khóa thì không bấm được vào thanh.", text: "M
 ${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ đề: khung xem trước câu mẫu ở đầu, thanh cỡ chữ, hai hàng ô màu, thanh độ mờ nền và công tắc hiện câu gốc", caption: "Cài đặt › Phụ đề." })}
 ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã tùy chỉnh với chữ vàng trên nền xanh navy và cỡ chữ lớn", caption: "Ví dụ: chữ vàng, nền navy, cỡ chữ lớn." })}
 </div>
+
+<h2 id="nguoi-noi">Ai đang nói: màu và tên</h2>
+<p>Trên macOS, từ AI Translator 0.3.2, thanh phụ đề có thể hiện ai đang nói. Tính năng bật sẵn ở mọi gói; bạn tắt được ở <strong>Cài đặt › Phụ đề › Người nói</strong>.</p>
+<ul>
+<li><strong>Mỗi giọng một màu.</strong> App phân biệt giọng ngay trên máy và gọi là “Người 1”, “Người 2” theo thứ tự xuất hiện. Nhãn và vạch màu hiện ở dòng đầu mỗi lượt nói; các câu sau của cùng người chỉ có vạch màu.</li>
+<li><strong>Tên thật từ Microsoft Teams.</strong> Khi bạn dịch một cuộc họp trong app Teams cài trên máy, app đọc tên người tham dự từ cửa sổ cuộc họp và chỉ hiện tên khi đã đủ chắc. Chưa chắc thì giữ “Người N”: sai tên còn tệ hơn nhãn chung. App không đọc chat và không chụp màn hình. Google Meet và Zoom chưa có tên tự động.</li>
+<li><strong>Tự sửa.</strong> Ở bản chép lời trong cửa sổ chính, bấm một nhãn để đổi tên, <em>Chọn người trong cuộc họp</em>, hay <em>Gộp vào người khác</em> khi hai nhãn là cùng một người. Thay đổi áp cho cả phiên đang chạy.</li>
+<li><strong>Quyền.</strong> Để đọc tên, macOS hỏi quyền <em>Trợ năng</em>: thanh hiện một dòng mời ngắn (<em>Cho phép quyền Trợ năng để hiện tên người nói</em>) kèm nút mở Cài đặt; app không tự bật hộp thoại của hệ thống. Sau khi cập nhật app, macOS có thể hỏi lại. Không cấp quyền thì vẫn có màu và “Người N”.</li>
+<li><strong>Lịch sử và xuất file.</strong> Nhãn và tên chỉ được lưu vào Lịch sử và file xuất khi bạn có gói Pro và chỉ khi bạn bật Lưu lịch sử; nút sao chép và xuất file ở mọi gói có kèm nhãn trong văn bản.</li>
+</ul>
+<p>Giới hạn: hai người có giọng rất giống có thể dùng chung một nhãn, và khi nhiều người nói chồng, nhãn có thể sai. Windows chưa hỗ trợ; ở Google Meet và Zoom app hiện màu và “Người N” nhưng chưa có tên tự động.</p>
 
 <h2 id="chi-bao">Chỉ báo trên thanh</h2>
 <p>Ở góc trên bên phải của thanh có chấm tròn và các nhãn nhắc ngắn:</p>

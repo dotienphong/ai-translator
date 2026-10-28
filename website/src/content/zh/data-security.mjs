@@ -69,13 +69,26 @@ ${facts([
 </tbody></table></div>
 <p>在 macOS 上，输入翻译请求辅助功能权限，只是为了向你正在输入的聊天框发送粘贴键 ⌘V。应用不会读取其他应用的文字、内容或剪贴板；没有这项权限时，应用只会复制译文，由你自己粘贴（见<a href="/zh/guide/type-and-translate/#accessibility">输入翻译</a>）。</p>
 
+<h2 id="speakers">区分说话人和读取姓名</h2>
+<p>此功能在 macOS 上（0.3.2 及以上版本）默认开启，可在设置 › 字幕 › 说话人中关闭。其中没有任何内容会把音频或姓名发送到别处。</p>
+<div class="table-wrap" role="region" aria-label="用于区分说话人的数据" tabindex="0"><table>
+<thead><tr><th scope="col">数据</th><th scope="col">处理方式</th></tr></thead>
+<tbody>
+<tr><th scope="row">声音特征</th><td>应用在你的电脑上临时分析正在翻译的音频中的声音，以便知道哪些句子出自同一个人。它只存在于内存（RAM）中，会话结束时自动删除。不会写入磁盘，不会发送，不会出现在日志或错误报告中，也不用于识别任何人，更不会跨会话记住某个人。</td></tr>
+<tr><th scope="row">参会者姓名</th><td>在 macOS 上，仅来自电脑上安装的 Microsoft Teams 会议窗口：显示名称、麦克风状态和“正在说话”标记。不读取聊天、共享内容和其他窗口，也不截屏。姓名只存在于内存中，只有在你开启“保存历史记录”（Pro）时，才会保存在加密的历史记录里。</td></tr>
+<tr><th scope="row">辅助功能权限</th><td>由 macOS 请求（字幕条会显示提示；应用不会自己弹出系统对话框）。应用不会在 Teams 中点击或输入任何内容。翻译会议期间，它会开启 Teams 的辅助功能模式，该模式会一直保持开启，直到 Teams 重新启动。</td></tr>
+<tr><th scope="row">姓名读取规则</th><td>一个带数字签名的小型说明文件（不含可执行代码），在应用打开时以及之后每 6 小时从我们的发布服务器下载。不用于识别任何人；下载请求不包含你的任何数据。</td></tr>
+<tr><th scope="row">状态报告</th><td>开启错误报告时，每个会议应用和版本每天最多一份：版本、状态、读取到姓名的分钟数占总分钟数的比例，以及界面元素类型的描述。不含参会者姓名，也不含会议中的文字；保存 60 天。</td></tr>
+</tbody></table></div>
+<p>此功能还没有像应用其他部分那样用流量代理进行测量（见“我们是如何核实的？”），也就是说，暂未用代理测量。包括姓名读取规则在内的完整内容见<a href="/en/privacy/">隐私政策（英文）</a>第 2、3、4 和 10 节。</p>
+
 <h2 id="network">应用会连接到哪里？</h2>
 <p>恰好 5 个地方，都不会收到音频、转写内容或你在输入翻译中输入的文字。语音识别和翻译不需要网络。翻译过程中，应用只可能向我们自己的服务器发送定期请求（检查更新，以及到期时的许可证检查），以及你打开“客服”页面或点击发送时的客服聊天消息。<a href="/en/privacy/">隐私政策（英文）</a>第 4 节同样列出了 5 个连接，但它是按用途计数的（模型下载和检查更新都连到 releases.aitranslator.vn；PayOS 和 Creem 的付款页面算作一项），而下表按目的地计数。</p>
 <div class="table-wrap" role="region" aria-label="应用连接的地方" tabindex="0"><table>
 <thead><tr><th scope="col">连接到</th><th scope="col">用途</th><th scope="col">发送的内容</th></tr></thead>
 <tbody>
 <tr><th scope="row">api.aitranslator.vn</th><td>许可证服务器：Free 试用登记、购买、激活、停用、找回密钥、许可证检查、接收错误报告、客服聊天；偶尔向服务器询问时间</td><td>哈希处理后的设备 ID、设备名称、密钥；购买或找回密钥时还有你的邮箱和应用的界面语言；已去除个人数据的错误报告（只在应用没有翻译时发送）；你发送的客服聊天消息，以及你保留勾选时的设备信息行和你自愿留下的邮箱（只在你使用聊天时）</td></tr>
-<tr><th scope="row">releases.aitranslator.vn</th><td>下载模型，检查并下载应用更新</td><td>只有文件下载请求</td></tr>
+<tr><th scope="row">releases.aitranslator.vn</th><td>下载模型（功能开启后包括说话人模型，约 26 MB），检查并下载应用更新，以及下载姓名读取规则</td><td>只有文件下载请求</td></tr>
 <tr><th scope="row">PayOS 付款页面（pay.payos.vn）</th><td>购买套餐时用 VietQR 付款</td><td>在你的浏览器中打开，而不是在应用内</td></tr>
 <tr><th scope="row">Creem 付款页面（www.creem.io）</th><td>购买套餐时用国际银行卡付款</td><td>在你的浏览器中打开，而不是在应用内。你的邮箱由我们的服务器发送给 Creem，而不是由应用发送（见“还有谁处理数据？”）</td></tr>
 <tr><th scope="row">aitranslator.vn（本网站）</th><td>外部链接（政策、支持、下载页面）在系统浏览器中打开</td><td>应用不发送任何内容</td></tr>
