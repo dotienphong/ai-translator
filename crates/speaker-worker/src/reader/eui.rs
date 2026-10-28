@@ -81,6 +81,12 @@ pub fn step_for(read: EuiRead) -> EuiStep {
     }
 }
 
+/// Có nên bật chế độ này lúc bắt đầu đọc: chỉ khi đọc được rằng nó chưa bật. Đã bật (công nghệ trợ năng khác) hay không đọc được
+/// thì không đặt và không ghi dấu.
+pub fn should_enable(read: EuiRead) -> bool {
+    read == EuiRead::NotOn
+}
+
 /// Sau khi đặt `false`: đọc lại thấy không phải bật thì xong (bỏ mục); còn bật hay không đọc được thì giữ mục.
 pub fn reset_done(after: EuiRead) -> bool {
     after == EuiRead::NotOn
@@ -116,6 +122,15 @@ mod tests {
         std::fs::write(&path, b"{hong").unwrap();
         assert!(read(&path).is_empty(), "file hỏng: coi như không có");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Rà soát đợt A (A6): chỉ đặt chế độ trợ năng khi ĐỌC ĐƯỢC rằng nó chưa bật. Đã bật (VoiceOver…) thì không giành; không đọc được
+    /// (quá hạn chờ, lỗi) thì không đặt và không ghi dấu: có thể VoiceOver đã bật, đặt rồi trả `false` sẽ làm mất chế độ của nó.
+    #[test]
+    fn eui_is_enabled_only_when_it_is_known_to_be_off() {
+        assert!(should_enable(EuiRead::NotOn));
+        assert!(!should_enable(EuiRead::On), "đã bật bởi công nghệ trợ năng khác");
+        assert!(!should_enable(EuiRead::Unknown), "không đọc được: không đụng");
     }
 
     /// Rà soát lần 2 B-N-D và lần 3: ba kết quả đọc. Đang bật: đặt lại; đọc được mà không phải bật: bỏ mục, không đặt gì (không đặt

@@ -169,14 +169,6 @@ impl AxNode {
             .collect())
     }
 
-    fn get_bool(&self, name: &'static str) -> Option<bool> {
-        self.copy(name)
-            .ok()
-            .flatten()
-            .and_then(|v| v.downcast::<CFBoolean>())
-            .map(bool::from)
-    }
-
     /// Đọc `AXEnhancedUserInterface`, phân biệt ba kết quả (rà soát lần 3): lỗi (gồm quá hạn chờ -25204 khi app họp treo) là
     /// `Unknown`, không gộp với "không phải bật".
     fn read_eui(&self) -> eui::EuiRead {
@@ -576,8 +568,9 @@ impl LiveReader {
         if self.enhanced.iter().any(|e| e.pid == pid) {
             return;
         }
-        if element.get_bool(EUI) == Some(true) {
-            // Đã bật bởi công nghệ trợ năng khác (VoiceOver…): không giành, không trả.
+        if !eui::should_enable(element.read_eui()) {
+            // Đã bật bởi công nghệ trợ năng khác (VoiceOver…), hay không đọc được (treo, lỗi, quá hạn chờ): không giành, không đặt,
+            // không ghi dấu, không trả (rà soát đợt A, A6).
             return;
         }
         let entry = EuiEntry { pid, app };
