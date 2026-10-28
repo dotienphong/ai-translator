@@ -25,13 +25,16 @@ const fresh = (url) => `${url}?t=${Date.now()}`;
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 const git = (io, args) => io.run("git", args).trim();
 
+/** Lỗi curl `-f` vì HTTP 4xx (chưa có file): mã 22, còn curl 8.x qua HTTP/2 trả mã 56 kèm "returned error: 404". */
+export const isNotPublished = (e) => e.status === 22 || (e.status === 56 && /returned error: 4\d\d/.test(e.message ?? ""));
+
 /** Phần thân đang phát hành (đọc từ URL công khai, kiểm chữ ký bằng `keys`); `null` nếu chưa đăng lần nào (404). */
 export async function liveBody(io, keys) {
   let text;
   try {
     text = textWithHint(io, fresh(RECIPES_URL));
   } catch (e) {
-    if (e.status === 22) return null; // curl -f: HTTP 4xx (chưa có file)
+    if (isNotPublished(e)) return null;
     throw e;
   }
   const envelope = JSON.parse(text);
@@ -93,7 +96,7 @@ function publish(io, signedPath, { work, previousVersion }) {
     try {
       return textWithHint(io, fresh(RECIPES_URL));
     } catch (e) {
-      if (e.status === 22) return null;
+      if (isNotPublished(e)) return null;
       throw e;
     }
   })();

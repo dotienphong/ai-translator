@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { REPO, signRecipes, testKey, verifyRecipes } from "./lib.mjs";
-import { run } from "./update-flow.mjs";
+import { isNotPublished, run } from "./update-flow.mjs";
 import {
   RECIPES_URL,
   SOURCE,
@@ -33,6 +33,14 @@ const temp = (t) => {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
 };
+
+test("isNotPublished nhận mã 22 và mã 56 của curl qua HTTP/2, không nhận lỗi khác", () => {
+  assert.equal(isNotPublished(Object.assign(new Error("404"), { status: 22 })), true);
+  assert.equal(isNotPublished(Object.assign(new Error("curl: (56) The requested URL returned error: 404"), { status: 56 })), true);
+  assert.equal(isNotPublished(Object.assign(new Error("curl: (56) Recv failure: Connection reset by peer"), { status: 56 })), false);
+  assert.equal(isNotPublished(Object.assign(new Error("curl: (6) Could not resolve host"), { status: 6 })), false);
+  assert.equal(isNotPublished(new Error("khác")), false);
+});
 
 test("parseArgs", () => {
   assert.deepEqual(parseArgs([]), { mode: "update" });
