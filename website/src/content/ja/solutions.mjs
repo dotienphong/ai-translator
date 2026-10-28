@@ -65,7 +65,7 @@ ${sectionHead({ eyebrow: "正直な限界", title: "AI Translator が向いて�
 ${checkList([
   "<strong>翻訳したあなたの声を相手に聞かせる必要がある。</strong>AI Translator の字幕は一方向だけで、パソコンで再生されている音声をあなたの言語に翻訳します。あなたの声を翻訳して会議に流すことはしません。文字での返信には<a href=\"/ja/guide/type-and-translate/\">入力翻訳</a>を使えます。",
   "<strong>会議を録音する必要がある。</strong>アプリは音声をディスクに録音しません。残すのは文字起こしのテキストだけで、履歴の保存は初期設定でオフの Pro 機能です。",
-  "<strong>議事録の自動作成、要約、話者の区別が必要。</strong>対応していません。",
+  "<strong>議事録の自動作成や要約が必要。</strong>対応していません。",
   "<strong>Intel Mac、Windows ARM64、または CPU が AVX2 に対応していない Windows PC を使っている。</strong>AI Translator は macOS 14.2 以降（Apple シリコン）と、AVX2 対応 CPU を搭載した Windows 10/11 64 ビット（x64）で動きます。",
   "<strong>パソコンの RAM が 8 GB 未満、</strong>または上の 5 言語以外の言語が必要：今のところアプリでは対応できません。",
   "<strong>ベトナムの銀行口座がなく、Creem がカード決済を受け付けない国にいる。</strong>国際カードは Creem を通じて決済されますが、Creem は一部の国の購入者を受け付けておらず（Creem の一覧による）、PayPal もありません。この場合、今のところ有料プランを支払う方法はありません。Free お試しは使えます。",

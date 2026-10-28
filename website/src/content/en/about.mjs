@@ -89,7 +89,7 @@ ${sectionHead({ eyebrow: "Ahead", title: "What we are considering" })}
 ${callout({ kind: "warn", title: "This is not a commitment.", text: "The list below is what we are weighing for the next stage. There are no dates and no fixed order, and any item may change or be dropped depending on user feedback." })}
 <div class="prose">
 <ul>
-<li>Telling speakers apart in the subtitles</li>
+<li>Showing speaker names from Google Meet and Zoom, and telling speakers apart on Windows</li>
 <li>Windows ARM64 support</li>
 <li>Per-app audio capture on Windows</li>
 <li>Two-way speech translation, so your own voice can be translated for the other people in the meeting</li>

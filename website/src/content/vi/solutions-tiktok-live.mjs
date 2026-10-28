@@ -67,7 +67,7 @@ ${sectionHead({ eyebrow: "Mẹo", title: "Mẹo khi câu bị cắt, live có nh
 ${checkList([
   "<strong>Câu bị cắt vụn giữa chừng (người nói hay ngập ngừng, ngắt hơi):</strong> tăng <em>Độ nhạy ngắt câu</em> (50–800 ms) để câu ít bị cắt hơn; đổi lại phụ đề hiện chậm hơn một chút. Đổi có tác dụng từ phiên dịch sau.",
   "<strong>Nhạc nền lớn hoặc nhiều tiếng ồn:</strong> nhận dạng kém đi, app có thể nhận nhầm ngôn ngữ hoặc lặp đi lặp lại một câu không ai nói, nên bản dịch dễ vô nghĩa; live có tiếng nói rõ cho kết quả tốt hơn.",
-  "<strong>Nhiều người nói chồng lên nhau:</strong> app dịch từng câu theo âm thanh nghe được và không biết ai đang nói.",
+  "<strong>Nhiều người nói chồng lên nhau:</strong> app dịch từng câu theo âm thanh nghe được. Trên macOS, phụ đề có thể hiện mỗi người một màu (“Người 1”, “Người 2”), nhưng khi nhiều người nói chồng, nhãn có thể sai, và hai người giống giọng có thể bị gộp thành một.",
   "<strong>Chỉ nghe trình duyệt (macOS):</strong> để thông báo của máy không bị dịch, hãy cho live phát trước, vào Cài đặt › Âm thanh, bấm <em>Làm mới danh sách</em>, chọn <em>Chỉ {tên trình duyệt}</em> rồi mới bấm Bắt đầu. Với Safari, mục này tên là <em>Chỉ Safari và trang web trong các app khác</em>. Đổi nguồn có tác dụng từ phiên dịch sau; các tab khác của trình duyệt đó vẫn được nghe.",
   "<strong>Windows chưa chọn được từng app:</strong> tắt tiếng thông báo của máy khi xem.",
   "<strong>Live tiếng Trung, Hàn, Nhật hay Anh:</strong> chọn tiếng Việt ở ô Dịch sang; biết trước ngôn ngữ thì đặt <em>Ngôn ngữ nguồn</em>, người nói đổi tiếng thì giữ Tự nhận diện. Cả bốn chiều Anh, Trung, Nhật, Hàn sang tiếng Việt đều đã có điểm đo chất lượng dịch (<a href=\"/tinh-nang/#chat-luong-theo-chieu\">xem bảng</a>).",
