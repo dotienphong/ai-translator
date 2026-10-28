@@ -31,7 +31,7 @@ objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std"
 # Trạng thái và lời xin quyền Micro (`AVCaptureDevice`, spec 2026-10-24-nguon-micro §3.4). Cùng dòng 0.3 với các crate objc2-*.
 objc2-av-foundation = { version = "0.3.2", default-features = false, features = ["std", "block2", "AVCaptureDevice", "AVMediaFormat"] }
 # `proc_pidpath`, `proc_pidinfo`: gộp tiến trình helper theo gói `.app`, biết tiến trình đã thoát.
-libc = "0.2.189"
+libc = "0.2.191"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [

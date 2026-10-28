@@ -11,7 +11,7 @@ name = "meeting_translator_lib"
 
 [build-dependencies]
 # SHA-256 của tiến trình phụ trong `binaries/`, build sẵn vào app (spec §10.2, Đ15 của kế hoạch 00).
-sha2 = "0.11.0"
+sha2 = "0.11.1"
 tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
@@ -39,7 +39,7 @@ rtrb.workspace = true
 rusqlite = { version = "0.41.0", default-features = false, features = ["bundled-sqlcipher"] }
 serde.workspace = true
 serde_json.workspace = true
-sha2 = "0.11.0"
+sha2 = "0.11.1"
 sys-locale = "0.3.2"
 tauri = { version = "2.12.5", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-autostart = "2.7.0"
@@ -59,7 +59,7 @@ ed25519-dalek = { version = "3.0.0", default-features = false }
 # thống.
 reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "native-tls", "system-proxy"] }
 # macOS: RAM và dung lượng trống cho đề xuất gói model (spec §8). Cùng bản `pipeline` đang dùng.
-libc = "0.2.189"
+libc = "0.2.191"
 # Bản quyền (kế hoạch 06): các crate 04 đã thêm (`base64`, `ed25519-dalek`, `reqwest`, `libc`) dùng chung, ở trên.
 # Ngày theo giờ máy cho hạn mức Free (license/quota.rs): múi giờ của hệ điều hành. Cùng bản `Cargo.lock` đã có.
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
