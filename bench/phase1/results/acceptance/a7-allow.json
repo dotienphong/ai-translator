@@ -1,5 +1,5 @@
 {
- "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server api.aitranslator.vn và bucket R2 releases.aitranslator.vn (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng. Báo cáo lỗi tự động (spec 2026-10-17): POST /v1/diagnostics chỉ được gọi KHI KHÔNG đang dịch (during_session false), thân tối đa 64 KB (giới hạn riêng của đường dẫn); từ mồi vẫn được quét trong thân báo cáo.",
+ "_note": "A7 trên production (2026-10-05). Máy chủ thật: license server api.aitranslator.vn và bucket R2 releases.aitranslator.vn (manifest model ở /models/models.json, latest.json ở /stable và /beta; tải file model và bộ cài là việc không chạy lúc dịch). Từ mồi `canaries`: thêm cụm 3-5 từ của bản dịch tiếng Việt chép từ bản chép lời xuất ra sau khi dừng. Báo cáo lỗi tự động (spec 2026-10-17): POST /v1/diagnostics chỉ được gọi KHI KHÔNG đang dịch (during_session false), thân tối đa 64 KB (giới hạn riêng của đường dẫn); từ mồi vẫn được quét trong thân báo cáo. Phân biệt người nói (2026-10-28, kế hoạch 07b Task 22): app tải công thức đọc tên (/speaker/recipes.json, lúc mở, sau 20 giây và mỗi 6 giờ) và model nhận giọng (một lần, nền, ở phiên dịch đầu sau khi có manifest). speaker-worker không có mạng, không thêm host mới.",
  "hosts": {
   "api.aitranslator.vn": [
    {
@@ -51,6 +51,14 @@
    },
    {
     "path": "/beta/latest.json",
+    "during_session": true
+   },
+   {
+    "path": "/speaker/recipes.json",
+    "during_session": true
+   },
+   {
+    "path": "/models/speaker/beffe43e7027/eres2net-sv-en-voxceleb-16k.onnx",
     "during_session": true
    }
   ]
