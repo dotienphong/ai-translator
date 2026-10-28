@@ -9,8 +9,9 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use pipeline::subtitle::{Delta, Roster, SpeakerLabel, Subtitle};
+use pipeline::subtitle::{Delta, Names, Roster, SpeakerLabel, Subtitle};
 use serde::Serialize;
+use speaker_protocol::ReaderStatus;
 
 use super::speakers::{RosterView, SpeakerBook, SpeakerError, VoiceView, clean_name};
 use crate::i18n::{self, Strings};
@@ -151,6 +152,30 @@ impl TranscriptStore {
     pub fn roster(&self, session: u64, roster: &Roster) -> Option<RosterView> {
         let mut current = self.lock();
         (current.meta.session == session && current.speakers.apply(roster)).then(|| current.roster_view())
+    }
+
+    /// Tên đọc từ app họp và người tham dự của phiên `session` (`EventSink::names`). Trả bảng mới để phát khi đổi, dựng trong cùng
+    /// lần khóa (QĐ 25 của 03). Làm sạch tên trong lúc khóa: khung của worker đã giới hạn ≤ 64 tên × 160 byte.
+    pub fn names(&self, session: u64, names: &Names) -> Option<RosterView> {
+        let mut current = self.lock();
+        (current.meta.session == session && current.speakers.set_names(names)).then(|| current.roster_view())
+    }
+
+    /// Trạng thái bộ đọc tên của phiên `session` (dòng mời cấp quyền, spec §6.7). Trả bảng mới khi đổi.
+    pub fn reader(&self, session: u64, state: ReaderStatus) -> Option<RosterView> {
+        let mut current = self.lock();
+        (current.meta.session == session && current.speakers.set_reader(state)).then(|| current.roster_view())
+    }
+
+    /// Người dùng tắt "Lấy tên" (QĐ 31): xóa tên tự động, người tham dự, dòng mời của phiên hiện tại. Trả bảng mới khi đổi.
+    pub fn clear_names(&self) -> Option<RosterView> {
+        let mut current = self.lock();
+        current.speakers.clear_names().then(|| current.roster_view())
+    }
+
+    /// Người dùng bật lại "Lấy tên": bảng người nói nhận tên tự động trở lại.
+    pub fn allow_names(&self) {
+        self.lock().speakers.allow_names();
     }
 
     /// Bảng người nói hiện có, như giao diện vẽ (`speaker://roster`).

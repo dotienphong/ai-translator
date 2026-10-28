@@ -149,11 +149,11 @@ fn embed_span(len: usize, max: Option<usize>, from: EmbedFrom) -> Range<usize> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct CachedSegment {
-    start_ms: u64,
-    end_ms: u64,
-    embedding: Option<Vec<f32>>,
-    embed_ms: f64,
+pub(crate) struct CachedSegment {
+    pub(crate) start_ms: u64,
+    pub(crate) end_ms: u64,
+    pub(crate) embedding: Option<Vec<f32>>,
+    pub(crate) embed_ms: f64,
 }
 
 /// Thời lượng đoạn; đoạn có `end_ms` nhỏ hơn `start_ms` (không có trong dữ liệu đã qua `check_segments`) tính là 0.
@@ -175,7 +175,7 @@ fn check_segments(segments: &[CachedSegment]) -> Result<()> {
     Ok(())
 }
 
-fn read_cache(path: &Path) -> Result<Vec<CachedSegment>> {
+pub(crate) fn read_cache(path: &Path) -> Result<Vec<CachedSegment>> {
     let file = std::fs::File::open(path).with_context(|| format!("không mở được cache nhúng {}", path.display()))?;
     let segments: Vec<CachedSegment> = serde_json::from_reader(std::io::BufReader::new(file))
         .with_context(|| format!("không đọc được cache nhúng (JSON sai) {}", path.display()))?;
@@ -214,7 +214,11 @@ fn write_through<W: Write>(inner: W, path: &Path, body: impl FnOnce(&mut BufWrit
 }
 
 /// Tạo file `path` (`what` mô tả file trong thông báo lỗi tạo) rồi ghi bằng `write_through`.
-fn write_file(path: &Path, what: &str, body: impl FnOnce(&mut BufWriter<std::fs::File>) -> Result<()>) -> Result<()> {
+pub(crate) fn write_file(
+    path: &Path,
+    what: &str,
+    body: impl FnOnce(&mut BufWriter<std::fs::File>) -> Result<()>,
+) -> Result<()> {
     let file = std::fs::File::create(path).with_context(|| format!("không tạo được {what}{}", path.display()))?;
     write_through(file, path, body)
 }

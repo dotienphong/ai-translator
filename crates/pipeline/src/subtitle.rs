@@ -8,6 +8,7 @@
 //! cho thanh phụ đề) và `subtitle://live-end` (`LiveEnd`, gỡ dòng đó).
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// `Deserialize` cho lịch sử chép lời của app (đọc lại trạng thái đã lưu trong DB, kế hoạch 03).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,6 +103,45 @@ pub struct RosterVoice {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Roster {
     pub voices: Vec<RosterVoice>,
+}
+
+/// Tên đọc từ app họp (spec 2026-10-26-phan-biet-nguoi-noi §6.6, §9; kế hoạch 04): tên của các giọng có tên và người tham dự. Tên
+/// chưa qua `clean_name` của app. `Debug` không in tên.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct Names {
+    pub voices: Vec<NamedVoice>,
+    pub participants: Vec<String>,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct NamedVoice {
+    pub id: u32,
+    pub name: String,
+    /// Một tên ở nhiều giọng (máy chung phòng): giọng thứ mấy.
+    pub room_index: Option<u32>,
+}
+
+impl fmt::Debug for Names {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Names({} giọng có tên, {} người tham dự)",
+            self.voices.len(),
+            self.participants.len()
+        )
+    }
+}
+
+impl fmt::Debug for NamedVoice {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "NamedVoice({}, <{} ký tự>, {:?})",
+            self.id,
+            self.name.chars().count(),
+            self.room_index
+        )
+    }
 }
 
 #[cfg(test)]

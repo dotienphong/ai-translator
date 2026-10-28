@@ -1,0 +1,11 @@
+{
+  "machine": "mac-chu-du-an",
+  "canaryBin": "/đường/dẫn/tới/speaker-canary",
+  "logDir": "/đường/dẫn/tới/thư-mục-nhật-ký",
+  "api": "https://api.aitranslator.vn",
+  "leadSeconds": 20,
+  "apps": {
+    "teams": { "guests": ["Tên khách A", "Tên khách B"], "options": {} },
+    "meet_chrome": { "guests": ["Tên khách A", "Tên khách B"], "options": {} }
+  }
+}

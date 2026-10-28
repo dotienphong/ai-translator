@@ -8,8 +8,11 @@
 //!   ở `Segment` đầu); `flood_voices:<n>` (trả thêm n khung `Voices` ở `Segment` đầu: worker gửi dồn); `error_on:<n>` (trả
 //!   `Error` có id đoạn thay cho `Assign` ở `Segment` thứ n); `errors:<n>` (trả thêm n khung `Error` không có id đoạn ở `Segment`
 //!   đầu); `big_voice_id` (`Assign` của `Segment` đầu mang mã giọng `u32::MAX - 1`); `ready_twice` (trả hai `Ready` cho `Load`);
-//!   `segment_delay_ms:<ms>` (chờ chừng ấy trước khi trả lời mỗi `Segment`: worker chậm).
-//! - `FAKE_SPEAKER_LOG`: file ghi nối tiếp: `start threads=<RAYON_NUM_THREADS>`, `load model=<tên file> sha=<có|không> theta=<θ>`, `session`,
+//!   `segment_delay_ms:<ms>` (chờ chừng ấy trước khi trả lời mỗi `Segment`: worker chậm); `named` (ở `Segment` đầu, sau `Assign`:
+//!   `Voices` có giọng 1 tên "Lan", người tham dự "Lan", "Minh", rồi `ReaderState { Teams, NoPermission }`); `long_name` (ở `Segment`
+//!   đầu: `Voices` có tên 200 byte).
+//! - `FAKE_SPEAKER_LOG`: file ghi nối tiếp: `start threads=<RAYON_NUM_THREADS>`, `load model=<tên file> sha=<có|không> theta=<θ>`, `session unix=<ms>`,
+//!   `names enabled=<bool> recipe=<số byte>`, `speech <đầu>-<cuối>`, `set_names <bool>`, `pause_names`,
 //!   `segment <id> pcm=<số mẫu> dur=<ms> source=<nguồn>`, `shutdown`.
 
 use speaker_protocol::{ErrorKind, PROTOCOL_VERSION, Request, Response, VoiceInfo, read_frame, write_frame};
@@ -33,6 +36,8 @@ struct Plan {
     big_voice_id: bool,
     ready_twice: bool,
     segment_delay_ms: u64,
+    named: bool,
+    long_name: bool,
 }
 
 fn next_plan_line() -> String {
@@ -70,6 +75,8 @@ fn parse(line: &str) -> Plan {
             "big_voice_id" => p.big_voice_id = true,
             "segment_delay_ms" => p.segment_delay_ms = value.parse().unwrap_or(0),
             "ready_twice" => p.ready_twice = true,
+            "named" => p.named = true,
+            "long_name" => p.long_name = true,
             other => panic!("lệnh kịch bản lạ: {other}"),
         }
     }
@@ -105,6 +112,7 @@ fn main() {
                 model_path,
                 model_sha256,
                 config,
+                names,
             } => {
                 std::thread::sleep(Duration::from_millis(plan.load_delay_ms));
                 let name = std::path::Path::new(&model_path)
@@ -113,9 +121,15 @@ fn main() {
                     .unwrap_or_default();
                 let sha = if model_sha256.is_some() { "có" } else { "không" };
                 log(&format!("load model={name} sha={sha} theta={}", config.theta));
+                log(&format!(
+                    "names enabled={} recipe={}",
+                    names.enabled,
+                    names.recipe_json.len()
+                ));
                 let ready = Response::Ready {
                     protocol_version: plan.version.unwrap_or(PROTOCOL_VERSION),
                     model_ok: !plan.model_bad,
+                    reader_platform: speaker_protocol::ReaderPlatform::Unsupported,
                 };
                 if plan.ready_twice {
                     vec![ready.clone(), ready]
@@ -123,8 +137,8 @@ fn main() {
                     vec![ready]
                 }
             }
-            Request::SessionStart { .. } => {
-                log("session");
+            Request::SessionStart { unix_ms } => {
+                log(&format!("session unix={unix_ms}"));
                 Vec::new()
             }
             Request::Segment(s) => {
@@ -154,6 +168,18 @@ fn main() {
                 } else {
                     reply(&plan, &s, segments, &mut seen)
                 }
+            }
+            Request::Speech { start_ms, end_ms } => {
+                log(&format!("speech {start_ms}-{end_ms}"));
+                Vec::new()
+            }
+            Request::SetNames { enabled } => {
+                log(&format!("set_names {enabled}"));
+                Vec::new()
+            }
+            Request::PauseNames => {
+                log("pause_names");
+                Vec::new()
             }
             Request::Shutdown => {
                 log("shutdown");
@@ -187,33 +213,53 @@ fn reply(plan: &Plan, s: &speaker_protocol::SegmentAudio, segments: u64, seen: &
     }
     if plan.big_voices && segments == 1 {
         out.push(Response::Voices {
-            voices: (1..=100)
-                .map(|voice| VoiceInfo {
-                    voice,
-                    speech_ms: 1,
-                    mic: false,
-                })
-                .collect(),
+            voices: (1..=100).map(|voice| VoiceInfo::new(voice, 1, false)).collect(),
+            participants: Vec::new(),
         });
     } else if plan.flood_voices > 0 && segments == 1 {
-        let one = VoiceInfo {
-            voice,
-            speech_ms: 1,
-            mic: false,
-        };
+        let one = VoiceInfo::new(voice, 1, false);
         out.extend((0..plan.flood_voices).map(|_| Response::Voices {
             voices: vec![one.clone()],
+            participants: Vec::new(),
         }));
     } else if seen.insert(voice) {
         out.push(Response::Voices {
-            voices: seen
-                .iter()
-                .map(|&voice| VoiceInfo {
-                    voice,
-                    speech_ms: 1_000,
-                    mic: false,
-                })
-                .collect(),
+            voices: seen.iter().map(|&voice| VoiceInfo::new(voice, 1_000, false)).collect(),
+            participants: Vec::new(),
+        });
+    }
+    if plan.named && segments == 1 {
+        let name = speaker_protocol::PersonName::new;
+        out.push(Response::Voices {
+            voices: vec![VoiceInfo {
+                name: name("Lan"),
+                name_source: Some(speaker_protocol::NameSource::Indicator),
+                ..VoiceInfo::new(voice, 1_000, false)
+            }],
+            participants: vec![name("Lan").unwrap(), name("Minh").unwrap()],
+        });
+        out.push(Response::ReaderState {
+            app: Some(speaker_protocol::MeetingApp::Teams),
+            app_version: Some("26276".into()),
+            state: speaker_protocol::ReaderStatus::NoPermission,
+            recipe_version: 1,
+            learned: 1,
+            patterns: vec![speaker_protocol::LearnedPattern {
+                role: "AXGroup".into(),
+                path: vec![1, 0],
+                states: vec![],
+            }],
+        });
+    }
+    if plan.long_name && segments == 1 {
+        // Không qua `PersonName::new` (từ chối tên dài): dựng thẳng qua serde như một worker hỏng.
+        let long: speaker_protocol::PersonName = serde_json::from_value(serde_json::json!("x".repeat(200))).unwrap();
+        out.push(Response::Voices {
+            voices: vec![VoiceInfo {
+                name: Some(long),
+                ..VoiceInfo::new(voice, 1_000, false)
+            }],
+            participants: Vec::new(),
         });
     }
     out

@@ -79,6 +79,17 @@ pub struct RawLogs {
     pub llama: String,
 }
 
+impl RawLogs {
+    /// Bản đã che tên người tham dự đang có (`scrub::redact_names`), trước khi chọn dòng và che tiếp.
+    pub fn redact_names(&self, names: &[String]) -> RawLogs {
+        RawLogs {
+            app: scrub::redact_names(&self.app, names),
+            asr: scrub::redact_names(&self.asr, names),
+            llama: scrub::redact_names(&self.llama, names),
+        }
+    }
+}
+
 /// Báo cáo đã dựng, sẵn sàng gửi hay xếp hàng.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Report {
@@ -273,6 +284,21 @@ mod tests {
             message: "tiến trình phụ không khởi động được".into(),
             at: 1_790_812_740,
         }
+    }
+
+    #[test]
+    fn raw_logs_lose_the_participant_names_before_selection() {
+        let raw = RawLogs {
+            app: "[WARN] gặp lỗi khi gán tên Lan Nguyễn cho giọng 2".into(),
+            asr: "không có tên".into(),
+            llama: "Minh Trần nói".into(),
+        };
+        let clean = raw.redact_names(&["Lan Nguyễn".to_string(), "Minh Trần".to_string()]);
+        assert_eq!(clean.app, "[WARN] gặp lỗi khi gán tên <tên> cho giọng 2");
+        assert_eq!(
+            (clean.asr.as_str(), clean.llama.as_str()),
+            ("không có tên", "<tên> nói")
+        );
     }
 
     fn params() -> Params {

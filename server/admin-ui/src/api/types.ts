@@ -337,3 +337,50 @@ export interface ErrorReportDetail extends ErrorReport {
 export interface DeletedReports {
   deleted: number;
 }
+
+/** Một dòng của tab Bộ đọc tên: báo cáo của người dùng (bản release) gộp theo app họp, phiên bản và hệ điều hành. */
+export interface SpeakerHealthRow {
+  meeting_app: string;
+  /** "?" khi app không đọc được phiên bản của app họp. */
+  meeting_version: string;
+  os_name: string;
+  reports: number;
+  devices: number;
+  ok: number;
+  no_names: number;
+  no_speaking: number;
+  no_permission: number;
+  blocked: number;
+  minutes_ok: number;
+  minutes_total: number;
+  recipe_version: number;
+  last_at: number;
+}
+
+/** Kết quả một lượt kiểm tra tự động hằng ngày. */
+export interface SpeakerCanaryRow {
+  meeting_app: string;
+  meeting_version: string;
+  os_name: string;
+  day: string;
+  state: string;
+  recipe_version: number;
+  app_version: string;
+}
+
+/** Mẫu chỉ báo tự học của một báo cáo; `patterns` là mảng đối tượng (vai trò, đường đi, trạng thái), không có chữ của app họp. */
+export interface SpeakerPatternRow {
+  meeting_app: string;
+  meeting_version: string;
+  day: string;
+  recipe_version: number;
+  patterns: unknown;
+}
+
+export interface SpeakerHealthResponse {
+  generated_at: number;
+  days: number;
+  rows: SpeakerHealthRow[];
+  canary: SpeakerCanaryRow[];
+  patterns: SpeakerPatternRow[];
+}

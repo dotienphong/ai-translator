@@ -29,6 +29,11 @@ export const LIMITS = {
   diag_ip: 30,
   diag_device: 3,
   diag_global: 120,
+  // Báo cáo tình trạng bộ đọc tên người nói (spec 2026-10-26-phan-biet-nguoi-noi §7.2) đi cùng endpoint nhưng đếm riêng, để không ăn
+  // vào hạn mức của báo cáo lỗi: mỗi máy gửi tối đa vài báo cáo mỗi lần mở app (một cho mỗi ngày và mỗi cặp app họp, phiên bản).
+  // Chạm speaker_global thì cũng có cảnh báo diagnostics_flood.
+  speaker_device: 20,
+  speaker_global: 600,
   // Chat hỗ trợ (spec 2026-10-22 §2.7). Việc hỏi tin mới không đếm ở đây (mỗi lần đếm là một lần ghi D1): xem binding
   // SUPPORT_POLL_LIMITER ở wrangler.jsonc. support_global chạm ngưỡng thì có cảnh báo support_flood.
   support_msg_ip: 30,

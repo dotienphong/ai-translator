@@ -170,7 +170,11 @@ pub fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), 
 /// Bản chép lời của phiên hiện tại hoặc vừa dừng, trong bộ nhớ.
 #[tauri::command]
 pub fn get_transcript<R: Runtime>(app: AppHandle<R>) -> Transcript {
-    data::current(&app)
+    let transcript = data::current(&app);
+    // Cửa sổ chính mở hay tải lại giữa phiên: phát lại bảng người nói để có danh sách người tham dự (QĐ 20 của kế hoạch 04). Chỉ khi
+    // phiên có giọng: bản phát hành không phát sự kiện mới nào.
+    crate::speaker::emit_roster(&app);
+    transcript
 }
 
 /// Chữ TXT để sao chép. `utc_offset_minutes`: độ lệch múi giờ của máy, để ghi giờ địa phương.

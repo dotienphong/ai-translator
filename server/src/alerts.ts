@@ -20,6 +20,8 @@ export type AlertKind =
   | "order_check_failed"
   | "error_report_new"
   | "diagnostics_flood"
+  | "speaker_health_degraded"
+  | "speaker_canary_failed"
   | "support_zalo_failed"
   | "support_flood"
   | "checkout_flood"
@@ -90,6 +92,16 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   diagnostics_flood:
     "Endpoint báo cáo lỗi chạm trần toàn hệ thống (120 báo cáo mỗi giờ): có thể đang bị gửi tràn. Báo cáo bị từ chối (429) tới hết giờ. " +
     "Mở Web Admin, trang Báo cáo lỗi để xem nguồn, xóa báo cáo rác nếu cần.",
+  speaker_health_degraded:
+    "Bộ đọc tên người nói: một phiên bản của Teams, Meet hay Zoom có từ 30% báo cáo tình trạng hỏng (không đọc được tên, không thấy ai " +
+    '"đang nói", hay app họp không trả lời), từ 5 báo cáo trong 3 ngày qua. Có thể app họp vừa đổi giao diện. Mở Web Admin, trang Báo ' +
+    "cáo lỗi, tab Bộ đọc tên để xem app, phiên bản và mẫu chỉ báo tự học; sửa công thức bằng pnpm recipes:update (docs/release/phat-hanh.md). " +
+    "Thư này chỉ có số lượng, không nêu app hay phiên bản nào.",
+  speaker_canary_failed:
+    "Kiểm tra tự động hằng ngày của bộ đọc tên người nói hỏng hai ngày liền trên một app họp và một hệ điều hành (không đọc được tên " +
+    "hay chỉ báo \"đang nói\" sai người), hoặc im lặng ba ngày liền (máy tắt, lịch tác vụ chết, không mở được cuộc họp thử). Mở Web " +
+    "Admin, trang Báo cáo lỗi, tab Bộ đọc tên, mục Kiểm tra tự động; xem nhật ký trên máy chạy kiểm tra (tools/speaker-canary/README.md). " +
+    "Thư này chỉ có số lượng.",
   support_zalo_failed:
     "Chat hỗ trợ: 3 lần cron liền không chuyển được tin của khách sang Zalo (token Zalo Bot sai hay bị thu hồi, bot bị khóa, hay Zalo lỗi). " +
     'Tin vẫn được lưu và được thử lại trong 24 giờ; khách thấy "Đã gửi" nhưng bạn chưa nhận. Kiểm bot ở Zalo Bot Manager, đặt lại ' +

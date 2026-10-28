@@ -168,11 +168,114 @@ fn replace_name(text: &str, name: &str, with: &str) -> String {
     re(&pattern).replace_all(text, with).into_owned()
 }
 
+/// Tên người tham dự dài tối thiểu chừng này ký tự mới che (tên một chữ cái không có thật; tên hai ký tự như "An" vẫn che, vì biên từ
+/// theo Unicode không để nó phá chữ khác).
+const MIN_PARTICIPANT_CHARS: usize = 2;
+/// Tên dài hơn chừng này byte không che (khung của worker đã giới hạn 160 byte, `speaker_protocol::MAX_NAME_BYTES`).
+const MAX_PARTICIPANT_BYTES: usize = 160;
+
+/// Mẫu một tên người tham dự: không phân biệt hoa thường, biên từ theo Unicode (chữ cái và chữ số), nên "Lan" không bị che trong
+/// "Lanh" hay "Lan2".
+fn participant_pattern(name: &str) -> Option<Regex> {
+    let name = name.trim();
+    if name.chars().count() < MIN_PARTICIPANT_CHARS || name.len() > MAX_PARTICIPANT_BYTES {
+        return None;
+    }
+    Regex::new(&format!(
+        r"(?i)(^|[^\p{{L}}\p{{N}}]){}($|[^\p{{L}}\p{{N}}])",
+        regex::escape(name)
+    ))
+    .ok()
+}
+
+/// Che tên người tham dự đang có trong cuộc họp (spec 2026-10-26-phan-biet-nguoi-noi §10) bằng `<tên>`. Log của app không bao giờ in tên
+/// (mọi `Debug` che chữ); đây là lớp bảo vệ thêm cho báo cáo lỗi, tính trên các tên mà app đang giữ (`Host::known_names`).
+pub fn redact_names(text: &str, names: &[String]) -> String {
+    let mut out = text.to_string();
+    for pattern in names.iter().filter_map(|n| participant_pattern(n)) {
+        // Hai tên cách nhau một ký tự dùng chung ký tự đó làm biên: lặp tới khi hết thay đổi.
+        for _ in 0..4 {
+            let next = pattern.replace_all(&out, "${1}<tên>${2}").into_owned();
+            if next == out {
+                break;
+            }
+            out = next;
+        }
+    }
+    out
+}
+
+/// Còn tên người tham dự nào trong `text` không (kiểm lại sau khi che).
+pub fn contains_name(text: &str, names: &[String]) -> bool {
+    names
+        .iter()
+        .filter_map(|n| participant_pattern(n))
+        .any(|pattern| pattern.is_match(text))
+}
+
 #[cfg(test)]
 mod tests {
     use serde::Deserialize;
 
     use super::*;
+
+    fn names(list: &[&str]) -> Vec<String> {
+        list.iter().map(ToString::to_string).collect()
+    }
+
+    /// Tên người tham dự (kể cả có dấu, viết hoa khác) bị che; chữ khác chứa tên như một phần thì giữ nguyên.
+    #[test]
+    fn participant_names_are_redacted_by_whole_word() {
+        let n = names(&["Lan Nguyễn", "An", "Bình"]);
+        assert_eq!(
+            redact_names("họp với lan nguyễn và AN, bình.", &n),
+            "họp với <tên> và <tên>, <tên>."
+        );
+        assert_eq!(redact_names("Lanh, Anna, Bình2, vận", &n), "Lanh, Anna, Bình2, vận");
+        assert_eq!(
+            redact_names("An Bình", &n),
+            "<tên> <tên>",
+            "hai tên liền nhau dùng chung một khoảng trắng"
+        );
+        assert_eq!(redact_names("Lan Nguyễn\nBình", &n), "<tên>\n<tên>");
+    }
+
+    #[test]
+    fn short_empty_or_huge_names_are_ignored_and_no_names_changes_nothing() {
+        let text = "a b c Lan";
+        assert_eq!(redact_names(text, &[]), text);
+        assert_eq!(redact_names(text, &names(&["", " ", "a"])), text);
+        assert!(!contains_name(text, &names(&["a"])));
+        // Tên dài quá giới hạn không che (chuỗi có mặt trong văn bản, nên giữ nguyên chứng tỏ bị bỏ qua); đúng giới hạn thì che.
+        let huge = "x".repeat(MAX_PARTICIPANT_BYTES + 1);
+        let text = format!("a b c Lan {huge} end");
+        assert_eq!(redact_names(&text, &names(&[&huge])), text);
+        assert!(!contains_name(&text, &names(&[&huge])));
+        let max = "x".repeat(MAX_PARTICIPANT_BYTES);
+        assert_eq!(
+            redact_names(&format!("a {max} b"), &names(&[&max])),
+            "a <tên> b",
+            "tên đúng giới hạn vẫn được che"
+        );
+    }
+
+    #[test]
+    fn contains_name_sees_what_redaction_removes() {
+        let n = names(&["Lan Nguyễn"]);
+        assert!(contains_name("gọi LAN NGUYỄN lúc 9h", &n));
+        assert!(!contains_name(&redact_names("gọi LAN NGUYỄN lúc 9h", &n), &n));
+        assert!(!contains_name("Lan Nguyễnx", &n));
+    }
+
+    /// Tên có ký tự đặc biệt của regex không làm hỏng mẫu hay che nhầm.
+    #[test]
+    fn regex_characters_in_names_are_literal() {
+        let n = names(&["A.B (Guest)", "x+y"]);
+        assert_eq!(
+            redact_names("A.B (Guest) và AxB (Guest), x+y, xxy", &n),
+            "<tên> và AxB (Guest), <tên>, xxy"
+        );
+    }
 
     /// File vector dùng chung với server (`server/test/vectors/scrub-v1.json`).
     const VECTORS: &str = include_str!("../../../server/test/vectors/scrub-v1.json");

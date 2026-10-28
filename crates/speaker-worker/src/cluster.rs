@@ -16,6 +16,9 @@ pub struct Assignment {
     pub confidence: f32,
     /// Các cặp (giọng bị gộp, giọng giữ lại) vừa gộp ở lần gọi này, theo thứ tự.
     pub merged: Vec<(u32, u32)>,
+    /// Đoạn đã vào tâm của giọng được chọn (mở giọng, hay vào giọng với thời lượng ≥ `min_update_ms`): tách giọng (kế hoạch 04)
+    /// trừ đúng các đoạn này khỏi tâm cũ.
+    pub updated: bool,
 }
 
 struct Voice {
@@ -81,6 +84,7 @@ impl OnlineClusterer {
                 voice: self.prev,
                 confidence: 0.0,
                 merged: Vec::new(),
+                updated: false,
             };
         };
         let best = self
@@ -94,16 +98,17 @@ impl OnlineClusterer {
                 Some(a) if a.1 >= x.1 => Some(a),
                 _ => Some(x),
             });
-        let (voice, confidence) = match best {
+        let (voice, confidence, updated) = match best {
             Some((i, sim)) if sim >= self.cfg.theta => {
-                if speech_ms >= self.cfg.min_update_ms {
+                let updated = speech_ms >= self.cfg.min_update_ms;
+                if updated {
                     let v = &mut self.voices[i];
                     for (s, x) in v.sum.iter_mut().zip(&e) {
                         *s += x * speech_ms as f32;
                     }
                     v.speech_ms = v.speech_ms.saturating_add(speech_ms);
                 }
-                (Some(self.voices[i].id), sim)
+                (Some(self.voices[i].id), sim, updated)
             }
             _ if speech_ms >= self.cfg.min_new_ms && self.voices.len() < self.cfg.max_voices => {
                 let id = self.next_id;
@@ -113,10 +118,10 @@ impl OnlineClusterer {
                     sum: e.iter().map(|x| x * speech_ms as f32).collect(),
                     speech_ms,
                 });
-                (Some(id), 1.0)
+                (Some(id), 1.0, true)
             }
-            Some((i, sim)) if speech_ms >= self.cfg.min_new_ms => (Some(self.voices[i].id), sim),
-            _ => (self.prev, 0.0),
+            Some((i, sim)) if speech_ms >= self.cfg.min_new_ms => (Some(self.voices[i].id), sim, false),
+            _ => (self.prev, 0.0, false),
         };
         let merged = self.merge();
         let voice = voice.map(|v| {
@@ -129,7 +134,53 @@ impl OnlineClusterer {
             voice,
             confidence,
             merged,
+            updated,
         }
+    }
+
+    /// Tách giọng `from` (spec §5.3, kế hoạch 04): mở giọng mới từ `members` (thời lượng thật, nhúng, đoạn đã vào tâm của `from`
+    /// chưa) và trừ khỏi tâm của `from` đúng các đoạn đã vào tâm. `None` (không đổi gì) khi đã đủ `max_voices`, `from` không còn,
+    /// hay không nhúng nào dùng được. Mã giọng mới như giọng mở bình thường (tăng dần, không dùng lại).
+    pub fn split(&mut self, from: u32, members: &[(u64, &[f32], bool)]) -> Option<u32> {
+        if self.voices.len() >= self.cfg.max_voices {
+            return None;
+        }
+        let i = self.voices.iter().position(|v| v.id == from)?;
+        let dim = self.voices[i].sum.len();
+        let usable: Vec<(u64, Vec<f32>, bool)> = members
+            .iter()
+            .filter_map(|&(ms, e, contributed)| {
+                normalized(e)
+                    .filter(|e| e.len() == dim)
+                    .map(|e| (ms.min(MAX_SPEECH_MS), e, contributed))
+            })
+            .collect();
+        if usable.is_empty() {
+            return None;
+        }
+        let mut sum = vec![0.0f32; dim];
+        let mut speech = 0u64;
+        for (ms, e, contributed) in &usable {
+            for (s, x) in sum.iter_mut().zip(e) {
+                *s += x * *ms as f32;
+            }
+            speech = speech.saturating_add(*ms);
+            if *contributed {
+                let v = &mut self.voices[i];
+                for (s, x) in v.sum.iter_mut().zip(e) {
+                    *s -= x * *ms as f32;
+                }
+                v.speech_ms = v.speech_ms.saturating_sub(*ms);
+            }
+        }
+        let id = self.next_id;
+        self.next_id += 1;
+        self.voices.push(Voice {
+            id,
+            sum,
+            speech_ms: speech,
+        });
+        Some(id)
     }
 
     fn merge(&mut self) -> Vec<(u32, u32)> {
@@ -509,5 +560,48 @@ mod tests {
     fn the_config_is_the_one_of_the_protocol() {
         let c: SpeakerConfig = speaker_protocol::SpeakerConfig::default();
         assert_eq!(c.theta, 0.35);
+    }
+
+    /// Kế hoạch 04 (spec §5.3): tách các đoạn D khỏi giọng 1 (A và D, cosine 0,8, cùng vào giọng 1 ở θ 0,35): đoạn D mới vào giọng
+    /// mới, đoạn A ở lại giọng 1.
+    #[test]
+    fn split_moves_members_out_of_the_old_centroid_into_a_new_voice() {
+        let mut c = OnlineClusterer::new(SpeakerConfig::default());
+        for e in [&A, &D, &A, &D] {
+            let r = c.assign(2_000, Some(e));
+            assert_eq!((r.voice, r.updated), (Some(1), true));
+        }
+        assert_eq!(c.split(1, &[(2_000, &D, true), (2_000, &D, true)]), Some(2));
+        assert_eq!(c.voice_ids(), [1, 2]);
+        assert_eq!(c.assign(2_000, Some(&D)).voice, Some(2));
+        assert_eq!(c.assign(2_000, Some(&A)).voice, Some(1));
+    }
+
+    #[test]
+    fn split_respects_the_voice_limit_and_needs_usable_embeddings() {
+        let cfg = SpeakerConfig {
+            max_voices: 1,
+            ..SpeakerConfig::default()
+        };
+        let mut c = OnlineClusterer::new(cfg);
+        c.assign(2_000, Some(&A));
+        assert_eq!(c.split(1, &[(2_000, &D, true)]), None, "đã đủ giọng");
+        let mut c = OnlineClusterer::new(SpeakerConfig::default());
+        c.assign(2_000, Some(&A));
+        assert_eq!(
+            c.split(1, &[(2_000, &[f32::NAN, 0.0, 0.0], true)]),
+            None,
+            "không nhúng nào dùng được"
+        );
+        assert_eq!(c.split(9, &[(2_000, &D, true)]), None, "giọng không có");
+        assert_eq!(c.voice_count(), 1);
+    }
+
+    #[test]
+    fn only_segments_that_reach_the_centroid_say_so() {
+        let mut c = OnlineClusterer::new(SpeakerConfig::default());
+        assert!(c.assign(2_000, Some(&A)).updated, "mở giọng");
+        assert!(!c.assign(800, Some(&A)).updated, "dưới min_update_ms");
+        assert!(!c.assign(300, None).updated, "không nhúng");
     }
 }

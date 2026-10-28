@@ -3,7 +3,7 @@
 tính theo nhóm tiến trình: %CPU (thời gian), tỉ lệnh/giây, tỉ chu kỳ/giây, mW (năng lượng ước tính của macOS).
 
 Chế độ: A (không đặt gì, không đọc), B0 (đặt AXEnhancedUserInterface, không đọc), B1 (đặt và đọc cửa sổ họp 1 lần/giây bằng
-`axtrace watch`), B4 (4 lần/giây). Sau mỗi đoạn B*: `axtrace noaccess` (đặt lại false) rồi chờ (Chrome gỡ cây; Teams thì không).
+`axtrace watch`), B4 (4 lần/giây), R1, R4 (chạy `ax-record stats` của kế hoạch 04: bộ đọc thật, 1 hay 4 lượt mỗi giây). Sau mỗi đoạn B*: `axtrace noaccess` (đặt lại false) rồi chờ (Chrome gỡ cây; Teams thì không).
 
 python -I xen_ke.py teams  <tag> <giây mỗi đoạn> A,B4,A,B1,A,B4    khách Lan, Minh của guests.py nói luân phiên (6 s nói, 2 s nghỉ)
 python -I xen_ke.py chrome <tag> <giây mỗi đoạn> A,B4,B0,B1,A,B4   giọng đọc máy `say` qua loa, cửa sổ Meet thứ hai thu bằng micro
@@ -22,6 +22,10 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 DT = os.path.join(HERE, "..", "truoc-spec", "doc-ten")
 AX = os.path.join(DT, "axtrace")
+AXREC = os.environ.get("AX_RECORD", os.path.join(HERE, "..", "..", "..", "target", "release", "ax-record"))
+APPKEY = {"teams": "teams", "chrome": "meet_chrome"}[sys.argv[1]]
+# Meet không có trong công thức build sẵn (QĐ 32 của kế hoạch 04): dùng công thức riêng của thư mục fixture.
+RECIPE = [] if APPKEY == "teams" else ["--recipe", os.path.join(HERE, "..", "..", "..", "scripts", "speaker-recipes", "fixtures", "meet-macos.recipes.json")]
 APP, TAG, SEG, MODES = sys.argv[1], sys.argv[2], float(sys.argv[3]), sys.argv[4].split(",")
 PID = int(os.environ["AXTRACE_PID"])
 BUNDLE = {"teams": "com.microsoft.teams2", "chrome": "com.google.Chrome"}[APP]
@@ -75,7 +79,7 @@ def names():
 def group(x, n):
     if x["pid"] == PID:
         return "main"
-    if n.endswith("/axtrace"):
+    if n.endswith("/axtrace") or n.endswith("/ax-record"):
         return "axtrace"
     if APP == "teams":
         return "teams_webview" if "teams webview" in n else "chrome_khach" if "google chrome" in n else "khac"
@@ -121,6 +125,10 @@ def main():
             w = subprocess.Popen([AX, "watch", BUNDLE, out, "1.0" if mode == "B1" else "0.25"], env=env)
         elif mode == "B0":
             subprocess.run([os.path.join(HERE, "axprobe"), "set", str(PID), "AXEnhancedUserInterface", "1"], capture_output=True)
+        elif mode in ("R1", "R4"):
+            out = os.path.join(DT, "out", f"{TAG}-{k}{mode}-reader.jsonl")
+            marker = os.path.join(os.environ["DATA"], "out", "eui-marker.json")
+            w = subprocess.Popen([AXREC, "stats", APPKEY, out, "--rate", mode[1], "--seconds", str(int(SEG)), "--marker", marker] + RECIPE + os.environ.get("AX_RECORD_ARGS", "").split())
         time.sleep(5)
         nm = names()
         s1 = snap(nm)
@@ -129,8 +137,11 @@ def main():
         s2 = snap(nm)
         if mode != "A":
             if w:
-                w.terminate()
-                w.wait()
+                if mode.startswith("R"):
+                    w.wait(timeout=SEG + 15)
+                else:
+                    w.terminate()
+                    w.wait()
             subprocess.run([AX, "noaccess", BUNDLE], env=dict(os.environ), capture_output=True)
             time.sleep(8 if APP == "chrome" else 3)
         r = {"doan": k, "che_do": mode, "do": diff(s1, s2)}

@@ -3052,6 +3052,7 @@ dependencies = [
  "serde_json",
  "sonora",
  "speaker-protocol",
+ "speaker-recipe",
  "speaker-worker",
  "sysinfo",
 ]
@@ -3229,7 +3230,9 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "speaker-ops",
  "speaker-protocol",
+ "speaker-recipe",
  "sys-locale",
  "tauri",
  "tauri-build",
@@ -5413,11 +5416,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "speaker-canary"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "speaker-ops",
+ "speaker-protocol",
+ "speaker-recipe",
+ "speaker-worker",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "speaker-ops"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "speaker-protocol",
+ "speaker-recipe",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "speaker-protocol"
 version = "0.1.0"
 dependencies = [
  "postcard",
  "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "speaker-recipe"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde",
+ "serde_json",
+ "speaker-protocol",
  "thiserror 2.0.21",
 ]
 
@@ -5428,13 +5474,16 @@ dependencies = [
  "anyhow",
  "candle-core",
  "candle-onnx",
+ "core-foundation 0.10.1",
  "libc",
  "prost",
  "rayon",
  "realfft",
+ "serde",
  "serde_json",
  "sha2 0.11.0",
  "speaker-protocol",
+ "speaker-recipe",
  "windows",
 ]
 

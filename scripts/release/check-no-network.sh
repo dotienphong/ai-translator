@@ -10,7 +10,7 @@
 # Chỉ đọc metadata và file, không build.
 #
 #   scripts/release/check-no-network.sh [--binary <file>] [package...]
-# Không có gì: lớp 1–3 cho speaker-worker và speaker-protocol. Chỉ `--binary`: chỉ lớp 4, không gọi cargo (job ký của
+# Không có gì: lớp 1–3 cho speaker-worker, speaker-protocol và speaker-recipe. Chỉ `--binary`: chỉ lớp 4, không gọi cargo (job ký của
 # release.yml không cài Rust).
 #
 # `NO_NETWORK_SRC_ROOT` (mặc định gốc repo): nơi tìm `crates/<package>/src` cho lớp 3; chỉ để tự kiểm script trên bản sao tạm.
@@ -23,7 +23,7 @@ if [ "${1:-}" = "--binary" ]; then
   shift 2
 fi
 if [ "$#" -eq 0 ] && [ -z "$binary" ]; then
-  set -- speaker-worker speaker-protocol
+  set -- speaker-worker speaker-protocol speaker-recipe
 fi
 banned_crates='^(reqwest|hyper|hyper-util|h2|h3|ureq|tokio|mio|socket2|rustls|native-tls|openssl|openssl-sys|curl|curl-sys|isahc|attohttpc|tungstenite|quinn)$'
 banned_src='std::net|TcpStream|TcpListener|UdpSocket|ToSocketAddrs|\bsocket\(|\bconnect\(|getaddrinfo|rustix::net|Win32_Networking|WinHttp|WinINet'

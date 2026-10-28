@@ -15,7 +15,8 @@ use candle_onnx::onnx::{
 };
 use prost::Message;
 use speaker_protocol::{
-    ErrorKind, PROTOCOL_VERSION, Request, Response, SegmentAudio, Source, SpeakerConfig, read_frame, write_frame,
+    ErrorKind, NamesSetup, PROTOCOL_VERSION, Request, Response, SegmentAudio, Source, SpeakerConfig, read_frame,
+    write_frame,
 };
 
 const EXE: &str = env!("CARGO_BIN_EXE_speaker-worker");
@@ -160,12 +161,14 @@ fn a_synthetic_model_loads_and_segments_get_voices() {
         model_path: model.display().to_string(),
         model_sha256: Some(sha256_hex(&model)),
         config: SpeakerConfig::default(),
+        names: NamesSetup::off(),
     });
     assert_eq!(
         w.recv(),
         Response::Ready {
             protocol_version: PROTOCOL_VERSION,
-            model_ok: true
+            model_ok: true,
+            reader_platform: speaker_worker::reader::PLATFORM
         }
     );
     w.send(&Request::SessionStart { unix_ms: 1 });
@@ -184,7 +187,7 @@ fn a_synthetic_model_loads_and_segments_get_voices() {
             ..
         }
     ));
-    assert!(matches!(w.recv(), Response::Voices { voices } if voices.len() == 1));
+    assert!(matches!(w.recv(), Response::Voices { voices, .. } if voices.len() == 1));
     w.send(&Request::Shutdown);
     let (ok, stderr) = w.finish();
     assert!(ok, "{stderr}");
@@ -199,12 +202,14 @@ fn a_missing_model_is_reported_not_fatal() {
         model_path: "/khong/co/model.onnx".into(),
         model_sha256: None,
         config: SpeakerConfig::default(),
+        names: NamesSetup::off(),
     });
     assert_eq!(
         w.recv(),
         Response::Ready {
             protocol_version: PROTOCOL_VERSION,
-            model_ok: false
+            model_ok: false,
+            reader_platform: speaker_worker::reader::PLATFORM
         }
     );
     w.send(&Request::Segment(SegmentAudio {
@@ -251,12 +256,14 @@ fn a_model_with_another_sha256_is_not_used() {
         model_path: synthetic_model(&dir).display().to_string(),
         model_sha256: Some("0".repeat(64)),
         config: SpeakerConfig::default(),
+        names: NamesSetup::off(),
     });
     assert_eq!(
         w.recv(),
         Response::Ready {
             protocol_version: PROTOCOL_VERSION,
-            model_ok: false
+            model_ok: false,
+            reader_platform: speaker_worker::reader::PLATFORM
         }
     );
     w.send(&Request::Shutdown);
@@ -330,6 +337,7 @@ fn a_silent_segment_opens_no_voice() {
         model_path: model.display().to_string(),
         model_sha256: Some(sha256_hex(&model)),
         config: SpeakerConfig::default(),
+        names: NamesSetup::off(),
     });
     assert!(matches!(w.recv(), Response::Ready { model_ok: true, .. }));
     let segment = |segment_id, pcm| {
@@ -360,7 +368,7 @@ fn a_silent_segment_opens_no_voice() {
             ..
         }
     ));
-    assert!(matches!(w.recv(), Response::Voices { voices } if voices.len() == 1));
+    assert!(matches!(w.recv(), Response::Voices { voices, .. } if voices.len() == 1));
     w.send(&Request::Shutdown);
     let (ok, stderr) = w.finish();
     assert!(ok, "{stderr}");
@@ -378,6 +386,7 @@ fn the_worker_lowers_its_priority() {
         model_path: "/khong/co/model.onnx".into(),
         model_sha256: None,
         config: SpeakerConfig::default(),
+        names: NamesSetup::off(),
     });
     w.recv();
     // SAFETY: chỉ đọc mức nice của tiến trình con.
@@ -386,4 +395,43 @@ fn the_worker_lowers_its_priority() {
     assert!(nice >= 10, "nice {nice}");
     w.send(&Request::Shutdown);
     assert!(w.finish().0);
+}
+
+/// Kế hoạch 04: `Speech`, `SetNames`, `PauseNames` không có trả lời; khung kế tiếp sau chúng là `Assign` của đoạn. Worker in phiên
+/// bản giao thức ra stderr lúc khởi động (QĐ 26).
+#[test]
+fn speech_set_names_and_pause_get_no_reply() {
+    let dir = temp_dir("speech");
+    let mut w = Worker::spawn();
+    let model = synthetic_model(&dir);
+    w.send(&Request::Load {
+        model_path: model.display().to_string(),
+        model_sha256: Some(sha256_hex(&model)),
+        config: SpeakerConfig::default(),
+        names: NamesSetup::off(),
+    });
+    assert!(matches!(w.recv(), Response::Ready { model_ok: true, .. }));
+    w.send(&Request::SessionStart { unix_ms: 1 });
+    w.send(&Request::Speech {
+        start_ms: 0,
+        end_ms: 512,
+    });
+    w.send(&Request::SetNames { enabled: true });
+    w.send(&Request::PauseNames);
+    w.send(&Request::Segment(SegmentAudio {
+        segment_id: 4,
+        start_ms: 0,
+        end_ms: 2_000,
+        source: Source::System,
+        pcm: chirp(32_000),
+    }));
+    assert!(matches!(w.recv(), Response::Assign { segment_id: 4, .. }));
+    w.send(&Request::Shutdown);
+    let (ok, stderr) = w.finish();
+    assert!(ok, "{stderr}");
+    assert!(
+        stderr.contains(&format!("giao thức phiên bản {}", speaker_protocol::PROTOCOL_VERSION)),
+        "{stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }
