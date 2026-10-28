@@ -157,8 +157,50 @@ test("bộ chuyển không mở được cuộc họp: mã 5, không chạy spea
   const { exitCode } = await runCanary({ app: "teams", cfg: parseConfig(config()), deps: b.deps });
   assert.equal(exitCode, 5);
   assert.equal(b.state.runs.length, 0);
-  assert.match(b.state.files["2026-10-27-teams.jsonl"], /bộ chuyển không mở được cuộc họp: Chrome chưa đăng nhập/);
+  assert.match(b.state.files["2026-10-27-teams.jsonl"], /bộ chuyển không mở được cuộc họp/);
   assert.deepEqual(readdirSync(b.tmpRoot), []);
+});
+
+test("nhật ký chỉ ghi lớp/mã lỗi của bộ chuyển, không ghi message (có thể chứa tên khách)", async (t) => {
+  const open = (err) => ({ async open() { throw err; } });
+  const coded = Object.assign(new Error("Khách Canary Khach A không vào được phòng"), { code: "ERR_JOIN_TIMEOUT" });
+  const named = new TypeError("Canary Khach B");
+  const wild = Object.assign(new Error("x"), { name: "Tên Có Khoảng Trắng", code: "Canary Khach A" });
+  for (const [err, want] of [[coded, "ERR_JOIN_TIMEOUT"], [named, "TypeError"], [wild, "Error"]]) {
+    const b = bench(t, { adapter: open(err) });
+    await runCanary({ app: "teams", cfg: parseConfig(config()), deps: b.deps });
+    const logged = b.state.files["2026-10-27-teams.jsonl"] + b.state.lines.join("\n");
+    assert.ok(!logged.includes("Canary Khach") && !logged.includes("Khách") && !logged.includes("Tên Có"), logged);
+    assert.equal(JSON.parse(b.state.files["2026-10-27-teams.jsonl"]).error, `bộ chuyển không mở được cuộc họp (${want})`);
+  }
+});
+
+test("mở họp chậm hơn leadSeconds: mốc 0 đã trôi, mã 5, không chạy speaker-canary, vẫn dọn và đóng họp", async (t) => {
+  let clock = Date.UTC(2026, 9, 27, 2, 10, 0);
+  let stopped = false;
+  const adapter = {
+    async open() {
+      clock += 25_000; // lead mặc định 20 giây
+      return { async stop() { stopped = true; } };
+    },
+  };
+  const b = bench(t, { adapter });
+  b.deps.now = () => clock;
+  const { exitCode } = await runCanary({ app: "teams", cfg: parseConfig(config()), deps: b.deps });
+  assert.equal(exitCode, 5);
+  assert.equal(b.state.runs.length, 0, "không chấm khi các lượt đầu đã trôi");
+  assert.equal(stopped, true);
+  assert.match(b.state.files["2026-10-27-teams.jsonl"], /mở họp chậm hơn leadSeconds/);
+  assert.deepEqual(readdirSync(b.tmpRoot), []);
+});
+
+test("mở họp kịp trước mốc 0 thì chạy bình thường", async (t) => {
+  let clock = Date.UTC(2026, 9, 27, 2, 10, 0);
+  const b = bench(t, { adapter: { async open() { clock += 5_000; return { async stop() {} }; } } });
+  b.deps.now = () => clock;
+  const { exitCode } = await runCanary({ app: "teams", cfg: parseConfig(config()), deps: b.deps });
+  assert.equal(exitCode, 0);
+  assert.equal(b.state.runs.length, 1);
 });
 
 test("luôn đóng cuộc họp (stop) dù speaker-canary lỗi, và lỗi khi dọn không làm hỏng kết quả", async (t) => {

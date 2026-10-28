@@ -22,6 +22,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /** Phiên bản AI Translator của repo này (`src-tauri/tauri.conf.json`), cho báo cáo. */
 export const repoAppVersion = (root = resolve(HERE, "../..")) => JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8")).version;
 
+/**
+ * Mã/lớp lỗi cố định của bộ chuyển để ghi nhật ký: KHÔNG ghi `message` (bộ chuyển có thể đưa tên khách vào đó). Chỉ nhận `code` hoặc
+ * `name` có dạng định danh ngắn; khác thì "Error".
+ */
+export function errorClass(e) {
+  const ok = (v, re) => (typeof v === "string" && re.test(v) ? v : null);
+  return ok(e?.code, /^[A-Z][A-Z0-9_]{0,39}$/) ?? ok(e?.name, /^[A-Za-z][A-Za-z0-9_]{0,39}$/) ?? "Error";
+}
+
 /** Bộ chuyển giả cho `--dry-run` và test: không mở gì. */
 export const dryAdapter = { async open() { return { async stop() {} }; } };
 
@@ -53,7 +62,12 @@ export async function runCanary({ app, cfg, deps }) {
     try {
       handle = await (await loadAdapter(app, appCfg)).open({ options: appCfg.options, guests: appCfg.guests, t0, schedule, log });
     } catch (e) {
-      error = `bộ chuyển không mở được cuộc họp: ${e.message}`;
+      error = `bộ chuyển không mở được cuộc họp (${errorClass(e)})`;
+      exitCode = 5;
+    }
+    // Mốc 0 đã tính trước khi mở: nếu mở xong mà mốc đã trôi thì các lượt đầu của lịch đã qua, chấm sẽ hỏng giả. Đây là hạ tầng thử chậm, không phải app họp.
+    if (exitCode === undefined && now() >= t0) {
+      error = `mở họp chậm hơn leadSeconds (${cfg.leadSeconds} giây): mốc 0 đã trôi, không chấm`;
       exitCode = 5;
     }
     if (exitCode === undefined) {
@@ -82,7 +96,7 @@ export async function runCanary({ app, cfg, deps }) {
     try {
       await handle?.stop();
     } catch (e) {
-      log(`${app}: dọn cuộc họp lỗi: ${e.message}`);
+      log(`${app}: dọn cuộc họp lỗi (${errorClass(e)})`);
     }
     rmSync(dir, { recursive: true, force: true });
   }

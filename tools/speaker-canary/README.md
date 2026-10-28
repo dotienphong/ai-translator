@@ -35,6 +35,7 @@ File JSON ở **ngoài repo** (ví dụ thư mục dữ liệu riêng của máy
 }
 ```
 
+- `leadSeconds` (5–300, mặc định 20): thời gian chờ từ lúc bắt đầu tới mốc 0 của lịch nói; bộ chuyển phải vào xong phòng và sẵn sàng trong khoảng này. Mở xong mà mốc 0 đã trôi thì lượt kiểm dừng với mã 5 (không chấm), nên với app vào phòng lâu (Teams, Meet) hãy tăng `leadSeconds`.
 - `machine`: nhãn của máy chạy kiểm tra (chữ, số, `.`, `_`, `-`); thành `device_id_hash` của báo cáo (SHA-256 của `canary|<nhãn>`). Mac và Windows dùng hai nhãn khác nhau.
 - `guests`: đúng tên hiển thị của hai khách trong cuộc họp thử. Tên này chỉ nằm trong file này và trong file lịch tạm (xóa sau mỗi lượt); không bao giờ vào log, kết quả hay báo cáo.
 - `options`: tùy chọn riêng của bộ chuyển (hồ sơ trình duyệt, đường dẫn file giọng đọc…).
@@ -59,7 +60,7 @@ node tools/speaker-canary/canary.mjs --app teams --config "$HOME/…/canary.json
 node tools/speaker-canary/canary.mjs --app teams --config "$HOME/…/canary.json" --dry-run
 ```
 
-Mã thoát: `0` đạt; `1` tình trạng hỏng (đã gửi báo cáo); `2` lỗi chạy `speaker-canary`; `3` chưa gửi được (mạng; gửi lại bằng `speaker-canary send --report <file>`); `4` server từ chối (**mã 3 và 4 che mã 1**: tình trạng thật, kể cả hỏng, nằm ở trường `result.state` của nhật ký, và báo cáo chưa gửi được giữ ở `<logDir>/<ngày>-<app>.report.json` để gửi lại); `5` bộ chuyển không mở được cuộc họp (hạ tầng thử hỏng, **không** gửi báo cáo của app họp; xem nhật ký); `6` cấu hình sai.
+Mã thoát: `0` đạt; `1` tình trạng hỏng (đã gửi báo cáo); `2` lỗi chạy `speaker-canary`; `3` chưa gửi được (mạng; gửi lại bằng `speaker-canary send --report <file>`); `4` server từ chối (**mã 3 và 4 che mã 1**: tình trạng thật, kể cả hỏng, nằm ở trường `result.state` của nhật ký, và báo cáo chưa gửi được giữ ở `<logDir>/<ngày>-<app>.report.json` để gửi lại); `5` bộ chuyển không mở được cuộc họp, hoặc mở xong mà mốc 0 (`leadSeconds` sau lúc bắt đầu) đã trôi (hạ tầng thử hỏng/chậm, **không** gửi báo cáo của app họp; xem nhật ký; nhật ký chỉ ghi mã/lớp lỗi của bộ chuyển, không ghi nội dung thông báo lỗi); `6` cấu hình sai.
 
 Nhật ký mỗi lượt: `<logDir>/<ngày>-<app>.jsonl` (một dòng JSON: ngày giờ, app, mã thoát, tình trạng, điểm; không có tên người).
 
