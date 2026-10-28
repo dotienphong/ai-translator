@@ -201,7 +201,71 @@ Lưu ý quan trọng: **máy KHÔNG rảnh trong lúc đo** (người dùng khá
 
 ## A-spk4 và nhãn muộn (Task 8)
 
-**Chưa chạy.** Chờ máy rảnh; không có số mới.
+**Kết luận: A-spk4 ĐẠT** (cận trên KTC 95% của cả ba chỉ số đều âm, xa mức đạt). Bật nhận giọng không làm chậm dịch trên M4 Pro,
+khi đọc tên bật với công thức "không app". Một điểm cần chú ý ở nhãn muộn (mục "Nhãn muộn" bên dưới): tỉ lệ khứ hồi ≤ 230 ms thấp hơn
+mốc 02 hơn 3 điểm; điều đó không làm chậm dịch.
+
+**Điều kiện đo.** Máy: Mac M4 Pro, 24 GiB, macOS 26.6.2, cắm điện (`AC Power`), loa `muted=true` và âm lượng 0 (canh trước và sau
+cả 16 lượt: 32/32 lần `true`; `session` cấp âm thanh ngoại tuyến, script không có lệnh nào phát ra thiết bị). `HEAD` `2b4d4184`, cây git
+sạch. Ba binary release dựng ngày 2026-10-28 (`latency-bench`, `speaker-worker` với `MACOSX_DEPLOYMENT_TARGET=14.2`, `asr-worker
+--features metal,shared-encode`; lúc dựng `asr-worker` cũng đặt `MACOSX_DEPLOYMENT_TARGET=14.2`, kế hoạch chỉ đặt cho hai binary đầu: không đổi gì
+về số đo). Script: bản chép của `$DATA/out/02/a-spk4/a-spk4-run.sh` ở `$DATA/out/07/a-spk4/` (thêm `--speaker-names-recipe
+bench/2026-10-26-nguoi-noi/khong-app.recipes.json`), chạy từng lượt qua `drive.sh` (cùng lệnh `one …` của script, thêm canh `muted` và ghi
+tiến trình ăn CPU vào `tai-top.tsv`), thứ tự `en` 1–3 rồi `mixed` 1–3, mỗi lượt tắt rồi bật. Mô hình: Whisper large-v3-turbo q5_0, Hy-MT2 1.8B
+Q8_0, `--end-silence-ms 50`. 16/16 lượt `rc=0`, 0 tiến trình phụ của phiên khác lúc bắt đầu lượt (`sidecar_la_truoc` toàn `-`).
+
+**Tải máy (chủ dự án đang mở Teams, Chrome và Defender; không đóng, không động tới).** Tải 1 phút trước mỗi lượt 2,0–6,7, trừ hai lượt
+liền nhau quanh 15:07: cuối `en` bật 3 và đầu `mixed` tắt 1 tải 1 phút nhảy lên 26,9 (`wdavdaemon_unprivileged` 56–60%; `epsext`, `mediaanalysisd`
+và `mds_stores` 34–41% ngay trước đó; đều của hệ thống, không phải của lượt đo). Không chạy lại vì hai lượt đó không lệch: `en` bật 3 A2 p50 762 (hai lượt bật
+kia 763, 761), `mixed` tắt 1 A2 p50 593 (hai lượt tắt kia 611, 597), `feed_lag_max_ms` 40 và 20. Mọi lượt `feed_lag_max_ms` 6–65 ms (< 100),
+0 khởi động lại tiến trình phụ, 0 câu `Skip`, câu đo/câu 21/21 và 20/20, hàng đợi dịch dài nhất 1 câu, gộp 0 câu. Cặp `en` 3 (p90 −2 ms) là cặp
+yếu nhất; KTC của từng session riêng (3 cặp) rộng và phần lớn cắt qua 0, chỉ mục `all` (6 cặp) đủ hẹp để kết luận.
+
+Bảng 12 lượt (ms; "chữ đầu" là `a2_first_p50_ms`; tải là `uptime` 1 phút trước → sau lượt):
+
+| Session | Lượt | Chế độ | A2 p50 | A2 p90 | Chữ đầu p50 | Feed lag max | Tải trước → sau |
+|---|---|---|---|---|---|---|---|
+| en | 1 | tắt | 819 | 967 | 448 | 17 | 6,30 → 3,47 |
+| en | 1 | bật | 763 | 892 | 415 | 27 | 3,47 → 2,78 |
+| en | 2 | tắt | 776 | 959 | 427 | 13 | 2,78 → 6,68 |
+| en | 2 | bật | 761 | 903 | 411 | 6 | 6,68 → 2,03 |
+| en | 3 | tắt | 788 | 902 | 427 | 65 | 2,11 → 2,43 |
+| en | 3 | bật | 762 | 900 | 418 | 40 | 2,43 → 26,88 |
+| mixed | 1 | tắt | 593 | 749 | 413 | 20 | 26,88 → 6,58 |
+| mixed | 1 | bật | 588 | 713 | 408 | 11 | 6,58 → 4,04 |
+| mixed | 2 | tắt | 611 | 740 | 421 | 20 | 4,04 → 4,83 |
+| mixed | 2 | bật | 571 | 703 | 390 | 25 | 4,83 → 2,77 |
+| mixed | 3 | tắt | 597 | 758 | 432 | 16 | 2,77 → 6,54 |
+| mixed | 3 | bật | 576 | 710 | 396 | 8 | 6,54 → 5,27 |
+
+Chênh (bật − tắt) và mức đạt, mục `all` (6 cặp, KTC 95% theo phân phối t, t = 2,571), so với `04-do.md`:
+
+| Chỉ số | Tắt (tb) | Bật (tb) | Chênh tb | Chênh từng cặp | KTC 95% | Cận trên | Mức đạt | Kết luận | Mốc 04 (chênh / KTC) |
+|---|---|---|---|---|---|---|---|---|---|
+| A2 p50 | 697,5 | 670,1 | −27,4 | −56; −14; −27; −6; −40; −21 | [−46,6; −8,2] | −8,2 | ≤ +20 | Đạt | −18,3 / [−29,0; −7,6] |
+| A2 p90 | 845,9 | 803,6 | −42,3 | −75; −56; −2; −36; −37; −47 | [−67,7; −16,8] | −16,8 | ≤ +50 | Đạt | −25,4 / [−37,2; −13,5] |
+| Chữ đầu p50 | 428,1 | 406,2 | −21,9 | −33; −16; −9; −5; −32; −36 | [−35,8; −7,9] | −7,9 | ≤ +20 | Đạt | −22,0 / [−31,8; −12,2] |
+
+Riêng từng session: `en` A2 p50 −32,4 / p90 −44,4 / chữ đầu −19,5; `mixed` −22,4 / −40,2 / −24,2 (KTC 3 cặp cắt qua 0, trừ `mixed` p90 [−55,7; −24,6]; cùng chiều
+với mốc 04). Bật nhanh hơn tắt ở 6/6 cặp cả ba chỉ số, giống 02 và 04: chưa rõ vì sao (nghi xung nhịp); chỉ kết luận
+"bật không làm chậm", không kết luận "bật làm nhanh hơn", và máy yếu (Windows i5) có thể khác. Chênh của lượt 07 lớn hơn 04 một chút (−27,4 so với −18,3),
+cùng cỡ.
+
+**Pha `s4` (AMI IS1009a, 300 s, hàng đợi dịch, 2 tắt + 2 bật):** 97 đoạn, 97 câu dịch, gộp 0, 0 `Skip`, hàng dài nhất 1 câu, `feed_lag_max_ms` 14–23, 0 khởi động
+lại; chờ lâu nhất 96 ms (tắt 1, tắt 2, bật 1) và 0 ms (bật 2): bật không làm hàng dài hơn. `mt_p50` 136/135 ms (tắt), 127/124 ms (bật).
+
+**Nhãn muộn (spec §4.4).** Gộp 6 lượt bật `s2` (372 đoạn): nhãn tới đúng lúc (trước kết quả nhận dạng) **365/372 = 98,1%**, muộn 7 (đi qua đường cập nhật nhãn
+muộn); mốc 99,6% ở 02, 98–100% ở 04: trong khoảng. 2 lượt bật `s4`: 193/194 = 99,5%. Khứ hồi nhãn p50 **121,5–162,3 ms** (mốc 81–165), p90 **219,8–239,2 ms** (mốc 202–231: ba lượt
+vượt 231, ở 239, 234 và 232). Đoạn ≤ 230 ms: **329/372 = 88,4%** ở `s2` (từng lượt: 42/50, 49/50, 42/50, 64/74, 65/74, 67/74), 185/194 = 95,4% ở `s4`; gộp
+514/566 = 90,8% (mốc 02: 97,6% gộp; riêng bộ 6 lượt `s2` của 02: 356/372 = 95,7%). **Thấp hơn mốc 02 hơn 3 điểm** (−7,3 điểm so với cùng bộ `s2`, −6,8 so với số gộp),
+nên ghi ra như kế hoạch dặn; không làm chậm dịch (nhãn vẫn tới trước chữ ở 98,1%), chỉ thêm đoạn có nhãn muộn hơn 230 ms. Chưa tách được nguyên nhân: tải máy tương đương
+lượt 02 (tải 1 phút 2,0–6,7) nhưng Defender, Teams và Chrome mở; từ lượt 02 mã đã đổi (nâng thư viện, tự hiệu chỉnh, đoạn đoán, bộ che tên) nên
+không phân biệt được "tải máy" với "mã mới" khi chưa đo lại cùng điều kiện. Hướng kiểm nếu cần: chạy lại `en`/`mixed` bật trên máy rảnh hơn, hoặc dựng bản 02 cạnh bản này.
+`speaker-worker` RSS đỉnh 135,7–160,7 MB, CPU tb 6,7–8,5% (cùng cỡ 02).
+
+**Chạy lại một lượt** (nếu cần, vẫn trong im lặng): `bash $DATA/out/07/a-spk4/a-spk4-run.sh one s2 <tên> $DATA/out/07/a-spk4/chay-lai` (ví dụ `en-on-3`), rồi
+`python3 -I $DATA/out/07/a-spk4/a-spk4-analyze.py $DATA/out/07/a-spk4 --thay <tên>`. Phân tích đầy đủ: `$DATA/out/07/a-spk4/phan-tich.txt`; tải máy: `tai-may.tsv`, `tai-top.tsv`.
+Không thuộc bước này: A-spk4 trên Windows i5 và với cuộc họp Teams đang mở (Task 18, Task 19).
 
 ## Soak (Task 9)
 
