@@ -52,7 +52,8 @@ test("mỗi trang có title, description, canonical, h1 duy nhất, lang đúng"
     const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
     const desc = decode(/<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "");
     // Chữ CJK rộng gần gấp đôi chữ Latin trên kết quả tìm kiếm (spec 2026-10-22-website-ja-zh-ko §5).
-    const [tMin, tMax, dMin, dMax] = CJK.has(p.lang) ? [10, 40, 50, 120] : [15, 70, 90, 165];
+    // Title trang chủ tiếng Việt do chủ dự án chọn (2026-10-28), liệt kê các kiểu nội dung nên dài hơn 70; Google có thể cắt bớt khi hiển thị.
+    const [tMin, tMax, dMin, dMax] = CJK.has(p.lang) ? [10, 40, 50, 120] : p.path === "/" ? [15, 120, 90, 165] : [15, 70, 90, 165];
     if (title.length < tMin || title.length > tMax) errors.push(`${p.path}: title ${title.length} ký tự: ${title}`);
     if (desc.length < dMin || desc.length > dMax) errors.push(`${p.path}: description ${desc.length} ký tự`);
     if (titles.has(title)) errors.push(`${p.path}: trùng title với ${titles.get(title)}`);

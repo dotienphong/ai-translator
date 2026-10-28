@@ -39,9 +39,9 @@ export default {
   id: "home",
   lang: "en",
   path: "/en/",
-  title: "Real-time translator for meetings and livestreams | AI Translator",
+  title: "AI Translator: real-time translator for meetings, livestreams & chat",
   description:
-    "Real-time translation for livestreams, videos and meetings: subtitles in English, Chinese, Japanese, Korean and Vietnamese. AI runs offline on your computer.",
+    "Real-time translation subtitles for Zoom, Teams, Meet, livestreams, YouTube and videos, plus Type & Translate for chat. AI runs offline on your computer.",
   software: true,
   modified: "2026-10-27",
   llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
@@ -54,7 +54,7 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · 10-day free trial</p>
-<h1 class="reveal">AI-translated subtitles for <em>every meeting</em>, running on your computer</h1>
+<h1 class="reveal">AI <em>real-time translation</em> for meetings, livestreams, YouTube, videos and chat messages</h1>
 <p class="lead reveal"><strong>AI Translator</strong> is an AI live translator for macOS and Windows: a desktop app that turns the audio playing on your computer into floating translated subtitles in real time, and translates the messages you type into the other person's language. The AI runs on your own machine, so your audio and meeting content never go to the cloud. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos or livestreams you watch on a computer.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/en/download/">Download ${icon("arrow-right")}</a>

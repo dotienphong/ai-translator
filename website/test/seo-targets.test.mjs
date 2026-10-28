@@ -91,7 +91,7 @@ const SEO_TARGETS = [
   { phrase: "dịch live trực tiếp", lang: "vi", id: "solutions-livestream", where: ["body"] },
   { phrase: "dịch live", lang: "vi", id: "solutions-livestream", where: ["body"], exact: true },
   { phrase: "dịch live tiktok", lang: "vi", id: "solutions-tiktok-live", where: ["title", "h1"] },
-  { phrase: "dịch livestream", lang: "vi", id: "home", where: ["title", "body"] },
+  { phrase: "dịch livestream", lang: "vi", id: "home", where: ["body"] },
   { phrase: "live video translator", lang: "en", id: "solutions-livestream", where: ["title", "h1"] },
   { phrase: "real time translation", lang: "en", id: "solutions-livestream", where: ["body"] },
   { phrase: "realtime translation", lang: "en", id: "solutions-livestream", where: ["body"] },

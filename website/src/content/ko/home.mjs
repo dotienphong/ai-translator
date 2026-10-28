@@ -39,9 +39,9 @@ export default {
   id: "home",
   lang: "ko",
   path: "/ko/",
-  title: "라이브·회의 실시간 번역 자막, 오프라인 | AI Translator",
+  title: "AI Translator: 회의·라이브·YouTube 실시간 번역",
   description:
-    "라이브 방송, 동영상, Zoom·Teams·Meet 회의에 실시간 번역 자막. 영어·중국어·일본어·한국어·베트남어 지원. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
+    "회의, 라이브 방송, YouTube, 동영상에 실시간 번역 자막. 입력 번역으로 채팅 답장도 상대방 언어로. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
   software: true,
   modified: "2026-10-27",
   schema: [
@@ -52,7 +52,7 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS(Apple 실리콘) · Windows 10/11 · 10일 무료 체험</p>
-<h1 class="reveal"><em>모든 회의</em>에 AI 번역 자막을, 내 컴퓨터에서</h1>
+<h1 class="reveal">회의·라이브·YouTube·동영상·채팅을 <em>AI 실시간 번역</em>으로</h1>
 <p class="lead reveal"><strong>AI Translator</strong>는 macOS와 Windows용 AI 실시간 번역 데스크톱 앱입니다. 컴퓨터에서 재생되는 소리를 실시간으로 화면 위에 떠 있는 번역 자막으로 바꾸고, 내가 입력한 메시지를 상대방의 언어로 번역합니다. AI가 내 컴퓨터에서 실행되므로 음성과 회의 내용이 클라우드로 전송되지 않습니다. Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상, 컴퓨터로 보는 라이브 방송에서 쓸 수 있습니다.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ko/download/">다운로드 ${icon("arrow-right")}</a>

@@ -39,9 +39,9 @@ export default {
   id: "home",
   lang: "zh",
   path: "/zh/",
-  title: "直播与会议实时翻译字幕，离线运行 | AI Translator",
+  title: "AI Translator：会议、直播、YouTube 实时翻译字幕与输入翻译",
   description:
-    "为直播、视频和 Zoom、Teams、Meet 会议提供实时翻译字幕，支持英语、中文、日语、韩语、越南语。AI 在你的电脑上运行，不经过云端。",
+    "为会议、直播、YouTube 和视频提供实时翻译字幕，输入翻译可把聊天回复译成对方的语言。AI 在你的电脑上运行，不经过云端。",
   software: true,
   modified: "2026-10-27",
   schema: [
@@ -52,7 +52,7 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple 芯片）· Windows 10/11 · 免费试用 10 天</p>
-<h1 class="reveal">为<em>每一场会议</em><span class="nowrap">提供</span> AI 翻译字幕，在你的电脑上运行</h1>
+<h1 class="reveal"><em>AI 实时翻译</em>会议、直播、YouTube、视频和聊天消息</h1>
 <p class="lead reveal"><strong>AI Translator</strong> 是一款适用于 macOS 和 Windows 的 AI 实时翻译桌面应用：把电脑上播放的音频实时变成悬浮在屏幕上的翻译字幕，并把你输入的消息翻译成对方的语言。AI 在你自己的电脑上运行，所以你的音频和会议内容不会被发送到云端。可用于 Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会、视频，以及你在电脑上观看的直播。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/zh/download/">下载 ${icon("arrow-right")}</a>

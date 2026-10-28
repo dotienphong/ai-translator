@@ -39,9 +39,9 @@ export default {
   id: "home",
   lang: "vi",
   path: "/",
-  title: "Dịch livestream và họp bằng phụ đề AI, chạy offline | AI Translator",
+  title: "Ứng dụng AI Translator dịch trực tiếp cho Cuộc Họp/Livestream/Youtube/Video. Gõ->Dịch tin nhắn trực tiếp",
   description:
-    "Phụ đề tiếng Việt dịch trực tiếp cho livestream, video và họp Zoom, Teams, Meet, Zalo: từ tiếng Anh, Trung, Nhật, Hàn. AI chạy trên máy, âm thanh không lên cloud.",
+    "Phụ đề dịch trực tiếp cho họp Zoom, Teams, Meet, livestream, YouTube, video; Gõ dịch tin nhắn sang tiếng người bên kia. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
   modified: "2026-10-27",
   llm: "Trang chủ: AI Translator là gì, dịch cuộc họp và livestream bằng phụ đề, Gõ dịch tin nhắn, xem lại lịch sử bản chép lời, hướng dẫn sử dụng bốn bước, dữ liệu ở lại trên máy, bảng giá và câu hỏi thường gặp.",
@@ -54,7 +54,7 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · Dùng thử Free 10 ngày</p>
-<h1 class="reveal">Phụ đề dịch <em>bằng&nbsp;AI</em> cho mọi cuộc họp, chạy ngay trên máy bạn</h1>
+<h1 class="reveal">Ứng dụng AI <em>dịch&nbsp;trực&nbsp;tiếp</em> cho Cuộc&nbsp;Họp, Livestream, YouTube, Video và tin&nbsp;nhắn</h1>
 <p class="lead reveal"><strong>AI Translator</strong> là app desktop dịch âm thanh đang phát trên máy thành phụ đề nổi trên màn hình, và dịch tin nhắn bạn gõ sang tiếng của người bên kia. AI chạy ngay trên máy, nên âm thanh và nội dung cuộc họp không lên cloud. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video hay livestream xem trên máy tính.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/tai-xuong/">Tải xuống ${icon("arrow-right")}</a>

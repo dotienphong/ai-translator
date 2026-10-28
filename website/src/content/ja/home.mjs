@@ -39,9 +39,9 @@ export default {
   id: "home",
   lang: "ja",
   path: "/ja/",
-  title: "ライブ配信と会議のリアルタイム翻訳字幕 | AI Translator",
+  title: "AI Translator：会議・ライブ配信・YouTube のリアルタイム翻訳",
   description:
-    "ライブ配信、動画、Zoom・Teams・Meet の会議にリアルタイム翻訳字幕。英語・中国語・日本語・韓国語・ベトナム語に対応。AI はパソコン上で動き、クラウドは使いません。",
+    "会議、ライブ配信、YouTube、動画にリアルタイム翻訳字幕。入力翻訳でチャットの返信も相手の言語に。AI はパソコン上で動き、クラウドは使いません。",
   software: true,
   modified: "2026-10-27",
   schema: [
@@ -52,7 +52,7 @@ export default {
 <section class="hero"><div class="container hero-grid">
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple シリコン）· Windows 10/11 · 10 日間の無料お試し</p>
-<h1 class="reveal">すべての会議に <em>AI 翻訳字幕</em> を。あなたのパソコン上で動きます</h1>
+<h1 class="reveal">会議・ライブ配信・YouTube・動画・チャットを <em>AI がリアルタイム翻訳</em></h1>
 <p class="lead reveal"><strong>AI Translator</strong> は、macOS と Windows 向けの、AI によるリアルタイム翻訳デスクトップアプリです。パソコンで再生されている音声をリアルタイムで画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳します。AI はあなたのパソコン上で動くため、音声や会議の内容がクラウドに送られることはありません。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、パソコンで見るライブ配信で使えます。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ja/download/">ダウンロード ${icon("arrow-right")}</a>
