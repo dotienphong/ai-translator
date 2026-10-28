@@ -57,6 +57,11 @@ impl OnlineClusterer {
         }
     }
 
+    /// Ngưỡng nhận giọng: `confidence` dưới ngưỡng này là đoán, không phải nhận ra.
+    pub fn theta(&self) -> f32 {
+        self.cfg.theta
+    }
+
     pub fn voice_count(&self) -> usize {
         self.voices.len()
     }

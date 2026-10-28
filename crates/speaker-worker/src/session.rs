@@ -411,15 +411,18 @@ impl<E: Embed> Worker<E> {
             && !self.names.paused
             && let Some(v) = a.voice
         {
-            self.names.matcher.segment(SegRec::new(
-                segment_id,
-                start_ms as i64,
-                end_ms as i64,
-                Some(v),
-                source == Source::Mic,
-                embedding,
-                a.updated,
-            ));
+            self.names.matcher.segment(
+                SegRec::new(
+                    segment_id,
+                    start_ms as i64,
+                    end_ms as i64,
+                    Some(v),
+                    source == Source::Mic,
+                    embedding,
+                    a.updated,
+                )
+                .guessed(a.confidence < self.clusterer.theta()),
+            );
         }
         self.settle_names(&mut out);
         self.push_voices_if_changed(&mut out);
@@ -810,6 +813,65 @@ mod tests {
         out.extend(replies(w.handle(seg_at(1, 10_000, 14_000, 100))));
         read(&mut w, 6_000, 16_000, &[("Lan", LAN), ("Minh", &[])], &mut out);
         (w, out)
+    }
+
+    /// Rà soát đợt A (A2): đủ `max_voices` giọng thì đoạn không giống giọng nào (sim < θ) bị ép vào giọng gần nhất với `confidence` dưới
+    /// θ; nhãn "Người N" vẫn như cũ nhưng đoạn đoán không được cộng bằng chứng tên vào giọng sai.
+    #[test]
+    fn a_forced_guess_does_not_give_the_voice_a_name() {
+        let mut w = named_worker(SpeakerConfig {
+            max_voices: 1,
+            ..SpeakerConfig::default()
+        });
+        let minh: &[(u64, u64)] = &[(5_000, 9_000), (15_000, 19_000)];
+        let mut out = Vec::new();
+        out.extend(replies(w.handle(seg_at(0, 0, 2_000, 100))));
+        read(&mut w, 0, 5_000, &[("Lan", &[]), ("Minh", minh)], &mut out);
+        let a1 = replies(w.handle(seg_at(1, 5_000, 9_000, -100)));
+        assert!(
+            matches!(a1[0], Response::Assign { voice: Some(1), confidence, .. } if confidence < 0.35),
+            "bị ép vào giọng 1 với confidence dưới θ: {:?}",
+            a1[0]
+        );
+        out.extend(a1);
+        read(&mut w, 5_000, 15_000, &[("Lan", &[]), ("Minh", minh)], &mut out);
+        out.extend(replies(w.handle(seg_at(2, 15_000, 19_000, -100))));
+        read(&mut w, 15_000, 22_000, &[("Lan", &[]), ("Minh", minh)], &mut out);
+        let (voices, _) = last_voices(&out);
+        assert_eq!(voices.len(), 1);
+        assert!(
+            voices[0].name.is_none(),
+            "đoạn đoán không lập bằng chứng tên: {:?}",
+            voices[0].name
+        );
+    }
+
+    /// Như trên với đoạn quá ngắn để nhúng (kế thừa giọng đoạn trước, `confidence` 0).
+    #[test]
+    fn short_inherited_segments_do_not_give_the_voice_a_name() {
+        let mut w = named_worker(SpeakerConfig::default());
+        let minh: &[(u64, u64)] = &[
+            (5_000, 5_400),
+            (6_000, 6_400),
+            (7_000, 7_400),
+            (8_000, 8_400),
+            (9_000, 9_400),
+            (10_000, 10_400),
+            (11_000, 11_400),
+            (12_000, 12_400),
+        ];
+        let mut out = Vec::new();
+        out.extend(replies(w.handle(seg_at(0, 0, 2_000, 100))));
+        read(&mut w, 0, 5_000, &[("Lan", &[]), ("Minh", minh)], &mut out);
+        for (i, &(s, e)) in minh.iter().enumerate() {
+            read(&mut w, s, e + 1_000, &[("Lan", &[]), ("Minh", minh)], &mut out);
+            let a = replies(w.handle(seg_at(i as u64 + 1, s, e, 100)));
+            assert!(matches!(a[0], Response::Assign { voice: Some(1), confidence, .. } if confidence == 0.0));
+            out.extend(a);
+        }
+        read(&mut w, 13_000, 20_000, &[("Lan", &[]), ("Minh", minh)], &mut out);
+        let (voices, _) = last_voices(&out);
+        assert!(voices[0].name.is_none(), "{:?}", voices[0].name);
     }
 
     #[test]

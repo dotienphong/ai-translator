@@ -74,6 +74,9 @@ pub struct SegRec {
     pub embedding: Option<Vec<f32>>,
     /// Đoạn đã vào tâm của giọng (`Assignment::updated`).
     pub contributed: bool,
+    /// Giọng của đoạn chỉ là đoán (`confidence` dưới θ: đoạn ngắn kế thừa giọng trước, hay bị ép vào giọng gần nhất khi đủ giọng): vẫn
+    /// mang nhãn "Người N" nhưng không bao giờ là bằng chứng cho tên (rà soát đợt A, A2).
+    pub guess: bool,
     settled: bool,
     evidence: Vec<(String, [i64; 3])>,
     /// Tên mà đoạn mang riêng (xem [`ATTRIBUTE_SHARE`]).
@@ -98,10 +101,17 @@ impl SegRec {
             mic,
             embedding,
             contributed,
+            guess: false,
             settled: false,
             evidence: Vec::new(),
             attributed: None,
         }
+    }
+
+    /// Đánh dấu giọng của đoạn là đoán (xem [`SegRec::guess`]).
+    pub fn guessed(mut self, guess: bool) -> Self {
+        self.guess = guess;
+        self
     }
 
     pub fn dur(&self) -> i64 {
@@ -109,25 +119,48 @@ impl SegRec {
     }
 }
 
-/// Bằng chứng của một tên cho một giọng: ms trùng, số đoạn, ms theo tín hiệu (chỉ báo, mic, tự học).
+/// Bằng chứng của một tên cho một giọng: ms trùng, số đoạn, ms theo tín hiệu (chỉ báo, mic, tự học). `guess_*` là phần của các đoạn
+/// "đoán" (xem [`SegRec::guess`]) đã nằm trong `ms`/`segs`/`by`: nó vẫn làm nặng thêm dấu hiệu gộp giọng (QĐ 25) và mẫu số của tỉ lệ,
+/// nhưng không được tính để đạt ngưỡng nhận tên (rà soát đợt A, A2).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Evidence {
     pub ms: i64,
     pub segs: u32,
     pub by: [i64; 3],
+    guess_by: [i64; 3],
+    guess_segs: u32,
 }
 
 impl Evidence {
-    fn apply(&mut self, by: [i64; 3], sign: i64) {
+    fn apply(&mut self, by: [i64; 3], guess: bool, sign: i64) {
         for (a, b) in self.by.iter_mut().zip(by) {
             *a += sign * b;
         }
+        if guess {
+            for (a, b) in self.guess_by.iter_mut().zip(by) {
+                *a += sign * b;
+            }
+        }
         self.ms += sign * by.iter().sum::<i64>();
-        self.segs = if sign > 0 {
-            self.segs + 1
-        } else {
-            self.segs.saturating_sub(1)
-        };
+        let step = |n: u32| if sign > 0 { n + 1 } else { n.saturating_sub(1) };
+        self.segs = step(self.segs);
+        if guess {
+            self.guess_segs = step(self.guess_segs);
+        }
+    }
+
+    /// ms trùng không tính các đoạn đoán.
+    fn real_ms(&self) -> i64 {
+        self.ms - self.guess_by.iter().sum::<i64>()
+    }
+
+    fn real_segs(&self) -> u32 {
+        self.segs.saturating_sub(self.guess_segs)
+    }
+
+    /// ms theo chỉ báo (công thức và tự học) không tính các đoạn đoán.
+    fn real_indicator(&self) -> i64 {
+        self.by[0] + self.by[2] - self.guess_by[0] - self.guess_by[2]
     }
 
     pub fn source(&self) -> NameSource {
@@ -322,10 +355,11 @@ impl NameMatcher {
         let old = self.segs[i].voice.replace(voice);
         if self.segs[i].settled {
             let ev = self.segs[i].evidence.clone();
+            let guess = self.segs[i].guess;
             if let Some(old) = old {
-                self.apply(old, &ev, -1);
+                self.apply(old, &ev, guess, -1);
             }
-            self.apply(voice, &ev, 1);
+            self.apply(voice, &ev, guess, 1);
         }
     }
 
@@ -340,7 +374,11 @@ impl NameMatcher {
                 let d = dst.entry(name).or_default();
                 d.ms += e.ms;
                 d.segs += e.segs;
+                d.guess_segs += e.guess_segs;
                 for (a, b) in d.by.iter_mut().zip(e.by) {
+                    *a += b;
+                }
+                for (a, b) in d.guess_by.iter_mut().zip(e.guess_by) {
                     *a += b;
                 }
             }
@@ -349,10 +387,10 @@ impl NameMatcher {
         self.held.remove(&from);
     }
 
-    fn apply(&mut self, voice: u32, ev: &[(String, [i64; 3])], sign: i64) {
+    fn apply(&mut self, voice: u32, ev: &[(String, [i64; 3])], guess: bool, sign: i64) {
         let t = self.totals.entry(voice).or_default();
         for (name, by) in ev {
-            t.entry(name.clone()).or_default().apply(*by, sign);
+            t.entry(name.clone()).or_default().apply(*by, guess, sign);
         }
     }
 
@@ -394,13 +432,15 @@ impl NameMatcher {
                 };
                 let dur = (end - start).max(1) as f64;
                 let total = |by: &[i64; 3]| by.iter().sum::<i64>() as f64;
+                let guess = self.segs[i].guess;
                 let attributed = ev
                     .iter()
                     .find(|(_, by)| total(by) >= ATTRIBUTE_SHARE * dur)
                     .filter(|(n, _)| ev.iter().all(|(m, by)| m == n || total(by) < ATTRIBUTE_OTHER * dur))
-                    .map(|(n, _)| n.clone());
+                    .map(|(n, _)| n.clone())
+                    .filter(|_| !guess);
                 if let Some(v) = voice {
-                    self.apply(v, &ev, 1);
+                    self.apply(v, &ev, guess, 1);
                 }
                 let s = &mut self.segs[i];
                 s.settled = true;
@@ -437,11 +477,11 @@ impl NameMatcher {
                 .map(|(n, e)| (n.clone(), *e));
             let ms_of = |name: &str| t.get(name).map_or(0, |e| e.ms);
             let qualifies = |e: &Evidence| {
-                e.ms >= NAME_MIN_MS
-                    && e.segs >= NAME_MIN_SEGMENTS
+                e.real_ms() >= NAME_MIN_MS
+                    && e.real_segs() >= NAME_MIN_SEGMENTS
                     && total > 0
                     && e.ms as f64 >= NAME_SHARE * total as f64
-                    && e.by[0] + e.by[2] >= MIN_INDICATOR_MS
+                    && e.real_indicator() >= MIN_INDICATOR_MS
             };
             let beats = |n: &str, e: &Evidence, old: &str| {
                 n == old || (e.ms as f64 >= SWITCH_RATIO * ms_of(old) as f64 && e.ms - ms_of(old) >= SWITCH_MIN_MS)
