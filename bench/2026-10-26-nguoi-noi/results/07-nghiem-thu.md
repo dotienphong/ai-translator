@@ -137,30 +137,123 @@ Kết quả: `test result: ok. 303 passed; 0 failed; 0 ignored; 657 filtered out
 
 Ghi chú: kế hoạch dự kiến 30–60 phút (LTO) nhưng lần này chỉ mất khoảng 4 phút (giải thích khả dĩ, chưa kiểm: `target/` của worktree đã có sẵn artefact release của các lượt trước); lần chạy đầu không có `dist/` nên `pnpm build` chưa chạy được (lỗi script của tôi: biến đường dẫn log rỗng), test vẫn đạt 303; chạy lại sau `pnpm build` thật, vẫn 303 đạt. Đĩa sau khi chạy: 21 GiB. Không có tiến trình nền nào còn sót.
 
-## A-spk1, A-spk2, A-spk7 (Task 7)
+## A-spk1, A-spk2, A-spk7 trên bản ứng viên (Task 7)
 
-Chờ Task 7.
+**Chưa chạy.** Cần máy rảnh và đĩa (bản release, bộ chấm Python trên `$DATA`); chờ chủ dự án. Không có số mới ở đây. Số cũ của kế hoạch 02 (qua `speaker-worker` thật, M4 Pro) ghi ở bảng A-spk bên dưới, ghi rõ là "chưa đo lại trên bản ứng viên".
 
 ## A-spk4 và nhãn muộn (Task 8)
 
-Chờ Task 8.
+**Chưa chạy.** Chờ máy rảnh; không có số mới.
 
 ## Soak (Task 9)
 
-Chờ Task 9.
+**Chưa chạy.** Soak > 1 giờ cần máy rảnh; không có số mới.
+
+## Kiểm cuối toàn nhánh (Task 15, 2026-10-28)
+
+`HEAD` `7aa157c7`, cây git sạch lúc bắt đầu và lúc kết thúc (trừ file biên bản này). Đĩa 16,8 GiB (cổng 14 GiB đạt). Không chạy app, Teams, âm thanh; không sửa mã nguồn. `CARGO_TARGET_DIR` của worktree, `CARGO_INCREMENTAL=0`. Mọi lệnh chạy nền, log riêng từng nhóm.
+
+### Số test cuối
+
+| Nhóm | Lệnh | Kết quả thật |
+|---|---|---|
+| fmt | `cargo fmt --all -- --check` | sạch (thoát 0) |
+| clippy | `cargo clippy --locked --workspace --all-targets -- -D warnings` | sạch (thoát 0); chỉ một cảnh báo từ build script `whisper-rs-sys` (bên thứ ba, có từ trước) |
+| Windows chéo | `scripts/check-windows.sh --locked` | thoát 0, không cảnh báo |
+| Rust workspace | `cargo test --locked --workspace` | **1 952 đạt, 0 lỗi, 25 bỏ qua** (52 mục chạy). Gồm app lib 960 đạt / 6 bỏ qua; `pipeline` lib 360; `speaker-worker` lib 167 đạt / 5 bỏ qua; `latency-bench` 115 / 1; `audio-capture` 92 / 4; `speaker-ops` 41 / 1; `pipeline` `lifecycle` 41, `speaker_client` 31; `asr-protocol` 21; `asr-worker` lib 35; `speaker-protocol` 15; `speaker-canary` 13; `worker_process` 10; `speaker-recipe` 8 |
+| asr-worker shared-encode | `cargo test --locked -p asr-worker --features shared-encode` | **53 đạt, 0 lỗi, 2 bỏ qua** |
+| ACL | `cargo test -p meeting-translator --lib -- acl_tests` | 7 đạt (gồm `the_overlay_only_gains_open_speaker_settings`) |
+| Không mã mạng | `bash scripts/release/check-no-network.sh` | sạch (speaker-worker, speaker-protocol, speaker-recipe; cây phụ thuộc hai nền tảng, feature Windows, mã nguồn) |
+| Giao diện | `pnpm build` rồi `pnpm exec vitest run` | build thoát 0; **35 file, 431 test đạt** |
+| Server | `pnpm run check` (typecheck, vectors, vitest, test:scripts, ui:check, dry-run) | thoát 0; vitest **47 file, 1 694 test đạt**; `node --test` script **46 test: 45 đạt, 0 lỗi** (1 bỏ qua); Web Admin trong `check`: 51 file / 1 159 test đạt, vite build ok; `wrangler deploy --dry-run` hai Worker ok |
+| Web Admin | `cd server/admin-ui && pnpm exec vitest run` | **51 file, 1 159 test đạt** |
+| Website | `cd website && pnpm test --test-reporter=tap` | **304 test: 298 đạt, 0 lỗi, 6 bỏ qua** (gồm `CORE_TECH`, `STALE_SPEAKER`, i18n ja/zh/ko, chính sách có nội dung người nói) |
+| `node --test` | release, `models/{manifest,update,speaker-manifest}`, `dev-env`, `run-dev-app`, `speaker-recipes/update`, `canary` (reporter `tap`) | **264 đạt, 0 lỗi, 0 bỏ qua** (yêu cầu ≥ 239) |
+| Python | `python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py'` | **83 test, OK** |
+
+Số so với trước: Rust workspace 1 949 (Task 1) → 1 952 (+3 test của Task 2); website 300 → 304 (+test của Task 10, 11 hai, 12); `node --test` 253 → 264. Không có test đỏ ở nhóm nào. Không chạy `pnpm install` mới (`--frozen-lockfile --offline`, "Lockfile is up to date"); `dist/` do `pnpm build` ghi là file bị bỏ qua của git. Công cụ chấm A-spk3 (Task 18) chưa có nên bỏ bước 2.
+
+### Quét repo công khai
+
+Danh sách file: `git diff --name-only origin/main...HEAD` bỏ `docs/superpowers/plans/` (349 file, tồn tại hết), cộng `git status` (0). `origin/main` đã fetch (`32850cf8`). Dùng `/usr/bin/grep`.
+
+- **Khóa/mã truy cập** (`BEGIN … PRIVATE`, `AKIA…`, `ghp_…`, `xox[bp]-`, `sk-…`): **0 dòng**.
+- **Đường dẫn cá nhân** (`/Users/`, `/home/<tên>`): 33 dòng ở 9 file, **tất cả là chuỗi giả hay tài liệu nói về việc che đường dẫn, không dòng nào thật**. Chỉ 7 dòng nằm trong phần thêm của nhánh; các dòng còn lại có sẵn ở `origin/main`.
+
+| File | Số dòng | Loại |
+|---|---|---|
+| `crates/latency-bench/src/latency.rs` | 11 | đường dẫn giả trong test của hàm bỏ tiền tố (`/home/dev/…`, `/Users/somebody/…`); có sẵn |
+| `src-tauri/src/diagnostics/{report,reporter,scrub}.rs` | 6 + 3 + 3 | tên giả `alice`, `bob`, `runner` làm đầu vào test của bộ lọc báo cáo; có sẵn |
+| `src-tauri/src/db.rs` | 1 | `/Users/someone/…` giả trong test; có sẵn |
+| `scripts/ui-preview/tauri-mock.ts` | 2 | đường dẫn giả `an` của IPC giả; có sẵn |
+| `crates/speaker-worker/src/reader/tree.rs` | 2 | `C:/Users/x`, `/Users/x` trong test bộ phát hiện đường dẫn (của nhánh) |
+| `scripts/speaker-recipes/make_fixture.py` | 1 | chú thích liệt kê chuỗi bị cấm trong công thức (của nhánh) |
+| `bench/2026-10-26-nguoi-noi/results/02-windows.md` | 4 | tài liệu về `--remap-path-prefix=$HOME=/home/user` (thay đường dẫn bằng chuỗi giả); không có đường dẫn thật (của nhánh) |
+
+- `docs/release/phat-hanh.md`: bốn dòng `/Users/…` có sẵn ở mục 14 cũ (`origin/main` có 4, `HEAD` có 4); nhánh không thêm dòng nào.
+- **Tên người thật**: tên "Đỗ Tiến Phong" (bên cung cấp, đã công khai trong `docs/legal` và `about.mjs` của `origin/main`) xuất hiện như cũ; nhánh không thêm. Các lần khớp "phong" trong phần thêm là chữ "phong bì" và chuỗi giả `phong2` trong test. Không có email, tên người tham dự thật; tên trong test của `speaker-canary` là tên giả.
+- **Công nghệ lõi trong `website/src/content`** (`eres2net|3d-speaker|candle|onnx|embedding|vector nhúng|speaker-worker|AXUIElement|UI Automation|accessibility api`): **0 dòng** (test `CORE_TECH` cũng đạt).
+
+## Bảng nghiệm thu A-spk1…A-spk7
+
+Mức đạt theo spec §12 (mục 3.3 spec chính). "Số cũ" là số của kế hoạch 02, đo qua `speaker-worker` thật trên M4 Pro; **chưa đo lại trên bản ứng viên 0.3.2**.
+
+| Mã | Mức đạt | Kết quả | File / lệnh | Trạng thái |
+|---|---|---|---|---|
+| A-spk1 | Dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80% (trung bình 4 bản ghi AMI) | số cũ: 91,6% (≥ 1 s), 84,8% (mọi dòng); chưa đo lại | `results/02-nhan-giong-worker.md`; Task 7 | **chờ** (Task 7 chưa chạy) |
+| A-spk2 | Dòng ≥ 1 s đúng người ≥ 85% (trung bình 8 bản ghi tiếng Việt) | số cũ: 93,9%; 7/8 bản ≥ 85%, thấp nhất 67,7%; chưa đo lại | `results/02-nhan-giong-worker.md`; Task 7 | **chờ** (đạt ở kế hoạch 02; đo lại ở Task 7) |
+| A-spk3 | Đúng tên ≥ 90%, sai tên ≤ 5% (Teams thật) | không có số | Task 18 (bộ chấm chưa có) | **chờ chủ dự án** |
+| A-spk4 | A2 p50 ≤ +20 ms, p90 ≤ +50 ms, chữ đầu ≤ +20 ms | số cũ M4 Pro: p50 −11,8 ms, p90 −26,4 ms, chữ đầu −18,2 ms (không chậm hơn); i5 chưa đo | `results/02-do-tre.md`; Task 8 | **chờ** (Task 8 chưa chạy; Windows chờ chủ dự án) |
+| A-spk5 | Tải trong ngân sách (≤ 8% một lõi, RAM ≤ 250 MB); Teams, trình duyệt không chậm rõ | số cũ: RAM 141,8 MB sau 92 phút; Windows chưa đo | `results/02-soak.md`, `results/ram.md`; Task 9 | **chờ** (soak bản ứng viên chưa chạy) |
+| A-spk6 | Họp thật tiếng Việt ≥ 3 người, macOS và Windows; chủ dự án đánh giá | không có | Task 17, 18 | **chờ chủ dự án** |
+| A-spk7 | `cargo deny`, `cargo audit`, không mã mạng trong worker, `overlay` chỉ thêm `open_speaker_settings`, báo cáo không có tên | `cargo deny` sạch, `cargo audit` chỉ sáu cảnh báo cũ (Task 1); không mã mạng sạch và binary worker release không mã mạng (Task 6, 15); 7 test `acl_tests` đạt (Task 15); test báo cáo không chứa tên nằm trong 960 test của app | Task 1, 6, 15 | **một phần đạt**; chạy lại trên bản ứng viên ở Task 7 Step 4 (chưa chạy) |
+
+Tóm tắt: không có mục nào "đạt" đầy đủ trên bản ứng viên; A-spk2, A-spk4, A-spk5 đạt ở số cũ, A-spk7 đạt phần chạy được; A-spk1, A-spk3, A-spk6 chưa có số hợp lệ. Bản app "ngủ" (không bật tính năng) không bị chặn bởi bảng này; **bật bằng manifest bị chặn** tới khi A-spk3 (Task 18) và pháp lý (Task 20) xong.
+
+## Các task phần A đã làm trên nhánh (đã kiểm)
+
+Task 0–6 và 10–14 xong và đã kiểm trước task này: thư viện (Task 1), công tắc "ngủ" (Task 2), chữ trong app năm ngôn ngữ (Task 3), giấy phép model và script manifest (Task 4), CI chạy test bản release (Task 5), bản release cục bộ (Task 6), chính sách 1.9 / EULA 1.6 nháp (Task 10), website năm ngôn ngữ (Task 11, 12), spec chính (Task 13), runbook mục 16 (Task 14). Task 7, 8, 9 chưa chạy.
 
 ## A-spk3 (Task 18)
 
-Chờ Task 18.
+Chờ chủ dự án (Teams thật, ba cuộc họp thử; công cụ chấm Task 18 chưa có).
 
 ## Windows (Task 19)
 
-Chờ Task 19.
+Chờ chủ dự án (máy Windows i5). `SHIPS_ON_WINDOWS = false` ở 0.3.2.
 
 ## A7 (Task 22)
 
-Chờ Task 22.
+Chờ chủ dự án (đăng manifest số 4 và kiểm bằng proxy).
+
+## Các mục chờ chủ dự án
+
+| Việc | Task | Điều kiện / ghi chú |
+|---|---|---|
+| Nghiệm thu A-spk1, A-spk2, A-spk7, A-spk4, soak trên bản ứng viên | 7, 8, 9 | cần máy rảnh và đĩa ≥ 18 GiB; không cần chủ dự án vận hành nhưng chủ dự án quyết lúc nào rảnh máy |
+| Gộp nhánh vào `main`, triển khai server (migration 0007, cron), đăng công thức, kiểm | 16, 17 | chủ dự án chạy; trước Task 18 |
+| A-spk3 với Teams thật (ba cuộc họp), A-spk6 họp thật tiếng Việt, đo Teams khi đang bị đọc | 18 | điều kiện của Task 22 (bật) |
+| Máy Windows i5 (A-spk4, A-spk5, bản ghi UI Automation) | 19 | không chặn bản ngủ; Windows giữ tắt |
+| Duyệt nội dung pháp lý và website, hỏi luật sư (dữ liệu sinh trắc học, tên người tham dự) | 20 | trước Task 22 (bật); bản ngủ phát hành được trước |
+| Ngày hiệu lực pháp lý, nâng 0.3.1 → 0.3.2, phát hành app "ngủ" | 21 | một tag mỗi lần; chờ `publish` xong |
+| Đăng model và manifest số 4 (bật), A7, deploy website | 22, 23 | sau Task 18 và 20; website sau khi đã bật |
+
+**Đề nghị với chủ dự án:** duyệt nội dung pháp lý (`docs/legal`) và website, hỏi luật sư, rồi cho phép Task 16.
 
 ## Chưa kiểm
 
-Chờ các Task sau; danh sách điều kiện đầu vào ở trên vẫn còn nguyên.
+Gộp từ điều kiện đầu vào ở trên, `06-van-hanh.md`, mục "Rủi ro và điều chưa biết" và "Để kế hoạch sau" của kế hoạch 07b:
+
+- **Trên bản ứng viên chưa đo lần nào:** A-spk1, A-spk2, A-spk4, A-spk7 (Task 7 Step 4), soak (Task 7, 8, 9 chưa chạy); mọi số trong bảng A-spk là số của kế hoạch 02.
+- **A-spk3 và A-spk6:** chưa có số với Teams thật; bộ đọc macOS chưa thử với app thật trong họp; trạng thái `Ok` (có tên, chỉ báo "đang nói") cần khách thật; chi phí đọc khi nhiều người tham dự và độ tốn của Teams khi bật trợ năng chưa đo.
+- **Quyền Trợ năng:** cấp quyền ngay lúc phiên đang chạy, tắt rồi mở lại quyền, sau mỗi cập nhật (ký ad-hoc, `cdhash` đổi) chưa kiểm hết.
+- **Windows:** tốc độ trên i5, RAM của B' và allocator, bản ghi UI Automation của Teams, `GetPackageFullName` (Teams MSIX), `GetFileVersionInfoW`, Task Scheduler, A-spk4/A-spk5; mới qua clippy chéo. Windows giữ tắt.
+- **Meet, Zoom:** chưa có bản ghi đạt tiêu chí; ngoài công thức. Nhãn Teams ngoài tiếng Anh và tiếng Việt chưa kiểm (06b Task 22).
+- **Đường vận hành thật:** tải công thức qua R2 thật; workflow `sign-recipes.yml` chưa chạy; email cảnh báo `speaker_health_degraded`, `speaker_canary_failed`; migration 0007 và cron trên production; bộ chuyển (cuộc họp thử với app chủ phòng thật) và quyền Trợ năng khi chạy bằng launchd.
+- **Chu kỳ nhận manifest:** app kiểm manifest tối đa mỗi ~25 giờ (không có đẩy tức thì); model tải ở phiên dịch đầu sau khi có mục `speaker`, "Người N" từ phiên sau (Task 14).
+- **"Ngủ/thức" chạy thật:** mới đọc mã và kiểm bản release cục bộ; kiểm với app cài thật ở Task 21–22.
+- **Giấy phép model:** văn bản Apache-2.0 không có dòng bản quyền ở nguồn; chưa có dòng Copyright nào (Task 4).
+- **Pháp lý:** chính sách 1.9 và EULA 1.6 là nháp, dòng phiên bản và ngày hiệu lực giữ nguyên; chưa hỏi luật sư.
+- **Kích thước đóng gói thật** `.dmg`/Windows: chỉ ước tính (≈ 11,6 MB macOS); số thật ở Task 21 Step 7. Worker release 4 275 488 byte, lớn hơn 2 867 152 byte của spec §4.1 (+49%) do bộ đọc tên.
+- **Ngoài phạm vi 0.3.2 (để sau):** bật Windows; Meet, Zoom vào công thức; hợp nhất vòng `tick`; kiểm tự động mức cả app; tách giọng bị gộp bằng tay; hỏi lại khi điều khoản đổi; ngưỡng `speaker_health` chỉnh theo số liệu thật.
+- **Không kiểm trong task này:** không chạy app, Teams, Chrome, Zoom hay âm thanh; không chạy `cargo deny`/`cargo audit` mới (số ở Task 1); không rà mã (giao cho hai người rà độc lập riêng).
