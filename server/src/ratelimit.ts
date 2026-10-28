@@ -31,7 +31,8 @@ export const LIMITS = {
   diag_global: 120,
   // Báo cáo tình trạng bộ đọc tên người nói (spec 2026-10-26-phan-biet-nguoi-noi §7.2) đi cùng endpoint nhưng đếm riêng, để không ăn
   // vào hạn mức của báo cáo lỗi: mỗi máy gửi tối đa vài báo cáo mỗi lần mở app (một cho mỗi ngày và mỗi cặp app họp, phiên bản).
-  // Chạm speaker_global thì cũng có cảnh báo diagnostics_flood.
+  // Chạm speaker_global thì có cảnh báo speaker_flood. speaker_ip rộng hơn diag_ip vì nhiều máy cùng một văn phòng (NAT) cùng mở app buổi sáng.
+  speaker_ip: 120,
   speaker_device: 20,
   speaker_global: 600,
   // Chat hỗ trợ (spec 2026-10-22 §2.7). Việc hỏi tin mới không đếm ở đây (mỗi lần đếm là một lần ghi D1): xem binding

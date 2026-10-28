@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 type World = ReturnType<typeof makeWorld>;
-const send = (w: World, body: unknown) => w.call("POST", "/v1/diagnostics", body);
+const send = (w: World, body: unknown, headers?: Record<string, string>) => w.call("POST", "/v1/diagnostics", body, headers);
 const rows = () => env.DB.prepare("SELECT * FROM speaker_health ORDER BY day, meeting_app, meeting_version").all().then((r) => r.results);
 const count = async (table: string) => (await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<{ n: number }>())?.n;
 
@@ -150,14 +150,39 @@ describe("POST /v1/diagnostics với kind speaker_health", () => {
     expect((await send(w, await health({ device_id_hash: await device(2) }))).status).toBe(202);
   });
 
-  it("chạm hạn mức toàn hệ thống: 429 và đúng lần đầu có cảnh báo diagnostics_flood", async () => {
+  it("chạm hạn mức toàn hệ thống: 429 và đúng lần đầu có cảnh báo speaker_flood", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     const w = makeWorld();
     for (let i = 0; i < LIMITS.speaker_global; i++) await hit(env, "speaker_global", "all", T0);
     expect((await send(w, await health())).status).toBe(429);
     expect((await send(w, await health())).status).toBe(429);
     const alerts = await env.DB.prepare("SELECT kind, count FROM ops_alerts").all();
-    expect(alerts.results).toEqual([{ kind: "diagnostics_flood", count: 1 }]);
+    expect(alerts.results).toEqual([{ kind: "speaker_flood", count: 1 }]);
+  });
+
+  it("cảnh báo tràn của báo cáo tình trạng nêu đúng loại và đúng số (600), không phải '120 báo cáo lỗi'", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let i = 0; i < LIMITS.speaker_global; i++) await hit(env, "speaker_global", "all", T0);
+    expect((await send(w, await health())).status).toBe(429);
+    expect(await sendAlerts({ DB: env.DB, ENVIRONMENT: "test", OPERATOR_EMAIL: "ops@example.com" }, w.deps.email, T0 + 3700)).toBe(1);
+    const mail = JSON.stringify(w.resend.sent[0]);
+    expect(mail).toContain("speaker_flood");
+    expect(mail).toContain(String(LIMITS.speaker_global));
+    expect(mail).not.toContain("120");
+  });
+
+  it("hạn mức IP riêng: gửi tình trạng từ 30+ máy cùng IP không ăn hạn mức IP của báo cáo lỗi; hết hạn mức IP tình trạng thì 429 mà báo cáo lỗi vẫn nhận", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const w = makeWorld();
+    for (let n = 1; n <= LIMITS.diag_ip + 1; n++) {
+      expect((await send(w, await health({ device_id_hash: await device(1000 + n) }))).status).toBe(202);
+    }
+    expect((await send(w, await validReport({ device_id_hash: await device(1) }))).status).toBe(202);
+    for (let i = 0; i < LIMITS.speaker_ip; i++) await hit(env, "speaker_ip", "203.0.113.9", T0);
+    expect((await send(w, await health({ device_id_hash: await device(2000) }), { "cf-connecting-ip": "203.0.113.9" })).status).toBe(429);
+    expect((await send(w, await validReport({ id: "R-0000-0002", device_id_hash: await device(3) }), { "cf-connecting-ip": "203.0.113.9" })).status).toBe(202);
   });
 
   it("báo cáo lỗi thường vẫn đi đường cũ (kind khác)", async () => {

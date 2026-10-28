@@ -20,6 +20,7 @@ export type AlertKind =
   | "order_check_failed"
   | "error_report_new"
   | "diagnostics_flood"
+  | "speaker_flood"
   | "speaker_health_degraded"
   | "speaker_canary_failed"
   | "support_zalo_failed"
@@ -92,6 +93,10 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   diagnostics_flood:
     "Endpoint báo cáo lỗi chạm trần toàn hệ thống (120 báo cáo mỗi giờ): có thể đang bị gửi tràn. Báo cáo bị từ chối (429) tới hết giờ. " +
     "Mở Web Admin, trang Báo cáo lỗi để xem nguồn, xóa báo cáo rác nếu cần.",
+  speaker_flood:
+    "Endpoint báo cáo tình trạng bộ đọc tên người nói chạm trần toàn hệ thống (600 báo cáo mỗi giờ): có thể đang bị gửi tràn. Báo cáo tình " +
+    "trạng bị từ chối (429) tới hết giờ; báo cáo lỗi thường không bị ảnh hưởng. Mở Web Admin, trang Báo cáo lỗi, tab Bộ đọc tên để xem " +
+    "số báo cáo bất thường; thư này chỉ có số lượng.",
   speaker_health_degraded:
     "Bộ đọc tên người nói: một phiên bản của Teams, Meet hay Zoom có từ 30% báo cáo tình trạng hỏng (không đọc được tên, không thấy ai " +
     '"đang nói", hay app họp không trả lời), từ 5 báo cáo trong 3 ngày qua. Có thể app họp vừa đổi giao diện. Mở Web Admin, trang Báo ' +
