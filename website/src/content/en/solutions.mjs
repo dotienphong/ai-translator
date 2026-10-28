@@ -67,7 +67,7 @@ ${sectionHead({ eyebrow: "Honest limits", title: "When AI Translator is not the 
 ${checkList([
   "<strong>You need the other people to hear your translated voice.</strong> AI Translator subtitles go one way only, from the audio playing on your computer into your language. It does not translate your voice and play it into the meeting; for written replies you can use <a href=\"/en/guide/type-and-translate/\">Type &amp; Translate</a>.",
   "<strong>You need to record the meeting.</strong> The app does not record audio to disk. It keeps a text transcript only, and saving history is a Pro feature that is off by default.",
-  "<strong>You need automatic minutes, summaries or speaker labels.</strong> Not available.",
+  "<strong>You need automatic minutes or summaries.</strong> Not available.",
   "<strong>You use an Intel Mac, Windows ARM64, or a Windows PC whose CPU lacks AVX2.</strong> AI Translator runs on macOS 14.2 or later on Apple Silicon and on Windows 10/11 64-bit (x64) with a CPU that supports AVX2.",
   "<strong>Your computer has less than 8 GB of RAM,</strong> or you need a language beyond the five above: the app cannot cover that yet.",
   "<strong>You have no Vietnamese bank account and you are in a country where Creem does not accept card payments.</strong> International cards go through Creem, which does not accept buyers from some countries (per Creem's list), and there is no PayPal. Then there is no way to pay for a paid plan yet; the Free trial still works.",

@@ -2697,3 +2697,60 @@ test("chính sách quyền riêng tư và EULA nói về phân biệt người n
   }
   assert.deepEqual(errors, []);
 });
+
+// ---- Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §10; kế hoạch 07): câu cũ "chưa có / không biết ai đang nói" ----
+const STALE_SPEAKER = [
+  { id: "vi: không biết ai đang nói", re: /không\s+biết\s+ai\s+đang\s+nói/iu },
+  { id: "vi: tóm tắt tự động hoặc biết ai đang nói", re: /hoặc\s+biết\s+ai\s+đang\s+nói/iu },
+  { id: "vi: lộ trình phân biệt ai đang nói", re: /Phân\s+biệt\s+ai\s+đang\s+nói\s+trong\s+phụ\s+đề/iu },
+  { id: "en: does not know who is speaking", re: /does\s+not\s+know\s+who\s+is\s+speaking/i },
+  { id: "en: summaries or speaker labels", re: /summaries\s+or\s+speaker\s+labels/i },
+  { id: "en: roadmap telling speakers apart", re: /Telling\s+speakers\s+apart\s+in\s+the\s+subtitles/i },
+  { id: "ja: 誰が話しているかは区別しません", re: /誰が話しているかは区別しません/ },
+  { id: "ja: 話者の区別が必要、対応していません", re: /話者の区別が必要。\s*対応していません/ },
+  { id: "ja: 字幕で話者を区別する", re: /字幕で話者を区別する/ },
+  { id: "zh: 不会区分是谁在说话", re: /不会区分是谁在说话/ },
+  { id: "zh: 区分说话人，暂不提供", re: /区分说话人。\s*暂不提供/ },
+  { id: "zh: 在字幕中区分不同的说话人", re: /在字幕中区分不同的说话人/ },
+  { id: "ko: 누가 말하는지는 구분하지 않습니다", re: /누가 말하는지는 구분하지 않습니다/ },
+  { id: "ko: 화자 구분이 필요하다, 지원하지 않습니다", re: /화자 구분이 필요하다\.\s*지원하지 않습니다/ },
+  { id: "ko: 자막에서 화자 구분하기", re: /자막에서 화자 구분하기/ },
+];
+const STALE_SPEAKER_MUST_CATCH = [
+  "Bạn cần biên bản, tóm tắt tự động hoặc biết ai đang nói. Chưa có.",
+  "app dịch từng câu theo âm thanh nghe được và không biết ai đang nói.",
+  "Phân biệt ai đang nói trong phụ đề",
+  "You need automatic minutes, summaries or speaker labels. Not available.",
+  "translates sentence by sentence from the sound it hears and does not know who is speaking.",
+  "Telling speakers apart in the subtitles",
+  "アプリは聞こえた音を 1 文ずつ翻訳し、誰が話しているかは区別しません。",
+  "議事録の自動作成、要約、話者の区別が必要。対応していません。",
+  "字幕で話者を区別する",
+  "应用根据听到的声音逐句翻译，不会区分是谁在说话。",
+  "你需要自动生成会议纪要、摘要或区分说话人。暂不提供。",
+  "在字幕中区分不同的说话人",
+  "앱은 들리는 소리를 문장 단위로 번역하며, 누가 말하는지는 구분하지 않습니다.",
+  "자동 회의록, 요약, 화자 구분이 필요하다. 지원하지 않습니다.",
+  "자막에서 화자 구분하기",
+];
+const STALE_SPEAKER_MUST_KEEP = [
+  "Bạn cần biên bản hoặc tóm tắt tự động. Chưa có.",
+  "Phụ đề có thể hiện mỗi người một màu và tên từ Teams bản cài trên macOS.",
+  "Hiện tên người đang nói từ Google Meet và Zoom, và phân biệt người nói trên Windows",
+  "You need automatic minutes or summaries. Not available.",
+  "Showing speaker names from Google Meet and Zoom, and telling speakers apart on Windows",
+  "議事録の自動作成や要約が必要。対応していません。",
+  "你需要自动生成会议纪要或摘要。暂不提供。",
+  "자동 회의록이나 요약이 필요하다. 지원하지 않습니다.",
+];
+
+test("luật câu cũ về người nói (STALE_SPEAKER) bắt câu cũ và không bắt câu đúng", () => {
+  const missed = STALE_SPEAKER_MUST_CATCH.filter((s) => staleHits(s, STALE_SPEAKER).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_SPEAKER_MUST_KEEP.filter((s) => staleHits(s, STALE_SPEAKER).length > 0).map((s) => `${s} → ${staleHits(s, STALE_SPEAKER).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site còn câu cũ 'chưa có / không biết ai đang nói'", async () => {
+  assert.deepEqual(scanStale(await siteTexts(), STALE_SPEAKER), []);
+});

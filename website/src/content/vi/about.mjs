@@ -89,7 +89,7 @@ ${sectionHead({ eyebrow: "Phía trước", title: "Chúng tôi đang cân nhắc
 ${callout({ kind: "warn", title: "Đây chưa phải cam kết.", text: "Danh sách dưới đây là các hướng chúng tôi đang cân nhắc cho giai đoạn kế tiếp. Chưa có ngày, chưa có thứ tự cố định, và từng mục có thể thay đổi hoặc bị bỏ tùy phản hồi của người dùng." })}
 <div class="prose">
 <ul>
-<li>Phân biệt ai đang nói trong phụ đề</li>
+<li>Hiện tên người đang nói từ Google Meet và Zoom, và phân biệt người nói trên Windows</li>
 <li>Hỗ trợ Windows ARM64</li>
 <li>Thu âm thanh theo từng app trên Windows</li>
 <li>Dịch hai chiều bằng giọng nói, để giọng của bạn cũng được dịch cho người cùng họp</li>

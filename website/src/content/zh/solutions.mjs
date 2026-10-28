@@ -65,7 +65,7 @@ ${sectionHead({ eyebrow: "坦诚说明局限", title: "哪些情况不适合 AI 
 ${checkList([
   "<strong>你需要让其他人听到你翻译后的声音。</strong>AI Translator 的字幕只有一个方向，把电脑上播放的音频翻译成你的语言。它不会翻译你的声音并播放到会议中；如需书面回复，可以使用<a href=\"/zh/guide/type-and-translate/\">输入翻译</a>。",
   "<strong>你需要录制会议。</strong>应用不会把音频录制到磁盘。它只保留文字转写内容，而保存历史记录是默认关闭的 Pro 功能。",
-  "<strong>你需要自动生成会议纪要、摘要或区分说话人。</strong>暂不提供。",
+  "<strong>你需要自动生成会议纪要或摘要。</strong>暂不提供。",
   "<strong>你使用的是 Intel Mac、Windows ARM64，或者 CPU 不支持 AVX2 的 Windows 电脑。</strong>AI Translator 可在 Apple 芯片上的 macOS 14.2 或更高版本，以及 CPU 支持 AVX2 的 Windows 10/11 64 位（x64）上运行。",
   "<strong>你的电脑内存不足 8 GB，</strong>或者你需要上述五种语言以外的语言：应用目前还无法满足。",
   "<strong>你没有越南银行账户，而且所在国家不在 Creem 接受银行卡付款的范围内。</strong>国际银行卡通过 Creem 付款，而 Creem 不接受部分国家的买家（按 Creem 的列表），也没有 PayPal。这种情况下目前无法为付费套餐付款；Free 试用仍然可以使用。",
