@@ -163,6 +163,10 @@ const GROUPS = [
         a: `<p>Yes. In Settings › Audio, choose the <strong>Microphone</strong> source (people in the room only) or <strong>Computer audio + Microphone</strong> (hybrid meetings). A laptop microphone works best for people speaking nearby, about 1&nbsp;m away, in a quiet room; use an external microphone for larger rooms. With Computer audio + Microphone, someone in the room who speaks at the same moment as someone online may be missed; headphones give the best results. When you choose a source with the microphone, the app captures it for the whole session, even if you have muted yourself in the meeting app; the audio stays in RAM and is never written to disk or sent anywhere. See <a href="/en/features/#microphone">how it works</a>.</p>`,
       },
       {
+        q: "Does it show which person is speaking?",
+        a: `<p>On macOS, yes. From version 0.3.2 the subtitles can give each voice its own color and label (“Speaker 1”, “Speaker 2”), and when you translate a meeting in the Microsoft Teams desktop app the app can show the <strong>names of the people speaking</strong>, read from the meeting window, once it is reasonably sure; otherwise it keeps the generic label. Google Meet and Zoom names, and Windows, are not available yet. Two people with very similar voices can share a label, and when people talk over each other a label can be wrong. It is on by default on every plan and you can turn it off in Settings › Subtitles › Speakers. <a href="/en/guide/subtitle-bar-and-shortcuts/#speakers">How it works</a>.</p>`,
+      },
+      {
         q: "How do I uninstall AI Translator?",
         a: `<p>On macOS, first choose Settings › Privacy › Delete models and data, then drag the app to the Trash (macOS gives no prompt when you remove an app). On Windows, uninstall from Settings › Apps › Installed apps; the uninstaller has an option to delete app data, which also removes the models (see the <a href="/en/guide/install-windows/#uninstall">guide</a>). Deleting data or uninstalling does not remove your license or the quota you have left.</p>`,
       },

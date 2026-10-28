@@ -2754,3 +2754,35 @@ test("luật câu cũ về người nói (STALE_SPEAKER) bắt câu cũ và khô
 test("không nguồn chữ nào của site còn câu cũ 'chưa có / không biết ai đang nói'", async () => {
   assert.deepEqual(scanStale(await siteTexts(), STALE_SPEAKER), []);
 });
+
+// ---- Phân biệt người nói (kế hoạch 07): nội dung hướng dẫn, hỏi đáp, dữ liệu và bảo mật ----
+const SPEAKER_PAGES = {
+  vi: { guide: "/huong-dan/thanh-phu-de-va-phim-tat/", faq: "/cau-hoi-thuong-gap/", data: "/bao-mat-du-lieu/" },
+  en: { guide: "/en/guide/subtitle-bar-and-shortcuts/", faq: "/en/faq/", data: "/en/data-security/" },
+};
+
+test("hướng dẫn thanh phụ đề, hỏi đáp, dữ liệu và bảo mật nói đúng về người nói (vi, en): đúng chữ của app, đúng phạm vi", async () => {
+  const errors = [];
+  for (const [lang, pages] of Object.entries(SPEAKER_PAGES)) {
+    const d = await appDict(lang);
+    const guide = plainAmp(textOf(htmlByPath.get(pages.guide)));
+    for (const key of ["settings.speakers.title", "transcript.speaker.participants", "transcript.speaker.merge"]) {
+      if (!guide.includes(plainAmp(d[key]))) errors.push(`${pages.guide}: thiếu chữ của app "${d[key]}" (${key})`);
+    }
+    const need = {
+      vi: ["macOS", "Microsoft Teams", "Người 1", "chưa có tên tự động", "Windows", "Trợ năng", "chỉ khi bạn bật Lưu lịch sử", "nói chồng"],
+      en: ["macOS", "Microsoft Teams", "Speaker 1", "not available yet", "Windows", "Accessibility", "only when you turn on Save history", "talk over each other"],
+    }[lang];
+    for (const n of need) if (!guide.includes(n)) errors.push(`${pages.guide}: thiếu "${n}"`);
+    const data = plainAmp(textOf(htmlByPath.get(pages.data)));
+    const needData = {
+      vi: ["Đặc điểm giọng", "tự xóa khi hết phiên", "không dùng để xác định danh tính", "công thức đọc tên", "chưa đo bằng proxy"],
+      en: ["Voice features", "deleted automatically when the session ends", "not used to identify anyone", "name-reading recipe", "not measured with the proxy yet"],
+    }[lang];
+    for (const n of needData) if (!data.includes(n)) errors.push(`${pages.data}: thiếu "${n}"`);
+    const faq = plainAmp(textOf(htmlByPath.get(pages.faq)));
+    const needFaq = { vi: ["tên từng người nói", "Microsoft Teams"], en: ["names of the people speaking", "Microsoft Teams"] }[lang];
+    for (const n of needFaq) if (!faq.includes(n)) errors.push(`${pages.faq}: thiếu "${n}"`);
+  }
+  assert.deepEqual(errors, []);
+});

@@ -71,13 +71,26 @@ ${facts([
 </tbody></table></div>
 <p>Trên macOS, Gõ dịch xin quyền Trợ năng (Accessibility) chỉ để gửi tổ hợp dán ⌘V vào ô chat bạn đang gõ. App không đọc chữ, nội dung hay clipboard của app khác; không cấp quyền thì app chỉ chép bản dịch để bạn tự dán (xem <a href="/huong-dan/go-dich/#quyen-tro-nang">Gõ dịch</a>).</p>
 
+<h2 id="nguoi-noi">Phân biệt người nói và đọc tên</h2>
+<p>Tính năng bật sẵn trên macOS (từ bản 0.3.2) và bạn tắt được ở Cài đặt › Phụ đề › Người nói. Trong đó không có gì gửi âm thanh hay tên đi đâu.</p>
+<div class="table-wrap" role="region" aria-label="Dữ liệu dùng để phân biệt người nói" tabindex="0"><table>
+<thead><tr><th scope="col">Dữ liệu</th><th scope="col">Cách xử lý</th></tr></thead>
+<tbody>
+<tr><th scope="row">Đặc điểm giọng</th><td>App tạm thời phân tích giọng trong âm thanh đang dịch, ngay trên máy bạn, để biết câu nào do cùng một người nói. Chỉ nằm trong RAM và tự xóa khi hết phiên. Không ghi xuống đĩa, không gửi đi, không có trong log hay báo cáo lỗi, không dùng để xác định danh tính và không nhớ một người qua các phiên.</td></tr>
+<tr><th scope="row">Tên người tham dự</th><td>Trên macOS, chỉ từ cửa sổ cuộc họp của app Microsoft Teams cài trên máy: tên hiển thị, trạng thái mic và dấu “đang nói”. Không đọc chat, nội dung chia sẻ, cửa sổ khác; không chụp màn hình. Tên chỉ nằm trong RAM, và chỉ được lưu khi bạn bật Lưu lịch sử (Pro), trong lịch sử đã mã hóa.</td></tr>
+<tr><th scope="row">Quyền Trợ năng</th><td>macOS hỏi quyền này (thanh phụ đề hiện một dòng mời; app không tự bật hộp thoại của hệ thống). App không bấm hay gõ gì trong Teams. Trong lúc dịch một cuộc họp, app bật chế độ trợ năng của Teams; chế độ này còn bật tới khi Teams được khởi động lại.</td></tr>
+<tr><th scope="row">Công thức đọc tên</th><td>Một tệp mô tả nhỏ (không có mã chạy) có chữ ký số, tải từ máy chủ phát hành của chúng tôi khi mở app và mỗi 6 giờ. Không dùng để xác định danh tính; yêu cầu tải không mang dữ liệu nào của bạn.</td></tr>
+<tr><th scope="row">Báo cáo tình trạng</th><td>Khi báo cáo lỗi bật, tối đa một báo cáo mỗi ngày cho mỗi ứng dụng họp và phiên bản: phiên bản, trạng thái, số phút đọc được trên tổng số, và mô tả loại phần tử giao diện. Không có tên người tham dự, không có chữ trong cuộc họp; giữ 60 ngày.</td></tr>
+</tbody></table></div>
+<p>Tính năng này chưa đo bằng proxy như phần còn lại của app (xem “Chúng tôi đã kiểm tra điều đó thế nào?”). Toàn văn (kể cả công thức đọc tên) ở mục 2, 3, 4 và 10 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>
+
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
 <p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ ở Gõ dịch. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn), cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi. Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
 <tr><th scope="row">api.aitranslator.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi, chat hỗ trợ; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email và ngôn ngữ giao diện của app khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch); tin chat hỗ trợ bạn gửi, kèm dòng thông tin máy nếu bạn để tích và email nếu bạn tự để lại (chỉ khi bạn dùng chat)</td></tr>
-<tr><th scope="row">releases.aitranslator.vn</th><td>Tải model và kiểm tra, tải bản cập nhật</td><td>Chỉ yêu cầu tải file</td></tr>
+<tr><th scope="row">releases.aitranslator.vn</th><td>Tải model (gồm model nhận giọng, khoảng 26 MB, khi tính năng bật) và kiểm tra, tải bản cập nhật, và tải công thức đọc tên</td><td>Chỉ yêu cầu tải file</td></tr>
 <tr><th scope="row">Trang thanh toán PayOS (pay.payos.vn)</th><td>Thanh toán VietQR khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
 <tr><th scope="row">Trang thanh toán Creem (www.creem.io)</th><td>Thanh toán bằng thẻ quốc tế khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app. Email bạn nhập đi từ máy chủ của chúng tôi sang Creem, không đi từ app (xem bảng “Bên nào khác xử lý dữ liệu?”)</td></tr>
 <tr><th scope="row">aitranslator.vn (website này)</th><td>Liên kết ngoài (chính sách, hỗ trợ, trang tải) mở bằng trình duyệt hệ thống</td><td>App không gửi gì</td></tr>
