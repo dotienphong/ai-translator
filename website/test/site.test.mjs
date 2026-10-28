@@ -2648,3 +2648,44 @@ test("nguồn micro: nội dung mới nói giới hạn thật (nói chen, tai n
   }
   assert.deepEqual(errors, []);
 });
+
+// ---- Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §10; kế hoạch 07): pháp lý ----
+
+test("chính sách quyền riêng tư và EULA nói về phân biệt người nói: đặc điểm giọng chỉ trong RAM, tên đọc từ cửa sổ họp Teams, Trợ năng, công thức tải từ xa, báo cáo tình trạng không có tên", () => {
+  const needs = {
+    "/chinh-sach-quyen-rieng-tu/": [
+      "Đặc điểm giọng để phân biệt người nói",
+      "tự xóa khi hết phiên",
+      "không dùng nó để xác định danh tính",
+      "Tên người tham dự đọc từ cuộc họp",
+      "cửa sổ cuộc họp Microsoft Teams bản cài",
+      "Không đọc chat",
+      "chế độ trợ năng của Teams",
+      "Công thức đọc tên",
+      "Báo cáo tình trạng của bộ đọc tên",
+      "không có tên người",
+      "giữ 60 ngày",
+    ],
+    "/en/privacy/": [
+      "Voice features used to tell speakers apart",
+      "deleted automatically when the session ends",
+      "does not use it to identify anyone",
+      "Participant names read from the meeting",
+      "Microsoft Teams desktop meeting window",
+      "does not read the chat",
+      "accessibility mode of Teams",
+      "Name-reading recipe",
+      "Name-reader status report",
+      "no participant names",
+      "kept 60 days",
+    ],
+    "/dieu-khoan/": ["hiện tên người tham dự đọc từ cửa sổ cuộc họp", "Nhãn người nói và tên do ứng dụng gán tự động có thể sai"],
+    "/en/terms/": ["shows the names of participants read from the meeting window", "Speaker labels and names assigned automatically can be wrong"],
+  };
+  const errors = [];
+  for (const [urlPath, list] of Object.entries(needs)) {
+    const text = textOf(htmlByPath.get(urlPath));
+    for (const n of list) if (!text.includes(n)) errors.push(`${urlPath}: thiếu "${n}"`);
+  }
+  assert.deepEqual(errors, []);
+});
