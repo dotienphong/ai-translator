@@ -10,10 +10,11 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 
 - Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi bạn chọn nguồn có micro, ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
 - Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
+- **Phân biệt người nói** (bật mặc định, tắt được ở Cài đặt › Phụ đề › Người nói): ứng dụng tạm thời phân tích đặc điểm giọng ngay trên máy để biết câu nào do cùng một người nói và hiện nhãn "Người 1", "Người 2". Đặc điểm giọng **chỉ nằm trong bộ nhớ RAM, tự xóa khi hết phiên, không ghi xuống đĩa, không gửi đi**, và ứng dụng không dùng nó để xác định danh tính ai (mục 3). Trên macOS, ứng dụng còn đọc **tên người tham dự hiển thị trên cửa sổ cuộc họp Microsoft Teams bản cài** để gắn tên vào phụ đề (mục 3).
 - Ứng dụng **không có tài khoản đăng nhập, không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
 - Nếu bạn nhắn ở **chat hỗ trợ** (trên website hay trong ứng dụng), tin nhắn được lưu trên máy chủ của chúng tôi, chuyển tới tài khoản Zalo của người vận hành để trả lời, và **tự xóa sau 90 ngày** kể từ tin cuối; bạn tự xóa được sớm hơn (mục 11).
-- Máy chủ của chúng tôi chỉ lưu **email** (khi bạn mua gói, hoặc khi bạn tự để lại trong chat hỗ trợ), thông tin đơn hàng, license, mã nhận diện máy đã băm, báo cáo lỗi (giữ 30 ngày) và tin nhắn chat hỗ trợ (giữ 90 ngày), để cấp key, kiểm tra bản quyền, bảo đảm mỗi máy chỉ dùng thử gói Free một lần, sửa lỗi và trả lời bạn.
-- Dữ liệu cá nhân trên máy chủ được **giữ cho tới khi bạn yêu cầu xóa** (mục 7), trừ báo cáo lỗi tự xóa sau 30 ngày (mục 10) và tin nhắn chat hỗ trợ tự xóa sau 90 ngày kể từ tin cuối (mục 11).
+- Máy chủ của chúng tôi chỉ lưu **email** (khi bạn mua gói, hoặc khi bạn tự để lại trong chat hỗ trợ), thông tin đơn hàng, license, mã nhận diện máy đã băm, báo cáo lỗi (giữ 30 ngày), báo cáo tình trạng của bộ đọc tên (giữ 60 ngày, không có tên người) và tin nhắn chat hỗ trợ (giữ 90 ngày), để cấp key, kiểm tra bản quyền, bảo đảm mỗi máy chỉ dùng thử gói Free một lần, sửa lỗi và trả lời bạn.
+- Dữ liệu cá nhân trên máy chủ được **giữ cho tới khi bạn yêu cầu xóa** (mục 7), trừ báo cáo lỗi tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày (mục 10) và tin nhắn chat hỗ trợ tự xóa sau 90 ngày kể từ tin cuối (mục 11).
 
 ## 3. Dữ liệu ở lại trên máy bạn
 
@@ -27,19 +28,25 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 | Khóa mã hóa lịch sử, token bản quyền, token dùng thử, bộ đếm hạn mức | Lưu trong kho khóa của hệ điều hành (Keychain của macOS, Credential Manager của Windows) |
 | Nhật ký hoạt động (log) | Lưu trên máy bạn, không chứa nội dung chép lời. Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân (mục 10); bạn cũng có thể gửi log cho hỗ trợ bằng nút trong ứng dụng |
 | Model nhận dạng và dịch | Tải về một lần, chạy hoàn toàn trên máy bạn |
+| Model nhận giọng người nói (khi tính năng bật) | Tải về một lần (khoảng 26 MB), chạy hoàn toàn trên máy bạn |
+| Đặc điểm giọng để phân biệt người nói (khi tính năng bật) | Ứng dụng tạm thời phân tích đặc điểm giọng của âm thanh đang dịch để biết câu nào do cùng một người nói. Dữ liệu này chỉ nằm trong bộ nhớ RAM của một tiến trình phụ trên máy bạn và **tự xóa khi hết phiên**; không ghi xuống đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Ứng dụng không dùng nó để xác định danh tính ai và không nhớ một người qua các phiên |
+| Tên người tham dự đọc từ cuộc họp (khi tính năng bật) | Ứng dụng đọc tên hiển thị, trạng thái mic và dấu "đang nói" của người tham dự trên **cửa sổ cuộc họp Microsoft Teams bản cài trên máy bạn** để gắn tên vào phụ đề. Không đọc chat, nội dung chia sẻ, địa chỉ hay cửa sổ khác; không chụp màn hình. Tên chỉ nằm trong bộ nhớ RAM trong lúc dịch; chỉ được ghi xuống đĩa khi bạn bật Lưu lịch sử (Pro), cùng bản chép lời đã mã hóa, hoặc khi bạn tự xuất bản chép lời ra file (Pro); không có trong log, báo cáo lỗi hay báo cáo tình trạng |
+| Công thức đọc tên | Một tệp mô tả nhỏ (không chứa mã chạy) có chữ ký số, tải từ `releases.aitranslator.vn`, lưu trên máy bạn |
 
 Các công cụ phụ của ứng dụng chỉ nghe trên `127.0.0.1` (máy bạn) hoặc không mở cổng mạng nào.
 
 Trên macOS, Gõ dịch có thể xin quyền **Trợ năng** (Accessibility) để tự dán bản dịch vào ô bạn đang gõ. Ứng dụng chỉ dùng quyền này để gửi tổ hợp phím dán (⌘V); ứng dụng không đọc chữ, nội dung hay clipboard của ứng dụng khác. Nếu bạn không cấp quyền, ứng dụng chỉ chép bản dịch vào clipboard để bạn tự dán.
+
+Cũng trên macOS, việc hiện tên người nói dùng quyền **Trợ năng** để đọc tên người tham dự trên cửa sổ cuộc họp Microsoft Teams. Ứng dụng chỉ đọc cửa sổ cuộc họp của Teams (không đọc cửa sổ hay ứng dụng khác), chỉ lấy tên hiển thị, trạng thái mic và dấu "đang nói", và không bấm hay gõ gì trong Teams. Để đọc được, ứng dụng bật chế độ trợ năng của Teams trong lúc dịch một cuộc họp; **chế độ trợ năng của Teams còn bật tới khi Teams được khởi động lại** (không tốn gì khi không ai đọc). Nếu bạn không cấp quyền, hay tắt "Lấy tên từ Teams" ở Cài đặt › Phụ đề › Người nói, ứng dụng vẫn phân biệt người nói bằng màu và nhãn "Người 1", "Người 2". Sau mỗi lần cập nhật ứng dụng, macOS có thể đòi cấp lại quyền Trợ năng. Windows chưa có việc đọc tên này.
 
 Ứng dụng chỉ dùng micro khi bạn chọn nguồn **Micro** hoặc **Âm thanh máy + Micro** ở Cài đặt › Âm thanh; nguồn mặc định, **Âm thanh máy**, không mở micro. Khi bạn chọn nguồn có micro, macOS hỏi quyền **Micro**; trên Windows, việc ứng dụng dùng micro theo cài đặt quyền riêng tư về micro của Windows. Trong lúc phiên dịch chạy, ứng dụng thu micro liên tục, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp**: việc đó chỉ chặn tiếng của bạn tới người cùng họp, không chặn ứng dụng này. Hệ điều hành báo khi có ứng dụng đang dùng micro (trên macOS là chấm màu cam ở thanh menu). Muốn ứng dụng ngừng thu micro, hãy bấm Dừng. Micro có thể thu giọng của người khác ở gần bạn; hãy xin phép họ khi cần (EULA mục 6).
 
 ## 4. Khi nào ứng dụng kết nối mạng
 
 Ứng dụng chỉ kết nối mạng để:
-1. **Tải model** và kiểm tra bản mới của model (từ `releases.aitranslator.vn`).
+1. **Tải model** (gồm model nhận giọng người nói, khoảng 26 MB, khi tính năng bật) và kiểm tra bản mới của model, và **tải công thức đọc tên** (một tệp mô tả nhỏ có chữ ký số; lúc mở ứng dụng và mỗi 6 giờ, chỉ khi tính năng bật), đều từ `releases.aitranslator.vn`. Đây chỉ là yêu cầu tải tệp, không gửi dữ liệu nào của bạn.
 2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.vn`).
-3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
+3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10), gửi báo cáo tình trạng của bộ đọc tên (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
 4. **Trang thanh toán** do PayOS (chuyển khoản VietQR) hoặc Creem (thẻ quốc tế) cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
 5. **Website** `aitranslator.vn` của chúng tôi, mở bằng trình duyệt của bạn khi bạn bấm liên kết trong ứng dụng.
 
@@ -66,6 +73,8 @@ Máy chủ lưu các dữ liệu dưới đây. Dòng "Dùng thử Free" áp cho
 
 Chúng tôi **không** nhận số tài khoản ngân hàng, số thẻ hay thông tin tài chính của bạn (việc chuyển khoản do ngân hàng của bạn và PayOS xử lý; việc trả bằng thẻ do Creem xử lý ngay trên trang thanh toán của Creem). Với VietQR, chúng tôi **không** gửi email của bạn sang PayOS. Với thẻ quốc tế, chúng tôi gửi email bạn nhập trong ứng dụng cho Creem để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Máy chủ đoán nước của bạn từ địa chỉ IP (qua Cloudflare) chỉ để chọn sẵn cách trả ở màn hình Nâng cấp; nước đoán được không được lưu. Dùng gói Free mà không mua và không kích hoạt key thì chúng tôi chỉ lưu dòng "Dùng thử Free" ở trên, các báo cáo lỗi nếu ứng dụng gửi, và cuộc chat hỗ trợ nếu bạn nhắn: không có email (trừ email bạn tự để lại trong chat), tên máy hay thông tin nào khác của bạn.
 
+Máy chủ cũng lưu **báo cáo tình trạng của bộ đọc tên** (mục 10; giữ 60 ngày rồi tự xóa): mã báo cáo, ngày, phiên bản ứng dụng và hệ điều hành, ứng dụng họp và phiên bản, trạng thái, số phút, mô tả loại phần tử giao diện và mã băm ID máy; **không có tên người, không có chữ trong cuộc họp**.
+
 ## 6. Bên thứ ba xử lý dữ liệu, và việc chuyển dữ liệu ra nước ngoài
 
 | Bên | Vai trò | Dữ liệu |
@@ -80,7 +89,7 @@ Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp 
 
 ## 7. Thời gian lưu và quyền của bạn
 
-**Dữ liệu cá nhân trên máy chủ được giữ cho tới khi bạn yêu cầu xóa.** Chúng tôi không tự xóa, trừ báo cáo lỗi (tự xóa sau 30 ngày, mục 10) và cuộc chat hỗ trợ (tự xóa sau 90 ngày kể từ tin cuối, mục 11).
+**Dữ liệu cá nhân trên máy chủ được giữ cho tới khi bạn yêu cầu xóa.** Chúng tôi không tự xóa, trừ báo cáo lỗi (tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày, mục 10) và cuộc chat hỗ trợ (tự xóa sau 90 ngày kể từ tin cuối, mục 11).
 
 Bạn có quyền: biết dữ liệu nào đang được lưu, yêu cầu **xóa** hoặc **ẩn danh**, rút lại sự đồng ý, và khiếu nại theo quy định của **Luật Bảo vệ dữ liệu cá nhân** của Việt Nam. Gửi yêu cầu tới **support@aitranslator.vn** từ email đã dùng khi mua, hay email bạn đã để lại trong chat hỗ trợ (để chúng tôi xác nhận là bạn). Chúng tôi xử lý trong thời hạn pháp luật quy định.
 
@@ -94,7 +103,7 @@ Khi bạn yêu cầu xóa, chúng tôi sẽ:
 
 Sau khi xóa, license vẫn dùng được nhưng **không khôi phục qua email** được nữa. Dữ liệu trên máy bạn (lịch sử, cài đặt) do bạn tự xóa trong ứng dụng ("Xóa model và dữ liệu") hoặc khi gỡ cài đặt.
 
-Dữ liệu kỹ thuật tự hết hạn (bộ đếm giới hạn tần suất; nhật ký của Cloudflare) và nhật ký thư của Resend nằm ngoài yêu cầu xóa của chúng tôi; thời hạn lưu theo chính sách của các bên đó. Dữ liệu bạn nhập ở trang Creem và hồ sơ giao dịch do Creem giữ (bên bán lại phải giữ chứng từ thuế) nằm ngoài yêu cầu xóa gửi chúng tôi; muốn xóa ở Creem, hãy liên hệ Creem. Báo cáo lỗi của một máy chưa từng kích hoạt key không gắn với email nào nên không tìm theo email được; những báo cáo đó tự xóa sau 30 ngày. Cuộc chat hỗ trợ không để lại email thì cũng không tìm theo email được: hãy tự xóa bằng nút trong khung chat, hoặc gửi yêu cầu kèm thời điểm và nội dung gần đúng của tin nhắn để chúng tôi tìm; nếu không, cuộc chat tự xóa sau 90 ngày kể từ tin cuối (bản đã chuyển vào Zalo chỉ được xóa khi bạn yêu cầu).
+Dữ liệu kỹ thuật tự hết hạn (bộ đếm giới hạn tần suất; nhật ký của Cloudflare) và nhật ký thư của Resend nằm ngoài yêu cầu xóa của chúng tôi; thời hạn lưu theo chính sách của các bên đó. Dữ liệu bạn nhập ở trang Creem và hồ sơ giao dịch do Creem giữ (bên bán lại phải giữ chứng từ thuế) nằm ngoài yêu cầu xóa gửi chúng tôi; muốn xóa ở Creem, hãy liên hệ Creem. Báo cáo lỗi của một máy chưa từng kích hoạt key không gắn với email nào nên không tìm theo email được; những báo cáo đó tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày. Cuộc chat hỗ trợ không để lại email thì cũng không tìm theo email được: hãy tự xóa bằng nút trong khung chat, hoặc gửi yêu cầu kèm thời điểm và nội dung gần đúng của tin nhắn để chúng tôi tìm; nếu không, cuộc chat tự xóa sau 90 ngày kể từ tin cuối (bản đã chuyển vào Zalo chỉ được xóa khi bạn yêu cầu).
 
 ## 8. Trẻ em
 
@@ -112,7 +121,7 @@ Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chún
 |---|---|
 | Khi nào gửi tự động | Khi lần chạy trước của ứng dụng bị dừng đột ngột; khi một phiên dịch dừng vì lỗi của ứng dụng (không tính lỗi do bạn hay môi trường như thiếu quyền ghi âm hay quyền micro, không mở được micro, hết hạn mức, hết dùng thử, mất mạng, hết dung lượng); hoặc khi một công cụ phụ của ứng dụng chết rồi được tự khởi động lại. Báo cáo chỉ được gửi khi ứng dụng không đang dịch, và mỗi máy gửi tối đa 5 báo cáo mỗi ngày |
 | Báo cáo gồm | Mã báo cáo, loại và mã lỗi, giờ xảy ra; phiên bản ứng dụng, hệ điều hành và phiên bản, kiến trúc, tên chip hoặc CPU, RAM, loại GPU đang dùng, gói model, tên gói bản quyền (không có key), ngôn ngữ giao diện; **mã băm của ID máy**; và phần log liên quan đến lỗi (tối đa 64 KB) |
-| Báo cáo không gồm | Âm thanh (kể cả âm thanh từ micro), bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email, tên máy, tên micro, tên tài khoản hệ điều hành, địa chỉ IP |
+| Báo cáo không gồm | Âm thanh (kể cả âm thanh từ micro), bản chép lời, bản dịch, chữ bạn gõ ở Gõ dịch, license key, token, email, tên máy, tên micro, tên người tham dự hay tên người nói, tên tài khoản hệ điều hành, địa chỉ IP |
 | Che dữ liệu | Trước khi gửi, ứng dụng che đường dẫn thư mục cá nhân, key, token và email trong log; còn sót mẫu nhạy cảm thì bỏ cả báo cáo. Máy chủ kiểm lại và từ chối báo cáo nếu còn |
 | Gắn với bạn thế nào | Mã băm của ID máy trong báo cáo cũng là mã chúng tôi lưu cho bản quyền và dùng thử Free (mục 5), nên chúng tôi **có thể nối báo cáo với license và email** của máy đó khi tra cứu hỗ trợ |
 | Giữ bao lâu | Tối đa **30 ngày** rồi tự xóa; máy chủ giữ tối đa 3.000 báo cáo, báo cáo cũ nhất bị xóa trước |
@@ -121,6 +130,7 @@ Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chún
 - Chúng tôi dùng báo cáo chỉ để tìm và sửa lỗi; không dùng cho quảng cáo, không bán và không chia sẻ cho bên nào ngoài các bên xử lý ở mục 6.
 - Muốn xóa báo cáo của máy bạn trước hạn 30 ngày, hãy yêu cầu xóa dữ liệu theo mục 7: khi xử lý yêu cầu xóa theo email, chúng tôi xóa luôn báo cáo lỗi của các máy từng kích hoạt key của email đó.
 - Nếu bạn không muốn gửi gì, hãy bỏ tích ở bước Điều khoản hoặc tắt công tắc ở Cài đặt; ứng dụng vẫn dùng đầy đủ tính năng khi tắt.
+- **Báo cáo tình trạng của bộ đọc tên** (khi tính năng người nói bật và công tắc gửi báo cáo lỗi bật): mỗi ngày, mỗi máy gửi tối đa một báo cáo cho mỗi ứng dụng họp và phiên bản của nó, qua cùng máy chủ, để chúng tôi biết khi Teams đổi giao diện làm bộ đọc không đọc được nữa. Báo cáo chỉ gồm: phiên bản ứng dụng và hệ điều hành, tên và phiên bản ứng dụng họp, phiên bản công thức, trạng thái (đọc được tên, không thấy ai đang nói, thiếu quyền, bị chặn), số phút đọc được trên tổng số phút họp, mô tả loại phần tử giao diện (vai trò và lớp, không có tên người hay chữ) và mã băm ID máy như báo cáo lỗi; **không có tên người, không có chữ trong cuộc họp**. Giữ **60 ngày** rồi tự xóa; tắt công tắc gửi báo cáo lỗi thì ứng dụng xóa luôn số liệu đang chờ gửi; yêu cầu xóa theo email (mục 7) xóa luôn các báo cáo này của những máy từng kích hoạt key của email đó.
 
 ## 11. Chat hỗ trợ
 
