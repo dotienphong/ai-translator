@@ -175,7 +175,7 @@ export interface AppInfo {
   identifier: string;
   platform: "macos" | "windows";
   launchedAtLogin: boolean;
-  // Bản này có "Phân biệt người nói" không (`speaker::enabled()`; bản phát hành: không, tới kế hoạch 07): chỉ khi có mới hiện nhóm
+  // Bản này có "Phân biệt người nói" không (`speaker::enabled()`; bản phát hành: theo bảng hệ điều hành): chỉ khi có và manifest có mục `speaker` mới hiện nhóm
   // Cài đặt "Người nói" (QĐ 9 của kế hoạch 03 phân biệt người nói).
   speakerAvailable: boolean;
 }

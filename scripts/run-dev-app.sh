@@ -110,7 +110,7 @@ if [ "$dev_reports" = on ]; then
 fi
 if [ "$dev_speaker" = on ]; then
   echo "================================================================" >&2
-  echo "CẢNH BÁO: AI_TRANSLATOR_DEV_SPEAKER=true. Bản này BẬT phân biệt người nói (chưa phát hành, kế hoạch 02)." >&2
+  echo "CẢNH BÁO: AI_TRANSLATOR_DEV_SPEAKER=true. Bản này BẬT phân biệt người nói (cờ dev của bản debug; bản phát hành bật theo hệ điều hành và manifest)." >&2
   echo "Cần speaker-worker trong src-tauri/binaries/ (scripts/copy-sidecars.sh) và model nhận giọng." >&2
   echo "================================================================" >&2
 fi

@@ -885,6 +885,14 @@ impl ModelService {
             .unwrap_or_default()
     }
 
+    /// Manifest hiện có mục `speaker` dùng được cho bản app này (kế hoạch 07, QĐ 3): chưa có (hay mục sai, hay cần app mới hơn) thì
+    /// tính năng "ngủ", không tải gì, không hiện gì. Khác [`Self::speaker_model`]: hàm đó còn đòi file đã tải.
+    pub fn speaker_offered(&self) -> bool {
+        self.manifest()
+            .and_then(|s| s.manifest.speaker_model(&self.cfg.app_version))
+            .is_some()
+    }
+
     /// Model nhận giọng đã tải và đúng kích thước (spec 2026-10-26-phan-biet-nguoi-noi §4.5): đường dẫn và SHA-256 theo manifest
     /// (worker chỉ chạy sau khi SHA-256 đầy đủ khớp, `speaker::check_before_spawn`). `None` khi manifest không có mục dùng được
     /// hay file chưa tải.
@@ -2021,6 +2029,31 @@ mod tests {
         // Không thuộc gói nào: trạng thái các gói như cũ.
         let view = h.call("get_models_state", json!({})).unwrap();
         assert_eq!(view["packs"][0]["usable"], false);
+    }
+
+    /// Kế hoạch 07, QĐ 3: "manifest có mục `speaker` dùng được cho bản này" là điều kiện để tính năng thôi "ngủ" (tải công thức,
+    /// hiện nhóm Cài đặt). Chưa có mục, hay mục cần app mới hơn, thì `false`.
+    #[test]
+    fn the_speaker_entry_wakes_the_feature_only_when_the_manifest_offers_it() {
+        let offered = |entry: Option<serde_json::Value>| {
+            let h = harness(|_| {});
+            let mut body = real_sample();
+            if let Some(entry) = entry {
+                body["speaker"] = entry;
+            }
+            publish(&h.server, &body);
+            h.call("load_models", json!({})).unwrap();
+            h.service().speaker_offered()
+        };
+        let entry = |min_app_version: &str| {
+            json!({
+                "id": "eres2net-voxceleb", "version": "1", "file": "eres2net.onnx", "url": "files/eres2net.onnx",
+                "bytes": 64, "sha256": "be".repeat(32), "license_id": "Apache-2.0", "min_app_version": min_app_version
+            })
+        };
+        assert!(!offered(None), "manifest chưa có mục speaker: ngủ");
+        assert!(offered(Some(entry("0.1.0"))), "có mục dùng được: thức");
+        assert!(!offered(Some(entry("99.0.0"))), "mục cần app mới hơn: ngủ");
     }
 
     /// Kế hoạch 03 (QĐ 15): trạng thái model nhận giọng tới giao diện, để Cài đặt ghi "đang tải" (spec §4.5) và lỗi `modelsBusy`

@@ -2,7 +2,8 @@
 //! phát hành app; chỉ là **dữ liệu** (mô tả, không mã), nên khóa ký có bị lộ cũng không thêm được app hay mở đường gửi dữ liệu đi.
 //!
 //! - App tải lúc mở (sau [`FIRST_CHECK_DELAY`]) rồi mỗi [`CHECK_EVERY`], **chỉ khi** tính năng đang bật cho người dùng này ([`wanted`]:
-//!   công tắc nội bộ, "Phân biệt người nói" và "Lấy tên"). Một lệnh GET không kèm mã máy hay thông tin gì của người dùng.
+//!   công tắc nội bộ, "Phân biệt người nói" và "Lấy tên") **và** manifest có mục `speaker` cho bản này
+//!   ([`crate::models::service::ModelService::speaker_offered`]; chưa có thì "ngủ", không tải gì). Một lệnh GET không kèm mã máy hay thông tin gì của người dùng.
 //! - Kiểm bằng `speaker_ops`: phong bì ký riêng (`envelope`), rồi luật nhận (`recipes::judge`: đọc được, `min_app_version`, không nhận số
 //!   cũ hơn bản đang có). Lỗi gì cũng giữ bản đang có. Bản nhận được lưu nguyên văn trên máy và kiểm lại chữ ký mỗi lần nạp.
 //! - Bản đang có là bản lớn hơn trong bản build sẵn và bản đã lưu. [`body`] đưa phần thân đó vào `Load.names.recipe_json` ở đầu mỗi phiên;
@@ -20,6 +21,7 @@ use speaker_ops::envelope::{MAX_ENVELOPE_BYTES, TrustedKey};
 use speaker_ops::recipes::{Active, RecipeStore, choose};
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::models::service::ModelService;
 use crate::models::{download, signed};
 use crate::settings::Settings;
 use crate::state::AppState;
@@ -171,7 +173,10 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         loop {
             let on = app
                 .try_state::<AppState>()
-                .is_some_and(|s| wanted(super::enabled(), &s.settings()));
+                .is_some_and(|s| wanted(super::enabled(), &s.settings()))
+                && app
+                    .try_state::<Arc<ModelService>>()
+                    .is_some_and(|m| m.speaker_offered());
             if on {
                 match service.check() {
                     Outcome::Updated(v) => log::info!("công thức đọc tên: nhận số {v}, áp dụng từ phiên dịch sau"),

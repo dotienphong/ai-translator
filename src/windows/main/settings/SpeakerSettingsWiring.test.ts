@@ -57,7 +57,7 @@ const info = (patch: Partial<AppInfo> = {}): AppInfo => ({
 
 beforeEach(() => {
   appStore.setState({ settings, status, info: info(), accessibilityTrusted: false, settingsFocus: null });
-  modelsStore.setState({ view: fakeModelsView() });
+  modelsStore.setState({ view: fakeModelsView({ speaker: "ready" }) });
 });
 
 const subtitles = () => renderToStaticMarkup(createElement(SubtitleSettings));
@@ -91,6 +91,24 @@ describe("Cài đặt › Phụ đề: nhóm Người nói", () => {
   it("chưa đọc được AppInfo (info = null): không hiện nhóm", () => {
     appStore.setState({ info: null });
     expect(subtitles()).not.toContain("speaker-settings");
+  });
+
+  // Kế hoạch 07, QĐ 3: bản đã có mã tính năng nhưng manifest chưa có mục `speaker` ("ngủ") thì giao diện không hiện gì.
+  it("ModelsView.speaker = unavailable (manifest chưa có model): không hiện nhóm, cả khi bản có tính năng", () => {
+    for (const platform of ["macos", "windows"] as const) {
+      appStore.setState({ info: info({ speakerAvailable: true, platform }) });
+      modelsStore.setState({ view: fakeModelsView({ speaker: "unavailable" }) });
+      const markup = subtitles();
+      expect(markup).not.toContain("speaker-settings");
+      expect(markup).not.toContain(viText["settings.speakers.title"]);
+      expect(markup).toContain("show-source");
+    }
+    modelsStore.setState({ view: null });
+    expect(subtitles()).not.toContain("speaker-settings");
+    for (const speaker of ["missing", "downloading", "ready"] as const) {
+      modelsStore.setState({ view: fakeModelsView({ speaker }) });
+      expect(subtitles(), speaker).toContain('<section id="speaker-settings"');
+    }
   });
 
   it("ghi chú tải model ở nhóm lấy từ ModelsView.speaker", () => {

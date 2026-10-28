@@ -32,7 +32,8 @@ export function SubtitleSettings() {
   const speakerModel = useModels((s) => s.view?.speaker ?? "unavailable");
   const [draftSize, setDraftSize] = useState<number | null>(null);
   const [draftOpacity, setDraftOpacity] = useState<number | null>(null);
-  const speakers = info?.speakerAvailable === true;
+  // Bản có mã tính năng nhưng manifest chưa có mục `speaker` ("ngủ", kế hoạch 07 QĐ 3): không hiện nhóm (nút bật tắt sẽ chẳng làm gì).
+  const speakers = info?.speakerAvailable === true && speakerModel !== "unavailable";
   const mac = info?.platform === "macos";
   // Quyền Trợ năng (macOS): đọc lại mỗi khi cửa sổ được focus lại, như Cài đặt › Gõ dịch.
   useEffect(() => {

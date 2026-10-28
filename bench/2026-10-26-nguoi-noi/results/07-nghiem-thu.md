@@ -78,7 +78,11 @@ Kết quả: fmt ok; clippy workspace sạch (chỉ một cảnh báo từ build
 
 ## Công tắc (Task 2)
 
-Chờ Task 2.
+Hằng `SHIPS_ON_WINDOWS = false`, hàm `ships_on(os)` (macOS bật, Windows theo hằng, khác tắt), `enabled()` của bản phát hành = `ships_on(std::env::consts::OS)`; bản debug giữ cờ dev. `ModelService::speaker_offered()` (manifest có mục `speaker` dùng được cho bản này) làm tính năng "ngủ": vòng tải công thức (`speaker/recipes.rs`) chỉ chạy khi `speaker_offered()`, nhóm Cài đặt "Người nói" chỉ hiện khi `speakerAvailable` và `ModelsView.speaker != unavailable`. Phiên dịch chỉ chạy `speaker-worker` khi `speaker_model()` có file (đã vậy từ kế hoạch 02); báo cáo tình trạng chỉ sinh ra khi worker chạy.
+
+Test: app lib (debug) 960 đạt, 6 bỏ qua (957 + 3 test mới, trong đó hai test cổng release cũ bị thay, xem dưới); vitest 35 file/431 test; `tsc --noEmit` sạch; clippy macOS và `scripts/check-windows.sh --locked` sạch (0 cảnh báo); `cargo fmt --all -- --check` sạch; `node --test` 108 đạt, 0 lỗi; `check-no-network.sh` và `cargo deny check` sạch. Bản release: `cargo test --release --locked -p meeting-translator --lib -- speaker:: pro:: license:: diagnostics:: db::` 304 đạt (303 + 1), gồm `release_builds_follow_the_platform_table_not_the_environment`.
+
+Sửa ngoài chữ kế hoạch: hai test chỉ chạy ở bản release (`release_builds_never_enable_speaker`, `release_builds_never_activate_speaker_whatever_the_settings`) khẳng định tính năng luôn tắt, sẽ đỏ trên macOS sau khi đổi công tắc; thay bằng `release_builds_follow_the_platform_table_not_the_environment` (theo kế hoạch) và `release_builds_activate_speaker_per_platform_table_and_settings`. Bảy chú thích còn nói "tắt tới kế hoạch 07" sửa lại (`settings/mod.rs`, `state.rs`, `lib.rs`, `speaker/mod.rs` ba chỗ, `src/lib/ipc.ts`) và biểu ngữ cảnh báo của `scripts/run-dev-app.sh`.
 
 ## Model và giấy phép (Task 4)
 
