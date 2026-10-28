@@ -6,7 +6,7 @@ This is an agreement between you and **Do Tien Phong** ("we", "us") for your use
 
 ## 1. What the app does
 
-AI Translator shows live translated subtitles for audio playing on your computer (for example an online meeting) and, when you choose, for audio from the microphone (for example people speaking in the meeting room). Speech recognition and translation run **on your computer**; your audio is not sent anywhere. When you turn it on, the app also tells speakers apart and shows the names of participants read from the meeting window (currently only the Microsoft Teams desktop app on macOS); the result is only a label on the subtitles and can be wrong. The Privacy Policy is part of this agreement.
+AI Translator shows live translated subtitles for audio playing on your computer (for example an online meeting) and, when you choose, for audio from the microphone (for example people speaking in the meeting room). Speech recognition and translation run **on your computer**; your audio is not sent anywhere. When you turn it on (this feature is only on macOS for now, not yet on Windows), the app also tells speakers apart and shows the names of participants read from the meeting window (currently only the Microsoft Teams desktop app); the result is only a label on the subtitles and can be wrong. The Privacy Policy is part of this agreement.
 
 ## 2. The license we grant you
 

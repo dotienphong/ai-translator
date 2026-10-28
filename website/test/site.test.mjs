@@ -2665,6 +2665,10 @@ test("chính sách quyền riêng tư và EULA nói về phân biệt người n
       "Báo cáo tình trạng của bộ đọc tên",
       "không có tên người",
       "giữ 60 ngày",
+      "Windows chưa có tính năng này",
+      "chưa thấy tên",
+      "số mẫu chỉ báo ứng dụng tự học",
+      "các báo cáo tình trạng của bộ đọc tên của chính những máy đó",
     ],
     "/en/privacy/": [
       "Voice features used to tell speakers apart",
@@ -2678,9 +2682,13 @@ test("chính sách quyền riêng tư và EULA nói về phân biệt người n
       "Name-reader status report",
       "no participant names",
       "kept 60 days",
+      "Windows does not have this feature yet",
+      "no names seen yet",
+      "the number of indicator patterns the app learned by itself",
+      "the name-reader status reports of those same machines",
     ],
-    "/dieu-khoan/": ["hiện tên người tham dự đọc từ cửa sổ cuộc họp", "Nhãn người nói và tên do ứng dụng gán tự động có thể sai"],
-    "/en/terms/": ["shows the names of participants read from the meeting window", "Speaker labels and names assigned automatically can be wrong"],
+    "/dieu-khoan/": ["hiện tên người tham dự đọc từ cửa sổ cuộc họp", "Windows chưa có", "Nhãn người nói và tên do ứng dụng gán tự động có thể sai"],
+    "/en/terms/": ["shows the names of participants read from the meeting window", "not yet on Windows", "Speaker labels and names assigned automatically can be wrong"],
   };
   const errors = [];
   for (const [urlPath, list] of Object.entries(needs)) {
