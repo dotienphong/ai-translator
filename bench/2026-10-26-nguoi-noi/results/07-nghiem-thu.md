@@ -107,7 +107,27 @@ Test: `node --test` của `notices.test.mjs` + `speaker-manifest.test.mjs`: 16 �
 
 ## Bản release cục bộ (Task 6)
 
-Chờ Task 6.
+Ngày 2026-10-28, HEAD `6f5d4153`, `CARGO_TARGET_DIR=$W/target CARGO_INCREMENTAL=0 MACOSX_DEPLOYMENT_TARGET=14.2`. Không chạy app, không chạm app thật. Cổng đĩa của task này: bắt đầu build khi còn ≥ 14 GiB (đo 17, 16, 15, 15 GiB), dừng nếu < 12 GiB; sau cùng còn 15,4 GiB.
+
+| Bước | Kết quả |
+|---|---|
+| 1. Test bản release (`pnpm build` thoát 0, rồi `cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: speaker:: db:: --test-threads=1`) | `test result: ok. 304 passed; 0 failed; 0 ignored; 658 filtered out`, 2,38 s (lượt Task 0 là 303) |
+| 2. Dựng app release, `release-check.mjs no-dev-gate target/release/meeting-translator` | build 2 phút 36 giây; thoát 0 ("không có mã công tắc dev"); binary app 14 699 936 byte |
+| 2. Chuỗi cấm trong binary app (`strings -a … \| grep -c`) | `AI_TRANSLATOR_DEV_SPEAKER` **0**; `AI_TRANSLATOR_DEV_PRO` **0**; `AI_TRANSLATOR_DEV_REPORTS` **0**; `aitranslator.io.vn` **0** |
+| 3. `speaker-worker` release | **4 275 488 byte** (gzip 1 637 830); `check-no-network.sh --binary target/release/speaker-worker` thoát 0 ("không có mã mạng"); `minos 14.2`, `sdk 27.0`; liên kết: `ApplicationServices`, `CoreFoundation`, `libiconv.2`, `libSystem.B` |
+| 4. Đọc mã "ngủ/thức" | `speaker_offered`: định nghĩa `models/service.rs:890`, dùng ở vòng tải công thức `speaker/recipes.rs:179` (đúng hai chỗ trong mã chạy; ngoài ra một chú thích đầu `recipes.rs` và test `service.rs:2046`); `speakerModel !== "unavailable"` đúng một dòng, `SubtitleSettings.tsx:36`. "Thức/ngủ" chạy thật kiểm ở Task 21–22 |
+| 5. `scripts/release/check-release-config.sh` | thoát 0, "hai cấu hình đóng gói hợp lệ" (macOS và Windows; chép đủ `speaker-worker` và `THIRD_PARTY_NOTICES.txt`) |
+| 5. `node --test --test-reporter=tap "scripts/release/*.test.mjs"` | 87 đạt, 0 lỗi |
+
+Ước tính kích thước đóng gói: `.dmg` 0.3.1 9 980 110 byte + worker nén gzip 1 637 830 byte ≈ 11,6 MB (Windows chưa dựng lại ở Task này; ước tính cũ ≈ 22,6 MB); giới hạn 60 MB, dưới gần 5 lần. Số thật ở Task 21 Step 7.
+
+Sai lệch so với kế hoạch (không ảnh hưởng kết luận):
+
+- **Kích thước worker lệch +49%** so với 2 867 152 byte (spec §4.1; số đó đo ở kế hoạch 02, trước khi có bộ đọc tên). Nguyên nhân khả dĩ, đã đối chiếu mã: kế hoạch 04–05 thêm `reader/macos.rs` (đọc cây Accessibility qua `ApplicationServices`) và phụ thuộc `core-foundation` 0.10.1 cho macOS, nên binary lớn hơn và có thêm hai framework hệ thống `ApplicationServices`, `CoreFoundation` (kế hoạch ghi "chỉ `libSystem` và `libiconv`"). Cả hai là framework có sẵn của macOS, không phải thư viện lạ; không có mã mạng (cổng `check-no-network.sh` đạt). Chưa kiểm cách khác để loại trừ nguyên nhân khác (vd. cấu hình tối ưu hóa). Còn dư rất nhiều so với 60 MB.
+- **Số test `release_builds`**: kế hoạch nói `--list … | grep -c release_builds` ra `1`; thực tế ra `2` (`release_builds_activate_speaker_per_platform_table_and_settings` của lượt trước và `release_builds_follow_the_platform_table_not_the_environment` của Task 2). Test chỉ-release mới có chạy.
+- **Số test tăng 303 → 304 (một, không phải hai như kế hoạch viết)**: đối chiếu `git diff ab90f013 HEAD` của `speaker/mod.rs`: Task 2 thêm `the_release_ships_on_the_audited_platforms_only` và `release_builds_follow_the_platform_table_not_the_environment` (chạy ở bản release), thêm `debug_builds_stay_opt_in` (chỉ bản debug), bỏ `release_builds_never_enable_speaker` và đổi tên `release_builds_never_activate_speaker_whatever_the_settings` thành `release_builds_activate_speaker_per_platform_table_and_settings`; ở bản release: +2 −1 = +1. Khớp số đo của Task 2 (304).
+- **`check-release-config.sh` lần đầu thoát 1** vì thiếu `THIRD_PARTY_NOTICES.txt` (file sinh ra, bị gitignore; CI chạy `notices.mjs` trước). Đã chạy `node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --no-llama` (143 văn bản giấy phép, 513 crate, 5 gói npm, 9 mục C/C++ và model; không lỗi), chạy lại thoát 0, rồi xóa đúng file đó (file do task này tạo). Cây git sạch.
+- Kiểm bằng `--test-reporter=tap` vì không có terminal.
 
 ## Test nền ở bản release (Task 0 Step 5)
 
