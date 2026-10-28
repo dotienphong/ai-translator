@@ -461,6 +461,8 @@ mod tests {
                 .contains("libggml-la.dylib")
         );
         std::fs::remove_file(dir.join("libggml-la.dylib")).unwrap();
+        // Nhả khóa file đã kiểm (`check_before_spawn` giữ chúng mở để không ai thay được): Windows không cho ghi đè file đang mở.
+        locks.lock().unwrap().clear();
         std::fs::write(&launch.exe, b"da sua").unwrap();
         assert!(
             check_before_spawn(&launch, Some(&model_sha), &table, &locks, &keep)
@@ -499,7 +501,8 @@ mod tests {
         let busy = || false;
         let err = check_before_spawn(&launch, Some(&wrong), &table, &locks, &busy).unwrap_err();
         assert!(err.contains("chưa bỏ được"), "{err}");
-        // Binary sai: từ chối trước khi xét model, không bỏ model.
+        // Binary sai: từ chối trước khi xét model, không bỏ model. Nhả khóa file đã kiểm trước (Windows không cho ghi đè file đang mở).
+        locks.lock().unwrap().clear();
         std::fs::write(&launch.exe, b"da sua").unwrap();
         assert!(check_before_spawn(&launch, Some(&wrong), &table, &locks, &discard).is_err());
         assert_eq!(calls.get(), 1, "binary sai: không đụng model");
