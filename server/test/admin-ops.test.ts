@@ -57,6 +57,16 @@ describe("GET /admin/alerts", () => {
     expect(body.items[3]).toEqual({ kind: "webhook_failed", window_start: 1000, count: 2, notified_count: 2, notified_at: 1100 });
   });
 
+  it("dấu chủ thể speaker_seen:* (bộ nhớ của cron, không phải cảnh báo) không hiện, không tính vào total và không đẩy cảnh báo thật ra ngoài", async () => {
+    const seen = Array.from({ length: 250 }, (_, i) => alert(`speaker_seen:degraded:teams:v${i}`, 9000 + i, 1, 1, null));
+    await env.DB.batch([...seen, alert("email_failed", 100, 2)]);
+    const { adminCall } = makeAdmin();
+    const body = (await adminCall("/admin/alerts")).body as unknown as AlertsBody;
+    expect(body.items.map((i) => i.kind)).toEqual(["email_failed"]);
+    expect(body.total).toBe(1);
+    expect(body.pending).toBe(1);
+  });
+
   it("notified_at null được giữ nguyên là null (không đổi thành 0 hay bỏ trường)", async () => {
     await alert("a", 10, 1).run();
     const { adminCall } = makeAdmin();
