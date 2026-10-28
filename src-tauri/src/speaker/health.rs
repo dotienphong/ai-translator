@@ -35,6 +35,8 @@ pub const fn ledger_file(debug: bool) -> &'static str {
 /// Chờ chừng này sau khi mở app rồi mới thử gửi lần đầu; sau đó thử mỗi [`FLUSH_EVERY`].
 pub const FIRST_FLUSH_DELAY: Duration = Duration::from_secs(60);
 pub const FLUSH_EVERY: Duration = Duration::from_secs(1800);
+/// Luồng nền ghi sổ xuống đĩa chừng này một lần nếu có đổi (thoát đột ngột mất tối đa chừng này số liệu).
+pub const SAVE_EVERY: Duration = Duration::from_secs(15);
 
 fn unix_ms() -> u64 {
     std::time::SystemTime::now()
@@ -58,6 +60,8 @@ fn ops_facts(f: &ReportFacts) -> Facts {
 pub struct Health {
     path: PathBuf,
     tracker: Mutex<Tracker>,
+    /// Chỉ một luồng ghi file một lúc, và bản ghi sau không bị bản cũ đè ([`Health::save`] lấy khóa này trước khóa `tracker`).
+    io: Mutex<()>,
 }
 
 impl Health {
@@ -70,6 +74,7 @@ impl Health {
         Self {
             path,
             tracker: Mutex::new(Tracker::new(ledger)),
+            io: Mutex::new(()),
         }
     }
 
@@ -77,20 +82,24 @@ impl Health {
         self.tracker.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Ghi sổ xuống đĩa nếu có đổi (ghi nguyên tử). Lỗi ghi chỉ ghi log: mất sổ chỉ là mất số liệu.
-    fn persist(&self, tracker: &mut Tracker) {
-        if !tracker.take_dirty() {
-            return;
-        }
+    /// Ghi sổ xuống đĩa nếu có đổi (ghi nguyên tử). Lỗi ghi chỉ ghi log: mất sổ chỉ là mất số liệu. Khóa `tracker` chỉ giữ lúc dựng
+    /// chuỗi JSON, không giữ lúc ghi file: luồng phụ đề (`observe`) không bao giờ chờ đĩa (rà soát đợt A, A3). Gọi từ luồng nền
+    /// ([`install`]), lúc hết phiên và sau mỗi lần gửi; không gọi từ luồng phụ đề.
+    pub fn save(&self) {
+        let _io = self.io.lock().unwrap_or_else(|e| e.into_inner());
+        let json = {
+            let mut t = self.lock();
+            if !t.take_dirty() {
+                return;
+            }
+            serde_json::to_vec(t.ledger())
+        };
         let write = || -> std::io::Result<()> {
             if let Some(dir) = self.path.parent() {
                 std::fs::create_dir_all(dir)?;
             }
             let tmp = self.path.with_extension("json.tmp");
-            std::fs::write(
-                &tmp,
-                serde_json::to_vec(tracker.ledger()).map_err(std::io::Error::other)?,
-            )?;
+            std::fs::write(&tmp, json.map_err(std::io::Error::other)?)?;
             std::fs::rename(&tmp, &self.path)
         };
         if let Err(e) = write() {
@@ -112,14 +121,12 @@ impl Health {
                 patterns: info.patterns.clone(),
             },
         );
-        self.persist(&mut t);
     }
 
     /// Phiên dừng hay worker thoát: đóng khoảng đang mở.
     pub fn close(&self, at_ms: u64) {
-        let mut t = self.lock();
-        t.close(at_ms);
-        self.persist(&mut t);
+        self.lock().close(at_ms);
+        self.save();
     }
 
     /// Gửi các báo cáo đến hạn (ngày đã qua, chưa gửi, đủ một phút), nếu công tắc bật và app rảnh. Trả số báo cáo đã gửi được.
@@ -136,9 +143,9 @@ impl Health {
         let due = {
             let mut t = self.lock();
             t.prune(today);
-            self.persist(&mut t);
             t.due(today)
         };
+        self.save();
         let mut sent = 0;
         for d in due {
             if !host.translation_idle() {
@@ -176,13 +183,13 @@ impl Health {
     }
 
     fn finish(&self, day: i64, key: &str) {
-        let mut t = self.lock();
-        t.mark_sent(day, key);
-        self.persist(&mut t);
+        self.lock().mark_sent(day, key);
+        self.save();
     }
 
     /// Người dùng tắt "Gửi báo cáo lỗi": bỏ cả sổ (kể cả file).
     pub fn purge(&self) {
+        let _io = self.io.lock().unwrap_or_else(|e| e.into_inner());
         let mut t = self.lock();
         t.clear();
         let _ = std::fs::remove_file(&self.path);
@@ -194,6 +201,13 @@ impl Health {
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let health = Arc::new(Health::load(app.path().app_local_data_dir()?.join(LEDGER_FILE)));
     app.manage(Arc::clone(&health));
+    let saver = Arc::clone(&health);
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(SAVE_EVERY);
+            saver.save();
+        }
+    });
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(FIRST_FLUSH_DELAY);
@@ -455,6 +469,22 @@ mod tests {
         assert!(!saved.contains("Lan"));
         crate::diagnostics::purge_queue(app.handle());
         assert!(!path.exists());
+    }
+
+    /// Rà soát đợt A (A3): `observe` chạy trên luồng phụ đề, không được ghi đĩa ngay; luồng nền (`save`) ghi sau, `close` ghi ngay.
+    #[test]
+    fn observing_does_not_write_the_ledger_on_the_calling_thread() {
+        let path = temp("lazy");
+        let h = Health::load(path.clone());
+        h.observe(T0, &info(ReaderStatus::NoNames, 0, vec![]));
+        h.observe(T0 + 5 * MIN, &info(ReaderStatus::Ok, 0, vec![]));
+        assert!(!path.exists(), "đổi trạng thái đóng một khoảng nhưng chưa ghi file");
+        h.save();
+        let saved = std::fs::read_to_string(&path).unwrap();
+        assert!(saved.contains("teams|26032.1100"), "{saved}");
+        std::fs::remove_file(&path).unwrap();
+        h.save();
+        assert!(!path.exists(), "không có gì đổi thì không ghi lại");
     }
 
     #[test]
