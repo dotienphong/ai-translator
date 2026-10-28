@@ -151,8 +151,20 @@ export async function run(args, ctx) {
   const preflightHead = preflight(ctx, version);
   const bodyRel = SOURCE;
   const previousRel = p.liveInfo ? `${RELEASED_DIR}/body-${p.liveInfo.version}.json` : null;
-  if (args.mode === "revert") writeFileSync(join(paths.repo, SOURCE), p.sourceText);
-  gate(ctx, bodyRel, previousRel);
+  if (args.mode === "revert") {
+    // `--revert-to` ghi đè công thức nguồn và khôi phục bằng `git checkout`: nếu nguồn đang có thay đổi chưa commit thì sẽ mất, nên dừng.
+    if (io.run("git", ["status", "--porcelain", "-z", "--untracked-files=all", "--", SOURCE]).includes(SOURCE)) {
+      throw new Error(`${SOURCE} đang có thay đổi chưa commit: commit hay cất nó trước khi dùng --revert-to (lệnh này ghi đè rồi khôi phục file đó).`);
+    }
+    writeFileSync(join(paths.repo, SOURCE), p.sourceText);
+  }
+  try {
+    gate(ctx, bodyRel, previousRel);
+  } catch (e) {
+    // Cổng hỏng: trả nguồn về như lúc commit (đã chắc không có thay đổi chưa commit ở trên).
+    if (args.mode === "revert") io.run("git", ["checkout", "--", SOURCE]);
+    throw e;
+  }
   const question = args.mode === "revert" ? `Đăng lại nội dung số ${args.version} thành công thức số ${version}? [y/N] ` : `Đăng công thức số ${version} cho người dùng? [y/N] `;
   console.log("\nGõ y: commit và đẩy main, ký công thức trong CI, đăng recipes.json lên R2. App của người dùng nhận trong vòng 6 giờ, áp dụng từ phiên dịch sau.");
   if (!isYes(await ctx.ask(question))) {

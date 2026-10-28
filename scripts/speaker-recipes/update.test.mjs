@@ -298,3 +298,31 @@ test("--revert-to: nội dung cũ, số mới = đang phát hành + 1; số lớ
   assert.ok(existsSync(join(b.repo, "scripts/speaker-recipes/released/body-4.json")));
   assert.ok(dirname(b.state.put[b.state.put.indexOf("--file") + 1]).includes("signed"));
 });
+
+test("--revert-to: SOURCE đang có thay đổi chưa commit thì dừng, không ghi đè và không `git checkout` (mất việc sửa dở)", async (t) => {
+  const b = bench(t, { live: await liveOf(3), sourceVersion: 3, released: [1, 3], dirty: [SOURCE] });
+  const before = readFileSync(join(b.repo, SOURCE), "utf8");
+  await assert.rejects(run({ mode: "revert", version: 1 }, b.ctx), /chưa commit/);
+  assert.equal(readFileSync(join(b.repo, SOURCE), "utf8"), before);
+  const lines = cmds(b.calls);
+  assert.ok(!lines.some((l) => l.startsWith("git checkout")), lines.join("\n"));
+  assert.ok(!lines.some((l) => l.startsWith("cargo test")));
+  assert.equal(b.state.put, null);
+});
+
+test("--revert-to: cổng kiểm ném lỗi thì khôi phục SOURCE bằng git checkout rồi ném tiếp", async (t) => {
+  const b = bench(t, { live: await liveOf(3), sourceVersion: 3, released: [1, 3] });
+  const original = b.ctx.io.run;
+  b.ctx.io.run = function (cmd, args, opts) {
+    if (cmd === "cargo" && args[0] === "test") throw new Error("cổng kiểm hỏng");
+    return original.call(this, cmd, args, opts);
+  };
+  await assert.rejects(run({ mode: "revert", version: 1 }, b.ctx), /cổng kiểm hỏng/);
+  assert.ok(cmds(b.calls).includes(`git checkout -- ${SOURCE}`), cmds(b.calls).join("\n"));
+});
+
+test("chế độ đăng thường: SOURCE đang sửa dở là việc bình thường, không bị chặn", async (t) => {
+  const b = bench(t, { sourceVersion: 1, dirty: [SOURCE] });
+  b.state.signed = await b.sign(canonical(readFileSync(join(b.repo, SOURCE), "utf8")));
+  assert.equal(await run({ mode: "update" }, b.ctx), 0);
+});
