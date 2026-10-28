@@ -12,11 +12,13 @@ describe("chữ của người nói", () => {
     }
   });
 
-  it("tên Teams, Meet, Zoom giữ nguyên ở mọi ngôn ngữ", () => {
+  // Công thức build sẵn chỉ có Teams (07 QĐ 7): chữ không hứa Meet hay Zoom tới khi công thức của chúng được bật.
+  it("chữ của Lấy tên chỉ nhắc Teams ở mọi ngôn ngữ", () => {
     for (const lang of UI_LANGUAGES) {
-      for (const app of ["Teams", "Meet", "Zoom"]) {
-        expect(translate(lang, "settings.speakers.names"), `${lang} ${app}`).toContain(app);
-        expect(translate(lang, "settings.speakers.names.hint"), `${lang} ${app}`).toContain(app);
+      for (const key of ["settings.speakers.names", "settings.speakers.names.hint"] as const) {
+        const text = translate(lang, key);
+        expect(text, `${lang} ${key}`).toContain("Teams");
+        expect(text, `${lang} ${key}`).not.toMatch(/Meet|Zoom/);
       }
     }
   });

@@ -16,7 +16,7 @@ export interface SpeakerSettingsCardProps {
 }
 
 // Nhóm "Người nói" ở Cài đặt › Phụ đề (spec 2026-10-26-phan-biet-nguoi-noi §8.3): "Phân biệt người nói" (bật sẵn), "Lấy tên từ
-// Teams, Meet, Zoom" (bật sẵn, tắt theo khi "Phân biệt" tắt), và trên macOS khi cả hai bật: "Quyền Trợ năng", dùng chung nút và
+// Teams" (bật sẵn, tắt theo khi "Phân biệt" tắt; Meet và Zoom chưa vào công thức), và trên macOS khi cả hai bật: "Quyền Trợ năng", dùng chung nút và
 // quyền với Gõ dịch (nút xóa quyền cũ sau cập nhật). Chưa có dữ liệu nhận giọng thì ghi "đang tải" (§4.5). Không thêm tab (§8.3).
 // Bên gọi chỉ vẽ nhóm này khi bản này có tính năng (QĐ 9 của kế hoạch 03).
 export function SpeakerSettingsCard(p: SpeakerSettingsCardProps) {
