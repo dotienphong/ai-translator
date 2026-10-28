@@ -33,7 +33,8 @@ export const CANARY_SILENT_DAYS = 3;
 export const ALERT_EVERY_SECONDS = 86400;
 
 const APP_VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]{1,32})?$/;
-const MEETING_VERSION = /^[0-9A-Za-z._+-]{1,40}$/;
+/** Khớp `plain(v, 40)` của bộ đọc ở app (crates/speaker-ops/src/health.rs): có khoảng trắng, nên báo cáo hợp lệ ở app không bị server từ chối. */
+const MEETING_VERSION = /^[0-9A-Za-z._+ -]{1,40}$/;
 const PLAIN = /^[0-9A-Za-z._+ -]+$/;
 const TOKEN = /^[A-Za-z0-9_-]{1,32}$/;
 const ROLE = /^[A-Za-z]{1,32}$/;

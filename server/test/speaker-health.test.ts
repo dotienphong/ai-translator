@@ -35,6 +35,14 @@ describe("parseSpeakerHealth: danh sách cho phép, không có chữ tự do", (
     expect(none).toMatchObject({ ok: true, report: { meeting_app: "zoom", meeting_version: "?" } });
   });
 
+  it("phiên bản app họp cho khoảng trắng như bộ đọc ở app (plain), vẫn chặt ký tự khác và độ dài", async () => {
+    const ok = parseSpeakerHealth(await health({ meeting: { app: "zoom", version: "6.2.5 12345" } }), T0);
+    expect(ok).toMatchObject({ ok: true, report: { meeting_version: "6.2.5 12345" } });
+    expect(parseSpeakerHealth(await health({ meeting: { app: "teams", version: "Version 26032.1100 beta-1" } }), T0)).toMatchObject({ ok: true });
+    expect(parseSpeakerHealth(await health({ meeting: { app: "teams", version: "6.2 (5)" } }), T0)).toEqual({ ok: false, field: "meeting" });
+    expect(parseSpeakerHealth(await health({ meeting: { app: "teams", version: "y".repeat(40) } }), T0)).toMatchObject({ ok: true });
+  });
+
   it("khóa lạ ở mọi cấp bị từ chối (nơi tên người có thể lọt vào)", async () => {
     const bad = async (overrides: Record<string, unknown>, field: string) =>
       expect(parseSpeakerHealth(await health(overrides), T0)).toEqual({ ok: false, field });
@@ -59,7 +67,9 @@ describe("parseSpeakerHealth: danh sách cho phép, không có chữ tự do", (
     await bad({ app: { version: "0.3" } }, "app");
     await bad({ os: { name: "macos", version: "15 /usr/local", arch: "arm64" } }, "os");
     await bad({ meeting: { app: "webex", version: "1" } }, "meeting");
-    await bad({ meeting: { app: "teams", version: "a b" } }, "meeting");
+    await bad({ meeting: { app: "teams", version: "a/b" } }, "meeting");
+    await bad({ meeting: { app: "teams", version: "a\tb" } }, "meeting");
+    await bad({ meeting: { app: "teams", version: "x".repeat(41) } }, "meeting");
     await bad({ meeting: { app: "teams", version: "?" } }, "meeting");
     await bad({ recipe_version: -1 }, "recipe_version");
     await bad({ state: "broken" }, "state");
