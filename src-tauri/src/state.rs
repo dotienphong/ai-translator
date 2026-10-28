@@ -167,8 +167,8 @@ pub struct AppInfo {
     pub platform: &'static str,
     /// App được hệ điều hành mở lúc đăng nhập (Đ19): chỉ nằm ở khay, chưa chạy tiến trình phụ.
     pub launched_at_login: bool,
-    /// Bản này có "Phân biệt người nói" không (`speaker::enabled()`; bản phát hành: không, tới kế hoạch 07). Giao diện chỉ hiện nhóm
-    /// Cài đặt "Người nói" khi có (QĐ 9 của kế hoạch 03 phân biệt người nói).
+    /// Bản này có "Phân biệt người nói" không (`speaker::enabled()`; bản phát hành: theo bảng hệ điều hành). Giao diện chỉ hiện nhóm
+    /// Cài đặt "Người nói" khi có thêm model trong manifest (QĐ 9 của kế hoạch 03 phân biệt người nói).
     pub speaker_available: bool,
 }
 

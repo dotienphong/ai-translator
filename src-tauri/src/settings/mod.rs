@@ -265,7 +265,7 @@ pub struct Settings {
     /// (`migrate::load` ghép từng khóa vào giá trị mặc định), không cần bước migrate.
     pub translate_while_speaking: bool,
     /// "Phân biệt người nói" (spec 2026-10-26-phan-biet-nguoi-noi §8.3, §9), mặc định bật. Chỉ có tác dụng khi bản này có tính năng
-    /// (`speaker::enabled()`; bản phát hành: tắt tới kế hoạch 07). Tắt giữa phiên thì dừng nhận giọng ngay (`speaker::turn_off`); bật
+    /// (`speaker::enabled()`; bản phát hành: bật theo bảng hệ điều hành, ngủ khi manifest chưa có mục `speaker`). Tắt giữa phiên thì dừng nhận giọng ngay (`speaker::turn_off`); bật
     /// thì có tác dụng từ phiên sau. File của bản trước chưa có khóa này thì lấy mặc định (`migrate::load`), không cần bước migrate.
     pub speaker_diarization: bool,
     /// "Lấy tên từ Teams, Meet, Zoom" (spec §8.3), mặc định bật; chỉ có nghĩa khi "Phân biệt người nói" bật. Bộ đọc tên: kế hoạch 04.

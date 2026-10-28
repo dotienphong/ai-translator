@@ -1,11 +1,14 @@
 //! Nhận giọng người nói trong app (spec 2026-10-26-phan-biet-nguoi-noi §4; kế hoạch 02, 03): bật cho phiên nào, tìm `speaker-worker`
 //! và model, kiểm SHA-256 trước mỗi lần chạy (§10.2), rồi chạy `pipeline::speaker_client` cho phiên. Phiên không chờ worker.
 //!
-//! **Tới kế hoạch 07: tính năng TẮT với người dùng cuối.** Công tắc nội bộ [`enabled`]: chỉ bản debug bật được, bằng
-//! `AI_TRANSLATOR_DEV_SPEAKER=true` trong `.env` (đọc qua `scripts/run-dev-app.sh`, cùng cơ chế `AI_TRANSLATOR_DEV_PRO`, spec
-//! 2026-10-04 §2). Mã đọc biến nằm sau `cfg(debug_assertions)`; bản phát hành không có chuỗi tên biến (`release-check.mjs
-//! no-dev-gate` chặn). Kế hoạch 03 thêm cài đặt `speakerDiarization` (mặc định bật): phiên có nhận giọng khi [`active`], tức công
-//! tắc nội bộ bật **và** cài đặt bật; giao diện chỉ hiện nhóm Cài đặt "Người nói" khi [`enabled`] (`AppInfo::speaker_available`).
+//! **Bản phát hành (kế hoạch 07, QĐ 2):** [`enabled`] theo bảng hệ điều hành đã nghiệm thu ([`ships_on`]): macOS bật, Windows theo
+//! [`SHIPS_ON_WINDOWS`] (`false` tới khi có số đo máy Windows i5), hệ điều hành khác tắt. Bản phát hành không đọc biến môi trường
+//! nào. Công tắc dev: chỉ bản debug, `AI_TRANSLATOR_DEV_SPEAKER=true` trong `.env` (đọc qua `scripts/run-dev-app.sh`, cùng cơ chế
+//! `AI_TRANSLATOR_DEV_PRO`, spec 2026-10-04 §2); mã đọc biến nằm sau `cfg(debug_assertions)`, bản phát hành không có chuỗi tên
+//! biến (`release-check.mjs no-dev-gate` chặn). Bản này có mã tính năng chưa có nghĩa là tính năng đang chạy: model nhận giọng chỉ
+//! có khi manifest có mục `speaker` ([`crate::models::service::ModelService::speaker_offered`]); chưa có thì mọi thứ "ngủ" như
+//! bản không có tính năng. Bỏ mục đó khỏi manifest là cách tắt khẩn từ xa. Cài đặt `speakerDiarization` (mặc định bật): phiên có
+//! nhận giọng khi [`active`], tức công tắc nội bộ bật **và** cài đặt bật.
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -51,7 +54,21 @@ pub mod recipes;
 /// Tên file model trong thư mục model của bản dev (`MT_MODELS_DIR` hay `<repo>/models`), dùng khi kho chưa có.
 pub const DEV_MODEL_FILE: &str = "eres2net-sv-en-voxceleb-16k.onnx";
 
-/// Bản này có tính năng không (công tắc nội bộ). Bản phát hành: luôn `false` tới kế hoạch 07; bản debug: theo cờ dev.
+/// Bản phát hành có tính năng trên Windows không. Giữ `false` tới khi có số đo A-spk4 và A-spk5 trên máy Windows i5 và bản ghi
+/// cây UI Automation thật (kế hoạch 07, QĐ 2); bật là đổi hằng này ở bản phát hành đó.
+pub const SHIPS_ON_WINDOWS: bool = false;
+
+/// Bản phát hành có tính năng trên hệ điều hành `os` (`std::env::consts::OS`) không.
+#[cfg_attr(debug_assertions, allow(dead_code))]
+fn ships_on(os: &str) -> bool {
+    match os {
+        "macos" => true,
+        "windows" => SHIPS_ON_WINDOWS,
+        _ => false,
+    }
+}
+
+/// Bản này có tính năng không (công tắc nội bộ). Bản phát hành: theo bảng hệ điều hành ([`ships_on`]); bản debug: theo cờ dev.
 pub fn enabled() -> bool {
     #[cfg(debug_assertions)]
     {
@@ -59,7 +76,7 @@ pub fn enabled() -> bool {
     }
     #[cfg(not(debug_assertions))]
     {
-        false
+        ships_on(std::env::consts::OS)
     }
 }
 
@@ -167,7 +184,7 @@ pub fn names_changed<R: Runtime>(app: &AppHandle<R>, on: bool) {
 
 /// Người dùng tắt "Phân biệt người nói" (Cài đặt › Phụ đề; QĐ 8 của kế hoạch 03): dừng worker của phiên ngay (không chạy lại tới hết
 /// phiên), bỏ bảng người nói và báo hai cửa sổ thôi vẽ nhãn. Bật lại thì có tác dụng từ phiên sau. Không có phiên thì chỉ bỏ bảng
-/// người nói của phiên vừa dừng. Chỉ phát bảng rỗng khi bảng vừa bỏ có giọng: bản phát hành không phát sự kiện mới nào (QĐ 9).
+/// người nói của phiên vừa dừng. Chỉ phát bảng rỗng khi bảng vừa bỏ có giọng: bản "ngủ" (không phiên nào có giọng) không phát sự kiện mới nào (QĐ 9).
 pub fn turn_off<R: Runtime>(app: &AppHandle<R>) {
     let handle = app
         .try_state::<Running>()
@@ -336,11 +353,30 @@ mod tests {
         dir
     }
 
-    /// Kế hoạch 02: bản phát hành không bao giờ bật nhận giọng (CI chạy test này ở bản release, bước "Test … ở bản release").
+    /// Kế hoạch 07, QĐ 2: bản phát hành bật nhận giọng trên đúng các hệ điều hành đã nghiệm thu, và chỉ ở đó.
+    #[test]
+    fn the_release_ships_on_the_audited_platforms_only() {
+        assert!(ships_on("macos"));
+        assert_eq!(ships_on("windows"), SHIPS_ON_WINDOWS);
+        assert!(!ships_on("linux"));
+        assert!(!ships_on(""));
+    }
+
+    /// Chỉ chạy ở bản release (`cargo test --release`, CI): công tắc của bản phát hành đúng bằng bảng hệ điều hành, không đọc biến môi trường.
     #[cfg(not(debug_assertions))]
     #[test]
-    fn release_builds_never_enable_speaker() {
-        assert!(!enabled());
+    fn release_builds_follow_the_platform_table_not_the_environment() {
+        assert_eq!(enabled(), ships_on(std::env::consts::OS));
+    }
+
+    /// Bản debug (`cargo test` thường): chỉ bật khi có cờ dev; giá trị khác `true` không bật.
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_builds_stay_opt_in() {
+        assert!(!switch_on(None));
+        assert!(!switch_on(Some("1")));
+        assert!(!switch_on(Some("TRUE")));
+        assert!(switch_on(Some("true")));
     }
 
     #[cfg(debug_assertions)]
@@ -471,7 +507,7 @@ mod tests {
     }
 
     /// Kế hoạch 03 (QĐ 9): cài đặt "Phân biệt người nói" bật sẵn; tắt thì không phiên nào có nhận giọng; bật thì theo công tắc nội bộ
-    /// của bản này (bản phát hành: tắt).
+    /// của bản này (bản phát hành: theo bảng hệ điều hành).
     #[test]
     fn the_settings_switch_only_turns_speaker_off() {
         let mut s = Settings::defaults(UiLanguage::Vi);
@@ -484,11 +520,15 @@ mod tests {
         assert!(!wanted(true, &s), "cài đặt tắt thắng công tắc nội bộ");
     }
 
-    /// Kế hoạch 03: bản phát hành không chạy nhận giọng dù cài đặt bật (CI chạy test này ở bản release, bộ lọc `speaker::`).
+    /// Kế hoạch 03, sửa ở kế hoạch 07: bản phát hành chạy nhận giọng đúng ở hệ điều hành đã nghiệm thu khi cài đặt bật, và không bao
+    /// giờ khi cài đặt tắt (CI chạy test này ở bản release, bộ lọc `speaker::`).
     #[cfg(not(debug_assertions))]
     #[test]
-    fn release_builds_never_activate_speaker_whatever_the_settings() {
-        assert!(!active(&Settings::defaults(UiLanguage::Vi)));
+    fn release_builds_activate_speaker_per_platform_table_and_settings() {
+        let mut s = Settings::defaults(UiLanguage::Vi);
+        assert_eq!(active(&s), ships_on(std::env::consts::OS));
+        s.speaker_diarization = false;
+        assert!(!active(&s));
     }
 
     /// Các bảng `speaker://roster` mà cửa sổ `label` nhận được.
@@ -565,7 +605,7 @@ mod tests {
         assert!(app.state::<TranscriptStore>().roster_view().voices.is_empty());
     }
 
-    /// QĐ 9, rà soát mã 03, mục 2: tắt công tắc khi phiên chưa có giọng nào (mọi phiên của bản phát hành, vì bản phát hành không có
+    /// QĐ 9, rà soát mã 03, mục 2: tắt công tắc khi phiên chưa có giọng nào (mọi phiên của bản "ngủ", vì bản đó không có
     /// nhận giọng) thì không phát `speaker://roster`: không có nhãn nào cần xóa.
     #[test]
     fn turning_the_switch_off_without_voices_announces_nothing() {
@@ -613,7 +653,7 @@ mod tests {
         assert!(handle.is_stopped());
     }
 
-    /// QĐ 9: "Xóa toàn bộ dữ liệu" chỉ phát `speaker://roster` khi phiên có giọng (bản phát hành không phát sự kiện mới).
+    /// QĐ 9: "Xóa toàn bộ dữ liệu" chỉ phát `speaker://roster` khi phiên có giọng (bản "ngủ" không phát sự kiện mới).
     #[test]
     fn clearing_data_announces_speakers_only_when_there_are_some() {
         let app = crate::test_support::mock_app();

@@ -158,8 +158,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // khi tới đây, nên mọi mục trong file là của một lần chạy đã chết, không phải của bản đang dùng tiến trình phụ đó.
     let pidfile = handle.path().app_local_data_dir()?.join("sidecars-live.json");
     // Đọc tên (kế hoạch 04, QĐ 8, 28): trả `AXEnhancedUserInterface` còn sót nếu lần trước worker bị giết, chỉ khi có quyền Trợ
-    // năng (`restore` tự kiểm; chưa có quyền thì giữ file dấu). Chỉ có file khi tính năng đã chạy, nên bản phát hành (tắt tới kế
-    // hoạch 07) không làm gì.
+    // năng (`restore` tự kiểm; chưa có quyền thì giữ file dấu). Chỉ có file khi tính năng đã chạy, nên bản phát hành "ngủ" (manifest chưa
+    // có mục `speaker`) không làm gì.
     #[cfg(target_os = "macos")]
     {
         let marker = handle.path().app_local_data_dir()?.join(speaker::EUI_MARKER_FILE);
