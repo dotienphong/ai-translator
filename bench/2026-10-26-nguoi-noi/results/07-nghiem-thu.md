@@ -257,3 +257,38 @@ Gộp từ điều kiện đầu vào ở trên, `06-van-hanh.md`, mục "Rủi 
 - **Kích thước đóng gói thật** `.dmg`/Windows: chỉ ước tính (≈ 11,6 MB macOS); số thật ở Task 21 Step 7. Worker release 4 275 488 byte, lớn hơn 2 867 152 byte của spec §4.1 (+49%) do bộ đọc tên.
 - **Ngoài phạm vi 0.3.2 (để sau):** bật Windows; Meet, Zoom vào công thức; hợp nhất vòng `tick`; kiểm tự động mức cả app; tách giọng bị gộp bằng tay; hỏi lại khi điều khoản đổi; ngưỡng `speaker_health` chỉnh theo số liệu thật.
 - **Không kiểm trong task này:** không chạy app, Teams, Chrome, Zoom hay âm thanh; không chạy `cargo deny`/`cargo audit` mới (số ở Task 1); không rà mã (giao cho hai người rà độc lập riêng).
+
+## Sửa sau rà mã (đợt A)
+
+Người rà mã độc lập tìm lỗi trong phần Rust; năm commit cục bộ trên nhánh `phan-biet-nguoi-noi` (không đổi giao thức, `PROTOCOL_VERSION` vẫn 3, `Cargo.lock` không đổi). Ưu tiên theo chủ dự án: tốc độ dịch không đổi, thà "Người N" còn hơn sai tên, bảo mật không kém đi.
+
+| Mục | Sửa | Test |
+|---|---|---|
+| A1 tự hiệu chỉnh gán tên sai cả phòng | Khi đã thấy ≥ 2 giọng, ứng viên phải không bật ≥ 80% thời gian có tiếng và có một giọng trùng ≥ 80% lúc bật (`calibrate.rs`); lưới an toàn ở `matcher.rs`: tên có bằng chứng tự học ở ≥ 2 giọng không được gán bằng bằng chứng tự học. Giọng của worker chỉ lấy lúc có ứng viên qua ngưỡng (mỗi 5 s) | phần tử toàn phòng, phần tử theo hai trong ba giọng, tên học ở ba giọng: đỏ → xanh; chỉ báo thật khi có hai giọng và tên học ở một giọng vẫn được học |
+| A2 `confidence` không chặn tên đoán | Đoạn có `confidence` dưới θ (kế thừa giọng trước, hay bị ép vào giọng gần nhất khi đủ giọng) không được tính để một tên đạt ngưỡng nhận tên (≥ 3 s, ≥ 2 đoạn, có chỉ báo); nhãn "Người N" không đổi | hai test session (đoạn ép, đoạn ngắn kế thừa): đỏ → xanh |
+| A3 ghi sổ trên luồng phụ đề | `Health::observe` không ghi đĩa; luồng nền ghi mỗi 15 s nếu có đổi, hết phiên và sau mỗi lần gửi ghi ngay; khóa sổ chỉ giữ lúc dựng JSON | `observing_does_not_write_the_ledger_on_the_calling_thread` |
+| A4 bộ che tên chỉ biết bảng hiện tại | `TranscriptStore` nhớ tên đã thấy trong lần chạy app (RAM, tối đa 256, bỏ tên cũ nhất), `known_names` gộp | `names_seen_in_this_run_stay_known_for_redaction` |
+| A5 `uia.rs` tham chiếu lệch căn | `read_unaligned` | `scripts/check-windows.sh`: 0 cảnh báo |
+| A6 `enable_enhanced` | Chỉ đặt khi đọc được là chưa bật (`eui::should_enable`); lỗi hay quá hạn đọc: không đặt, không ghi dấu | `eui_is_enabled_only_when_it_is_known_to_be_off` |
+
+### Đo A2: `latency-bench speaker-names-eval`, tách giọng tắt
+
+28 bản ghi (4 AMI `Mix-Headset` và 24 hội thoại tiếng Việt, cùng cache nhúng `$DATA/out/`) × 6 điều kiện (trễ 600, 900, 1 300 ms; mất 0 và 0,1), bản debug. Hai lần chạy cùng máy; "trước" tái hiện đúng số của `04-ghep-ten.md`.
+
+| | Đúng TB | Sai TB | Chưa tên TB | Sai lớn nhất |
+|---|---|---|---|---|
+| Trước (`HEAD` sau A1) | 87,34 | 1,85 | 10,82 | 5,8 (ES2004a) |
+| Sau (cách đã chọn) | 87,27 | 1,84 | 10,90 | 5,8 (ES2004a) |
+
+Số giống hệt ở cả sáu điều kiện; khác với trước ở 2 bản (12/168 ô): `TS3003a` 98,2 / 1,8 / 0,0 → 97,5 / 1,4 / 1,1 và `cv-vi-04` 97,6 / 1,2 / 1,2 → 96,4 / 1,2 / 2,4 (một dòng). Đúng giảm 0,07 TB (một bản −1,2 điểm), sai không tăng.
+
+**Cách thử đầu bị bỏ:** loại hẳn đoạn đoán khỏi bằng chứng làm `EN2002a` ở trễ 1 300 ms từ 72,3 / 5,8 / 22,0 thành 88,8 / 10,0 / 1,2 (sai lớn nhất 10,0, sai TB 1,99): các đoạn đoán là bằng chứng thật rằng giọng 1 của bản này đã gộp hai người (QĐ 25), bỏ chúng thì giọng gộp được gán tên một người. Vì vậy cách đã chọn giữ đoạn đoán trong dấu hiệu gộp và mẫu số tỉ lệ, chỉ không cho chúng góp vào ngưỡng nhận tên.
+
+### Rủi ro còn lại (không sửa ở đợt A)
+
+- **Worker trả `voice: None` khi đoạn buộc phải đoán lúc đủ giọng:** sạch hơn (nhãn "Người N" cũng không bị đoán sai), nhưng đổi hành vi gán nhãn giọng nên phải đo lại A-spk1/A-spk2. Chưa làm.
+- Điểm 5 của báo cáo rà: `token_ok` (`speaker-ops/src/health.rs`) cho qua lớp CSS dạng `avatar-LanNguyen` (≤ 32 ký tự `[A-Za-z0-9_-]`).
+- Điểm 7: đọc UI Automation của Chromium trên Windows có thể bật chế độ truy cập của trình duyệt, chưa đo CPU/RAM; cần đo trước khi bật Windows.
+- Điểm 8: `refresh_target` (macOS) gọi `AXWindows`, `AXTitle`, `AXIdentifier` ngoài ngân sách 30 ms khi app họp treo (chỉ làm chậm luồng đọc, không đụng đường dịch).
+- Điểm 10, 11: theo thiết kế (`user_version` 2 chặn hạ cấp; khóa bảo trì khi tải model giọng 26 MB).
+- A1 mới chỉ kiểm bằng dựng lại hình dạng tín hiệu trong test; chưa có bản ghi thật của họp ≥ 3 người xa có chỉ báo tự học. Chỉ báo thật của người nói quá nhiều (≥ 80% thời gian có tiếng) khi đã thấy ≥ 2 giọng sẽ không được học (chấp nhận: thà "Người N").
