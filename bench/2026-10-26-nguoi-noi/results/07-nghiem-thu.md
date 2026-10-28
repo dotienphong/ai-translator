@@ -269,7 +269,64 @@ Không thuộc bước này: A-spk4 trên Windows i5 và với cuộc họp Team
 
 ## Soak (Task 9)
 
-**Chưa chạy.** Soak > 1 giờ cần máy rảnh; không có số mới.
+**Kết luận: ĐẠT mọi mức của kế hoạch** (2026-10-28, 15:54:47 → 17:27:13, session 5536,6 s = 92,3 phút, `rc=0`, `exit.txt` = `0`).
+Một lượt `latency-bench session` thời gian thực với `asr-worker` (Metal), `llama-server` và `speaker-worker` thật, **có bật bộ đọc tên**
+(`--speaker-names-recipe khong-app.recipes.json`; log worker: `bộ đọc: NoMeeting, app None`, nên bộ đọc nạp nhưng không có cuộc họp để đọc).
+Âm thanh phát ngoại tuyến trong `latency-bench`, không ra loa: `muted=true` ở đầu, mỗi 60 s và ở cuối (log `muted.log`), không đổi.
+
+**Điều kiện.** `HEAD` lúc chạy `3d9f7b77` (lúc ghi biên bản `508b9760`; commit chen giữa chỉ thêm hai file chấm điểm ở `bench/`, `git diff e234d29d HEAD -- crates` rỗng nên ba binary release dựng ở Task 8 vẫn đúng). Apple M4 Pro, 12 lõi, 24 GB, macOS 26.6.2, cắm điện (100%).
+Đĩa 40 → 37 GiB. Âm thanh `soak.wav` 5537 s (IS1009a, EN2002a, ES2004a, TS3003a, như 02). Cùng tham số 02 (`--end-silence-ms 50`, `--languages en,zh,ja,ko,vi --target vi`).
+Máy có người dùng: tải 1 phút (91 mẫu) nhỏ nhất 1,32, trung vị 3,58, p90 6,31, lớn nhất 24,56 (lúc khởi động). Đầu lượt tiến trình ăn CPU nhất là Microsoft Defender (65%), kế đó `coreaudiod`, Chrome Helper, Teams WebView; cuối lượt Defender 18%, Teams WebView 12%. Không đụng Teams, Chrome, âm lượng, micro. Dữ liệu thô: `$DATA/out/07/soak/` (ngoài repo).
+
+**Bảng mức đạt** (MB = 10^6 byte; vết RSS mỗi 5 s, 1067 mẫu cho mỗi tiến trình):
+
+| Mức | Yêu cầu | Lượt này | Mốc 02 | |
+|---|---|---|---|---|
+| `speaker-worker` đỉnh RSS | ≤ 250 MB | **146,2** (t=3919 s); 0 mẫu > 250 | 141,8 | đạt |
+| Đỉnh 10% cuối − đỉnh 10% đầu | ≤ +25 MB | **−2,6** (141,9 − 144,5) | −20,5 | đạt |
+| Độ dốc RSS sau phút 10 | (không rò) | +0,13 MB/giờ | −21 MB/giờ | đạt |
+| Tiến trình phụ khởi động lại | 0 | 0 (`sidecar_restarts` 0, pid 7894/7911/7917/7921 không đổi) | 0 | đạt |
+| Nhúng lỗi | 0 | 0 (1724 lần nhúng, trung bình 125,6 ms) | 0 | đạt |
+| Nhãn tới muộn | ≤ 1% | **13/2135 = 0,61%** | 6/2135 = 0,28% | đạt |
+| Khứ hồi nhãn p50 / p90 | (ghi lại) | 98,2 / 221,4 ms; ≤ 230 ms: 1968/2135 (92,2%) | 87,2 / 209,8 ms; 96,6% | |
+| Dịch | | 2113 dịch, 0 lỗi, 0 bỏ, `feed_lag_max_ms` 29,3 | | |
+
+Nhãn muộn nhiều hơn mốc 02 (13 so với 6) và khứ hồi chậm hơn khoảng 11 ms ở p50; cả hai trong mức đạt. Chưa tìm nguyên nhân: lượt này có tải máy nền khác 02 (Defender ăn CPU nhiều ngay đầu lượt) và có thêm bộ đọc tên đang nạp; không tách riêng được hai yếu tố.
+
+**`speaker-worker` mỗi 10 phút** (RSS tại mốc / đỉnh 10 phút tiếp theo, MB; CPU, lệnh, năng lượng của khoảng 10 phút đó, theo giờ đồng hồ, từ `rus` mỗi 60 s):
+
+| Phút | RSS tại mốc | Đỉnh 10 phút | Đỉnh tích lũy | CPU % một lõi | Tỉ lệnh/s | mW |
+|---|---|---|---|---|---|---|
+| 0 | 74,0 | 144,5 | 144,5 | 6,54 | 1,009 | 298 |
+| 10 | 123,3 | 134,9 | 144,5 | 7,18 | 1,071 | 305 |
+| 20 | 74,0 | 139,2 | 144,5 | 7,40 | 1,124 | 320 |
+| 30 | 84,4 | 136,7 | 144,5 | 7,36 | 1,087 | 300 |
+| 40 | 78,7 | 131,1 | 144,5 | 6,33 | 0,897 | 246 |
+| 50 | 70,3 | 129,8 | 144,5 | 5,47 | 0,768 | 212 |
+| 60 | 116,7 | 146,2 | 146,2 | 7,07 | 1,047 | 298 |
+| 70 | 102,7 | 127,0 | 146,2 | 5,54 | 0,772 | 201 |
+| 80 | 77,8 | 139,5 | 146,2 | 4,18 | 0,614 | 154 |
+| 90 | 139,5 | 141,9 | 146,2 | (cuối lượt, không đủ 10 phút) | | |
+
+Theo bản ghi (đỉnh): IS1009a 144,5, EN2002a 139,2, ES2004a 146,2, TS3003a 141,9. RSS dao động theo mật độ tiếng nói, không tăng dần. Footprint `speaker-worker` đỉnh 108,3 (ảnh chụp 60 s), cuối 77,0.
+`asr-worker` đỉnh 713,7 (10% cuối thấp hơn 10% đầu 13,0); `llama-server` đỉnh 2196,8 (10% cuối cao hơn 10% đầu 48,9, trong biên độ dao động; xem ghi chú footprint ở `02-soak.md`, ngoài phạm vi nhận giọng).
+
+**Tải dài hạn, so mốc 02** (không dùng %CPU để kết luận, spec §6.8, §11):
+
+| Phép đo (`speaker-worker`) | Lượt này | Mốc 02 | Lệch |
+|---|---|---|---|
+| Theo giờ đồng hồ, giây 120 → ~5480: tỉ lệnh/s | 0,925 | 0,921 | +0,4% |
+| Theo giờ đồng hồ: năng lượng | 256 mW | 255 mW | +0,4% |
+| Mỗi giây tiếng nói, đoạn IS1009a: tỉ lệnh | 1,509 | 1,492 | +1,1% |
+| Mỗi giây tiếng nói, đoạn IS1009a: mJ | 446 | 458 | −2,6% |
+| Mỗi giây tiếng nói, cả soak: tỉ lệnh | 1,548 | 1,538 | +0,6% |
+| Mỗi giây tiếng nói, cả soak: mJ | 429 | 426 | +0,7% |
+| Mỗi giây tiếng nói, cả soak: %CPU (tham khảo) | 10,54% | 9,67% | +0,9 điểm |
+
+Cột "mốc 02" của năm hàng "mỗi giây tiếng nói" là **dữ liệu 02 tính lại bằng đúng cách tính của lượt này** (cùng `rus-chuoi.jsonl` mỗi 60 s, nội suy tuyến tính tại ranh giới bản ghi, mẫu số là tổng độ dài câu ≥ 0,5 s lấy lần xuất hiện đầu của mỗi `id`; cửa sổ đo bắt đầu ở mẫu `rus` đầu tiên, giây ~58–62). Cách này lệch nhẹ so với số ghi ở `02-soak.md` (1,445 tỉ lệnh và 443 mJ trên IS1009a; 1,506 tỉ lệnh và 417 mJ cả soak) vì 02 dùng một cách chia cửa sổ khác; theo cả hai cách lượt này lệch mốc 02 dưới 5% về số lệnh và năng lượng. Số lệnh ≈ 1,5 tỉ mỗi giây tiếng nói, năng lượng ≈ 430–450 mJ: ngang mốc.
+%CPU mỗi giây tiếng nói cao hơn 02 khoảng 0,9 điểm, cùng chiều với xung hiệu dụng thấp hơn (3,10 GHz cả soak, 3,23 GHz IS1009a; 02 ghi 3,29 và 3,46 GHz). Như 02, số lệnh và năng lượng không đổi nên không kết luận về ngân sách 8% bằng %CPU; việc chọn cách hiểu vẫn là của chủ dự án.
+
+**Chưa kiểm / hạn chế.** Lượt này không tính A2 (truth rỗng, như 02). Bốn bản ghi AMI là bốn nhóm 4 người nên cuối lượt worker còn 8 giọng (trần `max_voices`), đây là tình huống nhân tạo để đo tải. Bộ đọc tên không có cuộc họp để đọc (`NoMeeting`), nên tải của đọc tên khi có Teams thật chưa đo ở lượt này. Chưa đo trên Windows.
 
 ## Kiểm cuối toàn nhánh (Task 15, 2026-10-28)
 
