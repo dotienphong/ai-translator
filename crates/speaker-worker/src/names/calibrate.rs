@@ -21,6 +21,12 @@ pub const CAL_GRID_MS: i64 = 250;
 pub const CAL_SHIFT_MS: i64 = 600;
 pub const CAL_MIN_R: f64 = 0.6;
 pub const CAL_ONLY_IN_SPEECH: f64 = 0.9;
+/// Khi đã thấy ≥ 2 giọng (mỗi giọng ≥ [`CAL_VOICE_MIN_MS`] trong cửa sổ): phần tử bật ≥ chừng này thời gian có tiếng của máy là
+/// phần tử "toàn phòng", không phải chỉ báo của riêng một người (rà soát đợt A, A1).
+pub const CAL_MAX_ON_SHARE: f64 = 0.8;
+/// Khi đã thấy ≥ 2 giọng: một giọng phải trùng ≥ chừng này lúc phần tử bật thì mới coi là chủ của chỉ báo.
+pub const CAL_OWNER_SHARE: f64 = 0.8;
+pub const CAL_VOICE_MIN_MS: i64 = 1_000;
 pub const CAL_START_AFTER_MS: i64 = 10_000;
 pub const CAL_EVERY_MS: i64 = 5_000;
 /// Tìm tối đa chừng này mỗi lần; không học được thì ngừng.
@@ -112,7 +118,15 @@ impl Calibrator {
 
     /// Một lượt đọc lúc `at_ms`, cách lượt trước `period_ms`. `explained`: có người ở xa đang nói theo tín hiệu 1–3 hay chỉ báo tự
     /// học; `speech`: tiếng nói của máy.
-    pub fn push(&mut self, at_ms: i64, period_ms: i64, tiles: &[TileSample], explained: bool, speech: &Spans) {
+    pub fn push(
+        &mut self,
+        at_ms: i64,
+        period_ms: i64,
+        tiles: &[TileSample],
+        explained: bool,
+        speech: &Spans,
+        voices: impl FnOnce() -> BTreeMap<u32, Spans>,
+    ) {
         if tiles.iter().filter(|t| t.is_self).count() != 1 {
             // QĐ 24: chưa nhận ra (đúng một) ô của chính người dùng thì ô đó có thể bị học: không tự hiệu chỉnh.
             return;
@@ -164,7 +178,7 @@ impl Calibrator {
         }
         if self.last_eval.is_none_or(|t| at_ms - t >= CAL_EVERY_MS) {
             self.last_eval = Some(at_ms);
-            if self.evaluate(at_ms, speech) {
+            if self.evaluate(at_ms, speech, voices) {
                 // Học được thì thôi tìm, 10 phút sau mới tìm tiếp cho người khác (rà soát lần 2 A-C1: không đặt hạn thì sau 10 s tiếng
                 // nói chưa giải thích được lại tìm ngay).
                 self.stop(Some(at_ms + CAL_RETRY_AFTER_MS));
@@ -182,7 +196,7 @@ impl Calibrator {
     }
 
     /// `true` khi học được chỉ báo mới.
-    fn evaluate(&mut self, at_ms: i64, speech: &Spans) -> bool {
+    fn evaluate(&mut self, at_ms: i64, speech: &Spans, voices: impl FnOnce() -> BTreeMap<u32, Spans>) -> bool {
         let grid: Vec<i64> = (0..CAL_WINDOW_MS / CAL_GRID_MS)
             .map(|i| at_ms - CAL_WINDOW_MS + i * CAL_GRID_MS)
             .collect();
@@ -191,6 +205,9 @@ impl Calibrator {
             .map(|&t| f64::from(u8::from(speech.covers(t - CAL_SHIFT_MS))))
             .collect();
         let mut best: BTreeMap<String, (f64, u64)> = BTreeMap::new();
+        // Giọng của worker chỉ lấy khi có ứng viên qua các ngưỡng trên (lấy một lần).
+        let mut voices = Some(voices);
+        let mut voice_spans: Option<BTreeMap<u32, Spans>> = None;
         for ((name, key), s) in &self.series {
             if self.learned.contains_key(name) || s.len() < MIN_SAMPLES {
                 continue;
@@ -217,7 +234,10 @@ impl Calibrator {
                 .count() as f64
                 / changes.len() as f64;
             if r >= CAL_MIN_R && in_speech >= CAL_ONLY_IN_SPEECH && best.get(name).is_none_or(|b| r > b.0) {
-                best.insert(name.clone(), (r, *key));
+                let owners = voice_spans.get_or_insert_with(|| voices.take().map(|f| f()).unwrap_or_default());
+                if single_owner(&grid, &x, &target, owners) {
+                    best.insert(name.clone(), (r, *key));
+                }
             }
         }
         let mut learned_new = false;
@@ -232,6 +252,33 @@ impl Calibrator {
         }
         learned_new
     }
+}
+
+/// Rà soát đợt A (A1): tương quan với tiếng nói CHUNG của máy không phân biệt "toàn phòng" với "của một người". Khi worker đã thấy
+/// ≥ 2 giọng trong cửa sổ thì phần tử ứng viên (`x`: 1 khi khác trạng thái thường gặp) phải (a) không bật gần hết thời gian có tiếng
+/// (≥ [`CAL_MAX_ON_SHARE`]) và (b) có một giọng trùng ≥ [`CAL_OWNER_SHARE`] lúc nó bật; không thì không học (ngả về "Người N").
+fn single_owner(grid: &[i64], x: &[f64], target: &[f64], voices: &BTreeMap<u32, Spans>) -> bool {
+    let (from, to) = (
+        grid.first().copied().unwrap_or(0),
+        grid.last().copied().unwrap_or(0) + CAL_GRID_MS,
+    );
+    let seen = voices
+        .values()
+        .filter(|v| v.overlap(from - CAL_SHIFT_MS, to - CAL_SHIFT_MS) >= CAL_VOICE_MIN_MS)
+        .count();
+    if seen < 2 {
+        return true;
+    }
+    let on: Vec<i64> = grid.iter().zip(x).filter(|&(_, &v)| v > 0.5).map(|(&t, _)| t).collect();
+    let speech_pts = target.iter().filter(|&&v| v > 0.5).count();
+    let on_in_speech = x.iter().zip(target).filter(|&(&a, &b)| a > 0.5 && b > 0.5).count();
+    if on.is_empty() || (speech_pts > 0 && on_in_speech as f64 >= CAL_MAX_ON_SHARE * speech_pts as f64) {
+        return false;
+    }
+    voices.values().any(|v| {
+        let own = on.iter().filter(|&&t| v.covers(t - CAL_SHIFT_MS)).count();
+        own as f64 >= CAL_OWNER_SHARE * on.len() as f64
+    })
 }
 
 /// Trạng thái thường gặp nhất; bằng số lần thì giá trị nhỏ hơn (tất định).
@@ -321,6 +368,7 @@ mod tests {
                 &[me(), tile("Lan", vec![(7, if talking { 2 } else { 1 }), (8, noise)])],
                 false,
                 &speech,
+                Default::default,
             );
             was_active |= c.active();
             t += 250;
@@ -353,7 +401,7 @@ mod tests {
             let state = if speech.covers(t - CAL_SHIFT_MS) { 2 } else { 1 };
             let mut lan = tile("Lan", vec![(7, state)]);
             lan.shapes = vec![shape(state)];
-            c.push(t, 250, &[me(), lan], false, &speech);
+            c.push(t, 250, &[me(), lan], false, &speech, Default::default);
             t += 250;
         }
         assert_eq!(c.learned().get("Lan"), Some(&7));
@@ -395,7 +443,7 @@ mod tests {
             let state = if speech.covers(t - CAL_SHIFT_MS) { 2 } else { 1 };
             let mut lan = tile("Lan", vec![(7, state)]);
             lan.shapes = vec![shape(state)];
-            c.push(t, 250, &[me(), lan], false, &speech);
+            c.push(t, 250, &[me(), lan], false, &speech, Default::default);
             t += 250;
         }
         assert_eq!(c.learned().get("Lan"), Some(&7));
@@ -424,10 +472,102 @@ mod tests {
         let mut t: i64 = 0;
         while t < 80_000 {
             let state = if minh.covers(t - CAL_SHIFT_MS) { 2 } else { 1 };
-            c.push(t, 250, &[me(), tile("Lan", vec![(7, state)])], false, &speech);
+            c.push(
+                t,
+                250,
+                &[me(), tile("Lan", vec![(7, state)])],
+                false,
+                &speech,
+                Default::default,
+            );
             t += 250;
         }
         assert!(c.learned().is_empty());
+    }
+
+    /// Rà soát đợt A (A1): ba người ở xa nói luân phiên; một phần tử "toàn phòng" nằm trong ô của Lan đổi trạng thái khi BẤT KỲ ai
+    /// nói nên tương quan ~1 với tiếng nói chung. Không được học làm chỉ báo của Lan (mọi giọng sẽ nhận tên Lan).
+    #[test]
+    fn a_room_wide_element_is_not_learned_when_several_voices_talk() {
+        let (speech, voices) = three_voices();
+        let mut c = Calibrator::default();
+        let mut t: i64 = 0;
+        while t < 80_000 {
+            let state = if speech.covers(t - CAL_SHIFT_MS) { 2 } else { 1 };
+            c.push(t, 250, &[me(), tile("Lan", vec![(7, state)])], false, &speech, || {
+                voices.clone()
+            });
+            t += 250;
+        }
+        assert!(
+            c.learned().is_empty(),
+            "phần tử bật theo mọi giọng không phải của riêng Lan"
+        );
+    }
+
+    /// Như trên nhưng phần tử chỉ bật khi hai trong ba giọng nói: không giọng nào giải thích ≥ 80% lúc bật.
+    #[test]
+    fn an_element_that_follows_two_of_three_voices_is_not_learned() {
+        let (speech, voices) = three_voices();
+        let mut c = Calibrator::default();
+        let mut t: i64 = 0;
+        while t < 80_000 {
+            let on = voices[&1].covers(t - CAL_SHIFT_MS) || voices[&2].covers(t - CAL_SHIFT_MS);
+            c.push(
+                t,
+                250,
+                &[me(), tile("Lan", vec![(7, if on { 2 } else { 1 })])],
+                false,
+                &speech,
+                || voices.clone(),
+            );
+            t += 250;
+        }
+        assert!(c.learned().is_empty());
+    }
+
+    /// Không hồi quy (A1): có hai giọng, chỉ báo thật của giọng nói nhiều hơn (chỉ bật lúc giọng đó nói) vẫn được học.
+    #[test]
+    fn a_real_indicator_is_still_learned_when_two_voices_are_seen() {
+        let mut v1 = Spans::default();
+        let mut v2 = Spans::default();
+        let mut speech = Spans::default();
+        for k in 0..10 {
+            v1.add(k * 8_000, k * 8_000 + 3_000);
+            v2.add(k * 8_000 + 4_000, k * 8_000 + 5_500);
+            speech.add(k * 8_000, k * 8_000 + 3_000);
+            speech.add(k * 8_000 + 4_000, k * 8_000 + 5_500);
+        }
+        let voices: BTreeMap<u32, Spans> = [(1, v1.clone()), (2, v2)].into();
+        let mut c = Calibrator::default();
+        let mut t: i64 = 0;
+        while t < 80_000 {
+            let on = v1.covers(t - CAL_SHIFT_MS);
+            c.push(
+                t,
+                250,
+                &[me(), tile("Lan", vec![(7, if on { 2 } else { 1 })])],
+                false,
+                &speech,
+                || voices.clone(),
+            );
+            t += 250;
+        }
+        assert_eq!(c.learned().get("Lan"), Some(&7));
+    }
+
+    /// Ba giọng nói luân phiên (mỗi 12 s: 1,5 s mỗi giọng, nghỉ 2,5 s giữa các giọng); 80 s.
+    fn three_voices() -> (Spans, BTreeMap<u32, Spans>) {
+        let mut speech = Spans::default();
+        let mut voices: BTreeMap<u32, Spans> = BTreeMap::new();
+        for k in 0..7 {
+            for v in 0..3u32 {
+                let s = k * 12_000 + i64::from(v) * 4_000;
+                speech.add(s, s + 1_500);
+                voices.entry(v + 1).or_default().add(s, s + 1_500);
+            }
+        }
+        (speech, voices)
     }
 
     #[test]
@@ -443,6 +583,7 @@ mod tests {
                 &[me(), tile("Lan", vec![(7, if talking { 2 } else { 1 })])],
                 true,
                 &speech,
+                Default::default,
             );
             t += 250;
         }
@@ -463,6 +604,7 @@ mod tests {
                 &[tile("Lan", vec![(7, if talking { 2 } else { 1 })])],
                 false,
                 &speech,
+                Default::default,
             );
             t += 250;
         }
@@ -483,6 +625,7 @@ mod tests {
                 &[me(), tile("Lan", vec![(7, if quiet_middle { 2 } else { 1 })])],
                 false,
                 &speech,
+                Default::default,
             );
             t += 250;
         }
@@ -499,7 +642,14 @@ mod tests {
         let mut t: i64 = 0;
         let (mut started, mut stopped, mut restarted) = (None, None, None);
         while t < 1_000_000 {
-            c.push(t, 250, &[me(), tile("Lan", vec![(7, 1)])], false, &speech);
+            c.push(
+                t,
+                250,
+                &[me(), tile("Lan", vec![(7, 1)])],
+                false,
+                &speech,
+                Default::default,
+            );
             match (c.active(), started, stopped, restarted) {
                 (true, None, _, _) => started = Some(t),
                 (false, Some(_), None, _) => stopped = Some(t),

@@ -29,7 +29,7 @@ use speaker_recipe::{AppRecipe, Os, Recipes, SignalKind};
 
 use crate::cluster::OnlineClusterer;
 use crate::embed::{Embedder, MIN_SAMPLES};
-use crate::names::calibrate::Calibrator;
+use crate::names::calibrate::{CAL_SHIFT_MS, CAL_WINDOW_MS, Calibrator};
 use crate::names::clock::Clock;
 use crate::names::matcher::{KEEP_SPEAKING_MS, NameMatcher, SegRec, SplitRule};
 use crate::names::track::{SpeakingTracker, quiet_at};
@@ -615,9 +615,12 @@ impl<E: Embed> Worker<E> {
         let period = i64::from(period_ms);
         self.names.self_seen = tiles.iter().filter(|t| t.is_self).count() == 1;
         let explained = now.iter().any(|p| !p.is_self && p.speaking > 0.5);
+        let matcher = &self.names.matcher;
         self.names
             .calibrator
-            .push(at, period, tiles, explained, &self.names.speech);
+            .push(at, period, tiles, explained, &self.names.speech, || {
+                matcher.voice_spans(at - CAL_WINDOW_MS - CAL_SHIFT_MS)
+            });
         self.names.matcher.observe(at, period, delay, now);
         let mic_open = now.iter().any(|p| !p.is_self && p.muted == Some(false));
         if explained || mic_open {

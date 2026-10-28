@@ -415,6 +415,15 @@ impl NameMatcher {
         let before = self.names.clone();
         let mut wanted: BTreeMap<u32, String> = BTreeMap::new();
         let voices: Vec<u32> = self.totals.keys().copied().collect();
+        // Lưới an toàn (rà soát đợt A, A1): tên có bằng chứng tự học ở ≥ 2 giọng là dấu hiệu chỉ báo "toàn phòng" bị học nhầm.
+        let mut learned_voices: BTreeMap<&str, u32> = BTreeMap::new();
+        for t in self.totals.values() {
+            for (n, e) in t {
+                if e.by[2] >= MIN_INDICATOR_MS {
+                    *learned_voices.entry(n.as_str()).or_default() += 1;
+                }
+            }
+        }
         for &v in &voices {
             if room.contains(&v) {
                 continue;
@@ -453,7 +462,12 @@ impl NameMatcher {
                 Some((n, e)) if qualifies(&e) && anchor.as_deref().is_none_or(|old| beats(&n, &e, old)) => Some(n),
                 _ => current.filter(|old| total > 0 && ms_of(old) as f64 >= NAME_DROP_SHARE * total as f64),
             };
-            if let Some(n) = next.filter(|n| !merged(n)) {
+            // Tên bị ≥ 2 giọng nhận bằng chứng tự học thì giọng nào cũng không nhận tên đó bằng bằng chứng tự học.
+            let contested = |n: &str| {
+                learned_voices.get(n).is_some_and(|&c| c >= 2)
+                    && t.get(n).is_some_and(|e| e.source() == NameSource::Learned)
+            };
+            if let Some(n) = next.filter(|n| !merged(n) && !contested(n)) {
                 wanted.insert(v, n);
             }
         }
@@ -577,6 +591,17 @@ impl NameMatcher {
             .any(|v| !room.contains(&v) && !self.names.contains_key(&v))
     }
 
+    /// Khoảng nói của từng giọng (không tính đoạn từ micro) từ `since` ms.
+    pub fn voice_spans(&self, since: i64) -> BTreeMap<u32, Spans> {
+        let mut out: BTreeMap<u32, Spans> = BTreeMap::new();
+        for s in self.segs.iter().filter(|s| !s.mic && s.end_ms > since) {
+            if let Some(v) = s.voice {
+                out.entry(v).or_default().add(s.start_ms, s.end_ms);
+            }
+        }
+        out
+    }
+
     pub fn records(&self) -> impl Iterator<Item = &SegRec> {
         self.segs.iter()
     }
@@ -693,6 +718,80 @@ pub(crate) mod tests {
         let names = m.names();
         assert_eq!((names[&1].name.as_str(), names[&1].room_index), ("Phòng A", Some(1)));
         assert_eq!((names[&2].name.as_str(), names[&2].room_index), ("Phòng A", Some(2)));
+    }
+
+    /// Lượt đọc mỗi 250 ms trong [from, to): `who` đang "nói" qua tín hiệu `via` khi giờ lượt đọc (đã trừ trễ 0) nằm trong `talks`.
+    fn read_via(m: &mut NameMatcher, from: i64, to: i64, who: &str, via: Via, talks: &[(i64, i64)]) {
+        let mut t = from;
+        while t < to {
+            let on = talks.iter().any(|&(s, e)| s <= t && t < e);
+            let now = [ParticipantNow {
+                name: who.into(),
+                is_self: false,
+                muted: None,
+                speaking: if on { 1.0 } else { 0.0 },
+                via: if on { via } else { Via::None },
+            }];
+            m.observe(t, 250, 0, &now);
+            t += 250;
+        }
+    }
+
+    /// Rà soát đợt A (A1, lưới an toàn): một chỉ báo tự học "toàn phòng" bật theo mọi giọng thì giọng nào cũng có bằng chứng Learned
+    /// cho cùng một tên. Một tên có bằng chứng Learned ở ≥ 2 giọng thì không gán bằng bằng chứng Learned cho giọng nào ("Người N").
+    #[test]
+    fn a_name_learned_on_several_voices_is_given_to_none() {
+        let mut m = NameMatcher::default();
+        let all: &[(i64, i64)] = &[
+            (0, 4_000),
+            (5_000, 9_000),
+            (10_000, 14_000),
+            (15_000, 19_000),
+            (20_000, 24_000),
+            (25_000, 29_000),
+        ];
+        for (i, &(s, e)) in all.iter().enumerate() {
+            let voice = (i % 3) as u32 + 1;
+            let mut emb = [0.0f32; 3];
+            emb[(voice - 1) as usize] = 1.0;
+            m.segment(seg_e(i as u64, s, e, voice, emb));
+        }
+        read_via(&mut m, 0, 32_000, "Lan", Via::Learned, all);
+        m.settle(0, &Spans::default(), &ROOMLESS);
+        assert!(m.names().is_empty(), "{:?}", m.names());
+    }
+
+    /// Không hồi quy (A1): bằng chứng Learned chỉ ở MỘT giọng vẫn gán tên.
+    #[test]
+    fn a_name_learned_on_one_voice_is_still_given() {
+        let mut m = NameMatcher::default();
+        let lan: &[(i64, i64)] = &[(0, 4_000), (10_000, 14_000)];
+        m.segment(seg(0, 0, 4_000, 1));
+        m.segment(seg(1, 10_000, 14_000, 1));
+        read_via(&mut m, 0, 16_000, "Lan", Via::Learned, lan);
+        m.settle(0, &Spans::default(), &ROOMLESS);
+        let names = m.names();
+        assert_eq!(
+            (names[&1].name.as_str(), names[&1].source),
+            ("Lan", NameSource::Learned)
+        );
+    }
+
+    /// Khoảng nói của từng giọng (đoạn từ micro không tính) từ `since` ms; cho tự hiệu chỉnh phân biệt "toàn phòng" với "một người".
+    #[test]
+    fn voice_spans_group_non_mic_segments_by_voice() {
+        let mut m = NameMatcher::default();
+        m.segment(seg(0, 0, 1_000, 1));
+        m.segment(seg(1, 2_000, 3_000, 2));
+        m.segment(SegRec::new(2, 4_000, 5_000, Some(3), true, None, true));
+        m.segment(SegRec::new(3, 6_000, 7_000, None, false, None, true));
+        m.segment(seg(4, 8_000, 9_000, 1));
+        let v = m.voice_spans(1_500);
+        assert_eq!(v.keys().copied().collect::<Vec<_>>(), [1, 2]);
+        assert!(
+            v[&1].covers(8_500) && !v[&1].covers(500),
+            "đoạn kết thúc trước `since` bị bỏ"
+        );
     }
 
     /// QĐ 9 (rà soát A-Q7): một người bị phân cụm tách thành hai giọng giống nhau (cosine 0,95 > `split_max_cosine` 0,85): mỗi tên

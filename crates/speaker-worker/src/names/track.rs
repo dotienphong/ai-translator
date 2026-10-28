@@ -441,7 +441,7 @@ mod tests {
         let mut t = 0i64;
         while t < 120_000 {
             let t0 = std::time::Instant::now();
-            c.push(t, 250, &tiles, false, &speech);
+            c.push(t, 250, &tiles, false, &speech, Default::default);
             worst_push = worst_push.max(t0.elapsed().as_secs_f64() * 1e3);
             t += 250;
         }
