@@ -619,7 +619,7 @@ export const vi: Record<MessageKey, string> = {
   "transcript.export.srtSpeakers": "Thêm tên người nói",
   "settings.speakers.title": "Người nói",
   "settings.speakers.diarization": "Phân biệt người nói",
-  "settings.speakers.diarization.hint": "Mỗi người một màu trên phụ đề. Nhận giọng ngay trên máy; không lưu, không gửi đi, hết phiên thì xóa.",
+  "settings.speakers.diarization.hint": "Mỗi người một màu trên phụ đề. Đặc điểm giọng chỉ nằm trên máy này, không lưu, không gửi đi, hết phiên thì xóa. Tên người nói (nếu lấy được từ cuộc họp) chỉ được lưu khi bạn bật \"Lưu lịch sử chép lời\" (Pro).",
   "settings.speakers.names": "Lấy tên từ Teams",
   "settings.speakers.names.hint": "Hiện tên người đang nói, đọc từ cửa sổ cuộc họp Microsoft Teams (bản cài trên máy). Không đọc chat, không chụp màn hình. Chưa đọc được tên thì hiện “Người 1”, “Người 2”.",
   "settings.speakers.permission.granted": "Đã cấp (dùng chung với Gõ dịch).",

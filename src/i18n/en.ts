@@ -620,7 +620,7 @@ export const en = {
   "transcript.export.srtSpeakers": "Add speaker names",
   "settings.speakers.title": "Speakers",
   "settings.speakers.diarization": "Tell speakers apart",
-  "settings.speakers.diarization.hint": "Each person gets a color in the subtitles. Voices are told apart on this computer only; nothing is stored or sent, and it is cleared when the session ends.",
+  "settings.speakers.diarization.hint": "Each person gets a color in the subtitles. Voice traits stay on this computer only; they are not stored or sent, and are cleared when the session ends. Speaker names (when read from the meeting) are saved only if you turn on \"Save transcript history\" (Pro).",
   "settings.speakers.names": "Get names from Teams",
   "settings.speakers.names.hint": "Shows who is speaking, read from the Microsoft Teams meeting window (the desktop app). Chat is never read and the screen is never captured. Until a name can be read, “Speaker 1”, “Speaker 2” are shown.",
   "settings.speakers.permission.granted": "Granted (shared with Type & Translate).",

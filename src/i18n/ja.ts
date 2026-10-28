@@ -620,7 +620,7 @@ export const ja: Record<MessageKey, string> = {
   "transcript.export.srtSpeakers": "話者名を付ける",
   "settings.speakers.title": "話者",
   "settings.speakers.diarization": "話者を区別する",
-  "settings.speakers.diarization.hint": "字幕で人ごとに色を分けます。声の区別はこのパソコン上だけで行い、保存も送信もせず、セッションが終わると消去します。",
+  "settings.speakers.diarization.hint": "字幕で人ごとに色を分けます。声の特徴はこのパソコン上だけで扱い、保存も送信もせず、セッションが終わると消去します。話者の名前（会議から取得できた場合）は、「文字起こしの履歴を保存」（Pro）をオンにした場合のみ保存されます。",
   "settings.speakers.names": "Teams から名前を取得",
   "settings.speakers.names.hint": "会議ウィンドウから話している人の名前を読み取って表示します（インストール版の Microsoft Teams）。チャットは読まず、画面も撮影しません。名前を読み取れるまでは「話者1」「話者2」と表示します。",
   "settings.speakers.permission.granted": "許可済みです（入力翻訳と共通）。",

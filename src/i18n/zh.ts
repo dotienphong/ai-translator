@@ -620,7 +620,7 @@ export const zh: Record<MessageKey, string> = {
   "transcript.export.srtSpeakers": "加上说话人姓名",
   "settings.speakers.title": "说话人",
   "settings.speakers.diarization": "区分说话人",
-  "settings.speakers.diarization.hint": "字幕中每个人显示不同颜色。声音只在本机区分，不保存、不发送，会话结束即清除。",
+  "settings.speakers.diarization.hint": "字幕中每个人显示不同颜色。声音特征只在本机处理，不保存、不发送，会话结束即清除。发言人姓名（从会议中获取时）仅在你开启“保存转写历史记录”（Pro）时才会保存。",
   "settings.speakers.names": "从 Teams 获取姓名",
   "settings.speakers.names.hint": "从会议窗口读取并显示正在说话的人的姓名（安装版 Microsoft Teams）。不读取聊天，不截屏。读取到姓名之前显示“说话人1”“说话人2”。",
   "settings.speakers.permission.granted": "已授权（与输入翻译共用）。",

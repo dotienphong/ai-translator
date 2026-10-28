@@ -620,7 +620,7 @@ export const ko: Record<MessageKey, string> = {
   "transcript.export.srtSpeakers": "화자 이름 넣기",
   "settings.speakers.title": "화자",
   "settings.speakers.diarization": "화자 구분",
-  "settings.speakers.diarization.hint": "자막에서 사람마다 다른 색으로 표시합니다. 목소리 구분은 이 컴퓨터에서만 하며, 저장하거나 보내지 않고 세션이 끝나면 지웁니다.",
+  "settings.speakers.diarization.hint": "자막에서 사람마다 다른 색으로 표시합니다. 목소리 특징은 이 컴퓨터에서만 처리하며, 저장하거나 보내지 않고 세션이 끝나면 지웁니다. 말한 사람의 이름(회의에서 가져온 경우)은 \"대본 기록 저장\"(Pro)을 켠 경우에만 저장됩니다.",
   "settings.speakers.names": "Teams에서 이름 가져오기",
   "settings.speakers.names.hint": "회의 창에서 말하는 사람의 이름을 읽어 표시합니다(설치형 Microsoft Teams). 채팅은 읽지 않으며 화면을 캡처하지 않습니다. 이름을 읽기 전에는 “화자 1”, “화자 2”로 표시합니다.",
   "settings.speakers.permission.granted": "허용되었습니다(입력 번역과 함께 사용).",
