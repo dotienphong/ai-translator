@@ -16,7 +16,7 @@ shared-encode = []
 anyhow.workspace = true
 asr-protocol = { path = "../asr-protocol" }
 ash = { version = "0.38.0", optional = true, default-features = false, features = ["loaded", "std"] }
-libc = "0.2.189"
+libc = "0.2.191"
 serde.workspace = true
 serde_json.workspace = true
 whisper-rs = "0.16.0"

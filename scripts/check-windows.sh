@@ -24,5 +24,5 @@ printf '#define OPENSSL_VERSION_MAJOR 3\n#define OPENSSL_VERSION_MINOR 6\n#defin
 : > "$fake_ssl/include/openssl/opensslconf.h"
 export OPENSSL_NO_VENDOR=1 OPENSSL_DIR="$fake_ssl" OPENSSL_STATIC=1 CC_x86_64_pc_windows_msvc=clang
 export LIBSQLITE3_SYS_USE_PKG_CONFIG=1 SQLCIPHER_LIB_DIR="$fake_ssl/lib"
-cargo clippy -p meeting-translator -p pipeline -p audio-capture -p speaker-worker -p speaker-protocol --target x86_64-pc-windows-msvc --all-targets "$@" \
+cargo clippy -p meeting-translator -p pipeline -p audio-capture -p speaker-worker -p speaker-protocol -p speaker-ops -p speaker-canary --target x86_64-pc-windows-msvc --all-targets "$@" \
   -- -D warnings

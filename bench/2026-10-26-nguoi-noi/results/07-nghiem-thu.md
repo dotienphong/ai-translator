@@ -61,7 +61,20 @@ Lưu ý công cụ: Node 24 không in dòng `# pass` khi chạy không có termi
 
 ## Thư viện (Task 1)
 
-Chờ Task 1.
+Đo 2026-10-28. Bản mới nhất ổn định lấy từ API crates.io (`max_stable_version`, trùng `cargo search`; `libc` 1.0.0-alpha.5 là bản tiền phát hành, không dùng).
+
+| Gói | Cũ | Mới | MSRV | Yanked |
+|---|---|---|---|---|
+| `libc` | 0.2.189 | 0.2.191 | 1.65 | không |
+| `sha2` | 0.11.0 | 0.11.1 | 1.88 | không |
+| `serde_json` | 1.0.151 | 1.0.154 | 1.71 | không |
+| `realfft` | 3.5.0 | 3.5.1 | 1.61 | không |
+
+`Cargo.lock` đổi 12 dòng mỗi phía: `version` và `checksum` của bốn gói (8) cộng bốn dòng tham chiếu `sha2 0.11.1` của các crate phụ thuộc. `sha2 0.10.9` (gián tiếp) giữ nguyên. Lần `cargo update -p` còn tự đổi `cssparser-macros` từ `syn 3.0.6` sang `syn 2.0.119` (yêu cầu `>=2,<4`, ngoài danh sách nâng); đã hoàn lại tay, `cargo metadata --locked` vẫn đạt.
+
+Kết quả: fmt ok; clippy workspace sạch (chỉ một cảnh báo từ build script `whisper-rs-sys`, bên thứ ba, có từ trước); `cargo test --locked --workspace` 1 949 đạt, 0 lỗi, 25 bỏ qua; `asr-worker --features shared-encode` ok; B' trên model thật (`steps_match…`, `embedding_matches_onnxruntime`) 2 đạt; `check-windows.sh --locked` thoát 0 (có thêm `speaker-ops`, `speaker-canary`); `cargo deny` sạch; `cargo audit` chỉ sáu cảnh báo cũ; `check-no-network.sh` sạch; `cargo tree -d`: `sha2` hai bản (0.10.9, 0.11.1), `libc`, `serde_json`, `realfft` một bản; không có ggml trong app.
+
+`pnpm outdated` (chỉ ghi, không nâng): gốc `@vitejs/plugin-react` 6.1.1→6.1.2, `react`/`react-dom` 19.3.0→19.3.1, `vite` 8.3.4→8.3.5, `vitest` 5.0.3→5.0.5, `zustand` 5.0.15→5.0.16; server `hono` 4.13.12→4.13.14, `@cloudflare/vitest-plugin` 1.3.4→1.4.8, `@cloudflare/workers-types`, `wrangler` 4.145.0→4.153.0, `vitest` 4.1.11→5.0.5; website `wrangler` 4.148.0→4.153.0. Không thuộc kế hoạch này.
 
 ## Công tắc (Task 2)
 
