@@ -17,9 +17,13 @@ export const BROKEN_STATES: readonly HealthState[] = ["no_names", "no_speaking",
 /** Giữ 60 ngày. */
 export const HEALTH_RETENTION_SECONDS = 60 * 86400;
 export const HEALTH_PRUNE_BATCH = 500;
-/** Cảnh báo khi một (app họp, phiên bản app họp) có ≥ chừng này phần trăm báo cáo hỏng, từ chừng này báo cáo (spec §7.2). */
+/**
+ * Cảnh báo khi một (app họp, phiên bản app họp) có ≥ chừng này phần trăm MÁY hỏng, từ chừng này báo cáo và có ít nhất DEGRADED_MIN_DEVICES
+ * máy khác nhau hỏng (spec §7.2). Đếm máy chứ không đếm báo cáo: một máy hỏng nhiều ngày liền không đủ để gọi là app họp đổi.
+ */
 export const DEGRADED_SHARE = 0.3;
 export const DEGRADED_MIN_REPORTS = 5;
+export const DEGRADED_MIN_DEVICES = 3;
 /** Số ngày gần nhất xét cho ngưỡng trên và cho "kiểm tra tự động hỏng liền". */
 export const DEGRADED_WINDOW_DAYS = 3;
 export const CANARY_FAIL_DAYS = 2;
@@ -239,24 +243,32 @@ export interface Degraded {
   meeting_version: string;
   reports: number;
   broken: number;
+  devices: number;
+  broken_devices: number;
 }
 
 /**
- * Các (app họp, phiên bản app họp) của người dùng thật (bản release, không phải canary) có ≥ DEGRADED_SHARE báo cáo hỏng trong
- * DEGRADED_WINDOW_DAYS ngày gần nhất, từ DEGRADED_MIN_REPORTS báo cáo. `no_permission` không tính là hỏng (việc của người dùng).
+ * Các (app họp, phiên bản app họp) của người dùng thật (bản release, không phải canary) trong DEGRADED_WINDOW_DAYS ngày gần nhất có từ
+ * DEGRADED_MIN_REPORTS báo cáo, ít nhất DEGRADED_MIN_DEVICES máy hỏng và ≥ DEGRADED_SHARE số máy hỏng. Một máy tính là hỏng nếu có ít nhất
+ * một báo cáo hỏng trong cửa sổ; máy gửi nhiều báo cáo (nhiều ngày) chỉ tính một lần ở cả tử và mẫu. `no_permission` không tính là hỏng
+ * (việc của người dùng). `device_id_hash` do app tự khai nên đây vẫn là tín hiệu không xác thực.
  */
 export async function findDegraded(db: D1Database, now: number): Promise<Degraded[]> {
   const { results } = await db
     .prepare(
       `SELECT meeting_app, meeting_version, COUNT(*) AS reports,
-              SUM(state IN ('no_names', 'no_speaking', 'blocked')) AS broken
+              SUM(state IN ('no_names', 'no_speaking', 'blocked')) AS broken,
+              COUNT(DISTINCT device_id_hash) AS devices,
+              COUNT(DISTINCT CASE WHEN state IN ('no_names', 'no_speaking', 'blocked') THEN device_id_hash END) AS broken_devices
        FROM speaker_health
        WHERE canary = 0 AND build = 'release' AND received_at >= ?1
        GROUP BY meeting_app, meeting_version
-       HAVING COUNT(*) >= ?2 AND SUM(state IN ('no_names', 'no_speaking', 'blocked')) * 1.0 / COUNT(*) >= ?3
+       HAVING COUNT(*) >= ?2
+          AND COUNT(DISTINCT CASE WHEN state IN ('no_names', 'no_speaking', 'blocked') THEN device_id_hash END) >= ?4
+          AND COUNT(DISTINCT CASE WHEN state IN ('no_names', 'no_speaking', 'blocked') THEN device_id_hash END) * 1.0 / COUNT(DISTINCT device_id_hash) >= ?3
        ORDER BY meeting_app, meeting_version`,
     )
-    .bind(now - DEGRADED_WINDOW_DAYS * 86400, DEGRADED_MIN_REPORTS, DEGRADED_SHARE)
+    .bind(now - DEGRADED_WINDOW_DAYS * 86400, DEGRADED_MIN_REPORTS, DEGRADED_SHARE, DEGRADED_MIN_DEVICES)
     .all<Degraded>();
   return results;
 }

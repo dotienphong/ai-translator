@@ -185,6 +185,22 @@ describe("cron: cảnh báo bộ đọc tên (spec §7.2)", () => {
     expect((await findDegraded(env.DB, T0)).map((d) => [d.meeting_version, d.reports, d.broken])).toEqual([["1.0", 5, 3]]);
   });
 
+  it("ngưỡng đếm MÁY, không đếm báo cáo: 2 máy hỏng liền 3 ngày (6 báo cáo) không báo; 3 máy hỏng thì báo", async () => {
+    for (const [i, day] of [DAY0, "2026-09-29", "2026-09-28"].entries()) {
+      for (const n of [500, 501]) await seed({ meeting: { app: "teams", version: "1.0" }, day, state: "blocked", device_id_hash: await device(n) }, T0 - 3600 - i);
+    }
+    expect(await findDegraded(env.DB, T0)).toEqual([]);
+    expect(await evaluateSpeakerHealth(env.DB, T0)).toEqual({ degraded: 0, canary: 0 });
+    await seed({ meeting: { app: "teams", version: "1.0" }, state: "no_names", device_id_hash: await device(502) }, T0 - 3600);
+    expect((await findDegraded(env.DB, T0)).map((d) => [d.meeting_version, d.reports, d.devices, d.broken_devices])).toEqual([["1.0", 7, 3, 3]]);
+  });
+
+  it("tỉ lệ tính theo máy: một máy gửi nhiều báo cáo ok không che được 3 máy hỏng trong 5 máy", async () => {
+    await reports("1.0", ["no_names", "no_names", "no_names", "ok", "ok"]); // 3/5 máy hỏng
+    for (const day of [DAY0, "2026-09-29", "2026-09-28"]) await seed({ meeting: { app: "teams", version: "1.0" }, day, state: "ok", device_id_hash: await device(103) }, T0 - 3600);
+    expect((await findDegraded(env.DB, T0)).map((d) => d.meeting_version)).toEqual(["1.0"]);
+  });
+
   it("không tính báo cáo debug, canary, hay quá 3 ngày", async () => {
     await reports("1.0", ["no_names", "no_names", "no_names", "no_names", "no_names"], { build: "debug" });
     await reports("2.0", ["no_names", "no_names", "no_names", "no_names", "no_names"], { canary: true });
