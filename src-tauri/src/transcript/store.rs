@@ -6,14 +6,14 @@
 //! Bảng người nói của phiên (spec 2026-10-26-phan-biet-nguoi-noi §9, `speakers.rs`) cũng ở đây: giọng từng câu (`Subtitle::speaker`,
 //! nhãn tới muộn sửa tại chỗ), nhãn, màu, tên đổi tay, gộp tay. Bản chép lời, Lịch sử và file xuất đọc nhãn từ đây.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::Mutex;
 
 use pipeline::subtitle::{Delta, Names, Roster, SpeakerLabel, Subtitle};
 use serde::Serialize;
 use speaker_protocol::ReaderStatus;
 
-use super::speakers::{RosterView, SpeakerBook, SpeakerError, VoiceView, clean_name};
+use super::speakers::{NameSource, RosterView, SpeakerBook, SpeakerError, VoiceView, clean_name};
 use crate::i18n::{self, Strings};
 use crate::settings::UiLanguage;
 
@@ -84,11 +84,57 @@ impl Current {
 /// Bản chép lời của phiên hiện tại (hoặc vừa dừng). Quản lý bằng `app.manage`; luồng phụ đề của engine ghi vào, lệnh
 /// của giao diện đọc ra.
 #[derive(Default)]
-pub struct TranscriptStore(Mutex<Current>);
+pub struct TranscriptStore(Mutex<Current>, Mutex<SeenNames>);
+
+/// Số tên đã thấy giữ lại nhiều nhất để che trong báo cáo lỗi; đầy thì bỏ tên cũ nhất.
+pub const MAX_SEEN_NAMES: usize = 256;
+
+/// Tên người tham dự và tên người dùng đặt đã thấy trong lần chạy này của app, tới hết lần chạy (chỉ RAM, không ghi đĩa, không vào log):
+/// bảng người nói của phiên mới hay sau khi tắt "Lấy tên" không còn các tên đó, nhưng bộ che tên của báo cáo lỗi vẫn phải che chúng
+/// trong một dòng log cũ (rà soát đợt A, A4).
+#[derive(Default)]
+struct SeenNames(VecDeque<String>);
+
+impl SeenNames {
+    fn add(&mut self, name: String) {
+        if self.0.contains(&name) {
+            return;
+        }
+        if self.0.len() >= MAX_SEEN_NAMES {
+            self.0.pop_front();
+        }
+        self.0.push_back(name);
+    }
+}
 
 impl TranscriptStore {
     fn lock(&self) -> std::sync::MutexGuard<'_, Current> {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn remember(&self, names: impl IntoIterator<Item = String>) {
+        let mut seen = self.1.lock().unwrap_or_else(|e| e.into_inner());
+        for n in names {
+            seen.add(n);
+        }
+    }
+
+    /// Tên để che trong báo cáo lỗi: người tham dự và nhãn có tên (đọc từ app họp hay do người dùng đặt; không có "Người N") của bảng
+    /// hiện có, cộng mọi tên đã thấy trong lần chạy này của app (tối đa [`MAX_SEEN_NAMES`]).
+    pub fn redaction_names(&self) -> Vec<String> {
+        let view = self.roster_view();
+        let mut out: Vec<String> = view
+            .participants
+            .into_iter()
+            .chain(
+                view.voices
+                    .into_iter()
+                    .filter(|v| v.source != NameSource::Voice)
+                    .map(|v| v.label),
+            )
+            .collect();
+        out.extend(self.1.lock().unwrap_or_else(|e| e.into_inner()).0.iter().cloned());
+        out
     }
 
     /// Phiên `session` bắt đầu: bỏ bản của phiên trước, cả bảng người nói; giữ ngôn ngữ giao diện; số thứ tự bảng tăng (bảng rỗng
@@ -157,6 +203,13 @@ impl TranscriptStore {
     /// Tên đọc từ app họp và người tham dự của phiên `session` (`EventSink::names`). Trả bảng mới để phát khi đổi, dựng trong cùng
     /// lần khóa (QĐ 25 của 03). Làm sạch tên trong lúc khóa: khung của worker đã giới hạn ≤ 64 tên × 160 byte.
     pub fn names(&self, session: u64, names: &Names) -> Option<RosterView> {
+        self.remember(
+            names
+                .participants
+                .iter()
+                .chain(names.voices.iter().map(|v| &v.name))
+                .filter_map(|n| clean_name(n).ok().flatten()),
+        );
         let mut current = self.lock();
         (current.meta.session == session && current.speakers.set_names(names)).then(|| current.roster_view())
     }
@@ -201,6 +254,7 @@ impl TranscriptStore {
         // Làm sạch (và từ chối tên quá dài) trước khi khóa: khóa này cũng là khóa của luồng phụ đề (`upsert`, `delta`), còn tên tới
         // qua IPC không giới hạn độ dài (rà soát mã 03, mục 5).
         let name = clean_name(name)?;
+        self.remember(name.clone());
         let mut current = self.lock();
         current.running()?;
         current.speakers.rename(id, name)?;
@@ -279,6 +333,43 @@ mod tests {
             replaces: Vec::new(),
             speaker: None,
         }
+    }
+
+    /// Rà soát đợt A (A4): bộ che tên của báo cáo lỗi vẫn biết tên đã thấy trong lần chạy này sau khi sang phiên mới hay tắt "Lấy tên"
+    /// (bảng người nói hiện tại không còn), có giới hạn kích thước.
+    #[test]
+    fn names_seen_in_this_run_stay_known_for_redaction() {
+        use pipeline::subtitle::NamedVoice;
+        let names = |n: &str| Names {
+            voices: vec![NamedVoice {
+                id: 1,
+                name: n.into(),
+                room_index: None,
+            }],
+            participants: vec![n.into(), "Minh Trần".into()],
+        };
+        let store = TranscriptStore::default();
+        store.begin(1, 0, "vi");
+        assert!(store.names(1, &names("Lan Nguyễn")).is_some());
+        store.begin(2, 0, "vi");
+        assert!(store.roster_view().participants.is_empty(), "bảng phiên mới rỗng");
+        let known = store.redaction_names();
+        assert!(
+            known.contains(&"Lan Nguyễn".to_string()) && known.contains(&"Minh Trần".to_string()),
+            "{known:?}"
+        );
+        store.clear_names();
+        assert!(store.names(2, &names("Hoa Phạm")).is_none(), "đang tắt: bảng bỏ tên");
+        assert!(
+            store.redaction_names().contains(&"Hoa Phạm".to_string()),
+            "nhưng tên vẫn bị che"
+        );
+        for i in 0..1_000 {
+            store.names(2, &names(&format!("Người khách {i}")));
+        }
+        let known = store.redaction_names();
+        assert!(known.len() <= MAX_SEEN_NAMES + 128, "{}", known.len());
+        assert!(known.contains(&"Người khách 999".to_string()), "giữ tên mới nhất");
     }
 
     #[test]

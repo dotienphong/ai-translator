@@ -41,7 +41,6 @@ use crate::license::{app as license_app, device};
 use crate::models::machine as models_machine;
 use crate::settings::UiLanguage;
 use crate::state::{AppState, SessionStatus};
-use crate::transcript::speakers::NameSource;
 use crate::transcript::store::TranscriptStore;
 
 /// Chờ bấy nhiêu giây sau khi mở app rồi mới gửi lần đầu (spec §1).
@@ -265,21 +264,12 @@ impl<R: Runtime> Host for AppHost<R> {
         unix_now()
     }
 
-    /// Tên người tham dự và nhãn có tên (đọc từ app họp hay do người dùng đặt) của bảng người nói hiện có; không có "Người N".
+    /// Tên người tham dự và nhãn có tên (đọc từ app họp hay do người dùng đặt) của bảng người nói hiện có, cộng mọi tên đã thấy trong
+    /// lần chạy này của app (phiên trước, đã tắt "Lấy tên"); không có "Người N".
     fn known_names(&self) -> Vec<String> {
-        let Some(store) = self.app.try_state::<TranscriptStore>() else {
-            return Vec::new();
-        };
-        let view = store.roster_view();
-        view.participants
-            .into_iter()
-            .chain(
-                view.voices
-                    .into_iter()
-                    .filter(|v| v.source != NameSource::Voice)
-                    .map(|v| v.label),
-            )
-            .collect()
+        self.app
+            .try_state::<TranscriptStore>()
+            .map_or_else(Vec::new, |store| store.redaction_names())
     }
 }
 
