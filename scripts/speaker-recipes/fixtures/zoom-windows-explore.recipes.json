@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "version": 1,
+  "min_app_version": "0.3.2",
+  "apps": [
+    {
+      "app": "zoom",
+      "os": "windows",
+      "window_title": ["^Zoom Meeting", "^Cuộc họp Zoom"],
+      "tile": {
+        "role": "Button",
+        "label": "^(?P<name>[^,]{1,120}), Computer audio (?P<muted>muted|unmuted)(?:, Video (?:on|off))?(?P<speaking>, active speaker)?$"
+      },
+      "name_from": "label",
+      "name_suffixes": ["\\s*\\((?:me|tôi|Host|Chủ trì|Co-host|Đồng chủ trì|Guest|Khách)\\)$"],
+      "self_name": "\\((?:me|tôi)\\)$",
+      "mic": { "muted_values": ["muted"], "absent_means_unmuted": false },
+      "speaking": [{ "kind": "label" }],
+      "delay_ms": 500
+    }
+  ]
+}

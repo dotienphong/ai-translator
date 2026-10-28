@@ -51,6 +51,8 @@ jobs:
           pnpm test
       - name: Script phát hành và script manifest model (node --test)
         run: node --test "scripts/release/*.test.mjs" scripts/models/manifest.test.mjs scripts/models/update.test.mjs scripts/dev-env.test.mjs scripts/run-dev-app.test.mjs
+      - name: Công thức đọc tên và kiểm tra tự động (node --test, kế hoạch 06 của phân biệt người nói)
+        run: node --test scripts/speaker-recipes/update.test.mjs tools/speaker-canary/canary.test.mjs
       - name: Công cụ nghiệm thu (unittest, 08a)
         run: python3 -m unittest discover -s bench/phase1/acceptance -p 'test_*.py'
       - name: cargo clippy
@@ -58,7 +60,7 @@ jobs:
           cargo clippy --locked --workspace --all-targets -- -D warnings
           cargo clippy --locked -p asr-worker --features metal,shared-encode --all-targets -- -D warnings
       - name: speaker-worker không có mã mạng (spec 2026-10-26-phan-biet-nguoi-noi §4.1)
-        run: scripts/release/check-no-network.sh speaker-worker speaker-protocol
+        run: scripts/release/check-no-network.sh speaker-worker speaker-protocol speaker-recipe
       - name: cargo test
         run: |
           cargo test --locked --workspace

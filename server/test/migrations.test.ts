@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 const db = env.MIGRATION_DB;
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 
-it("có đúng sáu migration theo thứ tự", () => {
+it("có đúng bảy migration theo thứ tự", () => {
   expect(names).toEqual([
     "0001_init.sql",
     "0002_three_plans_trials.sql",
@@ -15,6 +15,7 @@ it("có đúng sáu migration theo thứ tự", () => {
     "0004_error_reports.sql",
     "0005_support_chat.sql",
     "0006_order_lang.sql",
+    "0007_speaker_health.sql",
   ]);
 });
 
@@ -354,7 +355,8 @@ it("0006 chỉ thêm cột orders.lang (NULL được, chỉ năm mã); đơn c�
   const seq = () => db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'orders'").first();
   const seqBefore = await seq();
 
-  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+  // Chỉ áp tới 0006: 0007 có test riêng ở cuối file.
+  await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 6));
 
   const after = await tables();
   expect(after.filter((t) => t.name !== "orders")).toEqual(before.filter((t) => t.name !== "orders"));
@@ -373,5 +375,44 @@ it("0006 chỉ thêm cột orders.lang (NULL được, chỉ năm mã); đơn c�
   await expect(insert("VI").run()).rejects.toThrow(/CHECK/);
   await insert("ja").run();
   await insert(null).run();
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("0007 chỉ thêm bảng speaker_health và hai index; bảng cũ giữ nguyên; trạng thái, app họp, canary chỉ nhận giá trị đã biết; mỗi khóa một dòng", async () => {
+  // D1 đang ở trạng thái sau 0006 (test trên chỉ áp sáu migration đầu).
+  const tables = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name",
+        )
+        .all<{ name: string; sql: string }>()
+    ).results;
+  const indexNames = async () =>
+    (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results.map((r) => r.name);
+  const before = await tables();
+  const indexesBefore = await indexNames();
+
+  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+
+  const after = await tables();
+  expect(after.filter((t) => t.name !== "speaker_health")).toEqual(before);
+  expect(after.map((t) => t.name)).toContain("speaker_health");
+  expect(await indexNames()).toEqual([...indexesBefore, "speaker_health_app", "speaker_health_received"].sort());
+  const insert = (state: string, app: string, canary: number, device = "d") =>
+    db
+      .prepare(
+        `INSERT INTO speaker_health (device_id_hash, day, meeting_app, meeting_version, canary, received_at, build, app_version, os_name,
+                                     os_version, arch, recipe_version, state, minutes_ok, minutes_total, learned, patterns)
+         VALUES (?4, '2026-10-01', ?2, '1', ?3, 0, 'release', '0.3.2', 'macos', '15', 'arm64', 1, ?1, 1, 1, 0, '[]')`,
+      )
+      .bind(state, app, canary, device);
+  await expect(insert("broken", "teams", 0).run()).rejects.toThrow(/CHECK/);
+  await expect(insert("ok", "webex", 0).run()).rejects.toThrow(/CHECK/);
+  await expect(insert("ok", "teams", 2).run()).rejects.toThrow(/CHECK/);
+  await insert("ok", "teams", 0).run();
+  await expect(insert("no_names", "teams", 0).run()).rejects.toThrow(/UNIQUE|PRIMARY/);
+  await insert("ok", "teams", 1).run();
+  await insert("ok", "teams", 0, "d2").run();
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });

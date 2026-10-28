@@ -1,0 +1,64 @@
+{
+ "steps": [
+  {
+   "t": 3.979,
+   "who": "nguoinoi",
+   "on": true
+  },
+  {
+   "t": 9.042,
+   "who": "nguoinoi",
+   "on": false
+  },
+  {
+   "t": 12.552,
+   "who": "nguoinoi",
+   "on": true
+  },
+  {
+   "t": 17.482,
+   "who": "nguoinoi",
+   "on": false
+  },
+  {
+   "t": 20.987,
+   "who": "nguoinoi",
+   "on": true
+  },
+  {
+   "t": 22.681,
+   "who": "nguoinoi",
+   "on": false
+  },
+  {
+   "t": 26.185,
+   "who": "nguoinoi",
+   "on": true
+  },
+  {
+   "t": 30.981,
+   "who": "nguoinoi",
+   "on": false
+  },
+  {
+   "t": 34.485,
+   "who": "nguoinoi",
+   "on": true
+  },
+  {
+   "t": 38.061,
+   "who": "nguoinoi",
+   "on": false
+  },
+  {
+   "t": 41.571,
+   "who": "nguoinoi",
+   "on": true
+  },
+  {
+   "t": 42.822,
+   "who": "nguoinoi",
+   "on": false
+  }
+ ]
+}

@@ -12,6 +12,7 @@ import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./adm
 import { registerAdminOps } from "./admin-ops";
 import { registerAdminRead } from "./admin-read";
 import { registerAdminReports } from "./admin-reports";
+import { registerAdminSpeakerHealth } from "./admin-speaker-health";
 import { registerAdminStats } from "./admin-stats";
 import { audit, auditIfChanged, auditStatement } from "./audit";
 import { sendLicenseMail } from "./deps";
@@ -54,6 +55,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
   registerAdminStats(app);
   registerAdminOps(app);
   registerAdminReports(app);
+  registerAdminSpeakerHealth(app);
 
   /** Bảng gói lấy từ Worker API; thiếu hay sai thì null (route trả 503 pricing_not_configured). */
   async function plansOf(c: Context<AdminAppEnv>): Promise<PlanTable | null> {
@@ -585,7 +587,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
     // Tin nhắn xóa trước cuộc chat (khóa ngoại support_messages.conversation_id).
     const chatsOf = "SELECT id FROM support_conversations WHERE email = ?3";
     // Nhật ký đứng đầu batch (cùng transaction), đếm đúng các dòng các câu sau sẽ đổi; ghi nhật ký lỗi thì không xóa gì.
-    const [, , , , , acts, lics, ords] = await db.batch([
+    const [, , , , , , acts, lics, ords] = await db.batch([
       db
         .prepare(
           `INSERT INTO audit_log (at, actor, action, detail)
@@ -594,6 +596,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
              'licenses', (SELECT COUNT(*) FROM licenses WHERE email = ?3),
              'orders', (SELECT COUNT(*) FROM orders WHERE email = ?3),
              'error_reports', (SELECT COUNT(*) FROM error_reports WHERE ${reportsOf}),
+             'speaker_health', (SELECT COUNT(*) FROM speaker_health WHERE ${reportsOf}),
              'support_conversations', (SELECT COUNT(*) FROM support_conversations WHERE email = ?3),
              'note', ?4)`,
         )
@@ -602,6 +605,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
         .prepare(`DELETE FROM error_report_logs WHERE id IN (SELECT id FROM error_reports WHERE ${reportsOf.replaceAll("?3", "?")})`)
         .bind(email),
       db.prepare(`DELETE FROM error_reports WHERE ${reportsOf.replaceAll("?3", "?")}`).bind(email),
+      db.prepare(`DELETE FROM speaker_health WHERE ${reportsOf.replaceAll("?3", "?")}`).bind(email),
       db.prepare(`DELETE FROM support_messages WHERE conversation_id IN (${chatsOf.replaceAll("?3", "?")})`).bind(email),
       db.prepare("DELETE FROM support_conversations WHERE email = ?").bind(email),
       db.prepare(`UPDATE activations SET device_label = NULL WHERE ${activationsOf.replaceAll("?3", "?")}`).bind(email),

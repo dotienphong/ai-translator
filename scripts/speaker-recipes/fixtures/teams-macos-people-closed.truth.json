@@ -1,0 +1,94 @@
+{
+ "steps": [
+  {
+   "t": 5.984,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 13.982,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 17.982,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 25.981,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 29.985,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 33.984,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 35.982,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 39.984,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 41.982,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 45.982,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 47.984,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 51.982,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 53.985,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 56.981,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 56.994,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 59.978,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 59.992,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 62.984,
+   "who": "Lan",
+   "on": false
+  }
+ ]
+}

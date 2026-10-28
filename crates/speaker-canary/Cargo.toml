@@ -1,0 +1,24 @@
+[package]
+name = "speaker-canary"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Kiểm tra tự động hằng ngày của bộ đọc tên người nói (spec 2026-10-26-phan-biet-nguoi-noi §7.3; kế hoạch 06): chạy bộ đọc thật của
+# `speaker-worker` lên cửa sổ họp của app thật trong lúc các khách chạy theo lịch nói đã biết, chấm bằng `speaker-ops::canary`, gửi kết quả
+# như báo cáo tình trạng (`canary = true`). Công cụ của máy chủ dự án, KHÔNG nằm trong app hay gói cài; crate này có mã mạng (gửi báo cáo)
+# nên `speaker-worker` không bao giờ phụ thuộc nó (`scripts/release/check-no-network.sh` chỉ kiểm worker).
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+# Cùng bản và tính năng app dùng (TLS của hệ điều hành); bản mới nhất ổn định trên crates.io (`cargo search reqwest`, 2026-10-27).
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "native-tls", "system-proxy"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.11.0"
+speaker-ops = { path = "../speaker-ops" }
+speaker-protocol = { path = "../speaker-protocol" }
+speaker-recipe = { path = "../speaker-recipe" }
+speaker-worker = { path = "../speaker-worker" }
+thiserror.workspace = true

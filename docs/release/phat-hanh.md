@@ -1519,3 +1519,65 @@ PADMIN=https://admin.aitranslator.vn
 7. **Thông tin bên ngoài** (chủ dự án): website cửa hàng ở Creem (Store settings) và PayOS (thông tin kênh) đổi sang `https://aitranslator.vn` (Creem có thể duyệt lại; link cũ vẫn chuyển hướng nên không gãy); mọi tài khoản đăng ký bằng email `@aitranslator.io.vn` đổi sang email khác; hồ sơ Zalo Bot, GitHub repo (About › Website), mạng xã hội, Claude for Startups ghi tên mới. Sau vài ngày ổn định: xóa domain `mail.aitranslator.io.vn` ở Resend (thư cũ đã gửi xong).
 
 Đường lui: tới hết bước 4, tên cũ chạy nguyên vẹn; webhook lỗi thì đăng ký lại về `https://api.aitranslator.io.vn/…`. Ở bước 5, `pnpm exec wrangler rollback` cho Worker site không trả tên cũ về (custom domain không đi theo bản rollback): muốn bỏ chuyển hướng thì sửa `routes` của `website/wrangler.jsonc` thêm lại `aitranslator.io.vn` và deploy site (trả lời có khi wrangler hỏi).
+
+## 15. Phân biệt người nói: công thức đọc tên và báo cáo tình trạng (migration D1 0007)
+
+Spec `2026-10-26-phan-biet-nguoi-noi-design.md` mục 7, kế hoạch `2026-10-27-phan-biet-nguoi-noi-06-van-hanh.md`. **Mỗi bước ghi vào production do chủ dự án chạy.** Tính năng còn **tắt** với người dùng cuối tới kế hoạch 07 (công tắc nội bộ `speaker::enabled`): các bước dưới đây đặt sẵn hạ tầng vận hành, chưa có người dùng thật nào gửi báo cáo hay tải công thức cho tới khi kế hoạch 07 bật tính năng.
+
+### 15.1. Đợt triển khai lần đầu (server, admin, công thức)
+
+Thứ tự (mỗi bước kiểm xong mới sang bước sau): **migration trước, Worker sau**. Migration 0007 chỉ **thêm** bảng `speaker_health` và hai index; Worker cũ chạy đúng trên schema mới, còn Worker mới cần bảng này.
+
+1. **Kiểm trước (chỉ đọc), chép lại để so sau.**
+
+   ```bash
+   cd server
+   pnpm exec wrangler d1 time-travel info mt-license-production
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE name = 'speaker_health'"
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "PRAGMA foreign_key_check"
+   ```
+
+   Expected: mốc time-travel in ra (đường lui khôi phục dữ liệu); truy vấn bảng trả rỗng; `foreign_key_check` rỗng.
+2. **Áp migration.** `pnpm exec wrangler d1 migrations apply mt-license-production --remote` liệt kê đúng `0007_speaker_health.sql`, hỏi xác nhận. Kiểm lại truy vấn bước 1: có bảng `speaker_health`.
+3. **Deploy Worker API và Worker admin** (cùng lúc, như mục 10): `pnpm check && pnpm exec wrangler deploy`, rồi `pnpm ui:build && pnpm exec wrangler deploy -c wrangler.admin.jsonc`. Kiểm: `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://api.aitranslator.vn/v1/diagnostics -H 'content-type: application/json' -d '{"v":1,"kind":"speaker_health"}'` ra `400` (thân thiếu trường, route nhận kind mới); Web Admin, trang Báo cáo lỗi, tab **Bộ đọc tên** mở được và báo trống.
+4. **Kiểm cron:** sau 5 phút, `pnpm exec wrangler tail` (Worker API) có `"event":"reconcile"` và không có `reconcile_failed` ở các bước `speaker_health_alerts`, `prune_speaker_health` (bài học sự cố cron 2026-10-07: kiểm cron sau mỗi lần deploy).
+5. **Đăng công thức đọc tên lần đầu** (mục 15.2): bản đầu là nội dung của `scripts/speaker-recipes/recipes.json` đang có, `"version": 1`; lệnh tự chọn `first_release` khi chưa có bản nào trên R2. Kiểm: `curl -s https://releases.aitranslator.vn/speaker/recipes.json | head -c 200` in một dòng JSON có `"format":"ai-translator-speaker-recipes"`. Nếu `curl` không phân giải được, kiểm DNS bằng `dig @8.8.8.8 releases.aitranslator.vn` trước khi chạy lại (bài học DNSSEC `io.vn` ngày 2026-10-22).
+
+Đường lui: Worker lỗi thì `pnpm exec wrangler rollback` (bảng mới không ảnh hưởng Worker cũ). Công thức lỗi thì mục 15.3.
+
+### 15.2. Sửa và đăng công thức: `pnpm recipes:update`
+
+Khi Teams, Meet hay Zoom đổi giao diện và bộ đọc không còn đọc đúng (cảnh báo từ tab Bộ đọc tên, hay kiểm tra tự động hỏng):
+
+1. Trên máy có app họp bản mới, đang trong cuộc họp thử, ghi cây giao diện: macOS `ax-record fixture <app> "$DATA/…/cay.jsonl" --seconds 20`, Windows `uia-record fixture <app> "$DATA/…/cay.jsonl" --seconds 20` (có tên thật: chỉ ghi vào `$DATA`, ngoài repo).
+2. Ẩn danh bằng `scripts/speaker-recipes/make_fixture.py` (dừng khi còn mẫu cấm), duyệt bản in, chép fixture vào `scripts/speaker-recipes/fixtures/` kèm file `.truth.json` (cách làm: `scripts/speaker-recipes/fixtures/README.md`).
+3. Sửa `scripts/speaker-recipes/recipes.json` và **tăng `"version"`** (app không nhận số cũ hơn hay bằng); `min_app_version` chỉ nâng khi công thức dùng khả năng mà app cũ không có.
+4. `pnpm recipes:update --check` (kiểm luật của app, in khác biệt so với bản đang phát hành, chạy bộ test cây giao diện ghi sẵn). Đạt thì `pnpm recipes:update` (không tham số): hỏi y/N rồi commit, đẩy `main`, kích workflow `sign-recipes.yml` (input `body`, `previous`, `first_release`; cùng khóa ký manifest model, secret `MANIFEST_SIGNING_KEY` của environment `release`, không có secret mới), tải artifact `speaker-recipes` (`recipes.json` đã ký), đăng lên R2 tại khóa `speaker/recipes.json` (sao lưu bản cũ ở `.recipes-update/backup/`), kiểm lại qua URL công khai. Bản đã phát hành được lưu ở `scripts/speaker-recipes/released/body-<V>.json`.
+5. Điều kiện máy như mục 13.1 (nhánh `main`, cây chỉ có file của lượt này, khớp `origin/main`, `gh` đăng nhập tài khoản `dotienphong`, wrangler đã đăng nhập OAuth); không cần rclone. Workflow `sign-recipes.yml` phải có sẵn trên `main` (gộp nhánh `phan-biet-nguoi-noi` vào `main` và đẩy trước lần đăng đầu). Kiểm DNS `releases.aitranslator.vn` bằng `dig @8.8.8.8` trước khi chạy.
+
+App của người dùng tải trong vòng 6 giờ (lúc mở, sau 20 giây, và mỗi 6 giờ, chỉ khi tính năng bật cho họ), áp dụng từ **phiên dịch sau**. Kiểm ở máy dev: log có dòng `công thức đọc tên: nhận số N`.
+
+**Dừng giữa chừng:** chạy lại `pnpm recipes:update` (lệnh làm tiếp được: không commit lần hai, `git push` an toàn, CI ký lại). Nếu đã commit mà chưa đẩy, chạy `git push origin main` trước. Lỗi "Bản đã ký không khớp công thức trong repo": dừng hẳn, không đăng tay; xem lượt chạy CI.
+
+### 15.3. Quay lại và tắt từ xa
+
+- **Quay lại:** `pnpm recipes:update --revert-to <V>` đăng lại nội dung của phiên bản V với số mới = đang phát hành + 1 (app không nhận số cũ hơn, nên "quay lại" là một số mới mang nội dung cũ). Bản lưu từng phiên bản: `scripts/speaker-recipes/released/body-<V>.json`.
+- **Tắt bộ đọc của một app (hay tất cả) từ xa:** đăng công thức không có mục của app đó (`"apps": []` là tắt hết): người dùng quay về "Người N" mà không cần phát hành app. Dùng khi công thức làm đọc sai tên.
+- **Khóa ký bị lộ hay nghi bị lộ:** công thức chỉ là dữ liệu (không mã, app trong danh sách viết cứng, worker không có mạng, tiền tố ký riêng nên chữ ký manifest model không dùng được cho công thức), nên tệ nhất là đọc sai tên hay tắt bộ đọc; vẫn xử lý như khóa manifest model (đổi khóa ở `src-tauri/keys/manifest-public-keys.json`, phát hành app mới).
+
+### 15.4. Báo cáo tình trạng và Web Admin
+
+- Mỗi ngày tối đa một báo cáo cho mỗi cặp (app họp, phiên bản app họp) mỗi máy, chỉ khi người dùng bật "Gửi báo cáo lỗi" (Cài đặt › Quyền riêng tư; tắt thì app xóa sổ trên máy). Không có tên người; có `device_id_hash` như báo cáo lỗi. Giữ 60 ngày; xóa theo email (`/admin/erase`) xóa luôn báo cáo của máy đã kích hoạt license của email đó.
+- Web Admin › Báo cáo lỗi › tab **Bộ đọc tên**: bảng theo app họp, phiên bản và hệ điều hành (hỏng từ 30% và từ 5 báo cáo thì huy hiệu đỏ), kết quả kiểm tra tự động, mẫu chỉ báo tự học mới nhất.
+- Email vận hành (cron 5 phút, mục 15.1 bước 4): `speaker_health_degraded` (một phiên bản app họp có ≥ 30% báo cáo hỏng, từ 5 báo cáo trong 3 ngày; `no_permission` không tính là hỏng), `speaker_canary_failed` (kiểm tra tự động hỏng hai ngày liền hay im ba ngày). Mỗi chủ thể cảnh báo tối đa một lần mỗi ngày; thư chỉ có số lượng.
+
+### 15.5. Kiểm tra tự động hằng ngày
+
+Chi tiết trong `tools/speaker-canary/README.md`. Chủ dự án tạo tài khoản thử, đăng nhập sẵn trong hồ sơ trình duyệt riêng, rồi cài lịch (launchd, Task Scheduler). Bộ chuyển cho từng app (`tools/speaker-canary/adapters/<app>.mjs`) chưa có trong repo tới khi làm cùng chủ dự án.
+
+- **Cấu hình:** file JSON ở **ngoài repo** (mẫu `tools/speaker-canary/templates/canary.example.json`), có `machine`, `canaryBin`, `logDir`, `api`, `leadSeconds` (số giây từ lúc dựng lịch tới mốc 0 của cuộc họp, 5 tới 300, mặc định 20; tăng nếu bộ chuyển mở phòng chậm) và `apps`. Tên hai khách chỉ nằm trong file này; không có mật khẩu.
+- **Chạy tay một lượt:** `node tools/speaker-canary/canary.mjs --app <teams|meet_chrome|zoom> --config <file ngoài repo> [--dry-run]` (`--dry-run` không mở gì, không chạy `speaker-canary`). `--app-version` truyền cho `speaker-canary` là phiên bản **thật** của app họp do bộ chuyển đọc được, không đặt cứng.
+- **Mã thoát:** `0` đạt; `1` tình trạng hỏng (đã gửi báo cáo); `2` lỗi chạy `speaker-canary`; `3` chưa gửi được (mạng; gửi lại bằng `speaker-canary send --report <file>`); `4` server từ chối; `5` bộ chuyển không mở được cuộc họp (hạ tầng thử hỏng, không gửi báo cáo); `6` cấu hình sai. **Mã 3 và 4 che mã 1**: đừng chỉ nhìn mã thoát. Tình trạng thật (`state`, kể cả hỏng) nằm trong file kết quả `--out` và được chép vào trường `result.state` của nhật ký `<logDir>/<ngày>-<app>.jsonl`; báo cáo chưa gửi được giữ ở `<logDir>/<ngày>-<app>.report.json`.
+- **Lịch chạy:** `lib.mjs` sinh plist launchd (`launchdPlist`) và tác vụ Task Scheduler (`taskXml`); `taskXml` khai báo `encoding="UTF-16"` nên file `.xml` phải ghi **UTF-16LE có BOM** trước khi `schtasks /Create /TN … /XML <file>`. Mỗi app một lượt, cách nhau 10 phút, lúc máy rảnh, đã đăng nhập và không khóa màn hình.
+- **Quyền Trợ năng (macOS):** cấp cho cả `node` và `speaker-canary`; cdhash đổi mỗi lần build lại nên phải cấp lại. Chưa kiểm là đủ khi chạy từ launchd (Task 19 của kế hoạch 06).
+- **Hỏng thì làm gì:** bảng "Khi hỏng" cuối `tools/speaker-canary/README.md` (`no_names` hay `no_speaking` thì ghi lại cây giao diện, sửa công thức, mục 15.2; mã thoát 5 nhiều ngày thì sửa bộ chuyển).

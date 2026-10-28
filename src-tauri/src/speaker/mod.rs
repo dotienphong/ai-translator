@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 
 use pipeline::speaker::SpeakerLink;
 use pipeline::speaker_client::{self, BeforeSpawn, SpeakerHandle, SpeakerLaunch};
+use speaker_protocol::NamesSetup;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::actions;
@@ -28,6 +29,24 @@ use crate::transcript::store::TranscriptStore;
 /// Biến môi trường của cờ dev: đúng `true` thì bản debug chạy nhận giọng. Chỉ bản debug có biến này.
 #[cfg(debug_assertions)]
 pub const DEV_SPEAKER_ENV: &str = "AI_TRANSLATOR_DEV_SPEAKER";
+
+/// File dấu `AXEnhancedUserInterface` (QĐ 8, 28 của kế hoạch 04) trong thư mục dữ liệu của app, tách theo loại build.
+pub const EUI_MARKER_FILE: &str = eui_marker_file(cfg!(debug_assertions));
+
+/// Bản phát hành: `speaker-eui.json`. Bản debug: `speaker-eui-dev.json` (như `data-dev.db`, `db::db_file_name`): bản dev và bản cài
+/// cùng identifier nên cùng thư mục dữ liệu; tách file để worker của bản này không trả EUI mà worker của bản kia đang giữ.
+pub const fn eui_marker_file(debug: bool) -> &'static str {
+    if debug {
+        "speaker-eui-dev.json"
+    } else {
+        "speaker-eui.json"
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub mod eui_macos;
+pub mod health;
+pub mod recipes;
 
 /// Tên file model trong thư mục model của bản dev (`MT_MODELS_DIR` hay `<repo>/models`), dùng khi kho chưa có.
 pub const DEV_MODEL_FILE: &str = "eres2net-sv-en-voxceleb-16k.onnx";
@@ -97,6 +116,7 @@ pub fn start_for_session<R: Runtime>(app: &AppHandle<R>) -> Option<SpeakerLink> 
     let mut launch = SpeakerLaunch::new(&exe, &model, &log, models.speaker_config());
     // Worker băm lại đúng các byte nó đọc (`Load.model_sha256`): file bị thay sau lần kiểm dưới đây cũng bị từ chối.
     launch.model_sha256 = sha256;
+    launch.names = names_setup(app, &settings);
     let locks: Arc<Mutex<Vec<File>>> = Arc::default();
     let check_app = app.clone();
     let before_spawn: BeforeSpawn = Box::new(move |launch: &SpeakerLaunch| {
@@ -109,6 +129,40 @@ pub fn start_for_session<R: Runtime>(app: &AppHandle<R>) -> Option<SpeakerLink> 
     log::info!("nhận giọng: bật cho phiên này");
     keep_running(app, &handle);
     Some(link)
+}
+
+/// Phần tên của `Load` (kế hoạch 04, 06): công tắc "Lấy tên", công thức đang có (bản build sẵn hay bản tải về đã kiểm chữ ký, xem
+/// [`recipes`]), file dấu.
+fn names_setup<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> NamesSetup {
+    NamesSetup {
+        enabled: settings.speaker_names,
+        recipe_json: recipes::body(app),
+        eui_marker: app
+            .path()
+            .app_local_data_dir()
+            .ok()
+            .map(|d| d.join(EUI_MARKER_FILE).display().to_string()),
+    }
+}
+
+/// Người dùng đổi "Lấy tên" (Cài đặt › Phụ đề › Người nói): worker của phiên đang chạy bật hay tắt đọc tên ngay (spec §8.3). Tắt thì
+/// app tự xóa tên tự động, người tham dự, dòng mời ở bảng người nói và phát lại bảng, không chờ worker (worker có thể đã chết hay bị
+/// tắt vì quá tải; QĐ 31).
+pub fn names_changed<R: Runtime>(app: &AppHandle<R>, on: bool) {
+    if let Some(running) = app.try_state::<Running>()
+        && let Some(handle) = running.0.lock().unwrap_or_else(|e| e.into_inner()).as_ref()
+    {
+        handle.set_names(on);
+        log::info!("đọc tên: người dùng {} \"Lấy tên\"", if on { "bật" } else { "tắt" });
+    }
+    let Some(store) = app.try_state::<TranscriptStore>() else {
+        return;
+    };
+    if on {
+        store.allow_names();
+    } else if let Some(view) = store.clear_names() {
+        events::speaker_roster(app, &view);
+    }
 }
 
 /// Người dùng tắt "Phân biệt người nói" (Cài đặt › Phụ đề; QĐ 8 của kế hoạch 03): dừng worker của phiên ngay (không chạy lại tới hết
@@ -155,6 +209,7 @@ fn keep_running_with<R: Runtime>(app: &AppHandle<R>, handle: &SpeakerHandle, ena
 /// Phiên dừng (`session::stop_engine`): bỏ handle của phiên (client đã dừng cùng `SpeakerLink`), để lần tắt công tắc sau đó không dừng
 /// nhầm và không ghi log sai (rà soát A-N4).
 pub fn session_ended<R: Runtime>(app: &AppHandle<R>) {
+    health::note_session_ended(app);
     if let Some(running) = app.try_state::<Running>()
         && let Some(handle) = running.0.lock().unwrap_or_else(|e| e.into_inner()).take()
     {
@@ -474,6 +529,18 @@ mod tests {
         assert!(view.is_some());
     }
 
+    /// QĐ 20 của kế hoạch 04 (rà soát B-N12 của 03): cửa sổ chính mở hay tải lại giữa phiên thì nhận lại bảng người nói (có người
+    /// tham dự) ngay khi đọc bản chép lời.
+    #[test]
+    fn reading_the_transcript_sends_the_roster_again() {
+        let app = crate::test_support::mock_app();
+        one_voice(&app);
+        let to_main = rosters(&app, crate::window::MAIN);
+        let main = crate::test_support::window(&app, crate::window::MAIN);
+        crate::test_support::invoke(&main, "get_transcript", serde_json::json!({})).unwrap();
+        assert_eq!(wait_for(&to_main, 1).len(), 1);
+    }
+
     /// QĐ 8: tắt "Phân biệt người nói" giữa phiên thì dừng worker ngay, bỏ bảng người nói, hai cửa sổ nhận bảng rỗng.
     #[test]
     fn turning_the_switch_off_mid_session_stops_the_worker_and_clears_the_labels() {
@@ -591,5 +658,99 @@ mod tests {
         );
         let long = speaker_error(SpeakerError::TooLong);
         assert_eq!((long.code.as_str(), long.field.as_deref()), ("tooLong", Some("name")));
+    }
+
+    /// Kế hoạch 04: phiên mang công thức build sẵn (hợp lệ), công tắc "Lấy tên" và file dấu `AXEnhancedUserInterface`.
+    #[test]
+    fn the_session_launch_carries_the_builtin_recipe_and_the_names_switch() {
+        let app = crate::test_support::mock_app();
+        let mut s = Settings::defaults(UiLanguage::Vi);
+        let n = names_setup(app.handle(), &s);
+        assert!(n.enabled, "bật sẵn (spec §8.3)");
+        assert!(speaker_recipe::parse(&n.recipe_json).is_ok_and(|r| r.dropped.is_empty()));
+        assert!(n.eui_marker.as_deref().is_some_and(|p| p.ends_with(EUI_MARKER_FILE)));
+        s.speaker_names = false;
+        assert!(!names_setup(app.handle(), &s).enabled);
+    }
+
+    /// QĐ 28 (rà soát B-Q6, B-N13): bản dev và bản cài dùng chung thư mục dữ liệu nên file dấu tách theo loại build (như `data-dev.db`).
+    #[test]
+    fn the_eui_marker_file_depends_on_the_build() {
+        assert_eq!(eui_marker_file(true), "speaker-eui-dev.json");
+        assert_eq!(eui_marker_file(false), "speaker-eui.json");
+        assert_eq!(EUI_MARKER_FILE, eui_marker_file(cfg!(debug_assertions)));
+    }
+
+    /// Spec §8.3: tắt "Lấy tên" giữa phiên thì worker thôi đọc tên ngay (client gửi `SetNames`); bật lại cũng vậy.
+    #[test]
+    fn the_names_switch_reaches_the_running_worker() {
+        let app = crate::test_support::mock_app();
+        let handle = SpeakerHandle::default();
+        handle.set_names(true);
+        *app.state::<Running>().0.lock().unwrap() = Some(handle.clone());
+        let mut next = app.state::<AppState>().settings();
+        next.speaker_names = false;
+        crate::actions::commit_settings(app.handle(), next.clone());
+        assert!(!handle.names_wanted());
+        next.speaker_names = true;
+        crate::actions::commit_settings(app.handle(), next);
+        assert!(handle.names_wanted());
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §10: báo cáo lỗi biết tên người tham dự và nhãn có tên của bảng người nói hiện có (để che), không
+    /// tính nhãn "Người N".
+    #[test]
+    fn the_error_report_host_knows_the_names_in_the_roster() {
+        use pipeline::subtitle::{NamedVoice, Names};
+        let app = crate::test_support::mock_app();
+        one_voice(&app);
+        let host = crate::diagnostics::host_of(app.handle());
+        assert!(host.known_names().is_empty(), "chưa có tên: nhãn là Người 1");
+        let names = Names {
+            voices: vec![NamedVoice {
+                id: 1,
+                name: "Lan Nguyễn".into(),
+                room_index: None,
+            }],
+            participants: vec!["Lan Nguyễn".into(), "Minh Trần".into()],
+        };
+        assert!(app.state::<TranscriptStore>().names(1, &names).is_some());
+        let mut known = host.known_names();
+        known.sort();
+        known.dedup();
+        assert_eq!(known, ["Lan Nguyễn", "Minh Trần"]);
+    }
+
+    /// QĐ 31: tắt "Lấy tên" thì app tự xóa tên tự động và người tham dự rồi phát bảng (không chờ worker; ở đây không có worker nào);
+    /// tên tới sau lúc tắt bị bỏ; bật lại thì tên tự động được nhận trở lại.
+    #[test]
+    fn turning_names_off_clears_the_roster_and_turning_them_on_accepts_names_again() {
+        use pipeline::subtitle::{NamedVoice, Names};
+        let app = crate::test_support::mock_app();
+        one_voice(&app);
+        let store = app.state::<TranscriptStore>();
+        let names = Names {
+            voices: vec![NamedVoice {
+                id: 1,
+                name: "Lan Nguyễn".into(),
+                room_index: None,
+            }],
+            participants: vec!["Lan Nguyễn".into(), "Minh Trần".into()],
+        };
+        assert!(store.names(1, &names).is_some());
+        assert_eq!(store.roster_view().voices[0].label, "Lan Nguyễn");
+        let to_main = rosters(&app, crate::window::MAIN);
+        let mut next = app.state::<AppState>().settings();
+        next.speaker_names = false;
+        crate::actions::commit_settings(app.handle(), next.clone());
+        let got = wait_for(&to_main, 1);
+        let view: serde_json::Value = serde_json::from_str(&got[0]).unwrap();
+        assert_eq!(view["voices"][0]["label"], "Người 1", "{view}");
+        assert_eq!(view["participants"], serde_json::json!([]), "{view}");
+        assert!(store.names(1, &names).is_none(), "đang tắt: bỏ tên tới sau");
+        next.speaker_names = true;
+        crate::actions::commit_settings(app.handle(), next);
+        assert!(store.names(1, &names).is_some(), "bật lại: nhận tên");
+        assert_eq!(store.roster_view().voices[0].label, "Lan Nguyễn");
     }
 }

@@ -2,6 +2,8 @@
 
 python run_schedule.py <bundle-id> <tag> <phím bật/tắt mic> [interval]
 Ghi out/<tag>-watch.jsonl (axtrace watch) và out/<tag>-truth.json (thời điểm bật/tắt tiếng từng khách).
+`<bundle-id>` là `-`: không chạy axtrace (máy khác ghi cây, ví dụ `uia-record` trên Windows, kế hoạch 05); chỉ chạy kịch bản và ghi
+out/<tag>-truth.json (giờ Unix của máy này: đồng hồ hai máy phải khớp dưới 0,2 s).
 """
 
 import json
@@ -54,8 +56,10 @@ def main():
     else:
         ctl = "key=" + urllib.parse.quote(how[4:])
     interval = sys.argv[4] if len(sys.argv) > 4 else "0.25"
-    watch = subprocess.Popen([AX, "watch", bundle, os.path.join(HERE, "out", f"{tag}-watch.jsonl"), interval])
-    time.sleep(1.0)
+    watch = None
+    if bundle != "-":
+        watch = subprocess.Popen([AX, "watch", bundle, os.path.join(HERE, "out", f"{tag}-watch.jsonl"), interval])
+        time.sleep(1.0)
     t0 = time.time()
     truth = []
     for at, g, on in sorted(STEPS, key=lambda s: s[0]):
@@ -70,8 +74,9 @@ def main():
             r = call(f"/press?g={g}&key=" + urllib.parse.quote(how[4:]))
         truth.append({"t": tc, "t_done": time.time(), "g": g, "on": on, "r": r})
     time.sleep(max(0, t0 + END - time.time()))
-    watch.terminate()
-    watch.wait()
+    if watch is not None:
+        watch.terminate()
+        watch.wait()
     json.dump({"t0": t0, "end": t0 + END, "steps": truth}, open(os.path.join(HERE, "out", f"{tag}-truth.json"), "w"), indent=1)
     print(f"xong {tag}: {END:.0f} s, {len(truth)} lần bật/tắt")
 

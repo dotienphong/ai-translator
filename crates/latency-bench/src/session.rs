@@ -82,6 +82,10 @@ pub struct SessionArgs {
     /// Model nhúng giọng (`eres2net-sv-en-voxceleb-16k.onnx`), đi cùng `--speaker-worker`.
     #[arg(long, requires = "speaker_worker")]
     pub speaker_model: Option<PathBuf>,
+    /// Bật đọc tên với công thức này (kế hoạch 04 Task 18): như app khi "Lấy tên" bật. `khong-app.recipes.json` (không app nào) đo
+    /// phần tốn của đường tên mà không đọc app nào trên máy.
+    #[arg(long, requires = "speaker_worker")]
+    pub speaker_names_recipe: Option<PathBuf>,
     /// Ghi RSS của các tiến trình phụ mỗi 5 s vào file TSV (soak test, spec §11, §14).
     #[arg(long)]
     pub rss_trace: Option<PathBuf>,
@@ -547,6 +551,13 @@ fn args_map(args: &SessionArgs, vad_model: &Path) -> BTreeMap<String, String> {
             "speaker_model".to_string(),
             args.speaker_model.as_deref().map(public_path).unwrap_or_default(),
         ),
+        (
+            "speaker_names_recipe".to_string(),
+            args.speaker_names_recipe
+                .as_deref()
+                .map(public_path)
+                .unwrap_or_else(|| "tắt".into()),
+        ),
         ("mt_extra_ms".to_string(), args.mt_extra_ms.to_string()),
     ])
 }
@@ -640,12 +651,20 @@ pub fn run(args: SessionArgs) -> Result<()> {
     // Nhận giọng như app; lượt đo chờ worker sẵn sàng (app thì không) để số đo gồm cả nó từ đầu.
     let speaker = match (&args.speaker_worker, &args.speaker_model) {
         (Some(exe), Some(model)) => {
-            let launch = pipeline::speaker_client::SpeakerLaunch::new(
+            let mut launch = pipeline::speaker_client::SpeakerLaunch::new(
                 exe,
                 model,
                 &log_path(&args.out, "speaker-worker"),
                 speaker_protocol::SpeakerConfig::default(),
             );
+            if let Some(path) = &args.speaker_names_recipe {
+                launch.names = speaker_protocol::NamesSetup {
+                    enabled: true,
+                    recipe_json: std::fs::read_to_string(path)
+                        .with_context(|| format!("không đọc được công thức {}", path.display()))?,
+                    eui_marker: None,
+                };
+            }
             let (link, handle) = pipeline::speaker_client::start(launch, Box::new(|_| Ok(())));
             if !handle.wait_ready(Duration::from_secs(60)) {
                 bail!("speaker-worker không sẵn sàng: {:?}", handle.disabled());
@@ -921,6 +940,27 @@ mod tests {
             public_path(Path::new("s"))
         );
         assert_eq!(args_map(&args(&[]), Path::new("v.onnx"))["speaker_worker"], "tắt");
+    }
+
+    #[test]
+    fn the_names_recipe_flag_turns_names_on_and_is_recorded() {
+        let a = args(&[
+            "--speaker-worker",
+            "w",
+            "--speaker-model",
+            "e.onnx",
+            "--speaker-names-recipe",
+            "r.json",
+        ]);
+        assert_eq!(a.speaker_names_recipe.as_deref(), Some(Path::new("r.json")));
+        // `public_path` trả đường dẫn tính từ gốc repo (`cargo test` chạy trong `crates/latency-bench`), như test `speaker_worker` so
+        // với `public_path(Path::new("s"))`. KHÔNG bỏ `public_path` cho test xanh: file JSON kết quả được commit, đường dẫn tuyệt đối
+        // có tên thư mục người dùng (rà soát B-C1).
+        assert_eq!(
+            args_map(&a, Path::new("v.onnx"))["speaker_names_recipe"],
+            public_path(Path::new("r.json"))
+        );
+        assert_eq!(args_map(&args(&[]), Path::new("v.onnx"))["speaker_names_recipe"], "tắt");
     }
 
     #[test]

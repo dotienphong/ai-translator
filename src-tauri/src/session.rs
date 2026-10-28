@@ -27,8 +27,9 @@ use pipeline::config::{MtConfig, PipelineConfig};
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, Usage, VadFactory};
 use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
+use pipeline::speaker::ReaderInfo;
 use pipeline::speaker::SpeakerLink;
-use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Roster, SpeakerLabel, Subtitle};
+use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Names, Roster, SpeakerLabel, Subtitle};
 use pipeline::supervisor::{Asr, GiveUpCause, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
 use pipeline::translate::Mt;
 use pipeline::vad::SileroVad;
@@ -1010,6 +1011,36 @@ impl<R: Runtime> EventSink for TauriSink<R> {
             .app
             .try_state::<TranscriptStore>()
             .and_then(|t| t.roster(self.session, roster))
+        {
+            events::speaker_roster(&self.app, &view);
+        }
+    }
+
+    /// Tên đọc từ app họp (kế hoạch 04): bảng người nói tính lại trong một lần khóa, phát khi đổi. Không có tên trong log.
+    fn names(&self, names: &Names) {
+        if let Some(view) = self
+            .app
+            .try_state::<TranscriptStore>()
+            .and_then(|t| t.names(self.session, names))
+        {
+            events::speaker_roster(&self.app, &view);
+        }
+    }
+
+    /// Trạng thái bộ đọc tên: ghi log (không có tên) và dòng mời cấp quyền.
+    fn reader(&self, info: &ReaderInfo) {
+        log::info!(
+            "đọc tên: {:?} ({:?}, công thức {}, tự học {})",
+            info.state,
+            info.app,
+            info.recipe_version,
+            info.learned
+        );
+        crate::speaker::health::note_reader(&self.app, info);
+        if let Some(view) = self
+            .app
+            .try_state::<TranscriptStore>()
+            .and_then(|t| t.reader(self.session, info.state))
         {
             events::speaker_roster(&self.app, &view);
         }

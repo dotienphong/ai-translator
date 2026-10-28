@@ -38,11 +38,13 @@ use crate::prompt_history::PromptHistory;
 use crate::queue::{AsrQueue, MtItem, MtQueue, PartialRequest, PendingSegment, Popped, Ready};
 use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter, SegmenterConfig};
 use crate::sentence::{OpenSentence, Piece, joiner, merge_window_ms};
-use crate::speaker::{SpeakerLink, SpeakerTap, SpeakerUpdate, UPDATE_CHANNEL_CAP};
+use crate::speaker::{ReaderInfo, SpeakerLink, SpeakerTap, SpeakerUpdate, UPDATE_CHANNEL_CAP};
 use crate::streaming::{
     Cadence, PartialScheduler, Split, Stabilizer, split_units, strip_terminal_punct, uses_char_units,
 };
-use crate::subtitle::{Delta, LiveEnd, LiveLine, Roster, RosterVoice, SpeakerLabel, Status, Subtitle};
+use crate::subtitle::{
+    Delta, LiveEnd, LiveLine, NamedVoice, Names, Roster, RosterVoice, SpeakerLabel, Status, Subtitle,
+};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
 use crate::translate::{Event, Job, Mt, MtError, Outcome, translate, translate_live};
@@ -51,7 +53,7 @@ use crate::voices::VoiceBook;
 use anyhow::Result;
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
 use serde::Serialize;
-use speaker_protocol::Source;
+use speaker_protocol::{PersonName, ReaderStatus, Source};
 use std::collections::{BTreeMap, HashMap};
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -244,6 +246,10 @@ pub trait EventSink: Send + Sync {
     fn speaker(&self, _label: &SpeakerLabel) {}
     /// Bảng giọng của phiên đổi. Mặc định bỏ qua.
     fn roster(&self, _roster: &Roster) {}
+    /// Tên đọc từ app họp của các giọng và người tham dự đổi (kế hoạch 04). Mặc định bỏ qua.
+    fn names(&self, _names: &Names) {}
+    /// Trạng thái bộ đọc tên (dòng mời cấp quyền, spec §6.7). Mặc định bỏ qua.
+    fn reader(&self, _info: &ReaderInfo) {}
 }
 
 /// Đếm thời gian im lặng liên tục (RMS dưới ngưỡng), kể cả phần im lặng được chèn khi Windows không trả gói dữ liệu (§9).
@@ -558,7 +564,7 @@ impl Engine {
     ) -> Result<Self> {
         let (tap, updates, speaker_keep) = match speaker {
             Some(link) => (
-                Some(SpeakerTap::new(link.segments, link.offered_end_ms)),
+                Some(SpeakerTap::new(link.segments, link.offered_end_ms).with_speech(link.speech)),
                 Some(link.updates),
                 link.keep,
             ),
@@ -870,6 +876,10 @@ fn vad_loop(
                     break 'outer;
                 }
             };
+            // `Speech` cho bộ đọc tên (kế hoạch 04, spec §4.2): chỉ `try_send`, không chờ.
+            if tagging && let Some(tap) = speaker.as_mut() {
+                tap.speech_frame(frames - 1, prob >= cfg.segmenter.threshold);
+            }
             for seg in segmenter.push(frame, prob) {
                 send_segment(seg, now, tx, queue, &mut speaker);
             }
@@ -1446,6 +1456,11 @@ struct Composer {
     speaker_rx: Option<Receiver<SpeakerUpdate>>,
     /// Bảng giọng của phiên: mọi giọng đã thấy (kể cả của lần chạy worker trước), trừ giọng đã bị gộp.
     roster: BTreeMap<u32, RosterVoice>,
+    /// Tên đọc từ app họp của từng giọng: (tên, số phòng) (kế hoạch 04).
+    names: BTreeMap<u32, (Option<PersonName>, Option<u32>)>,
+    participants: Vec<PersonName>,
+    /// Tên hay người tham dự vừa đổi: phát `EventSink::names` một lần cho cả loạt.
+    names_dirty: bool,
 }
 
 impl Composer {
@@ -1507,6 +1522,9 @@ impl Composer {
             book: VoiceBook::default(),
             speaker_rx: None,
             roster: BTreeMap::new(),
+            names: BTreeMap::new(),
+            participants: Vec::new(),
+            names_dirty: false,
         }
     }
 
@@ -1563,6 +1581,9 @@ impl Composer {
         }
         if roster_changed {
             self.emit_roster();
+        }
+        if std::mem::take(&mut self.names_dirty) {
+            self.emit_names();
         }
     }
 
@@ -1685,6 +1706,9 @@ impl Composer {
             Msg::Speaker(update) => {
                 if self.on_speaker(update) {
                     self.emit_roster();
+                }
+                if std::mem::take(&mut self.names_dirty) {
+                    self.emit_names();
                 }
             }
         }
@@ -1890,8 +1914,33 @@ impl Composer {
                             room: v.mic,
                         },
                     );
+                    let named = (v.name, v.room_index);
+                    if self.names.get(&v.voice) != Some(&named) {
+                        self.names.insert(v.voice, named);
+                        self.names_dirty = true;
+                    }
                 }
                 true
+            }
+            SpeakerUpdate::Participants(p) => {
+                if p != self.participants {
+                    self.participants = p;
+                    self.names_dirty = true;
+                }
+                false
+            }
+            SpeakerUpdate::Reader(info) => {
+                // QĐ 31: "Lấy tên" tắt (`Off`) thì bỏ mọi tên tự động và người tham dự (kể cả của lần chạy worker trước); tạm dừng
+                // vì quá tải (`Paused`) giữ tên.
+                if info.state == ReaderStatus::Off
+                    && (self.names.values().any(|(n, _)| n.is_some()) || !self.participants.is_empty())
+                {
+                    self.names.clear();
+                    self.participants.clear();
+                    self.names_dirty = true;
+                }
+                self.sink.reader(&info);
+                false
             }
             SpeakerUpdate::Unlabeled { segment_id } => {
                 if let Some((sub_id, voice)) = self.book.unlabeled(segment_id) {
@@ -1901,6 +1950,7 @@ impl Composer {
             }
             SpeakerUpdate::Merged { from, into } => {
                 self.roster.remove(&from);
+                self.names_dirty |= self.names.remove(&from).is_some();
                 for (sub_id, voice) in self.book.merge_voices(from, into) {
                     self.set_speaker(sub_id, voice);
                 }
@@ -1954,6 +2004,23 @@ impl Composer {
     fn emit_roster(&self) {
         self.sink.roster(&Roster {
             voices: self.roster.values().copied().collect(),
+        });
+    }
+
+    fn emit_names(&self) {
+        self.sink.names(&Names {
+            voices: self
+                .names
+                .iter()
+                .filter_map(|(&id, (name, room_index))| {
+                    name.as_ref().map(|n| NamedVoice {
+                        id,
+                        name: n.as_str().to_string(),
+                        room_index: *room_index,
+                    })
+                })
+                .collect(),
+            participants: self.participants.iter().map(|p| p.as_str().to_string()).collect(),
         });
     }
 
@@ -2688,10 +2755,12 @@ impl Composer {
 mod tests {
     use super::*;
     use crate::llama::{ChatRequest, StreamEnd};
+    use crate::speaker::ReaderInfo;
     use crate::speaker::SEGMENT_CHANNEL_CAP;
+    use crate::subtitle::{NamedVoice, Names};
     use crate::translate::{MtError, Translated};
     use asr_protocol::TranscribeResult;
-    use speaker_protocol::{MAX_EMBED_SAMPLES, SegmentAudio, VoiceInfo};
+    use speaker_protocol::{MAX_EMBED_SAMPLES, MeetingApp, PersonName, ReaderStatus, SegmentAudio, VoiceInfo};
     use std::collections::BTreeSet;
 
     #[test]
@@ -2842,6 +2911,8 @@ mod tests {
         usage: Mutex<Vec<Usage>>,
         speakers: Mutex<Vec<SpeakerLabel>>,
         rosters: Mutex<Vec<Roster>>,
+        names: Mutex<Vec<Names>>,
+        readers: Mutex<Vec<ReaderInfo>>,
         /// Hạn mức (ms): tổng `usage` chạm số này thì trả `Break`.
         limit_ms: Option<u64>,
     }
@@ -2875,6 +2946,12 @@ mod tests {
         }
         fn roster(&self, r: &Roster) {
             self.rosters.lock().unwrap().push(r.clone());
+        }
+        fn names(&self, n: &Names) {
+            self.names.lock().unwrap().push(n.clone());
+        }
+        fn reader(&self, r: &ReaderInfo) {
+            self.readers.lock().unwrap().push(r.clone());
         }
         fn usage(&self, u: &Usage) -> ControlFlow<()> {
             let mut all = self.usage.lock().unwrap();
@@ -5678,11 +5755,7 @@ mod tests {
         let mut h = harness();
         let (link, ends) = SpeakerLink::pair();
         h.c.speaker_rx = Some(link.updates);
-        let info = |voice| VoiceInfo {
-            voice,
-            speech_ms: 1_000,
-            mic: false,
-        };
+        let info = |voice| VoiceInfo::new(voice, 1_000, false);
         ends.updates
             .send(SpeakerUpdate::Voices(vec![info(1), info(2)]))
             .unwrap();
@@ -5713,13 +5786,7 @@ mod tests {
         let mut h = harness();
         let (link, ends) = SpeakerLink::pair();
         h.c.speaker_rx = Some(link.updates);
-        let voices = || {
-            SpeakerUpdate::Voices(vec![VoiceInfo {
-                voice: 1,
-                speech_ms: 1_000,
-                mic: false,
-            }])
-        };
+        let voices = || SpeakerUpdate::Voices(vec![VoiceInfo::new(1, 1_000, false)]);
         let mut sent = 0;
         while ends.updates.try_send(voices()).is_ok() {
             sent += 1;
@@ -5739,11 +5806,7 @@ mod tests {
     #[test]
     fn worker_merges_relabel_subtitles_and_the_roster() {
         let mut h = harness();
-        let info = |voice, mic| VoiceInfo {
-            voice,
-            speech_ms: 1_000,
-            mic,
-        };
+        let info = |voice, mic| VoiceInfo::new(voice, 1_000, mic);
         h.feed(Msg::Speaker(SpeakerUpdate::Voices(vec![info(1, false), info(2, true)])));
         assert_eq!(
             h.sink.rosters.lock().unwrap().last().unwrap().voices,
@@ -5872,13 +5935,7 @@ mod tests {
     #[test]
     fn labels_already_in_the_channel_reach_the_last_subtitle() {
         let (link, ends) = SpeakerLink::pair();
-        let voices = || {
-            SpeakerUpdate::Voices(vec![VoiceInfo {
-                voice: 1,
-                speech_ms: 1_000,
-                mic: false,
-            }])
-        };
+        let voices = || SpeakerUpdate::Voices(vec![VoiceInfo::new(1, 1_000, false)]);
         let (tx, rx) = mpsc::channel::<Msg>();
         tx.send(Msg::Asr(AsrOutcome::Transcribed {
             ids: vec![0],
@@ -6085,5 +6142,91 @@ mod tests {
         assert!(got[1].end_ms - got[1].start_ms >= 5_900);
         assert!(got.iter().all(|s| s.source == Source::Mic));
         assert_eq!(offered.load(Ordering::SeqCst), got[1].end_ms);
+    }
+
+    /// Kế hoạch 04: tên và người tham dự tới app một lần mỗi lần đổi (lặp lại không phát), sau bảng giọng của cùng vòng.
+    #[test]
+    fn names_and_participants_reach_the_sink_once_per_change() {
+        let mut h = harness();
+        let (link, ends) = SpeakerLink::pair();
+        h.c.speaker_rx = Some(link.updates);
+        let named = |name: Option<&str>| VoiceInfo {
+            name: name.and_then(PersonName::new),
+            ..VoiceInfo::new(1, 1_000, false)
+        };
+        let people =
+            || SpeakerUpdate::Participants(vec![PersonName::new("Lan").unwrap(), PersonName::new("Minh").unwrap()]);
+        ends.updates.send(SpeakerUpdate::Voices(vec![named(None)])).unwrap();
+        ends.updates.send(people()).unwrap();
+        h.c.drain_speaker();
+        ends.updates
+            .send(SpeakerUpdate::Voices(vec![named(Some("Lan"))]))
+            .unwrap();
+        ends.updates.send(people()).unwrap();
+        h.c.drain_speaker();
+        ends.updates
+            .send(SpeakerUpdate::Voices(vec![named(Some("Lan"))]))
+            .unwrap();
+        h.c.drain_speaker();
+        let names = h.sink.names.lock().unwrap();
+        assert_eq!(names.len(), 2, "lần lặp lại không phát");
+        assert!(names[0].voices.is_empty());
+        assert_eq!(names[0].participants, ["Lan", "Minh"]);
+        assert_eq!(
+            names[1].voices,
+            [NamedVoice {
+                id: 1,
+                name: "Lan".into(),
+                room_index: None
+            }]
+        );
+        assert!(!format!("{:?}", names[1]).contains("Lan"), "Debug không in tên");
+    }
+
+    #[test]
+    fn reader_states_go_straight_to_the_sink() {
+        let mut h = harness();
+        h.feed(Msg::Speaker(SpeakerUpdate::Reader(ReaderInfo {
+            app: Some(MeetingApp::Teams),
+            app_version: None,
+            state: ReaderStatus::NoPermission,
+            recipe_version: 1,
+            learned: 0,
+            patterns: vec![],
+        })));
+        assert_eq!(h.sink.readers.lock().unwrap()[0].state, ReaderStatus::NoPermission);
+    }
+
+    /// QĐ 31 (rà soát B-N8): trạng thái `Off` ("Lấy tên" tắt) xóa tên tự động và người tham dự; `Paused` (quá tải) giữ tên.
+    #[test]
+    fn reader_off_clears_the_names_but_a_pause_keeps_them() {
+        let mut h = harness();
+        let lan = VoiceInfo {
+            name: PersonName::new("Lan"),
+            ..VoiceInfo::new(1, 1_000, false)
+        };
+        h.feed(Msg::Speaker(SpeakerUpdate::Voices(vec![lan])));
+        let reader = |state| {
+            SpeakerUpdate::Reader(ReaderInfo {
+                app: None,
+                app_version: None,
+                state,
+                recipe_version: 1,
+                learned: 0,
+                patterns: vec![],
+            })
+        };
+        h.feed(Msg::Speaker(reader(ReaderStatus::Paused)));
+        assert_eq!(
+            h.sink.names.lock().unwrap().last().unwrap().voices.len(),
+            1,
+            "tạm dừng giữ tên"
+        );
+        h.feed(Msg::Speaker(reader(ReaderStatus::Off)));
+        let last = h.sink.names.lock().unwrap().last().unwrap().clone();
+        assert!(
+            last.voices.is_empty() && last.participants.is_empty(),
+            "tắt \"Lấy tên\": xóa tên"
+        );
     }
 }

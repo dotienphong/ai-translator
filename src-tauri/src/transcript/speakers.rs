@@ -2,10 +2,11 @@
 //! màu, tên đổi tay, gộp tay. Chỉ trong RAM, theo phiên (`TranscriptStore`); không có giọng hay dấu vân giọng (spec §5.6, §10). Đổi
 //! tên, gộp chỉ đổi cách hiện, không gửi worker (spec §5.4). Tên người dùng gõ không bao giờ vào log hay thông báo lỗi.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use pipeline::subtitle::Roster;
+use pipeline::subtitle::{Names, Roster};
 use serde::Serialize;
+use speaker_protocol::ReaderStatus;
 
 use crate::i18n::Strings;
 
@@ -17,6 +18,8 @@ pub const MAX_NAME_CHARS: usize = 40;
 /// [`clean_name`] từ chối ngay, không duyệt từng ký tự. Tên hợp lệ có tới 40 ký tự × 4 byte; trần gấp 4 lần thế để còn chỗ cho
 /// khoảng trắng và ký tự vô hình bị bỏ (tên đọc từ app họp, kế hoạch 04).
 pub const MAX_NAME_BYTES: usize = 4 * 4 * MAX_NAME_CHARS;
+/// Người tham dự tối đa trong danh sách chọn tên (như giới hạn khung của giao thức).
+pub const MAX_PARTICIPANTS: usize = 64;
 
 /// Tên lấy từ đâu (spec §9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -66,9 +69,9 @@ impl VoiceView {
 pub struct RosterView {
     /// Các giọng đang có trong phiên, theo mã tăng dần (tức thứ tự xuất hiện).
     pub voices: Vec<VoiceView>,
-    /// Tên người tham dự đọc được (kế hoạch 04), cho mục "Chọn người trong cuộc họp". Kế hoạch 03: luôn rỗng.
+    /// Tên người tham dự đọc được (kế hoạch 04), cho mục "Chọn người trong cuộc họp".
     pub participants: Vec<String>,
-    /// Hiện dòng mời cấp quyền Trợ năng trên thanh phụ đề (spec §6.7). Kế hoạch 04 đặt; kế hoạch 03: luôn `false`.
+    /// Hiện dòng mời cấp quyền Trợ năng trên thanh phụ đề (spec §6.7); kế hoạch 04 đặt.
     pub ask_access: bool,
     /// Số thứ tự của bảng (QĐ 25): tăng dần trong lần chạy của app, `TranscriptStore` đặt; giao diện bỏ bảng có `rev` nhỏ hơn bảng đã
     /// nhận. `SpeakerBook::view` để 0.
@@ -94,8 +97,6 @@ struct Voice {
     /// Còn trong bảng giọng của worker (giọng bị worker gộp đi thì không).
     live: bool,
     user_name: Option<String>,
-    /// Tên đọc từ app họp (kế hoạch 04 đặt).
-    auto_name: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -103,6 +104,12 @@ pub struct SpeakerBook {
     voices: BTreeMap<u32, Voice>,
     /// Gộp tay: giọng → giọng nó hiện như. Đích luôn là giọng không bị gộp (một bước).
     merged: BTreeMap<u32, u32>,
+    /// Tên đọc từ app họp (kế hoạch 04): giọng → (tên đã làm sạch, số phòng). Riêng khỏi `voices`, nên tên tới trước hay sau bảng
+    /// giọng đều đúng.
+    auto: BTreeMap<u32, (String, Option<u32>)>,
+    /// Người dùng đã tắt "Lấy tên" trong phiên này (QĐ 31): bỏ mọi tên tự động tới sau (worker chạy lại có thể phát lại tên cũ) và
+    /// không mời cấp quyền, tới khi bật lại (`allow_names`) hay phiên mới (`SpeakerBook` dựng mới mỗi phiên).
+    names_off: bool,
     participants: Vec<String>,
     ask_access: bool,
     /// Người dùng tắt "Phân biệt người nói" giữa phiên: bỏ mọi bảng giọng tới sau (QĐ 8).
@@ -167,6 +174,55 @@ impl SpeakerBook {
         Ok(())
     }
 
+    /// Tên đọc từ app họp (`EventSink::names`): mọi tên qua [`clean_name`] (tên do người khác đặt); rỗng hay quá dài sau khi làm
+    /// sạch thì bỏ. Người tham dự bỏ trùng, tối đa [`MAX_PARTICIPANTS`]. Tên đổi tay vẫn thắng (spec §6.6). Trả `true` khi cần vẽ lại.
+    pub fn set_names(&mut self, names: &Names) -> bool {
+        if self.off || self.names_off {
+            return false;
+        }
+        let auto: BTreeMap<u32, (String, Option<u32>)> = names
+            .voices
+            .iter()
+            .filter_map(|v| Some((v.id, (clean_name(&v.name).ok().flatten()?, v.room_index))))
+            .collect();
+        let mut seen = BTreeSet::new();
+        let participants: Vec<String> = names
+            .participants
+            .iter()
+            .filter_map(|p| clean_name(p).ok().flatten())
+            .filter(|p| seen.insert(p.clone()))
+            .take(MAX_PARTICIPANTS)
+            .collect();
+        let changed = auto != self.auto || participants != self.participants;
+        self.auto = auto;
+        self.participants = participants;
+        changed
+    }
+
+    /// Trạng thái bộ đọc tên: dòng mời cấp quyền Trợ năng khi chưa có quyền (spec §6.7; QĐ 7 của kế hoạch 04). Trả `true` khi đổi.
+    pub fn set_reader(&mut self, state: ReaderStatus) -> bool {
+        let ask = !self.off && !self.names_off && state == ReaderStatus::NoPermission;
+        let changed = ask != self.ask_access;
+        self.ask_access = ask;
+        changed
+    }
+
+    /// Người dùng tắt "Lấy tên" (QĐ 31): bỏ tên tự động, người tham dự, dòng mời; tên đổi tay giữ nguyên; từ đó bỏ mọi tên tự động
+    /// tới sau cho tới `allow_names`. Trả `true` khi đổi.
+    pub fn clear_names(&mut self) -> bool {
+        let changed = !self.auto.is_empty() || !self.participants.is_empty() || self.ask_access;
+        self.auto.clear();
+        self.participants.clear();
+        self.ask_access = false;
+        self.names_off = true;
+        changed
+    }
+
+    /// Người dùng bật lại "Lấy tên": nhận tên tự động trở lại.
+    pub fn allow_names(&mut self) {
+        self.names_off = false;
+    }
+
     /// Người dùng tắt giữa phiên: bỏ hết, kể cả tên đã đổi; bảng giọng tới sau bị bỏ qua tới phiên sau.
     pub fn turn_off(&mut self) {
         *self = SpeakerBook {
@@ -205,9 +261,15 @@ impl SpeakerBook {
     fn voice_view(&self, id: u32, s: &Strings) -> Option<VoiceView> {
         let root = self.root(id);
         let v = self.voices.get(&root)?;
-        let (label, source) = match (&v.user_name, &v.auto_name) {
+        let (label, source) = match (&v.user_name, self.auto.get(&root)) {
             (Some(name), _) => (name.clone(), NameSource::User),
-            (None, Some(name)) => (name.clone(), NameSource::Name),
+            (None, Some((name, None))) => (name.clone(), NameSource::Name),
+            (None, Some((name, Some(k)))) => (
+                s.speaker_room_voice
+                    .replace("{name}", name)
+                    .replace("{k}", &k.to_string()),
+                NameSource::Name,
+            ),
             (None, None) => (s.speaker_voice.replace("{n}", &v.order.to_string()), NameSource::Voice),
         };
         Some(VoiceView {
@@ -650,5 +712,143 @@ mod tests {
             (v.id, v.label.as_str(), v.color, v.source, v.room, v.merged_into),
             (10, "Lan", 1, NameSource::User, false, None)
         );
+    }
+
+    use pipeline::subtitle::{NamedVoice, Names};
+    use speaker_protocol::ReaderStatus;
+
+    fn meeting(list: &[(u32, &str, Option<u32>)], participants: &[&str]) -> Names {
+        Names {
+            voices: list
+                .iter()
+                .map(|&(id, n, k)| NamedVoice {
+                    id,
+                    name: n.into(),
+                    room_index: k,
+                })
+                .collect(),
+            participants: participants.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    /// Spec §6.6, §9: tên đọc từ app họp làm nhãn (nguồn `name`); tên đổi tay luôn thắng.
+    #[test]
+    fn meeting_names_label_voices_until_the_user_renames() {
+        let mut b = SpeakerBook::default();
+        b.apply(&roster(&[1, 2]));
+        assert!(b.set_names(&meeting(&[(1, "Lan Nguyễn", None)], &["Lan Nguyễn", "Minh Trần"])));
+        let v = b.view(&VI);
+        assert_eq!(
+            (v.voices[0].label.as_str(), v.voices[0].source),
+            ("Lan Nguyễn", NameSource::Name)
+        );
+        assert_eq!(v.voices[1].label, "Người 2");
+        assert_eq!(v.participants, ["Lan Nguyễn", "Minh Trần"]);
+        b.rename(1, Some("Chị Lan".into())).unwrap();
+        assert_eq!(b.view(&VI).voices[0].source, NameSource::User);
+        assert!(
+            !b.set_names(&meeting(&[(1, "Lan Nguyễn", None)], &["Lan Nguyễn", "Minh Trần"])),
+            "không đổi gì"
+        );
+    }
+
+    #[test]
+    fn a_shared_room_name_is_numbered_in_the_ui_language() {
+        let mut b = SpeakerBook::default();
+        b.apply(&roster(&[1, 2]));
+        b.set_names(&meeting(
+            &[(1, "Phòng A", Some(1)), (2, "Phòng A", Some(2))],
+            &["Phòng A"],
+        ));
+        let labels = |s| b.view(s).voices.into_iter().map(|v| v.label).collect::<Vec<_>>();
+        assert_eq!(labels(&VI), ["Phòng A · giọng 1", "Phòng A · giọng 2"]);
+        assert_eq!(labels(&EN), ["Phòng A · voice 1", "Phòng A · voice 2"]);
+    }
+
+    /// Rà soát A-N6 của 03: mọi tên tới từ app họp qua `clean_name`; trùng thì bỏ; rỗng hay quá dài sau làm sạch thì bỏ.
+    #[test]
+    fn meeting_names_are_cleaned_deduplicated_and_capped() {
+        let mut b = SpeakerBook::default();
+        b.apply(&roster(&[1, 2]));
+        let long = "x".repeat(41);
+        b.set_names(&meeting(
+            &[(1, "\u{202E}Lan", None), (2, "\u{200B}", None)],
+            &["Lan", "Lan", "\u{202E}Lan", long.as_str()],
+        ));
+        let v = b.view(&VI);
+        assert_eq!(
+            (v.voices[0].label.as_str(), v.voices[1].label.as_str()),
+            ("Lan", "Người 2")
+        );
+        assert_eq!(v.participants, ["Lan"]);
+        let many: Vec<String> = (0..80).map(|i| format!("Người tham dự {i}")).collect();
+        let refs: Vec<&str> = many.iter().map(String::as_str).collect();
+        b.set_names(&meeting(&[], &refs));
+        assert_eq!(b.view(&VI).participants.len(), MAX_PARTICIPANTS);
+    }
+
+    /// Spec §6.7: dòng mời khi bộ đọc báo chưa có quyền; người dùng tắt tính năng thì thôi.
+    #[test]
+    fn ask_access_follows_the_reader() {
+        let mut b = SpeakerBook::default();
+        assert!(b.set_reader(ReaderStatus::NoPermission));
+        assert!(b.view(&VI).ask_access);
+        assert!(!b.set_reader(ReaderStatus::NoPermission), "không đổi");
+        assert!(b.set_reader(ReaderStatus::Ok));
+        assert!(!b.view(&VI).ask_access);
+        b.turn_off();
+        assert!(!b.set_reader(ReaderStatus::NoPermission));
+        assert!(!b.view(&VI).ask_access);
+        let mut b = SpeakerBook::default();
+        b.set_reader(ReaderStatus::NoPermission);
+        assert!(b.set_reader(ReaderStatus::Paused), "tạm dừng vì quá tải: không mời");
+        assert!(!b.view(&VI).ask_access);
+    }
+
+    /// QĐ 31 (rà soát B-N8): người dùng tắt "Lấy tên" thì app tự xóa tên tự động, người tham dự, dòng mời (worker có thể đã chết).
+    #[test]
+    fn clearing_names_drops_auto_names_participants_and_the_prompt() {
+        let mut b = SpeakerBook::default();
+        b.apply(&roster(&[1]));
+        b.set_names(&meeting(&[(1, "Lan Nguyễn", None)], &["Lan Nguyễn"]));
+        b.set_reader(ReaderStatus::NoPermission);
+        assert!(b.clear_names());
+        let v = b.view(&VI);
+        assert!(v.participants.is_empty() && !v.ask_access);
+        assert_ne!(v.voices[0].label, "Lan Nguyễn");
+        assert!(!b.clear_names(), "không còn gì để xóa");
+    }
+
+    /// Rà soát lần 2 B-Q-B: sau khi người dùng tắt "Lấy tên", worker chạy lại (sau tạm dừng, hay đúng lúc đang chờ chạy lại) có thể
+    /// gửi `Voices` mà luồng phụ đề phát lại kèm các tên cũ của lần chạy trước: tên cũ KHÔNG được hiện lại, cũng không mời cấp quyền,
+    /// tới khi người dùng bật lại "Lấy tên" (`allow_names`) hay phiên mới.
+    #[test]
+    fn names_stay_cleared_until_the_switch_is_turned_back_on() {
+        let mut b = SpeakerBook::default();
+        b.apply(&roster(&[1, 2]));
+        b.set_names(&meeting(&[(1, "Lan Nguyễn", None)], &["Lan Nguyễn"]));
+        b.clear_names();
+        assert!(
+            !b.set_names(&meeting(&[(1, "Lan Nguyễn", None)], &["Lan Nguyễn", "Minh Trần"])),
+            "tên cũ phát lại: bỏ"
+        );
+        assert!(
+            !b.set_reader(ReaderStatus::NoPermission),
+            "không mời khi \"Lấy tên\" tắt"
+        );
+        let v = b.view(&VI);
+        assert!(v.participants.is_empty() && !v.ask_access);
+        assert_ne!(v.voices[0].label, "Lan Nguyễn");
+        b.allow_names();
+        assert!(b.set_names(&meeting(&[(2, "Minh Trần", None)], &["Minh Trần"])));
+        assert_eq!(b.view(&VI).voices[1].label, "Minh Trần");
+    }
+
+    #[test]
+    fn names_before_their_voice_apply_when_it_appears() {
+        let mut b = SpeakerBook::default();
+        b.set_names(&meeting(&[(3, "Minh Trần", None)], &[]));
+        b.apply(&roster(&[3]));
+        assert_eq!(b.view(&VI).voices[0].label, "Minh Trần");
     }
 }

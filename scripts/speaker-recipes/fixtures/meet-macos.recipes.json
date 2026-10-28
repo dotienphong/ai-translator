@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "version": 1,
+  "min_app_version": "0.3.2",
+  "apps": [
+    {
+      "app": "meet_chrome",
+      "os": "macos",
+      "window_title": ["^Meet [–-] "],
+      "web_only": true,
+      "enhanced_ui": true,
+      "tile": { "role": "AXGroup", "class_token": "oZRSLe" },
+      "name_from": "text",
+      "self_name": "^(?:Bạn|You)$",
+      "speaking": [
+        { "kind": "flicker", "anchor": { "scope": "descendant", "class_token": "DYfzY", "max_depth": 6 } },
+        { "kind": "deviation", "anchor": { "scope": "descendant", "class_token": "qg7mD", "max_depth": 6 } }
+      ],
+      "delay_ms": 800
+    },
+    {
+      "app": "meet_edge",
+      "os": "macos",
+      "window_title": ["^Meet [–-] "],
+      "web_only": true,
+      "enhanced_ui": true,
+      "tile": { "role": "AXGroup", "class_token": "oZRSLe" },
+      "name_from": "text",
+      "self_name": "^(?:Bạn|You)$",
+      "speaking": [
+        { "kind": "flicker", "anchor": { "scope": "descendant", "class_token": "DYfzY", "max_depth": 6 } },
+        { "kind": "deviation", "anchor": { "scope": "descendant", "class_token": "qg7mD", "max_depth": 6 } }
+      ],
+      "delay_ms": 800
+    }
+  ]
+}

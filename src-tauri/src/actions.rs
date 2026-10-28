@@ -52,6 +52,10 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     if previous.speaker_diarization && !next.speaker_diarization {
         crate::speaker::turn_off(app);
     }
+    // "Lấy tên" đổi giữa phiên: worker bật hay tắt đọc tên ngay (kế hoạch 04).
+    if previous.speaker_names != next.speaker_names {
+        crate::speaker::names_changed(app, next.speaker_names);
+    }
     // Nhãn "Người N" theo ngôn ngữ giao diện mới.
     if previous.ui_language != next.ui_language {
         crate::speaker::language_changed(app, next.ui_language);

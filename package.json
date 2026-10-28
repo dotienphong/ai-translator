@@ -12,7 +12,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "tauri": "tauri",
-    "models:update": "node scripts/models/update.mjs"
+    "models:update": "node scripts/models/update.mjs",
+    "recipes:update": "node scripts/speaker-recipes/update.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.4",

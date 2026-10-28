@@ -10,6 +10,7 @@ import { pruneErrorReports } from "./error-reports";
 import { fulfilOrder, retryUnsentEmails } from "./orders";
 import { isProviderAuthFailure, PaymentProviderError } from "./payment/provider";
 import { pruneRateLimits } from "./ratelimit";
+import { evaluateSpeakerHealth, pruneSpeakerHealth } from "./speaker-health";
 import { forwardPendingSupport, pruneSupport, sendSupportEmails } from "./support/cron";
 
 /** Giờ đầu hỏi mỗi lần chạy (5 phút), sau đó mỗi giờ một lần, tới 24 giờ thì thôi và coi là hết hạn. */
@@ -138,12 +139,17 @@ export async function reconcile(
   await step("support_emails", async () => {
     await sendSupportEmails(env.DB, deps, now);
   });
+  // Trước send_alerts, để cảnh báo bộ đọc tên của lần này đi luôn trong lần gửi cảnh báo này.
+  await step("speaker_health_alerts", async () => {
+    await evaluateSpeakerHealth(env.DB, now);
+  });
   let alertsSent = 0;
   await step("send_alerts", async () => {
     alertsSent = await sendAlerts(env, deps.email, now);
   });
   await step("prune", () => pruneRateLimits(env.DB, now));
   await step("prune_error_reports", () => pruneErrorReports(env.DB, now));
+  await step("prune_speaker_health", () => pruneSpeakerHealth(env.DB, now));
   await step("support_prune", () => pruneSupport(env.DB, now));
   return { checked, granted, errors, emails_retried: emailsRetried, alerts_sent: alertsSent };
 }

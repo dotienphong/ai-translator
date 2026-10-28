@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const workflows = ["release", "sign-manifest"].map((name) => [
+const workflows = ["release", "sign-manifest", "sign-recipes"].map((name) => [
   name,
   readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), "utf8"),
 ]);

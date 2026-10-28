@@ -18,6 +18,7 @@ export async function resetDb(): Promise<void> {
       "support_messages",
       "support_conversations",
       "support_settings",
+      "speaker_health",
       "error_report_logs",
       "error_reports",
       "audit_log",

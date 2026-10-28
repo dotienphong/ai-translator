@@ -13,7 +13,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 
-use speaker_protocol::{MAX_EMBED_SAMPLES, SegmentAudio, Source, VoiceInfo, pcm_from_f32};
+use speaker_protocol::{
+    LearnedPattern, MAX_EMBED_SAMPLES, MeetingApp, PersonName, ReaderStatus, SegmentAudio, Source, VoiceInfo,
+    pcm_from_f32,
+};
 
 use crate::segmenter::{FRAME_MS, Segment};
 
@@ -24,6 +27,69 @@ pub const TRACK_FRAMES: usize = 1_024;
 /// Kênh nhãn từ client tới luồng phụ đề. Worker đúng chỉ gửi vài cập nhật mỗi đoạn (`Assign`, có thể kèm `Voices`, `Merged`);
 /// kênh đầy nghĩa là worker gửi dồn (hỏng hay bị chiếm): client coi như worker đã chết (`speaker_client`).
 pub const UPDATE_CHANNEL_CAP: usize = 256;
+/// Kênh `Speech` từ luồng VAD tới client (QĐ 14 của kế hoạch 04): 16 khoảng; đầy thì bỏ, không bao giờ chờ.
+pub const SPEECH_CHANNEL_CAP: usize = 16;
+/// Khoảng tiếng nói kết thúc sau chừng này khung im (96 ms).
+pub const SPEECH_END_FRAMES: u32 = 3;
+/// Đang nói thì báo khoảng mỗi chừng này khung (512 ms).
+pub const SPEECH_REPORT_FRAMES: u32 = 16;
+
+/// Khoảng có tiếng nói của âm thanh máy (`Request::Speech`), ms từ đầu phiên.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpeechSpan {
+    pub start_ms: u64,
+    pub end_ms: u64,
+}
+
+/// Trạng thái bộ đọc tên (`Response::ReaderState`), tới luồng phụ đề rồi app (dòng mời cấp quyền). Không có tên người.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ReaderInfo {
+    pub app: Option<MeetingApp>,
+    pub app_version: Option<String>,
+    pub state: ReaderStatus,
+    pub recipe_version: u32,
+    pub learned: u32,
+    /// Mô tả các chỉ báo tự học (không có tên người), cho báo cáo tình trạng (kế hoạch 06, spec §7.2).
+    pub patterns: Vec<LearnedPattern>,
+}
+
+/// Khoảng tiếng nói theo từng khung VAD: mở ở khung có tiếng, đóng sau [`SPEECH_END_FRAMES`] khung im, báo phần đang mở mỗi
+/// [`SPEECH_REPORT_FRAMES`] khung.
+#[derive(Default)]
+pub struct SpeechTrack {
+    open: Option<u64>,
+    last: u64,
+    silent: u32,
+    since: u32,
+}
+
+impl SpeechTrack {
+    /// Khung `frame` (từ 0) có tiếng của máy không. Trả khoảng `[start_ms, end_ms)` cần báo.
+    pub fn push(&mut self, frame: u64, speech: bool) -> Option<(u64, u64)> {
+        match (self.open, speech) {
+            (None, false) => None,
+            (None, true) => {
+                (self.open, self.last, self.silent, self.since) = (Some(frame), frame, 0, 0);
+                None
+            }
+            (Some(start), true) => {
+                (self.last, self.silent) = (frame, 0);
+                self.since += 1;
+                (self.since >= SPEECH_REPORT_FRAMES).then(|| {
+                    self.since = 0;
+                    (start * FRAME_MS, (frame + 1) * FRAME_MS)
+                })
+            }
+            (Some(start), false) => {
+                self.silent += 1;
+                (self.silent >= SPEECH_END_FRAMES).then(|| {
+                    self.open = None;
+                    (start * FRAME_MS, (self.last + 1) * FRAME_MS)
+                })
+            }
+        }
+    }
+}
 
 /// Nhãn từ worker, mã giọng đã đổi sang mã của phiên (client cộng phần bù sau mỗi lần chạy lại).
 #[derive(Clone, Debug, PartialEq)]
@@ -43,11 +109,16 @@ pub enum SpeakerUpdate {
     Unlabeled {
         segment_id: u64,
     },
+    /// Người tham dự đọc được (kế hoạch 04), tới cùng mỗi `Voices` của worker.
+    Participants(Vec<PersonName>),
+    /// Trạng thái bộ đọc tên.
+    Reader(ReaderInfo),
 }
 
 /// Đầu của engine (`Engine::start_with_speaker`).
 pub struct SpeakerLink {
     pub segments: SyncSender<SegmentAudio>,
+    pub speech: SyncSender<SpeechSpan>,
     pub updates: Receiver<SpeakerUpdate>,
     /// `end_ms` của đoạn mới nhất luồng VAD đã đưa, kể cả đoạn bị bỏ vì kênh đầy: client dùng để biết worker có theo kịp không.
     pub offered_end_ms: Arc<AtomicU64>,
@@ -58,6 +129,7 @@ pub struct SpeakerLink {
 /// Đầu của client.
 pub struct LinkEnds {
     pub segments: Receiver<SegmentAudio>,
+    pub speech: Receiver<SpeechSpan>,
     pub updates: SyncSender<SpeakerUpdate>,
     pub offered_end_ms: Arc<AtomicU64>,
 }
@@ -66,17 +138,20 @@ impl SpeakerLink {
     /// Hai đầu của một kênh mới (client thật: `speaker_client::start`; test dùng thẳng).
     pub fn pair() -> (SpeakerLink, LinkEnds) {
         let (seg_tx, seg_rx) = mpsc::sync_channel(SEGMENT_CHANNEL_CAP);
+        let (speech_tx, speech_rx) = mpsc::sync_channel(SPEECH_CHANNEL_CAP);
         let (upd_tx, upd_rx) = mpsc::sync_channel(UPDATE_CHANNEL_CAP);
         let offered = Arc::new(AtomicU64::new(0));
         (
             SpeakerLink {
                 segments: seg_tx,
+                speech: speech_tx,
                 updates: upd_rx,
                 offered_end_ms: offered.clone(),
                 keep: None,
             },
             LinkEnds {
                 segments: seg_rx,
+                speech: speech_rx,
                 updates: upd_tx,
                 offered_end_ms: offered,
             },
@@ -122,6 +197,11 @@ impl SourceTrack {
         }
     }
 
+    /// Cờ của khung mới nhất.
+    pub fn last(&self) -> Option<Source> {
+        self.tags.back().copied()
+    }
+
     /// Nguồn chiếm đa số các khung trong `[start_ms, end_ms)`; khung đã quên thì bỏ qua.
     pub fn majority_between(&self, start_ms: u64, end_ms: u64) -> Source {
         let (from, to) = (start_ms / FRAME_MS, end_ms.div_ceil(FRAME_MS));
@@ -145,6 +225,8 @@ pub struct SpeakerTap {
     tx: SyncSender<SegmentAudio>,
     offered_end_ms: Arc<AtomicU64>,
     track: SourceTrack,
+    speech: Option<SyncSender<SpeechSpan>>,
+    speech_track: SpeechTrack,
     sent: u64,
     dropped: u64,
     closed: bool,
@@ -156,9 +238,27 @@ impl SpeakerTap {
             tx,
             offered_end_ms,
             track: SourceTrack::default(),
+            speech: None,
+            speech_track: SpeechTrack::default(),
             sent: 0,
             dropped: 0,
             closed: false,
+        }
+    }
+
+    /// Gửi thêm `Speech` (kế hoạch 04) qua kênh này.
+    pub fn with_speech(mut self, tx: SyncSender<SpeechSpan>) -> Self {
+        self.speech = Some(tx);
+        self
+    }
+
+    /// Khung VAD `frame` vừa có xác suất `voiced` (≥ ngưỡng của bộ cắt câu). Tính là tiếng của máy khi cờ nguồn của khung không phải
+    /// `Mic`. `try_send`, đầy thì bỏ: không bao giờ chờ.
+    pub fn speech_frame(&mut self, frame: u64, voiced: bool) {
+        let Some(tx) = &self.speech else { return };
+        let machine = voiced && self.track.last() != Some(Source::Mic);
+        if let Some((start_ms, end_ms)) = self.speech_track.push(frame, machine) {
+            let _ = tx.try_send(SpeechSpan { start_ms, end_ms });
         }
     }
 
@@ -326,5 +426,36 @@ mod tests {
         drop(ends);
         assert!(!tap.send(tap.prepare(SpeakerTap::copy_speech(&segment(0, 0, 1_000, 0)))));
         assert!(tap.is_closed());
+    }
+
+    /// QĐ 14 của kế hoạch 04: khoảng kết thúc sau 3 khung im; đang nói thì báo mỗi 16 khung (512 ms).
+    #[test]
+    fn speech_spans_close_after_three_quiet_frames_and_report_every_half_second() {
+        let mut t = SpeechTrack::default();
+        let got: Vec<(u64, u64)> = (0..40u64).filter_map(|f| t.push(f, (5..30).contains(&f))).collect();
+        assert_eq!(got, [(160, 704), (160, 960)]);
+    }
+
+    /// Chỉ tiếng nói của âm thanh máy (spec §4.2 `Speech`): khung của micro không tính.
+    #[test]
+    fn the_tap_reports_machine_speech_but_not_mic_speech() {
+        let (link, ends) = SpeakerLink::pair();
+        let mut tap = SpeakerTap::new(link.segments, link.offered_end_ms).with_speech(link.speech);
+        for f in 0..10u64 {
+            tap.push_frame(f, &[Source::Mic; 512]);
+            tap.speech_frame(f, f < 6);
+        }
+        assert_eq!(ends.speech.try_iter().count(), 0, "micro");
+        for f in 10..20u64 {
+            tap.push_frame(f, &[Source::System; 512]);
+            tap.speech_frame(f, f < 16);
+        }
+        assert_eq!(
+            ends.speech.try_iter().collect::<Vec<_>>(),
+            [SpeechSpan {
+                start_ms: 320,
+                end_ms: 512
+            }]
+        );
     }
 }

@@ -1,9 +1,9 @@
 //! Client của `speaker-worker` (spec 2026-10-26-phan-biet-nguoi-noi §4.1–§4.3, §11) với worker giả
 //! (`src/bin/fake_speaker_worker.rs`): không cần model.
 
-use pipeline::speaker::{SpeakerLink, SpeakerUpdate, UPDATE_CHANNEL_CAP};
+use pipeline::speaker::{SpeakerLink, SpeakerUpdate, SpeechSpan, UPDATE_CHANNEL_CAP};
 use pipeline::speaker_client::{self, BeforeSpawn, Disabled, SpeakerHandle, SpeakerLaunch};
-use speaker_protocol::{SegmentAudio, Source, SpeakerConfig};
+use speaker_protocol::{MeetingApp, NamesSetup, ReaderStatus, SegmentAudio, Source, SpeakerConfig};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, TrySendError};
 use std::time::{Duration, Instant};
@@ -558,4 +558,115 @@ fn stop_from_the_handle_ends_the_worker_for_the_rest_of_the_session() {
     assert_eq!(handle.starts(), 1, "không chạy lại");
     assert_eq!(handle.disabled(), None, "dừng theo yêu cầu không phải lỗi");
     drop(link);
+}
+
+fn names_on(f: &Fixture) -> SpeakerLaunch {
+    let mut l = f.launch();
+    l.names = NamesSetup {
+        enabled: true,
+        recipe_json: "{\"schema\":1}".into(),
+        eui_marker: None,
+    };
+    l
+}
+
+/// Kế hoạch 04: `Load` mang phần tên; `Speech` của luồng VAD và `SetNames` của app tới worker.
+#[test]
+fn names_setup_speech_and_set_names_reach_the_worker() {
+    let f = Fixture::new("names", &["ok"]);
+    let (link, handle) = speaker_client::start(names_on(&f), allow());
+    assert!(handle.wait_ready(Duration::from_secs(5)));
+    assert!(handle.names_wanted());
+    link.speech
+        .try_send(SpeechSpan {
+            start_ms: 0,
+            end_ms: 512,
+        })
+        .unwrap();
+    handle.set_names(false);
+    wait_until("worker nhận Speech và SetNames", || {
+        let e = f.events();
+        e.contains("speech 0-512") && e.contains("set_names false")
+    });
+    assert!(f.events().contains("names enabled=true recipe=12"), "{}", f.events());
+    drop(link);
+}
+
+/// QĐ 12: mọi lần chạy worker trong một phiên nhận cùng mốc giờ của phiên.
+#[test]
+fn every_run_of_a_session_gets_the_same_session_clock() {
+    let f = Fixture::new("clock", &["crash_on:1", "ok"]);
+    let (link, handle) = speaker_client::start(f.launch(), allow());
+    assert!(handle.wait_ready(Duration::from_secs(5)));
+    link.segments.send(segment(0, 0, 1_000)).unwrap();
+    wait_until("chạy lại", || {
+        handle.starts() == 2 && handle.wait_ready(Duration::from_millis(10))
+    });
+    let events = f.events();
+    let clocks: Vec<&str> = events.lines().filter(|l| l.starts_with("session unix=")).collect();
+    assert_eq!(clocks.len(), 2, "{events}");
+    assert_eq!(clocks[0], clocks[1]);
+}
+
+#[test]
+fn names_participants_and_reader_state_are_forwarded() {
+    let f = Fixture::new("named", &["named"]);
+    let (link, handle) = speaker_client::start(names_on(&f), allow());
+    assert!(handle.wait_ready(Duration::from_secs(5)));
+    link.segments.send(segment(0, 0, 1_000)).unwrap();
+    let seen = wait_for(&link.updates, "Reader", |u| matches!(u, SpeakerUpdate::Reader(_)));
+    assert!(
+        seen.iter()
+            .any(|u| matches!(u, SpeakerUpdate::Voices(v) if v[0].name.as_ref().map(|n| n.as_str()) == Some("Lan")))
+    );
+    assert!(
+        seen.iter()
+            .any(|u| matches!(u, SpeakerUpdate::Participants(p) if p.len() == 2))
+    );
+    assert!(matches!(
+        seen.last(),
+        Some(SpeakerUpdate::Reader(r)) if r.state == ReaderStatus::NoPermission && r.app == Some(MeetingApp::Teams)
+    ));
+    assert!(matches!(
+        seen.last(),
+        Some(SpeakerUpdate::Reader(r)) if r.learned == 1 && r.patterns.len() == 1 && r.patterns[0].role == "AXGroup"
+    ));
+}
+
+/// App coi khung của worker là dữ liệu chưa tin: tên quá 160 byte là worker hỏng (chạy lại).
+#[test]
+fn an_oversized_name_counts_as_a_broken_worker() {
+    let f = Fixture::new("long-name", &["long_name", "ok"]);
+    let (link, handle) = speaker_client::start(f.launch(), allow());
+    assert!(handle.wait_ready(Duration::from_secs(5)));
+    link.segments.send(segment(0, 0, 1_000)).unwrap();
+    wait_until("chạy lại sau khung hỏng", || handle.starts() == 2);
+}
+
+/// Spec §11, QĐ 15: chậm hơn thời gian thực khi đang đọc tên thì trước hết tạm dừng đọc tên (`PauseNames`, giữ tên; không phải
+/// `SetNames(false)`); vẫn chậm thì tắt.
+#[test]
+fn overload_first_pauses_the_names_then_turns_speaker_off() {
+    let f = Fixture::new("slow-names", &["segment_delay_ms:400"]);
+    let (link, handle) = speaker_client::start(names_on(&f), allow());
+    assert!(handle.wait_ready(Duration::from_secs(5)));
+    let t0 = Instant::now();
+    let mut id = 0u64;
+    while handle.disabled().is_none() && t0.elapsed() < Duration::from_secs(12) {
+        if let Err(TrySendError::Disconnected(_)) = link.segments.try_send(segment(id, id * 250, id * 250 + 200)) {
+            break;
+        }
+        id += 1;
+        std::thread::sleep((t0 + Duration::from_millis(id * 250)).saturating_duration_since(Instant::now()));
+    }
+    assert_eq!(wait_disabled(&handle), Disabled::Overload);
+    assert!(handle.names_paused(), "bậc 1: tạm dừng đọc tên");
+    assert!(
+        t0.elapsed() >= Duration::from_secs(4),
+        "hai lần chậm 2 s: {:?}",
+        t0.elapsed()
+    );
+    let events = f.events();
+    assert!(events.contains("pause_names"), "{events}");
+    assert!(!events.contains("set_names false"), "tạm dừng không xóa tên: {events}");
 }
