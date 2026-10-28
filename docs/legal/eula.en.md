@@ -1,6 +1,6 @@
 # AI Translator End User License Agreement (EULA)
 
-**Version 1.5, effective 25 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.6, effective 28 October 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 This is an agreement between you and **Do Tien Phong** ("we", "us") for your use of the **AI Translator** application (the "app"). By installing or using the app you agree to it. If you do not agree, please do not install or use the app.
 

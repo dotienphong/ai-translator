@@ -1150,8 +1150,8 @@ function sectionErrors(urlPath, wants, forbids = {}) {
 test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng hàng, hai cách trả, Creem là bên bán lại (merchant of record) và đơn hoàn tiền thì rút ngắn hạn hay thu hồi", () => {
   const vi = textOf(htmlByPath.get("/dieu-khoan/"));
   const en = textOf(htmlByPath.get("/en/terms/"));
-  const viNeeds = ["Phiên bản 1.5", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
-  const enNeeds = ["Version 1.5", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
+  const viNeeds = ["Phiên bản 1.6", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
+  const enNeeds = ["Version 1.6", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/dieu-khoan/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/terms/: thiếu "${n}"`),
@@ -1412,12 +1412,12 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA giữ 1.5 (nguồn micro, hiệu lực 2026-10-25); chính sách lên 1.9 (thêm Google Analytics cho website, mục 14, spec ở
+  // EULA lên 1.6 (phân biệt người nói, hiệu lực 2026-10-28); chính sách lên 1.9 (thêm Google Analytics cho website, mục 14, spec ở
   // docs/legal/README.md), hiệu lực không sớm hơn 2026-10-28. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.5" || privacyHead?.version !== "1.9") errors.push("EULA 1.5 và chính sách 1.9");
-  if (eulaHead?.iso !== "2026-10-25") errors.push(`EULA 1.5 hiệu lực 2026-10-25, đang ghi ${eulaHead?.iso}`);
+  if (eulaHead?.version !== "1.6" || privacyHead?.version !== "1.9") errors.push("EULA 1.6 và chính sách 1.9");
+  if (eulaHead?.iso !== "2026-10-28") errors.push(`EULA 1.6 hiệu lực 2026-10-28, đang ghi ${eulaHead?.iso}`);
   if (!privacyHead || privacyHead.iso < "2026-10-28") errors.push(`chính sách 1.9 hiệu lực từ 2026-10-28 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
 });
