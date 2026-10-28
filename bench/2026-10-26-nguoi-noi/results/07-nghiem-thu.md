@@ -139,7 +139,65 @@ Ghi chú: kế hoạch dự kiến 30–60 phút (LTO) nhưng lần này chỉ m
 
 ## A-spk1, A-spk2, A-spk7 trên bản ứng viên (Task 7)
 
-**Chưa chạy.** Cần máy rảnh và đĩa (bản release, bộ chấm Python trên `$DATA`); chờ chủ dự án. Không có số mới ở đây. Số cũ của kế hoạch 02 (qua `speaker-worker` thật, M4 Pro) ghi ở bảng A-spk bên dưới, ghi rõ là "chưa đo lại trên bản ứng viên".
+Ngày 2026-10-28, ứng viên = `HEAD` `444aa12c` (cây git sạch). Dựng `latency-bench` và `speaker-worker` bản release (`MACOSX_DEPLOYMENT_TARGET=14.2`, `CARGO_TARGET_DIR=$W/target CARGO_INCREMENTAL=0`, `Finished` sau 1 phút 40 giây, đĩa 44 GiB trống). Đường đo đúng kế hoạch: `latency-bench speaker-eval --worker` (Silero VAD + `Segmenter` của app, `speaker-worker` thật, PCM 16 bit, A2 4 s, θ = 0,35, không gộp) rồi `score_spk.py`. Model nhúng lấy ở `$DATA/models/eres2net-sv-en-voxceleb-16k.onnx` (SHA khớp bản `dev-models`; kế hoạch viết `$M/models/…` nhưng file ở `$DATA/models`), Silero ở `$M/models/silero_vad_v6.2.3.onnx`; RTTM nằm ở `$DATA/out/<tên>.rttm` (AMI) và `$DATA/out/vi/<tên>.rttm` (tiếng Việt). Kết quả thô ở `$DATA/out/07/{ami,vi}/` (ngoài repo).
+
+**Kết luận: không thụt lùi. A-spk1 đạt (91,6% và 84,8%), A-spk2 đạt (93,9%): trùng mốc kế hoạch 02 tới chữ số thập phân thứ nhất, từng bản ghi cũng trùng. A-spk7 phần tự động đạt.**
+
+### A-spk1: AMI, 4 bản ghi kiểm
+
+| Bản ghi | Dòng ≥ 1 s | Mọi dòng | Thời lượng | Giọng/người | Mốc 02 (≥ 1 s / mọi dòng) |
+|---|---|---|---|---|---|
+| IS1009a.Mix-Headset | 89,6% | 85,7% | 75,0% | 5/4 | 89,6 / 85,7 |
+| EN2002a.Mix-Headset | 86,5% | 79,5% | 64,3% | 8/4 | 86,5 / 79,5 |
+| IS1009a.Array1-01 | 96,3% | 85,3% | 78,9% | 4/4 | 96,2 / 85,3 |
+| ES2004a.Array1-01 | 94,2% | 88,7% | 79,5% | 6/4 | 94,2 / 88,7 |
+| **Trung bình** | **91,6%** | **84,8%** | | | **91,6 / 84,8** |
+
+Mức đạt: ≥ 85% và ≥ 80% (đạt, tính theo trung bình các bản ghi kiểm). Lệch mốc 0,0 / 0,0 điểm (giới hạn thụt lùi 1 điểm). (IS1009a.Array1-01: 154/160 = 96,25%, làm tròn 96,3% ở đây và 96,2% ở 02; cùng một số đoạn.) Theo từng bản ghi, EN2002a mọi dòng 79,5% < 80% như ở kế hoạch 02 (chỉ để biết; mức đạt tính trung bình).
+
+### A-spk2: tiếng Việt, 8 bản ghi kiểm
+
+| Bản ghi | Dòng ≥ 1 s | Mọi dòng | Giọng/người | Mốc 02 (≥ 1 s) |
+|---|---|---|---|---|
+| cv-vi-03 | 97,8% | 91,5% | 3/3 | 97,8 |
+| cv-vi-04 | 98,9% | 94,8% | 3/3 | 98,9 |
+| cv-vi-05 | 94,7% | 89,6% | 4/4 | 94,7 |
+| cv-vi-06 | 97,7% | 88,1% | 4/3 | 97,7 |
+| cv-vi-03 Opus | 97,7% | 92,4% | 3/3 | 97,7 |
+| cv-vi-04 Opus | 99,0% | 94,9% | 3/3 | 99,0 |
+| cv-vi-05 Opus | **67,7%** | 66,4% | 3/4 | 67,7 |
+| cv-vi-06 Opus | 97,7% | 88,2% | 3/3 | 97,7 |
+| **Trung bình** | **93,9%** | | | **93,9** |
+
+Mức đạt ≥ 85% (đạt). 7/8 bản ≥ 85%; thấp nhất cv-vi-05 Opus 67,7% (hai người giống giọng bị gộp thành một giọng) là rủi ro đã biết (spec §14), không đổi so với 02, không thêm bản nào rơi dưới 85%.
+
+### Tất định
+
+Chạy lại IS1009a.Array1-01 (`$DATA/out/07/ami/IS1009a.Array1-01.rerun.jsonl`). **`cmp` thẳng hai file `.jsonl` KHÁC** ("differ: char 33, line 1") vì mỗi dòng có trường `embed_ms` (thời gian nhúng đo lúc chạy, 260/260 dòng khác). Bỏ trường đó thì hai file **giống hệt** (260 dòng: `confidence`, `end_ms`, `start_ms`, `voice` đều giống) và điểm chấm lại bằng đúng số cũ (96,25% / 85,3%, 4 giọng). Kết luận: nhãn và độ tin tất định; `cmp` nguyên file không dùng được vì có trường thời gian (sai lệch so với kế hoạch, không phải lỗi tính năng; ở 02 so "điểm và nhãn", không so byte).
+
+### Thời gian khứ hồi, RSS, CPU của worker (ghi lại, không phải mức đạt của task này)
+
+| Bản ghi | Đoạn có nhúng | p50 / p90 (ms) | Xong ≤ 230 ms | RSS đỉnh (MB) | CPU % một lõi |
+|---|---|---|---|---|---|
+| IS1009a.Mix-Headset | 226 | 98,4 / 198,3 | 222/226 | 202,0 | 7,40 |
+| EN2002a.Mix-Headset | 756 | 78,7 / 195,7 | 738/756 | 173,6 | 7,62 |
+| IS1009a.Array1-01 | 227 | 87,9 / 196,1 | 226/227 | 212,5 | 7,54 |
+| ES2004a.Array1-01 | 255 | 77,4 / 183,2 | 255/255 | 257,7 | 8,05 |
+| cv-vi-03 / 04 / 05 / 06 | 107 / 129 / 114 / 135 | 78,4 / 76,9 / 84,2 / 63,8 (p50); 140,4 / 132,1 / 143,3 / 115,4 (p90) | tất cả đủ | 190,2 / 234,9 / 251,5 / 185,3 | 8,50 / 8,39 / 8,56 / 8,47 |
+| cv-vi-03 / 04 / 05 / 06 Opus | 108 / 131 / 115 / 135 | 76,4 / 73,9 / 77,0 / 65,5 (p50); 136,6 / 128,5 / 142,4 / 122,8 (p90) | tất cả đủ | 191,8 / 224,7 / 262,2 / 182,2 | 8,43 / 8,44 / 8,37 / 8,82 |
+
+Lưu ý quan trọng: **máy KHÔNG rảnh trong lúc đo** (người dùng khác và app của họ đang chạy: `uptime` trung bình 1 phút 9,0 lúc bắt đầu, 11,5 ở cuối trên 12 lõi; trong 02 là 4–8). Điểm nhãn không phụ thuộc tải (tất định, ở trên) nên A-spk1/A-spk2 không bị ảnh hưởng; nhưng **số thời gian ở bảng này bị nhiễu và không dùng làm số A-spk4**: ở bốn đoạn của IS1009a.Mix-Headset, 18 của EN2002a, một của IS1009a.Array1-01 khứ hồi vượt 230 ms (tổng 23/1 464 đoạn AMI; ở 02 là 0/2 438 khi tải 4–8), còn tiếng Việt vẫn đủ 100%. Số đo độ trễ chính thức phải làm ở Task 8 trên máy rảnh. RSS vượt 250 MB ở ES2004a.Array1-01 (257,7) và cv-vi-05 (251,5), cv-vi-05 Opus (262,2); CPU tiếng Việt 8,37–8,82% > 8%: cùng kiểu vượt ngân sách đã ghi ở `02-nhan-giong-worker.md` (A-spk5, soak Task 9), không đổi hành vi so với 02.
+
+### A-spk7: phần kiểm được tự động (HEAD `444aa12c`)
+
+| Kiểm | Kết quả thật |
+|---|---|
+| `cargo deny check` | `advisories ok, bans ok, licenses ok, sources ok` |
+| `cargo audit` | **chạy được** (tải cơ sở dữ liệu advisory từ mạng, 1 380 advisory, quét 724 crate): 0 lỗ hổng; 6 cảnh báo đã cho phép (`paste` RUSTSEC-2024-0370, `glib` RUSTSEC-2024-0429, RUSTSEC-2024-0436, `zvariant` RUSTSEC-2026-0370, `zvariant_derive` RUSTSEC-2026-0372, RUSTSEC-2026-0371): đúng sáu cảnh báo cũ của Task 1 |
+| `check-no-network.sh speaker-worker speaker-protocol speaker-recipe` | "không có mã mạng" (cây phụ thuộc hai nền tảng, feature Windows, mã nguồn) |
+| app `--lib -- acl_tests speaker::health diagnostics::` | `ok. 102 passed; 0 failed` (7 `acl_tests` + 8 `speaker::health` + 87 `diagnostics::`) |
+| `cargo test --locked -p speaker-ops` | `ok. 41 passed; 0 failed; 1 ignored` |
+| server `vitest run test/speaker-health.test.ts` | 1 file, 21 test đạt |
 
 ## A-spk4 và nhãn muộn (Task 8)
 
@@ -200,15 +258,15 @@ Mức đạt theo spec §12 (mục 3.3 spec chính). "Số cũ" là số của k
 
 | Mã | Mức đạt | Kết quả | File / lệnh | Trạng thái |
 |---|---|---|---|---|
-| A-spk1 | Dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80% (trung bình 4 bản ghi AMI) | số cũ: 91,6% (≥ 1 s), 84,8% (mọi dòng); chưa đo lại | `results/02-nhan-giong-worker.md`; Task 7 | **chờ** (Task 7 chưa chạy) |
-| A-spk2 | Dòng ≥ 1 s đúng người ≥ 85% (trung bình 8 bản ghi tiếng Việt) | số cũ: 93,9%; 7/8 bản ≥ 85%, thấp nhất 67,7%; chưa đo lại | `results/02-nhan-giong-worker.md`; Task 7 | **chờ** (đạt ở kế hoạch 02; đo lại ở Task 7) |
+| A-spk1 | Dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80% (trung bình 4 bản ghi AMI) | bản ứng viên `444aa12c`: **91,6%** (≥ 1 s), **84,8%** (mọi dòng); trùng mốc 02 (lệch 0,0 / 0,0) | Task 7, mục A-spk1; `results/02-nhan-giong-worker.md` | **đạt** |
+| A-spk2 | Dòng ≥ 1 s đúng người ≥ 85% (trung bình 8 bản ghi tiếng Việt) | bản ứng viên `444aa12c`: **93,9%**; 7/8 bản ≥ 85%, thấp nhất 67,7% (rủi ro đã biết); trùng mốc 02 | Task 7, mục A-spk2; `results/02-nhan-giong-worker.md` | **đạt** |
 | A-spk3 | Đúng tên ≥ 90%, sai tên ≤ 5% (Teams thật) | không có số | Task 18 (bộ chấm chưa có) | **chờ chủ dự án** |
 | A-spk4 | A2 p50 ≤ +20 ms, p90 ≤ +50 ms, chữ đầu ≤ +20 ms | số cũ M4 Pro: p50 −11,8 ms, p90 −26,4 ms, chữ đầu −18,2 ms (không chậm hơn); i5 chưa đo | `results/02-do-tre.md`; Task 8 | **chờ** (Task 8 chưa chạy; Windows chờ chủ dự án) |
 | A-spk5 | Tải trong ngân sách (≤ 8% một lõi, RAM ≤ 250 MB); Teams, trình duyệt không chậm rõ | số cũ: RAM 141,8 MB sau 92 phút; Windows chưa đo | `results/02-soak.md`, `results/ram.md`; Task 9 | **chờ** (soak bản ứng viên chưa chạy) |
 | A-spk6 | Họp thật tiếng Việt ≥ 3 người, macOS và Windows; chủ dự án đánh giá | không có | Task 17, 18 | **chờ chủ dự án** |
-| A-spk7 | `cargo deny`, `cargo audit`, không mã mạng trong worker, `overlay` chỉ thêm `open_speaker_settings`, báo cáo không có tên | `cargo deny` sạch, `cargo audit` chỉ sáu cảnh báo cũ (Task 1); không mã mạng sạch và binary worker release không mã mạng (Task 6, 15); 7 test `acl_tests` đạt (Task 15); test báo cáo không chứa tên nằm trong 960 test của app | Task 1, 6, 15 | **một phần đạt**; chạy lại trên bản ứng viên ở Task 7 Step 4 (chưa chạy) |
+| A-spk7 | `cargo deny`, `cargo audit`, không mã mạng trong worker, `overlay` chỉ thêm `open_speaker_settings`, báo cáo không có tên | `cargo deny` sạch, `cargo audit` chỉ sáu cảnh báo cũ (Task 1); không mã mạng sạch và binary worker release không mã mạng (Task 6, 15); 7 test `acl_tests` đạt (Task 15); test báo cáo không chứa tên nằm trong 960 test của app | Task 1, 6, 15 | **phần tự động đạt trên `444aa12c`** (Task 7 Step 4: deny, audit, không mã mạng, 102 test app, 41 speaker-ops, 21 server đạt); phần không tự động nằm ở Task 17, 18 |
 
-Tóm tắt: không có mục nào "đạt" đầy đủ trên bản ứng viên; A-spk2, A-spk4, A-spk5 đạt ở số cũ, A-spk7 đạt phần chạy được; A-spk1, A-spk3, A-spk6 chưa có số hợp lệ. Bản app "ngủ" (không bật tính năng) không bị chặn bởi bảng này; **bật bằng manifest bị chặn** tới khi A-spk3 (Task 18) và pháp lý (Task 20) xong.
+Tóm tắt: trên bản ứng viên `444aa12c` A-spk1 và A-spk2 đã đo lại và đạt (Task 7), A-spk7 đạt phần tự động; A-spk4, A-spk5 còn ở số cũ (Task 8, 9 chưa chạy); A-spk3, A-spk6 chưa có số hợp lệ. Bản app "ngủ" (không bật tính năng) không bị chặn bởi bảng này; **bật bằng manifest bị chặn** tới khi A-spk3 (Task 18) và pháp lý (Task 20) xong.
 
 ## Các task phần A đã làm trên nhánh (đã kiểm)
 
