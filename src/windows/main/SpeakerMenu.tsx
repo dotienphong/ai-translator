@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type MessageKey, type Params, type UiLanguage, translate } from "../../i18n";
 import type { SpeakerVoice } from "../../lib/ipc";
 import { MAX_SPEAKER_NAME, type VoiceMap, isolateName, speakerColor } from "../../lib/speakers";
@@ -85,14 +85,103 @@ export function dismissal<T>(inside: (target: T) => boolean, onClose: () => void
   };
 }
 
-// Menu vừa mở thì cuộn khung vừa đủ để thấy trọn menu (nghiệm thu Task 21). `focus()` ô tên chỉ cuộn khi ô tên nằm ngoài khung; ở cửa
-// sổ 960x640 nhãn dòng thứ tư đã nằm trong khung nên không cuộn gì, còn nửa dưới menu (cả mục "Gộp vào người khác ▸") ra ngoài mép
-// cửa sổ, người dùng phải tự cuộn mới thấy. Vùng cuộn thật là khung `.content` của cửa sổ chính (menu `position: absolute` trong `li`,
-// `.transcript` không cắt phần tràn, QĐ 20). `block: "nearest"`: menu đã thấy trọn thì không cuộn, thiếu bao nhiêu cuộn bấy nhiêu
-// (không canh giữa hay đầu khung làm nội dung nhảy); đặt sau `focus()` để cộng với phần cuộn do `focus()` làm. `?.`: môi trường không
-// có DOM (test Node) không có `scrollIntoView`.
+// Dự phòng của `placeMenu`: cuộn khung bằng `scrollTop` mà khung không nhúc nhích thì nhờ trình duyệt cuộn menu vào khung.
+// `block: "nearest"`: menu đã thấy trọn thì không cuộn, thiếu bao nhiêu cuộn bấy nhiêu (không canh giữa hay đầu khung làm nội dung
+// nhảy). Không dùng làm đường chính: ở WKWebView thật (03b Task 23, ảnh `m9d-*`) menu của nhãn gần đáy vẫn nằm sát hay dưới mép
+// khung. `?.`: môi trường không có DOM (test Node) không có `scrollIntoView`.
 export function revealMenu(el: { scrollIntoView?(options?: ScrollIntoViewOptions): void } | null | undefined): void {
   el?.scrollIntoView?.({ block: "nearest" });
+}
+
+// Hướng mở của menu so với nhãn (QĐ 20): "down" dưới nhãn (CSS `.speaker-menu`), "up" trên nhãn (`.speaker-menu.up`).
+export type MenuPlacement = "down" | "up";
+
+// Số đo để đặt menu, px, cùng hệ tọa độ của `getBoundingClientRect()`: chiều cao menu, mép trên và dưới của nhãn, phần đang thấy
+// của khung cuộn (giao với cửa sổ).
+export interface MenuRoom {
+  menuHeight: number;
+  labelTop: number;
+  labelBottom: number;
+  viewTop: number;
+  viewBottom: number;
+}
+
+// Khoảng hở giữa nhãn và menu (CSS: mở xuống `top: 2.6rem`, mở lên `bottom: calc(100% - 0.5rem)`, chừng 3–4 px ở cỡ chữ 14 px).
+export const MENU_GAP = 4;
+// Lề tới mép khung, để thấy cả viền và bóng của menu (menu sát mép trông như bị cắt, ảnh m9d).
+export const MENU_MARGIN = 8;
+
+const fitsDown = (r: MenuRoom) =>
+  r.labelBottom + MENU_GAP >= r.viewTop && r.labelBottom + MENU_GAP + r.menuHeight + MENU_MARGIN <= r.viewBottom;
+// Mép dưới của menu (ngay trên nhãn) cũng phải trong khung: nhãn nằm dưới mép khung (chưa cuộn tới) thì menu lật lên vẫn ngoài khung.
+const fitsUp = (r: MenuRoom) =>
+  r.labelTop - MENU_GAP <= r.viewBottom && r.labelTop - MENU_GAP - r.menuHeight - MENU_MARGIN >= r.viewTop;
+
+// Chọn hướng mở theo chỗ trống (thử app dev thật, 03b Task 23): đủ chỗ dưới nhãn thì mở xuống; thiếu dưới mà đủ trên thì lật lên;
+// thiếu cả hai thì mở xuống (phần menu dưới nhãn kéo dài vùng cuộn nên cuộn tới được, `menuScroll`). `current`: hướng đang mở khi
+// menu đổi chiều cao (bung danh sách gộp): mở xuống thì giữ (cuộn thêm, không nhảy lên trên nhãn); mở lên thì giữ khi còn đủ chỗ
+// trên, không thì mở xuống (phần tràn mép trên của khung không cuộn tới được).
+export function menuPlacement(room: MenuRoom, current?: MenuPlacement): MenuPlacement {
+  if (current === "down") return "down";
+  if (current === "up") return fitsUp(room) ? "up" : "down";
+  if (fitsDown(room)) return "down";
+  return fitsUp(room) ? "up" : "down";
+}
+
+// Số px cần cuộn khung xuống để thấy trọn menu kèm lề ở hướng `placement`, nhưng không đẩy nhãn khỏi mép trên (menu cao hơn khung
+// thì nhãn dừng ở mép trên, còn lề). Mở lên thì 0: `menuPlacement` chỉ chọn mở lên khi đủ chỗ.
+export function menuScroll(room: MenuRoom, placement: MenuPlacement): number {
+  if (placement === "up") return 0;
+  const over = room.labelBottom + MENU_GAP + room.menuHeight + MENU_MARGIN - room.viewBottom;
+  return Math.max(0, Math.min(over, room.labelTop - MENU_MARGIN - room.viewTop));
+}
+
+// Cú bấm được nhận ở mục gộp (`MouseEvent.detail`): bấm chuột một lần (1) hay phím (0). Cú bấm thứ hai, thứ ba của một cú bấm đúp
+// thì bỏ: bung danh sách gộp ở menu mở lên (danh sách đẩy mục "Gộp vào người khác ▸" lên trên) hay cuộn khung để thấy danh sách làm
+// mục đó rời khỏi con trỏ, cú bấm thứ hai rơi vào một người, mà gộp không tách lại được (QĐ 20).
+export function firstClick(detail: number): boolean {
+  return detail <= 1;
+}
+
+// Khung cuộn thật của menu: phần tử tổ tiên gần nhất có `overflow-y` cuộn được (cửa sổ chính: `main.content`), không có thì cả tài
+// liệu.
+function scrollParent(el: HTMLElement): HTMLElement {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    if (/^(auto|scroll|overlay)$/.test(getComputedStyle(p).overflowY)) return p;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
+// Đo menu, nhãn và phần đang thấy của khung cuộn (vùng trong của khung, giao với cửa sổ).
+function measureRoom(menu: HTMLElement, chip: HTMLElement, scroller: HTMLElement): MenuRoom {
+  const label = chip.getBoundingClientRect();
+  const whole = scroller === document.scrollingElement || scroller === document.documentElement;
+  const top = whole ? 0 : scroller.getBoundingClientRect().top + scroller.clientTop;
+  const bottom = whole ? window.innerHeight : top + scroller.clientHeight;
+  return {
+    menuHeight: menu.getBoundingClientRect().height,
+    labelTop: label.top,
+    labelBottom: label.bottom,
+    viewTop: Math.max(0, top),
+    viewBottom: Math.min(window.innerHeight, bottom),
+  };
+}
+
+// Đặt menu theo chỗ trống (QĐ 20), không dựa vào `scrollIntoView`: đo ngay sau khi vẽ (trước khi trình duyệt hiện), chọn hướng
+// (`menuPlacement`), gắn lớp `up` ngay để phép cuộn tính trên vị trí mới, rồi cuộn đúng khung cuộn bằng `scrollTop` khi cần
+// (`menuScroll`). Cuộn mà khung không nhúc nhích thì dự phòng bằng `revealMenu`. Trả về hướng đã chọn.
+function placeMenu(menu: HTMLElement, chip: HTMLElement, current: MenuPlacement | undefined): MenuPlacement {
+  const scroller = scrollParent(menu);
+  const room = measureRoom(menu, chip, scroller);
+  const placement = menuPlacement(room, current);
+  menu.classList.toggle("up", placement === "up");
+  const delta = menuScroll(room, placement);
+  if (delta > 0) {
+    const before = scroller.scrollTop;
+    scroller.scrollTop = before + delta;
+    if (scroller.scrollTop === before) revealMenu(menu);
+  }
+  return placement;
 }
 
 // Menu của nhãn người nói trong bản chép lời (spec 2026-10-26-phan-biet-nguoi-noi §8.2): ô "Đổi tên" (≤ 40 ký tự; để trống rồi Lưu
@@ -106,9 +195,23 @@ export function SpeakerMenu({ lang, voice, voices, participants, onRename, onMer
   const input = useRef<HTMLInputElement>(null);
   // Cách đóng của lần mở này (tạo trong effect); Lưu, chọn người, gộp báo trước rằng menu sắp đóng (`willClose`).
   const dismiss = useRef<Dismissal<EventTarget | null> | null>(null);
+  // Hướng mở (QĐ 20, `placeMenu`): state để lớp `up` giữ nguyên qua các lần vẽ lại (bản chép lời tới thêm câu), ref để lần đặt sau
+  // biết hướng đang mở.
+  const [placement, setPlacement] = useState<MenuPlacement>("down");
+  const placed = useRef<MenuPlacement | undefined>(undefined);
+  const others = mergeTargets(voices, voice);
+  // Đặt menu khi vừa mở và mỗi khi chiều cao của nó đổi: bung hay gập danh sách gộp, thêm giọng, thêm người tham dự. Layout effect:
+  // đo và cuộn trước khi trình duyệt hiện menu, nên không thấy menu nhảy; chạy trước effect focus ô tên bên dưới, nên ô tên đã ở
+  // trong khung khi được focus.
+  useLayoutEffect(() => {
+    const menu = box.current;
+    const chip = menu?.parentElement?.querySelector<HTMLElement>("button.spk-chip");
+    if (!menu || !chip) return;
+    placed.current = placeMenu(menu, chip, placed.current);
+    setPlacement(placed.current);
+  }, [merging, others.length, participants.length]);
   useEffect(() => {
     input.current?.focus();
-    revealMenu(box.current);
     // Nhãn của chính dòng này (menu nằm trong cùng `li` với nhãn).
     const chip = box.current?.parentElement?.querySelector<HTMLButtonElement>("button.spk-chip") ?? null;
     const inside = (target: EventTarget | null) =>
@@ -135,9 +238,8 @@ export function SpeakerMenu({ lang, voice, voices, participants, onRename, onMer
     };
   }, [onClose]);
   const title = t("transcript.speaker.rename", { name: isolateName(voice.label) });
-  const others = mergeTargets(voices, voice);
   return (
-    <div className="speaker-menu" role="dialog" aria-label={title} ref={box}>
+    <div className={placement === "up" ? "speaker-menu up" : "speaker-menu"} role="dialog" aria-label={title} ref={box}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -200,7 +302,9 @@ export function SpeakerMenu({ lang, voice, voices, participants, onRename, onMer
                 type="button"
                 className="menu-item sub"
                 style={{ "--spk": speakerColor(o.color) } as CSSProperties}
-                onClick={() => {
+                onClick={(e) => {
+                  // Cú bấm thứ hai của cú bấm đúp vào "Gộp vào người khác ▸" không gộp nhầm (`firstClick`).
+                  if (!firstClick(e.detail)) return;
                   dismiss.current?.willClose();
                   onMerge(o.id);
                 }}
