@@ -98,8 +98,8 @@ const ALERT_TEXT: Record<AlertKind, string> = {
     "trạng bị từ chối (429) tới hết giờ; báo cáo lỗi thường không bị ảnh hưởng. Mở Web Admin, trang Báo cáo lỗi, tab Bộ đọc tên để xem " +
     "số báo cáo bất thường; thư này chỉ có số lượng.",
   speaker_health_degraded:
-    "Bộ đọc tên người nói: một phiên bản của Teams, Meet hay Zoom có từ 30% báo cáo tình trạng hỏng (không đọc được tên, không thấy ai " +
-    '"đang nói", hay app họp không trả lời), từ 5 báo cáo trong 3 ngày qua. Có thể app họp vừa đổi giao diện. Mở Web Admin, trang Báo ' +
+    "Bộ đọc tên người nói: một phiên bản của Teams, Meet hay Zoom có từ 30% số máy báo tình trạng hỏng (không đọc được tên, không thấy ai " +
+    '"đang nói", hay app họp không trả lời), ít nhất 3 máy hỏng, từ 5 báo cáo trong 3 ngày qua. Có thể app họp vừa đổi giao diện. Mở Web Admin, trang Báo ' +
     "cáo lỗi, tab Bộ đọc tên để xem app, phiên bản và mẫu chỉ báo tự học; sửa công thức bằng pnpm recipes:update (docs/release/phat-hanh.md). " +
     "Thư này chỉ có số lượng, không nêu app hay phiên bản nào.",
   speaker_canary_failed:
