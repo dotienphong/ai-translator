@@ -86,7 +86,24 @@ Sửa ngoài chữ kế hoạch: hai test chỉ chạy ở bản release (`relea
 
 ## Model và giấy phép (Task 4)
 
-Chờ Task 4.
+Ngày 2026-10-28. Ba SHA-256 (tính bằng `shasum -a 256`, khớp kế hoạch):
+
+| File | Byte | SHA-256 |
+|---|---|---|
+| `eres2net-sv-en-voxceleb-16k.onnx` (file đã nghiệm thu, sẽ đăng) | 26 496 496 | `beffe43e7027d0c76752fcc4cace5c8473eedf30d3237da30ec2c668078a043e` |
+| `eres2net-sv-en-voxceleb-16k.orig.onnx` (bản gốc của sherpa-onnx) | 26 485 263 | `c59158379255ad66e161679cca6af8d52d51e389e3224ab7d7a7baae295c2db5` |
+| `eres2net-sv-en-voxceleb-16k-LICENSE.txt` = `licenses/models/3D-Speaker-LICENSE.txt` | 11 357 | `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4` |
+
+Nguồn giấy phép đã đọc (2026-10-28):
+
+- `https://github.com/modelscope/3D-Speaker` (README, mục License): "3D-Speaker is released under the Apache License 2.0." Không có dòng bản quyền (Copyright) nào. README không liệt kê model ERes2Net VoxCeleb tiếng Anh trong các model đã huấn luyện của nó.
+- ModelScope, model `iic/speech_eres2net_sv_en_voxceleb_16k` (API `api/v1/models/…` và `README.md` của model, đọc bằng curl): `license: Apache License 2.0`; không có dòng bản quyền.
+- `https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-recongition-models` (qua API GitHub): có tài sản `3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx`, 26 485 263 byte (đúng cỡ file `.orig.onnx`); trang ghi "Each model has its own license. Please see the corresponding repository for the specific license of a given model." (GitHub không trả SHA-256 của tài sản; SHA-256 `c59158…2db5` là hằng `SHA_GOC` trong `prepare_model.py`, lấy từ lần tải trước).
+- Văn bản giấy phép: đối chiếu với `LICENSE-APACHE` chuẩn trong `~/.cargo/registry` (`addr2line-0.25.1`): giống hệt khi bỏ khoảng trắng đầu/cuối dòng và dòng trống. Đoạn mẫu "Copyright [yyyy] [name of copyright owner]" là phụ lục chuẩn của Apache-2.0, chưa điền; vì không nguồn nào ghi chủ bản quyền, `THIRD_PARTY_NOTICES` KHÔNG thêm dòng Copyright nào.
+
+Phần sửa đổi trong mục thông báo: kế hoạch ghi "operators folded, no weight changed"; chỉ có thể kiểm chứng rằng `prepare_model.py` chạy `onnxsim.simplify` rồi lưu, nên bản trong repo ghi "simplified with onnxsim; the model was not retrained or fine-tuned".
+
+Test: `node --test` của `notices.test.mjs` + `speaker-manifest.test.mjs`: 16 đạt, 0 lỗi. Cả bộ CI (`scripts/release/*.test.mjs` + `scripts/models/{manifest,update,speaker-manifest}.test.mjs` + `scripts/dev-env.test.mjs` + `scripts/run-dev-app.test.mjs`): 226 đạt, 0 lỗi. Cổng kiểm `check_manifest_body` (app, thư mục tạm): `sequence 3 -> 4, không đổi id`, `test result: ok`; không có `released/body-4.json` trong repo.
 
 ## Bản release cục bộ (Task 6)
 
