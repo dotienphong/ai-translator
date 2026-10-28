@@ -252,7 +252,7 @@ fn file_version(path: &str) -> Option<String> {
     let file: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
     let root: Vec<u16> = "\\".encode_utf16().chain(std::iter::once(0)).collect();
     // SAFETY: cả hai chuỗi kết thúc bằng NUL và sống hơn các lệnh gọi; bộ đệm đúng cỡ `GetFileVersionInfoSizeW` trả (≤ 1 MiB);
-    // `VerQueryValueW` trả con trỏ vào chính bộ đệm đó, và ta chỉ đọc khi đủ chỗ cho một `VS_FIXEDFILEINFO`.
+    // `VerQueryValueW` trả con trỏ vào chính bộ đệm đó, và ta chỉ đọc (không căn) khi đủ chỗ cho một `VS_FIXEDFILEINFO`.
     unsafe {
         let size = GetFileVersionInfoSizeW(PCWSTR(file.as_ptr()), None);
         if size == 0 || size > (1 << 20) {
@@ -266,7 +266,8 @@ fn file_version(path: &str) -> Option<String> {
         if !found.as_bool() || info.is_null() || (len as usize) < std::mem::size_of::<VS_FIXEDFILEINFO>() {
             return None;
         }
-        let fixed = &*(info as *const VS_FIXEDFILEINFO);
+        // Bộ đệm là `Vec<u8>` (căn 1 byte) nên con trỏ có thể lệch căn: đọc không cần căn, không tạo tham chiếu.
+        let fixed = std::ptr::read_unaligned(info as *const VS_FIXEDFILEINFO);
         Some(fixed_file_version(fixed.dwFileVersionMS, fixed.dwFileVersionLS))
     }
 }
