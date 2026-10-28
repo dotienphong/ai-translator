@@ -38,6 +38,19 @@ export function StateBadge({ state }: { state: string }) {
 /** Số báo cáo hỏng (không đọc được tên, không thấy ai đang nói, app họp không trả lời) của một dòng. */
 export const brokenOf = (r: Pick<SpeakerHealthRow, "no_names" | "no_speaking" | "blocked">): number => r.no_names + r.no_speaking + r.blocked;
 
+/**
+ * Ngưỡng cảnh báo của cron (`DEGRADED_*` ở server/src/speaker-health.ts): từ chừng này báo cáo, ít nhất chừng này máy hỏng, và từ chừng này
+ * phần số máy hỏng. Giữ khớp với server (đếm MÁY, không đếm báo cáo). Dòng ở đây gộp theo hệ điều hành và theo số ngày đang xem, còn cron
+ * gộp theo (app họp, phiên bản) trong 3 ngày, nên huy hiệu chỉ là gợi ý cùng luật, không phải đúng từng email.
+ */
+const DEGRADED_MIN_REPORTS = 5;
+const DEGRADED_MIN_DEVICES = 3;
+const DEGRADED_SHARE = 0.3;
+
+/** Dòng này vượt ngưỡng cảnh báo "hỏng" của cron (theo số máy). */
+export const isDegraded = (r: Pick<SpeakerHealthRow, "reports" | "devices" | "broken_devices">): boolean =>
+  r.reports >= DEGRADED_MIN_REPORTS && r.broken_devices >= DEGRADED_MIN_DEVICES && r.devices > 0 && r.broken_devices / r.devices >= DEGRADED_SHARE;
+
 const percent = (part: number, whole: number): string => (whole === 0 ? "—" : `${Math.round((part * 100) / whole)}%`);
 
 /** Cột bảng tình trạng theo phiên bản. `now` (giây): mốc của lần tải. */
@@ -56,9 +69,7 @@ export function healthColumns(now: number): Column<SpeakerHealthRow>[] {
       align: "right",
       aside: true,
       cell: (r) => {
-        const broken = brokenOf(r);
-        const share = r.reports === 0 ? 0 : broken / r.reports;
-        return <Badge tone={share >= 0.3 && r.reports >= 5 ? "bad" : broken > 0 ? "warn" : "ok"}>{`${fmtInt(broken)} (${percent(broken, r.reports)})`}</Badge>;
+        return <Badge tone={isDegraded(r) ? "bad" : brokenOf(r) > 0 ? "warn" : "ok"}>{`${fmtInt(r.broken_devices)}/${fmtInt(r.devices)} máy (${percent(r.broken_devices, r.devices)})`}</Badge>;
       },
     },
     {

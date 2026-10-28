@@ -12,6 +12,7 @@ const row = (over: Record<string, unknown> = {}) => ({
   os_name: "macos",
   reports: 10,
   devices: 8,
+  broken_devices: 3,
   ok: 6,
   no_names: 2,
   no_speaking: 1,
@@ -63,17 +64,28 @@ describe("ErrorsPage: tab Bộ đọc tên", () => {
     const cells = within(table).getAllByRole("row")[1]!.textContent ?? "";
     expect(cells).toContain("Microsoft Teams");
     expect(cells).toContain("26032.1100");
-    expect(cells).toContain("3 (30%)");
+    expect(cells).toContain("3/8 máy (38%)");
     expect(cells).toContain("75%");
   });
 
-  it("hỏng từ 30% và từ 5 báo cáo thì huy hiệu đỏ; ít báo cáo hơn thì không", async () => {
-    speaker = () => json(response({ rows: [row(), row({ meeting_version: "26040.1", reports: 3, no_names: 3, ok: 0, no_speaking: 0, no_permission: 0 })] }));
+  it("huy hiệu đỏ khớp ngưỡng của cron: từ 5 báo cáo, ít nhất 3 máy hỏng, từ 30% số MÁY; thiếu một điều kiện thì chỉ vàng", async () => {
+    speaker = () =>
+      json(
+        response({
+          rows: [
+            row(), // 10 báo cáo, 3/8 máy hỏng: đỏ
+            row({ meeting_version: "26040.1", reports: 3, devices: 3, broken_devices: 3, no_names: 3, ok: 0, no_speaking: 0, no_permission: 0 }), // ít báo cáo
+            row({ meeting_version: "26050.1", reports: 12, devices: 2, broken_devices: 2, no_names: 12, ok: 0, no_speaking: 0, no_permission: 0 }), // nhiều báo cáo nhưng chỉ 2 máy
+            row({ meeting_version: "26060.1", reports: 20, devices: 20, broken_devices: 3, no_names: 3, ok: 17, no_speaking: 0, no_permission: 0 }), // 3/20 máy = 15%
+            row({ meeting_version: "26070.1", reports: 9, devices: 9, broken_devices: 0, no_names: 0, ok: 9, no_speaking: 0, no_permission: 0 }), // không hỏng
+          ],
+        }),
+      );
     render(<ErrorsPage />);
     const table = await screen.findByRole("table", { name: /Tình trạng bộ đọc tên theo app họp/ });
-    const badges = within(table).getAllByText(/\(\d+%\)/);
-    expect(badges[0]!.className).toContain("badge-bad");
-    expect(badges[1]!.className).toContain("badge-warn");
+    const badges = within(table).getAllByText(/máy \(\d+%\)/);
+    expect(badges.map((b) => b.className.match(/badge-(bad|warn|ok)/)?.[1])).toEqual(["bad", "warn", "warn", "warn", "ok"]);
+    expect(badges[2]!.textContent).toBe("2/2 máy (100%)");
   });
 
   it("hiện kết quả kiểm tra tự động và mẫu chỉ báo dạng văn bản", async () => {

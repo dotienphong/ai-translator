@@ -346,6 +346,8 @@ export interface SpeakerHealthRow {
   os_name: string;
   reports: number;
   devices: number;
+  /** Số máy có ít nhất một báo cáo hỏng (không đọc được tên, không thấy ai đang nói, app họp không trả lời) trong khoảng ngày đã chọn. */
+  broken_devices: number;
   ok: number;
   no_names: number;
   no_speaking: number;

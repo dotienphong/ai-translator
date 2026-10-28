@@ -31,6 +31,7 @@ describe("Web Admin: GET /admin/speaker-health và xóa theo email", () => {
         os_name: "macos",
         reports: 2,
         devices: 2,
+        broken_devices: 1,
         ok: 1,
         no_names: 1,
         no_speaking: 0,

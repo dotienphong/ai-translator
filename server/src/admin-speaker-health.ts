@@ -24,6 +24,7 @@ export function registerAdminSpeakerHealth(app: Hono<AdminAppEnv>): void {
       db
         .prepare(
           `SELECT meeting_app, meeting_version, os_name, COUNT(*) AS reports, COUNT(DISTINCT device_id_hash) AS devices,
+                  COUNT(DISTINCT CASE WHEN state IN ('no_names', 'no_speaking', 'blocked') THEN device_id_hash END) AS broken_devices,
                   SUM(state = 'ok') AS ok, SUM(state = 'no_names') AS no_names, SUM(state = 'no_speaking') AS no_speaking,
                   SUM(state = 'no_permission') AS no_permission, SUM(state = 'blocked') AS blocked,
                   SUM(minutes_ok) AS minutes_ok, SUM(minutes_total) AS minutes_total,
