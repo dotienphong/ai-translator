@@ -34,6 +34,12 @@
 //   video giới thiệu (scripts/demo-video, spec 2026-10-21-demo-video §2.4): demo=1 thì không tự phát mức âm lượng ngẫu nhiên và
 //     không tự mở ô soạn; trang dựng cảnh (frame ngoài cùng) phát sự kiện qua `window.__demoEmit` và trả lời lệnh dịch của ô soạn
 //     qua `window.top.__demo.composeTranslate(id, emit)`
+//   người nói (spec 2026-10-26-phan-biet-nguoi-noi §8; kế hoạch 03): speakers=1 (bản có tính năng: nhóm Cài đặt "Người nói"; phiên
+//     có ba giọng: tên đọc từ cuộc họp, tên người dùng đặt, "Người 3"; năm câu mẫu của giọng 1, 1, 2, 3, 1; bốn người tham dự)
+//     ask=1 (dòng mời cấp quyền Trợ năng trên thanh phụ đề)  speakermodel=ready|missing|downloading|unavailable (dữ liệu nhận giọng;
+//     mặc định ready khi speakers=1)  diarization=0, names=0 (tắt hai công tắc)  longnames=1 (tên dài 40 ký tự: giọng 2 tên Latin,
+//     thêm một người tham dự tên chữ Hán, để kiểm tràn chữ). Tên trong mẫu là tên giả, như mẫu đã duyệt. Cả cửa sổ chính lẫn thanh
+//     phụ đề nhận bảng người nói giả qua sự kiện `speaker://roster` lúc mở trang (danh sách người tham dự chỉ đi qua sự kiện).
 import conf from "../../src-tauri/tauri.conf.json";
 import type {
   AppInfo,
@@ -48,6 +54,7 @@ import type {
   PlanOffer,
   PlansView,
   Settings,
+  SpeakerRoster,
   Subtitle,
   SupportView,
 } from "../../src/lib/ipc";
@@ -107,6 +114,8 @@ let settings: Settings = {
     lastMonitor: null,
   },
   translateWhileSpeaking: param("tws") !== "0",
+  speakerDiarization: param("diarization") !== "0",
+  speakerNames: param("names") !== "0",
   compose: { enabled: true, target: "auto", autoPaste: true },
   modelTier: "standard",
   hotkeys: {
@@ -149,12 +158,46 @@ let status: AppStatus = {
   rev: 1,
 };
 
+// ---------------------------------------------------------------- người nói (spec 2026-10-26-phan-biet-nguoi-noi §8)
+
+const speakers = param("speakers") === "1";
+// Nhãn tự động như phía Rust (`speaker_voice` ở src-tauri/src/i18n.rs).
+const voiceLabel = (n: number) =>
+  pick({ vi: `Người ${n}`, en: `Speaker ${n}`, ja: `話者${n}`, zh: `说话人${n}`, ko: `화자 ${n}` });
+// Giọng của năm câu mẫu (`SAMPLE`): Lan, Lan, Minh, Người 3, Lan.
+const SAMPLE_SPEAKERS = [1, 1, 2, 3, 1];
+// Tên dài tối đa (40 ký tự) cho `longnames=1` (rà soát B-Q3).
+const longNames = param("longnames") === "1";
+const LONG_LATIN = "Maximiliano Alessandro Bartholomew-Ortiz";
+const LONG_CJK = "欧阳明月上官飞燕司马长风诸葛青云慕容雪晴东方晓白独孤星辰令狐清风西门吹雪南宫云飞";
+const secondName = longNames ? LONG_LATIN : "Minh Trần";
+let roster: SpeakerRoster = speakers
+  ? {
+      voices: [
+        { id: 1, label: "Lan Nguyễn", color: 0, source: "name", room: false, mergedInto: null },
+        { id: 2, label: secondName, color: 1, source: "user", room: false, mergedInto: null },
+        { id: 3, label: voiceLabel(3), color: 2, source: "voice", room: false, mergedInto: null },
+      ],
+      participants: ["Lan Nguyễn", secondName, "Hoa Phạm", "Tuấn Lê", ...(longNames ? [LONG_CJK] : [])],
+      askAccess: param("ask") === "1",
+      rev: 1,
+    }
+  : { voices: [], participants: [], askAccess: false, rev: 0 };
+
+// Bảng mới như phía Rust: số thứ tự tăng (QĐ 25 của kế hoạch 03), phát `speaker://roster` cho các cửa sổ, trả về cho lệnh.
+function changeRoster(next: SpeakerRoster): SpeakerRoster {
+  roster = { ...next, rev: roster.rev + 1 };
+  emit("speaker://roster", roster);
+  return roster;
+}
+
 const info: AppInfo = {
   name: conf.productName,
   version: conf.version,
   identifier: conf.identifier,
   platform,
   launchedAtLogin: false,
+  speakerAvailable: speakers,
 };
 
 // Hạn mức gói trả phí mỗi chu kỳ 30 ngày: Monthly 50 giờ, 6 Months 100 giờ (Yearly không giới hạn), đã dùng 6 giờ 12 phút.
@@ -259,6 +302,7 @@ let models: ModelsView = {
     ? { state: "downloading", pack: "standard", doneBytes: 1_120_000_000, totalBytes: 2_485_000_000, error: null, replacesInUse: false }
     : { state: "idle", pack: null, doneBytes: 0, totalBytes: 0, error: null, replacesInUse: false },
   updateAvailable: false,
+  speaker: param("speakermodel", speakers ? "ready" : "unavailable") as ModelsView["speaker"],
 } as ModelsView;
 
 const SAMPLE: [string, string, string][] = [
@@ -332,6 +376,7 @@ const lines: Subtitle[] = empty
       status: l === lang ? "same_lang" : "done",
       provisional: false,
       replaces: [],
+      speaker: speakers ? (SAMPLE_SPEAKERS[i] ?? null) : null,
     }));
 
 // Dòng đang nói cho thanh phụ đề (spec 2026-10-10 §6.1), theo tham số `live=`:
@@ -381,7 +426,7 @@ const LIVE_SAMPLES = {
 };
 const LIVE_SAMPLE = LIVE_SAMPLES[lang];
 
-function liveLine(id: number, ext: number | null, src: string[], tgt: string[]): LiveLine {
+function liveLine(id: number, ext: number | null, src: string[], tgt: string[], speaker: number | null = null): LiveLine {
   return {
     id,
     extends: ext,
@@ -391,10 +436,11 @@ function liveLine(id: number, ext: number | null, src: string[], tgt: string[]):
     tgt_stable: tgt[0] ?? "",
     tgt_tail: tgt[1] ?? "",
     tgt_src_units: 0,
+    speaker,
   };
 }
 
-function liveSubtitle(id: number, src: string, tgt: string, provisional: boolean): Subtitle {
+function liveSubtitle(id: number, src: string, tgt: string, provisional: boolean, speaker: number | null = null): Subtitle {
   return {
     id,
     start_ms: 240_000,
@@ -405,6 +451,7 @@ function liveSubtitle(id: number, src: string, tgt: string, provisional: boolean
     status: "done",
     provisional,
     replaces: [],
+    speaker,
   };
 }
 
@@ -725,13 +772,34 @@ const handlers = {
           { kind: "device", id: "{0.0.0.00000000}.{speakers}", name: pick({ vi: "Loa", en: "Speakers", ja: "スピーカー", zh: "扬声器", ko: "스피커" }) + " (Realtek High Definition Audio)" },
           { kind: "device", id: "{0.0.0.00000000}.{headset}", name: "Headset (Jabra Evolve2 65)" },
         ],
-  get_transcript: () => ({ session: 1, startedAt, endedAt: null, targetLang: lang, lines }),
+  get_transcript: () => ({ session: 1, startedAt, endedAt: null, targetLang: lang, lines, speakers: roster.voices, speakersRev: roster.rev }),
   transcript_text: () => lines.map((l) => `${l.src_text}\n${l.tgt_text}`).join("\n\n"),
   export_transcript: () => (platform === "macos" ? "/Users/an/Documents/meeting.txt" : "C:\\Users\\an\\Documents\\meeting.txt"),
   list_history: () => history,
-  get_history_session: () => ({ session: 0, startedAt: history[0]?.startedAt ?? now, endedAt: now, targetLang: lang, lines }),
+  get_history_session: () => ({ session: 0, startedAt: history[0]?.startedAt ?? now, endedAt: now, targetLang: lang, lines, speakers: roster.voices.map((v) => ({ ...v, source: "user" as const, mergedInto: null })), speakersRev: 0 }),
   delete_history_session: () => null,
   clear_history: () => history.length,
+  // Người nói: đổi tên (rỗng là trở về nhãn tự động), gộp, như phía Rust (bảng mới phát cho các cửa sổ).
+  rename_speaker: ({ id, name }) => {
+    const clean = name.trim().replace(/\s+/g, " ");
+    return changeRoster({
+      ...roster,
+      voices: roster.voices.map((v) =>
+        v.id === id ? { ...v, label: clean || voiceLabel(v.id), source: clean ? "user" : "voice" } : v,
+      ),
+    });
+  },
+  merge_speakers: ({ from, into }) => {
+    const target = roster.voices.find((v) => v.id === into);
+    if (!target) throw { code: "speakerNotFound", field: null, message: "…" };
+    return changeRoster({
+      ...roster,
+      voices: roster.voices.map((v) =>
+        v.id === from ? { ...v, label: target.label, color: target.color, source: target.source, mergedInto: into } : v,
+      ),
+    });
+  },
+  open_speaker_settings: () => null,
   list_glossary: () => glossary,
   add_glossary_entry: ({ source, target }) => {
     const entry = { id: Math.max(0, ...glossary.map((e) => e.id)) + 1, source, target };
@@ -829,6 +897,14 @@ export async function invoke(cmd: string, args?: unknown) {
 // Đưa tới màn hình hay bước cần xem sau khi store đã nghe sự kiện.
 setTimeout(async () => {
   const screen = q.get("screen");
+  // Cửa sổ chính (không phải thanh phụ đề hay ô soạn): bảng người nói giả tới như sự kiện `speaker://roster` của phiên đang chạy
+  // (rà soát lần 2, B-Q-mới 1). Phía Rust chỉ gửi `participants` qua sự kiện (`get_transcript` không có), nên thiếu dòng này thì menu
+  // của nhãn không bao giờ có "Chọn người trong cuộc họp". Đây chỉ là giả lập: cửa sổ chính thật luôn có danh sách rỗng tới kế hoạch
+  // 04 (bộ đọc tên cấp `participants`). Phát ở đây: store bản chép lời đã nghe sự kiện (`init()` chạy khi nạp `main.tsx`, `refresh()`
+  // xong trước hàng đợi `setTimeout`), và trước khi chuyển màn hình, nên menu mở ở `prepare` đã có danh sách.
+  if (speakers && !location.pathname.endsWith("overlay.html") && !location.pathname.endsWith("compose.html")) {
+    emit("speaker://roster", roster);
+  }
   if (screen) emit("app://navigate", { screen, settingsGroup: q.get("group") });
   const step = q.get("onboarding");
   if (step) {
@@ -858,6 +934,7 @@ setTimeout(async () => {
   if (location.pathname.endsWith("overlay.html")) {
     // Trạng thái và phụ đề tới thanh phụ đề qua sự kiện, như phía Rust.
     emit("app://status", status);
+    if (speakers) emit("speaker://roster", roster);
     for (const line of lines) emit("subtitle://upsert", line);
     if (q.get("translating") === "1") {
       emit("subtitle://upsert", {
@@ -876,15 +953,16 @@ setTimeout(async () => {
         status: "translating",
         provisional: false,
         replaces: [],
+        speaker: null,
       });
     }
     const live = q.get("live");
     const s = LIVE_SAMPLE;
     if (live === "alone" || live === "final") emit("subtitle://live", liveLine(6, null, s.alone.src, s.alone.tgt));
     if (live === "extends" || live === "provisional") {
-      emit("subtitle://upsert", liveSubtitle(6, s.provisional.src, s.provisional.tgt, true));
+      emit("subtitle://upsert", liveSubtitle(6, s.provisional.src, s.provisional.tgt, true, speakers ? 2 : null));
     }
-    if (live === "extends") emit("subtitle://live", liveLine(7, 6, s.extends.src, s.extends.tgt));
+    if (live === "extends") emit("subtitle://live", liveLine(7, 6, s.extends.src, s.extends.tgt, speakers ? 2 : null));
     (window as unknown as { __livePreview: { finish(): void } }).__livePreview = {
       finish() {
         emit("subtitle://upsert", liveSubtitle(6, s.final.src, s.final.tgt, false));

@@ -1,0 +1,55 @@
+### Đoạn VAD
+  EN2002a.Mix-Headset    536 đoạn, trung vị 2.46 s, < 1 s 27%, đoạn có ≥ 2 người (≥ 0,3 s mỗi người) 47%, cặp đoạn cách ≤ 0,7 s khác người 37% (339 cặp)
+  ES2004a.Array1-01      206 đoạn, trung vị 1.87 s, < 1 s 29%, đoạn có ≥ 2 người (≥ 0,3 s mỗi người) 34%, cặp đoạn cách ≤ 0,7 s khác người 20% (114 cặp)
+  ES2004a.Mix-Headset    238 đoạn, trung vị 2.10 s, < 1 s 26%, đoạn có ≥ 2 người (≥ 0,3 s mỗi người) 38%, cặp đoạn cách ≤ 0,7 s khác người 20% (128 cặp)
+  IS1009a.Array1-01      153 đoạn, trung vị 3.23 s, < 1 s 17%, đoạn có ≥ 2 người (≥ 0,3 s mỗi người) 43%, cặp đoạn cách ≤ 0,7 s khác người 25% (97 cặp)
+  IS1009a.Mix-Headset    158 đoạn, trung vị 3.39 s, < 1 s 20%, đoạn có ≥ 2 người (≥ 0,3 s mỗi người) 44%, cặp đoạn cách ≤ 0,7 s khác người 30% (97 cặp)
+  TS3003a.Mix-Headset    403 đoạn, trung vị 1.41 s, < 1 s 33%, đoạn có ≥ 2 người (≥ 0,3 s mỗi người) 11%, cặp đoạn cách ≤ 0,7 s khác người 10% (153 cặp)
+
+### campplus_en_vox: trực tuyến θ=0.2 min_new=2.0 ngắn<0.0 s lấy nhãn trước; cả phiên θ=0.2; nhúng p50 13 ms, p90 41 ms (6 tiến trình song song)
+  IS1009a.Mix-Headset          trực tuyến: 49.3% thời lượng | dòng ≥1 s 56.0% | mọi dòng 56.0% | 4 người  ‖ cả phiên: 50.1% | 56.0% | 56.0% | 4 người  ‖ trần 79.3%
+  EN2002a.Mix-Headset          trực tuyến: 36.1% thời lượng | dòng ≥1 s 41.6% | mọi dòng 38.6% | 2 người  ‖ cả phiên: 37.9% | 44.2% | 40.5% | 3 người  ‖ trần 66.3%
+  IS1009a.Array1-01            trực tuyến: 46.1% thời lượng | dòng ≥1 s 52.8% | mọi dòng 52.7% | 2 người  ‖ cả phiên: 52.2% | 57.7% | 56.8% | 4 người  ‖ trần 79.2%
+  ES2004a.Array1-01            trực tuyến: 47.9% thời lượng | dòng ≥1 s 58.2% | mọi dòng 56.2% | 2 người  ‖ cả phiên: 48.2% | 58.2% | 56.2% | 4 người  ‖ trần 81.3%
+  ES2004a.Mix-Headset (dev)    trực tuyến: 41.7% thời lượng | dòng ≥1 s 49.4% | mọi dòng 48.5% | 2 người  ‖ cả phiên: 42.4% | 51.1% | 49.8% | 2 người  ‖ trần 79.8%
+  TS3003a.Mix-Headset (dev)    trực tuyến: 83.6% thời lượng | dòng ≥1 s 85.6% | mọi dòng 82.3% | 1 người  ‖ cả phiên: 86.3% | 90.4% | 85.5% | 3 người  ‖ trần 93.4%
+
+### campplus_zh_en: trực tuyến θ=0.45 min_new=1.5 ngắn<0.0 s lấy nhãn trước; cả phiên θ=0.35; nhúng p50 13 ms, p90 42 ms (6 tiến trình song song)
+  IS1009a.Mix-Headset          trực tuyến: 72.3% thời lượng | dòng ≥1 s 84.0% | mọi dòng 84.0% | 6 người  ‖ cả phiên: 72.9% | 85.6% | 79.3% | 9 người  ‖ trần 79.3%
+  EN2002a.Mix-Headset          trực tuyến: 58.5% thời lượng | dòng ≥1 s 82.0% | mọi dòng 75.4% | 8 người  ‖ cả phiên: 62.1% | 85.1% | 77.3% | 13 người  ‖ trần 66.3%
+  IS1009a.Array1-01            trực tuyến: 71.5% thời lượng | dòng ≥1 s 83.7% | mọi dòng 79.5% | 7 người  ‖ cả phiên: 71.4% | 77.2% | 70.5% | 13 người  ‖ trần 79.2%
+  ES2004a.Array1-01            trực tuyến: 78.0% thời lượng | dòng ≥1 s 92.5% | mọi dòng 83.3% | 8 người  ‖ cả phiên: 60.0% | 70.5% | 65.5% | 11 người  ‖ trần 81.3%
+  ES2004a.Mix-Headset (dev)    trực tuyến: 78.2% thời lượng | dòng ≥1 s 95.5% | mọi dòng 92.3% | 5 người  ‖ cả phiên: 77.0% | 95.5% | 87.7% | 7 người  ‖ trần 79.8%
+  TS3003a.Mix-Headset (dev)    trực tuyến: 91.1% thời lượng | dòng ≥1 s 97.8% | mọi dòng 92.8% | 7 người  ‖ cả phiên: 89.1% | 97.0% | 86.0% | 11 người  ‖ trần 93.4%
+
+### eres2net_en_vox: trực tuyến θ=0.35 min_new=1.5 ngắn<0.5 s lấy nhãn trước; cả phiên θ=0.25; nhúng p50 37 ms, p90 138 ms (6 tiến trình song song)
+  IS1009a.Mix-Headset          trực tuyến: 74.5% thời lượng | dòng ≥1 s 88.8% | mọi dòng 86.7% | 6 người  ‖ cả phiên: 73.8% | 87.2% | 85.3% | 8 người  ‖ trần 79.3%
+  EN2002a.Mix-Headset          trực tuyến: 63.3% thời lượng | dòng ≥1 s 87.9% | mọi dòng 82.2% | 8 người  ‖ cả phiên: 63.8% | 88.4% | 83.1% | 9 người  ‖ trần 66.3%
+  IS1009a.Array1-01            trực tuyến: 75.3% thời lượng | dòng ≥1 s 89.4% | mọi dòng 86.3% | 7 người  ‖ cả phiên: 73.0% | 85.4% | 80.8% | 8 người  ‖ trần 79.2%
+  ES2004a.Array1-01            trực tuyến: 71.6% thời lượng | dòng ≥1 s 84.2% | mọi dòng 80.3% | 8 người  ‖ cả phiên: 78.2% | 93.2% | 84.7% | 8 người  ‖ trần 81.3%
+  ES2004a.Mix-Headset (dev)    trực tuyến: 78.9% thời lượng | dòng ≥1 s 95.5% | mọi dòng 93.2% | 4 người  ‖ cả phiên: 79.1% | 97.2% | 94.0% | 6 người  ‖ trần 79.8%
+  TS3003a.Mix-Headset (dev)    trực tuyến: 92.1% thời lượng | dòng ≥1 s 98.5% | mọi dòng 95.5% | 5 người  ‖ cả phiên: 91.7% | 98.9% | 93.3% | 6 người  ‖ trần 93.4%
+
+### eres2netv2_zh: trực tuyến θ=0.6 min_new=1.5 ngắn<0.0 s lấy nhãn trước; cả phiên θ=0.45; nhúng p50 58 ms, p90 217 ms (6 tiến trình song song)
+  IS1009a.Mix-Headset          trực tuyến: 76.9% thời lượng | dòng ≥1 s 88.8% | mọi dòng 88.0% | 8 người  ‖ cả phiên: 65.4% | 73.6% | 75.3% | 7 người  ‖ trần 79.3%
+  EN2002a.Mix-Headset          trực tuyến: 63.7% thời lượng | dòng ≥1 s 87.7% | mọi dòng 82.6% | 8 người  ‖ cả phiên: 44.6% | 56.6% | 53.5% | 9 người  ‖ trần 66.3%
+  IS1009a.Array1-01            trực tuyến: 70.2% thời lượng | dòng ≥1 s 83.7% | mọi dòng 81.5% | 5 người  ‖ cả phiên: 60.4% | 69.1% | 65.8% | 8 người  ‖ trần 79.2%
+  ES2004a.Array1-01            trực tuyến: 58.9% thời lượng | dòng ≥1 s 67.8% | mọi dòng 61.1% | 8 người  ‖ cả phiên: 57.7% | 65.8% | 59.6% | 13 người  ‖ trần 81.3%
+  ES2004a.Mix-Headset (dev)    trực tuyến: 78.6% thời lượng | dòng ≥1 s 94.3% | mọi dòng 92.3% | 4 người  ‖ cả phiên: 78.2% | 94.9% | 92.3% | 6 người  ‖ trần 79.8%
+  TS3003a.Mix-Headset (dev)    trực tuyến: 91.1% thời lượng | dòng ≥1 s 97.8% | mọi dòng 93.5% | 7 người  ‖ cả phiên: 91.6% | 98.5% | 93.5% | 8 người  ‖ trần 93.4%
+
+### titanet_small: trực tuyến θ=0.45 min_new=1.5 ngắn<0.5 s lấy nhãn trước; cả phiên θ=0.3; nhúng p50 10 ms, p90 29 ms (6 tiến trình song song)
+  IS1009a.Mix-Headset          trực tuyến: 69.2% thời lượng | dòng ≥1 s 81.6% | mọi dòng 78.7% | 8 người  ‖ cả phiên: 73.9% | 88.0% | 84.0% | 9 người  ‖ trần 79.3%
+  EN2002a.Mix-Headset          trực tuyến: 56.4% thời lượng | dòng ≥1 s 79.4% | mọi dòng 73.2% | 8 người  ‖ cả phiên: 62.2% | 84.8% | 76.7% | 12 người  ‖ trần 66.3%
+  IS1009a.Array1-01            trực tuyến: 67.3% thời lượng | dòng ≥1 s 78.0% | mọi dòng 71.9% | 8 người  ‖ cả phiên: 70.3% | 76.4% | 69.2% | 12 người  ‖ trần 79.2%
+  ES2004a.Array1-01            trực tuyến: 59.1% thời lượng | dòng ≥1 s 71.2% | mọi dòng 69.0% | 7 người  ‖ cả phiên: 61.2% | 74.0% | 71.4% | 6 người  ‖ trần 81.3%
+  ES2004a.Mix-Headset (dev)    trực tuyến: 78.0% thời lượng | dòng ≥1 s 94.9% | mọi dòng 91.9% | 6 người  ‖ cả phiên: 78.0% | 95.5% | 91.9% | 7 người  ‖ trần 79.8%
+  TS3003a.Mix-Headset (dev)    trực tuyến: 91.5% thời lượng | dòng ≥1 s 98.5% | mọi dòng 93.5% | 6 người  ‖ cả phiên: 91.6% | 99.3% | 92.0% | 5 người  ‖ trần 93.4%
+
+### wespeaker_r34_lm: trực tuyến θ=0.45 min_new=1.5 ngắn<1.0 s lấy nhãn trước; cả phiên θ=0.3; nhúng p50 31 ms, p90 107 ms (6 tiến trình song song)
+  IS1009a.Mix-Headset          trực tuyến: 58.8% thời lượng | dòng ≥1 s 65.6% | mọi dòng 64.0% | 1 người  ‖ cả phiên: 58.8% | 65.6% | 64.0% | 1 người  ‖ trần 79.3%
+  EN2002a.Mix-Headset          trực tuyến: 55.7% thời lượng | dòng ≥1 s 78.4% | mọi dòng 71.5% | 7 người  ‖ cả phiên: 57.5% | 79.4% | 67.4% | 6 người  ‖ trần 66.3%
+  IS1009a.Array1-01            trực tuyến: 60.0% thời lượng | dòng ≥1 s 67.5% | mọi dòng 65.1% | 1 người  ‖ cả phiên: 60.0% | 67.5% | 65.1% | 1 người  ‖ trần 79.2%
+  ES2004a.Array1-01            trực tuyến: 48.9% thời lượng | dòng ≥1 s 58.2% | mọi dòng 56.2% | 2 người  ‖ cả phiên: 45.9% | 55.5% | 54.2% | 1 người  ‖ trần 81.3%
+  ES2004a.Mix-Headset (dev)    trực tuyến: 77.8% thời lượng | dòng ≥1 s 93.8% | mọi dòng 91.1% | 6 người  ‖ cả phiên: 74.8% | 90.3% | 83.8% | 6 người  ‖ trần 79.8%
+  TS3003a.Mix-Headset (dev)    trực tuyến: 89.1% thời lượng | dòng ≥1 s 95.2% | mọi dòng 89.0% | 7 người  ‖ cả phiên: 87.0% | 95.2% | 81.8% | 6 người  ‖ trần 93.4%

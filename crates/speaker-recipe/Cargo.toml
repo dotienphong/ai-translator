@@ -1,0 +1,17 @@
+[package]
+name = "speaker-recipe"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Công thức đọc tên người nói (spec 2026-10-26-phan-biet-nguoi-noi §7.1): định dạng, kiểm, biên dịch mẫu chữ. Chỉ mô tả, không
+# mã, không I/O. App (kế hoạch 06 thêm kiểm chữ ký trước `parse`) và `speaker-worker` dùng chung. Không có mã mạng.
+[dependencies]
+# Mẫu chữ thời gian tuyến tính (không làm treo được). Cùng bản `Cargo.lock` và app đang dùng; bản mới nhất trên crates.io
+# (`cargo search regex`, 2026-10-27).
+regex = "1.13.1"
+serde.workspace = true
+serde_json.workspace = true
+speaker-protocol = { path = "../speaker-protocol" }
+thiserror.workspace = true

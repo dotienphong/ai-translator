@@ -48,7 +48,7 @@ case "$phase" in
     ;;
 esac
 
-for f in "asr-worker-$triple" "llama-server-$triple"; do
+for f in "asr-worker-$triple" "llama-server-$triple" "speaker-worker-$triple"; do
   if [ ! -f "$root/src-tauri/binaries/$f" ]; then
     echo "thiếu src-tauri/binaries/$f: chạy scripts/release/build-sidecars-macos.sh trước" >&2
     exit 1

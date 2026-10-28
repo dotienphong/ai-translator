@@ -6,7 +6,7 @@ This is an agreement between you and **Do Tien Phong** ("we", "us") for your use
 
 ## 1. What the app does
 
-AI Translator shows live translated subtitles for audio playing on your computer (for example an online meeting) and, when you choose, for audio from the microphone (for example people speaking in the meeting room). Speech recognition and translation run **on your computer**; your audio is not sent anywhere. The Privacy Policy is part of this agreement.
+AI Translator shows live translated subtitles for audio playing on your computer (for example an online meeting) and, when you choose, for audio from the microphone (for example people speaking in the meeting room). Speech recognition and translation run **on your computer**; your audio is not sent anywhere. When you turn it on (this feature is only on macOS for now, not yet on Windows), the app also tells speakers apart and shows the names of participants read from the meeting window (currently only the Microsoft Teams desktop app); the result is only a label on the subtitles and can be wrong. The Privacy Policy is part of this agreement.
 
 ## 2. The license we grant you
 
@@ -52,7 +52,7 @@ Except where mandatory law allows it, you must not:
 
 ## 6. Your responsibility when capturing and translating audio
 
-The app captures audio playing on your computer and, when you choose, audio from the microphone, which may include other people's voices, including people near you. **You are responsible** for obtaining permission from the people involved where the law or a contract requires it (for example recording or transcribing a meeting), for following your organization's confidentiality rules, and for not using the app to eavesdrop. We do not receive or store your audio.
+The app captures audio playing on your computer and, when you choose, audio from the microphone, which may include other people's voices, including people near you. **You are responsible** for obtaining permission from the people involved where the law or a contract requires it (for example recording or transcribing a meeting), for following your organization's confidentiality rules, and for not using the app to eavesdrop. We do not receive or store your audio. The app shows the names of participants read from the meeting window on the subtitles, in the transcript and (if you save or export) in History and exported files: these are other people's personal data, and you are responsible when you save, export or share them. Speaker labels and names assigned automatically can be wrong.
 
 ## 7. Automatic translation can be wrong
 

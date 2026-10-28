@@ -607,6 +607,29 @@ export const en = {
   "error.unknown": "Something went wrong.",
   "error.updateNotReady": "No update has finished downloading yet.",
   "error.updateBusy": "Translation or a model download is running. Stop it, then restart to update.",
+
+  // Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §8).
+  "overlay.speakers.ask": "Allow Accessibility access to show speaker names",
+  "overlay.speakers.dismiss": "Hide until this session ends",
+  "transcript.speaker.menu": "Speaker {name}: rename or merge",
+  "transcript.speaker.rename": "Rename “{name}”",
+  "transcript.speaker.rename.placeholder": "Speaker name",
+  "transcript.speaker.rename.save": "Save",
+  "transcript.speaker.participants": "Pick someone from the meeting",
+  "transcript.speaker.merge": "Merge into another speaker",
+  "transcript.export.srtSpeakers": "Add speaker names",
+  "settings.speakers.title": "Speakers",
+  "settings.speakers.diarization": "Tell speakers apart",
+  "settings.speakers.diarization.hint": "Each person gets a color in the subtitles. Voice traits stay on this computer only; they are not stored or sent, and are cleared when the session ends. Speaker names (when read from the meeting) are saved only if you turn on \"Save transcript history\" (Pro).",
+  "settings.speakers.names": "Get names from Teams",
+  "settings.speakers.names.hint": "Shows who is speaking, read from the Microsoft Teams meeting window (the desktop app). Chat is never read and the screen is never captured. Until a name can be read, “Speaker 1”, “Speaker 2” are shown.",
+  "settings.speakers.permission.granted": "Granted (shared with Type & Translate).",
+  "settings.speakers.permission.missing": "Not granted. Needed to read names in the meeting window (shared with Type & Translate). If you turned it on before and it still shows as not granted (usually after an update), the button clears the old permission so you can turn it on once more.",
+  "settings.speakers.model.downloading": "Downloading voice data. Speakers are told apart from the next session after it finishes.",
+  "settings.speakers.model.missing": "Voice data is not downloaded yet. The app downloads it when you start translating.",
+  "settings.model.speakerDownloading": "Downloading voice data for telling speakers apart. Downloading, deleting or checking models waits until it finishes.",
+  "error.speakerNotFound": "This speaker can no longer be changed: the session has stopped or the speaker is gone.",
+  "error.speakerSame": "A speaker cannot be merged into themselves.",
 } as const;
 
 export type MessageKey = keyof typeof en;

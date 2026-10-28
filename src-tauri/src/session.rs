@@ -27,7 +27,9 @@ use pipeline::config::{MtConfig, PipelineConfig};
 use pipeline::engine::{Engine, EngineConfig, EventSink, Fatal, FrameSource, Indicators, Usage, VadFactory};
 use pipeline::glossary::SharedGlossary;
 use pipeline::prompt::Lang as MtLang;
-use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Subtitle};
+use pipeline::speaker::ReaderInfo;
+use pipeline::speaker::SpeakerLink;
+use pipeline::subtitle::{Delta, LiveEnd, LiveLine, Names, Roster, SpeakerLabel, Subtitle};
 use pipeline::supervisor::{Asr, GiveUpCause, SidecarEvent, SidecarEvents, SidecarManager, SystemClock, Which};
 use pipeline::translate::Mt;
 use pipeline::vad::SileroVad;
@@ -63,6 +65,11 @@ pub trait SessionDeps: Send + Sync {
     fn asr(&self) -> Box<dyn Asr>;
     fn mt(&self) -> Box<dyn Mt>;
     fn vad(&self) -> VadFactory;
+    /// Nhận giọng cho phiên vừa bắt đầu (spec 2026-10-26-phan-biet-nguoi-noi §4.1): `None` khi tắt hay chưa đủ điều kiện. Không
+    /// chờ worker. Bản giả của test: `None`.
+    fn speaker(&self) -> Option<SpeakerLink> {
+        None
+    }
     /// Mở nguồn âm thanh theo `plan`. Việc của nguồn tới sau (nguồn chạy trên luồng riêng) đi qua `on_event`.
     fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource>;
     /// Quyền micro lúc này (chỉ đọc). Bản giả của test trả giá trị đặt trước, để test không chạm quyền thật của máy.
@@ -456,6 +463,9 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     }
     let n = session.sessions.fetch_add(1, Ordering::SeqCst) + 1;
     if let Some(transcript) = app.try_state::<TranscriptStore>() {
+        // Ngôn ngữ của nhãn "Người N" (spec 2026-10-26-phan-biet-nguoi-noi §9) không đặt ở đây: `begin` giữ ngôn ngữ đặt lúc khởi
+        // động (`lib.rs`) hay lần đổi gần nhất (`speaker::language_changed`). `settings` đọc trước `prepare` (có thể hàng chục
+        // giây): đặt lại từ nó sẽ đè ngôn ngữ người dùng vừa đổi trong lúc nạp model (rà soát mã 03, mục 1).
         transcript.begin(n, now_ms(), code_of(settings.target_language));
     }
     let source = session.deps.capture(&plan, capture_events(app, n));
@@ -478,7 +488,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     let streaming_supported = session.deps.streaming_supported();
     state.update_status(|s| s.streaming_too_slow = !streaming_supported);
     log::info!("phiên dịch {n}: máy đủ sức dịch trong lúc nói: {streaming_supported}");
-    let engine = match Engine::start(
+    let engine = match Engine::start_with_speaker(
         engine_config(
             &settings,
             &plan,
@@ -492,6 +502,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         session.deps.asr(),
         session.deps.mt(),
         sink,
+        session.deps.speaker(),
     ) {
         Ok(engine) => engine,
         Err(e) => {
@@ -597,6 +608,8 @@ fn stop_engine<R: Runtime>(app: &AppHandle<R>, session: &Session) -> bool {
         debug.record(DebugSession::new(n, now_ms(), &metrics));
     }
     session.deps.end_session();
+    // Nhận giọng dừng cùng engine: bỏ handle của phiên (kế hoạch 03 phân biệt người nói, rà soát A-N4).
+    crate::speaker::session_ended(app);
     // Lưu lịch sử nếu bật "Lưu lịch sử" và là Pro (F4). Chạy ngay ở đây, cả khi thoát app, để không mất phiên cuối.
     end_transcript(app, session);
     true
@@ -983,6 +996,56 @@ impl<R: Runtime> EventSink for TauriSink<R> {
         events::subtitle_live_end(&self.app, end);
     }
 
+    /// Nhãn đổi muộn (spec 2026-10-26-phan-biet-nguoi-noi §4.3): sửa câu trong bản chép lời rồi báo hai cửa sổ.
+    fn speaker(&self, label: &SpeakerLabel) {
+        if let Some(transcript) = self.app.try_state::<TranscriptStore>() {
+            transcript.set_speaker(self.session, label);
+        }
+        events::subtitle_speaker(&self.app, label);
+    }
+
+    /// Bảng giọng của worker: bảng người nói của phiên (nhãn "Người N", màu, tên đổi tay) tính lại trong một lần khóa (QĐ 25); chỉ báo
+    /// giao diện khi có gì đổi. Phát sau khi nhả khóa; `rev` cho giao diện bỏ bảng tới muộn.
+    fn roster(&self, roster: &Roster) {
+        if let Some(view) = self
+            .app
+            .try_state::<TranscriptStore>()
+            .and_then(|t| t.roster(self.session, roster))
+        {
+            events::speaker_roster(&self.app, &view);
+        }
+    }
+
+    /// Tên đọc từ app họp (kế hoạch 04): bảng người nói tính lại trong một lần khóa, phát khi đổi. Không có tên trong log.
+    fn names(&self, names: &Names) {
+        if let Some(view) = self
+            .app
+            .try_state::<TranscriptStore>()
+            .and_then(|t| t.names(self.session, names))
+        {
+            events::speaker_roster(&self.app, &view);
+        }
+    }
+
+    /// Trạng thái bộ đọc tên: ghi log (không có tên) và dòng mời cấp quyền.
+    fn reader(&self, info: &ReaderInfo) {
+        log::info!(
+            "đọc tên: {:?} ({:?}, công thức {}, tự học {})",
+            info.state,
+            info.app,
+            info.recipe_version,
+            info.learned
+        );
+        crate::speaker::health::note_reader(&self.app, info);
+        if let Some(view) = self
+            .app
+            .try_state::<TranscriptStore>()
+            .and_then(|t| t.reader(self.session, info.state))
+        {
+            events::speaker_roster(&self.app, &view);
+        }
+    }
+
     /// Đếm phút cho hạn mức (§6.8): `Break` khi chạm hạn mức, engine dừng phiên với `quotaExhausted`.
     fn usage(&self, usage: &Usage) -> ControlFlow<()> {
         crate::license::app::add_usage(&self.app, usage.speech_ms)
@@ -1242,6 +1305,10 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
     fn vad(&self) -> VadFactory {
         let path = self.vad_model();
         Box::new(move || Ok(Box::new(SileroVad::load(&path)?) as _))
+    }
+
+    fn speaker(&self) -> Option<SpeakerLink> {
+        crate::speaker::start_for_session(&self.app)
     }
 
     fn capture(&self, plan: &CapturePlan, on_event: OnEvent) -> Box<dyn FrameSource> {
@@ -1743,6 +1810,7 @@ mod tests {
             tgt_stable: "Xin chào".into(),
             tgt_tail: " mọi".into(),
             tgt_src_units: 1,
+            speaker: None,
         });
         sink.live_end(&LiveEnd { id: 1_000_007 });
         let since = Instant::now();
@@ -1762,6 +1830,61 @@ mod tests {
             app.state::<TranscriptStore>().snapshot().lines.is_empty(),
             "không vào bản chép lời"
         );
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §4.3, §8.4: nhãn đổi muộn và bảng giọng tới cả cửa sổ chính lẫn thanh phụ đề.
+    #[test]
+    fn speaker_events_reach_both_windows() {
+        use pipeline::subtitle::{Roster, RosterVoice, SpeakerLabel};
+        use tauri::Listener;
+        let app = crate::test_support::mock_app();
+        let heard = |label: &str| {
+            let got = Arc::new(Mutex::new(Vec::<String>::new()));
+            let w = crate::test_support::window(&app, label);
+            for event in [events::SUBTITLE_SPEAKER, events::SPEAKER_ROSTER] {
+                let sink = got.clone();
+                w.listen(event, move |e| {
+                    sink.lock().unwrap().push(format!("{event} {}", e.payload()))
+                });
+            }
+            got
+        };
+        let (to_overlay, to_main) = (heard(overlay::LABEL), heard(window::MAIN));
+        app.state::<TranscriptStore>().begin(1, 0, "vi");
+        let sink = TauriSink {
+            app: app.handle().clone(),
+            session: 1,
+            asr_code: Arc::new(crate::test_support::FakeDeps::default()),
+        };
+        sink.speaker(&SpeakerLabel {
+            id: 1_000_007,
+            speaker: Some(2),
+        });
+        sink.roster(&Roster {
+            voices: vec![RosterVoice { id: 2, room: false }],
+        });
+        // Cùng bảng lần nữa: không có gì đổi, không phát lại.
+        sink.roster(&Roster {
+            voices: vec![RosterVoice { id: 2, room: false }],
+        });
+        let since = Instant::now();
+        while to_overlay.lock().unwrap().len() < 2 || to_main.lock().unwrap().len() < 2 {
+            assert!(since.elapsed() < Duration::from_secs(10), "chưa nhận đủ");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        std::thread::sleep(Duration::from_millis(50));
+        for got in [to_overlay, to_main] {
+            let got = got.lock().unwrap().clone();
+            assert_eq!(got.len(), 2, "{got:?}");
+            assert_eq!(got[0], r#"subtitle://speaker {"id":1000007,"speaker":2}"#);
+            // Giọng 2 là giọng đầu tiên của phiên: "Người 1" (QĐ 2), nhãn English vì app giả chưa đặt ngôn ngữ cho bản chép lời.
+            // `rev` 2: `begin` tăng lên 1 (QĐ 25), bảng đầu tiên dựng ra là 2.
+            assert_eq!(
+                got[1],
+                r#"speaker://roster {"voices":[{"id":2,"label":"Speaker 1","color":0,"source":"voice","room":false,"mergedInto":null}],"participants":[],"askAccess":false,"rev":2}"#
+            );
+        }
+        assert_eq!(app.state::<TranscriptStore>().roster_view().voices.len(), 1);
     }
 
     /// N-6 của review 02 lần 2: bấm Bắt đầu thì quên lý do bỏ cuộc cũ, mã lỗi giữa phiên về mặc định.
@@ -2175,6 +2298,49 @@ mod tests {
         gate.open();
         assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
         assert_eq!(*prepares.lock().unwrap(), 2);
+        toggle(app.handle()).unwrap();
+    }
+
+    /// Rà soát mã 03, mục 1: người dùng đổi ngôn ngữ giao diện trong lúc phiên đang nạp model (`prepare`, có thể hàng chục giây).
+    /// Lần bắt đầu phiên không được đè lại ngôn ngữ cũ đọc trước `prepare`: nhãn "Người N" của phiên theo ngôn ngữ mới.
+    #[test]
+    fn a_ui_language_change_while_the_session_starts_is_kept() {
+        use crate::test_support::{FakeDeps, PrepareGate, mock_app_with};
+        use pipeline::subtitle::RosterVoice;
+        let gate = Arc::new(PrepareGate::default());
+        let app = mock_app_with(FakeDeps {
+            prepare_gate: Some(gate.clone()),
+            ..FakeDeps::default()
+        });
+        assert_eq!(app.state::<AppState>().settings().ui_language, UiLanguage::Vi);
+        let store = app.state::<TranscriptStore>();
+        // Như `lib.rs` lúc khởi động: ngôn ngữ giao diện của cài đặt.
+        store.set_ui_language(UiLanguage::Vi);
+        let handle = app.handle().clone();
+        let starting = std::thread::spawn(move || toggle(&handle));
+        let since = Instant::now();
+        while gate.waiting() == 0 {
+            assert!(
+                since.elapsed() < Duration::from_secs(10),
+                "lần bắt đầu không tới prepare"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let mut next = app.state::<AppState>().settings();
+        next.ui_language = UiLanguage::En;
+        actions::commit_settings(app.handle(), next);
+        gate.open();
+        assert_eq!(starting.join().unwrap().unwrap().session, SessionStatus::Running);
+        let session = store.snapshot().session;
+        let view = store
+            .roster(
+                session,
+                &Roster {
+                    voices: vec![RosterVoice { id: 1, room: false }],
+                },
+            )
+            .unwrap();
+        assert_eq!(view.voices[0].label, "Speaker 1", "theo ngôn ngữ vừa đổi");
         toggle(app.handle()).unwrap();
     }
 

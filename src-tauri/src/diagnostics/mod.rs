@@ -41,6 +41,7 @@ use crate::license::{app as license_app, device};
 use crate::models::machine as models_machine;
 use crate::settings::UiLanguage;
 use crate::state::{AppState, SessionStatus};
+use crate::transcript::store::TranscriptStore;
 
 /// Chờ bấy nhiêu giây sau khi mở app rồi mới gửi lần đầu (spec §1).
 pub const FIRST_SEND_DELAY_SECS: u64 = 10;
@@ -146,6 +147,9 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::SUPPORT_CLOSED,
     errors::SUPPORT_EXPIRED,
     errors::SUPPORT_INVALID,
+    // Đổi tên, gộp người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2): phiên đã dừng hay giọng không còn, giao diện tự báo.
+    errors::SPEAKER_NOT_FOUND,
+    errors::SPEAKER_SAME,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.
@@ -258,6 +262,14 @@ impl<R: Runtime> Host for AppHost<R> {
 
     fn now(&self) -> i64 {
         unix_now()
+    }
+
+    /// Tên người tham dự và nhãn có tên (đọc từ app họp hay do người dùng đặt) của bảng người nói hiện có, cộng mọi tên đã thấy trong
+    /// lần chạy này của app (phiên trước, đã tắt "Lấy tên"); không có "Người N".
+    fn known_names(&self) -> Vec<String> {
+        self.app
+            .try_state::<TranscriptStore>()
+            .map_or_else(Vec::new, |store| store.redaction_names())
     }
 }
 
@@ -405,11 +417,19 @@ pub fn mark_clean_exit<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Người dùng tắt báo cáo lỗi tự động (`actions::commit_settings`): bỏ các báo cáo đang chờ gửi.
+/// Người dùng tắt báo cáo lỗi tự động (`actions::commit_settings`): bỏ các báo cáo đang chờ gửi, và sổ tình trạng bộ đọc tên (spec
+/// 2026-10-26-phan-biet-nguoi-noi §7.2).
 pub fn purge_queue<R: Runtime>(app: &AppHandle<R>) {
     if let Some(reporter) = reporter_of(app) {
         reporter.purge();
     }
+    crate::speaker::health::purge(app);
+}
+
+/// Đọc cài đặt, trạng thái phiên và thông tin máy như báo cáo lỗi (`Host`), cho báo cáo tình trạng bộ đọc tên (`speaker::health`): cùng
+/// công tắc "Gửi báo cáo lỗi", cùng điều kiện bản build, cùng mã máy đã băm.
+pub fn host_of<R: Runtime>(app: &AppHandle<R>) -> Box<dyn Host> {
+    Box::new(AppHost::new(app.clone(), auto_allowed_in_this_build()))
 }
 
 /// Kết quả của lệnh `send_log_report`: mã báo cáo để người dùng đọc cho bộ phận hỗ trợ.

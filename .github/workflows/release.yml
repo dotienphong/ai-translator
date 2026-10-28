@@ -183,9 +183,9 @@ jobs:
           cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
           pnpm install --frozen-lockfile
           pnpm build
-      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
+      - name: Test bản quyền, báo cáo lỗi, nhận giọng và Lịch sử ở bản release (không có phần chỉ dành cho bản debug)
         run: |
-          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: speaker:: db:: --test-threads=1
       - name: Build app (Tauri không ký)
         env:
           AI_TRANSLATOR_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
@@ -387,9 +387,9 @@ jobs:
           cp target/release-work/unsigned/THIRD_PARTY_NOTICES.txt .
           pnpm install --frozen-lockfile
           pnpm build
-      - name: Test bản quyền ở bản release (không có phần chỉ dành cho bản debug)
+      - name: Test bản quyền, báo cáo lỗi, nhận giọng và Lịch sử ở bản release (không có phần chỉ dành cho bản debug)
         run: |
-          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: --test-threads=1
+          cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: speaker:: db:: --test-threads=1
       - name: Build app (chưa đóng gói)
         env:
           AI_TRANSLATOR_SIGNER: ${{ vars.WINDOWS_SIGNER }}

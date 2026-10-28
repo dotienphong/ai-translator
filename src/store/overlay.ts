@@ -1,8 +1,10 @@
 import { createStore } from "zustand/vanilla";
 import type { AppStatus, Ipc, LiveLine, OverlayView, ResizeEdge, Subtitle, SubtitleDelta } from "../lib/ipc";
+import { NO_VOICES, type VoiceMap, mergeVoices, setSpeaker } from "../lib/speakers";
 
 // Store của thanh phụ đề. Cửa sổ `overlay` chỉ đọc được phần cài đặt của nó (`get_overlay_view`)
-// và nghe sự kiện (phụ đề, trạng thái, mức âm lượng); không gọi được lệnh nào khác (spec §10.2).
+// và nghe sự kiện (phụ đề, trạng thái, mức âm lượng, người nói); lệnh khác duy nhất là `open_speaker_settings` của dòng mời cấp
+// quyền (spec 2026-10-26-phan-biet-nguoi-noi §8.4).
 
 // Số câu giữ lại tối đa trên thanh (§4.4): thanh giữ mọi câu để người dùng cuộn xem lại, chỉ chặn ở mức này để cuộc họp
 // rất dài không làm DOM và bộ nhớ phình mãi. 1000 câu là vài giờ họp; câu cũ hơn vẫn có ở Lịch sử nếu bật lưu (F4).
@@ -103,6 +105,17 @@ export interface OverlayStoreState {
   live: LiveLine[];
   // Mức âm lượng vào gần nhất (RMS), cho chỉ báo "đang nghe"; 0 khi phiên không chạy.
   level: number;
+  // Bảng giọng của phiên (spec 2026-10-26-phan-biet-nguoi-noi §8.1); giọng không đổi giữ nguyên đối tượng (dòng memo không vẽ lại).
+  // Rỗng: tính năng tắt hay phiên chưa có giọng, thanh như hiện nay.
+  voices: VoiceMap;
+  // Dòng mời cấp quyền Trợ năng (spec §6.7): phía Rust bảo hiện (`askAccess` của `speaker://roster`), và người dùng chưa bấm ✕
+  // trong phiên này (`askDismissed`, chỉ nhớ trong phiên).
+  askAccess: boolean;
+  askDismissed: boolean;
+  // Số thứ tự của bảng người nói đã nhận (`rev`, QĐ 25 của kế hoạch 03): bảng có số nhỏ hơn tới muộn thì bỏ. Không đặt lại khi phiên
+  // mới (phía Rust tăng suốt lần chạy của app).
+  rosterRev: number;
+  dismissAsk(): void;
   init(): Promise<() => void>;
 }
 
@@ -113,6 +126,10 @@ export function createOverlayStore(ipc: Ipc) {
     lines: [],
     live: [],
     level: 0,
+    voices: NO_VOICES,
+    askAccess: false,
+    askDismissed: false,
+    rosterRev: 0,
     async init() {
       const offs = await Promise.all([
         ipc.listen("overlay://view", (view) => set({ view })),
@@ -123,6 +140,12 @@ export function createOverlayStore(ipc: Ipc) {
         ipc.listen("subtitle://live", (line) => set({ live: applyLive(get().live, get().lines, line) })),
         ipc.listen("subtitle://live-end", (end) => set({ live: endLive(get().live, end.id) })),
         ipc.listen("audio://level", (level) => set({ level })),
+        // Nhãn tới muộn sửa đúng dòng; bảng người nói mới (spec 2026-10-26-phan-biet-nguoi-noi §4.3, §9), bỏ bảng cũ hơn (QĐ 25).
+        ipc.listen("subtitle://speaker", (label) => set({ lines: setSpeaker(get().lines, label) })),
+        ipc.listen("speaker://roster", (roster) => {
+          if (roster.rev < get().rosterRev) return;
+          set({ voices: mergeVoices(get().voices, roster.voices), askAccess: roster.askAccess, rosterRev: roster.rev });
+        }),
         // Trạng thái app (cùng `rev` như cửa sổ chính): bỏ trạng thái cũ tới muộn; phiên mới bắt đầu thì xóa phụ đề cũ. Dòng
         // đang nói chỉ có khi phiên đang chạy: phiên mới, phiên dừng hay lỗi thì bỏ hết (engine đã gửi `live-end` khi dừng;
         // đây là lưới an toàn, spec 2026-10-10 §6.2).
@@ -132,13 +155,20 @@ export function createOverlayStore(ipc: Ipc) {
           const fresh = status.session === "starting" && prev?.session !== "starting";
           const level = status.session === "running" ? get().level : 0;
           const live = status.session === "running" || get().live.length === 0 ? get().live : [];
-          set(fresh ? { status, lines: [], live, level } : { status, live, level });
+          set(
+            fresh
+              ? { status, lines: [], live, level, voices: NO_VOICES, askAccess: false, askDismissed: false }
+              : { status, live, level },
+          );
         }),
       ]);
       // Cài đặt mới hơn đã tới qua `overlay://view` trong lúc chờ thì giữ bản đó (N-3 của review 02 lần 2).
       const view = await ipc.invoke("get_overlay_view");
       if (!get().view) set({ view });
       return () => offs.forEach((off) => off());
+    },
+    dismissAsk() {
+      set({ askDismissed: true });
     },
   }));
 }

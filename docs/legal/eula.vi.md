@@ -6,7 +6,7 @@ Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("ch�
 
 ## 1. Ứng dụng làm gì
 
-AI Translator hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính của bạn (ví dụ cuộc họp trực tuyến) và, khi bạn chọn, cho âm thanh từ micro (ví dụ người nói trong phòng họp). Việc nhận dạng giọng nói và dịch chạy **trên máy bạn**, không gửi âm thanh đi đâu. Chính sách quyền riêng tư (`privacy`) là một phần của thỏa thuận này.
+AI Translator hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính của bạn (ví dụ cuộc họp trực tuyến) và, khi bạn chọn, cho âm thanh từ micro (ví dụ người nói trong phòng họp). Việc nhận dạng giọng nói và dịch chạy **trên máy bạn**, không gửi âm thanh đi đâu. Khi bạn bật (tính năng này hiện chỉ có trên macOS, Windows chưa có), ứng dụng cũng phân biệt người nói và hiện tên người tham dự đọc từ cửa sổ cuộc họp (hiện chỉ Microsoft Teams bản cài); kết quả chỉ là nhãn trên phụ đề và có thể sai. Chính sách quyền riêng tư (`privacy`) là một phần của thỏa thuận này.
 
 ## 2. Quyền sử dụng chúng tôi cấp cho bạn
 
@@ -52,7 +52,7 @@ Trừ khi pháp luật bắt buộc cho phép, bạn không được:
 
 ## 6. Trách nhiệm của bạn khi thu và dịch âm thanh
 
-Ứng dụng thu âm thanh đang phát trên máy bạn và, khi bạn chọn, âm thanh từ micro, có thể gồm giọng nói của người khác, kể cả người ở gần bạn. **Bạn tự chịu trách nhiệm** xin phép những người liên quan khi pháp luật hay hợp đồng yêu cầu (ví dụ ghi âm, chép lời cuộc họp), tuân thủ quy định bảo mật của tổ chức bạn, và không dùng ứng dụng để nghe lén. Chúng tôi không nhận hay lưu âm thanh của bạn.
+Ứng dụng thu âm thanh đang phát trên máy bạn và, khi bạn chọn, âm thanh từ micro, có thể gồm giọng nói của người khác, kể cả người ở gần bạn. **Bạn tự chịu trách nhiệm** xin phép những người liên quan khi pháp luật hay hợp đồng yêu cầu (ví dụ ghi âm, chép lời cuộc họp), tuân thủ quy định bảo mật của tổ chức bạn, và không dùng ứng dụng để nghe lén. Chúng tôi không nhận hay lưu âm thanh của bạn. Ứng dụng hiện tên người tham dự đọc từ cửa sổ cuộc họp trên phụ đề, trong bản chép lời và (nếu bạn lưu hay xuất) trong Lịch sử và file xuất: đó là dữ liệu cá nhân của người khác, và bạn tự chịu trách nhiệm khi lưu, xuất hay chia sẻ chúng. Nhãn người nói và tên do ứng dụng gán tự động có thể sai.
 
 ## 7. Dịch tự động có thể sai
 

@@ -46,7 +46,7 @@
 
 | # | Hạng mục | Quyết định |
 |---|---|---|
-| D1 | Sản phẩm | App desktop hiện **phụ đề dịch trực tiếp cho mọi âm thanh máy tính đang phát**: Teams, Zoom, Meet, Zalo PC, webinar, video; và, nếu người dùng chọn, cho tiếng từ micro (họp tại chỗ, họp lai; F12). Không cần bot, plugin hay tài khoản trên các nền tảng họp. |
+| D1 | Sản phẩm | App desktop hiện **phụ đề dịch trực tiếp cho mọi âm thanh máy tính đang phát**: Teams, Zoom, Meet, Zalo PC, webinar, video; và, nếu người dùng chọn, cho tiếng từ micro (họp tại chỗ, họp lai; F12). Hiện nhãn người nói trên phụ đề ("Người 1", "Người 2") và, trên macOS với Microsoft Teams bản cài, tên người đang nói đọc từ cửa sổ cuộc họp (F13). Không cần bot, plugin hay tài khoản trên các nền tảng họp. |
 | D2 | Quan hệ với AI Live Translator | Sản phẩm hoàn toàn riêng |
 | D3 | Nền tảng MVP | macOS 14.2+ trên Apple Silicon; Windows 10/11 64-bit (x64). Windows 10 đã hết hỗ trợ chính thức từ 14/10/2025 (gói ESU cho người dùng cá nhân kết thúc 13/10/2026), nhưng MVP vẫn hỗ trợ. |
 | D4 | Công nghệ | **Tauri 2**: lõi Rust, giao diện React 19, TypeScript, Vite, Zustand. Engine là whisper.cpp và llama.cpp, mỗi engine chạy trong một tiến trình phụ riêng (§5). |
@@ -95,13 +95,13 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | F10 | Phím tắt toàn cục và biểu tượng ở khay hệ thống (menu bar trên Mac). Phím tắt mặc định, đổi được trong Cài đặt: `Ctrl+Alt+T` / `⌃⌥T` để bắt đầu/dừng, `Ctrl+Alt+H` / `⌃⌥H` để ẩn/hiện phụ đề, `Ctrl+Alt+L` / `⌃⌥L` để khóa/mở khóa phụ đề, `Ctrl+Alt+PageUp` / `Ctrl+Alt+PageDown` (`⌃⌥PageUp` / `⌃⌥PageDown`) để cuộn phụ đề lên/xuống xem câu cũ (§4.4), `Ctrl+Alt+G` / `⌃⌥G` để mở ô soạn Gõ dịch (F11; chỉ đăng ký khi bật Gõ dịch). Không chọn Ctrl+Alt+mũi tên vì driver Intel trên Windows dùng tổ hợp đó để xoay màn hình. Ở Phase 0 kiểm tra xem có trùng phím tắt của Teams, Zoom, Meet không. |
 | F11 | **Gõ dịch** (spec `2026-10-17-go-dich-design.md`, §4.6): ở ô nhập của app bất kỳ, bấm phím tắt (F10) để mở ô soạn nổi, gõ tin nhắn bằng tiếng của mình; bản dịch hiện dần. Enter dán bản dịch vào ô nhập cũ (macOS cần quyền Trợ năng, thiếu thì chỉ chép vào clipboard), Enter lần nữa (của app chat) thì gửi. Ngôn ngữ đích mặc định là tiếng người bên kia, tính từ cài đặt phụ đề. Dùng được ở mọi gói còn hiệu lực, không trừ phút; dịch trên máy, không gửi chữ đi đâu. |
 | F12 | **Nguồn micro** (spec `2026-10-24-nguon-micro-design.md`): Cài đặt › Âm thanh › Thu từ chọn Âm thanh máy (mặc định), Micro (người nói trong phòng), hay Âm thanh máy + Micro (họp lai; micro được hạ khi âm thanh máy có tiếng, để không dịch hai lần). Chọn micro, công tắc "Lọc tiếng ồn micro" (bật sẵn), quyền micro hỏi ngay khi chọn chế độ có micro. Mọi gói |
+| F13 | **Phân biệt người nói** (spec `2026-10-26-phan-biet-nguoi-noi-design.md`): phụ đề hiện nhãn mỗi giọng một màu ("Người 1", "Người 2", theo thứ tự xuất hiện; tên có màu ở dòng đầu mỗi lượt nói, vạch màu ở các câu sau) và, khi đọc được và đủ chắc, tên thật của người đang nói (hiện chỉ Microsoft Teams bản cài trên macOS, đọc từ cửa sổ cuộc họp bằng quyền Trợ năng; Meet, Zoom và Windows chưa). Nhận giọng và đọc tên chạy trong tiến trình phụ `speaker-worker` ưu tiên thấp, không chờ nhãn (§7); không ghi dấu giọng, không gửi đi. Đổi tên, chọn từ danh sách người tham dự, gộp hai người ngay trong phiên. Mọi gói; tên trong Lịch sử và file xuất theo Pro. Công thức đọc tên tải từ xa có ký số, báo cáo tình trạng không có tên người (§10.1). Tắt được ở Cài đặt › Phụ đề › Người nói. |
 
 ### 3.2 Ngoài phạm vi MVP
 
 - Dịch giọng của người dùng rồi phát vào cuộc họp (cần micro ảo)
 - Bot tham gia cuộc họp, xử lý trên cloud
 - Tóm tắt hoặc biên bản cuộc họp
-- Phân biệt ai đang nói
 - Ghi âm cuộc họp
 - Linux, Mac chip Intel, Windows ARM64
 - Phát hành qua các kho ứng dụng
@@ -125,6 +125,13 @@ P1 và P2 là đề xuất lúc duyệt spec; chủ dự án chốt ngày 2026-1
 | A-ảo | **Chữ ảo** (cảnh 6 của spike: gõ phím, bút, gõ bàn, lật giấy, đặt cốc, kéo ghế, quạt; "Lọc tiếng ồn micro" bật): không quá 1 câu ảo mỗi 10 phút. |
 | A2-mic | Chế độ Âm thanh máy + Micro, cùng nội dung: tổng p50 không tăng quá 100 ms so với chế độ Âm thanh máy đặt cùng ngưỡng ngắt câu 500 ms. So với mặc định 50 ms thì chậm hơn khoảng 0,6 s; đó là đánh đổi đã chủ ý (§6.3): ngưỡng 500 ms gộp câu thành đoạn dài hơn nên cả phần dịch cũng lâu hơn (`bench/2026-10-24-nguon-micro/results/nghiem-thu.md`). |
 | A7-mic | Kiểm lại A7 bằng proxy ở chế độ Âm thanh máy + Micro: không có kết nối mới. |
+| A-spk1 | **Nhận giọng offline** (AMI, 4 bản ghi kiểm, tham số cố định, đúng đường của app): dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80%, tính theo trung bình các bản ghi kiểm. Đã đo qua `speaker-worker` thật trên M4 Pro (kế hoạch 02; chưa đo lại trên bản phát hành): 91,6% và 84,8% (`bench/2026-10-26-nguoi-noi/results/02-nhan-giong-worker.md`); mốc chống thụt lùi. |
+| A-spk2 | **Nhận giọng tiếng Việt** (hội thoại dựng từ Common Voice tiếng Việt, 3–4 người): dòng ≥ 1 s đúng người ≥ 85%, theo trung bình các bản ghi kiểm. Đã đo qua `speaker-worker` thật trên M4 Pro (8 bản ghi kiểm, bản thường và Opus 24 kbps): 93,9%, 7/8 bản ≥ 85%, thấp nhất 67,7% (`bench/2026-10-26-nguoi-noi/results/02-nhan-giong-worker.md`). Rủi ro đã biết: hai người giống giọng bị gộp thành một nhãn. |
+| A-spk3 | **Tên thật** (kịch bản có lịch nói đã biết, sau khi mỗi người đã nói ≥ 2 lượt): dòng ≥ 1 s đúng tên ≥ 90%, sai tên ≤ 5%. Phát hành: Teams bản cài trên macOS. |
+| A-spk4 | **Độ trễ** khi bật so với tắt (cặp xen kẽ, cùng đoạn âm thanh): A2 p50 chậm thêm ≤ 20 ms, p90 ≤ 50 ms, chữ dịch đầu p50 ≤ 20 ms (cận trên khoảng tin cậy 95%). Đã đo trên M4 Pro (6 cặp xen kẽ): A2 p50 −11,8 ms, p90 −26,4 ms, chữ đầu −18,2 ms, tức bật không làm chậm (`bench/2026-10-26-nguoi-noi/results/02-do-tre.md`). |
+| A-spk5 | **Tải:** `speaker-worker` ≤ 8% một lõi và RAM ≤ 250 MB trên M4 Pro (≤ 10% một lõi trên Windows i5); Teams không chậm rõ khi bị đọc (đo bằng số lệnh và năng lượng). Đã đo trên M4 Pro: RAM đỉnh 141,8 MB sau 92 phút phát theo thời gian thực, không rò (`bench/2026-10-26-nguoi-noi/results/02-soak.md`); Windows i5 chưa đo. |
+| A-spk6 | **Họp thật** tiếng Việt ≥ 3 người do chủ dự án thử trên macOS (Windows khi bật): chủ dự án đánh giá đạt. |
+| A-spk7 | **Bảo mật:** `cargo deny`, `cargo audit`, kiểm không có mã mạng trong `speaker-worker`, capability của `overlay` chỉ thêm `open_speaker_settings`, báo cáo tình trạng không có tên người. |
 
 **Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §10.2; công cụ đo `latency-bench session` chạy engine thật): trên máy khuyến nghị, chữ tạm p50 ≤ 1,2 s và chữ ổn định p50 ≤ 2,0 s (en, vi, ko) hay ≤ 3,0 s (zh, ja) sau lời nói; chữ dịch đầu tiên tính từ lúc bắt đầu nói p90 ≤ 2,0 s; độ nháy tầng ổn định ≤ 10%. A2 tính như cũ. Đo ngày 2026-10-12 trên M4 Pro: KHÔNG đạt toàn bộ — nhóm Chuẩn đạt hết 6/6 tiêu chí tổng hợp (đầu câu → chữ dịch p90 1415 ms, nháy tầng ổn định 6,3%, A2 p50 802 ms, A2 p90 1141 ms, A2 chữ đầu p50 578 ms, CPU 10,5%) và đạt chữ tạm p50 ở cả 5 tiếng; riêng chữ ổn định p50 chỉ đạt ở 3/5 tiếng (en 1961 ms, vi 1183 ms, zh 2883 ms), còn tiếng Nhật (3675 ms, mục tiêu ≤ 3000 ms) và tiếng Hàn (3212 ms, mục tiêu ≤ 2000 ms) chưa đạt; không session nào tự tắt. Hai tiếng này cũng chưa đạt khi đo ở cổng Task 20 của kế hoạch 02 (ja 3671 ms, ko 3216 ms) dù đã thử cả (n, k) thận trọng lẫn mạnh hơn mặc định — chủ dự án đã chấp nhận số hiện có tại cổng đó (2026-10-12), không quay lại thiết kế hay đo thêm (n, k) trung gian cho hai tiếng này.
 
@@ -300,6 +307,8 @@ Tóm tắt của F11; chi tiết, quyết định và nghiệm thu ở `docs/sup
                              └──────────────────────────────┘   └──────────────────────────────┘
 ```
 
+**Tiến trình phụ thứ ba, `speaker-worker`** (F13; spec `2026-10-26-phan-biet-nguoi-noi-design.md` §4): nhận giọng ("Người N") và đọc tên người tham dự từ cửa sổ cuộc họp, ưu tiên thấp, **không chứa ggml**, không có mã mạng, nói chuyện với app qua stdin/stdout. Tiến trình chính chép tối đa 4 s đầu mỗi đoạn vào kênh giới hạn 4 đoạn bằng `try_send` (đầy thì bỏ đoạn đó) và **không bao giờ chờ nhãn**; chữ gốc, bản dịch và chữ hiện dần đi đúng đường cũ. Chạy cùng phiên nếu tính năng bật và manifest có model; chết 3 lần thì tắt tới hết phiên, phụ đề vẫn chạy.
+
 **Vì sao chạy cả nhận dạng giọng nói lẫn dịch thành tiến trình phụ (sidecar):**
 1. Tiến trình chính không chứa ggml. whisper.cpp và llama.cpp mỗi bên kèm một bản ggml riêng; để chung một tiến trình thì dễ trùng symbol (đã có báo cáo lỗi ở cả C++ lẫn Rust).
 2. Engine hoặc driver GPU có crash thì app vẫn chạy và tự khởi động lại engine. Lỗi driver Vulkan trên Windows không làm sập app (A5).
@@ -372,7 +381,7 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - Nếu đoạn vừa chốt không kết thúc bằng dấu câu kết thúc (`.` `?` `!` `。` `？` `！`), phụ đề được đánh dấu **tạm**.
   - **Cửa sổ ghép** = max(700 ms, `vadEndSilenceMs` + 400 ms), tính từ lúc hết tiếng nói của đoạn trước. Với mặc định 50 ms (và với mọi giá trị đến 300 ms), cửa sổ là 700 ms.
   - Nếu tiếng nói tiếp tục trong cửa sổ ghép **và đoạn sau cùng ngôn ngữ với câu đang mở** (ngôn ngữ do §6.4 chọn), đoạn sau được ghép vào: nối chữ của hai đoạn, dịch lại cả câu, rồi thay phụ đề tạm. Tiếng Trung và tiếng Nhật nối chữ không có dấu cách.
-  - Đoạn khác ngôn ngữ thì mở một câu mới. Đoạn đã là ngôn ngữ đích (`same_lang`, §6.6) cũng cắt chuỗi ghép; đoạn bị bỏ vì không có tiếng nói (§6.4) thì không.
+  - Đoạn khác ngôn ngữ thì mở một câu mới. Đoạn đã là ngôn ngữ đích (`same_lang`, §6.6) cũng cắt chuỗi ghép; đoạn bị bỏ vì không có tiếng nói (§6.4) thì không. **Hai đoạn đều đã biết giọng và khác giọng thì không ghép** (F13): giọng của một đoạn là nhãn đã nhận tới lúc kết quả nhận dạng của đoạn đó về; chưa có nhãn thì luật cũ áp dụng, nên luật đúng cả khi nhãn đến muộn.
   - Phụ đề được chốt khi có dấu câu kết thúc, hoặc khi hết cửa sổ ghép mà không có tiếng nói mới.
   - **Trần:** một câu ghép dài tối đa 15 giây tiếng nói (không tính đệm và khoảng nghỉ giữa các đoạn) hoặc 3 đoạn. Đạt trần thì chốt câu, đoạn sau bắt đầu một câu mới. Nhờ vậy câu không dài mãi, và mỗi lần dịch lại không chậm dần.
   - **Tiếng Trung và tiếng Nhật:** Whisper ít đặt dấu câu kết thúc cho hai tiếng này, nhất là gói Nhẹ (trên session S6, cấu hình chốt: zh 13/43 đoạn với turbo, 5/43 với small; ja 18/37 và 4/37; en 31–34/43). Vì vậy luật ghép nối cả những câu khác nhau, rõ nhất ở zh: khoảng 7/18 lần ghép ở gói Chuẩn, đo trước khi có sàn 512 (nguồn và ước lượng lại ở `bench/phase0/results/phase0_review_notes.md`).
@@ -553,8 +562,9 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
 
 ### 6.6 Phụ đề và bản chép lời
 
-- **Cấu trúc:** `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status, replaces }`, cộng thêm cờ `provisional` cho phụ đề tạm (§6.3).
+- **Cấu trúc:** `Subtitle { id, start_ms, end_ms, src_lang, src_text, tgt_text, status, replaces, speaker }`, cộng thêm cờ `provisional` cho phụ đề tạm (§6.3).
   - `replaces`: danh sách id các phụ đề đã gộp vào phụ đề này khi hàng đợi dịch đầy (§7), để giao diện xóa chúng. Thường là danh sách rỗng.
+  - `speaker`: `Option<u32>`, mã giọng của câu (F13). Tên và màu không nằm trong phụ đề mà ở bảng người nói của phiên (sự kiện `speaker://roster`).
   - `status` nhận một trong các giá trị:
     - `asr_done`, `translating`, `done`, `failed`.
     - `same_lang`: câu đã là ngôn ngữ đích nên không dịch (F2).
@@ -565,16 +575,19 @@ Gộp về một kênh (mono), rồi resample từ tần số của thiết bị
   - `subtitle://delta`: gửi từng token trong lúc đang dịch.
   - `subtitle://live`: dòng đang nói (`LiveLine`: phần ổn định và phần tạm của câu gốc và bản dịch là các chuỗi riêng), chỉ gửi cho thanh phụ đề.
   - `subtitle://live-end`: gỡ dòng đang nói (bản cuối đã chốt, đoạn bị lọc hay bị bỏ, chế độ tự tắt, dừng phiên).
+  - `subtitle://speaker {id, speaker}`: nhãn tới sau khi phụ đề đã phát (F13).
+  - `speaker://roster {voices: [{id, label, color, source, room}], participants}`: bảng người nói của phiên (F13).
 - **Hiển thị:** thanh phụ đề hiện N dòng gần nhất; cửa sổ chính hiện toàn bộ.
 - **Lưu trữ:**
   - Bản chép lời nằm trong bộ nhớ theo từng phiên.
   - App có một file SQLite **đã mã hóa** trong thư mục dữ liệu của app. Mã hóa bằng SQLCipher qua `rusqlite`, khóa lưu trong kho khóa của hệ điều hành (§10.2). File này chứa:
     - Từ điển thuật ngữ (Pro, F5).
     - Bản chép lời, chỉ khi bật "Lưu lịch sử" (Pro).
+    - Bảng `lines` có thêm cột `speaker TEXT` (cho phép rỗng): nhãn của câu, ghi lúc dừng phiên (sau đổi tên, gộp); vẫn chỉ khi có Pro và bật "Lưu lịch sử" (F13).
 - **Xuất file:**
-  - TXT, theo dạng `[giờ] câu gốc` rồi `→ bản dịch`.
-  - SRT, chọn xuất câu gốc hoặc bản dịch.
-  - Markdown.
+  - TXT, theo dạng `[giờ] câu gốc` rồi `→ bản dịch`; câu có nhãn người nói thì `[giờ] Lan: câu gốc` (F13).
+  - SRT, chọn xuất câu gốc hoặc bản dịch; có tùy chọn thêm tiền tố `Lan: ` (mặc định tắt; F13).
+  - Markdown; câu có nhãn người nói thì `**Lan:** …` (F13). Câu không có nhãn xuất như cũ ở cả ba dạng.
 
 ### 6.7 Quản lý model
 
@@ -957,6 +970,7 @@ Bản debug chỉ khác ở ba khả năng của build, không phải của môi
   5. Luồng phụ đề: nơi duy nhất phát sự kiện phụ đề, nên thứ tự `upsert` và `delta` luôn đúng.
   6. Tiến trình phụ `asr-worker`: mỗi lần xử lý một đoạn, chạy trên GPU hoặc CPU.
   7. Tiến trình phụ `llama-server`.
+  8. Luồng client của `speaker-worker` (F13): ghi khung xuống stdin, một luồng đọc nhận nhãn và chuyển cho luồng phụ đề qua kênh; tiến trình phụ `speaker-worker` (ưu tiên thấp, 2 luồng tính toán).
 - **Chế độ dịch trong lúc người nói chưa dừng** (spec 2026-10-10 §4.6, §5): hàng đợi nhận dạng có thêm một ô cho lần chép từng phần (mới thay cũ, đoạn đóng luôn đi trước); luồng dịch xen yêu cầu bản tạm giữa các câu cuối nhưng không bao giờ chặn câu cuối. Nhịp T = 1,5 × trung vị 8 vòng gần nhất, kẹp 0,7–2 s; trung vị vượt 1,3 s thì tự tắt tới hết phiên. Máy Windows chỉ có GPU tích hợp hay `asr-worker` chạy CPU thì tắt từ đầu phiên.
 - **Luồng riêng và client đồng bộ, không dùng runtime `tokio`** cho pipeline (chốt ở kế hoạch Phase 1 · 02a, QĐ1). Lý do:
   - hai client đồng bộ của Phase 0 đã chạy qua S6;
@@ -966,9 +980,10 @@ Bản debug chỉ khác ở ba khả năng của build, không phải của môi
 - **Hàng đợi đoạn âm thanh (VAD → nhận dạng)** chứa tối đa 3 đoạn.
   - Khi đầy, gộp hai đoạn chờ lâu nhất nếu tổng không quá 12 giây.
   - Chỉ bỏ đoạn khi độ trễ vượt 20 giây. Đoạn bị bỏ được đánh dấu "[bỏ qua đoạn]" trong bản chép lời (`dropped`, §6.6).
+- **Kênh sang `speaker-worker`** chứa tối đa 4 đoạn; đầy thì bỏ đoạn đó (`try_send`), luồng VAD không bao giờ chờ (F13).
 - **Độ trễ** tính bằng thời điểm hiện tại trừ `end_ms` của đoạn đang xử lý. Vượt 6 giây thì hiện chỉ báo "Đang trễ".
 - **Hàng đợi dịch** chứa tối đa 3 câu.
-  - Khi đầy, gộp các câu liên tiếp cùng ngôn ngữ vào một request. Các phụ đề tương ứng cũng được gộp thành một phụ đề, lấy `start_ms` của câu đầu và `end_ms` của câu cuối.
+  - Khi đầy, gộp các câu liên tiếp cùng ngôn ngữ vào một request. Các phụ đề tương ứng cũng được gộp thành một phụ đề, lấy `start_ms` của câu đầu và `end_ms` của câu cuối. Khi tính năng người nói bật, hàng đợi gộp theo hai lượt: lượt 1 không gộp hai giọng đã biết khác nhau; nếu hàng còn nhiều câu hơn số câu mà cách gộp lúc tắt tính năng để lại thì lượt 2 gộp như khi tắt, kể cả câu khác giọng, và câu gộp từ hai giọng khác nhau không mang nhãn. Nhờ đó hàng không bao giờ dài hơn, câu không chờ lâu hơn và không thêm câu `Skip` so với khi tắt.
   - Câu nào đã chờ quá 20 giây thì bỏ qua bước dịch, chỉ hiện câu gốc (`skipped`), để bắt kịp tốc độ nói.
 - **Phụ đề gộp** mang id của câu đầu, và trường `replaces` liệt kê id các phụ đề đã gộp vào nó (§6.6).
 - **Ngưỡng của pipeline:** mọi ngưỡng của §6.3–§6.5 và mục này (cắt đoạn, ghép câu, lọc, nhận dạng, dịch, hàng đợi, giám sát tiến trình phụ, âm thanh) nằm trong một cấu hình `PipelineConfig`, mặc định là số đã chốt trong spec.
@@ -1063,6 +1078,8 @@ Chưa có số đo M1 cơ bản (chủ dự án bỏ qua S6 trên máy này ngà
 - CPU: 1,8–3,0% của cả máy, vì GPU làm phần nặng. Số này là tổng thời gian CPU của `asr-worker`, `llama-server` và `latency-bench` (đóng vai tiến trình chính) chia cho thời gian thực và cho 12 lõi, không phải CPU đo cho toàn hệ thống. Riêng `llama-server` dùng 17–31% của một lõi.
 - RAM trên máy chạy bằng CPU chưa đo: máy Windows 8 GB chỉ CPU không có (2026-10-04); đo khi có máy (kế hoạch 06, Task 8–9).
 
+**`speaker-worker` (F13), M4 Pro** (spec `2026-10-26-phan-biet-nguoi-noi-design.md` §11): trung bình ≤ 8% một lõi khi người nói liên tục (đo bằng số lệnh và năng lượng, không bằng %CPU) và RAM ≤ 250 MB (đo: đỉnh 137–198 MB khi phát theo thời gian thực, 141,8 MB sau 92 phút, không rò); Windows i5 ≤ 10% một lõi, chờ số đo. Khi chạy quá chậm hơn thời gian thực 30 s liền thì tạm dừng đọc tên, chỉ nhận giọng; vẫn chậm thì tắt tới hết phiên.
+
 **VRAM ước tính trên Windows (card rời), cần kiểm chứng ở S6:**
 
 | Thành phần | Gói Chuẩn | Gói Nhẹ |
@@ -1137,6 +1154,8 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
   - **Gửi sang Zalo:** nội dung tin, mã cuộc chat, nguồn, ngôn ngữ, trang, dòng thông tin máy, thông báo "khách đã để lại email" (không kèm địa chỉ) hay "khách đã xóa cuộc chat". **Email của khách không bao giờ tới Zalo.** Zalo (Công ty Cổ phần VNG) đặt máy chủ ở Việt Nam. Thư trả lời gửi qua Resend khi khách để lại email.
   - **Giữ:** tự xóa 90 ngày sau tin cuối (cron); khách tự xóa bằng nút trong khung chat. Đây là ngoại lệ của "giữ không thời hạn" ở dưới. Bản đã chuyển vào Zalo không tự xóa: người vận hành xóa tay khi khách yêu cầu.
   - Chính sách quyền riêng tư (mục 11) và website nói đúng những điều trên; trang thường của website không nêu tên Zalo (chỉ chính sách nêu bên xử lý).
+- **Phân biệt người nói** (F13; spec `2026-10-26-phan-biet-nguoi-noi-design.md` §10): đặc điểm giọng (vector nhúng) và tâm cụm chỉ nằm trong RAM của `speaker-worker`, xóa khi hết phiên hay worker thoát; không ghi đĩa, không gửi đi, không đưa vào log hay báo cáo; không dùng để xác định danh tính, không nhớ một người qua các phiên. Tên người tham dự đọc từ cửa sổ cuộc họp (chỉ Microsoft Teams bản cài trên macOS; chỉ cửa sổ họp; chỉ tên hiển thị, trạng thái mic, dấu "đang nói"; không chat, không ảnh) chỉ nằm trong RAM và Lịch sử mã hóa (Pro, khi bật lưu); log chỉ có số đếm và trạng thái. `speaker-worker` không có mã mạng (CI kiểm bốn lớp bằng `scripts/release/check-no-network.sh`).
+- **Báo cáo tình trạng và công thức đọc tên** (F13): app tải công thức đọc tên (tệp mô tả, không mã, ký Ed25519 cùng khóa manifest nhưng `format` và tiền tố ký riêng, chống quay lui) từ `releases.aitranslator.vn` lúc mở và mỗi 6 giờ khi tính năng bật; một lệnh GET không kèm dữ liệu nào. Khi công tắc "Gửi báo cáo lỗi" bật, mỗi ngày tối đa một báo cáo `speaker_health` cho mỗi cặp (ứng dụng họp, phiên bản) qua `POST /v1/diagnostics`: phiên bản, trạng thái, số phút, mô tả loại phần tử (vai trò, lớp), mã băm ID máy; **không có tên người, không có chữ**; giữ 60 ngày; xóa theo email xóa luôn báo cáo của máy đã kích hoạt key của email đó. Model nhận giọng (~26 MB, Apache-2.0) tải cùng cách với model khác, kiểm SHA-256; manifest không có mục `speaker` thì tính năng tắt ở phiên dịch kế tiếp (công tắc tắt khẩn).
 - **Tiến trình phụ:** `llama-server` chỉ nghe trên `127.0.0.1`, với API key ngẫu nhiên tạo mới mỗi lần chạy, truyền qua biến môi trường (§6.5; trạng thái đích cho MVP, Phase 0 còn dùng `--api-key`). `asr-worker` không mở cổng mạng nào, chỉ giao tiếp qua stdin/stdout.
 - **Khóa API của PayOS** (client id, api key, checksum key) chỉ nằm trên license server, được lưu dưới dạng secret, không bao giờ có trong app.
 - **Lịch sử chép lời** mặc định tắt, chỉ lưu trên máy, xóa toàn bộ được bằng một nút.
@@ -1213,6 +1232,7 @@ VRAM trên Windows chưa đo vì không có máy (chủ dự án bỏ qua 2026-1
 | Bản giả có cài mã độc | Ký số và notarize mọi bản phát hành. Chỉ phát hành qua tên miền chính thức. Website công bố mã SHA-256 của từng bộ cài và cảnh báo về bản giả. |
 | Tấn công qua giao diện WebView | **Capabilities của Tauri 2:** cửa sổ `overlay` chỉ nhận sự kiện phụ đề, kéo được chính nó, và gọi được đúng một lệnh chỉ đọc là `get_overlay_view` (phần cài đặt của chính nó). Overlay không gọi lệnh khóa, vì khi đã khóa thì click đi xuyên qua thanh; mở khóa bằng phím tắt hoặc menu khay (§4.4). Cửa sổ `main` chỉ được cấp đúng các lệnh nó cần. Không cửa sổ nào được gọi thẳng lệnh của plugin. **CSP chặt:** chỉ nạp tài nguyên đóng gói trong app, không `unsafe-eval`, không tải script từ bên ngoài. **Chặn điều hướng:** webview chỉ được đi tới URL của chính app; `blob:` và yêu cầu mở cửa sổ mới đều bị chặn. Link ngoài chỉ mở bằng trình duyệt của hệ thống, và chỉ khi là `https` tới tên miền nằm trong danh sách cho phép build sẵn (trang thanh toán PayOS, trang thanh toán Creem `checkout.creem.io` cho đơn thẻ quốc tế (spec 2026-10-14 §5), website của sản phẩm); còn lại thì chặn và ghi log. Tắt devtools ở bản phát hành. Mọi dữ liệu từ giao diện gửi xuống Rust đều được kiểm tra kiểu và phạm vi. |
 | Thay tiến trình phụ, hoặc chèn thư viện giả | Trước khi chạy `asr-worker` hay `llama-server`, kiểm tra SHA-256 của file thực thi và của các thư viện ggml, theo một danh sách build sẵn vào app. Windows: tiến trình chính và `asr-worker` gọi `SetDefaultDllDirectories` để chỉ nạp DLL từ thư mục app và System32. macOS: hardened runtime có bật library validation, mọi file thực thi và `.dylib` ký cùng Team ID. |
+| Thay `speaker-worker`, công thức độc, đọc quá phạm vi | `speaker-worker` được kiểm SHA-256 theo danh sách build sẵn, ký cùng app, nạp DLL hạn chế (Windows) và băm lại đúng các byte model nó đọc. Công thức đọc tên chỉ mô tả (không mã), ký số, app trong danh sách viết cứng (Teams, Zoom, Meet), mẫu chữ bằng `regex` tuyến tính ≤ 256 ký tự, file ≤ 256 KB, không nhận bản cũ hơn; worker không có mạng nên kể cả khóa ký bị lộ thì không gửi được gì ra ngoài. Danh sách app, cửa sổ họp và thứ đọc ra viết cứng trong app; giới hạn ≤ 3 000 phần tử và 30 ms mỗi lượt; cửa sổ `overlay` chỉ thêm đúng một lệnh không tham số `open_speaker_settings`. |
 | Lộ nội dung cuộc họp | Lịch sử chép lời được mã hóa bằng SQLCipher, khóa ngẫu nhiên lưu trong kho khóa của hệ điều hành. Log không bao giờ chứa nội dung chép lời; phần log rời máy trong báo cáo lỗi còn được che đường dẫn cá nhân, key, token và email, và server từ chối nếu còn sót (§10.1). File xuất ra do người dùng chủ động tạo và tự quản lý. |
 | Tấn công license server | Chỉ nhận HTTPS, kiểm ngay trong Worker. Kiểm tra chữ ký webhook và xử lý idempotent (§6.8). Dùng prepared statement của D1, kiểm tra mọi input. Secret lưu bằng Wrangler secrets. Không để dữ liệu nhạy cảm trong URL: `order_token` đi trong header, tắt invocation log của Workers Logs, bỏ query khỏi URL trong log. `/admin/*` nằm ở Worker riêng đặt sau Cloudflare Access, tự kiểm lại danh tính, và chống CSRF. Ghi nhật ký mọi thay đổi license. Cảnh báo cho người vận hành: xem dưới bảng. |
 | Lộ khóa ký token | Token có trường `kid`. App build sẵn 2 khóa công khai: khóa đang dùng và khóa dự phòng. Cách giữ và đổi khóa: xem "Khóa ký token" dưới bảng. |
@@ -1407,7 +1427,7 @@ meeting-translator/
 **Phase 2.** Đã xong. Việc cuối là hộp thư nhận cảnh báo vận hành `OPERATOR_EMAIL` (P05-5, §10.2), đặt ngày 2026-10-07 là `ops@aitranslator.vn`.
 
 **Phase 3: mở rộng**, thứ tự tùy phản hồi của người dùng:
-- Phân biệt ai đang nói.
+- ~~Phân biệt ai đang nói~~ (đã làm: F13; macOS trước, Windows, Meet, Zoom chưa).
 - Hỗ trợ Windows ARM64.
 - Thu âm thanh theo từng app trên Windows.
 - Dịch hai chiều bằng giọng nói (micro ảo).

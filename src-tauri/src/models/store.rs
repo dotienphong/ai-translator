@@ -340,6 +340,11 @@ impl Store {
                 keep.insert(name.to_string_lossy().into_owned());
             }
         }
+        if let Some(entry) = manifest.speaker_model("999.0.0")
+            && let Some(name) = self.part(&entry).file_name()
+        {
+            keep.insert(name.to_string_lossy().into_owned());
+        }
         let Ok(entries) = std::fs::read_dir(&self.dir) else {
             return Ok(());
         };

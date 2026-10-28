@@ -1149,6 +1149,7 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
       licenses: 1,
       orders: 1,
       error_reports: 0,
+      speaker_health: 0,
       support_conversations: 0,
       note: "yêu cầu xóa qua email hỗ trợ ngày 2026-10-01",
     });

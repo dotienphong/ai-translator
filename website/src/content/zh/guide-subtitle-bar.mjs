@@ -12,6 +12,7 @@ const toc = [
   { level: 2, id: "show-hide", text: "显示和隐藏" },
   { level: 2, id: "scroll", text: "回看之前的句子" },
   { level: 2, id: "style", text: "字号、颜色、不透明度" },
+  { level: 2, id: "speakers", text: "谁在说话：颜色和姓名" },
   { level: 2, id: "indicators", text: "字幕条上的提示" },
   { level: 2, id: "shortcuts", text: "默认快捷键" },
   { level: 2, id: "change-shortcuts", text: "更改快捷键" },
@@ -79,6 +80,17 @@ ${callout({ title: "已锁定的字幕条无法点击。", text: "要解锁，�
 ${appShot({ slug: "app-settings-subtitles", lang: "zh", alt: "字幕设置：顶部是示例句子预览，下面是字号滑块、两行颜色色块、背景不透明度滑块和显示原文的开关", caption: "设置 › 字幕。" })}
 ${overlayShot({ slug: "overlay-custom", lang: "zh", alt: "自定义字幕条：藏青色背景上的黄色文字，字号更大", caption: "示例：黄色文字、藏青色背景、较大字号。" })}
 </div>
+
+<h2 id="speakers">谁在说话：颜色和姓名</h2>
+<p>在 macOS 上，AI Translator 0.3.2 及以上版本的字幕条可以显示谁在说话。所有套餐默认开启，可在<strong>设置 › 字幕 › 说话人</strong>中关闭。</p>
+<ul>
+<li><strong>每个声音一种颜色。</strong>声音在你的电脑上区分，并按出现顺序标为“说话人1”“说话人2”。标签和彩色竖条出现在每次发言的第一行；同一个人后面的句子只有彩色竖条。</li>
+<li><strong>来自 Microsoft Teams 的真实姓名。</strong>在电脑上安装的 Teams 应用里翻译会议时，应用从会议窗口读取参会者姓名，只有足够确定时才显示姓名；不确定时保持“说话人N”，因为错误的姓名比通用标签更糟。应用不读取聊天，也不截屏。Google Meet 和 Zoom 的姓名暂时还没有。</li>
+<li><strong>可以自己修正。</strong>在主窗口的转写记录中，点击标签可以重命名、<em>从会议参与者中选择</em>，或在两个标签其实是同一个人时<em>合并到其他说话人</em>。修改对当前整个会话生效。</li>
+<li><strong>权限。</strong>为了读取姓名，macOS 会请求<em>辅助功能</em>权限：字幕条会显示一行简短提示（<em>允许辅助功能权限以显示说话人姓名</em>）和打开设置的按钮；应用不会自己弹出系统对话框。应用更新后 macOS 可能再次请求。不授予权限时仍有颜色和“说话人N”。</li>
+<li><strong>历史记录和导出。</strong>标签和姓名只有在你使用 Pro 套餐并开启“保存历史记录”时才会存入历史记录。此外，复制（所有套餐）和导出为文件（仅 Pro）会把标签和姓名写进文本：即使没有开启“保存历史记录”，你复制的文本或导出的文件里也可能带有姓名（SRT 仅在你选择添加说话人姓名时）。</li>
+</ul>
+<p>局限：声音非常相似的两个人可能共用一个标签，多人同时说话时标签可能出错。暂不支持 Windows；在 Google Meet 和 Zoom 中，应用会显示颜色和“说话人N”，但暂时没有姓名。</p>
 
 <h2 id="indicators">字幕条上的提示</h2>
 <p>字幕条右上角会显示一个圆点和几条简短的提示：</p>

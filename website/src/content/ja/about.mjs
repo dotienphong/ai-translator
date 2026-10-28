@@ -87,7 +87,7 @@ ${sectionHead({ eyebrow: "これから", title: "検討していること" })}
 ${callout({ kind: "warn", title: "これはお約束ではありません。", text: "以下は、次の段階に向けて検討しているものです。日程も決まった順番もなく、利用者のご意見によって変わったり、取りやめたりすることがあります。" })}
 <div class="prose">
 <ul>
-<li>字幕で話者を区別する</li>
+<li>Google Meet と Zoom から話者名を表示し、Windows でも話者を区別する</li>
 <li>Windows ARM64 への対応</li>
 <li>Windows でのアプリごとの音声取り込み</li>
 <li>双方向の音声翻訳（あなた自身の声を会議のほかの参加者に向けて翻訳）</li>

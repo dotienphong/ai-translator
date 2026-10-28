@@ -2691,3 +2691,141 @@ test("nguồn micro: nội dung mới nói giới hạn thật (nói chen, tai n
   }
   assert.deepEqual(errors, []);
 });
+
+// ---- Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §10; kế hoạch 07): pháp lý ----
+
+test("chính sách quyền riêng tư và EULA nói về phân biệt người nói: đặc điểm giọng chỉ trong RAM, tên đọc từ cửa sổ họp Teams, Trợ năng, công thức tải từ xa, báo cáo tình trạng không có tên", () => {
+  const needs = {
+    "/chinh-sach-quyen-rieng-tu/": [
+      "Đặc điểm giọng để phân biệt người nói",
+      "tự xóa khi hết phiên",
+      "không dùng nó để xác định danh tính",
+      "Tên người tham dự đọc từ cuộc họp",
+      "cửa sổ cuộc họp Microsoft Teams bản cài",
+      "Không đọc chat",
+      "chế độ trợ năng của Teams",
+      "Công thức đọc tên",
+      "Báo cáo tình trạng của bộ đọc tên",
+      "không có tên người",
+      "giữ 60 ngày",
+      "Windows chưa có tính năng này",
+      "chưa thấy tên",
+      "số mẫu chỉ báo ứng dụng tự học",
+      "các báo cáo tình trạng của bộ đọc tên của chính những máy đó",
+    ],
+    "/en/privacy/": [
+      "Voice features used to tell speakers apart",
+      "deleted automatically when the session ends",
+      "does not use it to identify anyone",
+      "Participant names read from the meeting",
+      "Microsoft Teams desktop meeting window",
+      "does not read the chat",
+      "accessibility mode of Teams",
+      "Name-reading recipe",
+      "Name-reader status report",
+      "no participant names",
+      "kept 60 days",
+      "Windows does not have this feature yet",
+      "no names seen yet",
+      "the number of indicator patterns the app learned by itself",
+      "the name-reader status reports of those same machines",
+    ],
+    "/dieu-khoan/": ["hiện tên người tham dự đọc từ cửa sổ cuộc họp", "Windows chưa có", "Nhãn người nói và tên do ứng dụng gán tự động có thể sai"],
+    "/en/terms/": ["shows the names of participants read from the meeting window", "not yet on Windows", "Speaker labels and names assigned automatically can be wrong"],
+  };
+  const errors = [];
+  for (const [urlPath, list] of Object.entries(needs)) {
+    const text = textOf(htmlByPath.get(urlPath));
+    for (const n of list) if (!text.includes(n)) errors.push(`${urlPath}: thiếu "${n}"`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+// ---- Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §10; kế hoạch 07): câu cũ "chưa có / không biết ai đang nói" ----
+const STALE_SPEAKER = [
+  { id: "vi: không biết ai đang nói", re: /không\s+biết\s+ai\s+đang\s+nói/iu },
+  { id: "vi: tóm tắt tự động hoặc biết ai đang nói", re: /hoặc\s+biết\s+ai\s+đang\s+nói/iu },
+  { id: "vi: lộ trình phân biệt ai đang nói", re: /Phân\s+biệt\s+ai\s+đang\s+nói\s+trong\s+phụ\s+đề/iu },
+  { id: "en: does not know who is speaking", re: /does\s+not\s+know\s+who\s+is\s+speaking/i },
+  { id: "en: summaries or speaker labels", re: /summaries\s+or\s+speaker\s+labels/i },
+  { id: "en: roadmap telling speakers apart", re: /Telling\s+speakers\s+apart\s+in\s+the\s+subtitles/i },
+  { id: "ja: 誰が話しているかは区別しません", re: /誰が話しているかは区別しません/ },
+  { id: "ja: 話者の区別が必要、対応していません", re: /話者の区別が必要。\s*対応していません/ },
+  { id: "ja: 字幕で話者を区別する", re: /字幕で話者を区別する/ },
+  { id: "zh: 不会区分是谁在说话", re: /不会区分是谁在说话/ },
+  { id: "zh: 区分说话人，暂不提供", re: /区分说话人。\s*暂不提供/ },
+  { id: "zh: 在字幕中区分不同的说话人", re: /在字幕中区分不同的说话人/ },
+  { id: "ko: 누가 말하는지는 구분하지 않습니다", re: /누가 말하는지는 구분하지 않습니다/ },
+  { id: "ko: 화자 구분이 필요하다, 지원하지 않습니다", re: /화자 구분이 필요하다\.\s*지원하지 않습니다/ },
+  { id: "ko: 자막에서 화자 구분하기", re: /자막에서 화자 구분하기/ },
+];
+const STALE_SPEAKER_MUST_CATCH = [
+  "Bạn cần biên bản, tóm tắt tự động hoặc biết ai đang nói. Chưa có.",
+  "app dịch từng câu theo âm thanh nghe được và không biết ai đang nói.",
+  "Phân biệt ai đang nói trong phụ đề",
+  "You need automatic minutes, summaries or speaker labels. Not available.",
+  "translates sentence by sentence from the sound it hears and does not know who is speaking.",
+  "Telling speakers apart in the subtitles",
+  "アプリは聞こえた音を 1 文ずつ翻訳し、誰が話しているかは区別しません。",
+  "議事録の自動作成、要約、話者の区別が必要。対応していません。",
+  "字幕で話者を区別する",
+  "应用根据听到的声音逐句翻译，不会区分是谁在说话。",
+  "你需要自动生成会议纪要、摘要或区分说话人。暂不提供。",
+  "在字幕中区分不同的说话人",
+  "앱은 들리는 소리를 문장 단위로 번역하며, 누가 말하는지는 구분하지 않습니다.",
+  "자동 회의록, 요약, 화자 구분이 필요하다. 지원하지 않습니다.",
+  "자막에서 화자 구분하기",
+];
+const STALE_SPEAKER_MUST_KEEP = [
+  "Bạn cần biên bản hoặc tóm tắt tự động. Chưa có.",
+  "Phụ đề có thể hiện mỗi người một màu và tên từ Teams bản cài trên macOS.",
+  "Hiện tên người đang nói từ Google Meet và Zoom, và phân biệt người nói trên Windows",
+  "You need automatic minutes or summaries. Not available.",
+  "Showing speaker names from Google Meet and Zoom, and telling speakers apart on Windows",
+  "議事録の自動作成や要約が必要。対応していません。",
+  "你需要自动生成会议纪要或摘要。暂不提供。",
+  "자동 회의록이나 요약이 필요하다. 지원하지 않습니다.",
+];
+
+test("luật câu cũ về người nói (STALE_SPEAKER) bắt câu cũ và không bắt câu đúng", () => {
+  const missed = STALE_SPEAKER_MUST_CATCH.filter((s) => staleHits(s, STALE_SPEAKER).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_SPEAKER_MUST_KEEP.filter((s) => staleHits(s, STALE_SPEAKER).length > 0).map((s) => `${s} → ${staleHits(s, STALE_SPEAKER).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site còn câu cũ 'chưa có / không biết ai đang nói'", async () => {
+  assert.deepEqual(scanStale(await siteTexts(), STALE_SPEAKER), []);
+});
+
+// ---- Phân biệt người nói (kế hoạch 07): nội dung hướng dẫn, hỏi đáp, dữ liệu và bảo mật ----
+const SPEAKER_PAGES = {
+  vi: { guide: "/huong-dan/thanh-phu-de-va-phim-tat/", faq: "/cau-hoi-thuong-gap/", data: "/bao-mat-du-lieu/" },
+  en: { guide: "/en/guide/subtitle-bar-and-shortcuts/", faq: "/en/faq/", data: "/en/data-security/" },
+};
+
+test("hướng dẫn thanh phụ đề, hỏi đáp, dữ liệu và bảo mật nói đúng về người nói (vi, en): đúng chữ của app, đúng phạm vi", async () => {
+  const errors = [];
+  for (const [lang, pages] of Object.entries(SPEAKER_PAGES)) {
+    const d = await appDict(lang);
+    const guide = plainAmp(textOf(htmlByPath.get(pages.guide)));
+    for (const key of ["settings.speakers.title", "transcript.speaker.participants", "transcript.speaker.merge"]) {
+      if (!guide.includes(plainAmp(d[key]))) errors.push(`${pages.guide}: thiếu chữ của app "${d[key]}" (${key})`);
+    }
+    const need = {
+      vi: ["macOS", "Microsoft Teams", "Người 1", "chưa có tên tự động", "Windows", "Trợ năng", "chỉ khi bạn bật Lưu lịch sử", "nói chồng"],
+      en: ["macOS", "Microsoft Teams", "Speaker 1", "not available yet", "Windows", "Accessibility", "only when you turn on Save history", "talk over each other"],
+    }[lang];
+    for (const n of need) if (!guide.includes(n)) errors.push(`${pages.guide}: thiếu "${n}"`);
+    const data = plainAmp(textOf(htmlByPath.get(pages.data)));
+    const needData = {
+      vi: ["Đặc điểm giọng", "tự xóa khi hết phiên", "không dùng để xác định danh tính", "công thức đọc tên", "chưa đo bằng proxy"],
+      en: ["Voice features", "deleted automatically when the session ends", "not used to identify anyone", "name-reading recipe", "not measured with the proxy yet"],
+    }[lang];
+    for (const n of needData) if (!data.includes(n)) errors.push(`${pages.data}: thiếu "${n}"`);
+    const faq = plainAmp(textOf(htmlByPath.get(pages.faq)));
+    const needFaq = { vi: ["tên từng người nói", "Microsoft Teams"], en: ["names of the people speaking", "Microsoft Teams"] }[lang];
+    for (const n of needFaq) if (!faq.includes(n)) errors.push(`${pages.faq}: thiếu "${n}"`);
+  }
+  assert.deepEqual(errors, []);
+});

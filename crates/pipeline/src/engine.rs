@@ -38,21 +38,26 @@ use crate::prompt_history::PromptHistory;
 use crate::queue::{AsrQueue, MtItem, MtQueue, PartialRequest, PendingSegment, Popped, Ready};
 use crate::segmenter::{FRAME_MS, FRAME_SAMPLES, Segmenter, SegmenterConfig};
 use crate::sentence::{OpenSentence, Piece, joiner, merge_window_ms};
+use crate::speaker::{ReaderInfo, SpeakerLink, SpeakerTap, SpeakerUpdate, UPDATE_CHANNEL_CAP};
 use crate::streaming::{
     Cadence, PartialScheduler, Split, Stabilizer, split_units, strip_terminal_punct, uses_char_units,
 };
-use crate::subtitle::{Delta, LiveEnd, LiveLine, Status, Subtitle};
+use crate::subtitle::{
+    Delta, LiveEnd, LiveLine, NamedVoice, Names, Roster, RosterVoice, SpeakerLabel, Status, Subtitle,
+};
 use crate::supervisor::{Asr, AsrFailure};
 use crate::text::display_text;
 use crate::translate::{Event, Job, Mt, MtError, Outcome, translate, translate_live};
 use crate::vad::SileroVad;
+use crate::voices::VoiceBook;
 use anyhow::Result;
 use asr_protocol::{TranscribeRequest, audio_ctx_for_samples};
 use serde::Serialize;
+use speaker_protocol::{PersonName, ReaderStatus, Source};
 use std::collections::{BTreeMap, HashMap};
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -61,6 +66,9 @@ use std::time::{Duration, Instant};
 const VAD_STACK_BYTES: usize = 8 << 20;
 /// Luồng VAD gửi giờ âm thanh cho luồng phụ đề sau mỗi chừng này khung (96 ms).
 const CLOCK_EVERY_FRAMES: u64 = 3;
+/// Số nhãn từ worker tối đa luồng phụ đề xử lý mỗi vòng (QĐ 14 của kế hoạch 02): worker gửi dồn không làm phụ đề chậm; phần
+/// còn lại để vòng sau (vòng lặp 50 ms, nên vẫn hơn 1 000 nhãn mỗi giây).
+const SPEAKER_DRAIN_MAX: usize = 64;
 
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
@@ -94,6 +102,22 @@ pub trait FrameSource: Send {
         let from = out.len();
         let more = self.read(out, timeout)?;
         vad_out.extend_from_slice(&out[from..]);
+        Ok(more)
+    }
+
+    /// Như `read_with_vad`, kèm cờ nguồn cho từng mẫu mới (spec 2026-10-26-phan-biet-nguoi-noi §5.5): `tags` nhận đúng số mẫu
+    /// mới của `out`, thẳng hàng theo chỉ số. Luồng VAD chỉ gọi hàm này khi phiên có nhận giọng. Bản mặc định gắn `System` cho
+    /// mọi mẫu (nguồn âm thanh máy); nguồn của app (`LiveCapture`) lấy cờ từ bộ trộn.
+    fn read_tagged(
+        &mut self,
+        out: &mut Vec<f32>,
+        vad_out: &mut Vec<f32>,
+        tags: &mut Vec<Source>,
+        timeout: Duration,
+    ) -> Result<bool> {
+        let from = out.len();
+        let more = self.read_with_vad(out, vad_out, timeout)?;
+        tags.resize(tags.len() + (out.len() - from), Source::System);
         Ok(more)
     }
 }
@@ -218,6 +242,14 @@ pub trait EventSink: Send + Sync {
     fn live(&self, _line: &LiveLine) {}
     /// Gỡ dòng đang nói (lượt cuối đã chốt, đoạn bị lọc hay bỏ, chế độ tự tắt, dừng phiên). Mặc định bỏ qua.
     fn live_end(&self, _end: &LiveEnd) {}
+    /// Giọng của một phụ đề đã phát vừa đổi (spec 2026-10-26-phan-biet-nguoi-noi §4.3). Mặc định bỏ qua.
+    fn speaker(&self, _label: &SpeakerLabel) {}
+    /// Bảng giọng của phiên đổi. Mặc định bỏ qua.
+    fn roster(&self, _roster: &Roster) {}
+    /// Tên đọc từ app họp của các giọng và người tham dự đổi (kế hoạch 04). Mặc định bỏ qua.
+    fn names(&self, _names: &Names) {}
+    /// Trạng thái bộ đọc tên (dòng mời cấp quyền, spec §6.7). Mặc định bỏ qua.
+    fn reader(&self, _info: &ReaderInfo) {}
 }
 
 /// Đếm thời gian im lặng liên tục (RMS dưới ngưỡng), kể cả phần im lặng được chèn khi Windows không trả gói dữ liệu (§9).
@@ -291,6 +323,9 @@ enum Msg {
         end_ms: u64,
         closed_ms: u64,
     },
+    /// Luồng VAD: đoạn vừa chốt không tới được client nhận giọng (kênh 4 đoạn đầy, client đã tắt), nên không bao giờ có nhãn
+    /// (N1 của rà soát cuối kế hoạch 02). Luôn sau `Queued` của chính đoạn đó.
+    Unlabeled(u64),
     Clock {
         now_ms: u64,
         speech_since: Option<u64>,
@@ -329,6 +364,10 @@ enum Msg {
     MtGone,
     /// Lần làm nóng đầu phiên cho thấy `llama-server` không dùng được: báo ngay, không chờ câu đầu tiên.
     MtUnavailable(String),
+    /// Nhãn từ `speaker-worker`, chỉ để test nạp nhãn như mọi tin nhắn khác. Bản chạy thật đọc nhãn thẳng từ kênh của client
+    /// (`drain_speaker`), không qua `Msg`.
+    #[cfg(test)]
+    Speaker(SpeakerUpdate),
 }
 
 struct MtJob {
@@ -492,11 +531,13 @@ pub struct Engine {
     /// Luồng nhận dạng và luồng dịch: chỉ `join` chờ chúng; `stop` thì không (xem đầu module).
     workers: Vec<JoinHandle<()>>,
     composer: Option<JoinHandle<SessionMetrics>>,
+    /// Giữ client của `speaker-worker` sống tới khi engine dừng (thả ra thì client tắt worker). Không bao giờ đọc: chỉ giữ để
+    /// thả cùng engine (sau khi các luồng đã dừng).
+    _speaker_keep: Option<Box<dyn Send + Sync>>,
 }
 
 impl Engine {
-    /// Chạy các luồng của một phiên. Luồng VAD (luồng duy nhất tự đọc âm thanh mãi) chạy sau cùng: nếu không tạo được
-    /// một luồng, các luồng đã chạy thấy đầu vào của chúng đóng lại và tự kết thúc.
+    /// Chạy các luồng của một phiên (không có nhận giọng). Xem [`Engine::start_with_speaker`].
     pub fn start(
         cfg: EngineConfig,
         source: Box<dyn FrameSource>,
@@ -505,6 +546,30 @@ impl Engine {
         mt: Box<dyn Mt>,
         sink: Arc<dyn EventSink>,
     ) -> Result<Self> {
+        Self::start_with_speaker(cfg, source, vad, asr, mt, sink, None)
+    }
+
+    /// Chạy các luồng của một phiên. Luồng VAD (luồng duy nhất tự đọc âm thanh mãi) chạy sau cùng: nếu không tạo được một luồng,
+    /// các luồng đã chạy thấy đầu vào của chúng đóng lại và tự kết thúc. `speaker`: đầu engine của kênh tới client
+    /// `speaker-worker` (spec 2026-10-26-phan-biet-nguoi-noi §4.3); `None` thì phiên như trước (không chép âm thanh, không đọc cờ
+    /// nguồn).
+    pub fn start_with_speaker(
+        cfg: EngineConfig,
+        source: Box<dyn FrameSource>,
+        vad: VadFactory,
+        asr: Box<dyn Asr>,
+        mt: Box<dyn Mt>,
+        sink: Arc<dyn EventSink>,
+        speaker: Option<SpeakerLink>,
+    ) -> Result<Self> {
+        let (tap, updates, speaker_keep) = match speaker {
+            Some(link) => (
+                Some(SpeakerTap::new(link.segments, link.offered_end_ms).with_speech(link.speech)),
+                Some(link.updates),
+                link.keep,
+            ),
+            None => (None, None, None),
+        };
         let flags = Flags::new(&cfg);
         let now_ms = Arc::new(AtomicU64::new(0));
         let queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
@@ -550,7 +615,9 @@ impl Engine {
                         stop: composer_flags.stop.clone(),
                         sink: sink.clone(),
                     };
-                    Composer::new(cfg, sink, jobs_tx, composer_flags, asr_queue).run(rx)
+                    Composer::new(cfg, sink, jobs_tx, composer_flags, asr_queue)
+                        .with_speaker(updates)
+                        .run(rx)
                 })
                 .map_err(|e| fail(e, &flags, &queue))?
         };
@@ -575,6 +642,7 @@ impl Engine {
                         &now_ms,
                         &stop,
                         &streaming,
+                        tap,
                     )
                 })
                 .map_err(|e| fail(e, &flags, &queue))?
@@ -584,6 +652,7 @@ impl Engine {
             vad: Some(vad_thread),
             workers: vec![asr_thread, mt_thread],
             composer: Some(composer),
+            _speaker_keep: speaker_keep,
         })
     }
 
@@ -720,6 +789,7 @@ fn vad_loop(
     now_ms: &AtomicU64,
     stop: &AtomicBool,
     streaming: &Streaming,
+    mut speaker: Option<SpeakerTap>,
 ) {
     let mut vad = match vad() {
         Ok(v) => v,
@@ -741,20 +811,19 @@ fn vad_loop(
     let _ = tx.send(Msg::Threshold(end_silence));
     let mut silence = SilenceMonitor::new(cfg.audio.clone());
     let level_frames = (cfg.audio.level_interval_ms / FRAME_MS).max(1);
-    // `buf`: bản cho whisper (mức âm lượng, `SilenceMonitor`, `Segmenter`); `vad_buf`: bản cho VAD, thẳng hàng theo chỉ số.
-    let (mut buf, mut vad_buf, mut frames, mut no_audio) = (Vec::new(), Vec::new(), 0u64, false);
+    // `buf`: bản cho whisper (mức âm lượng, `SilenceMonitor`, `Segmenter`); `vad_buf`: bản cho VAD, thẳng hàng theo chỉ số;
+    // `tags`: cờ nguồn của từng mẫu của `buf`, chỉ khi có nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §5.5).
+    let (mut buf, mut vad_buf, mut tags, mut frames, mut no_audio) = (Vec::new(), Vec::new(), Vec::new(), 0u64, false);
     let mut level_sum = 0.0f32;
-    let send_segment = |seg: crate::segmenter::Segment, closed_ms: u64| {
-        let _ = tx.send(Msg::Queued {
-            id: seg.id,
-            start_ms: seg.start_ms,
-            end_ms: seg.end_ms,
-            closed_ms,
-        });
-        queue.push(PendingSegment::from(seg));
-    };
+    let mut tags_warned = false;
     'outer: while !stop.load(Ordering::SeqCst) {
-        match source.read_with_vad(&mut buf, &mut vad_buf, Duration::from_millis(20)) {
+        let tagging = speaker.as_ref().is_some_and(|t| !t.is_closed());
+        let read = if tagging {
+            source.read_tagged(&mut buf, &mut vad_buf, &mut tags, Duration::from_millis(20))
+        } else {
+            source.read_with_vad(&mut buf, &mut vad_buf, Duration::from_millis(20))
+        };
+        match read {
             Ok(true) => {}
             Ok(false) => break,
             Err(e) => {
@@ -763,11 +832,27 @@ fn vad_loop(
                 break;
             }
         }
+        if tagging && tags.len() != buf.len() {
+            // Nguồn ra thiếu hay thừa cờ (lỗi của một đường trong bộ trộn): ép thẳng hàng, không bao giờ để âm thanh dồn lại vì
+            // tính năng phụ (QĐ 15 của kế hoạch 02).
+            if !tags_warned {
+                log::warn!(
+                    "nhận giọng: nguồn âm thanh ra {} cờ cho {} mẫu, đệm System",
+                    tags.len(),
+                    buf.len()
+                );
+                tags_warned = true;
+            }
+            tags.resize(buf.len(), Source::System);
+        }
         let mut consumed = 0;
         let ready = buf.len().min(vad_buf.len());
         while ready - consumed >= FRAME_SAMPLES {
             let frame = &buf[consumed..consumed + FRAME_SAMPLES];
             let vad_frame = &vad_buf[consumed..consumed + FRAME_SAMPLES];
+            if tagging && let Some(tap) = speaker.as_mut() {
+                tap.push_frame(frames, &tags[consumed..consumed + FRAME_SAMPLES]);
+            }
             consumed += FRAME_SAMPLES;
             frames += 1;
             let now = frames * FRAME_MS;
@@ -791,8 +876,12 @@ fn vad_loop(
                     break 'outer;
                 }
             };
+            // `Speech` cho bộ đọc tên (kế hoạch 04, spec §4.2): chỉ `try_send`, không chờ.
+            if tagging && let Some(tap) = speaker.as_mut() {
+                tap.speech_frame(frames - 1, prob >= cfg.segmenter.threshold);
+            }
             for seg in segmenter.push(frame, prob) {
-                send_segment(seg, now);
+                send_segment(seg, now, tx, queue, &mut speaker);
             }
             match segmenter.open_progress() {
                 None => {
@@ -836,14 +925,60 @@ fn vad_loop(
         }
         buf.drain(..consumed);
         vad_buf.drain(..consumed);
+        if tagging {
+            tags.drain(..consumed);
+        } else {
+            tags.clear();
+        }
     }
     if let Some(seg) = segmenter.flush() {
-        send_segment(seg, frames * FRAME_MS);
+        send_segment(seg, frames * FRAME_MS, tx, queue, &mut speaker);
+    }
+    if let Some(tap) = &speaker {
+        log::info!(
+            "nhận giọng: luồng VAD gửi {} đoạn, bỏ {} đoạn vì kênh đầy",
+            tap.sent(),
+            tap.dropped()
+        );
     }
     let _ = tx.send(Msg::Clock {
         now_ms: frames * FRAME_MS,
         speech_since: None,
     });
+}
+
+/// Đoạn vừa chốt: báo luồng phụ đề, đưa vào hàng đợi nhận dạng như cũ, rồi gửi bản sao (tối đa 4 s tiếng nói) cho nhận giọng bằng
+/// `try_send` (spec 2026-10-26-phan-biet-nguoi-noi §4.3: không bao giờ chờ). Đoạn chuyển quyền sở hữu vào hàng đợi nên phần
+/// tiếng nói phải chép trước, nhưng chỉ chép (≤ 256 KB); đổi PCM, tính nguồn và gửi làm sau khi đẩy. Có nhận giọng mà đoạn không
+/// tới client (kênh đầy, client đã tắt) thì báo luồng phụ đề `Msg::Unlabeled` (N1 của rà soát cuối kế hoạch 02).
+fn send_segment(
+    seg: crate::segmenter::Segment,
+    closed_ms: u64,
+    tx: &Sender<Msg>,
+    queue: &SharedQueue,
+    speaker: &mut Option<SpeakerTap>,
+) {
+    let id = seg.id;
+    let _ = tx.send(Msg::Queued {
+        id,
+        start_ms: seg.start_ms,
+        end_ms: seg.end_ms,
+        closed_ms,
+    });
+    let copy = speaker
+        .as_ref()
+        .filter(|t| !t.is_closed())
+        .map(|_| SpeakerTap::copy_speech(&seg));
+    queue.push(PendingSegment::from(seg));
+    if let Some(tap) = speaker.as_mut() {
+        let delivered = copy.is_some_and(|copy| {
+            let audio = tap.prepare(copy);
+            tap.send(audio)
+        });
+        if !delivered {
+            let _ = tx.send(Msg::Unlabeled(id));
+        }
+    }
 }
 
 fn asr_loop(
@@ -1315,6 +1450,17 @@ struct Composer {
     live_jobs: u64,
     /// Nhịp T và tự tắt (§5).
     cadence: Cadence,
+    /// Giọng từng đoạn và từng phụ đề (spec 2026-10-26-phan-biet-nguoi-noi §4.3–§4.4).
+    book: VoiceBook,
+    /// Nhãn từ `speaker-worker` (qua client); `None` khi phiên không có nhận giọng hay client đã tắt.
+    speaker_rx: Option<Receiver<SpeakerUpdate>>,
+    /// Bảng giọng của phiên: mọi giọng đã thấy (kể cả của lần chạy worker trước), trừ giọng đã bị gộp.
+    roster: BTreeMap<u32, RosterVoice>,
+    /// Tên đọc từ app họp của từng giọng: (tên, số phòng) (kế hoạch 04).
+    names: BTreeMap<u32, (Option<PersonName>, Option<u32>)>,
+    participants: Vec<PersonName>,
+    /// Tên hay người tham dự vừa đổi: phát `EventSink::names` một lần cho cả loạt.
+    names_dirty: bool,
 }
 
 impl Composer {
@@ -1373,12 +1519,26 @@ impl Composer {
             live_want: None,
             live_jobs: 0,
             cadence,
+            book: VoiceBook::default(),
+            speaker_rx: None,
+            roster: BTreeMap::new(),
+            names: BTreeMap::new(),
+            participants: Vec::new(),
+            names_dirty: false,
         }
+    }
+
+    fn with_speaker(mut self, updates: Option<Receiver<SpeakerUpdate>>) -> Self {
+        self.speaker_rx = updates;
+        self
     }
 
     fn run(mut self, rx: Receiver<Msg>) -> SessionMetrics {
         loop {
-            match rx.recv_timeout(Duration::from_millis(50)) {
+            let msg = rx.recv_timeout(Duration::from_millis(50));
+            // Nhãn đã tới thì áp trước khi xử lý kết quả nhận dạng, để phụ đề mới mang nhãn ngay lần phát đầu (spec §4.3).
+            self.drain_speaker();
+            match msg {
                 Ok(msg) => self.handle(msg),
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => break,
@@ -1388,6 +1548,43 @@ impl Composer {
             }
         }
         self.finish()
+    }
+
+    /// Lấy tối đa `SPEAKER_DRAIN_MAX` nhãn đang chờ, không chặn (QĐ 14 của kế hoạch 02: worker gửi dồn không làm phụ đề chậm,
+    /// phần còn lại để vòng sau). Mọi `Voices` đều được áp (mỗi bản chỉ chèn hay cập nhật vài giọng; bản sau không thay hẳn bản
+    /// trước: bản đầu của lần chạy worker sau chỉ có giọng mới của lần đó), còn bảng giọng phát một lần mỗi vòng. Client đã tắt
+    /// (kênh đóng) thì thôi đọc, và mọi đoạn chưa có nhãn không bao giờ có nhãn nữa (N1 của rà soát cuối: `VoiceBook::close`).
+    fn drain_speaker(&mut self) {
+        let mut got = Vec::new();
+        let mut gone = false;
+        if let Some(rx) = &self.speaker_rx {
+            while got.len() < SPEAKER_DRAIN_MAX {
+                match rx.try_recv() {
+                    Ok(update) => got.push(update),
+                    Err(TryRecvError::Empty) => break,
+                    Err(TryRecvError::Disconnected) => {
+                        gone = true;
+                        break;
+                    }
+                }
+            }
+        }
+        let mut roster_changed = false;
+        for update in got {
+            roster_changed |= self.on_speaker(update);
+        }
+        if gone {
+            self.speaker_rx = None;
+            for (sub_id, voice) in self.book.close() {
+                self.set_speaker(sub_id, voice);
+            }
+        }
+        if roster_changed {
+            self.emit_roster();
+        }
+        if std::mem::take(&mut self.names_dirty) {
+            self.emit_names();
+        }
     }
 
     /// Xét cờ dừng và hạn mức, gửi câu kế tiếp đi dịch. Trả `true` khi luồng phụ đề phải thoát.
@@ -1401,6 +1598,11 @@ impl Composer {
     }
 
     fn finish(mut self) -> SessionMetrics {
+        // Nhãn đã nằm trong kênh (vài đoạn cuối) áp trước khi chốt câu đang mở (N12 của rà soát cuối kế hoạch 02); tối đa một
+        // kênh đầy, không chờ nhãn chưa tới: worker chậm hay treo không được làm phiên kết thúc chậm.
+        for _ in 0..UPDATE_CHANNEL_CAP.div_ceil(SPEAKER_DRAIN_MAX) {
+            self.drain_speaker();
+        }
         self.finish_open();
         // Dừng phiên: gỡ mọi dòng đang nói còn lại (spec 2026-10-10 §6.2).
         self.end_all_lives();
@@ -1423,6 +1625,12 @@ impl Composer {
                 self.metrics.segments += 1;
                 self.metrics.vad_ms.push(closed_ms.saturating_sub(end_ms) as f32);
                 self.pending.insert(id, (start_ms, end_ms));
+                self.book.queued(id, end_ms.saturating_sub(start_ms));
+            }
+            Msg::Unlabeled(seg) => {
+                if let Some((sub_id, voice)) = self.book.unlabeled(seg) {
+                    self.set_speaker(sub_id, voice);
+                }
             }
             Msg::Clock { now_ms, speech_since } => {
                 self.now_ms = now_ms;
@@ -1494,6 +1702,15 @@ impl Composer {
                 log::error!("llama-server không dùng được ngay từ lần làm nóng: {reason}");
                 self.set_mt_unavailable();
             }
+            #[cfg(test)]
+            Msg::Speaker(update) => {
+                if self.on_speaker(update) {
+                    self.emit_roster();
+                }
+                if std::mem::take(&mut self.names_dirty) {
+                    self.emit_names();
+                }
+            }
         }
     }
 
@@ -1533,17 +1750,21 @@ impl Composer {
                 }
                 self.last_final_seg = self.last_final_seg.max(ids.last().copied());
                 self.metrics.asr_ms.push(asr_ms);
+                let voice = self.book.voice_of(&ids);
                 let piece = Piece {
                     start_ms,
                     end_ms,
                     lang: &lang,
                     text: &text,
+                    voice,
                 };
                 if lang == self.cfg.target.code() {
                     self.finish_open();
                     self.metrics.same_lang += 1;
+                    let sub_id = self.cfg.id_base + ids[0];
+                    let speaker = self.book.attach(sub_id, &ids);
                     let sub = Subtitle {
-                        id: self.cfg.id_base + ids[0],
+                        id: sub_id,
                         start_ms,
                         end_ms,
                         src_lang: lang.clone(),
@@ -1552,6 +1773,7 @@ impl Composer {
                         status: Status::SameLang,
                         provisional: false,
                         replaces: Vec::new(),
+                        speaker,
                     };
                     self.sink.subtitle(&sub);
                     // Câu đã là ngôn ngữ đích: phụ đề cuối hiện ngay, gỡ dòng đang nói (spec 2026-10-10 §4.5).
@@ -1561,7 +1783,15 @@ impl Composer {
                 let window = self.window_ms;
                 if let Some((open, sub_id)) = self.open.as_mut().filter(|(o, _)| o.accepts(&piece, window)) {
                     open.push(&piece);
-                    let (sub_id, closed, joined) = (*sub_id, open.is_closed(), open.text().to_string());
+                    let sub_id = *sub_id;
+                    let (closed, joined) = (open.is_closed(), open.text().to_string());
+                    // Giọng của câu tính lại trên mọi đoạn của nó (spec 2026-10-26 §4.4); câu đang mở và câu đang chờ dịch đi
+                    // theo (Q1 của rà soát: không thì hàng đợi dịch gộp theo giọng cũ).
+                    let speaker = self.book.attach(sub_id, &ids);
+                    if let Some(state) = self.subs.get_mut(&sub_id) {
+                        state.sub.speaker = speaker;
+                    }
+                    self.follow_voice(sub_id, speaker);
                     self.metrics.merges += 1;
                     self.grow(sub_id, &ids, &joined, end_ms, speech_ms, closed);
                     if closed {
@@ -1569,8 +1799,10 @@ impl Composer {
                     }
                 } else {
                     self.finish_open();
-                    let open = OpenSentence::new(&piece, &self.cfg.pipeline.merge);
+                    let mut open = OpenSentence::new(&piece, &self.cfg.pipeline.merge);
                     let sub_id = self.cfg.id_base + ids[0];
+                    let speaker = self.book.attach(sub_id, &ids);
+                    open.set_voice(speaker);
                     let closed = open.is_closed();
                     let sub = Subtitle {
                         id: sub_id,
@@ -1582,6 +1814,7 @@ impl Composer {
                         status: Status::AsrDone,
                         provisional: !closed,
                         replaces: Vec::new(),
+                        speaker,
                     };
                     // Ngữ cảnh là câu chốt trước câu này, chụp ngay lúc mở câu (§6.5).
                     let context = self
@@ -1641,6 +1874,7 @@ impl Composer {
                     status: Status::Dropped,
                     provisional: false,
                     replaces: Vec::new(),
+                    speaker: None,
                 });
                 self.end_lives(&ids);
             }
@@ -1650,6 +1884,144 @@ impl Composer {
                 self.sink.fatal(Fatal::Asr, &reason);
             }
         }
+    }
+
+    /// Nhãn từ worker (spec 2026-10-26-phan-biet-nguoi-noi §4.3). Trả `true` khi bảng giọng đổi (bên gọi phát `speaker://roster`
+    /// một lần cho cả loạt).
+    fn on_speaker(&mut self, update: SpeakerUpdate) -> bool {
+        match update {
+            SpeakerUpdate::Assign { segment_id, voice, .. } => {
+                self.metrics.speaker_assigns += 1;
+                // Đúng lúc: đoạn chưa có kết quả nhận dạng, tức còn chờ, hay `Msg::Queued` của nó chưa được xử lý (nhãn được rút
+                // trước tin nhắn của cùng vòng). Muộn: đoạn đã có kết quả (phụ đề đã phát, hay bị lọc, bị bỏ).
+                let unseen = self.book.newest().is_none_or(|newest| segment_id > newest);
+                if self.pending.contains_key(&segment_id) || unseen {
+                    self.metrics.speaker_on_time += 1;
+                } else {
+                    self.metrics.speaker_late += 1;
+                }
+                if let Some((sub_id, voice)) = self.book.assign(segment_id, voice) {
+                    self.set_speaker(sub_id, voice);
+                }
+                false
+            }
+            SpeakerUpdate::Voices(voices) => {
+                for v in voices {
+                    self.roster.insert(
+                        v.voice,
+                        RosterVoice {
+                            id: v.voice,
+                            room: v.mic,
+                        },
+                    );
+                    let named = (v.name, v.room_index);
+                    if self.names.get(&v.voice) != Some(&named) {
+                        self.names.insert(v.voice, named);
+                        self.names_dirty = true;
+                    }
+                }
+                true
+            }
+            SpeakerUpdate::Participants(p) => {
+                if p != self.participants {
+                    self.participants = p;
+                    self.names_dirty = true;
+                }
+                false
+            }
+            SpeakerUpdate::Reader(info) => {
+                // QĐ 31: "Lấy tên" tắt (`Off`) thì bỏ mọi tên tự động và người tham dự (kể cả của lần chạy worker trước); tạm dừng
+                // vì quá tải (`Paused`) giữ tên.
+                if info.state == ReaderStatus::Off
+                    && (self.names.values().any(|(n, _)| n.is_some()) || !self.participants.is_empty())
+                {
+                    self.names.clear();
+                    self.participants.clear();
+                    self.names_dirty = true;
+                }
+                self.sink.reader(&info);
+                false
+            }
+            SpeakerUpdate::Unlabeled { segment_id } => {
+                if let Some((sub_id, voice)) = self.book.unlabeled(segment_id) {
+                    self.set_speaker(sub_id, voice);
+                }
+                false
+            }
+            SpeakerUpdate::Merged { from, into } => {
+                self.roster.remove(&from);
+                self.names_dirty |= self.names.remove(&from).is_some();
+                for (sub_id, voice) in self.book.merge_voices(from, into) {
+                    self.set_speaker(sub_id, voice);
+                }
+                true
+            }
+        }
+    }
+
+    /// Giọng của phụ đề `sub_id` vừa đổi: cập nhật trạng thái (các upsert sau mang giọng mới), câu đang mở, câu đang chờ dịch;
+    /// phát `subtitle://speaker`; phát lại dòng đang nói nối tiếp phụ đề đó.
+    fn set_speaker(&mut self, sub_id: u64, voice: Option<u32>) {
+        if let Some(state) = self.subs.get_mut(&sub_id) {
+            state.sub.speaker = voice;
+        }
+        self.follow_voice(sub_id, voice);
+        self.sink.speaker(&SpeakerLabel {
+            id: sub_id,
+            speaker: voice,
+        });
+        let lines: Vec<u64> = self
+            .lives
+            .iter()
+            .filter(|(_, l)| l.line.extends == Some(sub_id) || (l.frozen && l.line.id == sub_id))
+            .map(|(seg, _)| *seg)
+            .collect();
+        for seg in lines {
+            self.emit_live(seg, false);
+        }
+    }
+
+    /// Giọng của phụ đề `sub_id` vừa tính lại (`VoiceBook`): câu đang mở và câu đang chờ dịch đi theo (Q1 của rà soát), để luật
+    /// ghép câu và hàng đợi dịch so đúng giọng đang hiện. Phụ đề lẫn giọng (`VoiceBook::is_mixed`) thì không nhãn và khác mọi giọng.
+    fn follow_voice(&mut self, sub_id: u64, voice: Option<u32>) {
+        let mixed = self.book.is_mixed(sub_id);
+        if let Some((open, id)) = self.open.as_mut()
+            && *id == sub_id
+        {
+            if mixed {
+                open.mark_mixed();
+            } else {
+                open.set_voice(voice);
+            }
+        }
+        if mixed {
+            self.queue.mark_mixed(sub_id);
+        } else {
+            self.queue.set_voice(sub_id, voice);
+        }
+    }
+
+    fn emit_roster(&self) {
+        self.sink.roster(&Roster {
+            voices: self.roster.values().copied().collect(),
+        });
+    }
+
+    fn emit_names(&self) {
+        self.sink.names(&Names {
+            voices: self
+                .names
+                .iter()
+                .filter_map(|(&id, (name, room_index))| {
+                    name.as_ref().map(|n| NamedVoice {
+                        id,
+                        name: n.as_str().to_string(),
+                        room_index: *room_index,
+                    })
+                })
+                .collect(),
+            participants: self.participants.iter().map(|p| p.as_str().to_string()).collect(),
+        });
     }
 
     /// Câu đang mở vừa được ghép thêm các đoạn `segs`: gửi lại phụ đề (tạm) mà vẫn giữ bản dịch đang hiện (A2, H2), rồi dịch
@@ -1704,17 +2076,32 @@ impl Composer {
             enqueued_ms: self.now_ms,
             open: !state.closed,
             replaces: state.sub.replaces.clone(),
+            voice: state.sub.speaker,
+            mixed: self.book.is_mixed(sub_id),
         };
         if front {
             self.queue.push_front(item);
+            self.metrics.mt_queue_max = self.metrics.mt_queue_max.max(self.queue.len());
             return;
         }
-        for merged in self.queue.push(item) {
+        let merges = self.queue.push(item);
+        self.metrics.mt_queue_max = self.metrics.mt_queue_max.max(self.queue.len());
+        for merged in merges {
             let mut counted = 0;
+            let mut speaker = None;
+            // Câu gộp lẫn giọng (gộp câu cùng giọng xong mà hàng còn dài hơn khi tắt, QĐ 12 của kế hoạch 02): từ giờ không nhãn.
+            if merged.mixed
+                && let Some((sub_id, voice)) = self.book.mark_mixed(merged.sub_id)
+            {
+                self.set_speaker(sub_id, voice);
+            }
             for id in &merged.replaces {
                 if let Some(absorbed) = self.subs.remove(id) {
                     counted += absorbed.counted_ms;
+                    self.metrics.mt_merges += 1;
                 }
+                // Giọng của câu gộp do `VoiceBook` tính (câu gộp lẫn giọng: `None`).
+                speaker = self.book.absorb(merged.sub_id, *id);
                 // Dòng đang nói chờ câu bị gộp giờ chờ câu gộp (QĐ5 của kế hoạch 02).
                 if let Some(segs) = self.live_waiting.remove(id) {
                     self.live_waiting.entry(merged.sub_id).or_default().extend(segs);
@@ -1727,9 +2114,13 @@ impl Composer {
                 state.sub.src_text = merged.text.clone();
                 state.sub.end_ms = merged.end_ms;
                 state.sub.replaces = merged.replaces.clone();
+                state.sub.speaker = speaker;
                 self.sink.subtitle(&state.sub);
             }
+            // Câu gộp trong hàng mang đúng giọng đang hiện (Q1 của rà soát), không phải giọng đã biết đầu tiên của các câu con.
+            self.follow_voice(merged.sub_id, speaker);
         }
+        self.metrics.mt_merges_across_voices = self.queue.merges_across_voices();
     }
 
     /// Chốt câu đang mở: không còn là phụ đề tạm.
@@ -1843,7 +2234,12 @@ impl Composer {
 
     fn dispatch(&mut self) {
         while self.in_flight.is_none() && !self.quota_hit && !self.abandoned {
-            let item = match self.queue.pop(self.now_ms) {
+            let popped = self.queue.pop(self.now_ms);
+            if let Some(Ready::Translate(item) | Ready::Skip(item)) = &popped {
+                let waited = self.now_ms.saturating_sub(item.enqueued_ms);
+                self.metrics.mt_wait_max_ms = self.metrics.mt_wait_max_ms.max(waited);
+            }
+            let item = match popped {
                 None => return,
                 Some(Ready::Translate(item)) if !self.mt_unavailable => item,
                 Some(Ready::Translate(item)) => {
@@ -2037,6 +2433,7 @@ impl Composer {
             end_ms: live.upto_ms,
             lang: &live.line.src_lang,
             text: &live.text,
+            voice: None,
         };
         self.open
             .as_ref()
@@ -2072,6 +2469,13 @@ impl Composer {
                 .map(|s| s.sub.src_text.as_str());
             (line.src_stable, line.src_tail) = live_source(live, base);
         }
+        // Giọng của câu mà dòng nối tiếp; dòng đã đóng băng mà không nối tiếp câu nào thì chính nó là phụ đề `line.id`.
+        let shown = if live.frozen {
+            line.extends.or(Some(line.id))
+        } else {
+            line.extends
+        };
+        line.speaker = shown.and_then(|id| self.subs.get(&id)).and_then(|s| s.sub.speaker);
         if force || live.emitted.as_ref() != Some(&line) {
             self.sink.live(&line);
             if let Some(live) = self.lives.get_mut(&seg) {
@@ -2351,8 +2755,13 @@ impl Composer {
 mod tests {
     use super::*;
     use crate::llama::{ChatRequest, StreamEnd};
+    use crate::speaker::ReaderInfo;
+    use crate::speaker::SEGMENT_CHANNEL_CAP;
+    use crate::subtitle::{NamedVoice, Names};
     use crate::translate::{MtError, Translated};
     use asr_protocol::TranscribeResult;
+    use speaker_protocol::{MAX_EMBED_SAMPLES, MeetingApp, PersonName, ReaderStatus, SegmentAudio, VoiceInfo};
+    use std::collections::BTreeSet;
 
     #[test]
     fn silence_is_reported_after_60_seconds() {
@@ -2500,6 +2909,10 @@ mod tests {
         indicators: Mutex<Vec<Indicators>>,
         fatal: Mutex<Vec<(Fatal, String)>>,
         usage: Mutex<Vec<Usage>>,
+        speakers: Mutex<Vec<SpeakerLabel>>,
+        rosters: Mutex<Vec<Roster>>,
+        names: Mutex<Vec<Names>>,
+        readers: Mutex<Vec<ReaderInfo>>,
         /// Hạn mức (ms): tổng `usage` chạm số này thì trả `Break`.
         limit_ms: Option<u64>,
     }
@@ -2526,6 +2939,19 @@ mod tests {
         fn live_end(&self, e: &LiveEnd) {
             self.trail.lock().unwrap().push(format!("end {}", e.id));
             self.live_ends.lock().unwrap().push(e.id);
+        }
+        fn speaker(&self, l: &SpeakerLabel) {
+            self.trail.lock().unwrap().push(format!("speaker {}", l.id));
+            self.speakers.lock().unwrap().push(*l);
+        }
+        fn roster(&self, r: &Roster) {
+            self.rosters.lock().unwrap().push(r.clone());
+        }
+        fn names(&self, n: &Names) {
+            self.names.lock().unwrap().push(n.clone());
+        }
+        fn reader(&self, r: &ReaderInfo) {
+            self.readers.lock().unwrap().push(r.clone());
         }
         fn usage(&self, u: &Usage) -> ControlFlow<()> {
             let mut all = self.usage.lock().unwrap();
@@ -2775,6 +3201,25 @@ mod tests {
                 }
             }
             out
+        }
+
+        /// Luồng VAD vừa chốt đoạn `id` (tiếng nói `start..end`).
+        fn queued(&mut self, id: u64, start_ms: u64, end_ms: u64) -> bool {
+            self.feed(Msg::Queued {
+                id,
+                start_ms,
+                end_ms,
+                closed_ms: end_ms,
+            })
+        }
+
+        /// `Assign` của đoạn `seg` từ worker.
+        fn voice(&mut self, seg: u64, voice: Option<u32>) -> bool {
+            self.feed(Msg::Speaker(SpeakerUpdate::Assign {
+                segment_id: seg,
+                voice,
+                confidence: 0.9,
+            }))
         }
     }
 
@@ -4699,6 +5144,20 @@ mod tests {
         );
     }
 
+    /// Bản mặc định của `read_tagged`: mọi mẫu mới là `System` (nguồn âm thanh máy, test, `latency-bench`).
+    #[test]
+    fn by_default_every_new_sample_is_tagged_system() {
+        let mut source = SampleSource::new(vec![0.1, 0.2, 0.3], 2, Duration::ZERO);
+        let (mut out, mut vad, mut tags) = (vec![9.0], Vec::new(), vec![Source::Mic]);
+        assert!(
+            source
+                .read_tagged(&mut out, &mut vad, &mut tags, Duration::ZERO)
+                .unwrap()
+        );
+        assert_eq!(tags, [Source::Mic, Source::System, Source::System]);
+        assert_eq!(vad.len(), 2);
+    }
+
     /// Chép lời mọi đoạn thành "so we went home"; ghi (id đoạn, số mẫu) của mọi yêu cầu.
     struct RecordingAsr(Arc<Mutex<Vec<(u64, usize)>>>);
 
@@ -4837,6 +5296,7 @@ mod tests {
             &now_ms,
             &stop,
             &streaming,
+            None,
         );
         drop(tx);
         let (mut thresholds, mut closed) = (Vec::new(), Vec::new());
@@ -4922,6 +5382,7 @@ mod tests {
             mean_prob: 0.9,
             speech_ratio: 1.0,
             samples: vec![0.0; FRAME_SAMPLES],
+            lead_samples: 0,
         }));
         // Luồng nhận dạng bận tới trước khung 40 (đoạn đóng 99 còn chờ), rồi lấy hết hàng đợi.
         let run = run_vad(script(&[(60, 0)]), true, queue, |i| i >= 40, |_, _| {});
@@ -5038,5 +5499,734 @@ mod tests {
             assert!(Instant::now() < deadline, "lần làm nóng phải dừng");
             std::thread::sleep(Duration::from_millis(5));
         }
+    }
+
+    // ---- Nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.3–§4.4). ----
+
+    #[test]
+    fn an_assign_that_comes_first_labels_the_first_upsert() {
+        let mut h = harness();
+        h.queued(0, 0, 2_000);
+        h.voice(0, Some(3));
+        h.said(0, 0, 2_000, "en", "Hello.");
+        assert_eq!(h.last(0).speaker, Some(3));
+        assert!(h.sink.speakers.lock().unwrap().is_empty());
+        assert_eq!((h.c.metrics.speaker_on_time, h.c.metrics.speaker_late), (1, 0));
+    }
+
+    #[test]
+    fn a_late_assign_sends_a_speaker_event_and_later_upserts_keep_it() {
+        let mut h = harness();
+        h.queued(0, 0, 2_000);
+        h.said(0, 0, 2_000, "en", "so we went");
+        assert_eq!(h.last(0).speaker, None);
+        h.voice(0, Some(2));
+        assert_eq!(
+            *h.sink.speakers.lock().unwrap(),
+            [SpeakerLabel {
+                id: 0,
+                speaker: Some(2)
+            }]
+        );
+        let job = h.job();
+        h.finish(&job, done("chúng tôi đi"));
+        assert_eq!(h.last(0).speaker, Some(2));
+        assert_eq!(h.c.metrics.speaker_late, 1);
+    }
+
+    #[test]
+    fn two_known_different_voices_are_never_merged_into_one_line() {
+        for (second, merges) in [(Some(2), 0), (Some(1), 1), (None, 1)] {
+            let mut h = harness();
+            h.voice(0, Some(1));
+            h.voice(1, second);
+            h.said(0, 0, 1_000, "en", "so we went");
+            h.said(1, 1_300, 2_500, "en", "to the market");
+            assert_eq!(h.c.metrics.merges, merges, "{second:?}");
+            assert_eq!(h.last(0).speaker, Some(1));
+        }
+    }
+
+    /// Spec §4.4: dịch kịp (hàng đợi dịch chưa đầy) thì không gộp hai câu đã biết khác giọng, cũng như không gộp câu nào.
+    #[test]
+    fn the_translation_queue_keeps_different_voices_apart_while_translation_keeps_up() {
+        for voices in [vec![1u32, 2], vec![1, 2, 1]] {
+            let mut h = harness();
+            h.said(0, 0, 500, "en", "Zero.");
+            for (i, v) in voices.iter().enumerate() {
+                let id = i as u64 + 1;
+                h.voice(id, Some(*v));
+                h.said(id, id * 1_000, id * 1_000 + 500, "en", "One.");
+            }
+            let merged = h
+                .sink
+                .subs
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|s| !s.replaces.is_empty())
+                .count();
+            assert_eq!(merged, 0, "{voices:?}");
+            assert_eq!((h.c.metrics.mt_merges, h.c.metrics.mt_merges_across_voices), (0, 0));
+            for (i, v) in voices.iter().enumerate() {
+                assert_eq!(h.last(i as u64 + 1).speaker, Some(*v));
+            }
+        }
+    }
+
+    /// QĐ 12 của kế hoạch 02 (ưu tiên 1; sửa theo Q1 của rà soát cuối): dịch chậm hơn lời nói. Gộp các câu cùng giọng xong mà hàng
+    /// còn nhiều câu hơn cách gộp lúc tắt để lại, nên hàng đợi dịch gộp ngay cả câu khác giọng: hàng không bao giờ dài hơn khi tắt
+    /// (3 câu); phụ đề gộp không nhãn. Kiểu xen kẽ 1-2-1-2 và kiểu 1-1-2-2 (lượt 1 gộp được một cặp: luật cũ để hàng dài hơn).
+    #[test]
+    fn a_translation_queue_longer_than_when_off_merges_different_voices_without_a_label() {
+        let mut h = harness();
+        h.said(0, 0, 500, "en", "Zero.");
+        for (id, voice) in [(1u64, 1u32), (2, 1), (3, 2), (4, 2)] {
+            h.voice(id, Some(voice));
+            h.said(id, id * 1_000, id * 1_000 + 500, "en", "One.");
+        }
+        assert_eq!(h.c.queue.len(), 2, "1-1-2-2: như khi tắt, một câu gộp và câu mới");
+        assert_eq!((h.last(1).replaces, h.last(1).speaker), (vec![2, 3], None));
+        assert_eq!(h.c.metrics.mt_merges_across_voices, 1);
+
+        let mut h = harness();
+        h.said(0, 0, 500, "en", "Zero.");
+        for id in 1..=7u64 {
+            h.voice(id, Some(id as u32 % 2 + 1));
+            h.said(id, id * 1_000, id * 1_000 + 500, "en", "One.");
+            assert!(h.c.queue.len() <= 3, "câu {id}: hàng đợi dịch dài {}", h.c.queue.len());
+        }
+        let merged = h
+            .sink
+            .subs
+            .lock()
+            .unwrap()
+            .iter()
+            .rev()
+            .find(|s| !s.replaces.is_empty())
+            .cloned()
+            .expect("có câu gộp");
+        assert_eq!((merged.id, merged.speaker), (1, None));
+        assert_eq!(merged.replaces, [2, 3, 4, 5]);
+        assert_eq!((h.c.metrics.mt_merges, h.c.metrics.mt_merges_across_voices), (4, 4));
+        assert_eq!(h.c.metrics.mt_queue_max, 3);
+        // Nhãn tới muộn cho đoạn của phụ đề gộp: vẫn không nhãn.
+        h.voice(1, Some(2));
+        assert_eq!(h.last(1).speaker, None);
+    }
+
+    /// Số đo cho 02b (kịch bản dịch quá tải): số câu chờ dịch nhiều nhất cùng lúc, câu chờ lâu nhất (giờ âm thanh).
+    #[test]
+    fn the_metrics_keep_the_longest_translation_queue_and_wait() {
+        let mut h = harness();
+        h.said(0, 0, 500, "en", "Zero.");
+        let job = h.job();
+        h.feed(Msg::Clock {
+            now_ms: 1_000,
+            speech_since: None,
+        });
+        h.said(1, 1_000, 1_500, "en", "One.");
+        h.said(2, 2_000, 2_500, "en", "Two.");
+        h.feed(Msg::Clock {
+            now_ms: 5_000,
+            speech_since: None,
+        });
+        h.finish(&job, done("Không."));
+        assert_eq!((h.c.metrics.mt_queue_max, h.c.metrics.mt_wait_max_ms), (2, 4_000));
+    }
+
+    /// Q1 của rà soát: đoạn đầu của câu chưa có nhãn (kênh nhận giọng đầy), đoạn ghép thêm có nhãn giọng 1 trong lúc câu chờ dịch.
+    /// Câu trong hàng đợi dịch phải mang giọng 1. Khi hàng đầy, lượt 1 không gộp nó với các câu của giọng 2; lượt 2 gộp (hàng còn
+    /// dài hơn khi tắt, QĐ 12) và câu gộp lẫn giọng nên không nhãn. Giọng cũ (`None`) trong hàng thì lượt 1 đã gộp cả ba câu như
+    /// cùng giọng: không có lần gộp khác giọng nào, và không báo bỏ nhãn.
+    #[test]
+    fn a_voice_learned_while_waiting_follows_the_sentence_into_the_translation_queue() {
+        let mut h = harness();
+        h.said(0, 0, 500, "en", "Zero.");
+        h.said(1, 1_000, 1_800, "en", "so we went");
+        h.voice(2, Some(1));
+        h.said(2, 2_000, 2_800, "en", "to the market.");
+        assert_eq!(h.last(1).speaker, Some(1));
+        for (id, voice, text) in [(3u64, 2, "Yes."), (4, 2, "Okay.")] {
+            h.voice(id, Some(voice));
+            h.said(id, id * 2_000, id * 2_000 + 500, "en", text);
+        }
+        let waiting: Vec<(u64, Option<u32>)> = h.c.queue.iter().map(|i| (i.sub_id, i.voice)).collect();
+        assert_eq!(waiting, [(1, Some(1)), (3, Some(2)), (4, Some(2))]);
+        h.voice(5, Some(1));
+        h.said(5, 10_000, 10_500, "en", "Right.");
+        assert_eq!((h.last(1).replaces, h.last(1).speaker), (vec![3, 4], None));
+        assert_eq!(h.c.metrics.mt_merges_across_voices, 1);
+        assert_eq!(
+            h.sink.speakers.lock().unwrap().last(),
+            Some(&SpeakerLabel { id: 1, speaker: None })
+        );
+    }
+
+    /// N8 của rà soát, đường thật (`run`, kênh của client): nhãn đã nằm trong kênh được áp trước kết quả nhận dạng tới cùng vòng
+    /// (phụ đề mang nhãn ngay lần phát đầu, spec §4.3); và kịch bản Q1 (đoạn 1 không có nhãn) qua kênh thật.
+    #[test]
+    fn labels_from_the_real_channel_reach_the_first_upsert_and_the_translation_queue() {
+        let (link, ends) = SpeakerLink::pair();
+        for (seg, voice) in [(0u64, 3u32), (2, 1), (3, 2), (4, 2), (5, 1)] {
+            ends.updates
+                .send(SpeakerUpdate::Assign {
+                    segment_id: seg,
+                    voice: Some(voice),
+                    confidence: 0.9,
+                })
+                .unwrap();
+        }
+        let said = |id: u64, start_ms: u64, end_ms: u64, text: &str| {
+            Msg::Asr(AsrOutcome::Transcribed {
+                ids: vec![id],
+                start_ms,
+                end_ms,
+                speech_ms: end_ms - start_ms,
+                lang: "en".into(),
+                text: text.into(),
+                asr_ms: 1.0,
+            })
+        };
+        let (tx, rx) = mpsc::channel::<Msg>();
+        for msg in [
+            said(0, 0, 500, "Zero."),
+            said(1, 1_000, 1_800, "so we went"),
+            said(2, 2_000, 2_800, "to the market."),
+            said(3, 6_000, 6_500, "Yes."),
+            said(4, 8_000, 8_500, "Okay."),
+            said(5, 10_000, 10_500, "Right."),
+        ] {
+            tx.send(msg).unwrap();
+        }
+        drop(tx);
+        // Luồng dịch không trả lời: câu đầu dịch mãi, các câu sau chờ trong hàng.
+        let (jobs_tx, _jobs) = mpsc::channel();
+        let cfg = cfg();
+        let flags = Flags::new(&cfg);
+        let asr_queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
+        let sink = Arc::new(Sink::default());
+        let metrics = Composer::new(cfg, sink.clone(), jobs_tx, flags, asr_queue)
+            .with_speaker(Some(link.updates))
+            .run(rx);
+        let subs = sink.subs.lock().unwrap();
+        let first = subs.iter().find(|s| s.id == 0).expect("phụ đề 0");
+        assert_eq!(first.speaker, Some(3), "lần phát đầu đã có nhãn");
+        let last = |id: u64| subs.iter().rev().find(|s| s.id == id).cloned().expect("phụ đề phải có");
+        // Câu 1 mang giọng 1 vào hàng đợi dịch: lượt 1 để nó riêng, lượt 2 gộp nó với câu 3, 4 của giọng 2 (hàng đầy, QĐ 12), nên
+        // một lần gộp khác giọng và nhãn duy nhất phải gửi sau là bỏ nhãn của câu gộp.
+        assert_eq!((last(1).replaces, last(1).speaker), (vec![3, 4], None));
+        assert_eq!(metrics.mt_merges_across_voices, 1);
+        assert_eq!(
+            *sink.speakers.lock().unwrap(),
+            [SpeakerLabel { id: 1, speaker: None }],
+            "không có nhãn nào khác phải gửi muộn"
+        );
+        drop(ends);
+    }
+
+    /// N4 của rà soát: nhãn tới muộn lộ ra câu đang mở đã ghép hai người: câu thành không nhãn (không lấy đa số, dù giọng 2 dài
+    /// hơn), và đoạn kế tiếp đã biết giọng mở câu mới với nhãn của nó.
+    #[test]
+    fn a_late_label_revealing_two_voices_in_the_open_sentence_clears_its_label() {
+        let mut h = harness();
+        h.queued(0, 0, 1_000);
+        h.queued(1, 1_200, 3_200);
+        h.said(0, 0, 1_000, "en", "so we went");
+        h.voice(1, Some(2));
+        h.said(1, 1_200, 3_200, "en", "to the");
+        assert_eq!(h.last(0).speaker, Some(2));
+        h.voice(0, Some(1));
+        assert_eq!(
+            h.sink.speakers.lock().unwrap().last(),
+            Some(&SpeakerLabel { id: 0, speaker: None })
+        );
+        h.voice(2, Some(2));
+        h.said(2, 3_400, 4_000, "en", "market.");
+        assert_eq!(h.c.metrics.merges, 1, "đoạn 2 không ghép vào câu lẫn giọng");
+        assert_eq!(h.last(2).speaker, Some(2));
+        assert_eq!(h.last(0).speaker, None);
+    }
+
+    /// N6 của rà soát: worker chạy lại giữa chừng; `Voices` cuối của lần chạy trước và `Voices` đầu của lần chạy sau tới cùng một
+    /// vòng. Bảng giọng có đủ giọng của cả hai lần chạy, phát một lần.
+    #[test]
+    fn voices_from_two_worker_runs_in_one_round_all_reach_the_roster() {
+        let mut h = harness();
+        let (link, ends) = SpeakerLink::pair();
+        h.c.speaker_rx = Some(link.updates);
+        let info = |voice| VoiceInfo::new(voice, 1_000, false);
+        ends.updates
+            .send(SpeakerUpdate::Voices(vec![info(1), info(2)]))
+            .unwrap();
+        ends.updates.send(SpeakerUpdate::Voices(vec![info(3)])).unwrap();
+        h.c.drain_speaker();
+        let rosters = h.sink.rosters.lock().unwrap();
+        assert_eq!(rosters.len(), 1, "một bảng giọng mỗi vòng");
+        assert_eq!(rosters[0].voices.iter().map(|v| v.id).collect::<Vec<_>>(), [1, 2, 3]);
+    }
+
+    /// N7 của rà soát: `Assign` tới trước `Msg::Queued` của chính đoạn đó (luồng phụ đề rút nhãn trước khi xử lý tin nhắn) vẫn là
+    /// nhãn đúng lúc; nhãn tới sau khi đoạn đã có phụ đề là nhãn muộn.
+    #[test]
+    fn an_assign_before_its_queued_message_counts_as_on_time() {
+        let mut h = harness();
+        h.voice(0, Some(3));
+        h.queued(0, 0, 2_000);
+        h.said(0, 0, 2_000, "en", "Hello.");
+        assert_eq!(h.last(0).speaker, Some(3));
+        h.voice(0, Some(3));
+        assert_eq!((h.c.metrics.speaker_on_time, h.c.metrics.speaker_late), (1, 1));
+    }
+
+    /// Worker gửi dồn (QĐ 14 của kế hoạch 02, ưu tiên 1): kênh nhãn có giới hạn, luồng phụ đề lấy tối đa `SPEAKER_DRAIN_MAX` nhãn
+    /// mỗi vòng, `Voices` liền nhau chỉ phát bảng giọng một lần; kết quả nhận dạng vẫn ra phụ đề ngay.
+    #[test]
+    fn a_flood_of_speaker_updates_is_handled_in_bounded_rounds() {
+        let mut h = harness();
+        let (link, ends) = SpeakerLink::pair();
+        h.c.speaker_rx = Some(link.updates);
+        let voices = || SpeakerUpdate::Voices(vec![VoiceInfo::new(1, 1_000, false)]);
+        let mut sent = 0;
+        while ends.updates.try_send(voices()).is_ok() {
+            sent += 1;
+        }
+        assert_eq!(sent, UPDATE_CHANNEL_CAP, "kênh nhãn có giới hạn");
+        h.c.drain_speaker();
+        assert_eq!(h.sink.rosters.lock().unwrap().len(), 1, "một bảng giọng mỗi vòng");
+        let mut room = 0;
+        while ends.updates.try_send(voices()).is_ok() {
+            room += 1;
+        }
+        assert_eq!(room, SPEAKER_DRAIN_MAX, "mỗi vòng chỉ lấy SPEAKER_DRAIN_MAX nhãn");
+        h.said(0, 0, 1_000, "en", "Hello.");
+        assert_eq!(h.last(0).src_text, "Hello.");
+    }
+
+    #[test]
+    fn worker_merges_relabel_subtitles_and_the_roster() {
+        let mut h = harness();
+        let info = |voice, mic| VoiceInfo::new(voice, 1_000, mic);
+        h.feed(Msg::Speaker(SpeakerUpdate::Voices(vec![info(1, false), info(2, true)])));
+        assert_eq!(
+            h.sink.rosters.lock().unwrap().last().unwrap().voices,
+            [RosterVoice { id: 1, room: false }, RosterVoice { id: 2, room: true }]
+        );
+        h.voice(0, Some(2));
+        h.said(0, 0, 2_000, "en", "Hello.");
+        h.feed(Msg::Speaker(SpeakerUpdate::Merged { from: 2, into: 1 }));
+        assert_eq!(
+            h.sink.speakers.lock().unwrap().last(),
+            Some(&SpeakerLabel {
+                id: 0,
+                speaker: Some(1)
+            })
+        );
+        assert_eq!(
+            h.sink.rosters.lock().unwrap().last().unwrap().voices,
+            [RosterVoice { id: 1, room: false }]
+        );
+    }
+
+    /// N1 của rà soát cuối kế hoạch 02: đoạn bị bỏ trước khi tới worker (kênh nhận giọng đầy) không bao giờ có nhãn, có thể là
+    /// người khác. Nó ghép vào câu đang mở của giọng 1 thì câu không nhãn (thà không nhãn còn hơn sai tên), dù tin báo bỏ tới
+    /// trước hay sau kết quả nhận dạng của đoạn.
+    #[test]
+    fn a_segment_that_never_reached_the_worker_clears_the_label_of_its_sentence() {
+        for late in [false, true] {
+            let mut h = harness();
+            h.queued(0, 0, 1_000);
+            h.voice(0, Some(1));
+            h.said(0, 0, 1_000, "en", "so we went");
+            h.queued(1, 1_200, 2_000);
+            if !late {
+                h.feed(Msg::Unlabeled(1));
+            }
+            h.said(1, 1_200, 2_000, "en", "to the market");
+            assert_eq!(h.c.metrics.merges, 1);
+            if late {
+                assert_eq!(h.last(0).speaker, Some(1), "nhãn đang tới: giữ nhãn");
+                h.feed(Msg::Unlabeled(1));
+                assert_eq!(
+                    h.sink.speakers.lock().unwrap().last(),
+                    Some(&SpeakerLabel { id: 0, speaker: None })
+                );
+            } else {
+                assert_eq!(h.last(0).speaker, None);
+            }
+            // Đoạn sau của giọng 1 không ghép vào câu đã lẫn giọng: mở câu mới có nhãn.
+            h.queued(2, 2_200, 3_000);
+            h.voice(2, Some(1));
+            h.said(2, 2_200, 3_000, "en", "Then home.");
+            assert_eq!((h.c.metrics.merges, h.last(2).speaker), (1, Some(1)), "late={late}");
+        }
+    }
+
+    /// N1 của rà soát cuối: client tắt (quá tải, chết 3 lần) thì kênh nhãn đóng; đoạn đang chờ nhãn và đoạn chốt sau đó không bao
+    /// giờ có nhãn, nên câu ghép chúng với đoạn đã biết giọng không nhãn.
+    #[test]
+    fn a_closed_label_channel_clears_labels_that_will_never_come() {
+        let mut h = harness();
+        let (link, ends) = SpeakerLink::pair();
+        h.c.speaker_rx = Some(link.updates);
+        h.queued(0, 0, 1_000);
+        h.voice(0, Some(1));
+        h.said(0, 0, 1_000, "en", "so we went");
+        h.queued(1, 1_200, 2_000);
+        h.said(1, 1_200, 2_000, "en", "to the");
+        assert_eq!(h.last(0).speaker, Some(1));
+        drop(ends);
+        h.c.drain_speaker();
+        assert!(h.c.speaker_rx.is_none());
+        assert_eq!(
+            h.sink.speakers.lock().unwrap().last(),
+            Some(&SpeakerLabel { id: 0, speaker: None })
+        );
+        h.queued(2, 3_000, 4_000);
+        h.said(2, 3_000, 4_000, "en", "Hello.");
+        assert_eq!(h.last(2).speaker, None);
+    }
+
+    /// N1 của rà soát cuối, phía luồng VAD: đoạn không tới được client (kênh 4 đoạn đầy, client đã tắt) thì báo luồng phụ đề
+    /// `Msg::Unlabeled`, sau `Msg::Queued` của chính đoạn đó. Không có nhận giọng thì không báo gì.
+    #[test]
+    fn the_vad_thread_reports_segments_that_never_reach_the_worker() {
+        let segment = |id: u64| crate::segmenter::Segment {
+            id,
+            start_ms: id * 1_000,
+            end_ms: id * 1_000 + 500,
+            speech_ms: 500,
+            mean_prob: 0.9,
+            speech_ratio: 1.0,
+            samples: vec![0.1; 8_000],
+            lead_samples: 0,
+        };
+        let unlabeled = |rx: &Receiver<Msg>| -> Vec<u64> {
+            let mut out = Vec::new();
+            for msg in rx.try_iter() {
+                match msg {
+                    Msg::Queued { id, .. } => assert!(!out.contains(&id), "Unlabeled({id}) tới trước Queued"),
+                    Msg::Unlabeled(id) => out.push(id),
+                    _ => {}
+                }
+            }
+            out
+        };
+        let (link, ends) = SpeakerLink::pair();
+        let mut tap = Some(SpeakerTap::new(link.segments, link.offered_end_ms));
+        let (tx, rx) = mpsc::channel();
+        let queue = empty_queue();
+        for id in 0..6 {
+            send_segment(segment(id), id * 1_000 + 600, &tx, &queue, &mut tap);
+        }
+        assert_eq!(unlabeled(&rx), [4, 5], "kênh 4 đoạn đầy");
+        drop(ends);
+        for id in 6..8 {
+            send_segment(segment(id), id * 1_000 + 600, &tx, &queue, &mut tap);
+        }
+        assert_eq!(unlabeled(&rx), [6, 7], "client đã tắt");
+        send_segment(segment(8), 8_600, &tx, &queue, &mut None);
+        assert_eq!(unlabeled(&rx), Vec::<u64>::new(), "tắt nhận giọng");
+    }
+
+    /// N12 của rà soát cuối: nhãn đã nằm trong kênh lúc luồng phụ đề kết thúc (kể cả quá `SPEAKER_DRAIN_MAX` của một vòng) vẫn
+    /// được áp trước khi chốt câu đang mở, nên phụ đề cuối mang nhãn. Không chờ nhãn chưa tới (worker treo không được làm phiên
+    /// kết thúc chậm).
+    #[test]
+    fn labels_already_in_the_channel_reach_the_last_subtitle() {
+        let (link, ends) = SpeakerLink::pair();
+        let voices = || SpeakerUpdate::Voices(vec![VoiceInfo::new(1, 1_000, false)]);
+        let (tx, rx) = mpsc::channel::<Msg>();
+        tx.send(Msg::Asr(AsrOutcome::Transcribed {
+            ids: vec![0],
+            start_ms: 0,
+            end_ms: 1_000,
+            speech_ms: 1_000,
+            lang: "vi".into(),
+            text: "Xin chào".into(),
+            asr_ms: 1.0,
+        }))
+        .unwrap();
+        tx.send(Msg::AsrDone).unwrap();
+        drop(tx);
+        // Hai tin nhắn, hai vòng, mỗi vòng rút `SPEAKER_DRAIN_MAX` nhãn rồi luồng phụ đề kết thúc: nhãn của đoạn 0 nằm sau.
+        for _ in 0..2 * SPEAKER_DRAIN_MAX + 10 {
+            ends.updates.send(voices()).unwrap();
+        }
+        ends.updates
+            .send(SpeakerUpdate::Assign {
+                segment_id: 0,
+                voice: Some(1),
+                confidence: 0.9,
+            })
+            .unwrap();
+        let (jobs_tx, _jobs) = mpsc::channel();
+        let cfg = cfg();
+        let flags = Flags::new(&cfg);
+        let asr_queue = Arc::new(SharedQueue::new(AsrQueue::new(cfg.pipeline.queue.clone())));
+        let sink = Arc::new(Sink::default());
+        let t0 = Instant::now();
+        Composer::new(cfg, sink.clone(), jobs_tx, flags, asr_queue)
+            .with_speaker(Some(link.updates))
+            .run(rx);
+        assert!(
+            t0.elapsed() < Duration::from_secs(1),
+            "không chờ nhãn: {:?}",
+            t0.elapsed()
+        );
+        let speakers = sink.speakers.lock().unwrap();
+        assert_eq!(
+            speakers.last(),
+            Some(&SpeakerLabel {
+                id: 0,
+                speaker: Some(1)
+            })
+        );
+        drop(ends);
+    }
+
+    #[test]
+    fn the_live_line_carries_the_voice_of_the_sentence_it_extends() {
+        let mut h = live_harness();
+        h.voice(0, Some(4));
+        h.said(0, 0, 1_000, "en", "so we went");
+        h.partial(1, 1_200, 1_800, "en", Some("to the market"));
+        let line = h.last_live(1);
+        assert_eq!((line.extends, line.speaker), (Some(0), Some(4)));
+        // Lượt nói mới, không nối tiếp câu nào: chưa có nhãn.
+        h.partial(5, 9_000, 9_600, "en", Some("hello"));
+        assert_eq!(h.last_live(5).speaker, None);
+    }
+
+    /// Spec §4.3, ưu tiên 1: luồng VAD không bao giờ chờ nhận giọng. Không ai đọc kênh (như client treo): phụ đề ra đủ và không
+    /// chậm hơn lượt đối chứng không có nhận giọng; kênh giữ đúng 4 đoạn, phần còn lại bị bỏ.
+    ///
+    /// Engine chạy trên luồng riêng, test chờ có hạn (10 s): ai đổi `try_send` thành `send` thì luồng VAD chặn ở đoạn thứ 5 và test
+    /// ĐỎ thay vì treo. Mỗi lượt chỉ mất khoảng 10–25 ms (M4 Pro, bản debug; 2026-10-26, 40 lần chạy riêng và 15 lần trong cả bộ
+    /// test: lượt kênh kẹt chậm hơn đối chứng nhiều nhất 3,3 ms). Biên max(đối chứng × 3, đối chứng + 100 ms): bắt mức chậm thêm từ
+    /// khoảng 10 ms mỗi đoạn (10 đoạn, 6 đoạn bị bỏ), và tự nới theo đối chứng khi máy CI bận.
+    #[test]
+    fn a_stuck_speaker_never_slows_the_subtitles() {
+        fn run(speaker: Option<SpeakerLink>) -> (Duration, BTreeSet<u64>) {
+            let mut samples = Vec::new();
+            for _ in 0..10 {
+                samples.extend(speech_then_silence(600));
+            }
+            let sink = Arc::new(Sink::default());
+            let (done_tx, done_rx) = mpsc::channel();
+            let engine_sink = sink.clone();
+            // Hàng đợi nhận dạng không gộp đoạn: máy rất bận thì `ConstAsr` chậm hơn VAD, hai đoạn gộp làm một phụ đề và số phụ
+            // đề của hai lượt lệch nhau (gặp 1/45 lần khi chạy ba bộ test song song).
+            let mut cfg = cfg();
+            cfg.pipeline.queue.asr_max_waiting = 64;
+            let t0 = Instant::now();
+            std::thread::spawn(move || {
+                let engine = Engine::start_with_speaker(
+                    cfg,
+                    Box::new(SampleSource::new(samples, 1_600, Duration::ZERO)),
+                    energy(),
+                    Box::new(ConstAsr("Hello.")),
+                    quick_mt(),
+                    engine_sink,
+                    speaker,
+                )
+                .unwrap();
+                engine.join();
+                let _ = done_tx.send(());
+            });
+            done_rx
+                .recv_timeout(Duration::from_secs(10))
+                .expect("engine không xong trong 10 s: luồng VAD đang chờ kênh nhận giọng?");
+            let elapsed = t0.elapsed();
+            let ids = sink.subs.lock().unwrap().iter().map(|s| s.id).collect();
+            (elapsed, ids)
+        }
+        let (plain, plain_ids) = run(None);
+        let (link, ends) = SpeakerLink::pair();
+        let (stuck, stuck_ids) = run(Some(link));
+        assert_eq!(plain_ids.len(), 10);
+        assert_eq!(stuck_ids, plain_ids);
+        assert!(
+            stuck <= (plain * 3).max(plain + Duration::from_millis(100)),
+            "kênh kẹt {stuck:?}, đối chứng {plain:?}"
+        );
+        assert_eq!(ends.segments.try_iter().count(), SEGMENT_CHANNEL_CAP);
+    }
+
+    /// QĐ 15 của kế hoạch 02: nguồn ra thiếu cờ (lỗi của một đường trong bộ trộn) thì luồng VAD đệm `System`; âm thanh không dồn
+    /// lại, phụ đề vẫn ra đủ.
+    #[test]
+    fn missing_source_tags_never_stall_the_audio() {
+        struct NoTags(SampleSource);
+        impl FrameSource for NoTags {
+            fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> Result<bool> {
+                self.0.read(out, timeout)
+            }
+            fn read_tagged(
+                &mut self,
+                out: &mut Vec<f32>,
+                vad_out: &mut Vec<f32>,
+                _tags: &mut Vec<Source>,
+                timeout: Duration,
+            ) -> Result<bool> {
+                self.read_with_vad(out, vad_out, timeout)
+            }
+        }
+        let mut samples = Vec::new();
+        for _ in 0..3 {
+            samples.extend(speech_then_silence(600));
+        }
+        let (link, ends) = SpeakerLink::pair();
+        let sink = Arc::new(Sink::default());
+        let engine = Engine::start_with_speaker(
+            cfg(),
+            Box::new(NoTags(SampleSource::new(samples, 1_600, Duration::ZERO))),
+            energy(),
+            Box::new(ConstAsr("Hello.")),
+            quick_mt(),
+            sink.clone(),
+            Some(link),
+        )
+        .unwrap();
+        engine.join();
+        let ids: BTreeSet<u64> = sink.subs.lock().unwrap().iter().map(|s| s.id).collect();
+        assert_eq!(ids.len(), 3);
+        let got: Vec<SegmentAudio> = ends.segments.try_iter().collect();
+        assert_eq!(got.len(), 3);
+        assert!(got.iter().all(|s| s.source == Source::System));
+    }
+
+    /// Luồng VAD gửi tối đa 4 s đầu phần tiếng nói (không đệm), thời lượng thật, nguồn đa số của các khung trong đoạn.
+    #[test]
+    fn the_vad_thread_sends_up_to_four_seconds_of_speech_with_its_source() {
+        struct MicOnly(SampleSource);
+        impl FrameSource for MicOnly {
+            fn read(&mut self, out: &mut Vec<f32>, timeout: Duration) -> Result<bool> {
+                self.0.read(out, timeout)
+            }
+            fn read_tagged(
+                &mut self,
+                out: &mut Vec<f32>,
+                vad_out: &mut Vec<f32>,
+                tags: &mut Vec<Source>,
+                timeout: Duration,
+            ) -> Result<bool> {
+                let from = out.len();
+                let more = self.read_with_vad(out, vad_out, timeout)?;
+                tags.resize(tags.len() + (out.len() - from), Source::Mic);
+                Ok(more)
+            }
+        }
+        let square = |n: usize| -> Vec<f32> { (0..n).map(|i| if i % 40 < 20 { 0.3 } else { -0.3 }).collect() };
+        let mut samples = square(16_000);
+        samples.extend(vec![0.0; 16_000]);
+        samples.extend(square(16_000 * 6));
+        samples.extend(vec![0.0; 16_000]);
+        let (link, ends) = SpeakerLink::pair();
+        let offered = link.offered_end_ms.clone();
+        let engine = Engine::start_with_speaker(
+            cfg(),
+            Box::new(MicOnly(SampleSource::new(samples, 1_600, Duration::ZERO))),
+            energy(),
+            Box::new(ConstAsr("Hello.")),
+            quick_mt(),
+            Arc::new(Sink::default()),
+            Some(link),
+        )
+        .unwrap();
+        engine.join();
+        let got: Vec<SegmentAudio> = ends.segments.try_iter().collect();
+        assert_eq!(got.len(), 2, "{got:?}");
+        assert_eq!(got[0].pcm.len() as u64, (got[0].end_ms - got[0].start_ms) * 16);
+        assert_eq!(got[1].pcm.len(), MAX_EMBED_SAMPLES);
+        assert!(got[1].end_ms - got[1].start_ms >= 5_900);
+        assert!(got.iter().all(|s| s.source == Source::Mic));
+        assert_eq!(offered.load(Ordering::SeqCst), got[1].end_ms);
+    }
+
+    /// Kế hoạch 04: tên và người tham dự tới app một lần mỗi lần đổi (lặp lại không phát), sau bảng giọng của cùng vòng.
+    #[test]
+    fn names_and_participants_reach_the_sink_once_per_change() {
+        let mut h = harness();
+        let (link, ends) = SpeakerLink::pair();
+        h.c.speaker_rx = Some(link.updates);
+        let named = |name: Option<&str>| VoiceInfo {
+            name: name.and_then(PersonName::new),
+            ..VoiceInfo::new(1, 1_000, false)
+        };
+        let people =
+            || SpeakerUpdate::Participants(vec![PersonName::new("Lan").unwrap(), PersonName::new("Minh").unwrap()]);
+        ends.updates.send(SpeakerUpdate::Voices(vec![named(None)])).unwrap();
+        ends.updates.send(people()).unwrap();
+        h.c.drain_speaker();
+        ends.updates
+            .send(SpeakerUpdate::Voices(vec![named(Some("Lan"))]))
+            .unwrap();
+        ends.updates.send(people()).unwrap();
+        h.c.drain_speaker();
+        ends.updates
+            .send(SpeakerUpdate::Voices(vec![named(Some("Lan"))]))
+            .unwrap();
+        h.c.drain_speaker();
+        let names = h.sink.names.lock().unwrap();
+        assert_eq!(names.len(), 2, "lần lặp lại không phát");
+        assert!(names[0].voices.is_empty());
+        assert_eq!(names[0].participants, ["Lan", "Minh"]);
+        assert_eq!(
+            names[1].voices,
+            [NamedVoice {
+                id: 1,
+                name: "Lan".into(),
+                room_index: None
+            }]
+        );
+        assert!(!format!("{:?}", names[1]).contains("Lan"), "Debug không in tên");
+    }
+
+    #[test]
+    fn reader_states_go_straight_to_the_sink() {
+        let mut h = harness();
+        h.feed(Msg::Speaker(SpeakerUpdate::Reader(ReaderInfo {
+            app: Some(MeetingApp::Teams),
+            app_version: None,
+            state: ReaderStatus::NoPermission,
+            recipe_version: 1,
+            learned: 0,
+            patterns: vec![],
+        })));
+        assert_eq!(h.sink.readers.lock().unwrap()[0].state, ReaderStatus::NoPermission);
+    }
+
+    /// QĐ 31 (rà soát B-N8): trạng thái `Off` ("Lấy tên" tắt) xóa tên tự động và người tham dự; `Paused` (quá tải) giữ tên.
+    #[test]
+    fn reader_off_clears_the_names_but_a_pause_keeps_them() {
+        let mut h = harness();
+        let lan = VoiceInfo {
+            name: PersonName::new("Lan"),
+            ..VoiceInfo::new(1, 1_000, false)
+        };
+        h.feed(Msg::Speaker(SpeakerUpdate::Voices(vec![lan])));
+        let reader = |state| {
+            SpeakerUpdate::Reader(ReaderInfo {
+                app: None,
+                app_version: None,
+                state,
+                recipe_version: 1,
+                learned: 0,
+                patterns: vec![],
+            })
+        };
+        h.feed(Msg::Speaker(reader(ReaderStatus::Paused)));
+        assert_eq!(
+            h.sink.names.lock().unwrap().last().unwrap().voices.len(),
+            1,
+            "tạm dừng giữ tên"
+        );
+        h.feed(Msg::Speaker(reader(ReaderStatus::Off)));
+        let last = h.sink.names.lock().unwrap().last().unwrap().clone();
+        assert!(
+            last.voices.is_empty() && last.participants.is_empty(),
+            "tắt \"Lấy tên\": xóa tên"
+        );
     }
 }

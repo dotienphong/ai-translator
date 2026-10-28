@@ -466,6 +466,20 @@ mod tests {
         assert_eq!(loaded.rejected, ["translateWhileSpeaking"]);
     }
 
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §8.3, §9: file của bản trước chưa có hai công tắc người nói thì cả hai bật (bật sẵn),
+    /// không phải ghi lại file; giá trị đã lưu được giữ.
+    #[test]
+    fn an_old_file_without_the_speaker_switches_gets_them_on() {
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark" }));
+        let loaded = load(raw, defaults());
+        assert!(loaded.settings.speaker_diarization && loaded.settings.speaker_names);
+        assert!(loaded.rejected.is_empty());
+        assert!(!loaded.needs_save(), "khóa thiếu thì không phải ghi lại file");
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "speakerDiarization": false }));
+        let loaded = load(raw, defaults());
+        assert!(!loaded.settings.speaker_diarization && loaded.settings.speaker_names);
+    }
+
     /// Spec 2026-10-24-nguon-micro §4: file của bản trước chưa có ba khóa nguồn micro thì người dùng cũ không đổi gì (âm
     /// thanh máy, micro mặc định, lọc ồn bật), không phải ghi lại file. Giá trị lạ thì về mặc định.
     #[test]

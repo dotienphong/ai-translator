@@ -67,7 +67,7 @@ ${sectionHead({ eyebrow: "Trung thực", title: "Khi nào AI Translator chưa ph
 ${checkList([
   "<strong>Bạn cần người cùng họp nghe giọng bạn đã được dịch.</strong> Phụ đề của AI Translator chỉ dịch một chiều, từ âm thanh phát trên máy sang ngôn ngữ của bạn. Chưa có dịch giọng bạn để phát vào cuộc họp; trả lời bằng chữ thì dùng được <a href=\"/huong-dan/go-dich/\">Gõ dịch</a>.",
   "<strong>Bạn cần ghi âm cuộc họp.</strong> App không ghi âm xuống đĩa. Nó chỉ có bản chép lời bằng chữ; lưu lịch sử là tính năng Pro và mặc định tắt.",
-  "<strong>Bạn cần biên bản, tóm tắt tự động hoặc biết ai đang nói.</strong> Chưa có.",
+  "<strong>Bạn cần biên bản hoặc tóm tắt tự động.</strong> Chưa có.",
   "<strong>Bạn dùng Mac Intel, Windows ARM64 hoặc máy Windows có CPU không hỗ trợ AVX2.</strong> AI Translator chạy trên macOS 14.2 trở lên với Apple Silicon và Windows 10/11 64-bit (x64) có CPU hỗ trợ AVX2.",
   "<strong>Máy có dưới 8 GB RAM,</strong> hoặc bạn cần ngôn ngữ ngoài năm ngôn ngữ trên: app chưa đáp ứng.",
   "<strong>Bạn không có tài khoản ngân hàng Việt Nam và ở một nước mà Creem không nhận thanh toán thẻ.</strong> Thẻ quốc tế đi qua Creem, và Creem không nhận người mua từ một số nước (theo danh sách của Creem); không có PayPal. Khi đó chưa có cách trả cho gói trả phí; gói Free dùng thử vẫn dùng được.",

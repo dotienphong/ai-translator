@@ -36,6 +36,19 @@ pub struct SessionMetrics {
     pub live_cycle_ms: Vec<f32>,
     pub cadence_ms: Vec<f32>,
     pub streaming_auto_off: bool,
+    /// Nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.3): số `Assign` đã nhận; trong đó số tới khi đoạn còn chờ nhận dạng
+    /// (phụ đề mang nhãn ngay lần phát đầu) và số tới muộn (phát `subtitle://speaker`).
+    pub speaker_assigns: usize,
+    pub speaker_on_time: usize,
+    pub speaker_late: usize,
+    /// Hàng đợi dịch (spec §4.4, QĐ 12 của kế hoạch 02): số câu bị gộp vào câu khác khi hàng đầy, và trong đó số lần gộp hai câu
+    /// đã biết khác giọng (chỉ khi gộp câu cùng giọng xong mà hàng còn dài hơn khi tắt). 02b so khi bật và tắt nhận giọng.
+    pub mt_merges: usize,
+    pub mt_merges_across_voices: usize,
+    /// Hàng đợi dịch: số câu chờ dịch nhiều nhất cùng lúc (sau khi gộp), và câu chờ lâu nhất từ lúc vào hàng tới lúc được lấy ra
+    /// dịch hay bỏ bước dịch (giờ âm thanh, ms). 02b đo kịch bản dịch quá tải khi bật so với tắt nhận giọng (QĐ 12 của kế hoạch 02).
+    pub mt_queue_max: usize,
+    pub mt_wait_max_ms: u64,
 }
 
 /// Phân vị `p` (0–100), nội suy tuyến tính như numpy. Rỗng thì `None`.
@@ -85,6 +98,12 @@ impl SessionMetrics {
                 out.push_str(" đã tự tắt");
             }
         }
+        if self.speaker_assigns > 0 {
+            out.push_str(&format!(
+                "; nhận giọng: {} nhãn ({} trước khi có chữ, {} muộn)",
+                self.speaker_assigns, self.speaker_on_time, self.speaker_late
+            ));
+        }
         out
     }
 }
@@ -127,6 +146,24 @@ mod tests {
         }
         .summary();
         assert!(one.ends_with("; 1 lần chép từng phần;"), "{one}");
+    }
+
+    /// Nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.3): chỉ ghi khi có nhãn, chỉ có số.
+    #[test]
+    fn the_summary_reports_speaker_labels_only_when_there_were_some() {
+        let m = SessionMetrics {
+            speaker_assigns: 10,
+            speaker_on_time: 9,
+            speaker_late: 1,
+            ..Default::default()
+        };
+        assert!(
+            m.summary()
+                .ends_with("; nhận giọng: 10 nhãn (9 trước khi có chữ, 1 muộn)"),
+            "{}",
+            m.summary()
+        );
+        assert!(!SessionMetrics::default().summary().contains("nhận giọng"));
     }
 
     #[test]

@@ -13,7 +13,7 @@ use std::time::Duration;
 use super::logs::{LogFile, LogSource};
 use super::queue::Queue;
 use super::report::{self, BuildError, Event, Facts, Kind, RawLogs};
-use super::scrub::Params;
+use super::scrub::{self, Params};
 use super::send::{ReportApi, SendError};
 
 /// Báo cáo ghi giờ xảy ra không quá cũ so với server (7 ngày): kẹp lại để không bị `400`.
@@ -29,6 +29,11 @@ pub trait Host: Send + Sync {
     fn facts(&self) -> Option<Facts>;
     /// Giờ Unix, giây.
     fn now(&self) -> i64;
+    /// Tên người tham dự đang có trong bảng người nói (spec 2026-10-26-phan-biet-nguoi-noi §10): bị che trong câu lỗi và log của mọi báo
+    /// cáo lỗi, kể cả khi một dòng log lỡ in tên. Mặc định không có.
+    fn known_names(&self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// Lỗi của lần gửi tay (giao diện hiện câu theo loại).
@@ -91,6 +96,8 @@ impl Reporter {
         }
         let now = self.host.now();
         event.at = event.at.clamp(now - MAX_AGE_SECONDS, now);
+        let names = self.host.known_names();
+        event.message = scrub::redact_names(&event.message, &names);
         let fingerprint = report::fingerprint(event.kind, event.code.as_deref(), &event.location);
         // Kiểm giới hạn trước khi tốn công dựng báo cáo.
         if !self.queue.lock().unwrap().admit(&fingerprint, now) {
@@ -107,7 +114,13 @@ impl Reporter {
             log::warn!("bỏ báo cáo lỗi: chưa đọc được thông tin máy");
             return None;
         };
-        let built = report::build(&event, &facts, &self.raw_logs(), &self.params, report::new_id());
+        let built = report::build(
+            &event,
+            &facts,
+            &self.raw_logs().redact_names(&names),
+            &self.params,
+            report::new_id(),
+        );
         let report = match built {
             Ok(report) => report,
             Err(e) => {
@@ -174,7 +187,14 @@ impl Reporter {
             message: String::new(),
             at: self.host.now(),
         };
-        let report = report::build(&event, &facts, &self.raw_logs(), &self.params, report::new_id())?;
+        let names = self.host.known_names();
+        let report = report::build(
+            &event,
+            &facts,
+            &self.raw_logs().redact_names(&names),
+            &self.params,
+            report::new_id(),
+        )?;
         self.api.send(&report.json)?;
         Ok(report.id)
     }
@@ -221,6 +241,7 @@ mod tests {
         idle: Arc<AtomicBool>,
         now: Arc<AtomicI64>,
         facts: Arc<Mutex<Option<Facts>>>,
+        names: Arc<Mutex<Vec<String>>>,
     }
 
     impl FakeHost {
@@ -230,6 +251,7 @@ mod tests {
                 idle: Arc::new(AtomicBool::new(true)),
                 now: Arc::new(AtomicI64::new(T0)),
                 facts: Arc::new(Mutex::new(Some(facts()))),
+                names: Arc::default(),
             }
         }
     }
@@ -246,6 +268,9 @@ mod tests {
         }
         fn now(&self) -> i64 {
             self.now.load(Ordering::SeqCst)
+        }
+        fn known_names(&self) -> Vec<String> {
+            self.names.lock().unwrap().clone()
         }
     }
 
@@ -337,6 +362,27 @@ mod tests {
             reporter,
             dir,
         }
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §10: tên người tham dự đang có bị che khỏi câu lỗi và log của cả báo cáo tự động lẫn báo cáo
+    /// gửi tay, kể cả khi một dòng log lỡ in tên.
+    #[test]
+    fn participant_names_never_reach_a_report() {
+        let r = rig("names");
+        *r.host.names.lock().unwrap() = vec!["Lan Nguyễn".into(), "Minh Trần".into()];
+        r.logs.0.lock().unwrap()[0] = "[2026-10-27][10:00:00][WARN][x] gán tên Lan Nguyễn cho giọng 2\n".into();
+        r.logs.0.lock().unwrap()[2] = "Minh Trần đang nói\n".into();
+        let mut event = session_error("sidecarFailed");
+        event.message = "worker chết khi đọc ô của lan nguyễn".into();
+        assert!(r.reporter.record(event).is_some());
+        let queued = r.reporter.pending_reports().remove(0);
+        let lower = queued.to_lowercase();
+        assert!(!lower.contains("nguyễn") && !lower.contains("minh trần"), "{queued}");
+        assert!(queued.contains("<tên>"), "{queued}");
+        r.reporter.send_manual().unwrap();
+        let sent = r.api.bodies.lock().unwrap().last().unwrap().clone();
+        let lower = sent.to_lowercase();
+        assert!(!lower.contains("nguyễn") && !lower.contains("minh trần"), "{sent}");
     }
 
     fn session_error(code: &str) -> Event {

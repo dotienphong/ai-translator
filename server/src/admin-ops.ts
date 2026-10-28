@@ -197,6 +197,13 @@ function parseModels(json: unknown): ModelsInfo | null {
 /** Gốc URL công khai của bucket: chỉ https, tên miền, không có `/` cuối (test cấu hình khóa định dạng này). */
 const BASE_URL_PATTERN = /^https:\/\/[a-z0-9.-]+$/;
 
+/**
+ * Cron đánh giá bộ đọc tên nhớ "chủ thể này đã cảnh báo hôm nay" bằng dòng `speaker_seen:*` ở cùng bảng (src/speaker-health.ts): đó là bộ nhớ
+ * của cron, không phải cảnh báo, nên không hiện ở trang này (chủ thể chứa phiên bản app họp do app tự khai, có thể làm tràn LIMIT).
+ * Escape `_` để LIKE không khớp nhầm kind khác.
+ */
+const NOT_MEMO = "kind NOT LIKE 'speaker\\_seen:%' ESCAPE '\\'";
+
 export function registerAdminOps(app: Hono<AdminAppEnv>): void {
   app.get("/admin/alerts", async (c) => {
     if (crossSite(c)) return fail(c, 403, "forbidden");
@@ -206,9 +213,11 @@ export function registerAdminOps(app: Hono<AdminAppEnv>): void {
     const [list, sums] = await db.batch([
       db
         .prepare(
-          `SELECT kind, window_start, count, notified_count, notified_at FROM ops_alerts ORDER BY window_start DESC, kind LIMIT ${ALERTS_LIMIT}`,
+          `SELECT kind, window_start, count, notified_count, notified_at FROM ops_alerts WHERE ${NOT_MEMO} ORDER BY window_start DESC, kind LIMIT ${ALERTS_LIMIT}`,
         ),
-      db.prepare("SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN count > notified_count THEN 1 ELSE 0 END), 0) AS pending FROM ops_alerts"),
+      db.prepare(
+        `SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN count > notified_count THEN 1 ELSE 0 END), 0) AS pending FROM ops_alerts WHERE ${NOT_MEMO}`,
+      ),
     ]);
     const s = (sums?.results?.[0] ?? {}) as { total?: number; pending?: number };
     const body = { items: (list?.results ?? []) as unknown as AlertItem[], total: s.total ?? 0, pending: s.pending ?? 0 };

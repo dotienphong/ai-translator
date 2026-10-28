@@ -79,6 +79,8 @@ const CASES: Case[] = [
   },
   { fn: "errorReport", run: () => api.errorReport(RID), method: "GET", url: `/admin/error-reports/${RID}` },
   { fn: "errorReport", run: () => api.errorReport(ODD), method: "GET", url: `/admin/error-reports/${ODD_ENCODED}` },
+  { fn: "speakerHealth", run: () => api.speakerHealth(7), method: "GET", url: "/admin/speaker-health?days=7" },
+  { fn: "speakerHealth", run: () => api.speakerHealth(30), method: "GET", url: "/admin/speaker-health?days=30" },
   { fn: "deleteErrorReport", run: () => api.deleteErrorReport(RID), method: "POST", url: "/admin/error-reports/delete", body: { id: RID } },
   { fn: "deleteErrorGroup", run: () => api.deleteErrorGroup(FP), method: "POST", url: "/admin/error-reports/delete", body: { fingerprint: FP } },
   { fn: "paymentStatus", run: () => api.paymentStatus(1000012), method: "GET", url: "/admin/orders/1000012/payment-status" },
@@ -177,6 +179,6 @@ describe("api: method, URL và body gửi lên", () => {
 
   it("có test cho đủ mọi hàm của api", () => {
     expect(new Set(CASES.map((c) => c.fn))).toEqual(new Set(Object.keys(api)));
-    expect(Object.keys(api)).toHaveLength(30);
+    expect(Object.keys(api)).toHaveLength(31);
   });
 });

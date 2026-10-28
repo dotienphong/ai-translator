@@ -668,6 +668,7 @@ pub fn mock_app_full(deps: FakeDeps, models: ModelsConfig) -> tauri::App<MockRun
         ))
         .manage(ActiveGlossary::default())
         .manage(TranscriptStore::default())
+        .manage(crate::speaker::Running::default())
         .manage(crate::debug::DebugLog::default())
         .manage(Picker(Box::new(picker.clone())))
         .manage(picker)

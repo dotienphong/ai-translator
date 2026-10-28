@@ -47,6 +47,19 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     if previous.translate_while_speaking != next.translate_while_speaking {
         session::set_streaming_enabled(app, next.translate_while_speaking);
     }
+    // "Phân biệt người nói" tắt: dừng nhận giọng của phiên ngay (spec 2026-10-26-phan-biet-nguoi-noi §8.3; QĐ 8 của kế hoạch 03).
+    // Bật lại thì có tác dụng từ phiên sau.
+    if previous.speaker_diarization && !next.speaker_diarization {
+        crate::speaker::turn_off(app);
+    }
+    // "Lấy tên" đổi giữa phiên: worker bật hay tắt đọc tên ngay (kế hoạch 04).
+    if previous.speaker_names != next.speaker_names {
+        crate::speaker::names_changed(app, next.speaker_names);
+    }
+    // Nhãn "Người N" theo ngôn ngữ giao diện mới.
+    if previous.ui_language != next.ui_language {
+        crate::speaker::language_changed(app, next.ui_language);
+    }
     // Tắt báo cáo lỗi tự động: bỏ các báo cáo đang chờ gửi (spec 2026-10-17 §5).
     if previous.send_error_reports && !next.send_error_reports {
         diagnostics::purge_queue(app);

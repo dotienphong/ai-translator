@@ -19,6 +19,7 @@ it("migration tạo đủ bảng", async () => {
     "ops_alerts",
     "orders",
     "rate_limits",
+    "speaker_health",
     "support_conversations",
     "support_messages",
     "support_settings",

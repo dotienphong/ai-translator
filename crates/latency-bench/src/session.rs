@@ -76,6 +76,23 @@ pub struct SessionArgs {
     /// Họ mẫu prompt của `--mt-model` (`hy-mt2`, hay `lmt` cho gói Nhanh), như trường `prompt` của manifest.
     #[arg(long, default_value = "hy-mt2", value_parser = ["hy-mt2", "lmt"])]
     pub prompt: String,
+    /// `speaker-worker` (binary): bật nhận giọng như app (spec 2026-10-26-phan-biet-nguoi-noi §4.3). Không có thì tắt.
+    #[arg(long, requires = "speaker_model")]
+    pub speaker_worker: Option<PathBuf>,
+    /// Model nhúng giọng (`eres2net-sv-en-voxceleb-16k.onnx`), đi cùng `--speaker-worker`.
+    #[arg(long, requires = "speaker_worker")]
+    pub speaker_model: Option<PathBuf>,
+    /// Bật đọc tên với công thức này (kế hoạch 04 Task 18): như app khi "Lấy tên" bật. `khong-app.recipes.json` (không app nào) đo
+    /// phần tốn của đường tên mà không đọc app nào trên máy.
+    #[arg(long, requires = "speaker_worker")]
+    pub speaker_names_recipe: Option<PathBuf>,
+    /// Ghi RSS của các tiến trình phụ mỗi 5 s vào file TSV (soak test, spec §11, §14).
+    #[arg(long)]
+    pub rss_trace: Option<PathBuf>,
+    /// Kịch bản dịch quá tải (Task 4 Step 5): chờ thêm chừng này ms trước mỗi lần dịch (kể cả lần làm nóng), để dịch chậm hơn
+    /// lời nói trên máy nhanh. 0 = như app. Lượt có cờ này không dùng để so tải hay độ trễ A2.
+    #[arg(long, default_value_t = 0)]
+    pub mt_extra_ms: u64,
 }
 
 /// Họ prompt của lượt đo (clap đã kiểm giá trị).
@@ -167,6 +184,7 @@ impl Asr for TimedAsr {
 struct TimedMt {
     inner: Box<dyn Mt>,
     busy_us: Arc<AtomicU64>,
+    extra: Duration,
 }
 
 impl Mt for TimedMt {
@@ -179,6 +197,9 @@ impl Mt for TimedMt {
         req: &ChatRequest,
         on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
     ) -> Result<StreamEnd, MtError> {
+        if !self.extra.is_zero() {
+            std::thread::sleep(self.extra);
+        }
         let started = Instant::now();
         let result = self.inner.stream(req, on_delta);
         self.busy_us
@@ -311,13 +332,73 @@ fn sidecar_pids() -> HashMap<String, u32> {
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
-        for sidecar in ["asr-worker", "llama-server"] {
+        for sidecar in ["asr-worker", "llama-server", "speaker-worker"] {
             if name.starts_with(sidecar) {
                 pids.insert(sidecar.to_string(), pid);
             }
         }
     }
     pids
+}
+
+/// Số đo nhận giọng của lượt chạy (khóa `run`).
+fn speaker_counts(
+    metrics: &SessionMetrics,
+    disabled: Option<pipeline::speaker_client::Disabled>,
+) -> (usize, usize, usize, Option<String>) {
+    (
+        metrics.speaker_assigns,
+        metrics.speaker_on_time,
+        metrics.speaker_late,
+        disabled.map(|d| format!("{d:?}")),
+    )
+}
+
+/// p50, p90 (ms), số lần ≤ 230 ms và tổng số lần khứ hồi.
+fn round_trip_stats(values: &[f32]) -> (Option<f64>, Option<f64>, usize, usize) {
+    (
+        percentile(values, 50.0).map(|v| ms(f64::from(v))),
+        percentile(values, 90.0).map(|v| ms(f64::from(v))),
+        values.iter().filter(|&&v| v <= 230.0).count(),
+        values.len(),
+    )
+}
+
+/// Vết RSS của các tiến trình phụ (`asr-worker`, `llama-server`, `speaker-worker`) mỗi 5 s, TSV `t_s, name, pid, rss_mb`
+/// (MB = 10^6 byte). Tìm lại pid ở mỗi lần: tiến trình phụ có thể đã chạy lại.
+fn spawn_rss_trace(path: PathBuf, stop: Arc<AtomicBool>) -> std::thread::JoinHandle<Result<()>> {
+    use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
+    std::thread::spawn(move || {
+        let mut out = std::io::BufWriter::new(std::fs::File::create(&path)?);
+        writeln!(out, "t_s\tname\tpid\trss_mb")?;
+        let (t0, mut sys) = (Instant::now(), System::new());
+        while !stop.load(Ordering::Relaxed) {
+            for (name, pid) in sidecar_pids().into_iter().filter(|(n, _)| n != "latency-bench") {
+                let p = Pid::from_u32(pid);
+                sys.refresh_processes_specifics(
+                    ProcessesToUpdate::Some(&[p]),
+                    true,
+                    ProcessRefreshKind::nothing().with_memory(),
+                );
+                if let Some(process) = sys.process(p) {
+                    writeln!(
+                        out,
+                        "{:.0}\t{name}\t{pid}\t{:.1}",
+                        t0.elapsed().as_secs_f64(),
+                        process.memory() as f64 / 1e6
+                    )?;
+                }
+            }
+            out.flush()?;
+            for _ in 0..50 {
+                if stop.load(Ordering::Relaxed) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+        Ok(())
+    })
 }
 
 /// Dòng `asr-worker: backend=… flash_attn=… decode_mode=…` cuối cùng trong log của worker (lượt đo có bật flash attention
@@ -459,6 +540,25 @@ fn args_map(args: &SessionArgs, vad_model: &Path) -> BTreeMap<String, String> {
             "tgt_agree".to_string(),
             args.tgt_agree.clone().unwrap_or_else(|| "mặc định".into()),
         ),
+        (
+            "speaker_worker".to_string(),
+            args.speaker_worker
+                .as_deref()
+                .map(public_path)
+                .unwrap_or_else(|| "tắt".into()),
+        ),
+        (
+            "speaker_model".to_string(),
+            args.speaker_model.as_deref().map(public_path).unwrap_or_default(),
+        ),
+        (
+            "speaker_names_recipe".to_string(),
+            args.speaker_names_recipe
+                .as_deref()
+                .map(public_path)
+                .unwrap_or_else(|| "tắt".into()),
+        ),
+        ("mt_extra_ms".to_string(), args.mt_extra_ms.to_string()),
     ])
 }
 
@@ -496,6 +596,24 @@ struct RunInfo {
     live_lines: usize,
     final_units: usize,
     stable_changed_units: usize,
+    /// Nhận giọng (kế hoạch 02b): số `Assign`, số tới khi đoạn còn chờ nhận dạng (nhãn có ngay ở lần phát đầu), số tới muộn; lý do
+    /// client tắt giữa chừng, nếu có.
+    speaker_assigns: usize,
+    speaker_on_time: usize,
+    speaker_late: usize,
+    speaker_disabled: Option<String>,
+    /// Khứ hồi của nhãn khi chạy cùng `asr-worker`, `llama-server` (gửi `Segment` → có trả lời, `SpeakerHandle::round_trip_ms`):
+    /// p50, p90 (ms), số đoạn xong ≤ 230 ms trên số đoạn có trả lời (spec §4.4, §11).
+    speaker_round_p50_ms: Option<f64>,
+    speaker_round_p90_ms: Option<f64>,
+    speaker_round_within_230: usize,
+    speaker_round_count: usize,
+    /// Hàng đợi dịch (QĐ 12 của kế hoạch 02): số câu bị gộp vào câu khác, số lần gộp hai câu đã biết khác giọng, số câu chờ dịch
+    /// nhiều nhất cùng lúc, câu chờ lâu nhất (ms, giờ âm thanh). Ghi cả khi tắt nhận giọng để so.
+    mt_merges: usize,
+    mt_merges_across_voices: usize,
+    mt_queue_max: usize,
+    mt_wait_max_ms: u64,
 }
 
 #[derive(Serialize)]
@@ -530,15 +648,48 @@ pub fn run(args: SessionArgs) -> Result<()> {
         .ensure_started()
         .map_err(|e| anyhow!("không chạy được tiến trình phụ: {e}"))?;
     manager.begin_session();
+    // Nhận giọng như app; lượt đo chờ worker sẵn sàng (app thì không) để số đo gồm cả nó từ đầu.
+    let speaker = match (&args.speaker_worker, &args.speaker_model) {
+        (Some(exe), Some(model)) => {
+            let mut launch = pipeline::speaker_client::SpeakerLaunch::new(
+                exe,
+                model,
+                &log_path(&args.out, "speaker-worker"),
+                speaker_protocol::SpeakerConfig::default(),
+            );
+            if let Some(path) = &args.speaker_names_recipe {
+                launch.names = speaker_protocol::NamesSetup {
+                    enabled: true,
+                    recipe_json: std::fs::read_to_string(path)
+                        .with_context(|| format!("không đọc được công thức {}", path.display()))?,
+                    eui_marker: None,
+                };
+            }
+            let (link, handle) = pipeline::speaker_client::start(launch, Box::new(|_| Ok(())));
+            if !handle.wait_ready(Duration::from_secs(60)) {
+                bail!("speaker-worker không sẵn sàng: {:?}", handle.disabled());
+            }
+            Some((link, handle))
+        }
+        _ => None,
+    };
+    let (speaker_link, speaker_handle) = match speaker {
+        Some((link, handle)) => (Some(link), Some(handle)),
+        None => (None, None),
+    };
     let stop_sampler = Arc::new(AtomicBool::new(false));
     let sampler = spawn_sampler(sidecar_pids(), stop_sampler.clone());
+    let trace = args
+        .rss_trace
+        .clone()
+        .map(|path| spawn_rss_trace(path, stop_sampler.clone()));
 
     let asr_busy = Arc::new(AtomicU64::new(0));
     let mt_busy = Arc::new(AtomicU64::new(0));
     let lag_max = Arc::new(AtomicU64::new(0));
     let origin = Instant::now();
     let recorder = Arc::new(Recorder::new(origin));
-    let engine = Engine::start(
+    let engine = Engine::start_with_speaker(
         config,
         Box::new(Paced::new(samples, origin, lag_max.clone())),
         Box::new(move || Ok(Box::new(vad) as Box<dyn VadModel>)),
@@ -549,14 +700,19 @@ pub fn run(args: SessionArgs) -> Result<()> {
         Box::new(TimedMt {
             inner: Box::new(manager.mt()),
             busy_us: mt_busy.clone(),
+            extra: Duration::from_millis(args.mt_extra_ms),
         }),
         recorder.clone(),
+        speaker_link,
     )?;
     let metrics = engine.join();
     let session_ms = origin.elapsed().as_secs_f64() * 1000.0;
     manager.end_session();
     stop_sampler.store(true, Ordering::Relaxed);
     let usage = sampler.join().map_err(|_| anyhow!("luồng đo tài nguyên panic"))?;
+    if let Some(trace) = trace {
+        trace.join().map_err(|_| anyhow!("luồng ghi vết RSS panic"))??;
+    }
     // Tắt tường minh, không chỉ dựa vào `Drop for SidecarManager` (gọi `stop(false)`, chạy khi đây là bản sao `Arc`
     // cuối cùng — đúng hôm nay vì `engine.join()` đã join hết các luồng giữ `Arc` khác). Nếu sau này một luồng khác
     // còn giữ bản sao lúc này, `drop(manager)` sẽ không phải lần cuối, không tắt được tiến trình phụ, để sót
@@ -594,6 +750,21 @@ pub fn run(args: SessionArgs) -> Result<()> {
         sidecar_restarts: sidecars.restarts(),
         ..RunInfo::default()
     };
+    (
+        run.speaker_assigns,
+        run.speaker_on_time,
+        run.speaker_late,
+        run.speaker_disabled,
+    ) = speaker_counts(&metrics, speaker_handle.as_ref().and_then(|h| h.disabled()));
+    let rounds = speaker_handle.as_ref().map(|h| h.round_trip_ms()).unwrap_or_default();
+    (
+        run.speaker_round_p50_ms,
+        run.speaker_round_p90_ms,
+        run.speaker_round_within_230,
+        run.speaker_round_count,
+    ) = round_trip_stats(&rounds);
+    (run.mt_merges, run.mt_merges_across_voices) = (metrics.mt_merges, metrics.mt_merges_across_voices);
+    (run.mt_queue_max, run.mt_wait_max_ms) = (metrics.mt_queue_max, metrics.mt_wait_max_ms);
     fill_live_counts(&mut run, &events);
     let mut summary = summarize(&truth, &events);
     summary.segments = Some(metrics.segments as f64);
@@ -634,6 +805,32 @@ pub fn run(args: SessionArgs) -> Result<()> {
             report.run.sidecar_restarts
         );
     }
+    if report.run.speaker_assigns > 0 || report.run.speaker_disabled.is_some() {
+        println!(
+            "  nhận giọng: {} nhãn ({} trước khi có chữ, {} muộn); khứ hồi p50 {:?} ms, p90 {:?} ms, ≤ 230 ms: {}/{}{}",
+            report.run.speaker_assigns,
+            report.run.speaker_on_time,
+            report.run.speaker_late,
+            report.run.speaker_round_p50_ms,
+            report.run.speaker_round_p90_ms,
+            report.run.speaker_round_within_230,
+            report.run.speaker_round_count,
+            report
+                .run
+                .speaker_disabled
+                .as_deref()
+                .map(|d| format!("; tắt giữa chừng: {d}"))
+                .unwrap_or_default()
+        );
+    }
+    println!(
+        "  hàng đợi dịch: gộp {} câu ({} lần khác giọng), {} câu bỏ bước dịch; dài nhất {} câu, chờ lâu nhất {} ms",
+        report.run.mt_merges,
+        report.run.mt_merges_across_voices,
+        report.run.skipped,
+        report.run.mt_queue_max,
+        report.run.mt_wait_max_ms
+    );
     if report.run.utterances_without_pieces > 0 {
         println!(
             "  CẢNH BÁO: {} câu không được gán phần chữ nguồn nào (đoạn VAD có thể đã phủ qua ranh giới câu, thường \
@@ -700,6 +897,104 @@ mod tests {
             "out/x.json",
         ];
         Cli::parse_from(base.iter().chain(extra)).args
+    }
+
+    fn try_args(extra: &[&str]) -> Result<SessionArgs, clap::Error> {
+        let base = [
+            "latency-bench",
+            "--wav",
+            "s.wav",
+            "--truth",
+            "s.truth.json",
+            "--asr-worker",
+            "bin/asr-worker",
+            "--asr-model",
+            "models/a.bin",
+            "--llama-server",
+            "bin/llama-server",
+            "--mt-model",
+            "models/m.gguf",
+            "--out",
+            "out/x.json",
+        ];
+        Cli::try_parse_from(base.iter().chain(extra)).map(|c| c.args)
+    }
+
+    #[test]
+    fn the_speaker_flags_come_together() {
+        assert!(args(&[]).speaker_worker.is_none());
+        assert!(try_args(&["--speaker-worker", "s"]).is_err());
+        assert!(try_args(&["--speaker-model", "e.onnx"]).is_err());
+        let a = args(&[
+            "--speaker-worker",
+            "s",
+            "--speaker-model",
+            "e.onnx",
+            "--rss-trace",
+            "t.tsv",
+        ]);
+        assert_eq!(a.speaker_model.as_deref(), Some(Path::new("e.onnx")));
+        assert_eq!(a.rss_trace.as_deref(), Some(Path::new("t.tsv")));
+        assert_eq!(
+            args_map(&a, Path::new("v.onnx"))["speaker_worker"],
+            public_path(Path::new("s"))
+        );
+        assert_eq!(args_map(&args(&[]), Path::new("v.onnx"))["speaker_worker"], "tắt");
+    }
+
+    #[test]
+    fn the_names_recipe_flag_turns_names_on_and_is_recorded() {
+        let a = args(&[
+            "--speaker-worker",
+            "w",
+            "--speaker-model",
+            "e.onnx",
+            "--speaker-names-recipe",
+            "r.json",
+        ]);
+        assert_eq!(a.speaker_names_recipe.as_deref(), Some(Path::new("r.json")));
+        // `public_path` trả đường dẫn tính từ gốc repo (`cargo test` chạy trong `crates/latency-bench`), như test `speaker_worker` so
+        // với `public_path(Path::new("s"))`. KHÔNG bỏ `public_path` cho test xanh: file JSON kết quả được commit, đường dẫn tuyệt đối
+        // có tên thư mục người dùng (rà soát B-C1).
+        assert_eq!(
+            args_map(&a, Path::new("v.onnx"))["speaker_names_recipe"],
+            public_path(Path::new("r.json"))
+        );
+        assert_eq!(args_map(&args(&[]), Path::new("v.onnx"))["speaker_names_recipe"], "tắt");
+    }
+
+    #[test]
+    fn speaker_counts_come_from_the_engine_metrics() {
+        let metrics = SessionMetrics {
+            speaker_assigns: 10,
+            speaker_on_time: 8,
+            speaker_late: 2,
+            ..SessionMetrics::default()
+        };
+        assert_eq!(
+            speaker_counts(&metrics, Some(pipeline::speaker_client::Disabled::Overload)),
+            (10, 8, 2, Some("Overload".to_string()))
+        );
+        assert_eq!(speaker_counts(&SessionMetrics::default(), None), (0, 0, 0, None));
+    }
+
+    /// Mốc 230 ms của spec §4.4, §11, đo khi chạy cùng hai tiến trình phụ (`SpeakerHandle::round_trip_ms`).
+    #[test]
+    fn round_trips_are_summarized_against_230_ms() {
+        let (p50, p90, within, total) = round_trip_stats(&[100.0, 200.0, 300.0]);
+        assert_eq!((p50, within, total), (Some(200.0), 2, 3));
+        assert!(p90.is_some_and(|v| v > 200.0 && v <= 300.0));
+        assert_eq!(round_trip_stats(&[]), (None, None, 0, 0));
+    }
+
+    /// Kịch bản dịch quá tải (Task 4 Step 5, QĐ 12 của file 02): `--mt-extra-ms` cộng vào mỗi lần dịch; mặc định 0 (như app);
+    /// ghi vào `args` của file kết quả.
+    #[test]
+    fn the_overload_flag_defaults_to_the_app_speed() {
+        assert_eq!(args(&[]).mt_extra_ms, 0);
+        let a = args(&["--mt-extra-ms", "2000"]);
+        assert_eq!(a.mt_extra_ms, 2_000);
+        assert_eq!(args_map(&a, Path::new("v.onnx"))["mt_extra_ms"], "2000");
     }
 
     /// Dựng như app trên macOS: chỉ nhận chế độ giải mã B, một bản `asr-worker` cho cả GPU và CPU, đường dẫn tuyệt đối (tiến

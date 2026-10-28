@@ -1,6 +1,6 @@
 // Test của notices.mjs: `node --test "scripts/release/*.test.mjs"`.
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -151,4 +151,12 @@ test("văn bản có đủ ba phần, theo thứ tự", (t) => {
       "",
     ].join("\n"),
   );
+});
+
+test("mọi file giấy phép model trong licenses/models/ có mặt trong danh sách của notices.mjs (không sót, không dư)", () => {
+  const source = readFileSync(join(root, "scripts/release/notices.mjs"), "utf8");
+  for (const file of readdirSync(join(root, "licenses/models"))) {
+    assert.ok(source.includes(`licenses/models/${file}`), `${file} chưa được notices.mjs đưa vào THIRD_PARTY_NOTICES`);
+  }
+  assert.ok(source.includes("3D-Speaker ERes2Net"), "thiếu mục model nhận giọng (Apache-2.0)");
 });

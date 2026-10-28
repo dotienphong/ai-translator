@@ -319,3 +319,60 @@ fn only_the_main_window_reaches_the_support_chat() {
         ["start", "messages 0", "email khach@example.com", "delete"]
     );
 }
+
+/// Spec 2026-10-26-phan-biet-nguoi-noi §8.4, §12: thanh phụ đề chỉ thêm đúng một lệnh không tham số, `open_speaker_settings`: hiện
+/// cửa sổ chính ở Cài đặt › Phụ đề, nhóm Người nói, không đọc hay đổi dữ liệu. Cửa sổ khác không gọi được nó. Đổi tên, gộp người nói
+/// chỉ cửa sổ chính gọi được; thông báo lỗi không có tên người.
+#[test]
+fn the_overlay_only_gains_open_speaker_settings() {
+    use std::sync::{Arc, Mutex};
+    use tauri::Listener;
+    let before: &[&str] = &[
+        "get_overlay_view",
+        "hide_overlay",
+        "begin_overlay_resize",
+        "overlay_resize_move",
+        "end_overlay_resize",
+    ];
+    let added: Vec<&&str> = OVERLAY_COMMANDS.iter().filter(|c| !before.contains(c)).collect();
+    assert_eq!(added, [&"open_speaker_settings"], "overlay chỉ thêm đúng một lệnh");
+    let app = mock_app();
+    let (main, overlay) = (window(&app, "main"), window(&app, "overlay"));
+    let (compose, stranger) = (window(&app, "compose"), window(&app, "stranger"));
+    let got = Arc::new(Mutex::new(Vec::<String>::new()));
+    {
+        let got = got.clone();
+        main.listen(crate::events::NAVIGATE, move |e| {
+            got.lock().unwrap().push(e.payload().to_string())
+        });
+    }
+    for other in [&main, &compose, &stranger] {
+        let result = invoke(other, "open_speaker_settings", json!({}));
+        assert!(denied(&result), "{} không được gọi: {result:?}", other.label());
+    }
+    invoke(&overlay, "open_speaker_settings", json!({})).expect("overlay gọi được");
+    let since = std::time::Instant::now();
+    while got.lock().unwrap().is_empty() {
+        assert!(
+            since.elapsed() < std::time::Duration::from_secs(10),
+            "cửa sổ chính chưa nhận app://navigate"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert_eq!(
+        got.lock().unwrap()[0],
+        r#"{"screen":"settings","settingsGroup":"subtitles","focus":"speakers"}"#
+    );
+    let args = json!({ "id": 1, "name": "Lan Nguyễn", "from": 1, "into": 2 });
+    for cmd in ["rename_speaker", "merge_speakers"] {
+        for other in [&overlay, &compose, &stranger] {
+            let result = invoke(other, cmd, args.clone());
+            assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", other.label());
+        }
+        // Cửa sổ chính gọi được; chưa có phiên nên là lỗi của lệnh, không phải bị chặn, và không có tên người trong lỗi.
+        let err = invoke(&main, cmd, args.clone()).unwrap_err();
+        assert!(!denied(&Err(err.clone())), "{cmd}: {err}");
+        assert!(err.contains("\"code\":\"speakerNotFound\""), "{cmd}: {err}");
+        assert!(!err.contains("Lan"), "{cmd}: lỗi không có tên người: {err}");
+    }
+}

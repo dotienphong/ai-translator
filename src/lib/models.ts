@@ -62,6 +62,9 @@ export interface Job {
   replacesInUse: boolean;
 }
 
+// Dữ liệu nhận giọng (`models::service::SpeakerModel`, spec 2026-10-26-phan-biet-nguoi-noi §4.5).
+export type SpeakerModel = "unavailable" | "missing" | "downloading" | "ready";
+
 export interface ModelsView {
   rev: number;
   hasSource: boolean;
@@ -75,6 +78,7 @@ export interface ModelsView {
   usedBytes: number;
   job: Job;
   updateAvailable: boolean;
+  speaker: SpeakerModel;
 }
 
 // Dung lượng theo đơn vị thập phân như spec ("khoảng 2,5 GB"): GB từ 1 GB, MB từ 1 MB, còn lại KB. Tiếng Việt dùng

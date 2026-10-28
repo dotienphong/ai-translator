@@ -163,6 +163,10 @@ const GROUPS = [
         a: `<p>Có. Ở Cài đặt › Âm thanh, chọn nguồn <strong>Micro</strong> (chỉ người trong phòng) hoặc <strong>Âm thanh máy + Micro</strong> (họp lai). Micro của laptop hợp nhất với người nói gần, khoảng 1&nbsp;m, trong phòng yên tĩnh; phòng lớn nên dùng micro rời. Ở chế độ Âm thanh máy + Micro, người trong phòng nói chen đúng lúc người online đang nói có thể bị bỏ sót; đeo tai nghe cho kết quả tốt nhất. Khi bạn chọn nguồn có micro, app thu micro suốt phiên dịch, kể cả khi bạn đã tắt micro trong app họp; âm thanh chỉ nằm trong RAM, không ghi xuống đĩa, không gửi đi. Xem <a href="/tinh-nang/#micro">cách dùng</a>.</p>`,
       },
       {
+        q: "App có hiện tên từng người nói không?",
+        a: `<p>Có, trên macOS. Từ bản 0.3.2, phụ đề có thể cho mỗi giọng một màu và một nhãn (“Người 1”, “Người 2”), và khi bạn dịch một cuộc họp trong app Microsoft Teams cài trên máy, app có thể hiện <strong>tên từng người nói</strong>, đọc từ cửa sổ cuộc họp, khi đã đủ chắc; chưa chắc thì giữ nhãn chung. Tên từ Google Meet và Zoom, và Windows, chưa có. Hai người giống giọng có thể dùng chung một nhãn, và khi nhiều người nói chồng, nhãn có thể sai. Tính năng bật sẵn ở mọi gói và tắt được ở Cài đặt › Phụ đề › Người nói. <a href="/huong-dan/thanh-phu-de-va-phim-tat/#nguoi-noi">Cách hoạt động</a>.</p>`,
+      },
+      {
         q: "Gỡ cài đặt AI Translator như thế nào?",
         a: `<p>Trên macOS, bấm Cài đặt › Quyền riêng tư › Xóa model và dữ liệu trước, rồi kéo app vào Thùng rác (macOS không có bước hỏi khi gỡ). Trên Windows, gỡ ở Settings › Apps › Installed apps; bộ gỡ có ô xóa dữ liệu app để xóa cả model (xem <a href="/huong-dan/cai-dat-windows/#go-cai-dat">hướng dẫn</a>). Xóa dữ liệu hay gỡ app đều không làm mất bản quyền và hạn mức còn lại.</p>`,
       },

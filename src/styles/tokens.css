@@ -37,6 +37,15 @@
     -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue",
     sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  /* Màu người nói trên nền sáng (spec 2026-10-26-phan-biet-nguoi-noi §8.2): đậm hơn bảng của thanh phụ đề. */
+  --spk-0: #1f6fd1;
+  --spk-1: #c25e00;
+  --spk-2: #2f8a3b;
+  --spk-3: #b8378f;
+  --spk-4: #7048c9;
+  --spk-5: #9a7a00;
+  --spk-6: #0f8a7e;
+  --spk-7: #c93a3a;
   color-scheme: light;
 }
 
@@ -69,6 +78,15 @@
     --shadow-sm: none;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+    /* Màu người nói trên nền tối: bảng của thanh phụ đề (spec §8.2). */
+    --spk-0: #7cc4ff;
+    --spk-1: #ffb86b;
+    --spk-2: #9be38f;
+    --spk-3: #f59fd5;
+    --spk-4: #c7a6ff;
+    --spk-5: #ffe27a;
+    --spk-6: #6fe0d2;
+    --spk-7: #ff8f8f;
     color-scheme: dark;
   }
 }
@@ -101,5 +119,14 @@
   --shadow-sm: none;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+  /* Màu người nói trên nền tối: bảng của thanh phụ đề (spec §8.2). */
+  --spk-0: #7cc4ff;
+  --spk-1: #ffb86b;
+  --spk-2: #9be38f;
+  --spk-3: #f59fd5;
+  --spk-4: #c7a6ff;
+  --spk-5: #ffe27a;
+  --spk-6: #6fe0d2;
+  --spk-7: #ff8f8f;
   color-scheme: dark;
 }

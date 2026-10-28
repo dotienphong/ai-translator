@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { Subtitle } from "../../lib/ipc";
+import type { SpeakerVoice, Subtitle } from "../../lib/ipc";
 import { OverlayLine, type OverlayLineProps } from "./OverlayLine";
 
 const sub = (patch: Partial<Subtitle>): Subtitle => ({
@@ -14,6 +14,7 @@ const sub = (patch: Partial<Subtitle>): Subtitle => ({
   status: "done",
   provisional: false,
   replaces: [],
+  speaker: null,
   ...patch,
 });
 
@@ -64,5 +65,21 @@ describe("OverlayLine", () => {
     expect(
       html({ line: sub({ status: "asr_done", provisional: true }), showSource: false, uiLanguage: "vi", dimProvisional: false }),
     ).toBe('<div class="line pending"><div class="main">Hello</div></div>');
+  });
+
+  // Spec 2026-10-26-phan-biet-nguoi-noi §8.1: dòng đầu lượt nói có tên màu, mọi dòng của giọng có vạch màu; không có giọng thì như cũ.
+  it("giọng: tên có màu ở dòng đầu lượt nói, vạch màu ở mọi dòng của giọng", () => {
+    const voice: SpeakerVoice = { id: 2, label: "Minh Trần", color: 1, source: "user", room: false, mergedInto: null };
+    const line = sub({ tgt_text: "Xin chào", speaker: 2 });
+    expect(html({ line, showSource: true, uiLanguage: "vi", voice, turnStart: true })).toBe(
+      '<div class="line translated spk" style="--spk:var(--spk-1)"><div class="spk-label">Minh Trần</div>' +
+        '<div class="spk-body"><div class="source">Hello</div><div class="main">Xin chào</div></div></div>',
+    );
+    expect(html({ line, showSource: false, uiLanguage: "vi", voice, turnStart: false })).toBe(
+      '<div class="line translated spk" style="--spk:var(--spk-1)"><div class="spk-body"><div class="main">Xin chào</div></div></div>',
+    );
+    expect(html({ line, showSource: false, uiLanguage: "vi", voice: null, turnStart: true })).toBe(
+      '<div class="line translated"><div class="main">Xin chào</div></div>',
+    );
   });
 });

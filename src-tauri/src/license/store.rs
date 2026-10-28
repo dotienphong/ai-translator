@@ -382,8 +382,9 @@ pub mod tests {
         assert!(matches!(read_seen(&vault), Err(StoreError::Keystore(_))));
     }
 
-    /// Hai nút xóa dữ liệu (§4.3; 04 thêm "Xóa model và dữ liệu", cũng gọi `data::clear_all_data`) chỉ xóa `data.db` và mục
-    /// `db-key`: bản quyền, đơn đang chờ và bộ đếm hạn mức trong cùng kho khóa giữ nguyên (Q14 của 03).
+    /// Hai nút xóa dữ liệu (§4.3; 04 thêm "Xóa model và dữ liệu", cũng gọi `data::clear_all_data`) chỉ xóa file DB và mục
+    /// khóa DB (`db-key`; bản debug `db-key-dev`): bản quyền, đơn đang chờ và bộ đếm hạn mức trong cùng kho khóa giữ nguyên
+    /// (Q14 của 03).
     #[test]
     fn wiping_user_data_keeps_the_license_and_the_quota_counters() {
         let keys = keyring_core::mock::Store::new().unwrap();

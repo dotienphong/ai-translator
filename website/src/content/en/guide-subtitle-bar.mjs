@@ -12,6 +12,7 @@ const toc = [
   { level: 2, id: "show-hide", text: "Show and hide" },
   { level: 2, id: "scroll", text: "Scroll back through sentences" },
   { level: 2, id: "style", text: "Font size, colors, opacity" },
+  { level: 2, id: "speakers", text: "Who is speaking: colors and names" },
   { level: 2, id: "indicators", text: "Indicators on the bar" },
   { level: 2, id: "shortcuts", text: "Default shortcuts" },
   { level: 2, id: "change-shortcuts", text: "Change a shortcut" },
@@ -81,6 +82,17 @@ ${callout({ title: "You cannot click a locked bar.", text: "To unlock it, use th
 ${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings: a sample-sentence preview at the top, a font size slider, two rows of color swatches, a background opacity slider and the show-original switch", caption: "Settings › Subtitles." })}
 ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle bar with yellow text on a navy background in a larger font", caption: "Example: yellow text, navy background, larger font." })}
 </div>
+
+<h2 id="speakers">Who is speaking: colors and names</h2>
+<p>On macOS, with AI Translator 0.3.2 or later, the subtitle bar can show who is speaking. It is on by default on every plan; you can turn it off in <strong>Settings › Subtitles › Speakers</strong>.</p>
+<ul>
+<li><strong>A color for each voice.</strong> The app tells voices apart on your computer and labels them “Speaker 1”, “Speaker 2” in order of appearance. The label and a colored bar appear on the first line of each turn; further sentences from the same person only have the colored bar.</li>
+<li><strong>Real names from Microsoft Teams.</strong> When you translate a meeting in the Teams desktop app, the app reads the names of the participants from the meeting window and shows a name once it is reasonably sure. Until then, or when it is not sure, it keeps “Speaker N”: a wrong name is worse than a generic label. It does not read the chat and does not take screenshots. Names from Google Meet and Zoom are not available yet.</li>
+<li><strong>Fix it yourself.</strong> In the transcript in the main window, click a label to rename it, to <em>Pick someone from the meeting</em>, or to <em>Merge into another speaker</em> when two labels are the same person. A change applies to the whole current session.</li>
+<li><strong>Permission.</strong> To read names, macOS asks for the <em>Accessibility</em> permission: the bar shows a short invitation (<em>Allow Accessibility access to show speaker names</em>) with a button to open Settings; the app never opens the system dialog by itself. After an app update macOS may ask for it again. Without the permission you still get colors and “Speaker N”.</li>
+<li><strong>History and exports.</strong> Labels and names are saved to History only with a Pro plan and only when you turn on Save history. In addition, the Copy button (every plan) and exporting to a file (Pro only) put the labels and names into the text: a name can be in text you copy or a file you export even if Save history is off (in SRT files, when you choose to add speaker names).</li>
+</ul>
+<p>Limits: two people with very similar voices can share one label, and when several people talk over each other a label can be wrong. Windows is not supported yet, and in Google Meet and Zoom the app shows colors and “Speaker N” but no names (not available yet).</p>
 
 <h2 id="indicators">Indicators on the bar</h2>
 <p>The top-right corner of the bar holds a dot and a few short notes:</p>

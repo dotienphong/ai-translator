@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Sinh THIRD_PARTY_NOTICES.txt (spec §10.1; kế hoạch 07a): giấy phép của mọi thư viện đi vào bản phát hành.
-//   - Rust: `cargo about generate --format json --frozen` cho app và cho asr-worker (hai binary được phát hành có code
-//     Rust), gộp theo văn bản giấy phép. `about.toml` chỉ nhận các giấy phép trong `[licenses] allow` của deny.toml.
+//   - Rust: `cargo about generate --format json --frozen` cho app, asr-worker và speaker-worker (ba binary được phát hành
+//     có code Rust), gộp theo văn bản giấy phép. `about.toml` chỉ nhận các giấy phép trong `[licenses] allow` của deny.toml.
 //   - JavaScript: `pnpm licenses list --prod --json` (gói nằm trong giao diện đã build), văn bản lấy từ file LICENSE của
 //     từng gói. Giấy phép phải nằm trong allow-list của deny.toml.
 //   - C/C++ trong tiến trình phụ: whisper.cpp và ggml (third_party/), llama.cpp cùng các thư viện nó nhúng (mã nguồn đã
 //     clone ở --llama-src, đúng commit khóa trong versions.env).
-//   - Model: Hy-MT2, trọng số Whisper, Silero VAD (licenses/models/).
+//   - Model: Hy-MT2, trọng số Whisper, Silero VAD, 3D-Speaker ERes2Net (licenses/models/).
 //
 //   node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src <thư mục llama.cpp>
 //   node scripts/release/notices.mjs --out <file> --no-llama     # CI kiểm giấy phép, chưa có mã nguồn llama.cpp
@@ -170,6 +170,20 @@ export function nativeComponents(llamaSrc, llamaTag) {
     },
     { title: "Whisper model weights (MIT), OpenAI", files: [join(root, "licenses/models/whisper-LICENSE.txt")] },
     { title: "Silero VAD v6.2.3 (MIT)", files: [join(root, "licenses/models/silero-vad-LICENSE.txt")] },
+    {
+      title: "3D-Speaker ERes2Net speaker-embedding model (Apache-2.0)",
+      files: [join(root, "licenses/models/3D-Speaker-LICENSE.txt")],
+    },
+    {
+      title: "3D-Speaker ERes2Net: source and modification notice",
+      text:
+        "The speaker-embedding model used to tell speakers apart (eres2net-sv-en-voxceleb-16k.onnx) is the ONNX export of the\n" +
+        "3D-Speaker ERes2Net VoxCeleb model published by the sherpa-onnx project (file 3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx,\n" +
+        "SHA-256 c59158379255ad66e161679cca6af8d52d51e389e3224ab7d7a7baae295c2db5), licensed under the Apache License, Version 2.0 (text above).\n" +
+        "Source: https://github.com/modelscope/3D-Speaker and https://github.com/k2-fsa/sherpa-onnx.\n" +
+        "Modification: the ONNX graph was simplified with onnxsim; the model was not retrained or fine-tuned.\n" +
+        "The model runs only on your computer.\n",
+    },
   );
   return items;
 }
@@ -232,7 +246,7 @@ export function main(argv) {
   if (JSON.stringify([...accepted].sort()) !== JSON.stringify([...allow].sort())) {
     errors.push("about.toml `accepted` khác deny.toml `[licenses] allow`");
   }
-  const rust = mergeAbout([cargoAbout("src-tauri/Cargo.toml"), cargoAbout("crates/asr-worker/Cargo.toml")]);
+  const rust = mergeAbout([cargoAbout("src-tauri/Cargo.toml"), cargoAbout("crates/asr-worker/Cargo.toml"), cargoAbout("crates/speaker-worker/Cargo.toml")]);
   const listing = JSON.parse(
     execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: root, encoding: "utf8", shell: process.platform === "win32" }),
   );

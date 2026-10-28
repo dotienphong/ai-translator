@@ -1,0 +1,27 @@
+[package]
+name = "speaker-ops"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Vận hành của "Phân biệt người nói" (spec 2026-10-26-phan-biet-nguoi-noi §7): phong bì ký của công thức đọc tên, chống quay
+# lui, gom tình trạng bộ đọc thành báo cáo `speaker_health`, chấm kiểm tra tự động. Phần thuần: không mạng, không Tauri; app
+# (`src-tauri`) và công cụ kiểm tra tự động (`speaker-canary`) dùng chung. `speaker-worker` KHÔNG dùng crate này (worker không có
+# mã mạng và không cần chữ ký).
+[dependencies]
+# Cùng bản `Cargo.lock` và app đang dùng cho manifest model; bản mới nhất ổn định trên crates.io (`cargo search`, 2026-10-27).
+base64 = "0.23.1"
+ed25519-dalek = { version = "3.0.0", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+speaker-protocol = { path = "../speaker-protocol" }
+speaker-recipe = { path = "../speaker-recipe" }
+thiserror.workspace = true
+
+[features]
+# Hàm ký cho test của app (`src-tauri`) và bộ vector; không bao giờ bật trong bản phát hành.
+testing = []
+
+[dev-dependencies]
+tempfile = "3.27.0"

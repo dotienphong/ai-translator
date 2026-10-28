@@ -4,7 +4,7 @@
 //! đích `Any` nhận cả sự kiện gửi riêng cho cửa sổ khác. Vì vậy không gửi bí mật nào qua sự kiện
 //! (kế hoạch 06: không gửi token hay license key đầy đủ); `emit_to` chỉ để giảm việc thừa.
 
-use pipeline::subtitle::{LiveEnd, LiveLine};
+use pipeline::subtitle::{LiveEnd, LiveLine, SpeakerLabel};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
@@ -13,6 +13,7 @@ use crate::overlay;
 use crate::settings::Settings;
 use crate::state::{AppStatus, OverlayView};
 use crate::support::chat::SupportView;
+use crate::transcript::speakers::RosterView;
 use crate::window;
 
 pub const SETTINGS_CHANGED: &str = "settings://changed";
@@ -29,6 +30,12 @@ pub const SUBTITLE_DELTA: &str = "subtitle://delta";
 pub const SUBTITLE_LIVE: &str = "subtitle://live";
 /// Gỡ dòng đang nói (`pipeline::subtitle::LiveEnd`); chỉ gửi cho thanh phụ đề.
 pub const SUBTITLE_LIVE_END: &str = "subtitle://live-end";
+/// Giọng của một phụ đề đã phát vừa đổi (spec 2026-10-26-phan-biet-nguoi-noi §4.3, `pipeline::subtitle::SpeakerLabel`). Cửa sổ
+/// chính và thanh phụ đề.
+pub const SUBTITLE_SPEAKER: &str = "subtitle://speaker";
+/// Bảng người nói của phiên (`transcript::speakers::RosterView`, spec 2026-10-26-phan-biet-nguoi-noi §9): nhãn, màu, nguồn tên, `rev`.
+/// Cửa sổ chính và thanh phụ đề.
+pub const SPEAKER_ROSTER: &str = "speaker://roster";
 /// Mức âm lượng vào (RMS 0–1), khoảng 10 lần mỗi giây trong lúc dịch.
 pub const AUDIO_LEVEL: &str = "audio://level";
 /// Phím tắt cuộn phụ đề lên hay xuống (§4.4); chỉ gửi cho thanh phụ đề. Nội dung là `"up"` hay `"down"`.
@@ -58,6 +65,10 @@ pub enum ScrollDirection {
 pub struct Navigate {
     pub screen: &'static str,
     pub settings_group: Option<&'static str>,
+    /// Phần cần cuộn tới trong màn hình: `"speakers"` là nhóm Người nói ở Cài đặt › Phụ đề (spec 2026-10-26-phan-biet-nguoi-noi
+    /// §6.7). `None` thì không có trong JSON (sự kiện cũ không đổi).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub focus: Option<&'static str>,
 }
 
 /// Lời nhắc trong app (QĐ12), hiện ở thanh báo của cửa sổ chính. Giao diện dịch `kind` thành câu.
@@ -93,6 +104,16 @@ pub fn subtitle_live<R: Runtime>(app: &AppHandle<R>, line: &LiveLine) {
 /// Gỡ dòng đang nói trên thanh phụ đề.
 pub fn subtitle_live_end<R: Runtime>(app: &AppHandle<R>, end: &LiveEnd) {
     emit(app, overlay::LABEL, SUBTITLE_LIVE_END, end);
+}
+
+pub fn subtitle_speaker<R: Runtime>(app: &AppHandle<R>, label: &SpeakerLabel) {
+    emit(app, window::MAIN, SUBTITLE_SPEAKER, label);
+    emit(app, overlay::LABEL, SUBTITLE_SPEAKER, label);
+}
+
+pub fn speaker_roster<R: Runtime>(app: &AppHandle<R>, roster: &RosterView) {
+    emit(app, window::MAIN, SPEAKER_ROSTER, roster);
+    emit(app, overlay::LABEL, SPEAKER_ROSTER, roster);
 }
 
 /// Báo thanh phụ đề cuộn một trang (§4.4). Thanh khóa vẫn nhận: sự kiện không đi qua chuột.

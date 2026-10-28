@@ -7,10 +7,20 @@
 
 # Model, công cụ tải về và dữ liệu lớn của Phase 0 (xem bench/phase0/fetch.py)
 /models/
-/tools/
+/tools/*
+# Ngoại lệ: công cụ kiểm tra tự động của bộ đọc tên (kế hoạch 06) là mã của dự án, không phải công cụ tải về
+!/tools/speaker-canary/
 /bench/phase0/data/
 # Bản thu của spike nguồn micro: có giọng người thật, không commit (spec 2026-10-24-nguon-micro §6)
 /bench/2026-10-24-nguon-micro/data/
+# App thử quyền Trợ năng của spike phân biệt người nói (dựng bằng tcc-probe/make-app.sh)
+/bench/2026-10-26-nguoi-noi/tcc-probe/TccProbe.app/
+# Công cụ đọc tên của spike phân biệt người nói: binary dựng lại, giọng đọc máy, bản ghi cây giao diện có tên người (không commit)
+/bench/2026-10-26-nguoi-noi/truoc-spec/doc-ten/axtrace
+/bench/2026-10-26-nguoi-noi/truoc-spec/doc-ten/audio/
+/bench/2026-10-26-nguoi-noi/truoc-spec/doc-ten/out/
+/bench/2026-10-26-nguoi-noi/tro-nang/axprobe
+/bench/2026-10-26-nguoi-noi/tro-nang/rus
 
 # Tauri
 /src-tauri/gen/
@@ -48,3 +58,5 @@ __pycache__/
 
 # Trạng thái lượt đăng model của pnpm models:update (state.json, bản đã ký, bản sao lưu manifest)
 /.models-update/
+# Trạng thái lượt đăng công thức đọc tên của pnpm recipes:update (bản đã ký, bản sao lưu recipes.json)
+/.recipes-update/

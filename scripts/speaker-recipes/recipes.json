@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "version": 1,
+  "min_app_version": "0.3.2",
+  "apps": [
+    {
+      "app": "teams",
+      "os": "macos",
+      "window_title": ["^Meeting with ", "^Meeting in ", "^Cuộc họp với ", "^Cuộc họp trong "],
+      "confirm_id": "hangup-button",
+      "enhanced_ui": true,
+      "tile": {
+        "role": "AXMenuItem",
+        "label": "^(?:(?P<self>Myself video), )?(?P<name>[^,]{1,120}?)(?:, (?P<muted>[Mm]uted))?, (?:Context menu is available|Has context menu)$"
+      },
+      "name_from": "label",
+      "name_suffixes": ["\\s*\\((?:Guest|Khách|Host|Organizer|Người tổ chức|External|Bên ngoài)\\)$"],
+      "mic": { "muted_values": ["muted", "Muted"], "absent_means_unmuted": true },
+      "speaking": [
+        { "kind": "presence", "anchor": { "scope": "child", "role": "AXGroup", "class_token": "vdi-frame-occlusion" } }
+      ],
+      "delay_ms": 900
+    }
+  ]
+}

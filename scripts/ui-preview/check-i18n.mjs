@@ -12,8 +12,14 @@
 // tự dán), và ô soạn (compose.html, 560×420) ở từng trạng thái: trống, đang dịch, đang nạp model, đã dịch, đã là ngôn ngữ đích,
 // lỗi, bị chặn vì bản quyền, hộp quyền Trợ năng, chỉ chép, giao diện tối. Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): mục Hỗ
 // trợ giữa Nâng cấp và Giới thiệu, chấm đỏ, chữ của hợp đồng phía khách, ô "Gửi kèm thông tin máy", gửi bằng Enter (Shift+Enter xuống
-// dòng), tin gửi lỗi và gửi lại, thẻ email, menu ⋯ xóa, đính kèm log, chính sách mở trong app, chat tắt và cuộc chat đóng. Ảnh PNG
-// cho người kiểm xem ở
+// dòng), tin gửi lỗi và gửi lại, thẻ email, menu ⋯ xóa, đính kèm log, chính sách mở trong app, chat tắt và cuộc chat đóng.
+// Phân biệt người nói (spec 2026-10-26-phan-biet-nguoi-noi §8; kế hoạch 03): bản chép lời có nhãn (sáng, tối), menu của nhãn (cả tên
+// 40 ký tự), menu đặt theo chỗ trống (lật lên khi nhãn gần đáy, cả khi `scrollIntoView` không có tác dụng như ở WKWebView thật; bung
+// danh sách gộp), bấm lại nhãn để đóng menu, Esc trả focus về nhãn, bấm nhãn dòng khác khi đã cuộn tới đáy, ô "Thêm tên người nói" của
+// SRT, Lịch sử chỉ đọc, nhóm Cài đặt "Người nói" (macOS, chưa cấp
+// quyền, Windows, tắt, đang tải), ghi chú ở Cài đặt › Model, thanh phụ đề có tên và vạch màu, dòng mời cấp quyền (bấm thật, không đè
+// lời nhắc), dòng đang nói nối tiếp; bản không có tính năng thì không có gì mới.
+// Ảnh PNG cho người kiểm xem ở
 // target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
 // thì in ra và thoát mã 1; không mở được trang thì báo ngay và thoát mã 1. Chrome luôn đóng (xóa thư mục hồ sơ tạm) khi xong.
 //
@@ -500,6 +506,103 @@ async function supportPrivacy(page, ck) {
   await ck(`!!document.querySelector(".support-privacy .legal")`, "mở chính sách quyền riêng tư trong app");
 }
 
+// Chờ tới khi biểu thức `expression` đúng trên trang, tối đa `ms` (rà soát lần 2 của kế hoạch 03 phân biệt người nói:
+// `settings-model-speaker-downloading` sai 1/10 lượt vì khoảng chờ cố định hết trước khi màn hình vẽ xong lúc máy bận). Hết giờ thì
+// không ném lỗi: các điều kiện kiểm phía sau báo sai như thường.
+const until = (expression, ms = 5000) =>
+  `(async () => { const end = Date.now() + ${ms}; while (Date.now() < end && !(${expression})) await new Promise((r) => setTimeout(r, 50)); })()`;
+
+// Bấm chuột thật vào giữa phần tử mà biểu thức `expression` trả về, không cuộn trước (`page.click` cuộn phần tử vào giữa khung, làm
+// mất vị trí cuộn cần thử).
+async function clickInPlace(page, expression) {
+  const box = await page.eval(
+    `(() => { const e = ${expression}; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
+  );
+  if (!box) throw new Error(`không thấy ${expression}`);
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await page.s.send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
+  }
+  await sleep(120);
+}
+
+// Phím Esc thật (`page.press` không có mã phím của Esc).
+async function pressEscape(page) {
+  for (const type of ["keyDown", "keyUp"]) {
+    await page.s.send("Input.dispatchKeyEvent", { type, key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  }
+  await sleep(120);
+}
+
+// Rà soát B-Q1, B-N7 và rà soát lần 2 (kế hoạch 03 phân biệt người nói), bấm bằng chuột và phím thật như người dùng:
+// 1. bấm nhãn "Người 3" mở menu; gõ vào ô tên rồi bấm trong ô thì menu vẫn mở, chữ còn nguyên; bấm lại chính nhãn thì menu đóng (không
+//    đóng rồi mở lại). Không kiểm focus ở bước này: Chrome tự focus nút khi bấm chuột, WKWebView thì không, và menu cố ý không trả
+//    focus khi đóng bằng chuột;
+// 2. mở lại, Esc khi focus ở ô tên: menu đóng, focus về nhãn (đường thử được mã trả focus của `SpeakerMenu`);
+// 3. menu của dòng cuối mở xuống, khung cuộn tới đáy (phần menu kéo dài vùng cuộn): bấm nhãn của dòng khác thì menu sang dòng đó
+//    (B-Q-mới 2: đóng menu lúc nhấn làm vùng cuộn co lại, nội dung dịch đi dưới con trỏ, cú bấm mất). Từ khi menu đặt theo chỗ trống
+//    (QĐ 20), menu của dòng cuối lật lên khi đủ chỗ trên nên không kéo dài vùng cuộn (và che các nhãn phía trên); ca B-Q-mới 2 vẫn
+//    xảy ra khi cả hai phía thiếu chỗ (cửa sổ thấp, menu cao: mở xuống rồi cuộn). Giả đúng ca đó ở mọi ngôn ngữ và cỡ cửa sổ: bỏ lớp
+//    `up` của menu vừa mở (React không đặt lại lớp khi hướng không đổi), menu về dưới nhãn dòng cuối. Nhãn được bấm là nhãn thấp nhất
+//    còn thấy và không bị menu che.
+async function speakerChipTwice(page, ck) {
+  const chip = ".transcript li:nth-child(4) button.spk-chip";
+  await page.click(chip);
+  await ck(`!!document.querySelector(".speaker-menu")`, "bấm nhãn: menu mở");
+  await page.eval(
+    `(() => { const i = document.querySelector("#speaker-name"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, "Hoa"); i.dispatchEvent(new Event("input", { bubbles: true })); })()`,
+  );
+  await page.click("#speaker-name");
+  await ck(`document.querySelector("#speaker-name")?.value === "Hoa"`, "bấm trong menu: menu vẫn mở, chữ đã gõ còn nguyên");
+  await page.click(chip);
+  await ck(`!document.querySelector(".speaker-menu")`, "bấm lại chính nhãn: menu đóng, không mở lại");
+  await page.click(chip);
+  await ck(`document.activeElement === document.querySelector("#speaker-name")`, "mở lại menu: focus ở ô tên");
+  await pressEscape(page);
+  await ck(`!document.querySelector(".speaker-menu")`, "Esc: menu đóng");
+  await ck(`document.activeElement === document.querySelector(${JSON.stringify(chip)})`, "Esc: focus về nhãn");
+  await page.click(".transcript li:last-child button.spk-chip");
+  await ck(`!!document.querySelector(".transcript li:last-child .speaker-menu")`, "menu của dòng cuối mở");
+  await page.eval(`document.querySelector(".transcript li:last-child .speaker-menu").classList.remove("up")`);
+  await page.eval(`(() => { const c = document.querySelector("main.content"); c.scrollTop = c.scrollHeight; })()`);
+  await sleep(150);
+  await ck(
+    `document.querySelector(".speaker-menu").getBoundingClientRect().bottom > document.querySelector(".transcript").getBoundingClientRect().bottom`,
+    "menu của dòng cuối mở xuống, kéo dài vùng cuộn",
+  );
+  // Nhãn thấp nhất của một dòng khác còn nằm trọn trong khung khi đã cuộn tới đáy, và điểm giữa của nó không bị menu che.
+  const other = `[...document.querySelectorAll(".transcript li:not(:last-child) button.spk-chip")].filter((c) => { const r = c.getBoundingClientRect(); const b = document.querySelector("main.content").getBoundingClientRect(); return r.top >= b.top && r.bottom <= b.bottom && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest("button.spk-chip") === c; }).at(-1)`;
+  await ck(`!!(${other})`, "đã cuộn tới đáy mà vẫn thấy nhãn của một dòng khác, không bị menu che");
+  await page.eval(`(() => { const c = ${other}; if (c) c.closest("li").dataset.checkTarget = "1"; })()`);
+  await clickInPlace(page, `document.querySelector("li[data-check-target] button.spk-chip")`);
+  await ck(
+    `!!document.querySelector("li[data-check-target] .speaker-menu") && document.querySelectorAll(".speaker-menu").length === 1`,
+    "bấm nhãn dòng khác lúc đã cuộn tới đáy: menu sang dòng đó, cú bấm không mất",
+  );
+}
+
+// Mở menu của nhãn thứ `chip` (đếm từ 0) như trong app dev thật (03b Task 23, ảnh `m9d-*`). `noScrollIntoView`:
+// `Element.prototype.scrollIntoView` thành hàm rỗng trước khi mở (ở WKWebView thật menu không được cuộn vào khung), để chứng minh
+// menu nằm trọn mà không cần `scrollIntoView`. `nearBottom`: cuộn khung cho đáy nhãn cách mép dưới 14 px như ảnh m9d (trong giới hạn
+// cuộn được). `merge`: bấm tiếp "Gộp vào người khác ▸" (danh sách người bung ra). Vị trí cuộn ngay trước khi bấm nhãn ghi vào
+// `data-check-scroll` của khung.
+const openSpeakerMenu = (chip, { noScrollIntoView = false, nearBottom = false, merge = false } = {}) => `(async () => {
+  const c = document.querySelector("main.content");
+  const b = document.querySelectorAll(".transcript button.spk-chip")[${chip}];
+  if (${noScrollIntoView}) Element.prototype.scrollIntoView = function () {};
+  if (${nearBottom}) {
+    c.scrollTop += b.getBoundingClientRect().bottom - (c.getBoundingClientRect().bottom - 14);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  c.dataset.checkScroll = String(c.scrollTop);
+  b.click();
+  await ${until(`!!document.querySelector(".speaker-menu")`, 2000)};
+  if (${merge}) {
+    await new Promise((r) => setTimeout(r, 100));
+    document.querySelector(".speaker-menu .menu-item[aria-expanded]")?.click();
+    await ${until(`!!document.querySelector(".speaker-menu .menu-item.sub")`, 2000)};
+  }
+})()`;
+
 // [tên, tham số URL, tùy chọn { prepare: biểu thức chạy trước khi kiểm, wait: ms, interact: async (page, ck, lang) bấm thật }]
 const SCREENS = [
   ["home", "screen=home"],
@@ -569,6 +672,74 @@ const SCREENS = [
   ["support-delete", "screen=support&chat=open", { interact: supportDelete }],
   ["support-log", "screen=support&chat=open", { interact: supportAttachLog }],
   ["support-privacy", "screen=support", { interact: supportPrivacy }],
+  // Phân biệt người nói (kế hoạch 03): năm câu mẫu của giọng 1, 1, 2, 3, 1.
+  ["transcript-speakers", "screen=transcript&speakers=1"],
+  ["transcript-speakers-dark", "screen=transcript&speakers=1&theme=dark"],
+  // Bấm nhãn thứ ba ("Người 3") như mẫu đã duyệt.
+  [
+    "transcript-speakers-menu",
+    "screen=transcript&speakers=1",
+    { prepare: `document.querySelectorAll(".transcript button.spk-chip")[2].click()`, wait: 500 },
+  ],
+  // Nhãn của dòng cuối (menu kéo dài vùng cuộn): cũng thấy đủ menu khi mở.
+  [
+    "transcript-speakers-menu-last",
+    "screen=transcript&speakers=1",
+    { prepare: `document.querySelectorAll(".transcript button.spk-chip")[3].click()`, wait: 500 },
+  ],
+  // Như trong app dev thật (03b Task 23, ảnh m9d): `scrollIntoView` không có tác dụng, nhãn sát mép dưới khung. Menu tự nằm trọn nhờ
+  // lật lên (QĐ 20), không cuộn khung: nhãn dòng cuối, nhãn dòng thứ tư.
+  ["transcript-speakers-menu-noscroll", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(3, { noScrollIntoView: true, nearBottom: true }), wait: 300 }],
+  ["transcript-speakers-menu-noscroll-near", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(2, { noScrollIntoView: true, nearBottom: true }), wait: 300 }],
+  // Ảnh m9d-menu-gop: bấm "Gộp vào người khác ▸" thì cả danh sách người nằm trọn trong khung, vẫn không có `scrollIntoView`: menu lật
+  // lên của nhãn dòng cuối; menu mở xuống của nhãn dòng đầu (ở 720x480 thiếu chỗ cả hai phía nên mở xuống rồi cuộn khung).
+  ["transcript-speakers-menu-merge", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(3, { noScrollIntoView: true, nearBottom: true, merge: true }), wait: 300 }],
+  ["transcript-speakers-menu-merge-first", "screen=transcript&speakers=1", { prepare: openSpeakerMenu(0, { noScrollIntoView: true, merge: true }), wait: 300 }],
+  // Mở phiên đầu của Lịch sử: nhãn đã lưu, chỉ đọc.
+  ["history-speakers", "screen=history&speakers=1", { prepare: `document.querySelector(".history .actions button").click()`, wait: 900 }],
+  // Rà soát B-Q1, B-N7, rà soát lần 2: bấm lại chính nhãn thì menu đóng; Esc trả focus về nhãn; bấm nhãn dòng khác lúc đã cuộn tới
+  // đáy thì menu sang dòng đó (chuột và phím thật).
+  ["transcript-speakers-chip-twice", "screen=transcript&speakers=1", { interact: speakerChipTwice }],
+  // Rà soát B-Q3: tên 40 ký tự (Latin ở nhãn và tiêu đề menu, chữ Hán ở người tham dự) xuống dòng trong menu, không tràn.
+  // Cuộn menu vào khung sau khi mở: ở 720x480 mục tên chữ Hán nằm dưới mép cửa sổ (rà soát lần 2).
+  [
+    "transcript-speakers-menu-long",
+    "screen=transcript&speakers=1&longnames=1",
+    {
+      prepare: `(async () => { document.querySelectorAll(".transcript button.spk-chip")[1].click(); await ${until(`!!document.querySelector(".speaker-menu")`, 2000)}; document.querySelector(".speaker-menu")?.scrollIntoView({ block: "end" }); })()`,
+      wait: 400,
+    },
+  ],
+  // Rà soát B-N10: hàng xuất SRT có ô "Thêm tên người nói" (chọn SRT như người dùng: đặt giá trị rồi bắn `change`).
+  [
+    "transcript-speakers-srt",
+    "screen=transcript&speakers=1",
+    {
+      prepare: `(() => { const s = document.querySelector("#export-format"); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "srt"); s.dispatchEvent(new Event("change", { bubbles: true })); })()`,
+      wait: 400,
+    },
+  ],
+  ...[
+    ["settings-subtitles-speakers", ""],
+    ["settings-subtitles-speakers-dark", "&theme=dark"],
+    ["settings-subtitles-speakers-noax", "&ax=0"],
+    ["settings-subtitles-speakers-windows", "&platform=windows"],
+    ["settings-subtitles-speakers-off", "&diarization=0"],
+    ["settings-subtitles-speakers-downloading", "&speakermodel=downloading"],
+  ].map(([name, extra]) => [
+    name,
+    `screen=settings&group=subtitles&speakers=1${extra}`,
+    {
+      prepare: `(async () => { await ${until(`!!document.getElementById("speaker-settings")`)}; document.getElementById("speaker-settings")?.scrollIntoView({ block: "start" }); })()`,
+      wait: 300,
+    },
+  ]),
+  // Chờ tới khi ghi chú hiện, không dựa vào khoảng chờ cố định sau khi tải trang (rà soát lần 2: 1/10 lượt sai, chạy lại thì đạt).
+  [
+    "settings-model-speaker-downloading",
+    "screen=settings&group=model&speakers=1&speakermodel=downloading",
+    { prepare: until(`!!document.querySelector(".note.speaker-downloading")`), wait: 100 },
+  ],
   ["about", "screen=about"],
   // Nút "Gửi log cho hỗ trợ" (spec 2026-10-17 §5): bấm thật ra mã báo cáo, và ba lỗi của lệnh.
   ["about-report-sent", "screen=about", { interact: sendReport }],
@@ -634,11 +805,24 @@ const COMPOSES = [
   ["compose-dark", "state=done&theme=dark", [[`document.documentElement.dataset.theme === "dark"`, "giao diện tối"]]],
 ];
 
+// Thanh phụ đề (overlay.html): [tên, tham số URL, tùy chọn như SCREENS].
 const OVERLAYS = [
   ["overlay", "session=running"],
   ["overlay-live", "session=running&live=alone"],
   ["overlay-mic-silent", "session=running&notes=micSilent"],
   ["overlay-mic-permission", "session=running&notes=micPermission"],
+  // Phân biệt người nói (kế hoạch 03).
+  ["overlay-speakers", "session=running&speakers=1"],
+  ["overlay-speakers-ask", "session=running&speakers=1&ask=1"],
+  ["overlay-speakers-ask-locked", "session=running&speakers=1&ask=1&locked=1"],
+  [
+    "overlay-speakers-ask-click",
+    "session=running&speakers=1&ask=1",
+    { prepare: `document.querySelector(".overlay .ask-open").click(); document.querySelector(".overlay .ask-close").click()`, wait: 300 },
+  ],
+  // Rà soát B-N3: dòng mời và lời nhắc ở góc phải cùng lúc.
+  ["overlay-speakers-ask-notes", "session=running&speakers=1&ask=1&notes=micSilent"],
+  ["overlay-speakers-live", "session=running&speakers=1&live=extends"],
 ];
 
 // Phần tử có chữ tràn khỏi ô: tối đa 8, mỗi phần tử một dòng mô tả. Dấu "…" có chủ ý (text-overflow: ellipsis) không tính.
@@ -668,7 +852,178 @@ const pauseSlider = (value) => [
     `thanh ngắt câu kéo được và đang ở ${value} ms`,
   ],
 ];
+// Bản chép lời có người nói (năm câu của giọng 1, 1, 2, 3, 1): nhãn ở 4 câu đầu lượt, vạch ở 5 câu, câu thứ hai của Lan không lặp tên;
+// `editable`: nhãn là nút bấm (phiên đang chạy), không thì chỉ để đọc (Lịch sử).
+const speakerTranscript = (editable) => [
+  [`document.querySelectorAll(".transcript .spk-chip").length === 4`, "4 nhãn ở 4 câu đầu lượt nói"],
+  [`document.querySelectorAll(".transcript li.spk").length === 5`, "5 câu có vạch màu"],
+  [`document.querySelectorAll(".transcript li.spk-cont").length === 1`, "câu sau của cùng người không lặp tên"],
+  [
+    `document.querySelectorAll(".transcript button.spk-chip").length === ${editable ? 4 : 0}`,
+    editable ? "nhãn bấm được (phiên đang chạy)" : "Lịch sử: nhãn chỉ để đọc",
+  ],
+  [
+    `(() => { const c = document.querySelector(".transcript .spk-chip"); return !!c && getComputedStyle(c).color !== getComputedStyle(document.body).color; })()`,
+    "nhãn có màu riêng",
+  ],
+];
+// Nhóm "Người nói" ở Cài đặt › Phụ đề: có nhóm, đúng số dòng, công tắc "Phân biệt" theo `on`.
+const speakerSettings = (fields, on) => [
+  [`!!document.getElementById("speaker-settings")`, "có nhóm Người nói"],
+  [`document.querySelectorAll("#speaker-settings .field").length === ${fields}`, `nhóm Người nói có ${fields} dòng`],
+  [`document.getElementById("speaker-diarization").checked === ${on}`, on ? "Phân biệt người nói bật sẵn" : "Phân biệt người nói tắt"],
+];
+// Menu của nhãn vừa mở thì thấy đủ ngay, không phải cuộn tay (nghiệm thu Task 21: ở 960x640 nhãn dòng thứ tư đã nằm trong khung nên
+// trình duyệt không cuộn, nửa dưới menu ra ngoài mép cửa sổ và mục Gộp biến mất). Menu nằm trong khung cuộn `main.content`: cả
+// menu và mục "Gộp vào người khác ▸" phải nằm trọn trong phần khung đang hiện và trong cửa sổ (sai số 1 px).
+const MENU_VISIBLE = `(r) => { const c = document.querySelector("main.content").getBoundingClientRect(); return r.top >= c.top - 1 && r.bottom <= Math.min(innerHeight, c.bottom) + 1; }`;
+const menuFits = (lang) => [
+  [`(${MENU_VISIBLE})(document.querySelector(".speaker-menu").getBoundingClientRect())`, "mở menu thì thấy cả menu trong khung và cửa sổ, không cuộn tay"],
+  [
+    inPage(
+      lang,
+      `const g = [...document.querySelectorAll(".speaker-menu .menu-item")].find((b) => b.textContent === t("transcript.speaker.merge") + " ▸"); return !!g && (${MENU_VISIBLE})(g.getBoundingClientRect());`,
+    ),
+    "mở menu thì thấy mục Gộp vào người khác ▸ trọn trong khung và cửa sổ",
+  ],
+];
+// Nhãn sát mép dưới khung, `scrollIntoView` không có tác dụng (như ở WKWebView thật): menu tự nằm trọn nhờ lật lên, khung không cuộn
+// (`openSpeakerMenu` ghi vị trí cuộn trước khi bấm).
+const menuFlipsUp = (lang) => [
+  has(".speaker-menu.up", "nhãn sát mép dưới: menu lật lên"),
+  [`(() => { const c = document.querySelector("main.content"); return String(c.scrollTop) === c.dataset.checkScroll; })()`, "lật lên thì không cuộn khung"],
+  ...menuFits(lang),
+];
+// Bung "Gộp vào người khác ▸": mọi người trong danh sách cũng nằm trọn trong khung (ảnh m9d-menu-gop).
+const mergeFits = (lang) => [
+  [
+    `(() => { const s = [...document.querySelectorAll(".speaker-menu .menu-item.sub")]; return s.length > 0 && s.every((e) => (${MENU_VISIBLE})(e.getBoundingClientRect())); })()`,
+    "bung danh sách gộp: mọi người trong danh sách nằm trọn trong khung và cửa sổ",
+  ],
+  ...menuFits(lang),
+];
 const EXTRA = {
+  // Phân biệt người nói (kế hoạch 03).
+  "transcript-speakers": () => speakerTranscript(true),
+  "transcript-speakers-dark": () => speakerTranscript(true),
+  "history-speakers": () => speakerTranscript(false),
+  "transcript-speakers-menu": (lang) => [
+    has(".speaker-menu", "menu của nhãn mở"),
+    [`document.querySelector("#speaker-name")?.maxLength === 40`, "ô đổi tên tối đa 40 ký tự"],
+    [`document.querySelector("#speaker-name")?.value === ""`, "nhãn tự động: ô đổi tên để trống"],
+    [`document.querySelectorAll(".speaker-menu .menu-item").length === 5`, "bốn người tham dự và mục Gộp"],
+    [
+      inPage(
+        lang,
+        `const name = document.querySelectorAll(".transcript .spk-chip .label")[2].textContent; const iso = String.fromCharCode(0x2068) + name + String.fromCharCode(0x2069); return document.querySelector(".speaker-menu .menu-head").textContent === t("transcript.speaker.rename", { name: iso });`,
+      ),
+      "tiêu đề menu: Đổi tên “<nhãn>”",
+    ],
+    ...menuFits(lang),
+  ],
+  "transcript-speakers-menu-last": (lang) => [has(".speaker-menu", "menu của nhãn cuối mở"), ...menuFits(lang)],
+  "transcript-speakers-menu-noscroll": (lang) => menuFlipsUp(lang),
+  "transcript-speakers-menu-noscroll-near": (lang) => menuFlipsUp(lang),
+  "transcript-speakers-menu-merge": (lang) => [has(".speaker-menu.up", "menu của nhãn dòng cuối lật lên"), ...mergeFits(lang)],
+  "transcript-speakers-menu-merge-first": (lang) => mergeFits(lang),
+  "settings-subtitles": () => [[`!document.getElementById("speaker-settings")`, "bản không có tính năng: không có nhóm Người nói"]],
+  "settings-subtitles-speakers": () => speakerSettings(3, true),
+  "settings-subtitles-speakers-dark": () => speakerSettings(3, true),
+  "settings-subtitles-speakers-noax": (lang) => [
+    ...speakerSettings(3, true),
+    [
+      inPage(lang, `return document.getElementById("speaker-settings").textContent.includes(t("settings.speakers.permission.missing"));`),
+      "macOS chưa cấp quyền: ghi chưa cấp và cách cấp lại",
+    ],
+  ],
+  "settings-subtitles-speakers-windows": () => speakerSettings(2, true),
+  "settings-subtitles-speakers-off": () => [
+    ...speakerSettings(2, false),
+    [
+      `document.getElementById("speaker-names").disabled && !document.getElementById("speaker-names").checked`,
+      "tắt Phân biệt thì Lấy tên tắt theo, không bấm được",
+    ],
+  ],
+  "settings-subtitles-speakers-downloading": (lang) => [
+    ...speakerSettings(3, true),
+    [
+      inPage(lang, `return document.getElementById("speaker-settings").textContent.includes(t("settings.speakers.model.downloading"));`),
+      "ghi đang tải dữ liệu nhận giọng",
+    ],
+  ],
+  "settings-model-speaker-downloading": (lang) => [
+    [inPage(lang, `return document.body.textContent.includes(t("settings.model.speakerDownloading"));`), "Cài đặt › Model báo đang tải dữ liệu nhận giọng"],
+  ],
+  overlay: () => [
+    [
+      `!document.querySelector(".overlay .spk-label") && !document.querySelector(".overlay .lines.has-speakers")`,
+      "tính năng tắt: thanh như hiện nay",
+    ],
+  ],
+  "overlay-speakers": () => [
+    [`document.querySelectorAll(".overlay .spk-label").length === 4`, "tên có màu ở dòng đầu 4 lượt nói"],
+    [`document.querySelectorAll(".overlay .spk-body").length === 5`, "5 câu có vạch màu"],
+    [
+      `getComputedStyle(document.querySelector(".overlay .spk-label")).color === "rgb(124, 196, 255)"`,
+      "giọng đầu tiên màu #7cc4ff (bảng nền tối)",
+    ],
+    [`document.querySelector(".overlay .lines").classList.contains("has-speakers")`, "phiên có giọng: mọi câu cùng lề"],
+    [`!document.querySelector(".overlay .ask")`, "không có dòng mời khi phía Rust không bảo"],
+  ],
+  "overlay-speakers-ask": (lang) => [
+    [`document.querySelectorAll(".overlay .ask button").length === 2`, "dòng mời có nút Mở Cài đặt và ✕"],
+    [
+      inPage(
+        lang,
+        `return document.querySelector(".overlay .ask-text").textContent === t("overlay.speakers.ask") && document.querySelector(".overlay .ask-open").textContent === t("notice.openSettings");`,
+      ),
+      "chữ của dòng mời đúng ngôn ngữ",
+    ],
+    [
+      `(() => { const a = document.querySelector(".overlay .ask"); return a.scrollWidth <= a.clientWidth + 1 && a.getBoundingClientRect().right <= innerWidth; })()`,
+      "dòng mời không tràn",
+    ],
+  ],
+  "overlay-speakers-ask-locked": () => [[`!document.querySelector(".overlay .ask")`, "thanh đã khóa: không có dòng mời"]],
+  "overlay-speakers-ask-click": () => [
+    [`window.__ipcCalls.some((c) => c.cmd === "open_speaker_settings")`, "Mở Cài đặt gọi open_speaker_settings"],
+    [`!document.querySelector(".overlay .ask")`, "✕ ẩn dòng mời tới hết phiên"],
+  ],
+  "overlay-speakers-live": () => [
+    [
+      `document.querySelector(".overlay .line.live.spk .spk-label")?.textContent === "Minh Trần"`,
+      "dòng đang nói nối tiếp câu của Minh mang tên và vạch của Minh",
+    ],
+  ],
+  "overlay-speakers-ask-notes": () => [
+    has(".overlay .ask", "có dòng mời"),
+    has(".overlay .note.micSilent", "có lời nhắc micro"),
+    [
+      `(() => { const a = document.querySelector(".overlay .ask").getBoundingClientRect(); const n = document.querySelector(".overlay .indicators").getBoundingClientRect(); return a.bottom <= n.top || a.top >= n.bottom || a.right <= n.left || a.left >= n.right; })()`,
+      "dòng mời không đè lên lời nhắc ở góc phải",
+    ],
+  ],
+  "transcript-speakers-menu-long": () => [
+    has(".speaker-menu", "menu của nhãn tên dài mở"),
+    [
+      `(() => { const m = document.querySelector(".speaker-menu").getBoundingClientRect(); return m.left >= 0 && m.right <= innerWidth; })()`,
+      "menu nằm trong cửa sổ",
+    ],
+    [
+      `[...document.querySelectorAll(".speaker-menu .menu-item, .speaker-menu .menu-head")].every((e) => e.scrollWidth <= e.clientWidth + 1)`,
+      "tên 40 ký tự (Latin, chữ Hán) xuống dòng trong menu, không tràn",
+    ],
+    [`document.querySelectorAll(".speaker-menu .menu-item").length === 6`, "năm người tham dự (có tên chữ Hán dài) và mục Gộp"],
+  ],
+  "transcript-speakers-srt": (lang) => [
+    [
+      inPage(
+        lang,
+        `const c = document.querySelector(".toolbar-check"); return !!c && c.textContent === t("transcript.export.srtSpeakers") && !c.querySelector("input").checked;`,
+      ),
+      "hàng xuất SRT có ô Thêm tên người nói, mặc định tắt",
+    ],
+  ],
   "settings-audio": () => pauseSlider(300),
   "settings-audio-mic": () => pauseSlider(50),
   "settings-audio-both": () => pauseSlider(50),
@@ -941,12 +1296,17 @@ try {
       const url = `${BASE}/compose.html?${query}&lang=${lang}`;
       await visit(browser, lang, { name: "560x420", width: 560, height: 420 }, name, url, { prepare: "1", wait: 1200, transparent: true }, extras);
     }
-    for (const [name, query] of OVERLAYS) {
+    for (const [name, query, options] of OVERLAYS) {
       if (!wanted(name)) continue;
-      await visit(browser, lang, { name: "900x300", width: 900, height: 300 }, name, `${BASE}/overlay.html?${query}&lang=${lang}`, {
-        transparent: true,
-        audit: false,
-      });
+      await visit(
+        browser,
+        lang,
+        { name: "900x300", width: 900, height: 300 },
+        name,
+        `${BASE}/overlay.html?${query}&lang=${lang}`,
+        { transparent: true, audit: false, ...options },
+        EXTRA[name]?.(lang),
+      );
     }
     console.log(`${lang}: xong`);
   }

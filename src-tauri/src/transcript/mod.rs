@@ -3,4 +3,5 @@
 
 pub mod export;
 pub mod history;
+pub mod speakers;
 pub mod store;

@@ -47,3 +47,21 @@ test("bật công tắc báo cáo lỗi trong `.env` thì script in biểu ngữ
   assert.notEqual(banner, -1);
   assert.ok(banner < open);
 });
+
+// Cờ bật nhận giọng của bản dev (spec 2026-10-26-phan-biet-nguoi-noi, kế hoạch 02): cùng cách với công tắc Pro, chỉ `.env` mới bật.
+const unsetSpeaker = lineOf((l) => l.trim() === "unset AI_TRANSLATOR_DEV_SPEAKER");
+
+test("script có dòng `unset AI_TRANSLATOR_DEV_SPEAKER`, đứng trước khi đọc `.env` và trước `open -W`", () => {
+  assert.notEqual(unsetSpeaker, -1);
+  const readEnv = lineOf((l) => l.includes("read-dev-env.sh"));
+  const open = lineOf((l) => /^\s*open -W\b/.test(l));
+  assert.ok(unsetSpeaker < readEnv, `unset ở dòng ${unsetSpeaker + 1}, read-dev-env.sh ở dòng ${readEnv + 1}`);
+  assert.ok(unsetSpeaker < open, `unset ở dòng ${unsetSpeaker + 1}, open -W ở dòng ${open + 1}`);
+});
+
+test("bật nhận giọng trong `.env` thì script in biểu ngữ cảnh báo trước `open -W`", () => {
+  const banner = lineOf((l) => l.includes("AI_TRANSLATOR_DEV_SPEAKER=true. Bản này BẬT"));
+  const open = lineOf((l) => /^\s*open -W\b/.test(l));
+  assert.notEqual(banner, -1);
+  assert.ok(banner < open);
+});

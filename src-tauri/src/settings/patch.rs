@@ -200,6 +200,21 @@ mod tests {
         );
     }
 
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §8.3: hai công tắc người nói đổi được từ giao diện, chỉ nhận bool.
+    #[test]
+    fn the_speaker_switches_are_booleans() {
+        let off = apply(
+            &current(),
+            &json!({ "speakerDiarization": false, "speakerNames": false }),
+        )
+        .unwrap();
+        assert!(!off.speaker_diarization && !off.speaker_names);
+        assert_eq!(
+            apply(&current(), &json!({ "speakerNames": "yes" })),
+            Err(Invalid::new("speakerNames", Reason::WrongType))
+        );
+    }
+
     /// Spec 2026-10-17-go-dich §1.4: nhóm Cài đặt "Gõ dịch" sửa từng khóa con; khóa con lạ hay sai kiểu bị từ chối và báo đúng
     /// tên khóa con.
     #[test]

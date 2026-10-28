@@ -9,6 +9,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
 
+use super::speakers::VoiceView;
 use super::store::Transcript;
 use crate::db::{self, DbError};
 use crate::errors::CommandError;
@@ -84,8 +85,8 @@ pub fn save(conn: &mut Connection, t: &Transcript) -> Result<Option<i64>, Histor
     let id = tx.last_insert_rowid();
     {
         let mut insert = tx.prepare(
-            "INSERT INTO lines (session_id, seq, start_ms, end_ms, src_lang, src_text, tgt_text, status)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO lines (session_id, seq, start_ms, end_ms, src_lang, src_text, tgt_text, status, speaker)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
         for (seq, line) in t.lines.iter().enumerate() {
             insert.execute(params![
@@ -96,7 +97,8 @@ pub fn save(conn: &mut Connection, t: &Transcript) -> Result<Option<i64>, Histor
                 line.src_lang,
                 line.src_text,
                 line.tgt_text,
-                status_name(line.status)
+                status_name(line.status),
+                t.speaker_label(line)
             ])?;
         }
     }
@@ -139,10 +141,11 @@ pub fn get(conn: &Connection, id: i64) -> Result<Transcript, HistoryError> {
         return Err(HistoryError::NotFound(id));
     };
     let mut stmt = conn.prepare(
-        "SELECT seq, start_ms, end_ms, src_lang, src_text, tgt_text, status FROM lines WHERE session_id = ?1 ORDER BY seq",
+        "SELECT seq, start_ms, end_ms, src_lang, src_text, tgt_text, status, speaker FROM lines
+         WHERE session_id = ?1 ORDER BY seq",
     )?;
-    let lines = stmt.query_map([id], |r| {
-        Ok(Subtitle {
+    let rows = stmt.query_map([id], |r| {
+        let line = Subtitle {
             id: r.get::<_, i64>(0)? as u64,
             start_ms: r.get::<_, i64>(1)? as u64,
             end_ms: r.get::<_, i64>(2)? as u64,
@@ -152,14 +155,36 @@ pub fn get(conn: &Connection, id: i64) -> Result<Transcript, HistoryError> {
             status: status_from(&r.get::<_, String>(6)?),
             provisional: false,
             replaces: Vec::new(),
-        })
+            speaker: None,
+        };
+        Ok((line, r.get::<_, Option<String>>(7)?))
     })?;
+    // Nhãn đã lưu thành một bảng cố định theo thứ tự xuất hiện (QĐ 12 của kế hoạch 03 phân biệt người nói): mã là thứ tự.
+    let mut speakers: Vec<VoiceView> = Vec::new();
+    let mut lines = Vec::new();
+    for row in rows {
+        let (mut line, label) = row?;
+        if let Some(label) = label.filter(|l| !l.is_empty()) {
+            let voice = match speakers.iter().find(|v| v.label == label) {
+                Some(v) => v.id,
+                None => {
+                    let order = speakers.len() as u32 + 1;
+                    speakers.push(VoiceView::saved(order, label));
+                    order
+                }
+            };
+            line.speaker = Some(voice);
+        }
+        lines.push(line);
+    }
     Ok(Transcript {
         session: 0,
         started_at: started_at as u64,
         ended_at: Some(ended_at as u64),
         target_lang,
-        lines: lines.collect::<Result<_, _>>()?,
+        lines,
+        speakers,
+        speakers_rev: 0,
     })
 }
 
@@ -198,7 +223,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("mt-history-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        (open_with_key(&dir.join("data.db"), &[5; 32]).unwrap(), dir)
+        (open_with_key(&dir.join(crate::db::DB_FILE), &[5; 32]).unwrap(), dir)
     }
 
     fn line(id: u64, src: &str, tgt: &str, status: Status) -> Subtitle {
@@ -212,6 +237,7 @@ mod tests {
             status,
             provisional: false,
             replaces: Vec::new(),
+            speaker: None,
         }
     }
 
@@ -227,6 +253,8 @@ mod tests {
                 line(1_000_005, "Xin chào.", "", Status::SameLang),
                 line(1_000_007, "Oops", "", Status::Failed),
             ],
+            speakers: Vec::new(),
+            speakers_rev: 0,
         }
     }
 
@@ -289,6 +317,62 @@ mod tests {
         assert!(list(&c).unwrap().is_empty());
         let lines: i64 = c.query_row("SELECT count(*) FROM lines", [], |r| r.get(0)).unwrap();
         assert_eq!(lines, 0);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Spec 2026-10-26-phan-biet-nguoi-noi §8.2, §9 (QĐ 12): nhãn lúc ghi (đã đổi tên, gộp) được lưu cùng câu, đọc lại thành một bảng
+    /// cố định theo thứ tự xuất hiện; câu không nhãn vẫn không nhãn.
+    #[test]
+    fn speaker_labels_are_saved_and_read_back() {
+        use crate::transcript::speakers::{NameSource, VoiceView};
+        let (mut c, dir) = conn("speakers");
+        let mut t = transcript(1_000, "Hello.");
+        t.lines[1].speaker = Some(7);
+        t.lines[2].speaker = Some(9);
+        t.lines[3].speaker = Some(7);
+        t.speakers = vec![
+            VoiceView {
+                id: 7,
+                label: "Lan Nguyễn".into(),
+                color: 3,
+                source: NameSource::User,
+                room: false,
+                merged_into: None,
+            },
+            VoiceView {
+                id: 9,
+                label: "Người 2".into(),
+                color: 1,
+                source: NameSource::Voice,
+                room: false,
+                merged_into: None,
+            },
+        ];
+        let id = save(&mut c, &t).unwrap().unwrap();
+        let stored: Vec<Option<String>> = c
+            .prepare("SELECT speaker FROM lines WHERE session_id = ?1 ORDER BY seq")
+            .unwrap()
+            .query_map([id], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(
+            stored,
+            [
+                None,
+                Some("Lan Nguyễn".into()),
+                Some("Người 2".into()),
+                Some("Lan Nguyễn".into())
+            ]
+        );
+        let back = get(&c, id).unwrap();
+        let labels: Vec<Option<&str>> = back.lines.iter().map(|l| back.speaker_label(l)).collect();
+        assert_eq!(labels, [None, Some("Lan Nguyễn"), Some("Người 2"), Some("Lan Nguyễn")]);
+        assert_eq!(
+            back.speakers.iter().map(|v| (v.id, v.color)).collect::<Vec<_>>(),
+            [(1, 0), (2, 1)],
+            "bảng cố định theo thứ tự nhãn xuất hiện"
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 }

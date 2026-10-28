@@ -1,15 +1,19 @@
 //! Công cụ đo: `latency` (S6), `asr-eval` (S7, A4), `mt-eval` (A3, qua đúng code dịch của app), `session` (đo bằng
-//! `pipeline::Engine` thật, spec 2026-10-10 §10.1).
+//! `pipeline::Engine` thật, spec 2026-10-10 §10.1), `speaker-eval` (nhận giọng, spec 2026-10-26-phan-biet-nguoi-noi §12), `speaker-names-eval` (ghép tên, tách giọng),
+//! `embed-probe` (thời gian, CPU mỗi lần nhúng giọng).
 
 mod aec;
 mod asr_eval;
 mod denoise;
+mod embed_probe;
 mod latency;
 mod mix_eval;
 mod mt_eval;
+mod names_eval;
 mod session;
 mod session_metrics;
 mod session_replay;
+mod speaker_eval;
 mod stats;
 mod wavio;
 
@@ -36,6 +40,12 @@ enum Command {
     Aec(aec::AecArgs),
     /// Chấm các phương án trộn và chống ồn trên bản thu của một cảnh (spike nguồn micro).
     MixEval(mix_eval::MixEvalArgs),
+    /// Nhận giọng người nói trên một bản ghi: cắt đoạn như app, nhúng (trong tiến trình hay qua speaker-worker thật), phân cụm (spec 2026-10-26-phan-biet-nguoi-noi §12).
+    SpeakerEval(speaker_eval::SpeakerEvalArgs),
+    /// Ghép tên và tách giọng của speaker-worker trên cache nhúng, với bộ đọc tên giả dựng từ RTTM (kế hoạch 04 Task 11).
+    SpeakerNamesEval(names_eval::NamesEvalArgs),
+    /// Nhúng giọng lặp lại trên một đoạn WAV, in thời gian và CPU mỗi lần (đo RSS đỉnh bằng `/usr/bin/time -l`).
+    EmbedProbe(embed_probe::EmbedProbeArgs),
 }
 
 /// Stack của luồng chạy lệnh. `SileroVad` (candle-onnx) cần hơn 1 MiB ở bản debug (`cargo run`), mà luồng chính của Windows
@@ -57,6 +67,9 @@ fn main() -> anyhow::Result<()> {
             Command::Denoise(args) => denoise::run(args),
             Command::Aec(args) => aec::run(args),
             Command::MixEval(args) => mix_eval::run(args),
+            Command::SpeakerEval(args) => speaker_eval::run(args),
+            Command::SpeakerNamesEval(args) => names_eval::run(args),
+            Command::EmbedProbe(args) => embed_probe::run(args),
         })?;
     worker.join().map_err(|_| anyhow::anyhow!("luồng chạy lệnh bị panic"))?
 }

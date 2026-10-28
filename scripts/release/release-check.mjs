@@ -107,10 +107,17 @@ export function embeddedErrors(binary, table) {
 }
 
 /**
- * Chuỗi chỉ có trong bản debug: công tắc Pro của dev (`src-tauri/src/pro.rs`: tên biến công tắc, tên biến cũ, chuỗi chim hoàng yến)
- * và công tắc tự gửi báo cáo lỗi của dev (`src-tauri/src/diagnostics/mod.rs`, spec 2026-10-17).
+ * Chuỗi chỉ có trong bản debug: công tắc Pro của dev (`src-tauri/src/pro.rs`: tên biến công tắc, tên biến cũ, chuỗi chim hoàng yến),
+ * công tắc tự gửi báo cáo lỗi của dev (`src-tauri/src/diagnostics/mod.rs`, spec 2026-10-17) và cờ bật nhận giọng của dev
+ * (`src-tauri/src/speaker/mod.rs`, spec 2026-10-26-phan-biet-nguoi-noi, kế hoạch 02).
  */
-export const DEV_GATE_MARKERS = ["AI_TRANSLATOR_DEV_PRO", "AI_TRANSLATOR_DEV_FREE", "mt-dev-pro-gate-v1", "AI_TRANSLATOR_DEV_REPORTS"];
+export const DEV_GATE_MARKERS = [
+  "AI_TRANSLATOR_DEV_PRO",
+  "AI_TRANSLATOR_DEV_FREE",
+  "mt-dev-pro-gate-v1",
+  "AI_TRANSLATOR_DEV_REPORTS",
+  "AI_TRANSLATOR_DEV_SPEAKER",
+];
 
 /** Lỗi khi file chạy của app (nội dung `binary`) còn mã công tắc dev. Quét cả UTF-8 lẫn UTF-16LE (chuỗi của Windows). */
 export function devGateErrors(binary) {

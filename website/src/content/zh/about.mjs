@@ -87,7 +87,7 @@ ${sectionHead({ eyebrow: "展望", title: "我们正在考虑的事" })}
 ${callout({ kind: "warn", title: "这不是承诺。", text: "下面列出的是我们为下一阶段考虑的事项。没有日期，也没有固定顺序，任何一项都可能根据用户反馈而改变或放弃。" })}
 <div class="prose">
 <ul>
-<li>在字幕中区分不同的说话人</li>
+<li>显示来自 Google Meet 和 Zoom 的说话人姓名，并在 Windows 上区分说话人</li>
 <li>支持 Windows ARM64</li>
 <li>在 Windows 上按应用采集音频</li>
 <li>双向语音翻译，让你自己的声音也能被翻译给会议中的其他人</li>

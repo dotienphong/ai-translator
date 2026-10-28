@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const workflows = ["release", "sign-manifest"].map((name) => [
+const workflows = ["release", "sign-manifest", "sign-recipes"].map((name) => [
   name,
   readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), "utf8"),
 ]);
@@ -68,4 +68,19 @@ test("job bộ cài Windows: có tên chủ chứng thư mà không có lệnh k
   assert.ok(guard < step.indexOf("package-windows.mjs bundle"), "phải chặn trước khi đóng gói");
   assert.match(step, /exit 1/);
   assert.match(step, /if \[ -z "\$MT_WINDOWS_SIGN_CMD" \]; then[\s\S]*Bản Windows chưa ký[\s\S]*>> "\$GITHUB_STEP_SUMMARY"/);
+});
+
+test("hai job build app (macOS, Windows) chạy test bản release cho bản quyền, báo cáo lỗi, nhận giọng và Lịch sử", () => {
+  const yml = workflows[0][1];
+  const want = "cargo test --release --locked -p meeting-translator --lib -- pro:: license:: diagnostics:: speaker:: db:: --test-threads=1";
+  const lines = yml.split("\n").filter((l) => l.includes("cargo test --release --locked -p meeting-translator"));
+  assert.equal(lines.length, 2, "phải có đúng hai lần chạy (macOS, Windows)");
+  for (const line of lines) assert.equal(line.trim(), want);
+  for (const job of ["macos-app", "windows-app"]) {
+    const start = yml.indexOf(`\n  ${job}:\n`);
+    assert.ok(start >= 0, `không thấy job ${job}`);
+    const next = yml.slice(start + 1).search(/\n  [a-z-]+:\n/);
+    const body = next < 0 ? yml.slice(start) : yml.slice(start, start + 1 + next);
+    assert.ok(body.includes(want), `job ${job} phải chạy bộ test bản release`);
+  }
 });

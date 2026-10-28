@@ -65,7 +65,7 @@ ${sectionHead({ eyebrow: "솔직한 한계", title: "AI Translator가 맞지 않
 ${checkList([
   "<strong>번역된 내 목소리를 다른 사람이 들어야 한다.</strong> AI Translator의 자막은 한 방향으로만, 컴퓨터에서 재생되는 오디오를 사용자의 언어로 번역합니다. 사용자의 목소리를 번역해 회의에 내보내지는 않습니다. 글로 답할 때는 <a href=\"/ko/guide/type-and-translate/\">입력 번역</a>을 쓸 수 있습니다.",
   "<strong>회의를 녹음해야 한다.</strong> 앱은 오디오를 디스크에 녹음하지 않습니다. 텍스트 대본만 남기며, 기록 저장은 기본적으로 꺼져 있는 Pro 기능입니다.",
-  "<strong>자동 회의록, 요약, 화자 구분이 필요하다.</strong> 지원하지 않습니다.",
+  "<strong>자동 회의록이나 요약이 필요하다.</strong> 지원하지 않습니다.",
   "<strong>Intel Mac, Windows ARM64, 또는 CPU가 AVX2를 지원하지 않는 Windows PC를 쓴다.</strong> AI Translator는 Apple 실리콘의 macOS 14.2 이상과, AVX2를 지원하는 CPU가 있는 Windows 10/11 64비트(x64)에서 실행됩니다.",
   "<strong>컴퓨터의 RAM이 8GB 미만이거나,</strong> 위 5개 언어 외의 언어가 필요하다: 앱이 아직 이를 지원하지 못합니다.",
   "<strong>베트남 은행 계좌가 없고, Creem이 카드 결제를 받지 않는 나라에 있다.</strong> 해외 카드는 Creem을 통해 결제되는데, Creem은 일부 국가의 구매자를 받지 않으며(Creem 목록 기준), PayPal도 없습니다. 이 경우 지금은 유료 요금제를 결제할 방법이 없으며, Free 체험은 쓸 수 있습니다.",

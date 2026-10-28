@@ -33,6 +33,7 @@ pub mod security;
 pub mod session;
 pub mod settings;
 pub mod sidecar;
+pub mod speaker;
 pub mod state;
 pub mod support;
 pub mod system;
@@ -142,7 +143,12 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // DB mã hóa của lịch sử và từ điển: chưa mở, chưa đọc kho khóa ở đây (db.rs).
     db::install(&handle)?;
     app.manage(glossary::ActiveGlossary::default());
-    app.manage(transcript::store::TranscriptStore::default());
+    // Nhãn "Người N" theo ngôn ngữ giao diện (spec 2026-10-26-phan-biet-nguoi-noi §9): đặt một lần ở đây, trước khi có cửa sổ;
+    // từ đó chỉ `speaker::language_changed` đổi (rà soát mã 03, mục 1).
+    let transcript = transcript::store::TranscriptStore::default();
+    transcript.set_ui_language(settings.ui_language);
+    app.manage(transcript);
+    app.manage(speaker::Running::default());
     files::install(&handle);
     app.manage(debug::DebugLog::default());
     app.manage(HotkeyRegistry::default());
@@ -151,6 +157,19 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // plugin single-instance (đăng ký trước `setup`) bảo đảm không có bản app nào khác đang chạy: bản thứ hai thoát trước
     // khi tới đây, nên mọi mục trong file là của một lần chạy đã chết, không phải của bản đang dùng tiến trình phụ đó.
     let pidfile = handle.path().app_local_data_dir()?.join("sidecars-live.json");
+    // Đọc tên (kế hoạch 04, QĐ 8, 28): trả `AXEnhancedUserInterface` còn sót nếu lần trước worker bị giết, chỉ khi có quyền Trợ
+    // năng (`restore` tự kiểm; chưa có quyền thì giữ file dấu). Chỉ có file khi tính năng đã chạy, nên bản phát hành "ngủ" (manifest chưa
+    // có mục `speaker`) không làm gì.
+    #[cfg(target_os = "macos")]
+    {
+        let marker = handle.path().app_local_data_dir()?.join(speaker::EUI_MARKER_FILE);
+        if marker.exists() {
+            std::thread::spawn(move || {
+                let n = speaker::eui_macos::restore(&marker);
+                log::info!("đọc tên: trả chế độ trợ năng cho {n} app còn sót từ lần chạy trước");
+            });
+        }
+    }
     if let Ok(dir) = sidecar::paths::binaries_dir() {
         let reaped = pipeline::process::reap_orphans(&pidfile, &dir);
         if !reaped.is_empty() {
@@ -171,6 +190,10 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     session::spawn_ticker(&handle);
     // Báo cáo lỗi gửi về nhà phát triển (spec 2026-10-17): phân loại lần chạy trước, cài panic hook và luồng gửi nền.
     diagnostics::install(&handle)?;
+    // Báo cáo tình trạng bộ đọc tên người nói (kế hoạch 06, spec §7.2): sổ trên máy và luồng gửi nền.
+    speaker::health::install(&handle)?;
+    // Công thức đọc tên tải từ xa có ký số (kế hoạch 06 của phân biệt người nói, spec §7.1).
+    speaker::recipes::install(&handle)?;
     // Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): đọc `support.json`, luồng hỏi tin chỉ kết nối khi đã dùng chat.
     support::install(&handle)?;
 

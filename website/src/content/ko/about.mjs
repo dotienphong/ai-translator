@@ -87,7 +87,7 @@ ${sectionHead({ eyebrow: "앞으로", title: "검토하고 있는 것" })}
 ${callout({ kind: "warn", title: "이것은 약속이 아닙니다.", text: "아래 목록은 다음 단계를 위해 검토하고 있는 것입니다. 날짜도 정해진 순서도 없으며, 사용자 의견에 따라 어떤 항목이든 바뀌거나 빠질 수 있습니다." })}
 <div class="prose">
 <ul>
-<li>자막에서 화자 구분하기</li>
+<li>Google Meet와 Zoom에서 화자 이름 표시, Windows에서도 화자 구분</li>
 <li>Windows ARM64 지원</li>
 <li>Windows에서 앱별 오디오 캡처</li>
 <li>양방향 음성 번역: 내 목소리를 회의의 다른 사람들에게 번역</li>
