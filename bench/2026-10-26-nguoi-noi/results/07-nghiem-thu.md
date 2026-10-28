@@ -260,7 +260,7 @@ Gộp từ điều kiện đầu vào ở trên, `06-van-hanh.md`, mục "Rủi 
 
 ## Sửa sau rà mã (đợt A)
 
-Người rà mã độc lập tìm lỗi trong phần Rust; năm commit cục bộ trên nhánh `phan-biet-nguoi-noi` (không đổi giao thức, `PROTOCOL_VERSION` vẫn 3, `Cargo.lock` không đổi). Ưu tiên theo chủ dự án: tốc độ dịch không đổi, thà "Người N" còn hơn sai tên, bảo mật không kém đi.
+Người rà mã độc lập tìm lỗi trong phần Rust; sáu commit cục bộ (A1–A6) trên nhánh `phan-biet-nguoi-noi` (không đổi giao thức, `PROTOCOL_VERSION` vẫn 3, `Cargo.lock` không đổi). Ưu tiên theo chủ dự án: tốc độ dịch không đổi, thà "Người N" còn hơn sai tên, bảo mật không kém đi.
 
 | Mục | Sửa | Test |
 |---|---|---|
