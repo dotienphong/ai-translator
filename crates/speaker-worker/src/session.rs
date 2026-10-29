@@ -401,6 +401,14 @@ impl<E: Embed> Worker<E> {
                 t.mic_ms = t.mic_ms.saturating_add(duration);
             }
         }
+        self.clusterer.register(
+            segment_id,
+            end_ms,
+            duration,
+            source == Source::Mic,
+            embedding.as_deref(),
+            a.voice,
+        );
         let mut out = vec![Response::Assign {
             segment_id,
             voice: a.voice,
@@ -424,9 +432,27 @@ impl<E: Embed> Worker<E> {
                 .guessed(a.confidence < self.clusterer.theta()),
             );
         }
+        self.relabel_late(end_ms, &mut out);
         self.settle_names(&mut out);
         self.push_voices_if_changed(&mut out);
         out
+    }
+
+    /// Chốt nhãn muộn (spec §5.3): đoạn đã tới hạn mà giọng gần nhất đã khác thì phát lại `Assign` cho đoạn cũ, như đường tách giọng.
+    /// Nhãn chỉ gắn sau khi chữ đã hiện; không có gì ở đây chờ nhãn.
+    fn relabel_late(&mut self, now_ms: u64, out: &mut Vec<Response>) {
+        for c in self.clusterer.take_late(now_ms) {
+            self.names.matcher.relabel(c.segment_id, c.to);
+            match c.from {
+                Some(from) => self.move_tally(from, c.to, c.duration_ms, c.mic),
+                None => self.add_tally(c.to, c.duration_ms, c.mic),
+            }
+            out.push(Response::Assign {
+                segment_id: c.segment_id,
+                voice: Some(c.to),
+                confidence: 0.0,
+            });
+        }
     }
 
     fn room(&self) -> BTreeSet<u32> {
@@ -501,7 +527,11 @@ impl<E: Embed> Worker<E> {
                 t.mic_ms = t.mic_ms.saturating_sub(ms);
             }
         }
-        let t = self.tally.entry(into).or_default();
+        self.add_tally(into, ms, mic);
+    }
+
+    fn add_tally(&mut self, voice: u32, ms: u64, mic: bool) {
+        let t = self.tally.entry(voice).or_default();
         t.speech_ms = t.speech_ms.saturating_add(ms);
         if mic {
             t.mic_ms = t.mic_ms.saturating_add(ms);
@@ -557,6 +587,7 @@ impl<E: Embed> Worker<E> {
             .collect();
         for (id, ms, mic) in info {
             self.names.matcher.relabel(id, new);
+            self.clusterer.note_moved(id);
             self.move_tally(plan.voice, new, ms, mic);
             out.push(Response::Assign {
                 segment_id: id,
@@ -1521,5 +1552,104 @@ mod tests {
         let s = w.summary();
         assert!(s.contains("1 đoạn") && s.contains("1 lần nhúng"), "{s}");
         assert!(!s.contains("100"), "không có mẫu âm thanh: {s}");
+    }
+
+    fn loaded(config: SpeakerConfig) -> Worker<Fake> {
+        let (mut w, _) = worker();
+        load(&mut w, "/m/tot.onnx", config);
+        w
+    }
+
+    fn assigns(rs: &[Response]) -> Vec<(u64, Option<u32>)> {
+        rs.iter()
+            .filter_map(|r| match r {
+                Response::Assign { segment_id, voice, .. } => Some((*segment_id, *voice)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    const VA: [f32; 3] = [1.0, 0.0, 0.0];
+    const VB: [f32; 3] = [0.0, 1.0, 0.0];
+
+    #[test]
+    fn late_relabel_resends_assign_for_the_old_segment_and_moves_the_tally() {
+        let mut w = loaded(SpeakerConfig::default());
+        // Đoạn 2 (B, 1000 ms) sai ngay lúc đầu: giọng 1 của đoạn trước. B thật mở giọng 2 ở đoạn 3.
+        let r1 = w.segment_with(1, 0, 2_000, Source::System, Some(VA.to_vec()));
+        let r2 = w.segment_with(2, 2_000, 3_000, Source::Mic, Some(VB.to_vec()));
+        let r3 = w.segment_with(3, 3_000, 5_000, Source::System, Some(VB.to_vec()));
+        assert_eq!(assigns(&r1), [(1, Some(1))]);
+        assert_eq!(assigns(&r2), [(2, Some(1))]);
+        assert_eq!(assigns(&r3), [(3, Some(2))]);
+        // Chưa tới hạn (3000 + 30 000): đoạn có giọng khác nhưng chưa đổi.
+        let early = w.segment_with(4, 30_000, 32_000, Source::System, Some(VB.to_vec()));
+        assert_eq!(assigns(&early), [(4, Some(2))]);
+        // Tới hạn: đoạn 2 đổi sang giọng 2, ngay sau Assign của đoạn mới; đoạn 1 và 3 không đổi nên không phát lại.
+        let due = w.segment_with(5, 33_000, 35_000, Source::System, Some(VB.to_vec()));
+        assert_eq!(assigns(&due), [(5, Some(2)), (2, Some(2))]);
+        assert!(matches!(due[1], Response::Assign { confidence, .. } if confidence == 0.0));
+        let t = |v| w.tally[&v];
+        assert_eq!((t(1).speech_ms, t(1).mic_ms), (2_000, 0));
+        assert_eq!((t(2).speech_ms, t(2).mic_ms), (2_000 + 2_000 + 1_000 + 2_000, 1_000));
+        // Không phát lại lần hai.
+        let after = w.segment_with(6, 36_000, 38_000, Source::System, Some(VB.to_vec()));
+        assert_eq!(assigns(&after), [(6, Some(2))]);
+    }
+
+    #[test]
+    fn late_relabel_can_be_turned_off_in_the_config() {
+        let mut w = loaded(SpeakerConfig {
+            late_relabel_ms: 0,
+            ..SpeakerConfig::default()
+        });
+        w.segment_with(1, 0, 2_000, Source::System, Some(VA.to_vec()));
+        w.segment_with(2, 2_000, 3_000, Source::System, Some(VB.to_vec()));
+        w.segment_with(3, 3_000, 5_000, Source::System, Some(VB.to_vec()));
+        let due = w.segment_with(4, 100_000, 102_000, Source::System, Some(VB.to_vec()));
+        assert_eq!(assigns(&due), [(4, Some(2))]);
+    }
+
+    /// Chi phí của chốt muộn trên chuỗi dài: chênh lệch mỗi đoạn dưới 1 ms (bản debug còn chậm hơn bản thật; ngưỡng rộng).
+    #[test]
+    fn late_relabel_costs_under_a_millisecond_per_segment() {
+        let run = |late_relabel_ms: u64| {
+            let mut w = loaded(SpeakerConfig {
+                late_relabel_ms,
+                ..SpeakerConfig::default()
+            });
+            let dim192 = |k: usize| -> Vec<f32> {
+                // Bốn "người" trên vector 192 chiều, lệch nhẹ theo đoạn.
+                (0..192)
+                    .map(|i| if i % 4 == k % 4 { 1.0 } else { 0.0 } + ((i * 7 + k * 13) % 17) as f32 * 0.01)
+                    .collect()
+            };
+            let t0 = std::time::Instant::now();
+            let mut changed = 0usize;
+            for k in 0..2_000usize {
+                let start = k as u64 * 2_000;
+                // Đầu phiên có một lỗi như thật: đoạn 1 (người thứ hai) quá ngắn để mở giọng nên mang giọng người thứ nhất; chốt
+                // muộn phải sửa nó, nên bên "bật" có ít nhất một đổi nhãn.
+                let (len, person) = match k {
+                    0 => (1_800, 0),
+                    1 => (1_000, 1),
+                    2 => (1_800, 1),
+                    _ => (1_800, (k / 3) % 4),
+                };
+                let rs = w.segment_with(k as u64, start, start + len, Source::System, Some(dim192(person)));
+                changed += assigns(&rs).len().saturating_sub(1);
+            }
+            (t0.elapsed(), changed)
+        };
+        let (off, off_changed) = run(0);
+        let (on, on_changed) = run(30_000);
+        assert_eq!(off_changed, 0, "tắt thì không đổi nhãn nào");
+        assert!(
+            on_changed > 0,
+            "bật mà không đổi nhãn nào: chuỗi thử không kiểm được nhánh chốt muộn"
+        );
+        let per_segment_ms = on.saturating_sub(off).as_secs_f64() * 1000.0 / 2_000.0;
+        eprintln!("chốt muộn: tắt {off:?}, bật {on:?}, chênh {per_segment_ms:.4} ms mỗi đoạn");
+        assert!(per_segment_ms < 1.0, "{per_segment_ms} ms mỗi đoạn");
     }
 }

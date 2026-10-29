@@ -1696,6 +1696,8 @@ Làm lớp nhẹ nhất đủ dùng trước, rồi tìm nguyên nhân; **không
 | 3 | Tắt hẳn trong một bản app (hay một hệ điều hành) | Đổi hằng `SHIPS_ON_WINDOWS` hay `ships_on` ở `src-tauri/src/speaker/mod.rs`, phát hành bản mới (mục 2) | Khi người dùng cập nhật (24 giờ trở lên) |
 | 4 | Người dùng tự tắt | Cài đặt › Phụ đề › Người nói | Ngay; tắt giữa phiên dừng worker của phiên (log `nhận giọng: người dùng tắt, dừng worker của phiên`) |
 
+**Tắt riêng chốt nhãn muộn** (giữ nhận giọng và đọc tên; từ 0.3.3): đặt `"late_relabel_ms": 0` trong `speaker_config` của manifest (nhãn của đoạn lại chỉ do phân cụm nhân quả gán, như 0.3.2). `speaker-manifest.mjs` chỉ nhận `--config` lúc `add`, chưa có lệnh đổi sau đó: sao `body-<N>.json` đang chạy thành `body-<N+1>.json`, thêm khóa vào `speaker_config` (khóa khác giữ nguyên), commit, đẩy `main`, ký và đăng như lớp 2. Hiệu lực như lớp 2 (tối đa khoảng 25 giờ, từ phiên dịch sau). Dấu hiệu cần tắt: người dùng báo nhãn "Người N" của câu cũ đổi liên tục hay đổi sai; chốt muộn chỉ đổi nhãn của câu đã hiện ≥ 30 s trước, không chạm chữ phụ đề.
+
 Cần nhanh hơn 25 giờ thì chỉ lớp 1 (6 giờ) và chỉ tắt được phần đọc tên; phần nhận giọng chạy trên máy, không gửi gì đi, nên rủi ro còn lại là nhãn "Người N" sai, không phải lộ dữ liệu. Báo cáo tình trạng đã gửi nằm ở D1 (giữ 60 ngày, xóa tay bằng lệnh ở mục 15.4 nếu cần).
 
 ### 16.9. Quay lại và bật lại

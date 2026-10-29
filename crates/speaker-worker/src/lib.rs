@@ -6,6 +6,7 @@
 pub mod cluster;
 pub mod embed;
 pub mod fbank;
+pub mod late;
 pub mod names;
 pub mod onnx_steps;
 pub mod platform;

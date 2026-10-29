@@ -281,6 +281,15 @@ trên, trọng số của tâm, gộp) vẫn là thời lượng thật của đ
   EN2002a; θ ≤ 0,30 gộp người trên dữ liệu tiếng Việt.
 - Mã giọng tăng dần từ 1 trong phiên; "Người N" lấy N theo thứ tự xuất hiện.
 - Kết quả tất định với cùng chuỗi đoạn (test).
+- **Chốt nhãn muộn (chốt ở 0.3.3):** phân cụm nhân quả gán sai nhiều ở đầu phiên và với đoạn ngắn vì tâm chưa ổn định. Worker nhớ
+  từng đoạn có nhúng (≥ `min_embed_ms`; tối đa 512 đoạn gần nhất, đủ cho 30 s). Khi thời gian âm thanh đã qua `end_ms` của đoạn
+  `late_relabel_ms` (mặc định **30 000**; 0 là tắt, tối đa 120 000), worker so lại đoạn với các tâm hiện có (cosine, không đổi
+  tâm); nếu giọng gần nhất khác giọng đang gán (kể cả đoạn trước giọng đầu tiên, chưa có giọng) thì phát lại `Assign` cho đoạn cũ
+  (độ tin 0), như đường tách giọng: app đổi nhãn qua `subtitle://speaker`, bản chép lời và Lịch sử mang nhãn sau cùng. Đoạn đã tách
+  giọng theo tên (đoạn trên) bị bỏ khỏi hàng đợi, không bị kéo về giọng cũ. Nhãn vẫn gắn sau chữ, không bao giờ chờ. Thêm trường
+  `SpeakerConfig.late_relabel_ms` nên `PROTOCOL_VERSION` lên 4. Không thu thêm dữ liệu (nhúng giữ trong RAM của phiên, xóa như 5.6).
+  Số đo: `bench/2026-10-26-nguoi-noi/results/09-chot-nhan-muon.md` (kiểu cuộc gọi 73,2 → 75,8; AMI 87,6 → 87,6; tiếng Việt gốc
+  88,0 → 91,9; số giọng thừa và thiếu không đổi).
 - **Đã duyệt 2026-10-26 (chủ dự án), làm ở kế hoạch 04; chưa có số đo, ngưỡng và cách tách phải chốt bằng số đo ở kế hoạch 04** (đề xuất của kế hoạch 01): dùng tên thật để phát hiện và tách giọng bị gộp. Lỗi chính
   đo được là hai người giống giọng bị gộp một cụm, và phân cụm trực tuyến không tự tách lại (mục 14). Khi bộ đọc tên chạy (6.6), một
   giọng liên tục trùng với hai tên khác nhau (mỗi tên một phần đáng kể thời gian trùng, xen kẽ theo thời gian) là dấu hiệu đã gộp;

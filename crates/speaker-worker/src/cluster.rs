@@ -1,8 +1,11 @@
 //! Phân cụm giọng trực tuyến, nhân quả (spec 2026-10-26-phan-biet-nguoi-noi §5.2–§5.4): mỗi đoạn VAD vào một giọng đã có, mở
 //! giọng mới, hay lấy giọng của đoạn trước. Tâm của giọng là tổng nhúng đã chuẩn hóa nhân thời lượng. Có luật gộp hai giọng rất
-//! giống nhau khi cả hai đã nói đủ lâu, mặc định tắt (`merge_theta`). Kết quả tất định với cùng chuỗi đoạn.
+//! giống nhau khi cả hai đã nói đủ lâu, mặc định tắt (`merge_theta`). Kết quả tất định với cùng chuỗi đoạn. Chốt nhãn muộn
+//! (`late_relabel_ms`, xem `late`): đoạn đã gán được so lại với các tâm sau một thời gian, không đổi tâm.
 
 use crate::embed::cosine;
+pub use crate::late::LateChange;
+use crate::late::LateQueue;
 
 /// Ngưỡng của nhận giọng: định nghĩa ở `speaker-protocol` (app kiểm `speaker_config` của manifest bằng cùng `validate`).
 pub use speaker_protocol::SpeakerConfig;
@@ -35,6 +38,7 @@ pub struct OnlineClusterer {
     voices: Vec<Voice>,
     next_id: u32,
     prev: Option<u32>,
+    late: LateQueue,
 }
 
 /// Thời lượng tiếng nói tối đa của một đoạn mà `assign` chấp nhận: đoạn thật ≤ 8 s; chặn để thời lượng vô lý không làm tràn
@@ -50,6 +54,7 @@ fn normalized(e: &[f32]) -> Option<Vec<f32>> {
 impl OnlineClusterer {
     pub fn new(cfg: SpeakerConfig) -> Self {
         Self {
+            late: LateQueue::new(cfg.late_relabel_ms),
             cfg,
             voices: Vec::new(),
             next_id: 1,
@@ -129,6 +134,9 @@ impl OnlineClusterer {
             _ => (self.prev, 0.0, false),
         };
         let merged = self.merge();
+        for &(from, into) in &merged {
+            self.late.merged(from, into);
+        }
         let voice = voice.map(|v| {
             merged
                 .iter()
@@ -141,6 +149,50 @@ impl OnlineClusterer {
             merged,
             updated,
         }
+    }
+
+    /// Nhớ đoạn vừa gán (`voice` là kết quả của `assign` ngay trước) để chốt nhãn muộn. Không nhớ gì khi chốt muộn tắt, đoạn
+    /// không nhúng được (ngắn hơn `min_embed_ms`, nhúng hỏng) hay chưa có giọng (đoạn nhúng được mà chưa có giọng nào vẫn nhớ, để nhận giọng về sau). `duration_ms` và `mic` chỉ để trả lại trong
+    /// `LateChange`.
+    pub fn register(
+        &mut self,
+        segment_id: u64,
+        end_ms: u64,
+        duration_ms: u64,
+        mic: bool,
+        embedding: Option<&[f32]>,
+        voice: Option<u32>,
+    ) {
+        if !self.late.enabled() || duration_ms.min(MAX_SPEECH_MS) < self.cfg.min_embed_ms {
+            return;
+        }
+        if let Some(e) = embedding.and_then(normalized) {
+            self.late.push(segment_id, end_ms, e, voice, duration_ms, mic);
+        }
+    }
+
+    /// Các đoạn đã tới hạn chốt (thời gian âm thanh `now_ms` ≥ `end_ms` + `late_relabel_ms`) mà giọng gần nhất với tâm hiện có
+    /// khác giọng đang gán; các đoạn này (và đoạn tới hạn không đổi) ra khỏi hàng đợi. Tâm không đổi.
+    pub fn take_late(&mut self, now_ms: u64) -> Vec<LateChange> {
+        let voices = &self.voices;
+        self.late.take_due(now_ms, |e| {
+            voices
+                .iter()
+                .map(|v| (v.id, cosine(&v.sum, e)))
+                // Như `assign`: bằng điểm thì giọng mở sớm hơn thắng.
+                .fold(None, |acc: Option<(u32, f32)>, x| match acc {
+                    Some(a) if a.1 >= x.1 => Some(a),
+                    _ => Some(x),
+                })
+                // Không đặt ngưỡng `theta` ở đây: đo (results/09-chot-nhan-muon.md, mục "Ngưỡng theta") cho thấy lọc theo `theta` làm
+                // kém đi bộ cuộc gọi và Common Voice (−0,9 và −1,5 điểm) mà chỉ nhích AMI (+0,4).
+                .map(|(id, _)| id)
+        })
+    }
+
+    /// Đoạn `segment_id` đã sang giọng khác ngoài phân cụm (tách giọng theo tên): thôi chốt muộn cho đoạn đó.
+    pub fn note_moved(&mut self, segment_id: u64) {
+        self.late.forget(segment_id);
     }
 
     /// Tách giọng `from` (spec §5.3, kế hoạch 04): mở giọng mới từ `members` (thời lượng thật, nhúng, đoạn đã vào tâm của `from`
@@ -608,5 +660,183 @@ mod tests {
         assert!(c.assign(2_000, Some(&A)).updated, "mở giọng");
         assert!(!c.assign(800, Some(&A)).updated, "dưới min_update_ms");
         assert!(!c.assign(300, None).updated, "không nhúng");
+    }
+
+    /// Cấu hình có chốt muộn 30 s (mặc định) cho các test chốt muộn.
+    fn late_cfg() -> SpeakerConfig {
+        SpeakerConfig::default()
+    }
+
+    /// Gán và đăng ký một đoạn như `Worker::segment_with`; trả giọng đã gán.
+    fn feed(c: &mut OnlineClusterer, id: u64, end_ms: u64, ms: u64, e: &[f32]) -> Option<u32> {
+        let a = c.assign(ms, Some(e));
+        c.register(id, end_ms, ms, false, Some(e), a.voice);
+        a.voice
+    }
+
+    /// Đoạn 2 (B, 1000 ms, ngắn hơn min_new_ms) không giống ai nên lấy giọng của đoạn trước (1, sai); sau đó B mở giọng 2.
+    fn early_mistake(c: &mut OnlineClusterer) {
+        assert_eq!(feed(c, 1, 2_000, 2_000, &A), Some(1));
+        assert_eq!(feed(c, 2, 3_000, 1_000, &B), Some(1));
+        assert_eq!(feed(c, 3, 5_000, 2_000, &B), Some(2));
+    }
+
+    #[test]
+    fn late_relabel_moves_an_early_mistake_to_the_nearest_voice_only_when_due() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        early_mistake(&mut c);
+        assert!(c.take_late(32_999).is_empty(), "đoạn 2 chưa tới hạn (3000 + 30 000)");
+        let ch = c.take_late(33_000);
+        assert_eq!(
+            ch,
+            vec![LateChange {
+                segment_id: 2,
+                from: Some(1),
+                to: 2,
+                duration_ms: 1_000,
+                mic: false
+            }]
+        );
+        assert!(
+            c.take_late(1_000_000).is_empty(),
+            "đoạn 1 và 3 tới hạn nhưng giọng không đổi; không báo lại"
+        );
+    }
+
+    #[test]
+    fn late_relabel_does_not_touch_the_centres() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        early_mistake(&mut c);
+        let before = c.voice_ids();
+        c.take_late(1_000_000);
+        assert_eq!(c.voice_ids(), before);
+        // Tâm không đổi: đoạn kế tiếp giống A vẫn vào giọng 1 với cosine 1.
+        let a = c.assign(2_000, Some(&A));
+        assert_eq!((a.voice, a.confidence), (Some(1), 1.0));
+    }
+
+    #[test]
+    fn late_relabel_off_registers_nothing() {
+        let mut c = OnlineClusterer::new(SpeakerConfig {
+            late_relabel_ms: 0,
+            ..SpeakerConfig::default()
+        });
+        early_mistake(&mut c);
+        assert_eq!(c.late.len(), 0);
+        assert!(c.take_late(u64::MAX).is_empty());
+    }
+
+    #[test]
+    fn late_relabel_gives_a_voice_to_an_early_segment_that_had_none() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        // Đoạn 1 (1000 ms, nhúng được) tới trước mọi giọng: chưa có nhãn. Đoạn 2 mở giọng 1.
+        assert_eq!(feed(&mut c, 1, 1_000, 1_000, &A), None);
+        assert_eq!(feed(&mut c, 2, 3_000, 2_000, &A), Some(1));
+        let ch = c.take_late(31_000);
+        assert_eq!(
+            ch.iter().map(|x| (x.segment_id, x.from, x.to)).collect::<Vec<_>>(),
+            [(1, None, 1)]
+        );
+    }
+
+    #[test]
+    fn late_relabel_skips_segments_without_a_usable_embedding() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        assert_eq!(feed(&mut c, 1, 2_000, 2_000, &A), Some(1));
+        for (id, ms, e) in [
+            (2, 300, Some(&B[..])),
+            (3, 2_000, Some(&[f32::NAN, 0.0, 0.0][..])),
+            (4, 2_000, None),
+        ] {
+            let a = c.assign(ms, e);
+            c.register(id, 10_000, ms, false, e, a.voice);
+        }
+        assert_eq!(c.late.len(), 1, "chỉ đoạn 1");
+    }
+
+    #[test]
+    fn late_relabel_follows_a_merge() {
+        // Giọng 1 (A, 3000 ms) gộp vào giọng 2 (D, 4000 ms): đoạn 1 phải được tính là của giọng 2, nên không có gì để đổi.
+        let mut c = OnlineClusterer::new(merge_cfg());
+        assert_eq!(feed(&mut c, 1, 3_000, 3_000, &A), Some(1));
+        let a = c.assign(4_000, Some(&D));
+        assert_eq!(a.merged, vec![(1, 2)]);
+        c.register(2, 7_000, 4_000, false, Some(&D), a.voice);
+        assert!(c.take_late(1_000_000).is_empty());
+    }
+
+    #[test]
+    fn late_relabel_leaves_a_split_segment_alone() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        for (id, e) in [(1, &A), (2, &D), (3, &A), (4, &D)] {
+            assert_eq!(feed(&mut c, id, id * 2_000, 2_000, e), Some(1));
+        }
+        let new = c.split(1, &[(2_000, &D, true), (2_000, &D, true)]).unwrap();
+        // Nếu session không báo đã tách (`note_moved`), đoạn D còn mang giọng cũ trong hàng đợi và giọng gần nhất giờ là giọng mới:
+        // chúng bị báo đổi lần hai (và thời gian nói bị tính hai lần). `c` là bản không báo, `with` là bản có báo.
+        let mut with = OnlineClusterer::new(late_cfg());
+        for (id, e) in [(1, &A), (2, &D), (3, &A), (4, &D)] {
+            feed(&mut with, id, id * 2_000, 2_000, e);
+        }
+        with.split(1, &[(2_000, &D, true), (2_000, &D, true)]).unwrap();
+        with.note_moved(2);
+        with.note_moved(4);
+        assert_eq!(
+            with.take_late(1_000_000),
+            vec![],
+            "đoạn đã tách không bị chốt muộn đụng tới"
+        );
+        let without = c.take_late(1_000_000);
+        assert_eq!(
+            without.iter().map(|x| (x.segment_id, x.from, x.to)).collect::<Vec<_>>(),
+            [(2, Some(1), new), (4, Some(1), new)]
+        );
+    }
+
+    #[test]
+    fn late_queue_is_bounded() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        for id in 0..(crate::late::MAX_PENDING as u64 + 100) {
+            feed(&mut c, id, 2_000 + id, 2_000, &A);
+        }
+        assert_eq!(c.late.len(), crate::late::MAX_PENDING);
+    }
+
+    #[test]
+    fn late_relabel_changes_at_most_a_bounded_batch_per_call() {
+        let mut c = OnlineClusterer::new(late_cfg());
+        assert_eq!(feed(&mut c, 1, 2_000, 2_000, &A), Some(1));
+        assert_eq!(feed(&mut c, 2, 5_000, 2_000, &B), Some(2));
+        // 100 đoạn B đang mang nhãn giọng 1 (sai): đều tới hạn cùng lúc.
+        let b = normalized(&B).unwrap();
+        for id in 10..110u64 {
+            c.late.push(id, 6_000, b.clone(), Some(1), 1_000, false);
+        }
+        let cap = crate::late::MAX_CHANGES_PER_CALL;
+        let mut sizes = Vec::new();
+        loop {
+            let batch = c.take_late(1_000_000);
+            if batch.is_empty() {
+                break;
+            }
+            assert!(batch.iter().all(|x| x.to == 2 && x.from == Some(1)));
+            sizes.push(batch.len());
+        }
+        assert_eq!(sizes, [cap, cap, cap, 100 - 3 * cap]);
+        assert_eq!(c.late.len(), 0);
+    }
+
+    #[test]
+    fn late_relabel_is_deterministic() {
+        let run = || {
+            let mut c = OnlineClusterer::new(late_cfg());
+            early_mistake(&mut c);
+            let mut all = Vec::new();
+            for t in [10_000, 33_000, 40_000, 90_000] {
+                all.push(c.take_late(t));
+            }
+            all
+        };
+        assert_eq!(run(), run());
     }
 }

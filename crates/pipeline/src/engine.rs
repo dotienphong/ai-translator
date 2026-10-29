@@ -5534,6 +5534,50 @@ mod tests {
         assert_eq!(h.c.metrics.speaker_late, 1);
     }
 
+    /// Chốt nhãn muộn của worker: `Assign` tới lần thứ hai cho đoạn đã hiện phụ đề đổi nhãn (mỗi lần một sự kiện), các upsert sau
+    /// mang nhãn mới, và luật ghép câu so theo nhãn mới (hai đoạn từng khác giọng, nay cùng giọng, thì ghép).
+    #[test]
+    fn a_second_assign_for_a_shown_segment_relabels_it_and_the_merge_rule_follows() {
+        let mut h = harness();
+        h.voice(0, Some(1));
+        h.said(0, 0, 1_000, "en", "so we went");
+        assert_eq!(h.last(0).speaker, Some(1));
+        h.voice(0, Some(2));
+        h.voice(1, Some(2));
+        h.said(1, 1_300, 2_500, "en", "to the market");
+        assert_eq!(
+            *h.sink.speakers.lock().unwrap(),
+            [SpeakerLabel {
+                id: 0,
+                speaker: Some(2)
+            }]
+        );
+        assert_eq!(h.c.metrics.merges, 1, "cùng giọng 2 sau khi đổi nhãn: ghép câu");
+        assert_eq!(h.last(0).speaker, Some(2));
+        let job = h.job();
+        h.finish(&job, done("chúng tôi đi chợ"));
+        assert_eq!(h.last(0).speaker, Some(2));
+    }
+
+    /// Nhãn đổi lần hai làm câu đã ghép hai đoạn thành hai giọng: câu không nhãn (như nhãn tới muộn lần đầu), và hàng đợi dịch
+    /// không bị rối.
+    #[test]
+    fn a_second_assign_that_splits_a_merged_sentence_clears_its_label() {
+        let mut h = harness();
+        h.voice(0, Some(1));
+        h.voice(1, Some(1));
+        h.said(0, 0, 1_000, "en", "so we went");
+        h.said(1, 1_300, 2_500, "en", "to the market");
+        assert_eq!(h.c.metrics.merges, 1);
+        assert_eq!(h.last(0).speaker, Some(1));
+        h.voice(1, Some(2));
+        let events = h.sink.speakers.lock().unwrap().clone();
+        assert_eq!(events, [SpeakerLabel { id: 0, speaker: None }]);
+        let job = h.job();
+        h.finish(&job, done("chúng tôi đi chợ"));
+        assert_eq!(h.last(0).speaker, None);
+    }
+
     #[test]
     fn two_known_different_voices_are_never_merged_into_one_line() {
         for (second, merges) in [(Some(2), 0), (Some(1), 1), (None, 1)] {

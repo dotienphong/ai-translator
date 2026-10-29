@@ -31,6 +31,8 @@ pub const MAX_SEGMENT_MS: u64 = 30_000;
 pub const MAX_FRAME_BYTES: u32 = 4 * 1024 * 1024;
 /// Số giọng đang sống tối đa mà [`SpeakerConfig::validate`] nhận.
 pub const MAX_VOICES: usize = 32;
+/// `SpeakerConfig::late_relabel_ms` tối đa mà [`SpeakerConfig::validate`] nhận.
+pub const MAX_LATE_RELABEL_MS: u64 = 120_000;
 /// App coi `Voices` có nhiều giọng hơn chừng này là khung hỏng.
 pub const MAX_VOICES_ON_WIRE: usize = 64;
 /// Tên người tham dự dài tối đa 40 ký tự (spec §6.3); khung đếm theo byte cho rẻ (40 × 4).
@@ -42,8 +44,8 @@ pub const MAX_APP_VERSION_BYTES: usize = 32;
 /// Công thức đọc tối đa 256 KB (spec §7.1).
 pub const MAX_RECIPE_BYTES: usize = 256 * 1024;
 /// Phiên bản giao thức, trường đầu của `Response::Ready`. App tắt nhận giọng nếu worker báo số khác. Kế hoạch 06: 3
-/// (`ReaderState.patterns`).
-pub const PROTOCOL_VERSION: u32 = 3;
+/// (`ReaderState.patterns`); 4: `SpeakerConfig.late_relabel_ms` (chốt nhãn muộn).
+pub const PROTOCOL_VERSION: u32 = 4;
 /// `ReaderState.patterns` có tối đa chừng này mẫu (spec §6.5, §7.2); app coi nhiều hơn là khung hỏng.
 pub const MAX_LEARNED_PATTERNS: usize = 4;
 /// Đường đi trong ô của một mẫu chỉ báo dài tối đa chừng này chỉ số.
@@ -279,6 +281,9 @@ pub struct SpeakerConfig {
     pub split_min_segments: u32,
     /// Tâm nhúng của hai nhóm đoạn phải khác nhau: cosine không quá số này (một người bị nhận hai tên thì hai tâm rất giống).
     pub split_max_cosine: f32,
+    /// Chốt nhãn muộn: đoạn có nhúng được gán lại vào tâm giọng gần nhất sau chừng này ms âm thanh và phát lại `Assign` nếu giọng
+    /// đổi. 0 là tắt.
+    pub late_relabel_ms: u64,
 }
 
 impl Default for SpeakerConfig {
@@ -297,6 +302,7 @@ impl Default for SpeakerConfig {
             split_min_ms: 5_000,
             split_min_segments: 3,
             split_max_cosine: 0.85,
+            late_relabel_ms: 30_000,
         }
     }
 }
@@ -334,6 +340,7 @@ impl SpeakerConfig {
                 "split_max_cosine",
                 self.split_max_cosine.is_finite() && self.split_max_cosine > 0.0 && self.split_max_cosine <= 1.0,
             ),
+            ("late_relabel_ms", self.late_relabel_ms <= MAX_LATE_RELABEL_MS),
         ];
         match checks.iter().find(|(_, ok)| !ok) {
             Some((name, _)) => Err((*name).to_string()),
@@ -799,6 +806,7 @@ mod tests {
             ),
             (false, 0.25, 5_000, 3, 0.85)
         );
+        assert_eq!(c.late_relabel_ms, 30_000);
         assert_eq!(c.validate(), Ok(()));
     }
 
@@ -826,6 +834,7 @@ mod tests {
         assert_eq!(bad(|c| c.split_min_ms = 600_001), "split_min_ms");
         assert_eq!(bad(|c| c.split_min_segments = 0), "split_min_segments");
         assert_eq!(bad(|c| c.split_max_cosine = 1.5), "split_max_cosine");
+        assert_eq!(bad(|c| c.late_relabel_ms = MAX_LATE_RELABEL_MS + 1), "late_relabel_ms");
     }
 
     #[test]

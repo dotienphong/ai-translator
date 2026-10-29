@@ -464,6 +464,27 @@ mod tests {
 
     /// Spec 2026-10-26-phan-biet-nguoi-noi §9: bản chép lời giữ giọng từng câu và bảng người nói của phiên; nhãn tới muộn sửa đúng
     /// câu; sự kiện của phiên khác bị bỏ.
+    /// Chốt nhãn muộn: nhãn của câu đã có nhãn đổi lần hai thì bản chép lời (và Lịch sử khi lưu) mang nhãn sau cùng.
+    #[test]
+    fn a_second_label_for_the_same_line_replaces_the_first_and_is_what_history_saves() {
+        let store = TranscriptStore::default();
+        store.begin(1, 0, "vi");
+        store.upsert(1, &sub(1, "Một", Status::Done));
+        for speaker in [Some(2), Some(3), None] {
+            store.set_speaker(1, &SpeakerLabel { id: 1, speaker });
+            assert_eq!(store.snapshot().lines[0].speaker, speaker);
+        }
+        // Lịch sử lưu từ `snapshot()` (`history::save`, nhãn đã đổi tên qua `speaker_label`), nên nhãn sau cùng là nhãn được lưu.
+        store.set_speaker(
+            1,
+            &SpeakerLabel {
+                id: 1,
+                speaker: Some(4),
+            },
+        );
+        assert_eq!(store.snapshot().lines[0].speaker, Some(4));
+    }
+
     #[test]
     fn the_transcript_keeps_the_speakers_of_the_session() {
         let store = TranscriptStore::default();

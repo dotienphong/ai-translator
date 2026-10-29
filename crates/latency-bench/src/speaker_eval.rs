@@ -64,6 +64,10 @@ pub struct SpeakerEvalArgs {
     /// Thời lượng tối thiểu (ms) của đoạn để được mở giọng mới (mặc định của app).
     #[arg(long)]
     min_new_ms: Option<u64>,
+    /// Chốt nhãn muộn: sau chừng này ms âm thanh, đoạn có nhúng được gán lại vào tâm giọng gần nhất; nhãn trong kết quả là nhãn
+    /// sau cùng (mặc định của app: `SpeakerConfig::default()`, 30 000; 0 là tắt).
+    #[arg(long)]
+    late_relabel_ms: Option<u64>,
     /// Nhúng theo cửa sổ dài chừng này giây rồi lấy trung bình (`Embedder::embed_windowed`; Task 9b, cách A). Không có cờ thì
     /// nhúng cả đoạn như app.
     #[arg(long, conflicts_with = "embeddings_in")]
@@ -184,6 +188,8 @@ pub(crate) fn read_cache(path: &Path) -> Result<Vec<CachedSegment>> {
 }
 
 /// Phân cụm trực tuyến các đoạn theo thứ tự và đổi nhãn các đoạn trước khi hai giọng được gộp (như giao diện sẽ làm).
+/// Chốt nhãn muộn (`late_relabel_ms`) đổi nhãn đoạn cũ như `Assign` thứ hai của worker; kết quả là nhãn sau cùng của mỗi đoạn
+/// (độ tin của đoạn đổi nhãn về 0, như worker).
 /// Trả nhãn và độ tin của từng đoạn, cùng số giọng còn sống.
 fn label_segments(cfg: SpeakerConfig, segments: &[CachedSegment]) -> (Vec<(Option<u32>, f32)>, usize) {
     let mut clusterer = OnlineClusterer::new(cfg);
@@ -198,6 +204,11 @@ fn label_segments(cfg: SpeakerConfig, segments: &[CachedSegment]) -> (Vec<(Optio
             }
         }
         voices.push((a.voice, a.confidence));
+        let id = voices.len() as u64 - 1;
+        clusterer.register(id, s.end_ms, duration_ms(s), false, s.embedding.as_deref(), a.voice);
+        for c in clusterer.take_late(s.end_ms) {
+            voices[c.segment_id as usize] = (Some(c.to), 0.0);
+        }
     }
     (voices, clusterer.voice_count())
 }
@@ -237,6 +248,9 @@ fn speaker_config(args: &SpeakerEvalArgs) -> SpeakerConfig {
     }
     if let Some(v) = args.min_new_ms {
         cfg.min_new_ms = v;
+    }
+    if let Some(v) = args.late_relabel_ms {
+        cfg.late_relabel_ms = v;
     }
     cfg
 }
@@ -361,6 +375,14 @@ struct WorkerRow {
 }
 
 /// Hai giọng được gộp: nhãn của các đoạn trước đổi theo.
+/// `Assign` thứ hai cho đoạn `segment_id` (chốt nhãn muộn): đoạn là hàng thứ `segment_id` (id = số thứ tự đoạn).
+fn late_assign(rows: &mut [WorkerRow], segment_id: u64, voice: Option<u32>, confidence: f32) {
+    if let Some(r) = rows.get_mut(segment_id as usize) {
+        r.voice = voice;
+        r.confidence = confidence;
+    }
+}
+
 fn relabel(rows: &mut [WorkerRow], from: u32, into: u32) {
     for r in rows.iter_mut().filter(|r| r.voice == Some(from)) {
         r.voice = Some(into);
@@ -458,14 +480,26 @@ fn worker_eval(args: &SpeakerEvalArgs, worker: &Path) -> Result<()> {
                     break;
                 }
                 SpeakerUpdate::Merged { from, into } => relabel(&mut rows, from, into),
+                // `Assign` thứ hai của đoạn cũ (chốt nhãn muộn): nhãn sau cùng thắng.
+                SpeakerUpdate::Assign {
+                    segment_id,
+                    voice,
+                    confidence,
+                } => late_assign(&mut rows, segment_id, voice, confidence),
                 _ => {}
             }
         }
     }
     // `Merged` tới sau `Assign` của đoạn cuối: áp nốt (worker gửi chúng ngay sau `Assign`; 200 ms không có gì thì thôi).
     while let Ok(update) = link.updates.recv_timeout(Duration::from_millis(200)) {
-        if let SpeakerUpdate::Merged { from, into } = update {
-            relabel(&mut rows, from, into);
+        match update {
+            SpeakerUpdate::Merged { from, into } => relabel(&mut rows, from, into),
+            SpeakerUpdate::Assign {
+                segment_id,
+                voice,
+                confidence,
+            } => late_assign(&mut rows, segment_id, voice, confidence),
+            _ => {}
         }
     }
     let (peak_mb, cpu_ms) = usage.stop();
@@ -669,6 +703,52 @@ mod tests {
         let (labels, alive) = label_segments(SpeakerConfig::default(), &[none(), seg(2000, [1.0, 0.0, 0.0]), none()]);
         assert_eq!(labels, vec![(None, 0.0), (Some(1), 1.0), (Some(1), 0.0)]);
         assert_eq!(alive, 1);
+    }
+
+    /// Chốt nhãn muộn: đoạn 2 (B, 1000 ms) sai lúc đầu (lấy giọng của đoạn trước); đoạn thứ tư kết thúc sau 30 s nên nhãn sau cùng
+    /// của đoạn 2 là giọng 2; tắt (0) thì giữ nhãn gốc. Số giọng không đổi.
+    #[test]
+    fn late_relabel_changes_the_final_label_of_an_early_mistake() {
+        let at = |start_ms: u64, end_ms: u64, e: [f32; 3]| CachedSegment {
+            start_ms,
+            end_ms,
+            embedding: Some(e.to_vec()),
+            embed_ms: 1.0,
+        };
+        let (a, b) = ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        let segs = [
+            at(0, 2_000, a),
+            at(2_000, 3_000, b),
+            at(3_000, 5_000, b),
+            at(31_000, 33_000, b),
+        ];
+        let on = SpeakerConfig::default();
+        let off = SpeakerConfig {
+            late_relabel_ms: 0,
+            ..SpeakerConfig::default()
+        };
+        let (late, alive) = label_segments(on, &segs);
+        assert_eq!(
+            late.iter().map(|l| l.0).collect::<Vec<_>>(),
+            [Some(1), Some(2), Some(2), Some(2)]
+        );
+        assert_eq!(late[1].1, 0.0);
+        assert_eq!(alive, 2);
+        let (plain, _) = label_segments(off, &segs);
+        assert_eq!(
+            plain.iter().map(|l| l.0).collect::<Vec<_>>(),
+            [Some(1), Some(1), Some(2), Some(2)]
+        );
+    }
+
+    #[test]
+    fn the_late_relabel_flag_overrides_the_default() {
+        assert_eq!(
+            speaker_config(&try_parse(&["--embeddings-in", "x"]).unwrap()).late_relabel_ms,
+            30_000
+        );
+        let args = try_parse(&["--embeddings-in", "x", "--late-relabel-ms", "0"]).unwrap();
+        assert_eq!(speaker_config(&args).late_relabel_ms, 0);
     }
 
     #[derive(clap::Parser)]
