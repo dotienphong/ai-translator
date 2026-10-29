@@ -35,7 +35,7 @@ use crate::names::matcher::{KEEP_SPEAKING_MS, NameMatcher, SegRec, SplitRule};
 use crate::names::track::{SpeakingTracker, quiet_at};
 use crate::names::{ParticipantNow, Spans, split};
 use crate::reader::extract::TileSample;
-use crate::reader::{ControlState, PLATFORM, ReaderSetup, Sample};
+use crate::reader::{ControlState, PLATFORM, Pass, ReaderSetup, Sample};
 
 /// Phần trăm thời lượng từ micro để một giọng là giọng trong phòng (spec §5.5).
 pub const ROOM_MIC_PERCENT: u64 = 60;
@@ -688,6 +688,11 @@ impl<E: Embed> Worker<E> {
             self.push_state(s.app, s.app_version, s.status, &mut out);
             return out;
         };
+        // Lượt đầy đủ duyệt cây dùng hết ngân sách nên không đọc được ô nào: không phải "cửa sổ họp không có ô". Bỏ lượt này; lượt nhanh
+        // kế tiếp (và lượt đầy đủ có ô) quyết trạng thái, nên `NoNames` không nhấp nháy mỗi 3 s (thử thật Teams 2026-10-29).
+        if s.pass == Pass::Full && s.tiles.is_empty() {
+            return out;
+        }
         let Some(kinds) = self
             .recipe(app)
             .map(|r| r.speaking.iter().map(|x| x.kind).collect::<Vec<SignalKind>>())
@@ -1023,6 +1028,42 @@ mod tests {
             1,
             "cửa sổ họp không có ô: NoNames"
         );
+    }
+
+    /// Thử thật Teams 2026-10-29: lượt đọc đầy đủ dùng hết ngân sách duyệt cây nên `sample_round` không lấy được ô nào; lượt đó không
+    /// có ô vì hết ngân sách, không phải vì cửa sổ họp không có ô, nên không được báo `NoNames` (trạng thái nhấp nháy mỗi 3 s).
+    #[test]
+    fn a_full_pass_that_read_no_tile_does_not_flip_the_state_to_no_names() {
+        let mut w = named_worker(SpeakerConfig::default());
+        let state = |r: &[Response]| {
+            r.iter().find_map(|x| match x {
+                Response::ReaderState { state, .. } => Some(*state),
+                _ => None,
+            })
+        };
+        let ok = w.sample(teams(0, &[("Lan", false), ("Minh", false)]));
+        assert_eq!(state(&ok), Some(ReaderStatus::Ok), "lượt đọc có ô: Ok");
+        let starved = Sample {
+            tiles: vec![],
+            pass: Pass::Full,
+            ..teams(250, &[])
+        };
+        assert_eq!(
+            state(&w.sample(starved.clone())),
+            None,
+            "lượt đầy đủ không lấy được ô nào bị bỏ, trạng thái không đổi"
+        );
+        assert_eq!(
+            state(&w.sample(teams(500, &[("Lan", false), ("Minh", false)]))),
+            None,
+            "vẫn Ok, không gửi lại"
+        );
+        // Lượt nhanh không có ô là cửa sổ họp thật sự không có ô: vẫn báo NoNames.
+        let none = Sample {
+            tiles: vec![],
+            ..teams(750, &[])
+        };
+        assert_eq!(state(&w.sample(none)), Some(ReaderStatus::NoNames));
     }
 
     /// Spec §5.3, QĐ 10: hai người giống giọng (A, D) gộp một giọng, tên xen kẽ: các đoạn của Minh chuyển sang giọng mới (gửi lại
