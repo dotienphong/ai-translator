@@ -172,9 +172,13 @@ impl fmt::Debug for TileSample {
     }
 }
 
-/// Cửa sổ có phải cửa sổ họp của app không (spec §6.1): id khớp `window_id`, hay tiêu đề khớp một mẫu.
-pub fn is_meeting_window(app: &AppRecipe, title: &str, ident: &str) -> bool {
-    app.window_id.as_ref().is_some_and(|re| re.is_match(ident)) || app.window_title.iter().any(|re| re.is_match(title))
+/// Cửa sổ có phải cửa sổ họp của app không (spec §6.1): id khớp `window_id`, tiêu đề khớp một mẫu, hay (macOS) AXSubrole khớp một
+/// mẫu `window_subrole` (cuộc họp có tên tự đặt: tiêu đề cửa sổ là tên cuộc họp). Luật vai trò phụ chỉ cho cửa sổ ứng viên; bộ đọc
+/// vẫn chỉ lấy tên khi thấy phần tử `confirm_id` trong cửa sổ (`Walk::step`). Windows truyền `subrole` rỗng.
+pub fn is_meeting_window(app: &AppRecipe, title: &str, ident: &str, subrole: &str) -> bool {
+    app.window_id.as_ref().is_some_and(|re| re.is_match(ident))
+        || app.window_title.iter().any(|re| re.is_match(title))
+        || (!subrole.is_empty() && app.window_subrole.iter().any(|re| re.is_match(subrole)))
 }
 
 /// Lượt đầy đủ trên một cửa sổ họp, dừng được giữa chừng.
@@ -187,6 +191,11 @@ pub struct Walk<N> {
 }
 
 impl<N: Clone> Walk<N> {
+    /// Đã thấy phần tử `confirm_id` trong cửa sổ (đúng sau khi `step` trả `Some`).
+    pub fn confirmed(&self) -> bool {
+        self.confirmed
+    }
+
     /// `window`: thứ tự của cửa sổ họp trong lượt đọc (phần cửa sổ của [`TileRef::slot`]).
     pub fn new(node: N, window: u32, web_only: bool) -> Self {
         Self {
@@ -562,8 +571,19 @@ pub fn sample_round<T: Tree>(
 /// Các dòng định dạng fixture (`độ sâu|role|subrole|title|desc|value|ident|help|dom|lớp`) của một cửa sổ họp, cho công cụ
 /// `ax-record fixture`: chỉ vùng web khi `web_only` (bên ngoài chỉ đọc vai trò), tối đa [`MAX_ELEMENTS`] dòng. **Có chữ của app
 /// họp** (kể cả khung chat nếu đang mở): chỉ ghi vào `$DATA`, ẩn danh bằng `make_fixture.py` trước khi vào repo.
-pub fn dump_lines<T: Tree>(t: &mut T, window: &T::Node, title: &str, app: &AppRecipe) -> Vec<String> {
-    let (window_role, window_subrole) = app.os.window_role();
+pub fn dump_lines<T: Tree>(
+    t: &mut T,
+    window: &T::Node,
+    title: &str,
+    window_subrole: &str,
+    app: &AppRecipe,
+) -> Vec<String> {
+    let (window_role, default_subrole) = app.os.window_role();
+    let window_subrole = if window_subrole.is_empty() {
+        default_subrole.to_string()
+    } else {
+        clean_field(window_subrole)
+    };
     let mut out = vec![format!("0|{window_role}|{window_subrole}|{}||||||", clean_field(title))];
     let mut stack: Vec<(T::Node, u32, bool)> = t
         .children(window)
@@ -659,7 +679,7 @@ pub(crate) mod tests {
         let mut index = 0;
         for w in roots {
             let (title, ident) = (tree.title(w).to_string(), tree.ident(w).to_string());
-            if !is_meeting_window(app, &title, &ident) {
+            if !is_meeting_window(app, &title, &ident, tree.subrole(w)) {
                 continue;
             }
             let tiles = Walk::new(w, index, app.web_only)
@@ -814,6 +834,84 @@ pub(crate) mod tests {
         assert!(later.iter().any(|t| t.name == "Minh Trần" && t.label_speaking));
     }
 
+    /// Cuộc họp Teams có tên tự đặt: tiêu đề cửa sổ họp là tên cuộc họp, không khớp `window_title` cũ; nhận theo AXSubrole
+    /// (fixture ghi trên Teams thật, ẩn danh) rồi vẫn qua cổng `confirm_id`.
+    #[test]
+    fn a_named_teams_meeting_window_is_found_by_its_subrole() {
+        let r = recipes();
+        let app = r.app(Os::Macos, MeetingApp::Teams).unwrap();
+        let mut old = app.clone();
+        old.window_subrole.clear();
+        let (mut speaking, mut any) = (BTreeSet::new(), false);
+        for snap in fixture("teams-macos-named-meeting.jsonl") {
+            assert!(
+                tiles_of(&snap, &old).1.is_empty(),
+                "luật tiêu đề cũ không nhận cửa sổ họp có tên"
+            );
+            let (_, tiles) = tiles_of(&snap, app);
+            let names: BTreeSet<&str> = tiles.iter().map(|t| t.name.as_str()).collect();
+            assert_eq!(
+                names,
+                BTreeSet::from(["Hoa Phạm", "Khách An", "Khách Bình"]),
+                "ảnh chụp {}",
+                snap.t
+            );
+            any = true;
+            speaking.extend(tiles.iter().filter(|t| t.anchors[0].is_some()).map(|t| t.name.clone()));
+        }
+        assert!(any);
+        // Trong bản ghi này khung của Teams ở yên trên ô khách An vì cửa sổ họp bị che nên Teams không vẽ lại (đo đúng: results/10): fixture chỉ chứng minh
+        // nhận cửa sổ, tên và neo; việc khung có đổi theo người nói không do test này kiểm (xem results/10-cua-so-hop-co-ten.md).
+        assert_eq!(speaking, BTreeSet::from(["Khách An".to_string()]));
+    }
+
+    /// Cửa sổ chính của Teams (cùng AXStandardWindow, tiêu đề lạ) và hộp thoại khác không sinh tên: chỉ cửa sổ có nút Leave mới có ô;
+    /// cửa sổ nổi thu gọn (AXSystemDialog) không do luật vai trò phụ nhận.
+    #[test]
+    fn subrole_windows_without_the_leave_button_or_of_other_subroles_have_no_tiles() {
+        let r = recipes();
+        let app = r.app(Os::Macos, MeetingApp::Teams).unwrap();
+        let tile = "1|AXMenuItem||Lan (Guest), Context menu is available|Lan (Guest), Context menu is available|||||";
+        let leave = "1|AXButton||Leave|Leave||||hangup-button|fui-Button";
+        let snap = |head: &str, with_leave: bool| Snapshot {
+            t: 0.0,
+            lines: if with_leave {
+                lines(&[head, tile, leave])
+            } else {
+                lines(&[head, tile])
+            },
+        };
+        let main = "0|AXWindow|AXStandardWindow|Meet||||||";
+        assert!(
+            tiles_of(&snap(main, false), app).1.is_empty(),
+            "cửa sổ chính, không có Leave"
+        );
+        let dialog = "0|AXWindow|AXDialog|Tên cuộc họp||||||";
+        assert!(
+            tiles_of(&snap(dialog, false), app).1.is_empty(),
+            "AXDialog không có Leave không có tên"
+        );
+        let compact = "0|AXWindow|AXSystemDialog|Meeting compact view | Tên cuộc họp||||||";
+        assert!(
+            tiles_of(&snap(compact, true), app).1.is_empty(),
+            "cửa sổ nổi thu gọn không do luật vai trò phụ nhận (không có ô tên)"
+        );
+        let named = "0|AXWindow|AXStandardWindow|Tên cuộc họp||||||";
+        assert_eq!(tiles_of(&snap(named, true), app).1.len(), 1);
+        // Cả hai cửa sổ trong một ảnh chụp: chỉ cửa sổ họp có ô.
+        let both = Snapshot {
+            t: 0.0,
+            lines: lines(&[named, tile, leave, main, tile]),
+        };
+        assert_eq!(tiles_of(&both, app).1.len(), 1);
+        assert!(is_meeting_window(app, "Tên cuộc họp", "", "AXStandardWindow"));
+        assert!(!is_meeting_window(app, "Tên cuộc họp", "", "AXSystemDialog"));
+        assert!(
+            !is_meeting_window(app, "Tên cuộc họp", "", ""),
+            "Windows truyền vai trò phụ rỗng: luật cũ"
+        );
+    }
+
     /// Spec §6.1: cửa sổ Teams phải có nút rời cuộc gọi mới là cửa sổ họp.
     #[test]
     fn a_teams_window_without_the_leave_button_has_no_tiles() {
@@ -956,7 +1054,7 @@ pub(crate) mod tests {
                 let mut budget = Budget::new(MAX_ELEMENTS, Duration::from_secs(60));
                 for (k, w) in roots.into_iter().enumerate() {
                     let (title, ident) = (t.tree.title(w).to_string(), t.tree.ident(w).to_string());
-                    if !is_meeting_window(app, &title, &ident) {
+                    if !is_meeting_window(app, &title, &ident, t.tree.subrole(w)) {
                         continue;
                     }
                     if let Some(tiles) = Walk::new(w, k as u32, app.web_only).step(&mut t, app, &mut budget) {
@@ -1020,7 +1118,7 @@ pub(crate) mod tests {
         let snap = &fixture("teams-macos-people-closed.jsonl")[0];
         let (mut tree, roots) = FixtureTree::parse(&snap.lines);
         let title = tree.title(roots[0]).to_string();
-        let lines = dump_lines(&mut tree, &roots[0], &title, app);
+        let lines = dump_lines(&mut tree, &roots[0], &title, "", app);
         assert!(lines[0].starts_with("0|AXWindow|AXStandardWindow|Meeting with "));
         let again = Snapshot { t: 0.0, lines };
         let names = |s: &Snapshot| {

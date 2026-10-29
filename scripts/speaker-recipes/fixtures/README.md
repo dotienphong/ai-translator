@@ -7,6 +7,7 @@ Zoom thật. Mỗi dòng của `*.jsonl` là một ảnh chụp `{"t": giây, "l
 
 | File | Nguồn | Ghi chú |
 |---|---|---|
+| `teams-macos-named-meeting.jsonl` | bản ghi Teams 26276 thật (macOS 26.6), cuộc họp **có tên tự đặt** (tiêu đề cửa sổ họp là tên cuộc họp, ở đây thay bằng "Họp thử nghiệm"), chỉ cửa sổ họp (`AXStandardWindow`), 20 s đầu; dòng 0 có AXSubrole thật (`ax-record fixture` ghi từ khi có luật `window_subrole`) | cho test nhận cửa sổ theo vai trò phụ; khách tự động "Khách An", "Khách Bình"; không có `*.truth.json`: khung Teams ở yên trên khách An suốt bản ghi vì cửa sổ họp lúc đó bị che (Teams không vẽ lại); không dùng làm sự thật về chỉ báo |
 | `teams-macos-people-closed.jsonl` | bản ghi `teams-C` của kế hoạch 01 (Teams 26276, macOS 26.6, bảng People đóng) | 60 s đầu |
 | `teams-macos-people-open.jsonl` | bản ghi `teams-B` (bảng People mở) | 60 s đầu |
 | `meet-chrome-macos.jsonl` | bản ghi `chrome-B` (Chrome 156, hai cửa sổ Meet cùng tài khoản) | 40 s đầu, chỉ vùng web |

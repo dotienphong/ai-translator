@@ -411,7 +411,7 @@ impl LiveReader {
         };
         let mut out = Vec::new();
         for w in &self.windows {
-            out.extend(dump_lines(&mut self.tree, &w.node, &w.title, recipe));
+            out.extend(dump_lines(&mut self.tree, &w.node, &w.title, "", recipe));
         }
         out
     }

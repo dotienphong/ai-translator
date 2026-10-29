@@ -88,6 +88,11 @@ impl FixtureTree {
     pub fn ident(&self, node: usize) -> &str {
         &self.nodes[node].0.ident
     }
+
+    /// AXSubrole của cửa sổ (dòng 0 của bản ghi); bộ đọc thật đọc riêng thuộc tính này (luật `window_subrole`).
+    pub fn subrole(&self, node: usize) -> &str {
+        &self.nodes[node].0.subrole
+    }
 }
 
 impl Tree for FixtureTree {

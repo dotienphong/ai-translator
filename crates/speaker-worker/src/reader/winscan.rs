@@ -142,7 +142,7 @@ impl Scanner {
             } else {
                 String::new()
             };
-            if is_meeting_window(recipe, &title, &class) {
+            if is_meeting_window(recipe, &title, &class, "") {
                 let slot = MeetingApp::ALL.iter().position(|a| *a == app).unwrap_or(0);
                 if per_app[slot].is_empty() {
                     versions[slot] = version;

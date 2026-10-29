@@ -35,8 +35,12 @@ const AX_SUCCESS: AXError = 0;
 const AX_CANNOT_COMPLETE: AXError = -25204;
 /// Mỗi lệnh chờ tối đa chừng này (spec §6.2).
 const AX_TIMEOUT_S: f32 = 0.2;
-/// Hai cửa sổ họp mỗi app là đủ (spec §6.1).
-const MAX_WINDOWS: usize = 2;
+/// Cửa sổ họp nhận theo vai trò phụ (cuộc họp Teams có tên: cửa sổ họp, cửa sổ chính, cửa sổ rời) cần chỗ cho cả cửa sổ không phải
+/// họp; chúng chỉ bị đọc một lượt đầy đủ rồi nghỉ [`SUBROLE_REPROBE`] (xem `Window::probed_no_meeting`).
+const MAX_WINDOWS: usize = 3;
+/// Cửa sổ chỉ nhận theo vai trò phụ mà lượt đầy đủ không thấy `confirm_id` (cửa sổ chính của Teams) được hỏi lại sau chừng này, hay
+/// ngay khi tiêu đề đổi (cuộc họp ngay trong cửa sổ chính không đổi tiêu đề).
+const SUBROLE_REPROBE: Duration = Duration::from_secs(30);
 /// Chừng này lượt liền có lệnh không trả lời thì trạng thái là `Blocked`.
 const BLOCKED_AFTER: u32 = 5;
 /// Chữ đọc được cắt ở chừng này ký tự (như `axtrace`).
@@ -362,6 +366,15 @@ fn identify(path: &Path) -> Option<(MeetingApp, Option<String>)> {
 struct Window {
     node: AxNode,
     title: String,
+    /// AXSubrole (rỗng khi công thức không có luật `window_subrole`), chỉ để ghi bản ghi cây.
+    subrole: String,
+    /// Nhận cửa sổ chỉ nhờ `window_subrole` (tiêu đề, id không khớp): có thể là cửa sổ chính của app, không phải cửa sổ họp.
+    subrole_only: bool,
+    /// Lúc lượt đầy đủ xong mà không thấy `confirm_id`, và tiêu đề lúc đó: cửa sổ này không phải cửa sổ họp, nghỉ đọc tới hạn hay
+    /// tới khi tiêu đề đổi (CPU: cửa sổ chính của Teams to, không quét mỗi 3 s).
+    probed_no_meeting: Option<(Instant, String)>,
+    /// Cửa sổ này từng có `confirm_id`: nó là cửa sổ họp, nên một lượt thấy thiếu nút (Teams dựng lại cây) không được làm nó nghỉ.
+    ever_confirmed: bool,
     walk: Option<Walk<AxNode>>,
     tiles: Vec<TileRef<AxNode>>,
     last_full: Option<Instant>,
@@ -513,16 +526,26 @@ impl LiveReader {
                 continue;
             };
             let Some(element) = AxNode::app(pid) else { continue };
-            let nodes: Vec<(AxNode, String)> = element
+            let mut nodes: Vec<(AxNode, String, String, bool)> = element
                 .elements("AXWindows")
                 .into_iter()
                 .filter_map(|w| {
                     let title = w.string("AXTitle").unwrap_or_default();
                     let ident = w.string("AXIdentifier").unwrap_or_default();
-                    is_meeting_window(recipe, &title, &ident).then_some((w, title))
+                    // Chỉ đọc AXSubrole khi công thức có luật vai trò phụ (không thêm lệnh Accessibility cho app khác).
+                    let subrole = if recipe.window_subrole.is_empty() {
+                        String::new()
+                    } else {
+                        w.string("AXSubrole").unwrap_or_default()
+                    };
+                    let subrole_only = !is_meeting_window(recipe, &title, &ident, "");
+                    is_meeting_window(recipe, &title, &ident, &subrole).then_some((w, title, subrole, subrole_only))
                 })
-                .take(MAX_WINDOWS)
                 .collect();
+            // Cửa sổ khớp tiêu đề hay id đứng trước cửa sổ chỉ khớp vai trò phụ: hạn mức `MAX_WINDOWS` không được cắt mất cửa sổ họp
+            // "Meeting with…" vì cửa sổ chính hay cửa sổ chat rời đứng trước nó trong `AXWindows` (sắp xếp ổn định).
+            nodes.sort_by_key(|n| n.3);
+            nodes.truncate(MAX_WINDOWS);
             if nodes.is_empty() {
                 continue;
             }
@@ -531,18 +554,24 @@ impl LiveReader {
             }
             let windows = nodes
                 .into_iter()
-                .map(|(node, title)| {
+                .map(|(node, title, subrole, subrole_only)| {
                     let kept = (old_pid == Some(pid))
                         .then(|| old_windows.iter().position(|w| w.node.0 == node.0))
                         .flatten();
                     match kept {
                         Some(i) => Window {
                             title,
+                            subrole,
+                            subrole_only,
                             ..old_windows.swap_remove(i)
                         },
                         None => Window {
                             node,
                             title,
+                            subrole,
+                            subrole_only,
+                            probed_no_meeting: None,
+                            ever_confirmed: false,
                             walk: None,
                             tiles: Vec::new(),
                             last_full: None,
@@ -634,6 +663,14 @@ impl LiveReader {
         let mut tiles: Vec<TileSample> = Vec::new();
         let mut full = false;
         for (k, w) in target.windows.iter_mut().enumerate() {
+            if w.subrole_only
+                && w.walk.is_none()
+                && w.probed_no_meeting
+                    .as_ref()
+                    .is_some_and(|(at, title)| at.elapsed() < SUBROLE_REPROBE && *title == w.title)
+            {
+                continue;
+            }
             let due = w.stale || w.walk.is_some() || w.last_full.is_none_or(|t| t.elapsed() >= FULL_EVERY);
             if due && !budget.exhausted() {
                 full = true;
@@ -641,6 +678,9 @@ impl LiveReader {
                     .walk
                     .get_or_insert_with(|| Walk::new(w.node.clone(), k as u32, recipe.web_only));
                 if let Some(found) = walk.step(&mut self.tree, recipe, &mut budget) {
+                    w.ever_confirmed |= walk.confirmed();
+                    w.probed_no_meeting = (w.subrole_only && recipe.confirm_id.is_some() && !w.ever_confirmed)
+                        .then(|| (Instant::now(), w.title.clone()));
                     w.tiles = found;
                     w.walk = None;
                     w.last_full = Some(Instant::now());
@@ -692,7 +732,7 @@ impl LiveReader {
         };
         let mut out = Vec::new();
         for w in &target.windows {
-            out.extend(dump_lines(&mut self.tree, &w.node, &w.title, recipe));
+            out.extend(dump_lines(&mut self.tree, &w.node, &w.title, &w.subrole, recipe));
         }
         out
     }

@@ -924,7 +924,7 @@ mod tests {
                 Response::ReaderState {
                     state, recipe_version, ..
                 } => {
-                    assert_eq!(*recipe_version, 1);
+                    assert_eq!(*recipe_version, 2);
                     Some(*state)
                 }
                 _ => None,

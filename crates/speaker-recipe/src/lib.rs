@@ -222,6 +222,9 @@ pub struct AppRecipe {
     /// Cửa sổ họp: tiêu đề khớp một mẫu, hay id cửa sổ khớp `window_id`.
     pub window_title: Vec<Regex>,
     pub window_id: Option<Regex>,
+    /// Chỉ macOS: cửa sổ cũng là cửa sổ họp khi AXSubrole của nó khớp một mẫu (cuộc họp Teams có tên tự đặt: tiêu đề cửa sổ chính là
+    /// tên cuộc họp nên không khớp `window_title`). Luôn đi kèm `confirm_id`: bộ đọc chỉ lấy tên khi thấy phần tử đó trong cửa sổ.
+    pub window_subrole: Vec<Regex>,
     /// Chỉ đọc trong vùng web (`AXWebArea`) có tiêu đề khớp `window_title` (trình duyệt).
     pub web_only: bool,
     /// Đặt `AXEnhancedUserInterface` khi gặp cửa sổ họp (spec §6.2).
@@ -327,6 +330,8 @@ struct RawApp {
     #[serde(default)]
     window_id: Option<String>,
     #[serde(default)]
+    window_subrole: Vec<String>,
+    #[serde(default)]
     web_only: bool,
     #[serde(default)]
     enhanced_ui: bool,
@@ -417,8 +422,18 @@ fn compile_app(r: RawApp) -> Result<AppRecipe, String> {
     if r.delay_ms > MAX_DELAY_MS {
         return Err(format!("độ trễ quá {MAX_DELAY_MS} ms"));
     }
-    if r.window_title.is_empty() && r.window_id.is_none() {
+    if r.window_title.is_empty() && r.window_id.is_none() && r.window_subrole.is_empty() {
         return Err("không có quy tắc nhận cửa sổ họp".into());
+    }
+    if !r.window_subrole.is_empty() {
+        if r.os != Os::Macos {
+            return Err("window_subrole chỉ dùng cho macOS".into());
+        }
+        if r.confirm_id.is_none() {
+            return Err(
+                "window_subrole phải đi kèm confirm_id (không thì mọi hộp thoại cùng vai trò phụ bị đọc)".into(),
+            );
+        }
     }
     if tile.shapeless() {
         // QĐ 3 của kế hoạch 04 (rà soát A-Q11): ô không ràng buộc vai trò, lớp hay id thì bộ đọc phải đọc chữ (hay coi là ô) mọi
@@ -462,6 +477,7 @@ fn compile_app(r: RawApp) -> Result<AppRecipe, String> {
         os: r.os,
         window_title: patterns(&r.window_title)?,
         window_id: r.window_id.as_deref().map(pattern).transpose()?,
+        window_subrole: patterns(&r.window_subrole)?,
         web_only: r.web_only,
         enhanced_ui: r.enhanced_ui,
         confirm_id: r.confirm_id,
@@ -525,6 +541,35 @@ mod tests {
             assert!(r.app(Os::Macos, app).is_none(), "{app:?} tắt mặc định");
         }
         assert!(!r.has_os(Os::Windows), "kế hoạch 05 thêm Windows");
+    }
+
+    /// Cuộc họp Teams có tên: `window_subrole` nhận cửa sổ họp theo AXSubrole, nhưng phải đi kèm `confirm_id`, chỉ cho macOS, và hợp lệ
+    /// khi không có `window_title`.
+    #[test]
+    fn window_subrole_needs_confirm_id_and_macos() {
+        let entry = |os: &str, confirm: &str, title: &str| {
+            format!(
+                r#"{{"schema":1,"version":2,"min_app_version":"0.3.4","apps":[{{"app":"teams","os":"{os}",{title}{confirm}"window_subrole":["^AXStandardWindow$"],"tile":{{"role":"AXMenuItem","label":"^(?P<name>.+)$"}},"name_from":"label","speaking":[{{"kind":"presence","anchor":{{"scope":"child","class_token":"x"}}}}],"delay_ms":900}}]}}"#
+            )
+        };
+        let ok = parse(&entry("macos", r#""confirm_id":"hangup-button","#, "")).unwrap();
+        assert!(ok.dropped.is_empty(), "{:?}", ok.dropped);
+        let a = ok.app(Os::Macos, MeetingApp::Teams).unwrap();
+        assert_eq!(a.window_subrole.len(), 1);
+        assert!(a.window_title.is_empty() && a.window_id.is_none());
+        let no_confirm = parse(&entry("macos", "", r#""window_title":["^M"],"#)).unwrap();
+        assert!(no_confirm.apps.is_empty(), "thiếu confirm_id thì bỏ mục");
+        let win = parse(&entry("windows", r#""confirm_id":"hangup-button","#, "")).unwrap();
+        assert!(win.apps.is_empty(), "Windows không có AXSubrole");
+        assert!(
+            parse(BUILTIN_JSON)
+                .unwrap()
+                .app(Os::Macos, MeetingApp::Teams)
+                .unwrap()
+                .window_subrole
+                .len()
+                == 1
+        );
     }
 
     /// Spec §7.1: app trong công thức phải thuộc danh sách viết cứng, không thì bỏ cả mục đó; mục khác vẫn dùng.

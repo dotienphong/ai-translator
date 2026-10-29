@@ -1,12 +1,13 @@
 {
   "schema": 1,
-  "version": 1,
-  "min_app_version": "0.3.2",
+  "version": 2,
+  "min_app_version": "0.3.4",
   "apps": [
     {
       "app": "teams",
       "os": "macos",
       "window_title": ["^Meeting with ", "^Meeting in ", "^Cuộc họp với ", "^Cuộc họp trong "],
+      "window_subrole": ["^AXStandardWindow$"],
       "confirm_id": "hangup-button",
       "enhanced_ui": true,
       "tile": {
