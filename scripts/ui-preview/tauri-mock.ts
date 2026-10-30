@@ -148,6 +148,7 @@ let status: AppStatus = {
   streamingTooSlow: param("slow") === "1",
   permissionSuspected: false,
   waitingForApp: false,
+  waitingForDevice: false,
   micIssue: (["suspected", "permission", "unavailable"] as const).find((v) => v === param("micissue")) ?? null,
   pro: plan !== "free",
   quotaWarning: false,

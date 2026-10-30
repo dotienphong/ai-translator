@@ -146,6 +146,8 @@ export interface AppStatus {
   permissionSuspected: boolean;
   // macOS, nguồn một app: app đã chọn không phát tiếng nữa; phiên vẫn chạy, đang chờ app phát lại.
   waitingForApp: boolean;
+  // Thiết bị phát biến mất giữa phiên (rút tai nghe, Windows reset âm thanh); phiên vẫn chạy, đang chờ thiết bị trở lại.
+  waitingForDevice: boolean;
   // Micro trả toàn số 0 từ đầu phiên (spec 2026-10-24-nguon-micro §7): thiếu quyền hay micro đang tắt tiếng.
   micIssue: MicIssue | null;
   // Đang có gói trả phí còn hạn: tính năng Pro (lịch sử, xuất file, từ điển thuật ngữ) mở; không thì khóa.

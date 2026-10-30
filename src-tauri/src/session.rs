@@ -403,6 +403,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
             s.indicators = Indicators::default();
             s.permission_suspected = false;
             s.waiting_for_app = false;
+            s.waiting_for_device = false;
             s.mic_issue = None;
             s.overlay_visible = true;
             true
@@ -590,6 +591,14 @@ fn capture_events<R: Runtime>(app: &AppHandle<R>, n: u64) -> OnEvent {
                 changed(&app);
             }
         }
+        CaptureEvent::WaitingForDevice(waiting) => {
+            let current = app.state::<Session>().sessions.load(Ordering::SeqCst) == n;
+            if current {
+                app.state::<AppState>()
+                    .update_status(|s| s.waiting_for_device = waiting);
+                changed(&app);
+            }
+        }
     })
 }
 
@@ -654,6 +663,7 @@ pub fn stop<R: Runtime>(app: &AppHandle<R>) -> AppStatus {
         s.indicators = Indicators::default();
         s.permission_suspected = false;
         s.waiting_for_app = false;
+        s.waiting_for_device = false;
         s.mic_issue = None;
     });
     changed(app)

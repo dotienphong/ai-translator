@@ -39,6 +39,7 @@ const status = (patch: Partial<AppStatus>): AppStatus => ({
   streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
+  waitingForDevice: false,
   micIssue: null,
   pro: true,
   quotaWarning: false,
@@ -166,6 +167,9 @@ describe("overlayNotes", () => {
         }),
       ),
     ).toEqual(["noAudio", "waitingForApp", "quotaLow", "lagging", "translationUnavailable"]);
+    // Thiết bị phát biến mất giữa phiên (báo cáo R-MTMA-4XCS): nhắc khi đang dịch, ngay sau "đang chờ app".
+    expect(overlayNotes(status({ waitingForDevice: true, quotaWarning: true }))).toEqual(["waitingForDevice", "quotaLow"]);
+    expect(overlayNotes(status({ session: "idle", waitingForDevice: true }))).toEqual([]);
     // Micro không có tín hiệu (spec 2026-10-24-nguon-micro §7): nhắc khi đang dịch, sau "đang chờ app".
     expect(overlayNotes(status({ micIssue: "suspected", quotaWarning: true }))).toEqual(["micSilent", "quotaLow"]);
     expect(overlayNotes(status({ session: "idle", micIssue: "suspected" }))).toEqual([]);

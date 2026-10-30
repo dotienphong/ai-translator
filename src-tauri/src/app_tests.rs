@@ -904,6 +904,8 @@ fn a_late_error_of_an_old_session_does_not_touch_the_new_one() {
     );
     old(crate::capture::CaptureEvent::WaitingForApp(true));
     assert!(!app.state::<AppState>().status().waiting_for_app);
+    old(crate::capture::CaptureEvent::WaitingForDevice(true));
+    assert!(!app.state::<AppState>().status().waiting_for_device);
     // Lỗi của chính phiên đang chạy thì dừng phiên; chỉ báo của nó thì hiện.
     let current = events.lock().unwrap().remove(0);
     current(crate::capture::CaptureEvent::PermissionSuspected(true));
@@ -912,6 +914,15 @@ fn a_late_error_of_an_old_session_does_not_touch_the_new_one() {
     assert!(app.state::<AppState>().status().waiting_for_app);
     current(crate::capture::CaptureEvent::WaitingForApp(false));
     assert!(!app.state::<AppState>().status().waiting_for_app);
+    current(crate::capture::CaptureEvent::WaitingForDevice(true));
+    assert!(app.state::<AppState>().status().waiting_for_device);
+    assert_eq!(
+        app.state::<AppState>().status().session,
+        SessionStatus::Running,
+        "chờ thiết bị không dừng phiên"
+    );
+    current(crate::capture::CaptureEvent::WaitingForDevice(false));
+    assert!(!app.state::<AppState>().status().waiting_for_device);
     current(crate::capture::CaptureEvent::Failed {
         code: errors::CAPTURE_FAILED,
         message: "phiên này".into(),

@@ -79,6 +79,7 @@ export function Home() {
     if (status.indicators.lagging) notes.push("home.lagging");
     if (status.indicators.noAudio) notes.push("home.noAudio");
     if (status.waitingForApp) notes.push("home.waitingForApp");
+    if (status.waitingForDevice) notes.push("home.waitingForDevice");
     if (status.indicators.translationUnavailable) notes.push("home.translationUnavailable");
   }
   const source =

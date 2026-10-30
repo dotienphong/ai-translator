@@ -15,7 +15,9 @@
 //! - Báo lỗi ([`FailurePolicy`]): lần mở đầu tiên lỗi thì báo ngay. Nguồn đã chạy được rồi mà lỗi (đang mở lại) thì chỉ báo
 //!   khi lỗi kéo dài từ 10 giây, vì §9 đòi tự khởi tạo lại, không dừng phiên. Nguồn một app đã chạy được rồi mà app đó
 //!   không phát tiếng nữa (đã đóng, Q-C của review 02 lần 2) thì không dừng phiên: thử lại mỗi 2 giây và báo
-//!   [`CaptureEvent::WaitingForApp`] để màn hình chính hiện chỉ báo.
+//!   [`CaptureEvent::WaitingForApp`] để màn hình chính hiện chỉ báo. Thiết bị phát biến mất sau khi đã thu được (Windows
+//!   reset âm thanh, rút tai nghe, rút micro ở chế độ chỉ micro: [`source_lost`]) cũng không dừng phiên: thử lại mỗi 2 giây, báo
+//!   [`CaptureEvent::WaitingForDevice`], thu lại được thì tắt chỉ báo (báo cáo thật `R-MTMA-4XCS`, 2026-10-30).
 //! - macOS: nguồn trả mẫu toàn số 0 tuyệt đối suốt 3 giây trong khi app cần thu đang phát tiếng, và từ đầu phiên chưa có
 //!   mẫu nào khác 0, thì nhiều khả năng app chưa được cấp quyền "Ghi âm thanh hệ thống" (§9): báo
 //!   [`CaptureEvent::PermissionSuspected`], không dừng phiên. Đã có âm thanh thật một lần thì quyền đã có: cuộc họp im
@@ -83,6 +85,9 @@ pub enum CaptureEvent {
     PermissionSuspected(bool),
     /// Nguồn một app: app đã chọn không phát tiếng nữa, đang chờ nó phát lại (`true`), hoặc đã thu lại được (`false`).
     WaitingForApp(bool),
+    /// Thiết bị phát hay micro (chế độ chỉ micro) biến mất sau khi đã thu được (thiết bị bị rút, vô hiệu hóa, hay hệ thống âm
+    /// thanh reset): đang chờ thiết bị trở lại (`true`), hoặc đã thu lại được (`false`). Phiên không dừng.
+    WaitingForDevice(bool),
     /// Micro trả toàn số 0 tuyệt đối 3 giây từ đầu phiên (`true`), hoặc đã có tín hiệu (`false`): thiếu quyền micro hay
     /// micro đang tắt tiếng bằng phím cứng (spec 2026-10-24-nguon-micro §5.6, §7).
     MicSilent(bool),
@@ -253,6 +258,8 @@ pub enum OnFailure {
     Report,
     /// Nguồn một app: app không phát tiếng nữa; báo chỉ báo "đang chờ app", không dừng phiên, thử lại sau.
     Wait,
+    /// Thiết bị phát biến mất sau khi đã thu được: báo chỉ báo "đang chờ thiết bị", không dừng phiên, thử lại sau.
+    WaitDevice,
 }
 
 /// Khi nào một lần mở nguồn thất bại phải báo cho phiên (Q2 của review 02c, Q-C của review 02 lần 2).
@@ -262,6 +269,7 @@ pub struct FailurePolicy {
     failing_since: Option<Instant>,
     reported: bool,
     waiting: bool,
+    waiting_device: bool,
 }
 
 impl FailurePolicy {
@@ -291,6 +299,25 @@ impl FailurePolicy {
             return OnFailure::Report;
         }
         OnFailure::Retry
+    }
+
+    /// Một lần mở thất bại lúc `now` vì thiết bị phát không còn ([`device_lost`]). Lần mở đầu tiên thì báo lỗi như mọi lỗi;
+    /// đã thu được rồi thì không bao giờ dừng phiên: báo chỉ báo một lần, thử lại mãi.
+    pub fn on_device_lost(&mut self, now: Instant) -> OnFailure {
+        if !self.ever_ok {
+            return self.on_failure(now, false);
+        }
+        self.failing_since = None;
+        if std::mem::replace(&mut self.waiting_device, true) {
+            OnFailure::Retry
+        } else {
+            OnFailure::WaitDevice
+        }
+    }
+
+    /// Nguồn vừa chạy được. Trả `true` nếu trước đó đang chờ thiết bị trở lại (để tắt chỉ báo).
+    pub fn take_device_wait(&mut self) -> bool {
+        std::mem::take(&mut self.waiting_device)
     }
 }
 
@@ -473,6 +500,7 @@ pub fn failure_event(verdict: OnFailure, code: &'static str, message: String) ->
     match verdict {
         OnFailure::Report => Some(CaptureEvent::Failed { code, message }),
         OnFailure::Wait => Some(CaptureEvent::WaitingForApp(true)),
+        OnFailure::WaitDevice => Some(CaptureEvent::WaitingForDevice(true)),
         OnFailure::Retry => None,
     }
 }
@@ -948,6 +976,27 @@ fn someone_playing_for(plan: &CapturePlan) -> bool {
     }
 }
 
+/// Lỗi mở nguồn cho thấy thiết bị âm thanh không còn (bị rút, vô hiệu hóa, hay hệ thống âm thanh đang reset), nên chờ nó
+/// trở lại chứ không dừng phiên. Windows: `AUDCLNT_E_DEVICE_INVALIDATED` (0x88890004), `ERROR_NOT_FOUND` (0x80070490,
+/// "Element not found": không còn thiết bị mặc định), `AUDCLNT_E_SERVICE_NOT_RUNNING` (0x88890010: dịch vụ Windows Audio
+/// đang tắt). macOS: micro đã chọn không còn (`macos_input`).
+fn device_lost(text: &str) -> bool {
+    const MARKS: [&str; 4] = ["0x88890004", "0x80070490", "0x88890010", "không tìm thấy micro đã chọn"];
+    let text = text.to_lowercase();
+    MARKS.iter().any(|mark| text.contains(mark))
+}
+
+/// Lần mở nguồn thất bại vì thiết bị không còn ([`device_lost`]), cho cả thiết bị phát lẫn micro (chế độ chỉ micro). Từ chối
+/// quyền, app không phát tiếng, và các lỗi khác thì không.
+fn source_lost(plan: &CapturePlan, err: &anyhow::Error) -> bool {
+    let code = error_code(plan, err);
+    let device_error = match plan {
+        CapturePlan::Mic { .. } => code == errors::MIC_UNAVAILABLE,
+        CapturePlan::Playback { .. } | CapturePlan::Both { .. } => code == errors::CAPTURE_FAILED,
+    };
+    device_error && device_lost(&format!("{err:#}"))
+}
+
 /// Mã lỗi cho một lần mở nguồn thất bại.
 fn error_code(plan: &CapturePlan, err: &anyhow::Error) -> &'static str {
     let text = format!("{err:#}");
@@ -1027,6 +1076,10 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
                 if policy.on_ok() {
                     on_event(CaptureEvent::WaitingForApp(false));
                 }
+                if policy.take_device_wait() {
+                    log::info!("thiết bị âm thanh đã trở lại, thu tiếp");
+                    on_event(CaptureEvent::WaitingForDevice(false));
+                }
                 if let Some(mic) = mic_side.as_mut() {
                     mic.retry_at = Instant::now();
                     mic.tick(Instant::now(), &shared, &on_event);
@@ -1035,8 +1088,18 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
             }
             Err(e) => {
                 let code = error_code(&plan, &e);
-                log::warn!("không mở được nguồn âm thanh: {e:#}");
-                let verdict = policy.on_failure(Instant::now(), code == errors::APP_NOT_PLAYING);
+                let lost = source_lost(&plan, &e);
+                let verdict = if lost {
+                    policy.on_device_lost(Instant::now())
+                } else {
+                    policy.on_failure(Instant::now(), code == errors::APP_NOT_PLAYING)
+                };
+                // Chờ thiết bị có thể kéo dài hàng giờ: chỉ lần đầu vào log mức cảnh báo, không ghi mỗi 2 giây.
+                if lost && verdict == OnFailure::Retry {
+                    log::debug!("không mở được nguồn âm thanh (chờ thiết bị): {e:#}");
+                } else {
+                    log::warn!("không mở được nguồn âm thanh: {e:#}");
+                }
                 if let Some(event) = failure_event(verdict, code, format!("{e:#}")) {
                     on_event(event);
                 }
@@ -1448,6 +1511,33 @@ mod tests {
         assert_eq!(error_code(&mic, &gone), errors::MIC_UNAVAILABLE);
     }
 
+    /// Chế độ chỉ micro: micro mất giữa phiên (rút micro USB, Windows reset âm thanh) cũng chỉ hiện chỉ báo chờ thiết bị,
+    /// không dừng phiên. Từ chối quyền thì không phải mất thiết bị: vẫn báo lỗi quyền.
+    #[test]
+    fn a_microphone_that_disappears_counts_as_a_lost_device_but_a_denied_one_does_not() {
+        let mic = CapturePlan::Mic {
+            device: None,
+            noise_filter: true,
+        };
+        let gone = anyhow::anyhow!("Element not found. (0x80070490)");
+        assert!(source_lost(&mic, &gone));
+        let invalidated = anyhow::anyhow!("0x88890004");
+        assert!(source_lost(&mic, &invalidated));
+        let mac_gone = anyhow::anyhow!("không tìm thấy micro đã chọn");
+        assert!(source_lost(&mic, &mac_gone));
+        let denied = anyhow::anyhow!("Initialize: Access is denied. (0x80070005)");
+        assert!(!source_lost(&mic, &denied));
+        let unknown = anyhow::anyhow!("lỗi lạ");
+        assert!(!source_lost(&mic, &unknown));
+        // Thiết bị phát thì cũng vậy; nguồn một app không phát tiếng không phải mất thiết bị.
+        assert!(source_lost(&playback(AudioSource::System), &invalidated));
+        let not_playing = anyhow::anyhow!("us.zoom.xos không phát âm thanh");
+        let app = playback(AudioSource::App {
+            bundle_id: "us.zoom.xos".into(),
+        });
+        assert!(!source_lost(&app, &not_playing));
+    }
+
     /// Micro: số 0 tuyệt đối 3 giây từ đầu phiên thì báo, không cần hỏi có app đang phát (micro thật luôn có tiếng nền).
     #[test]
     fn three_seconds_of_exact_zeros_from_the_mic_are_reported() {
@@ -1508,6 +1598,51 @@ mod tests {
         assert!(p.on_ok(), "thu lại được: tắt chỉ báo");
         assert!(!p.on_ok());
         assert_eq!(p.on_failure(at(700), true), OnFailure::Wait, "lần đóng sau lại báo");
+    }
+
+    /// Báo cáo thật `R-MTMA-4XCS` (2026-10-30): Windows reset âm thanh giữa phiên (micro `0x80070490`, thiết bị phát
+    /// `0x88890004`), app thử 10 giây rồi dừng phiên. Thiết bị mất sau khi đã thu được thì không dừng phiên: báo chỉ báo một
+    /// lần, thử lại mãi, thu lại được thì tắt chỉ báo. Lần mở đầu tiên thì vẫn báo lỗi ngay.
+    #[test]
+    fn a_device_that_disappears_after_the_start_only_shows_an_indicator() {
+        let t0 = Instant::now();
+        let at = |s: u64| t0 + Duration::from_secs(s);
+        let mut p = FailurePolicy::default();
+        assert_eq!(p.on_device_lost(at(0)), OnFailure::Report, "chưa từng thu được");
+        let mut p = FailurePolicy::default();
+        p.on_ok();
+        assert_eq!(p.on_device_lost(at(0)), OnFailure::WaitDevice);
+        for s in [2, 10, 60, 3_600] {
+            assert_eq!(p.on_device_lost(at(s)), OnFailure::Retry, "giây {s}");
+        }
+        assert!(!p.on_ok(), "chỉ báo của app là việc khác");
+        assert!(p.take_device_wait(), "thu lại được: tắt chỉ báo");
+        assert!(!p.take_device_wait());
+        assert_eq!(
+            p.on_device_lost(at(4_000)),
+            OnFailure::WaitDevice,
+            "lần mất sau lại báo"
+        );
+    }
+
+    #[test]
+    fn only_the_windows_codes_for_a_gone_audio_device_count_as_lost() {
+        for text in [
+            "0x88890004",
+            "Element not found. (0x80070490)",
+            "mở thiết bị: The audio endpoint device has been unplugged. (0x88890004)",
+            "0x88890010",
+        ] {
+            assert!(device_lost(text), "{text}");
+        }
+        for text in [
+            "0x80070005",
+            "không phát âm thanh",
+            "AudioHardwareCreateProcessTap",
+            "E_INVALIDARG (0x80070057)",
+        ] {
+            assert!(!device_lost(text), "{text}");
+        }
     }
 
     /// Q-G của review 02 lần 2: số khung đứng yên 3 giây trong khi app cần thu đang phát thì tap đã chết; không ai phát
@@ -1650,6 +1785,10 @@ mod tests {
         assert_eq!(
             failure_event(OnFailure::Wait, errors::APP_NOT_PLAYING, "x".into()),
             Some(CaptureEvent::WaitingForApp(true))
+        );
+        assert_eq!(
+            failure_event(OnFailure::WaitDevice, errors::CAPTURE_FAILED, "x".into()),
+            Some(CaptureEvent::WaitingForDevice(true))
         );
         assert_eq!(
             failure_event(OnFailure::Report, errors::CAPTURE_FAILED, "x".into()),

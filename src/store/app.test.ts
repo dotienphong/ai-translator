@@ -59,6 +59,7 @@ const status: AppStatus = {
   streamingTooSlow: false,
   permissionSuspected: false,
   waitingForApp: false,
+  waitingForDevice: false,
   micIssue: null,
   pro: true,
   quotaWarning: false,

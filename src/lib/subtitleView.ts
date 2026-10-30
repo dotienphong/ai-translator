@@ -104,6 +104,7 @@ export type OverlayNote =
   | "error"
   | "noAudio"
   | "waitingForApp"
+  | "waitingForDevice"
   | "micSilent"
   | "micPermission"
   | "micUnavailable"
@@ -126,6 +127,7 @@ export function overlayNotes(status: AppStatus | null): OverlayNote[] {
   if (status.session === "running") {
     if (status.indicators.noAudio) notes.push("noAudio");
     if (status.waitingForApp) notes.push("waitingForApp");
+    if (status.waitingForDevice) notes.push("waitingForDevice");
     if (status.micIssue === "suspected") notes.push("micSilent");
     if (status.micIssue === "permission") notes.push("micPermission");
     if (status.micIssue === "unavailable") notes.push("micUnavailable");
