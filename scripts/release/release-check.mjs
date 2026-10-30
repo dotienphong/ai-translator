@@ -234,6 +234,13 @@ export function windowsErrors(file, dlls, localDlls, noLocalLibs) {
   return errors;
 }
 
+const NETWORK_DLL = /^(ws2_32|wsock32|mswsock|winhttp|wininet|webio|websocket|urlmon|iphlpapi|dnsapi|httpapi|netapi32)\.dll$/i;
+
+/** Lỗi khi file PE nhập DLL mạng (`--no-network`: speaker-worker và onnxruntime.dll, spec 2026-10-26-phan-biet-nguoi-noi §10). */
+export function networkErrors(file, dlls) {
+  return dlls.filter((dll) => NETWORK_DLL.test(dll)).map((dll) => `${file} nhập DLL mạng: ${dll}`);
+}
+
 export function checkSize(bytes, maxBytes) {
   return bytes <= maxBytes ? [] : [`${bytes} byte, vượt ngưỡng ${maxBytes} byte`];
 }
@@ -310,11 +317,13 @@ export function main(argv) {
     }
     case "deps-windows": {
       const noLocalLibs = flag(args, "--no-local-libs");
+      const noNetwork = flag(args, "--no-network");
       for (const file of args) {
         const dlls = parseDumpbinDependents(execFileSync("dumpbin", ["/nologo", "/dependents", file], { encoding: "utf8" }));
         const dir = join(file, "..");
         const localDlls = filesIn(dir).filter((name) => name.toLowerCase().endsWith(".dll"));
         errors.push(...windowsErrors(basename(file), dlls, localDlls, noLocalLibs));
+        if (noNetwork) errors.push(...networkErrors(basename(file), dlls));
         console.log(`${basename(file)}: ${dlls.join(", ")}`);
       }
       break;

@@ -14,6 +14,7 @@ import {
   embeddedErrors,
   macosErrors,
   main,
+  networkErrors,
   isVcRuntime,
   newApiErrors,
   parseDumpbinDependents,
@@ -337,4 +338,15 @@ test("CLI: size và sha256sums", (t) => {
   );
   assert.throws(() => main(["size", file]), /thiếu --max-bytes/);
   assert.throws(() => main(["nope"]), /lệnh không rõ: nope/);
+});
+
+test("--no-network: speaker-worker và onnxruntime.dll không được nhập DLL mạng (Winsock, WinHTTP, WinINet…)", () => {
+  assert.deepEqual(networkErrors("onnxruntime.dll", ["KERNEL32.dll", "ADVAPI32.dll", "dbghelp.dll"]), []);
+  assert.deepEqual(networkErrors("onnxruntime.dll", ["KERNEL32.dll", "WINHTTP.dll", "WS2_32.dll", "wininet.dll"]), [
+    "onnxruntime.dll nhập DLL mạng: WINHTTP.dll",
+    "onnxruntime.dll nhập DLL mạng: WS2_32.dll",
+    "onnxruntime.dll nhập DLL mạng: wininet.dll",
+  ]);
+  // Tên gần giống nhưng không phải DLL mạng.
+  assert.deepEqual(networkErrors("x.exe", ["ws2help.dll", "winhttpcom.dll"]), []);
 });

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { TRIPLE, mergeEnv, parseSetOutput, redistCrtDir, steps } from "./build-sidecars-windows.mjs";
+import { TRIPLE, mergeEnv, parseSetOutput, pinnedSources, redistCrtDir, steps } from "./build-sidecars-windows.mjs";
 import { findInstaller, signConfig, tauriArgs } from "./package-windows.mjs";
 import { describeExit, findServer, serverArgs, sha256 } from "./smoke-llama-windows.mjs";
 import { signCommandLine } from "./sign-windows.mjs";
@@ -30,6 +30,7 @@ test("build Windows: asr-worker và speaker-worker CRT tĩnh + DEPENDENTLOADFLAG
       join("O", `asr-worker-vulkan-${TRIPLE}.exe`),
       join("O", `asr-worker-cpu-${TRIPLE}.exe`),
       join("O", `speaker-worker-${TRIPLE}.exe`),
+      join("O", "onnxruntime.dll"),
       join("O", `llama-server-${TRIPLE}.exe`),
     ],
   );
@@ -53,6 +54,36 @@ test("build Windows: asr-worker và speaker-worker CRT tĩnh + DEPENDENTLOADFLAG
   // và đóng kèm runtime của Visual C++ ngay sau khi chép DLL.
   assert.ok(!configure.includes("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"));
   assert.deepEqual(list.slice(-2), [{ dlls: [join("W", "llama-build", "bin"), "O"] }, { vcRuntime: "O" }]);
+});
+
+test("build Windows: onnxruntime.dll dựng từ mã nguồn khóa, không telemetry, CRT tĩnh; thư mục build ngắn đặt được", () => {
+  const list = steps({ work: "W", target: "T", out: "O", versions });
+  const ort = list.find((s) => s.run?.[1] === join("W", "onnxruntime", "tools", "ci_build", "build.py"));
+  assert.ok(ort, "có bước build ONNX Runtime");
+  assert.equal(ort.cwd, join("W", "onnxruntime"));
+  for (const flag of ["--no_telemetry", "--enable_msvc_static_runtime", "--build_shared_lib", "--disable_ml_ops", "--skip_tests"]) {
+    assert.ok(ort.run.includes(flag), flag);
+  }
+  assert.equal(ort.run[ort.run.indexOf("--build_dir") + 1], join("W", "onnxruntime-build"));
+  // Bước build đứng sau speaker-worker, ngay trước bước chép DLL.
+  const i = list.indexOf(ort);
+  assert.deepEqual(list[i + 1], { copy: [join("W", "onnxruntime-build", "Release", "onnxruntime.dll"), join("O", "onnxruntime.dll")] });
+  const short = steps({ work: "W", target: "T", out: "O", versions, ortBuildDir: "D:\\ob" });
+  assert.ok(short.some((s) => s.copy?.[0] === join("D:\\ob", "Release", "onnxruntime.dll")));
+});
+
+test("mã nguồn khóa: llama.cpp và onnxruntime có tag và commit 40 hex trong versions.env", () => {
+  const sources = pinnedSources(versions);
+  assert.deepEqual(
+    sources.map(([name]) => name),
+    ["llama.cpp", "onnxruntime"],
+  );
+  for (const [name, url, tag, commit] of sources) {
+    assert.match(url, /^https:\/\/github\.com\/[\w-]+\/[\w.-]+\.git$/, name);
+    assert.ok(tag, `${name}: thiếu tag`);
+    assert.match(commit, /^[0-9a-f]{40}$/, `${name}: commit`);
+  }
+  assert.equal(versions.ONNXRUNTIME_TAG, "v1.31.1");
 });
 
 test("Redist của Visual Studio: thư mục Microsoft.VC*.CRT dưới VCToolsRedistDir/x64", (t) => {

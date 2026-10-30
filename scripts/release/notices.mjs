@@ -8,7 +8,8 @@
 //     clone ở --llama-src, đúng commit khóa trong versions.env).
 //   - Model: Hy-MT2, trọng số Whisper, Silero VAD, 3D-Speaker ERes2Net (licenses/models/).
 //
-//   node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src <thư mục llama.cpp>
+//   node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src <thư mục llama.cpp> [--onnxruntime-src <thư mục>]
+//   (bản Windows thêm --onnxruntime-src: mã nguồn ONNX Runtime của onnxruntime.dll, đúng commit khóa trong versions.env)
 //   node scripts/release/notices.mjs --out <file> --no-llama     # CI kiểm giấy phép, chưa có mã nguồn llama.cpp
 //
 // Không dùng mạng: cargo-about chạy `--frozen`, chỉ đọc file trong cache của cargo.
@@ -125,8 +126,11 @@ export function npmPackages(listing, allow) {
   return { packages, errors };
 }
 
-/** Thư viện C/C++ và model: [{title, files: [đường dẫn]}] hoặc [{title, text}]. */
-export function nativeComponents(llamaSrc, llamaTag) {
+/**
+ * Thư viện C/C++ và model: [{title, files: [đường dẫn]}] hoặc [{title, text}]. `ortSrc` (chỉ bản Windows): mã nguồn ONNX
+ * Runtime đã clone, đúng commit khóa trong versions.env.
+ */
+export function nativeComponents(llamaSrc, llamaTag, ortSrc = null, ortTag = null) {
   const items = [
     {
       title: "whisper.cpp 1.8.3 and ggml (MIT) - in asr-worker",
@@ -148,6 +152,12 @@ export function nativeComponents(llamaSrc, llamaTag) {
           "SHA-1 by Steve Reid (public domain), SHA-256 by Igor Pavlov (public domain).\n",
       },
     );
+  }
+  if (ortSrc) {
+    items.push({
+      title: `ONNX Runtime ${ortTag} (MIT) and its third-party components - in onnxruntime.dll (Windows)`,
+      files: [join(ortSrc, "LICENSE"), join(ortSrc, "ThirdPartyNotices.txt")],
+    });
   }
   items.push(
     {
@@ -239,6 +249,13 @@ export function main(argv) {
     const head = execFileSync("git", ["-C", llamaSrc, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
     if (head !== env.LLAMA_CPP_COMMIT) throw new Error(`llama.cpp ở ${head}, versions.env khóa ${env.LLAMA_CPP_COMMIT}`);
   }
+  const ortIndex = args.indexOf("--onnxruntime-src");
+  const ortSrc = ortIndex >= 0 ? args[ortIndex + 1] : null;
+  if (ortIndex >= 0 && !ortSrc) throw new Error("thiếu thư mục sau --onnxruntime-src");
+  if (ortSrc) {
+    const head = execFileSync("git", ["-C", ortSrc, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+    if (head !== env.ONNXRUNTIME_COMMIT) throw new Error(`onnxruntime ở ${head}, versions.env khóa ${env.ONNXRUNTIME_COMMIT}`);
+  }
 
   const allow = tomlStringArray(readFileSync(join(root, "deny.toml"), "utf8"), "licenses", "allow");
   const accepted = tomlStringArray(readFileSync(join(root, "about.toml"), "utf8"), "", "accepted");
@@ -252,7 +269,7 @@ export function main(argv) {
   );
   const npm = npmPackages(listing, allow);
   errors.push(...npm.errors);
-  const native = nativeComponents(llamaSrc, env.LLAMA_CPP_TAG);
+  const native = nativeComponents(llamaSrc, env.LLAMA_CPP_TAG, ortSrc, env.ONNXRUNTIME_TAG);
   for (const item of native) for (const file of item.files ?? []) if (!existsSync(file)) errors.push(`thiếu ${file}`);
   if (errors.length === 0) {
     writeFileSync(out, renderNotices({ rust, npm: npm.packages, native }));

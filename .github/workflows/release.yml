@@ -275,7 +275,8 @@ jobs:
     name: "Windows 1/4: tiến trình phụ (không secret)"
     needs: gate
     runs-on: windows-2025
-    timeout-minutes: 120
+    # Thêm ONNX Runtime dựng từ mã nguồn (speaker-worker, ~40–60 phút trên runner 4 lõi).
+    timeout-minutes: 180
     defaults:
       run:
         shell: bash
@@ -304,6 +305,7 @@ jobs:
         # dẫn dài 275 ký tự dưới D:\a\ai-translator\ai-translator\target, vượt MAX_PATH 260 nên compiler bị coi là hỏng.
         env:
           CARGO_TARGET_DIR: D:\t
+          MT_ORT_BUILD: D:\ob
         run: node scripts/release/build-sidecars-windows.mjs
       - name: Kiểm llama-server vừa build nạp được model và trả lời (model thử ~1,2 MB, kiểm SHA-256)
         # Bản 0.1.1 chết ngay khi nạp model (CRT tĩnh giữa các DLL của llama.cpp) mà CI vẫn xanh vì chưa từng nạp model.
@@ -312,7 +314,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
           cargo fetch --locked
-          node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp
+          node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src target/release-work/llama.cpp --onnxruntime-src target/release-work/onnxruntime
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-sidecars

@@ -4,7 +4,10 @@
 //   - asr-worker-vulkan, asr-worker-cpu: whisper.cpp 1.8.3 đã vá, link tĩnh, shared-encode; CRT tĩnh (`+crt-static`, và
 //     `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` cho whisper.cpp), vì cờ /DEPENDENTLOADFLAG:0x800 chỉ cho DLL import thẳng
 //     nằm trong System32 (02a QĐ32; C9 của kế hoạch 00);
-//   - speaker-worker: nhận giọng người nói (Rust thuần, candle), CRT tĩnh như asr-worker.
+//   - speaker-worker: nhận giọng người nói (Rust, chạy model bằng ONNX Runtime đi kèm, candle khi thiếu), CRT tĩnh như asr-worker;
+//   - onnxruntime.dll cho speaker-worker: ONNX Runtime ở tag và commit khóa trong versions.env, dựng từ mã nguồn với
+//     `--no_telemetry` (bản chính thức của Microsoft có bộ gửi telemetry qua HTTPS), CRT tĩnh, không ML ops cổ điển. Worker nạp
+//     DLL bằng đường dẫn tuyệt đối lúc chạy (không import thẳng), nên vẫn chạy với `--no-local-libs`.
 //   - llama-server: llama.cpp ở commit khóa trong versions.env, `GGML_BACKEND_DL` và `GGML_CPU_ALL_VARIANTS` (dòng 210),
 //     Vulkan, không OpenMP (vcomp140.dll là C runtime), không web UI, không HTTPS; mọi DLL đi cùng thư mục. CRT ĐỘNG
 //     (`/MD`), kèm vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll… chép từ bộ Redist của Visual Studio vào cùng thư
@@ -21,7 +24,8 @@
 //
 // Ký: đặt MT_WINDOWS_SIGN_CMD (xem sign-windows.mjs) thì ký từng file trước khi build app, vì build.rs băm file đã ký. CI
 // build khi chưa có secret nào trong môi trường, rồi chạy `--sign-only` với secret của dịch vụ ký (spec §10.2).
-// Thư mục làm việc: MT_RELEASE_WORK (mặc định target/release-work). Script xóa mọi file cũ trong src-tauri/binaries/.
+// Thư mục làm việc: MT_RELEASE_WORK (mặc định target/release-work); thư mục build ONNX Runtime: MT_ORT_BUILD (mặc định
+// <MT_RELEASE_WORK>/onnxruntime-build). Script xóa mọi file cũ trong src-tauri/binaries/.
 
 import { execFileSync, execSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
@@ -59,7 +63,7 @@ export function mergeEnv(base, ...extras) {
  * Các bước build, theo thứ tự: { run: [lệnh, ...tham số], env?, cwd? } hoặc { copy: [từ, tới] } hoặc { dlls: [từ, tới] }
  * hoặc { vcRuntime: thư mục } (chép C runtime của Visual C++ mà các file trong thư mục đó cần).
  */
-export function steps({ work, target, out, versions }) {
+export function steps({ work, target, out, versions, ortBuildDir }) {
   // RUSTFLAGS thay hẳn rustflags của .cargo/config.toml, nên nhắc lại cờ DEPENDENTLOADFLAG ở đây.
   const crt = {
     RUSTFLAGS: "-C target-feature=+crt-static -C link-arg=/DEPENDENTLOADFLAG:0x800",
@@ -74,6 +78,9 @@ export function steps({ work, target, out, versions }) {
   const exe = join(target, "release", "asr-worker.exe");
   const src = join(work, "llama.cpp");
   const build = join(work, "llama-build");
+  const ortSrc = join(work, "onnxruntime");
+  // Cây build của ONNX Runtime rất sâu: CI đặt MT_ORT_BUILD ngắn (dưới MAX_PATH 260, như CARGO_TARGET_DIR).
+  const ortBuild = ortBuildDir ?? join(work, "onnxruntime-build");
   return [
     cargo("vulkan,shared-encode"),
     { copy: [exe, join(out, `asr-worker-vulkan-${TRIPLE}.exe`)] },
@@ -82,6 +89,31 @@ export function steps({ work, target, out, versions }) {
     // speaker-worker (spec 2026-10-26-phan-biet-nguoi-noi §4.1): Rust thuần, không ggml; CRT tĩnh như asr-worker.
     { run: ["cargo", "build", "--release", "--locked", "-p", "speaker-worker"], env: crt, cwd: root },
     { copy: [join(target, "release", "speaker-worker.exe"), join(out, `speaker-worker-${TRIPLE}.exe`)] },
+    {
+      run: [
+        "python",
+        join(ortSrc, "tools", "ci_build", "build.py"),
+        "--build_dir",
+        ortBuild,
+        "--config",
+        "Release",
+        "--update",
+        "--build",
+        "--build_shared_lib",
+        "--parallel",
+        "--skip_tests",
+        "--no_telemetry",
+        "--disable_ml_ops",
+        "--enable_msvc_static_runtime",
+        "--cmake_generator",
+        "Ninja",
+        "--compile_no_warning_as_error",
+        "--cmake_extra_defines",
+        "onnxruntime_BUILD_UNIT_TESTS=OFF",
+      ],
+      cwd: ortSrc,
+    },
+    { copy: [join(ortBuild, "Release", "onnxruntime.dll"), join(out, "onnxruntime.dll")] },
     {
       run: [
         "cmake",
@@ -179,18 +211,23 @@ export function msvcEnv() {
   return parseSetOutput(execSync(`"${vcvars}" >nul && set`, { shell: "cmd.exe", encoding: "utf8" }));
 }
 
-function cloneLlama(src, versions) {
+/** Mã nguồn đã khóa: [tên, URL, tag, commit, thư mục con của `work`]. */
+export function pinnedSources(versions) {
+  return [
+    ["llama.cpp", "https://github.com/ggml-org/llama.cpp.git", versions.LLAMA_CPP_TAG, versions.LLAMA_CPP_COMMIT, "llama.cpp"],
+    ["onnxruntime", "https://github.com/microsoft/onnxruntime.git", versions.ONNXRUNTIME_TAG, versions.ONNXRUNTIME_COMMIT, "onnxruntime"],
+  ];
+}
+
+/** Clone `url` ở `tag` vào `src` (nếu chưa có), rồi kiểm đúng `commit` và chưa bị sửa. */
+function clonePinned(src, [name, url, tag, commit]) {
   if (!existsSync(join(src, ".git"))) {
-    execFileSync(
-      "git",
-      ["-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1", "--branch", versions.LLAMA_CPP_TAG, "https://github.com/ggml-org/llama.cpp.git", src],
-      { stdio: "inherit" },
-    );
+    execFileSync("git", ["-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1", "--branch", tag, url, src], { stdio: "inherit" });
   }
   const head = execFileSync("git", ["-C", src, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-  if (head !== versions.LLAMA_CPP_COMMIT) throw new Error(`llama.cpp ở commit ${head}, versions.env khóa ${versions.LLAMA_CPP_COMMIT}`);
+  if (head !== commit) throw new Error(`${name} ở commit ${head}, versions.env khóa ${commit}`);
   if (execFileSync("git", ["-C", src, "status", "--porcelain"], { encoding: "utf8" }).trim() !== "") {
-    throw new Error(`mã nguồn llama.cpp ở ${src} đã bị sửa: xóa thư mục đó rồi chạy lại`);
+    throw new Error(`mã nguồn ${name} ở ${src} đã bị sửa: xóa thư mục đó rồi chạy lại`);
   }
 }
 
@@ -199,9 +236,11 @@ export function main(argv) {
   const work = process.env.MT_RELEASE_WORK ?? join(root, "target", "release-work");
   const target = process.env.CARGO_TARGET_DIR ?? join(root, "target");
   const out = join(root, "src-tauri", "binaries");
-  const list = steps({ work, target, out, versions });
+  const list = steps({ work, target, out, versions, ortBuildDir: process.env.MT_ORT_BUILD });
   if (argv.includes("--dry-run")) {
-    console.log(`git clone --depth 1 --branch ${versions.LLAMA_CPP_TAG} (kiểm commit ${versions.LLAMA_CPP_COMMIT})`);
+    for (const [name, , tag, commit] of pinnedSources(versions)) {
+      console.log(`git clone --depth 1 --branch ${tag} ${name} (kiểm commit ${commit})`);
+    }
     for (const step of list) console.log(show(step));
     return;
   }
@@ -212,7 +251,7 @@ export function main(argv) {
     return;
   }
   mkdirSync(work, { recursive: true });
-  cloneLlama(join(work, "llama.cpp"), versions);
+  for (const source of pinnedSources(versions)) clonePinned(join(work, source[4]), source);
   mkdirSync(out, { recursive: true });
   for (const name of readdirSync(out)) rmSync(join(out, name), { force: true });
   for (const step of list) {
@@ -248,6 +287,9 @@ function signAndCheck(out, msvc) {
   const rest = files.filter((f) => !workers.includes(f));
   execFileSync("node", [check, "deps-windows", "--no-local-libs", ...workers], { stdio: "inherit", env });
   execFileSync("node", [check, "deps-windows", ...rest], { stdio: "inherit", env });
+  // speaker-worker và DLL nó nạp không có mã mạng (spec 2026-10-26-phan-biet-nguoi-noi §4.1, §10).
+  const offline = files.filter((f) => /speaker-worker-|onnxruntime\.dll$/i.test(f));
+  execFileSync("node", [check, "deps-windows", "--no-network", "--no-local-libs", ...offline], { stdio: "inherit", env });
   execFileSync("node", [check, "table", out, "--target", TRIPLE], { stdio: "inherit" });
 }
 

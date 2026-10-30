@@ -45,9 +45,18 @@ const MIN_FEATURE_PEAK: f32 = 1e-3;
 const INPUT: &str = "x";
 const OUTPUT: &str = "embedding";
 
-/// Bộ nhúng giọng: đồ thị ERes2Net đã tách từng nút cùng bộ tính fbank. Gọi `embed` lần lượt, không song song.
+/// Bộ chạy model.
+enum Engine {
+    /// candle-onnx, từng nút (cách B'): macOS, và Windows khi không có ONNX Runtime đi kèm.
+    Candle(StepGraph),
+    /// ONNX Runtime đi kèm app (Windows, `crate::ort`).
+    #[cfg(windows)]
+    Ort(crate::ort::Session),
+}
+
+/// Bộ nhúng giọng: model ERes2Net (bộ chạy theo nền tảng) cùng bộ tính fbank. Gọi `embed` lần lượt, không song song.
 pub struct Embedder {
-    steps: StepGraph,
+    engine: Engine,
     fbank: Fbank,
 }
 
@@ -60,6 +69,9 @@ impl Embedder {
 
     /// Như [`Embedder::load`], nhưng khi có `sha256` thì băm đúng các byte vừa đọc và dựng đồ thị từ chính các byte đó: file bị
     /// thay sau lúc app kiểm (spec 2026-10-26-phan-biet-nguoi-noi §10) bị từ chối trước khi tới bộ đọc protobuf.
+    ///
+    /// Windows: có `onnxruntime.dll` dùng được cạnh file chạy thì dựng phiên ONNX Runtime từ chính các byte đó (`crate::ort`),
+    /// không thì candle như macOS.
     pub fn load_checked(path: &Path, sha256: Option<&str>) -> Result<Self> {
         let bytes = read_model(path)?;
         if let Some(expected) = sha256 {
@@ -68,9 +80,31 @@ impl Embedder {
                 "SHA-256 của model khác bản app đã kiểm"
             );
         }
+        #[cfg(windows)]
+        if crate::ort::available().is_some() {
+            let session = crate::ort::Session::new(&bytes, rayon::current_num_threads(), INPUT, OUTPUT)
+                .context("model nhúng giọng không chạy được bằng onnxruntime")?;
+            return Self::probed(Self {
+                engine: Engine::Ort(session),
+                fbank: Fbank::new(),
+            });
+        }
         let model = ModelProto::decode(bytes.as_slice()).context("model nhúng giọng không phải ONNX hợp lệ")?;
         drop(bytes);
-        let embedder = Self::from_model(model)?;
+        Self::probed(Self::from_model(model)?)
+    }
+
+    /// Bộ chạy đang dùng, cho log của worker: `candle`, hay `onnxruntime <bản>`.
+    pub fn engine(&self) -> String {
+        match &self.engine {
+            Engine::Candle(_) => "candle".to_string(),
+            #[cfg(windows)]
+            Engine::Ort(_) => format!("onnxruntime {}", crate::ort::available().unwrap_or("?")),
+        }
+    }
+
+    /// Chạy thử 1 s, để model sai hay op không được hỗ trợ lộ ra ngay lúc nạp.
+    fn probed(embedder: Self) -> Result<Self> {
         let probe: Vec<f32> = (0..16_000).map(|i| 0.1 * (i as f32 * 0.05).sin()).collect();
         let v = embedder
             .embed(&probe)
@@ -86,7 +120,7 @@ impl Embedder {
     /// lồng), chuyển trọng số thành tensor một lần. Không chạy thử.
     pub fn from_model(model: ModelProto) -> Result<Self> {
         Ok(Self {
-            steps: StepGraph::from_model(model, INPUT, OUTPUT, NUM_BINS)?,
+            engine: Engine::Candle(StepGraph::from_model(model, INPUT, OUTPUT, NUM_BINS)?),
             fbank: Fbank::new(),
         })
     }
@@ -108,8 +142,17 @@ impl Embedder {
             "đoạn không có đặc trưng giọng (tín hiệu dừng: im lặng, DC hay âm tuần hoàn)"
         );
         let frames = feats.len() / NUM_BINS;
-        let x = Tensor::from_vec(feats, (1, frames, NUM_BINS), &Device::Cpu)?;
-        let v = self.steps.run(x)?.flatten_all()?.to_vec1::<f32>()?;
+        let v = match &self.engine {
+            Engine::Candle(steps) => {
+                let x = Tensor::from_vec(feats, (1, frames, NUM_BINS), &Device::Cpu)?;
+                steps.run(x)?.flatten_all()?.to_vec1::<f32>()?
+            }
+            #[cfg(windows)]
+            Engine::Ort(session) => {
+                let mut feats = feats;
+                session.run(&mut feats, frames, NUM_BINS)?
+            }
+        };
         ensure!(v.len() == DIM, "nhúng có {} chiều, cần {DIM}", v.len());
         ensure!(
             v.iter().all(|x| x.is_finite()),
@@ -530,6 +573,40 @@ mod tests {
                 let truncated = e.embed(&long).unwrap();
                 let c = cosine(&truncated, &head);
                 assert!(c >= 0.99999, "cosine giữa embed(10 s) và embed(MAX_SAMPLES đầu) {c}");
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    /// Windows, cần model thật và `onnxruntime.dll` cạnh file test (`target/<profile>/deps/`): `SPEAKER_MODEL=… cargo test -p
+    /// speaker-worker -- --ignored onnxruntime_engine`. Bộ chạy ONNX Runtime cho cùng nhúng với candle (cùng fixture, 1, 2, 4,
+    /// 8 s), dựng từ chính các byte đã băm, và từ chối byte không phải model.
+    #[cfg(windows)]
+    #[test]
+    #[ignore]
+    fn onnxruntime_engine_matches_candle_on_the_real_model() {
+        let path = std::env::var("SPEAKER_MODEL").expect("đặt SPEAKER_MODEL");
+        std::thread::Builder::new()
+            .stack_size(16 << 20)
+            .spawn(move || {
+                assert!(crate::ort::available().is_some(), "chép onnxruntime.dll cạnh file test");
+                let ort = Embedder::load(std::path::Path::new(&path)).unwrap();
+                assert!(ort.engine().starts_with("onnxruntime "), "{}", ort.engine());
+                let candle = Embedder::from_model(candle_onnx::read_file(&path).unwrap()).unwrap();
+                assert_eq!(candle.engine(), "candle");
+                let signal = read_f32("signal.f32");
+                for seconds in [1usize, 2, 4, 8] {
+                    let s: Vec<f32> = signal.iter().copied().cycle().take(16_000 * seconds).collect();
+                    let c = cosine(&ort.embed(&s).unwrap(), &candle.embed(&s).unwrap());
+                    assert!(c >= 0.99999, "{seconds} s: cosine {c}");
+                }
+                let c = cosine(&ort.embed(&signal).unwrap(), &read_f32("embed_ref.f32"));
+                assert!(c >= 0.999, "so với bản tham chiếu: cosine {c}");
+                let err = crate::ort::Session::new(b"khong phai model", 1, INPUT, OUTPUT)
+                    .err()
+                    .expect("byte rác phải lỗi");
+                assert!(err.to_string().contains("CreateSessionFromArray"), "{err:#}");
             })
             .unwrap()
             .join()

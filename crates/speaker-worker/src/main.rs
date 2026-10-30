@@ -55,6 +55,12 @@ fn main() -> Result<()> {
         // SAFETY: đầu `main`, chưa có luồng nào khác đọc hay ghi môi trường.
         unsafe { std::env::set_var("RAYON_NUM_THREADS", "2") };
     }
+    // Phòng xa cho ONNX Runtime (`speaker_worker::ort`): DLL đi kèm dựng `--no_telemetry`; biến này tắt bộ gửi 1DS nếu DLL lại có.
+    // SAFETY: như trên, chưa có luồng nào khác.
+    #[cfg(windows)]
+    unsafe {
+        std::env::set_var("ORT_DISABLE_TELEMETRY", "1")
+    };
     let protocol = platform::protocol_stdout()?;
     // QĐ 26: app chép stderr của worker vào log; dòng này cho biết bản worker nói giao thức nào khi app thấy worker thoát trước `Ready`.
     eprintln!("speaker-worker: giao thức phiên bản {PROTOCOL_VERSION}");
@@ -90,7 +96,11 @@ fn serve(protocol: std::fs::File) -> Result<()> {
             }
         })?;
     let mut output = BufWriter::new(protocol);
-    let mut worker = Worker::new(|path: &Path, sha256: Option<&str>| Embedder::load_checked(path, sha256));
+    let mut worker = Worker::new(|path: &Path, sha256: Option<&str>| {
+        let e = Embedder::load_checked(path, sha256)?;
+        eprintln!("speaker-worker: bộ chạy model {}", e.engine());
+        Ok(e)
+    });
     let control = Arc::new(Control::default());
     let mut reader: Option<JoinHandle<()>> = None;
     let outcome = loop {
