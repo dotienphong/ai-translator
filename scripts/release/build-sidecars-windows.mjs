@@ -6,7 +6,7 @@
 //     nằm trong System32 (02a QĐ32; C9 của kế hoạch 00);
 //   - speaker-worker: nhận giọng người nói (Rust, chạy model bằng ONNX Runtime đi kèm, candle khi thiếu), CRT tĩnh như asr-worker;
 //   - onnxruntime.dll cho speaker-worker: ONNX Runtime ở tag và commit khóa trong versions.env, dựng từ mã nguồn với
-//     `--no_telemetry` (bản chính thức của Microsoft có bộ gửi telemetry qua HTTPS), CRT tĩnh, không ML ops cổ điển. Worker nạp
+//     `--no_telemetry` (bản chính thức của Microsoft bật telemetry mặc định: sự kiện ETW mà Windows có thể gửi về), CRT tĩnh, không ML ops cổ điển. Worker nạp
 //     DLL bằng đường dẫn tuyệt đối lúc chạy (không import thẳng), nên vẫn chạy với `--no-local-libs`.
 //   - llama-server: llama.cpp ở commit khóa trong versions.env, `GGML_BACKEND_DL` và `GGML_CPU_ALL_VARIANTS` (dòng 210),
 //     Vulkan, không OpenMP (vcomp140.dll là C runtime), không web UI, không HTTPS; mọi DLL đi cùng thư mục. CRT ĐỘNG

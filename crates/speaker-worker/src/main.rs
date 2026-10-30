@@ -55,7 +55,7 @@ fn main() -> Result<()> {
         // SAFETY: đầu `main`, chưa có luồng nào khác đọc hay ghi môi trường.
         unsafe { std::env::set_var("RAYON_NUM_THREADS", "2") };
     }
-    // Phòng xa cho ONNX Runtime (`speaker_worker::ort`): DLL đi kèm dựng `--no_telemetry`; biến này tắt bộ gửi 1DS nếu DLL lại có.
+    // Phòng xa cho ONNX Runtime (`speaker_worker::ort`): DLL đi kèm dựng `--no_telemetry`; biến này tắt bộ gửi 1DS nếu DLL lại có (ETW tắt bằng `DisableTelemetryEvents`).
     // SAFETY: như trên, chưa có luồng nào khác.
     #[cfg(windows)]
     unsafe {

@@ -6,7 +6,9 @@
 //! - `onnxruntime.dll` nằm cạnh `speaker-worker.exe`, nạp bằng đường dẫn tuyệt đối, chỉ tìm DLL phụ thuộc ở thư mục của nó và
 //!   System32 (binary vẫn link `/DEPENDENTLOADFLAG:0x800`). App đã kiểm SHA-256 mọi file của thư mục tiến trình phụ trước khi chạy
 //!   worker (`sidecar::integrity`), kể cả DLL này.
-//! - DLL phải là bản dựng từ mã nguồn với `--no_telemetry`: bản chính thức của Microsoft có bộ gửi telemetry qua HTTPS. Worker vẫn
+//! - DLL phải là bản dựng từ mã nguồn với `--no_telemetry`: bản chính thức của Microsoft bật telemetry mặc định (DLL Windows 1.31.1: sự kiện TraceLogging/ETW,
+//!   Windows có thể gửi về Microsoft theo thiết lập dữ liệu chẩn đoán của máy; tài liệu của ONNX Runtime còn nêu bộ gửi 1DS qua HTTPS
+//!   cho các bản khác). Worker vẫn
 //!   đặt `ORT_DISABLE_TELEMETRY` (`main.rs`, trước khi có luồng nào) và gọi `DisableTelemetryEvents` để phòng xa.
 //! - Tắt spinning của bộ luồng (mặc định ONNX Runtime quay vòng chờ việc, đốt CPU giữa các lần nhúng) và arena bộ nhớ (giữ RSS
 //!   thấp giữa các đoạn dài ngắn khác nhau).
@@ -26,6 +28,9 @@ use windows::core::{PCSTR, PCWSTR};
 
 /// Tên DLL nằm cạnh `speaker-worker.exe`.
 pub const DLL_NAME: &str = "onnxruntime.dll";
+/// Số luồng tính toán của phiên ONNX Runtime. 1 luồng: nhúng 4 s mất ~141 ms ở lõi P của i5-1345U (2 luồng ~80 ms) nhưng tốn ít
+/// giây CPU hơn và bớt tranh lõi với nhận dạng lúc vừa hết câu (`results/11-onnxruntime-windows.md`, chữ đầu của phiên `mixed`).
+pub const THREADS: usize = 1;
 /// Bản C API yêu cầu: bản của header đã lấy chỉ số (ONNX Runtime 1.31.1). DLL cũ hơn trả `NULL` và worker dùng candle.
 const API_VERSION: u32 = 31;
 

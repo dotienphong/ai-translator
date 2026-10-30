@@ -82,7 +82,7 @@ impl Embedder {
         }
         #[cfg(windows)]
         if crate::ort::available().is_some() {
-            let session = crate::ort::Session::new(&bytes, rayon::current_num_threads(), INPUT, OUTPUT)
+            let session = crate::ort::Session::new(&bytes, crate::ort::THREADS, INPUT, OUTPUT)
                 .context("model nhúng giọng không chạy được bằng onnxruntime")?;
             return Self::probed(Self {
                 engine: Engine::Ort(session),

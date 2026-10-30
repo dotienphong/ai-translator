@@ -23,8 +23,10 @@ bản cài 0.5.1.
 Ràng buộc và cách làm (`crates/speaker-worker/src/ort.rs`):
 - Crate `ort` chưa có bản ổn định (mới nhất `2.0.0-rc.15`), trái spec §6.12: gọi thẳng C API ổn định của ONNX Runtime (bảng con trỏ
   `OrtApi`, chỉ số lấy từ `onnxruntime_c_api.h` 1.31.1, yêu cầu `ORT_API_VERSION` 31), không thêm crate nào.
-- **Bản chính thức của Microsoft bật telemetry mặc định và gửi qua HTTPS (1DS, WinHTTP)** (`Privacy.md` trong gói 1.31.1). Không dùng
-  được cho worker "không mã mạng": bản phát hành dựng `onnxruntime.dll` từ mã nguồn tag `v1.31.1` với `--no_telemetry`
+- **Bản chính thức của Microsoft bật telemetry mặc định** (`Privacy.md` trong gói 1.31.1). Kiểm chính DLL Windows 1.31.1 (gói zip
+  và wheel PyPI, cùng commit `6af1a93`): không nhập WinHTTP/Winsock, không có chuỗi `WinHttpOpen` hay địa chỉ 1DS
+  (`events.data.microsoft.com`), có `EventRegister`: telemetry là sự kiện TraceLogging/ETW, Windows có thể gửi về Microsoft theo
+  thiết lập dữ liệu chẩn đoán của máy (tài liệu nêu bộ gửi 1DS qua HTTPS cho các bản khác). Không hợp với worker không gửi gì: bản phát hành dựng `onnxruntime.dll` từ mã nguồn tag `v1.31.1` với `--no_telemetry`
   (`build-sidecars-windows.mjs`), CRT tĩnh, và `release-check.mjs deps-windows --no-network` chặn DLL nhập Winsock/WinHTTP/WinINet.
   Worker vẫn đặt `ORT_DISABLE_TELEMETRY=1` (đầu `main`, trước khi có luồng) và gọi `DisableTelemetryEvents`.
 - Worker nạp `onnxruntime.dll` cạnh nó bằng đường dẫn tuyệt đối (`LoadLibraryExW`, chỉ tìm DLL phụ thuộc ở thư mục đó và System32),
@@ -110,9 +112,26 @@ lúc kết thúc câu, nhúng (2 luồng) tranh lõi P với phần CPU của nh
 So với candle 0.5.1 trên cùng máy (`07-nghiem-thu.md`): A2 p50 +12,9 → −45,5; p90 +49,4 → −176,7; chữ đầu +17,6 → +1,4 (trung bình);
 nhãn tới đúng lúc 35–55% → 94–98%; khứ hồi p50 300–411 → 91–101 ms; CPU worker cả phiên 14–18% → 4,2–8,1% (mức spec ≤ 8%).
 
+## ONNX Runtime 1 luồng (2026-10-31)
+
+Đổi `ort::THREADS` từ số luồng rayon (2) xuống 1; đo lại cùng điều kiện (DLL chính thức của Microsoft, chưa phải bản tự dựng).
+
+| Cấu hình | A-spk5 không ghim | lõi P | lõi E | RAM đỉnh |
+|---|---|---|---|---|
+| candle 0.5.1 | 16,1% | 13,5% | 20,7% | — |
+| ORT 2 luồng | 4,9–6,9% | 5,6% | 11,5% | ~112 MB |
+| ORT 1 luồng | 3,6–3,7% | 3,6% | 7,8% | ~102 MB |
+
+- Nhãn giọng 261 đoạn giống hệt bản 2 luồng ở cả 6 lượt (không ghim, lõi P, lõi E). Khứ hồi lõi P p50 ~73 ms, 225/226 đoạn xong ≤ 230 ms.
+- A-spk4 (12 cặp): A2 p50 +1,6 [−24,3; +27,5] (không đạt, 2 luồng đạt); A2 p90 +7,5 [−3,9; +18,9] đạt; chữ đầu p50 +13,7 [−9,1; +36,5]
+  (không đạt). Phiên `en` đạt cả ba chỉ số; phiên `mixed` chậm thêm ~+45 ms ở chữ đầu (5/6 cặp), giống bản 2 luồng.
+- Độ trễ này không đổi theo số luồng dù worker chỉ ~5% CPU, nên nhiều khả năng không do tranh CPU mà do đường xử lý khi bật nhận diện
+  (chưa xác minh). A-spk5 lõi E nay đạt (7,8% ≤ 10%).
+- Chọn 1 luồng.
+
 ## Kết luận và việc còn lại
 
-- A-spk5 (worker) đạt khi không ghim và ở lõi P; lõi E 11,5–11,8% (theo %CPU) hơi trên 10%. Gán giọng giống hệt candle.
+- A-spk5 (worker) đạt khi không ghim và ở lõi P; lõi E 11,5–11,8% với 2 luồng (7,8% với 1 luồng). Gán giọng giống hệt candle.
 - A-spk4: A2 p50, p90 đạt; chữ đầu p50 chưa đạt theo cận trên (+34,2 so với +20), trung bình +1,4 ms. Hướng thử tiếp (mỗi hướng đo lại
   12 cặp): 1 luồng cho ONNX Runtime trên Windows (ít tranh lõi lúc kết thúc câu; nhúng 4 s vẫn ~141 ms ở lõi P), hay để worker chạy
   EcoQoS (dồn sang lõi E, nhường lõi P cho nhận dạng và dịch).
