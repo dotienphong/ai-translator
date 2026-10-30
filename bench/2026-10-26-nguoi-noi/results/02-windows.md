@@ -88,7 +88,44 @@ giải nén 77 494 844 byte. Giải nén lại trên macOS thì SHA-256 từng f
   file, file chép từ gói cũ trùng từng byte (`cmp`), hai `.exe` là `PE32+ executable (console) x86-64`. Gói không cần quyền quản
   trị, không dùng mạng, không ghi âm.
 
-## Step 3: chủ dự án chạy trên i5 (chờ)
+## Số đo trên i5 (2026-10-30, Claude chạy tại chỗ, không qua gói)
+
+Máy: Intel Core i5-1345U (2 lõi P có siêu phân luồng = luồng logic 0–3, 8 lõi E = luồng 4–11, theo `EfficiencyClass` của
+`GetSystemCpuSetInformation`), 31,7 GB RAM, Windows 11 Pro 10.0.26300, chế độ nguồn Balanced. Worker là `speaker-worker.exe` **của bản
+phát hành 0.5.1 đã cài** (MSVC), `latency-bench` dựng tại chỗ (`cargo build --release`, HEAD `47bb85f2`). Lệnh như Step 2
+(`speaker-eval --worker … --theta 0.35 --merge-theta 1.1`, AMI IS1009a Mix-Headset, 2 luồng tính toán); thêm `PeakWorkingSet64`,
+bộ nhớ riêng đỉnh và giây CPU do Windows ghi. Script và dữ liệu thô ngoài repo.
+
+**Độ chính xác** (`score_spk.py`): mọi lượt (28 lượt, cả hai bản dựng, pin hay cắm điện, ghim lõi hay không) cho **đúng cùng một
+kết quả**: dòng ≥ 1 s 89,6%, mọi dòng 86,1%, 5 giọng cho 4 người, thời lượng đúng 75,3% (macOS: 89,6% / 85,7% / 5). Đạt.
+
+**RAM:** `PeakWorkingSet64` 76,6–78,6 MB, bộ nhớ riêng đỉnh 65,5–76,5 MB, RSS đỉnh (`sysinfo`) 71–75 MB ở mọi lượt (macOS 198 MB):
+**đạt** (≤ 250 MB).
+
+**CPU** (% một lõi so với thời lượng tiếng nói của các đoạn có nhúng; ngân sách i5 ≤ 10%):
+
+| Điều kiện | Bản 0.5.1 | Bản AVX2 (thử, xem dưới) | Nhúng trung bình | Xong ≤ 230 ms |
+|---|---|---|---|---|
+| Cắm điện, không ghim, 8 lượt mỗi bản (xen kẽ) | trung vị **16,1%** (12,5–26,7) | trung vị 14,7% (12,1–20,7) | 230–430 ms | 64–139 / 226 |
+| Ghim lõi P (`start /AFFINITY 0xF`), 2 vòng | **13,65 / 13,33%** | 12,66 / 13,18% | 244 / 227 ms (vòng 1) | 124 / 129 (vòng 1) |
+| Ghim lõi E (`0xFF0`), 2 vòng | **20,74 / 20,66%** | 21,05 / 21,25% | 376 / 379 ms (vòng 1) | 75 / 71 (vòng 1) |
+| Chạy pin (2 lượt, chỉ để đối chiếu) | 22,9 / 18,0% | 11,8 / 12,6% | 208–426 ms | 73–139 |
+
+**Không đạt ngân sách CPU**, cả khi chỉ chạy trên lõi P. Worker đặt `BELOW_NORMAL_PRIORITY_CLASS` nên Windows hay xếp nó lên lõi E
+(chậm hơn lõi P khoảng 1,5 lần ở việc này), và tỉ lệ xếp đổi theo tải khác trên máy, nên số không ghim dao động mạnh (12,5–26,7%).
+Nhúng một đoạn trên i5 chậm hơn M4 Pro khoảng 2,5 lần ở lõi P (~235 ms so với ~90 ms) và khoảng 4 lần ở lõi E.
+
+**Bản AVX2 (thử ngoài kế hoạch):** candle-core 0.11 chỉ bật nhánh AVX2 và F16C khi biên dịch (`cpu/mod.rs`, `cpu/avx.rs`:
+`cfg(target_feature = "avx2")`), còn target `x86_64-pc-windows-msvc` mặc định chỉ có SSE2. Dựng lại `speaker-worker` với
+`RUSTFLAGS="-C target-feature=+avx,+avx2,+fma,+f16c,+bmi2"` (cùng mức CPU mà `.cargo/config.toml` đã khóa cho whisper): kết quả
+gán giọng giống hệt từng đoạn; CPU chỉ giảm ~3% ở lõi P (trung bình 12,92% so với 13,49%) và không giảm ở lõi E (21,15% so với 20,70%). Phép nhân ma trận (phần nặng nhất) có lẽ đã tự
+chọn AVX2 lúc chạy qua crate `gemm`. Hai lượt chạy pin đầu tiên cho thấy AVX2 nhanh gấp 1,6 lần chỉ là do xếp lõi ngẫu nhiên;
+không đủ để đổi cách dựng bản phát hành.
+
+Hướng xử lý (spec §14, mỗi hướng là kế hoạch riêng, chủ dự án quyết): bỏ nhúng đoạn ngắn hơn 1 s; nhúng ít hơn 4 s đầu mỗi đoạn;
+1 luồng; model nhúng nhỏ hơn hay lượng tử hóa; tự tắt trên máy yếu (đo tốc độ nhúng lúc khởi động).
+
+## Step 3: chủ dự án chạy trên i5 (chờ; thay bằng mục trên)
 
 Chép `win-pack-02.zip` sang máy i5, chuột phải chọn Extract All, mở PowerShell trong thư mục đã giải nén, rồi chạy:
 
@@ -109,13 +146,13 @@ i5 của `toc-do.md`.
 
 | Mục | Mức | macOS M4 Pro (Task 2, cùng bản ghi, lượt 1 / 2) | Windows i5 |
 |---|---|---|---|
-| Máy (CPU, RAM, Windows, nguồn điện) | | Apple M4 Pro, 24 GB, macOS 26.6.2 | chờ chủ dự án |
-| Dòng ≥ 1 s / mọi dòng / giọng | gần bằng macOS | 89,6% (147/164) / 85,7% (215/251) / 5 | chờ chủ dự án |
-| Khứ hồi p50 / p90 (ms) | | 92,6 / 201,7; 90,8 / 193,2 | chờ chủ dự án |
-| Xong ≤ 230 ms | | 226/226, 226/226 | chờ chủ dự án |
-| RSS đỉnh `speaker-worker` (`sysinfo`) | ≤ 250 MB | 198,0 / 199,3 MB | chờ chủ dự án |
-| `PeakWorkingSet64`, bộ nhớ riêng đỉnh (Windows) | ≤ 250 MB | (không có trên macOS) | chờ chủ dự án |
-| CPU % một lõi so với thời lượng tiếng nói | ≤ 10% (i5) | 7,49 / 7,30% | chờ chủ dự án |
+| Máy (CPU, RAM, Windows, nguồn điện) | | Apple M4 Pro, 24 GB, macOS 26.6.2 | i5-1345U, 31,7 GB, Windows 11 Pro 10.0.26300, cắm điện, Balanced |
+| Dòng ≥ 1 s / mọi dòng / giọng | gần bằng macOS | 89,6% (147/164) / 85,7% (215/251) / 5 | 89,6% / 86,1% / 5 (mọi lượt) |
+| Khứ hồi p50 / p90 (ms) | | 92,6 / 201,7; 90,8 / 193,2 | 178–388 / 430–856 (cắm điện, không ghim) |
+| Xong ≤ 230 ms | | 226/226, 226/226 | 64–139 / 226 |
+| RSS đỉnh `speaker-worker` (`sysinfo`) | ≤ 250 MB | 198,0 / 199,3 MB | 71–75 MB |
+| `PeakWorkingSet64`, bộ nhớ riêng đỉnh (Windows) | ≤ 250 MB | (không có trên macOS) | 76,6–78,6 / 65,5–76,5 MB |
+| CPU % một lõi so với thời lượng tiếng nói | ≤ 10% (i5) | 7,49 / 7,30% | **trung vị 16,1%** (12,5–26,7); lõi P 13,65%, lõi E 20,74%: **không đạt** |
 
 Cách đọc: `speaker-eval --worker` gửi đoạn liền nhau. Trên macOS, cách này cho RSS đỉnh cao hơn mức app gặp khi phát theo thời gian
 thực khoảng 23–41% (mục "Kiểm bổ sung theo thời gian thực" của `02-nhan-giong-worker.md`). Vì vậy nếu số trên Windows sát hay hơi

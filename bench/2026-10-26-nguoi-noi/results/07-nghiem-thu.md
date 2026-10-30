@@ -382,8 +382,8 @@ Mức đạt theo spec §12 (mục 3.3 spec chính). "Số cũ" là số của k
 | A-spk1 | Dòng ≥ 1 s đúng người ≥ 85%, mọi dòng ≥ 80% (trung bình 4 bản ghi AMI) | bản ứng viên `444aa12c`: **91,6%** (≥ 1 s), **84,8%** (mọi dòng); trùng mốc 02 (lệch 0,0 / 0,0) | Task 7, mục A-spk1; `results/02-nhan-giong-worker.md` | **đạt** |
 | A-spk2 | Dòng ≥ 1 s đúng người ≥ 85% (trung bình 8 bản ghi tiếng Việt) | bản ứng viên `444aa12c`: **93,9%**; 7/8 bản ≥ 85%, thấp nhất 67,7% (rủi ro đã biết); trùng mốc 02 | Task 7, mục A-spk2; `results/02-nhan-giong-worker.md` | **đạt** |
 | A-spk3 | Đúng tên ≥ 90%, sai tên ≤ 5% (Teams thật) | không có số | Task 18 (bộ chấm chưa có) | **chờ chủ dự án** |
-| A-spk4 | A2 p50 ≤ +20 ms, p90 ≤ +50 ms, chữ đầu ≤ +20 ms | số cũ M4 Pro: p50 −11,8 ms, p90 −26,4 ms, chữ đầu −18,2 ms (không chậm hơn); i5 chưa đo | `results/02-do-tre.md`; Task 8 | **chờ** (Task 8 chưa chạy; Windows chờ chủ dự án) |
-| A-spk5 | Tải trong ngân sách (≤ 8% một lõi, RAM ≤ 250 MB); Teams, trình duyệt không chậm rõ | số cũ: RAM 141,8 MB sau 92 phút; Windows chưa đo | `results/02-soak.md`, `results/ram.md`; Task 9 | **chờ** (soak bản ứng viên chưa chạy) |
+| A-spk4 | A2 p50 ≤ +20 ms, p90 ≤ +50 ms, chữ đầu ≤ +20 ms | số cũ M4 Pro: p50 −11,8 ms, p90 −26,4 ms, chữ đầu −18,2 ms (không chậm hơn); **i5 (2026-10-30): không đạt** (cận trên +62,5 / +244 / +56,2 ms, mục Windows) | `results/02-do-tre.md`; Task 8 | **chờ** (Task 8 chưa chạy; Windows chờ chủ dự án) |
+| A-spk5 | Tải trong ngân sách (≤ 8% một lõi, RAM ≤ 250 MB); Teams, trình duyệt không chậm rõ | số cũ: RAM 141,8 MB sau 92 phút; **i5 (2026-10-30): RAM 77–79 MB đạt, CPU trung vị 16,1% một lõi không đạt** (mục Windows) | `results/02-soak.md`, `results/ram.md`; Task 9 | **chờ** (soak bản ứng viên chưa chạy) |
 | A-spk6 | Họp thật tiếng Việt ≥ 3 người, macOS và Windows; chủ dự án đánh giá | không có | Task 17, 18 | **chờ chủ dự án** |
 | A-spk7 | `cargo deny`, `cargo audit`, không mã mạng trong worker, `overlay` chỉ thêm `open_speaker_settings`, báo cáo không có tên | `cargo deny` sạch, `cargo audit` chỉ sáu cảnh báo cũ (Task 1); không mã mạng sạch và binary worker release không mã mạng (Task 6, 15); 7 test `acl_tests` đạt (Task 15); test báo cáo không chứa tên nằm trong 960 test của app | Task 1, 6, 15 | **phần tự động đạt trên `444aa12c`** (Task 7 Step 4: deny, audit, không mã mạng, 102 test app, 41 speaker-ops, 21 server đạt); phần không tự động nằm ở Task 17, 18 |
 
@@ -399,7 +399,62 @@ Chờ chủ dự án (Teams thật, ba cuộc họp thử; công cụ chấm Tas
 
 ## Windows (Task 19)
 
-Chờ chủ dự án (máy Windows i5). `SHIPS_ON_WINDOWS = false` ở 0.3.2.
+Đo ngày 2026-10-30 trên máy Windows i5 của chủ dự án (Claude chạy tại chỗ, chủ dự án ủy quyền): Intel Core i5-1345U (2 lõi P +
+8 lõi E), 31,7 GB, Windows 11 Pro 10.0.26300, cắm điện, Balanced, bản cài 0.5.1 (`speaker-worker.exe`, `asr-worker-vulkan.exe`,
+`llama-server.exe` của bản phát hành), `latency-bench` dựng tại chỗ ở HEAD `47bb85f2`.
+
+**Kết luận: giữ `SHIPS_ON_WINDOWS = false`.** Ba điều kiện của Step 2 đều chưa đạt:
+
+| Điều kiện | Mức | Kết quả i5 | Chi tiết |
+|---|---|---|---|
+| A-spk5 (worker): CPU | ≤ 10% một lõi (so với tiếng nói) | trung vị 16,1% (12,5–26,7); lõi P 13,65%, lõi E 20,74% | `02-windows.md` |
+| A-spk5 (worker): RAM, độ chính xác | ≤ 250 MB; gần bằng macOS | 77–79 MB; 89,6% / 86,1% / 5 giọng (đạt) | `02-windows.md` |
+| A-spk4 (phiên thật, gói Nhẹ của máy này) | cận trên KTC95: A2 p50 ≤ +20, p90 ≤ +50, chữ đầu ≤ +20 ms | +62,5 / +244 / +56,2 ms (tb +12,9 / +49,4 / +17,6) | dưới đây |
+| 05b Task 11 (công thức Teams Windows) | đủ 3 ô ≥ 95%; khung nói ở ô khớp ≥ 0,85 cả hai bản ghi | ô video **không có** chỉ báo nói; chỉ bảng People có | `05-windows.md` |
+
+### A-spk4 trên i5
+
+Cách đo như Task 8 (cặp xen kẽ tắt/bật, S6 `en` và `mixed` dựng lại bằng `build_sessions.py`, cùng 21/20 câu mốc như macOS), nhưng
+model là gói **Nhẹ** mà app chọn trên máy này (whisper `small-q5_1` qua Vulkan, `Hy-MT2-1.8B-Q4_K_M`), không phải large-v3-turbo /
+Q8 của macOS. Lượt bật: `speaker-worker` 0.5.1 + `khong-app.recipes.json`. 20:16–20:55, tải CPU (`LoadPercentage`) 0–51% trước/sau
+lượt, không tiến trình phụ lạ chen (`tai-may.tsv`).
+
+| Session | Lượt | Chế độ | A2 p50 | A2 p90 | Chữ đầu p50 | Nhãn (đúng lúc / muộn) | Khứ hồi p50 / p90 | ≤ 230 ms | CPU worker tb, RSS |
+|---|---|---|---|---|---|---|---|---|---|
+| en | 1 | tắt | 1799 | 2475 | 772 | — | — | — | — |
+| en | 1 | bật | 1832 | 2892 | 768 | 51 (18 / 33) | 408 / 697 | 11/50 | 14,7%, 67 MB |
+| en | 2 | tắt | 1827 | 2473 | 766 | — | — | — | — |
+| en | 2 | bật | 1803 | 2412 | 762 | 51 (21 / 30) | 400 / 630 | 14/50 | 14,0%, 61 MB |
+| en | 3 | tắt | 1878 | 2491 | 773 | — | — | — | — |
+| en | 3 | bật | 1815 | 2418 | 761 | 51 (19 / 32) | 411 / 676 | 14/50 | 15,0%, 63 MB |
+| mixed | 1 | tắt | 1641 | 2358 | 983 | — | — | — | — |
+| mixed | 1 | bật | 1670 | 2408 | 980 | 77 (33 / 44) | 333 / 632 | 21/74 | 17,8%, 65 MB |
+| mixed | 2 | tắt | 1624 | 2404 | 953 | — | — | — | — |
+| mixed | 2 | bật | 1660 | 2390 | 1009 | 77 (36 / 41) | 335 / 525 | 18/74 | 15,5%, 59 MB |
+| mixed | 3 | tắt | 1607 | 2405 | 933 | — | — | — | — |
+| mixed | 3 | bật | 1673 | 2383 | 1006 | 77 (42 / 35) | 300 / 504 | 28/74 | 15,6%, 56 MB |
+
+Mọi lượt: 21/21 và 20/20 câu đo được, 0 khởi động lại tiến trình phụ, 0 `Skip`, 0 câu dịch lỗi, hàng đợi dịch dài nhất 1,
+`feed_lag_max_ms` 8–25 (< 100).
+
+| Chỉ số | Chênh tb (6 cặp) | Từng cặp (en 1–3, mixed 1–3) | KTC 95% | Mức | Kết luận |
+|---|---|---|---|---|---|
+| A2 p50 | +12,9 | +33, −24, −63, +28, +35, +67 | [−36,7; +62,5] | ≤ +20 | **không đạt** |
+| A2 p90 | +49,4 | +417, −61, −73, +50, −15, −22 | [−145,1; +244,0] | ≤ +50 | **không đạt** |
+| Chữ đầu p50 | +17,6 | −4, −4, −12, −3, +55, +73 | [−21,0; +56,2] | ≤ +20 | **không đạt** |
+
+Theo từng session: `en` A2 p50 −17,8 [−138; +103]; `mixed` A2 p50 **+43,5 [−7,0; +94,1]** (bật chậm hơn ở cả 3 cặp), chữ đầu
+`mixed` +41,8. Khác macOS (bật nhanh hơn ở mọi cặp): trên i5 worker tốn 14–18% một lõi suốt phiên (mức spec ≤ 8%, macOS 6,5–7,5%)
+và tranh CPU với `llama-server` (dịch p50 ~920 ms). Nhãn tới muộn 45–65% số đoạn (macOS 0–2%), khứ hồi p50 300–411 ms (macOS
+106–152): câu vẫn được gắn nhãn qua đường cập nhật muộn (spec §4.3) nhưng hiện chậm hơn.
+
+### Việc còn lại để bật Windows (chủ dự án quyết)
+
+1. Giảm tải nhận giọng trên máy yếu (spec §14): bỏ đoạn < 1 s, nhúng ngắn hơn 4 s, 1 luồng, model nhỏ hơn, hay tự tắt khi đo
+   thấy nhúng chậm; đo lại A-spk4/A-spk5 trên máy này.
+2. Đọc tên Teams Windows: chỉ báo nói chỉ có ở bảng People (`05-windows.md`, ba hướng). Nếu bật Windows chỉ với "Người N" (không
+   có mục Windows trong công thức) thì điều kiện 05b Task 11 không áp, nhưng vẫn cần (1).
+3. Chưa thử: Meet (Chrome, Edge), Zoom trên Windows (05b Task 13); A-spk3, A-spk6 trên Windows; năng lượng (chưa có công cụ đo).
 
 ## A7 (Task 22)
 
