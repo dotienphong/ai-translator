@@ -18,6 +18,8 @@
 //!   - `slow_ms:<ms>`: chờ chừng này trước khi trả mỗi kết quả `Transcribe` (để test hàng đợi tất định);
 //!   - `error_on:<n>[:<OutOfMemory|Internal>]`: trả `Error` (mặc định `Internal`) cho `Transcribe` thứ `n`, vẫn sống;
 //!   - `load_delay_ms:<ms>`: chờ chừng này trước khi trả lời `Load` (nạp model chậm, như lần đầu chạy trên macOS);
+//!   - `warmup_delay_ms:<ms>`: chờ chừng này trước khi trả lời `Warmup` (lần chạy thử đầu trên GPU mới phải biên dịch shader,
+//!     như card Vulkan chưa có cache của driver);
 //!   - `words_per_sec:<n>`: chữ trả về chỉ gồm `n` từ đầu của dòng mỗi giây âm thanh của yêu cầu (ít nhất 1 từ), như bản
 //!     chép từng phần của một đoạn đang mở (spec 2026-10-10 §4.1).
 //! - `FAKE_ASR_LOG`: file ghi nối tiếp các sự kiện (`start use_gpu=…`, `transcribe <id> prev=<ngôn ngữ> prompt=<số token>`).
@@ -42,6 +44,7 @@ struct Plan {
     error_on: Option<u32>,
     error_kind: ErrorKind,
     load_delay_ms: u64,
+    warmup_delay_ms: u64,
     words_per_sec: Option<f32>,
     note: Option<String>,
 }
@@ -72,6 +75,7 @@ fn parse(line: &str) -> Plan {
         error_on: None,
         error_kind: ErrorKind::Internal,
         load_delay_ms: 0,
+        warmup_delay_ms: 0,
         words_per_sec: None,
         note: None,
     };
@@ -109,6 +113,7 @@ fn parse(line: &str) -> Plan {
                 };
             }
             "load_delay_ms" => plan.load_delay_ms = value.parse().expect("số ms"),
+            "warmup_delay_ms" => plan.warmup_delay_ms = value.parse().expect("số ms"),
             "words_per_sec" => plan.words_per_sec = Some(value.parse().expect("số từ mỗi giây")),
             "note" => plan.note = Some(value.to_string()),
             other => panic!("lệnh kịch bản lạ: {other}"),
@@ -190,6 +195,7 @@ fn main() {
             }
             Request::Warmup => {
                 log("warmup");
+                std::thread::sleep(std::time::Duration::from_millis(plan.warmup_delay_ms));
                 Response::WarmupDone { millis: 1.0 }
             }
             Request::Transcribe(req) => {

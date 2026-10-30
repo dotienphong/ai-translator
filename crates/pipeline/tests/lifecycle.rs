@@ -639,6 +639,43 @@ fn a_slow_first_start_is_not_counted_as_a_failure() {
     );
 }
 
+/// Làm nóng GPU lần đầu có thể lâu hơn nhiều một request chép lời (card mới chưa có cache shader của driver: báo cáo thật
+/// `R-7VRK-03Y1`, RTX 5060 Ti, `Warmup` quá 30 giây hai lần liền nên bị chuyển sang CPU). `Warmup` thuộc giai đoạn khởi động,
+/// nên chờ theo thời gian chờ khởi động (lần đầu chạy: dài hơn), không theo thời gian chờ của một đoạn (`asr.timeout_ms`).
+#[test]
+fn a_slow_warmup_waits_for_the_start_up_timeout_not_the_request_timeout() {
+    let s = setup_spec("warmup-slow", true, &["warmup_delay_ms:1500"], &[], |spec| {
+        spec.asr_config.timeout_ms = 300;
+        spec.supervisor.ready_timeout_ms = 10_000;
+    });
+    s.manager.ensure_started().unwrap();
+    let names = s.events.names();
+    assert!(
+        !names.iter().any(|n| n.starts_with("restart") || n.starts_with("cpu")),
+        "{names:?}"
+    );
+    assert!(names.contains(&"ready Asr gpu=true".to_string()), "{names:?}");
+    assert_eq!(s.t.read("asr-events").matches("start ").count(), 1);
+}
+
+/// Như trên với lần đầu chạy binary mới: thời gian chờ dài của lần đầu áp cho cả `Warmup`.
+#[test]
+fn a_slow_warmup_on_the_first_run_is_not_counted_as_a_failure() {
+    let s = setup_spec("warmup-first", true, &["warmup_delay_ms:1500"], &[], |spec| {
+        spec.asr.first_run = true;
+        spec.asr_config.timeout_ms = 300;
+        spec.supervisor.ready_timeout_ms = 300;
+        spec.supervisor.first_run_ready_timeout_ms = 10_000;
+    });
+    s.manager.ensure_started().unwrap();
+    let names = s.events.names();
+    assert!(
+        !names.iter().any(|n| n.starts_with("restart") || n.starts_with("cpu")),
+        "{names:?}"
+    );
+    assert_eq!(s.t.read("asr-events").matches("start ").count(), 1);
+}
+
 /// Sau khi app thoát, một request tới muộn không chạy lại tiến trình phụ nào.
 #[test]
 fn after_shutdown_a_late_request_starts_nothing() {

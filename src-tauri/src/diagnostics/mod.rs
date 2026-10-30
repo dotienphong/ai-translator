@@ -298,7 +298,7 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let now = unix_now();
     let previous = files.begin_run(
         now,
-        marker::boot_time_secs(now),
+        marker::restart_time_secs(now),
         &app.package_info().version.to_string(),
     );
     report_previous_run(&reporter, previous, now);

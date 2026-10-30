@@ -10,7 +10,8 @@
 //!   (Windows: `asr-worker-vulkan` thiếu `vulkan-1.dll`); hoặc worker báo thiết bị thật là CPU (`Ready.backend`). Đã
 //!   chuyển thì giữ CPU tới khi app tắt. `asr-worker` chạy bằng CPU (kể cả khi không dò thấy GPU dùng được) thì
 //!   `llama-server` cũng chạy bằng CPU (`-ngl 0`) từ lần khởi động kế tiếp của nó (§9, "GPU khởi tạo lỗi").
-//! - Lần đầu chạy một binary mới: chờ `Ready` hay `/health` lâu hơn (`first_run_ready_timeout_ms`, từ 30 giây). Quá thời
+//! - `asr-worker`: `Warmup` được chờ theo thời gian chờ khởi động (như `Load`), không theo `asr.timeout_ms` của một đoạn.
+//! - Lần đầu chạy một binary mới: chờ `Ready` hay `/health` (và `Warmup`) lâu hơn (`first_run_ready_timeout_ms`, từ 30 giây). Quá thời
 //!   gian chờ đó không bị tính là một lần lỗi và không chuyển sang CPU (§6.5): chạy lại với thời gian chờ thường.
 //! - Trước mỗi lần chạy một tiến trình phụ (kể cả khởi động lại bên trong giám sát), app kiểm binary qua
 //!   [`SidecarEvents::before_spawn`] (SHA-256, §10.2, QĐ17). Kiểm lỗi thì bỏ cuộc ngay, không thử lại.
@@ -663,6 +664,8 @@ impl SidecarManager {
             n_threads: self.spec.asr_config.n_threads,
             ready_timeout: Duration::from_millis(ready_ms),
             request_timeout: Duration::from_millis(self.spec.asr_config.timeout_ms),
+            // `Warmup` nằm trong khởi động: cùng thời gian chờ với `Load` (lần đầu chạy: dài hơn).
+            warmup_timeout: Duration::from_millis(ready_ms),
             shutdown_grace: Duration::from_millis(self.spec.supervisor.shutdown_grace_ms),
             env: spec.env.clone(),
             ..AsrLaunch::new(exe, &spec.model, &spec.log)

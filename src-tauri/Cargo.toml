@@ -98,6 +98,8 @@ windows = { version = "0.62.2", features = [
     "Win32_Security_WinTrust",
     "Win32_System_Registry",
     "Win32_System_SystemInformation",
+    # Giờ đăng nhập của phiên hiện tại (`WTSQuerySessionInformationW`, diagnostics/marker.rs): phân biệt tắt máy với crash.
+    "Win32_System_RemoteDesktop",
     "Win32_UI_WindowsAndMessaging",
     # Gõ dịch (compose/native_windows.rs): clipboard (`OpenClipboard`, `GlobalAlloc`, `CF_UNICODETEXT`) và gửi Ctrl+V
     # (`SendInput`).

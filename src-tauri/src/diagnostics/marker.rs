@@ -6,7 +6,9 @@
 //!   Windows tắt máy hay đăng xuất (`tao` 0.37 xử lý `WM_ENDSESSION` bằng `loop_destroyed()` rồi `process::exit`, nên cũng qua
 //!   `RunEvent::Exit`). Plugin cập nhật trên Windows còn gọi `process::exit` sau `install_on_exit`, nên marker phải xóa trước đó.
 //! - **`panic.json`**: panic hook ghi vị trí và câu panic trước khi bản phát hành abort (`panic = "abort"`).
-//! - Máy khởi động lại từ lúc ghi marker (mất điện, tắt máy cưỡng bức, kernel panic) không phải lỗi của app: không báo.
+//! - Máy khởi động lại, hay người dùng đăng nhập lại (Windows tắt máy với Fast Startup không reset giờ chạy của hệ thống nhưng
+//!   mở phiên đăng nhập mới), từ lúc ghi marker (mất điện, tắt máy cưỡng bức, kernel panic, hệ điều hành kill app lúc tắt máy hay
+//!   đăng xuất) không phải lỗi của app: không báo.
 //! - Tên hai file trên là của bản phát hành. Bản debug dùng `run.debug.marker` và `panic.debug.json` trong cùng thư mục (xem
 //!   `MARKER`), nên hai bản không đọc dấu của nhau.
 //!
@@ -54,7 +56,7 @@ pub enum PreviousRun {
     Panicked { at: i64, location: String, message: String },
     /// Còn `run.marker`, không có `panic.json`, và máy không khởi động lại từ đó.
     Unclean { started_at: i64 },
-    /// Còn `run.marker` nhưng máy đã khởi động lại từ đó: không phải crash của app.
+    /// Còn `run.marker` nhưng máy đã khởi động lại, hay người dùng đã đăng nhập lại, từ đó: không phải crash của app.
     RebootedSince,
 }
 
@@ -75,9 +77,9 @@ impl RunFiles {
             .and_then(|b| serde_json::from_slice(&b).ok())
     }
 
-    /// Gọi lúc khởi động: phân loại lần chạy trước, xóa dấu vết của nó, rồi đặt marker của lần chạy này. `boot_time`: giờ Unix
-    /// (giây) máy khởi động, nếu biết.
-    pub fn begin_run(&self, now: i64, boot_time: Option<i64>, version: &str) -> PreviousRun {
+    /// Gọi lúc khởi động: phân loại lần chạy trước, xóa dấu vết của nó, rồi đặt marker của lần chạy này. `restart_time`: giờ Unix
+    /// (giây) máy khởi động, hay người dùng đăng nhập, lần gần nhất (`restart_time_secs`), nếu biết.
+    pub fn begin_run(&self, now: i64, restart_time: Option<i64>, version: &str) -> PreviousRun {
         let dump: Option<PanicDump> = self.read(PANIC);
         let marker: Option<Marker> = self.read(MARKER);
         let _ = std::fs::remove_file(self.dir.join(PANIC));
@@ -90,7 +92,7 @@ impl RunFiles {
         {
             let _ = std::fs::write(self.dir.join(MARKER), bytes);
         }
-        classify(dump, marker, boot_time)
+        classify(dump, marker, restart_time)
     }
 
     /// App thoát bình thường: xóa marker.
@@ -129,7 +131,7 @@ impl RunFiles {
     }
 }
 
-fn classify(dump: Option<PanicDump>, marker: Option<Marker>, boot_time: Option<i64>) -> PreviousRun {
+fn classify(dump: Option<PanicDump>, marker: Option<Marker>, restart_time: Option<i64>) -> PreviousRun {
     if let Some(d) = dump {
         return PreviousRun::Panicked {
             at: d.at,
@@ -139,7 +141,7 @@ fn classify(dump: Option<PanicDump>, marker: Option<Marker>, boot_time: Option<i
     }
     match marker {
         None => PreviousRun::Clean,
-        Some(m) if boot_time.is_some_and(|boot| boot > m.started_at) => PreviousRun::RebootedSince,
+        Some(m) if restart_time.is_some_and(|restart| restart > m.started_at) => PreviousRun::RebootedSince,
         Some(m) => PreviousRun::Unclean {
             started_at: m.started_at,
         },
@@ -169,9 +171,9 @@ pub fn install_panic_dump(files: RunFiles) {
     }));
 }
 
-/// Giờ Unix (giây) máy khởi động, nếu hỏi được.
+/// Giờ Unix (giây) máy khởi động, hay người dùng đăng nhập, lần gần nhất; nếu hỏi được.
 #[cfg(target_os = "macos")]
-pub fn boot_time_secs(_now: i64) -> Option<i64> {
+pub fn restart_time_secs(_now: i64) -> Option<i64> {
     let mut tv = libc::timeval { tv_sec: 0, tv_usec: 0 };
     let mut len = std::mem::size_of::<libc::timeval>();
     // SAFETY: `kern.boottime` là một `struct timeval`; `tv` và `len` sống suốt lời gọi.
@@ -187,18 +189,68 @@ pub fn boot_time_secs(_now: i64) -> Option<i64> {
     (rc == 0 && tv.tv_sec > 0).then_some(tv.tv_sec)
 }
 
-/// Windows: giờ khởi động suy từ thời gian chạy của hệ thống (`GetTickCount64`). Với Fast Startup, "khởi động" của hệ thống
-/// không tính lần tắt máy rồi bật lại, nên mốc này có thể quá sớm: khi đó lần tắt máy hiện là `Unclean` chứ không bị bỏ sót.
+/// Windows: lấy mốc muộn hơn của hai mốc.
+/// - Giờ khởi động suy từ thời gian chạy của hệ thống (`GetTickCount64`). Với Fast Startup, "khởi động" của hệ thống không tính
+///   lần tắt máy rồi bật lại, nên mốc này có thể quá sớm.
+/// - Giờ đăng nhập của phiên hiện tại (`WTSSessionInfo`). Tắt máy hay đăng xuất luôn kết thúc phiên đăng nhập, kể cả với Fast
+///   Startup, nên lần mở sau tắt máy luôn có mốc này sau marker. Nhờ nó, app bị hệ điều hành kill lúc tắt máy (hết thời gian
+///   chờ, hay bị tắt cưỡng bức giữa chừng) không bị báo thành `crash` (báo cáo thật `R-FY4C-4WXX`, 2026-10-30).
 #[cfg(windows)]
-pub fn boot_time_secs(now: i64) -> Option<i64> {
+pub fn restart_time_secs(now: i64) -> Option<i64> {
     use windows::Win32::System::SystemInformation::GetTickCount64;
     // SAFETY: hàm không tham số và không có điều kiện tiên quyết.
     let uptime_ms = unsafe { GetTickCount64() };
-    Some(now - i64::try_from(uptime_ms / 1000).ok()?)
+    let boot = i64::try_from(uptime_ms / 1000).ok().map(|uptime| now - uptime);
+    latest(boot, logon_time_secs())
+}
+
+/// Giờ Unix (giây) người dùng đăng nhập phiên hiện tại, nếu hỏi được.
+#[cfg(windows)]
+fn logon_time_secs() -> Option<i64> {
+    use windows::Win32::System::RemoteDesktop::{
+        WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, WTSFreeMemory, WTSINFOW, WTSQuerySessionInformationW,
+        WTSSessionInfo,
+    };
+    use windows::core::PWSTR;
+
+    let mut buffer = PWSTR::null();
+    let mut len = 0u32;
+    // SAFETY: `buffer` và `len` sống suốt lời gọi; khi thành công, `buffer` trỏ tới một `WTSINFOW` do WTS cấp phát và chỉ được
+    // đọc khi `len` đủ lớn, rồi giải phóng đúng một lần bằng `WTSFreeMemory`.
+    unsafe {
+        WTSQuerySessionInformationW(
+            Some(WTS_CURRENT_SERVER_HANDLE),
+            WTS_CURRENT_SESSION,
+            WTSSessionInfo,
+            &mut buffer,
+            &mut len,
+        )
+        .ok()?;
+        let filetime = (len as usize >= std::mem::size_of::<WTSINFOW>() && !buffer.is_null())
+            .then(|| std::ptr::read_unaligned(buffer.0.cast::<WTSINFOW>()).LogonTime);
+        WTSFreeMemory(buffer.0.cast());
+        filetime.and_then(filetime_to_unix_secs)
+    }
+}
+
+/// `FILETIME` (số khoảng 100 ns từ 1601-01-01) sang giờ Unix (giây). 0 nghĩa là Windows không biết giờ đăng nhập.
+#[cfg(any(windows, test))]
+fn filetime_to_unix_secs(filetime: i64) -> Option<i64> {
+    const UNIX_EPOCH_AS_FILETIME_SECS: i64 = 11_644_473_600;
+    (filetime > 0).then(|| filetime / 10_000_000 - UNIX_EPOCH_AS_FILETIME_SECS)
+}
+
+/// Mốc muộn hơn của hai mốc, nếu có mốc nào.
+#[cfg(any(windows, test))]
+fn latest(a: Option<i64>, b: Option<i64>) -> Option<i64> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
+    }
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]
-pub fn boot_time_secs(_now: i64) -> Option<i64> {
+pub fn restart_time_secs(_now: i64) -> Option<i64> {
     None
 }
 
@@ -343,11 +395,48 @@ mod tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
 
+    /// Windows tắt máy với Fast Startup: giờ chạy của hệ thống không reset (mốc khởi động trước marker) nhưng phiên đăng nhập là
+    /// phiên mới (mốc đăng nhập sau marker). App bị kill lúc tắt máy không phải crash (báo cáo thật `R-FY4C-4WXX`, 2026-10-30).
     #[test]
-    fn the_boot_time_is_in_the_past_when_the_os_can_tell() {
+    fn a_new_logon_after_the_marker_is_not_a_crash_even_when_the_boot_time_is_older() {
+        let dir = temp("logon");
+        let files = RunFiles::new(dir.clone());
+        files.begin_run(T0, Some(T0 - 3_600), "0.3.1");
+        let restart = latest(Some(T0 - 3_600), Some(T0 + 60));
+        assert_eq!(files.begin_run(T0 + 900, restart, "0.3.1"), PreviousRun::RebootedSince);
+        // Crash trong cùng phiên đăng nhập (đăng nhập trước marker) vẫn là `Unclean`.
+        let restart = latest(Some(T0 - 3_600), Some(T0 - 100));
+        assert_eq!(
+            files.begin_run(T0 + 1_800, restart, "0.3.1"),
+            PreviousRun::Unclean { started_at: T0 + 900 }
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_latest_restart_wins_and_a_missing_one_is_ignored() {
+        assert_eq!(latest(Some(5), Some(9)), Some(9));
+        assert_eq!(latest(Some(9), Some(5)), Some(9));
+        assert_eq!(latest(None, Some(5)), Some(5));
+        assert_eq!(latest(Some(5), None), Some(5));
+        assert_eq!(latest(None, None), None);
+    }
+
+    #[test]
+    fn a_filetime_converts_to_unix_seconds_and_zero_means_unknown() {
+        // 2026-10-30 00:00:00 UTC.
+        assert_eq!(
+            filetime_to_unix_secs((1_793_318_400 + 11_644_473_600) * 10_000_000),
+            Some(1_793_318_400)
+        );
+        assert_eq!(filetime_to_unix_secs(0), None);
+    }
+
+    #[test]
+    fn the_restart_time_is_in_the_past_when_the_os_can_tell() {
         let now = now_secs();
-        match boot_time_secs(now) {
-            Some(boot) => assert!(boot < now && now - boot < 5 * 365 * 86_400, "{boot} so với {now}"),
+        match restart_time_secs(now) {
+            Some(boot) => assert!(boot <= now && now - boot < 5 * 365 * 86_400, "{boot} so với {now}"),
             // Hệ điều hành không hỏi được mốc khởi động: chỉ chấp nhận ở nền tảng app không hỗ trợ.
             None => {
                 #[cfg(any(target_os = "macos", windows))]

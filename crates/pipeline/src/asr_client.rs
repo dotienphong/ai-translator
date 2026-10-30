@@ -59,8 +59,11 @@ pub struct AsrLaunch {
     pub n_threads: u32,
     /// Chờ `Ready` sau `Load` (§6.5: lần đầu chạy binary mới thì chờ lâu hơn).
     pub ready_timeout: Duration,
-    /// Chờ kết quả của một `Transcribe` hay `Warmup`; quá thì kill worker (§9).
+    /// Chờ kết quả của một `Transcribe`; quá thì kill worker (§9).
     pub request_timeout: Duration,
+    /// Chờ `WarmupDone` sau `Warmup`. `Warmup` là một phần của khởi động: lần chạy thử đầu trên GPU phải biên dịch shader
+    /// (card mới, driver chưa có cache) nên lâu hơn nhiều một đoạn chép lời; vì thế không dùng `request_timeout`.
+    pub warmup_timeout: Duration,
     /// Chờ worker tự thoát sau `Shutdown` trước khi kill.
     pub shutdown_grace: Duration,
     /// Biến môi trường thêm cho worker (test dùng để điều khiển worker giả).
@@ -77,6 +80,7 @@ impl AsrLaunch {
             n_threads: 4,
             ready_timeout: Duration::from_secs(180),
             request_timeout: Duration::from_secs(30),
+            warmup_timeout: Duration::from_secs(180),
             shutdown_grace: Duration::from_secs(5),
             env: Vec::new(),
         }
@@ -104,6 +108,7 @@ pub struct AsrWorker {
     /// Đường dẫn file log của worker, để thông báo lỗi chỉ chỗ xem log.
     log: PathBuf,
     request_timeout: Duration,
+    warmup_timeout: Duration,
     shutdown_grace: Duration,
 }
 
@@ -139,6 +144,7 @@ impl AsrWorker {
             stdout,
             log: launch.log.clone(),
             request_timeout: launch.request_timeout,
+            warmup_timeout: launch.warmup_timeout,
             shutdown_grace: launch.shutdown_grace,
         };
         on_spawn(worker.killer());
@@ -198,7 +204,7 @@ impl AsrWorker {
     }
 
     pub fn warmup(&mut self) -> Result<f32, AsrError> {
-        match self.call(&Request::Warmup, self.request_timeout)? {
+        match self.call(&Request::Warmup, self.warmup_timeout)? {
             Response::WarmupDone { millis } => Ok(millis),
             Response::Error { kind, message, .. } => Err(AsrError::Worker { kind, message }),
             other => Err(AsrError::Crashed(format!(
