@@ -157,12 +157,12 @@ test("mọi trang năm ngôn ngữ (và 404) có bong bóng đúng nhãn; chưa 
   }
 });
 
-test("bong bóng 3D (spec 2026-10-23): ba chấm thay biểu tượng cũ; viền nhấp nháy khi khung đóng, rõ lại khi có trả lời mới, dừng khi khung mở; giảm chuyển động thì đứng yên", { skip }, async () => {
+test("bong bóng 3D (spec 2026-10-23, icon đổi 2026-10-31): icon bong bóng thoại trắng; viền nhấp nháy khi khung đóng, rõ lại khi có trả lời mới, dừng khi khung mở; giảm chuyển động thì đứng yên", { skip }, async () => {
   const anim = (p) => p.eval(`getComputedStyle(document.querySelector(".chat-bubble")).animationName`);
   const { p } = await freshPage("/");
   assert.deepEqual(
-    await p.eval(`(() => { const b = document.querySelector(".chat-bubble"); return { dots: b.querySelectorAll(".chat-bubble-dots i").length, oldIcon: Boolean(b.querySelector("svg")) }; })()`),
-    { dots: 3, oldIcon: false },
+    await p.eval(`(() => { const b = document.querySelector(".chat-bubble"); return { icon: Boolean(b.querySelector(".chat-bubble-icon use[href=\\"#i-chat\\"]")), dots: b.querySelectorAll(".chat-bubble-dots i").length }; })()`),
+    { icon: true, dots: 0 },
   );
   assert.equal(await anim(p), "chat-glow, chat-glow-soft");
   await p.eval(`document.querySelector(".chat-dot").hidden = false`);
