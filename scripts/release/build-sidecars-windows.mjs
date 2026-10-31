@@ -110,6 +110,8 @@ export function steps({ work, target, out, versions, ortBuildDir }) {
         "--compile_no_warning_as_error",
         "--cmake_extra_defines",
         "onnxruntime_BUILD_UNIT_TESTS=OFF",
+        // patch.exe của Strawberry Perl (2.5.9, đứng trước trong PATH) áp sai patch onnx (scoped_resource.h); dùng bản của Git.
+        "Patch_EXECUTABLE=C:/Program Files/Git/usr/bin/patch.exe",
       ],
       cwd: ortSrc,
     },

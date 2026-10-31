@@ -64,6 +64,7 @@ test("build Windows: onnxruntime.dll dựng từ mã nguồn khóa, không telem
   for (const flag of ["--no_telemetry", "--enable_msvc_static_runtime", "--build_shared_lib", "--disable_ml_ops", "--skip_tests"]) {
     assert.ok(ort.run.includes(flag), flag);
   }
+  assert.ok(ort.run.includes("Patch_EXECUTABLE=C:/Program Files/Git/usr/bin/patch.exe"), "patch của Git, không phải của Strawberry Perl");
   assert.equal(ort.run[ort.run.indexOf("--build_dir") + 1], join("W", "onnxruntime-build"));
   // Bước build đứng sau speaker-worker, ngay trước bước chép DLL.
   const i = list.indexOf(ort);
