@@ -374,6 +374,27 @@ fn state_of(a: &Attrs) -> u64 {
     h.finish()
 }
 
+/// Trạng thái của một dòng phụ đề: băm các chữ tĩnh trong ô (tên người nói và lời). Đổi khi Teams nối thêm chữ vào dòng. **Chỉ băm, không
+/// giữ chữ** (lời họp không ra khỏi bộ đọc).
+fn caption_state<T: Tree>(t: &mut T, tile: &T::Node, static_text: &str) -> u64 {
+    let mut h = DefaultHasher::new();
+    let mut stack: Vec<T::Node> = t.children(tile).into_iter().rev().collect();
+    let mut seen = 0;
+    while let Some(n) = stack.pop() {
+        seen += 1;
+        if seen > MAX_TILE_NODES {
+            break;
+        }
+        let Some(mut a) = t.shape(&n) else { continue };
+        if a.role == static_text && t.text(&n, &mut a) {
+            a.value.hash(&mut h);
+            a.title.hash(&mut h);
+        }
+        stack.extend(t.children(&n).into_iter().rev());
+    }
+    h.finish()
+}
+
 /// Ứng viên tự hiệu chỉnh (spec §6.5): phần tử không có chữ trong ô, khóa là vị trí (chỉ số con theo đường đi) và vai trò.
 fn candidates<T: Tree>(t: &mut T, tile: &T::Node) -> (Vec<(u64, u64)>, Vec<CandidateShape>) {
     let mut out = Vec::new();
@@ -496,6 +517,7 @@ fn read_tile<T: Tree>(t: &mut T, tile: &TileRef<T::Node>, app: &AppRecipe, calib
             (SignalKind::Flicker | SignalKind::Deviation, _) => {
                 known.as_ref().and_then(|n| t.shape(n)).map(|a| state_of(&a))
             }
+            (SignalKind::Caption, _) => Some(caption_state(t, &tile.node, app.os.static_text_role())),
             _ => None,
         })
         .collect();

@@ -1,0 +1,134 @@
+{
+ "steps": [
+  {
+   "t": 10.11,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 16.11,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 21.11,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 27.109,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 32.11,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 35.109,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 38.109,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 41.109,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 44.11,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 47.109,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 50.11,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 53.109,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 56.109,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 58.109,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 58.133,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 60.109,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 60.122,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 62.109,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 65.11,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 68.11,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 73.11,
+   "who": "Minh",
+   "on": false
+  },
+  {
+   "t": 74.109,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 77.109,
+   "who": "Lan",
+   "on": true
+  },
+  {
+   "t": 78.609,
+   "who": "Lan",
+   "on": false
+  },
+  {
+   "t": 81.61,
+   "who": "Minh",
+   "on": true
+  },
+  {
+   "t": 83.11,
+   "who": "Minh",
+   "on": false
+  }
+ ]
+}

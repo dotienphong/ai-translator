@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "version": 1,
+  "min_app_version": "0.3.2",
+  "apps": [
+    {
+      "app": "teams",
+      "os": "windows",
+      "window_title": ["^Meeting with ", "^Meeting in ", "^Cuộc họp với ", "^Cuộc họp trong "],
+      "confirm_id": "hangup-button",
+      "tile": {
+        "role": "Group",
+        "class_token": "fui-ChatMessageCompact__body"
+      },
+      "name_from": "text",
+      "name_suffixes": ["\\s*\\((?:Unverified|Chưa xác minh|Guest|Khách|External|Bên ngoài)\\)$"],
+      "speaking": [{ "kind": "caption" }],
+      "delay_ms": 2400
+    }
+  ]
+}

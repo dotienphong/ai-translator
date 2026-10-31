@@ -110,13 +110,22 @@ Câu hỏi: đóng bảng People thì phụ đề còn đúng tên không. Thử
 - **Giữ tên đã gán (đạt).** `NameMatcher` chỉ xóa tên khi `SetNames(false)`; hết hàng để đọc (`now` rỗng) không làm mất tên. Test
   `names_given_while_the_panel_was_open_stay_after_it_closes`: tên gán lúc bảng mở còn nguyên cho các đoạn sau, giọng mới lúc bảng
   đóng vẫn là "Người N". Chưa kiểm ở mức app (giao diện khi trạng thái `NoNames`).
-- **Phụ đề trực tiếp của Teams (có tên, chưa vào công thức).** Bật "Language and speech › Show live captions": nhóm `Live Captions`
-  trong cây UI Automation của cửa sổ họp có từng dòng `Text` tên người nói rồi `Text` lời (`fui-ChatMessageCompact__body`), **không
-  phụ thuộc bảng People**. Bản ghi 90 s, bảng đóng, hai khách xen kẽ (kịch bản 2): dòng phụ đề cuối mang đúng tên khách, dựa vào
-  lúc chữ của dòng đó đổi (cửa sổ 1 s) khớp 0,86 (Lan) và 0,89 (Minh) ở độ trễ 2–2,5 s so với lúc nói (Teams nhận dạng rồi mới hiện;
-  dòng còn đổi thêm 1–3 s sau khi khách tắt tiếng). Cần công thức mới (dòng phụ đề cuối làm tín hiệu "đang nói"; hiện chỉ có
-  `label`, `presence`, `flicker`, `deviation` theo ô), `delay_ms` ~2 400, và người dùng phải bật phụ đề của Teams (Teams gửi âm thanh lên
-  dịch vụ của Microsoft để làm phụ đề). Chưa kiểm tiếng Việt và cuộc họp nhiều người nói chồng.
+- **Phụ đề trực tiếp của Teams (đạt, chưa nối vào bộ đọc chạy thật).** Bật "Language and speech › Show live captions": nhóm `Live
+  Captions` trong cây UI Automation của cửa sổ họp có từng dòng `Text` tên người nói rồi `Text` lời (`fui-ChatMessageCompact__body`),
+  **không phụ thuộc bảng People**. Đã cài tín hiệu `caption` (`SignalKind::Caption`): ô là một dòng phụ đề (`name_from: text`), trạng
+  thái là băm các chữ tĩnh của ô (chỉ băm, lời họp không ra khỏi bộ đọc), chỉ dòng cuối tính, "đang nói" khi chữ của nó đổi hay dòng
+  mới xuất hiện trong 1 s. Công thức ứng viên `teams-windows-captions.recipes.json` (`delay_ms` 2 400: Teams nhận dạng rồi mới hiện chữ).
+  Test `teams_windows_live_captions_follow_who_speaks` qua `SpeakingTracker` thật:
+
+  | Bản ghi | Khớp Lan | Khớp Minh |
+  |---|---|---|
+  | `teams-windows-captions-closed` (85 s, bảng đóng; độ trễ 2,4 s chọn trên bản này) | 0,863 | 0,881 |
+  | `teams-windows-captions-open` (34 s, bản ghi khác; kiểm ngoài mẫu) | 0,915 | 0,954 |
+
+  Còn thiếu để chạy thật: (1) một công thức mỗi app/hệ điều hành, nên chưa dùng được cùng lúc với công thức bảng People (hai độ trễ
+  0,9 s và 2,4 s, hai bộ neo); cần nhiều biến thể cho một app (`Sample`/`TileSample`, bộ theo dõi và độ trễ theo biến thể, `LiveReader`
+  Windows). (2) Người dùng phải bật phụ đề của Teams (Teams gửi âm thanh lên dịch vụ của Microsoft để làm phụ đề). (3) Lớp
+  `fui-ChatMessageCompact__body` có thể trùng với khung chat của họp (chưa kiểm khi chat mở). (4) Chưa kiểm tiếng Việt và nói chồng.
 - **Chỉ trạng thái mic (không bật).** Nhãn ô video vẫn có `muted` khi bảng đóng (2 ô khách ở 360/360 ảnh), nhưng `NameMatcher` cần chỉ báo
   làm bằng chứng (QĐ 24); bản ghi của ta bật mic đúng lúc nói nên không đo được độ sai của "mic mở nhưng im".
 - **Bảng People thu nhỏ/kéo sang bên:** không cần code, chưa thử.

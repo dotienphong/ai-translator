@@ -190,6 +190,9 @@ pub enum SignalKind {
     Flicker,
     /// Tín hiệu 2: phần tử neo khác trạng thái thường gặp nhất của chính nó.
     Deviation,
+    /// Tín hiệu 2 (Teams Windows, phụ đề trực tiếp): ô là một dòng phụ đề (tên người nói rồi lời); chỉ dòng cuối cùng tính, "đang nói"
+    /// khi chữ của nó mới đổi (hay dòng mới xuất hiện). Không cần phần tử neo: trạng thái là băm các chữ tĩnh trong ô.
+    Caption,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -449,6 +452,7 @@ fn compile_app(r: RawApp) -> Result<AppRecipe, String> {
                 }
                 None
             }
+            (SignalKind::Caption, _) => None,
             (_, None) => return Err("tín hiệu hành vi cần phần tử neo".into()),
             (_, Some(a)) => {
                 if a.role.is_none() && a.subrole.is_none() && a.class_token.is_none() && a.id_prefix.is_none() {

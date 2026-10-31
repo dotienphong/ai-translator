@@ -11,6 +11,8 @@ use super::{ParticipantNow, Spans, Via};
 use crate::reader::extract::TileSample;
 
 pub const FLICKER_WINDOW_MS: i64 = 1_000;
+/// Tín hiệu `caption`: dòng phụ đề cuối đang nói khi chữ của nó đổi (hay nó mới xuất hiện) trong chừng này gần nhất.
+pub const CAPTION_WINDOW_MS: i64 = 1_000;
 pub const FLICKER_CHANGES: usize = 2;
 /// Nền của tín hiệu "khác trạng thái thường gặp": chừng này lượt máy im gần nhất.
 pub const DEVIATION_BASELINE: usize = 40;
@@ -45,7 +47,11 @@ impl History {
         }
         self.last = Some(state);
         self.updated_ms = at_ms;
-        while self.changes.front().is_some_and(|&t| t <= at_ms - FLICKER_WINDOW_MS) {
+        while self
+            .changes
+            .front()
+            .is_some_and(|&t| t <= at_ms - FLICKER_WINDOW_MS.max(CAPTION_WINDOW_MS))
+        {
             self.changes.pop_front();
         }
         if quiet {
@@ -57,7 +63,16 @@ impl History {
     }
 
     fn flickering(&self) -> bool {
-        self.changes.len() >= FLICKER_CHANGES
+        self.changes
+            .iter()
+            .filter(|&&t| t > self.updated_ms - FLICKER_WINDOW_MS)
+            .count()
+            >= FLICKER_CHANGES
+    }
+
+    /// Có đổi trạng thái trong [`CAPTION_WINDOW_MS`] gần nhất.
+    fn changed_recently(&self) -> bool {
+        self.changes.iter().any(|&t| t > self.updated_ms - CAPTION_WINDOW_MS)
     }
 
     fn deviating(&self) -> bool {
@@ -78,6 +93,8 @@ impl History {
 }
 
 pub struct SpeakingTracker {
+    /// Đã nhận ít nhất một lượt đọc (ô phụ đề xuất hiện sau lượt đầu mới tính là "dòng mới").
+    started: bool,
     kinds: Vec<SignalKind>,
     /// Khóa: (tên, `slot` của ô, chỉ số tín hiệu).
     history: BTreeMap<(String, u32, usize), History>,
@@ -87,6 +104,7 @@ impl SpeakingTracker {
     /// `kinds`: loại của từng tín hiệu trong công thức, theo thứ tự (`TileSample::anchors` cùng thứ tự).
     pub fn new(kinds: Vec<SignalKind>) -> Self {
         Self {
+            started: false,
             kinds,
             history: BTreeMap::new(),
         }
@@ -102,13 +120,26 @@ impl SpeakingTracker {
         quiet: bool,
     ) -> Vec<ParticipantNow> {
         let mut now: BTreeMap<String, ParticipantNow> = BTreeMap::new();
-        for tile in tiles {
+        let first_push = !self.started;
+        self.started = true;
+        for (index, tile) in tiles.iter().enumerate() {
             let mut by_signal = false;
             for (i, kind) in self.kinds.iter().enumerate() {
                 let state = tile.anchors.get(i).copied().flatten();
                 let on = match kind {
                     SignalKind::Label => tile.label_speaking,
                     SignalKind::Presence => state.is_some(),
+                    SignalKind::Caption => {
+                        // Chỉ dòng phụ đề cuối (mới nhất) tính; dòng mới xuất hiện sau lượt đầu là một thay đổi.
+                        let key = (tile.name.clone(), tile.slot, i);
+                        let fresh = !self.history.contains_key(&key);
+                        let h = self.history.entry(key).or_default();
+                        h.push(at_ms, state, quiet);
+                        if fresh && !first_push {
+                            h.changes.push_back(at_ms);
+                        }
+                        index + 1 == tiles.len() && h.changed_recently()
+                    }
                     SignalKind::Flicker | SignalKind::Deviation => {
                         let h = self.history.entry((tile.name.clone(), tile.slot, i)).or_default();
                         h.push(at_ms, state, quiet);
@@ -185,7 +216,7 @@ mod tests {
     /// Như `bench/2026-10-26-nguoi-noi/tro-nang/o_dang_noi.py`: lưới 0,25 s; ở mỗi điểm đẩy ảnh chụp gần nhất vào bộ theo dõi (như bộ
     /// đọc thật đọc đều 250 ms, QĐ 23), sự thật dời 0,6 s; tính khớp từ giây thứ 1 tới ảnh chụp cuối. Trả phần điểm khớp của người
     /// tham dự `name` so với người nói thật `who`.
-    fn agreement(r: &Recipes, os: Os, file: &str, app: MeetingApp, name: &str, who: &str) -> f64 {
+    fn agreement(r: &Recipes, os: Os, file: &str, app: MeetingApp, name: &str, who: &str, shift: f64) -> f64 {
         let app = r.app(os, app).unwrap();
         let snaps = fixture(file);
         let truth = truth(file);
@@ -199,7 +230,7 @@ mod tests {
             let now = tracker.push((t * 1000.0) as i64, &tiles, &BTreeMap::new(), !anyone_on(&truth, t));
             if t >= snaps[0].t + 1.0 {
                 let speaking = now.iter().any(|p| p.name == name && p.speaking > 0.5);
-                hits += usize::from(speaking == on_at(&truth, who, t - 0.6));
+                hits += usize::from(speaking == on_at(&truth, who, t - shift));
                 n += 1;
             }
             t += 0.25;
@@ -212,7 +243,7 @@ mod tests {
     fn teams_frames_follow_who_speaks() {
         for file in ["teams-macos-people-closed.jsonl", "teams-macos-people-open.jsonl"] {
             for who in ["Lan", "Minh"] {
-                let a = agreement(&recipes(), Os::Macos, file, MeetingApp::Teams, who, who);
+                let a = agreement(&recipes(), Os::Macos, file, MeetingApp::Teams, who, who, 0.6);
                 eprintln!("{file} {who}: {a:.3}");
                 assert!(a >= 0.90, "{file} {who}: {a:.3}");
             }
@@ -241,9 +272,28 @@ mod tests {
             assert!(share >= 0.95, "{file}: {share:.3}");
             for who in ["Lan", "Minh"] {
                 let name = format!("Khach {who}");
-                let a = agreement(&r, Os::Windows, file, MeetingApp::Teams, &name, who);
+                let a = agreement(&r, Os::Windows, file, MeetingApp::Teams, &name, who, 0.6);
                 eprintln!("{file} {who}: {a:.3}");
                 assert!(a >= 0.85, "{file} {who}: {a:.3}");
+            }
+        }
+    }
+
+    /// Teams Windows, phụ đề trực tiếp (kế hoạch 05b): bảng People đóng. Ô là dòng phụ đề (tên rồi lời), dòng cuối đang đổi chữ là người
+    /// đang nói; độ trễ 2,4 s chọn trên `captions-closed` (90 s), kiểm trên `captions-open` (34 s, bảng mở, bản ghi khác).
+    #[test]
+    fn teams_windows_live_captions_follow_who_speaks() {
+        let r = fixture_recipes("teams-windows-captions.recipes.json");
+        let shift = f64::from(r.app(Os::Windows, MeetingApp::Teams).unwrap().delay_ms) / 1000.0;
+        for file in [
+            "teams-windows-captions-closed.jsonl",
+            "teams-windows-captions-open.jsonl",
+        ] {
+            for who in ["Lan", "Minh"] {
+                let name = format!("Khach {who}");
+                let a = agreement(&r, Os::Windows, file, MeetingApp::Teams, &name, who, shift);
+                eprintln!("{file} {who}: {a:.3}");
+                assert!(a >= 0.80, "{file} {who}: {a:.3}");
             }
         }
     }
@@ -261,6 +311,7 @@ mod tests {
             MeetingApp::MeetChrome,
             "Hoa Phạm",
             "nguoinoi",
+            0.6,
         );
         eprintln!("meet: {a:.3}");
         assert!(a >= 0.80, "{a:.3}");
