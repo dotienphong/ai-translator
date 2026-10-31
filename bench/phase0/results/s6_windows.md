@@ -54,3 +54,22 @@ Cùng máy, gói Nhẹ (small + Q4_K_M), session en, ja, mixed, mỗi cấu hìn
 - Khi hai engine cùng dùng iGPU, log `llama-server` của app ghi những lần xử lý prompt 5–8 token mất 1,6–2,6 s (bình thường ~100 ms): nghi tranh chấp GPU với `asr-worker`.
 - Mỗi cấu hình chỉ một lượt. Độ lặp lại: lượt cả hai Vulkan hôm nay so với lượt hôm qua (`igpu-i5-1345u-thu-nhe-*`) lệch p50 chỉ 0–0,1 s (en 2,49 → 2,39; ja 2,28 → 2,28; mixed 2,06 → 2,06), nhỏ hơn mức cải thiện 0,2–0,55 s của Llama CPU. Vẫn chưa phải kết luận thống kê.
 - Áp dụng vào app: máy Windows chỉ có GPU tích hợp (không có card rời) thì `llama-server` chạy `-ngl 0` (`src-tauri/src/sidecar/mod.rs`, `probe::only_integrated_gpu`). Card rời và macOS giữ nguyên.
+
+## Số luồng CPU khi có tải nền (2026-10-31)
+
+Đo trên đúng máy i5-1345U này, sau khi người dùng báo chữ dịch hiện giật (load từng chữ) lúc mở YouTube trên Windows mà không bị trên macOS M4. Đo trực tiếp `llama-server` (`-ngl 0`, model `Hy-MT2-1.8B-Q4_K_M`, không qua app), **có tải nền thật**: một tab Chrome đang phát video (khác hẳn các đo ở trên, lúc máy rảnh hoàn toàn). Mỗi cấu hình 12 câu dịch ngắn, đo 2 lượt theo hai thứ tự ngược nhau (tăng dần 2→10 rồi giảm dần 8→4) để kiểm tra lệch do tải nền đổi theo thời gian (video đổi cảnh, Chrome dùng CPU dao động 17–51% một nhân).
+
+| `-t` | Lượt 1: tổng engine / sinh chữ | Lượt 2: tổng engine / sinh chữ |
+|---|---|---|
+| 2 | 1 738 ms / 25,9 tok/s | — |
+| 3 | 1 683 ms / 29,6 tok/s | — |
+| 4 | 1 678 ms / 33,5 tok/s | 1 551 ms / 26,5 tok/s |
+| **5** | **1 570 ms / 35,8 tok/s** | **1 556 ms / 27,1 tok/s** |
+| 6 | 1 626 ms / 37,0 tok/s | 1 589 ms / 27,1 tok/s |
+| 8 | 1 571 ms / 31,6 tok/s (dao động) | 2 176 ms / 23,5 tok/s (một câu mất 5,9 s) |
+| 10 (mặc định `llama-server`, không truyền `-t`) | 1 852 ms / 24,5 tok/s (có lượt 13,6 tok/s) | — |
+
+- Số tuyệt đối đổi nhiều giữa hai lượt (tải nền của video không kiểm soát được), nhưng **thứ tự xếp hạng giữ nguyên**: vùng 4–6 luồng luôn tốt nhất và ổn định nhất; 8 luồng bắt đầu phập phù (nghi tràn không đều vào lõi E, 8 lõi E bắt đầu từ luồng thứ 4); 10 luồng (mặc định) luôn tệ và dao động nhiều nhất.
+- 5 luồng không bao giờ là lựa chọn tệ nhất ở cả hai lượt (lượt 1: nhì sau 6; lượt 2: nhất), nên chọn `-t 5` thay cho mặc định 10 luồng, dù chưa hẳn là số tối ưu tuyệt đối trong vùng 4–6.
+- Mỗi cấu hình chỉ đo 2 lượt (12 câu mỗi lượt): chưa phải kết luận thống kê, chỉ đủ để chọn một số an toàn hơn 10 cho đúng máy này; chưa đo máy iGPU khác.
+- Áp dụng vào app: nhánh `llama_cpu` (`src-tauri/src/sidecar/mod.rs`, hàm `llama_cpu_extra_args`) thêm `-t 5` cạnh `-ngl 0`.

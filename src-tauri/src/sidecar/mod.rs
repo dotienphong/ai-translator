@@ -89,6 +89,24 @@ pub fn give_up_code(cause: GiveUpCause) -> &'static str {
     }
 }
 
+/// Tham số thêm cho `llama-server` khi máy chỉ có GPU tích hợp (`llama_cpu`, từ `probe::only_integrated_gpu`): `-ngl 0`
+/// (đứng sau `-ngl auto` mà `llama::command` đã truyền; llama.cpp lấy giá trị cuối) và `-t 5` để giới hạn số luồng.
+///
+/// Mặc định của `llama-server` dùng hết số luồng phần cứng báo (10 trên i5-1345U: 2 lõi P + 8 lõi E). Đo lại
+/// 2026-10-31 trên đúng máy đó, có tải nền thật (phát video trong lúc dịch, giống lúc người dùng vừa xem YouTube vừa
+/// dịch), không phải máy rảnh như lúc đo `s6_windows.md`: 10 luồng chậm nhất và dao động nhiều nhất (tổng mỗi câu
+/// trung bình 1,85 s, có lượt tụt xuống 13,6 tok/s sinh chữ); 4–6 luồng là vùng tốt nhất và ổn định ở cả hai lượt đo
+/// theo hai thứ tự ngược nhau; 8 luồng không ổn định (có lượt mất 5,9 s cho một câu, nghi tràn không đều vào lõi E).
+/// Chọn 5 vì không bao giờ là lựa chọn tệ nhất ở cả hai lượt. Xem `bench/phase0/results/s6_windows.md` mục "Số luồng
+/// CPU khi có tải nền (2026-10-31)".
+fn llama_cpu_extra_args(llama_cpu: bool) -> Vec<String> {
+    if llama_cpu {
+        vec!["-ngl".into(), "0".into(), "-t".into(), "5".into()]
+    } else {
+        Vec::new()
+    }
+}
+
 /// Máy đủ sức cho chế độ dịch trong lúc người nói chưa dừng không, lúc bắt đầu phiên (spec 2026-10-10 §5, "Tắt ngay từ
 /// đầu phiên"; QĐ1 của kế hoạch 03):
 /// - `asr-worker` phải chạy GPU: `asr_backend` là thiết bị thật của worker đang chạy (`SidecarManager::asr_backend`, đặt ở
@@ -262,12 +280,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
             exe: files.llama.clone(),
             model: models.mt.clone(),
             log: logs.join("llama-server.log"),
-            // Đứng sau `-ngl auto` mà `llama::command` đã truyền; llama.cpp lấy giá trị cuối.
-            extra_args: if llama_cpu {
-                vec!["-ngl".into(), "0".into()]
-            } else {
-                Vec::new()
-            },
+            extra_args: llama_cpu_extra_args(llama_cpu),
             first_run: false,
             env: Vec::new(),
         },
@@ -309,6 +322,14 @@ mod tests {
         assert_eq!(give_up_code(GiveUpCause::Tampered), errors::SIDECAR_TAMPERED);
         assert_eq!(give_up_code(GiveUpCause::ModelLoad), errors::MODEL_BROKEN);
         assert_eq!(give_up_code(GiveUpCause::Failures), errors::SIDECAR_FAILED);
+    }
+
+    /// Máy chỉ có GPU tích hợp thì `llama-server` chạy CPU và giới hạn 5 luồng (đo 2026-10-31, xem comment ở
+    /// `llama_cpu_extra_args`); máy khác (card rời hay macOS) không thêm tham số, giữ `-ngl auto` của `llama::command`.
+    #[test]
+    fn llama_cpu_extra_args_caps_threads_on_integrated_only_machines() {
+        assert_eq!(llama_cpu_extra_args(true), vec!["-ngl", "0", "-t", "5"]);
+        assert_eq!(llama_cpu_extra_args(false), Vec::<String>::new());
     }
 
     /// QĐ1 của kế hoạch 03 (spec 2026-10-10 §5): dịch trong lúc người nói chưa dừng chỉ khi `asr-worker` chạy GPU; trên
