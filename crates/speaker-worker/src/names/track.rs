@@ -225,7 +225,14 @@ mod tests {
         let r = fixture_recipes("teams-windows-people.recipes.json");
         for who in ["Lan", "Minh"] {
             let name = format!("Khach {who}");
-            let a = agreement(&r, Os::Windows, "teams-windows-people-open.jsonl", MeetingApp::Teams, &name, who);
+            let a = agreement(
+                &r,
+                Os::Windows,
+                "teams-windows-people-open.jsonl",
+                MeetingApp::Teams,
+                &name,
+                who,
+            );
             eprintln!("teams windows people-open {who}: {a:.3}");
             assert!(a >= 0.85, "{who}: {a:.3}");
         }
