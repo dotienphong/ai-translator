@@ -25,6 +25,16 @@ def line(lop, value="", dom=""):
     return f"3|AXGroup||||{value}|||{dom}|{lop}"
 
 
+class KeepAtomicTest(unittest.TestCase):
+    def test_roster_avatar_keeps_atomic_classes_others_lose_them(self):
+        anon = Anonymizer({})
+        avatar = fields(anon.line(fields("20|Group|group||||roster-avatar-img-8:guest:2fcb851b-a78b-4e34-a9f1-0982666e8977||| fui-StyledText ___jc9uze0 f71fsbu".replace("| fui", "|fui"))))
+        other = fields(anon.line(fields("19|Group|group|||||||fui-Flex ___67a2ct0 f1h004rz")))
+        self.assertEqual(avatar[9], "fui-StyledText ___jc9uze0 f71fsbu")
+        self.assertTrue(avatar[6].startswith("roster-avatar-img-anon-"))
+        self.assertEqual(other[9], "fui-Flex")
+
+
 class BkgTest(unittest.TestCase):
     def test_bkg_classes_become_stable_fake_ids_everywhere(self):
         anon = Anonymizer({})

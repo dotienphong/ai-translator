@@ -656,7 +656,7 @@ pub(crate) mod tests {
     }
 
     /// Công thức trong thư mục fixture (không có trong bản build sẵn); mọi mục phải hợp lệ.
-    fn fixture_recipes(file: &str) -> Recipes {
+    pub(crate) fn fixture_recipes(file: &str) -> Recipes {
         let r = parse(&std::fs::read_to_string(fixture_path(file)).unwrap()).unwrap();
         assert!(r.dropped.is_empty(), "{file}: {:?}", r.dropped);
         r

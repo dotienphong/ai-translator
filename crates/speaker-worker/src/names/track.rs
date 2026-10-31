@@ -162,7 +162,7 @@ impl SpeakingTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::reader::extract::tests::{meet_recipes, recipes, tiles_of, zoom_recipes};
+    use crate::reader::extract::tests::{fixture_recipes, meet_recipes, recipes, tiles_of, zoom_recipes};
     use crate::reader::tree::tests::{fixture, truth};
     use speaker_recipe::{MeetingApp, Os, Recipes};
     use std::collections::BTreeSet;
@@ -185,8 +185,8 @@ mod tests {
     /// Như `bench/2026-10-26-nguoi-noi/tro-nang/o_dang_noi.py`: lưới 0,25 s; ở mỗi điểm đẩy ảnh chụp gần nhất vào bộ theo dõi (như bộ
     /// đọc thật đọc đều 250 ms, QĐ 23), sự thật dời 0,6 s; tính khớp từ giây thứ 1 tới ảnh chụp cuối. Trả phần điểm khớp của người
     /// tham dự `name` so với người nói thật `who`.
-    fn agreement(r: &Recipes, file: &str, app: MeetingApp, name: &str, who: &str) -> f64 {
-        let app = r.app(Os::Macos, app).unwrap();
+    fn agreement(r: &Recipes, os: Os, file: &str, app: MeetingApp, name: &str, who: &str) -> f64 {
+        let app = r.app(os, app).unwrap();
         let snaps = fixture(file);
         let truth = truth(file);
         let mut tracker = SpeakingTracker::new(app.speaking.iter().map(|s| s.kind).collect());
@@ -212,10 +212,22 @@ mod tests {
     fn teams_frames_follow_who_speaks() {
         for file in ["teams-macos-people-closed.jsonl", "teams-macos-people-open.jsonl"] {
             for who in ["Lan", "Minh"] {
-                let a = agreement(&recipes(), file, MeetingApp::Teams, who, who);
+                let a = agreement(&recipes(), Os::Macos, file, MeetingApp::Teams, who, who);
                 eprintln!("{file} {who}: {a:.3}");
                 assert!(a >= 0.90, "{file} {who}: {a:.3}");
             }
+        }
+    }
+
+    /// Kế hoạch 05b: Teams Windows chỉ có chỉ báo "đang nói" ở bảng People (lớp của ảnh đại diện), nên "ô" là hàng của bảng.
+    #[test]
+    fn teams_windows_people_panel_follows_who_speaks() {
+        let r = fixture_recipes("teams-windows-people.recipes.json");
+        for who in ["Lan", "Minh"] {
+            let name = format!("Khach {who}");
+            let a = agreement(&r, Os::Windows, "teams-windows-people-open.jsonl", MeetingApp::Teams, &name, who);
+            eprintln!("teams windows people-open {who}: {a:.3}");
+            assert!(a >= 0.85, "{who}: {a:.3}");
         }
     }
 
@@ -227,6 +239,7 @@ mod tests {
     fn meet_level_bar_and_highlight_follow_the_voice() {
         let a = agreement(
             &meet_recipes(),
+            Os::Macos,
             "meet-chrome-macos.jsonl",
             MeetingApp::MeetChrome,
             "Hoa Phạm",

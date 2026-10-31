@@ -72,7 +72,14 @@ def fields(line):
     return f if len(f) == 10 else None
 
 
+# Ảnh đại diện trong bảng People của Teams Windows: lớp nguyên tử (`___jc9uze0 f71fsbu` ↔ `___ansmq00 fhuq1gn`) là CHÍNH chỉ báo
+# "đang nói" (kế hoạch 05b Task 11), nên giữ chúng ở các dòng này; lớp nguyên tử là hash kiểu của Griffel, không mang định danh.
+KEEP_ATOMIC_IDENT = "roster-avatar-img-"
+
+
 def strip_classes(f):
+    if f[6].startswith(KEEP_ATOMIC_IDENT):
+        return
     f[9] = " ".join(c for c in f[9].split() if not ATOMIC.match(c))
 
 
