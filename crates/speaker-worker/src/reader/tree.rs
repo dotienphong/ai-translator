@@ -195,6 +195,8 @@ pub(crate) mod tests {
             "teams-macos-people-open.jsonl",
             "meet-chrome-macos.jsonl",
             "zoom-macos-synthetic.jsonl",
+            "teams-windows-people-open.jsonl",
+            "teams-windows-people-open-2.jsonl",
         ] {
             let snaps = fixture(name);
             assert!(snaps.len() >= 5, "{name}: {} ảnh chụp", snaps.len());

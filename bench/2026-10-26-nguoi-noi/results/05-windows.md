@@ -81,6 +81,28 @@ danh hay chép fixture vào repo (Step 5–9 không làm). Hướng có thể (c
    không gán được.
 3. Giữ Teams Windows ngoài công thức: phụ đề hiện "Người N", người dùng đổi tên tay.
 
+### Task 11, hướng 1: hàng của bảng People làm "ô" (2026-10-31)
+
+Công thức `scripts/speaker-recipes/fixtures/teams-windows-people.recipes.json` (ứng viên, chưa vào `recipes.json`): ô là `TreeItem`
+của bảng People với nhãn `<Tên>[ (Unverified)], <Vai trò>, Muted|Unmuted` (`Organizer`, `Meeting guest`; hàng tiêu đề
+"In this meeting, N total" không khớp), neo `descendant` `id_prefix: roster-avatar-img-`, tín hiệu `deviation`, `delay_ms` 900.
+Kiểm bằng hai bản ghi bảng mở, kịch bản bật/tắt mic khác nhau (kịch bản 1: `run_schedule.py` 120 s; kịch bản 2: 81 s, lượt dài,
+lượt ngắn, đổi lượt, nói chồng, câu 1,5 s), tên giả, `names::track::tests::teams_windows_people_panel_follows_who_speaks`:
+
+| Bản ghi | Đủ ba người (a) | Khớp Lan (b) | Khớp Minh (b) |
+|---|---|---|---|
+| `teams-windows-people-open` (60 s đầu) | 1,000 | 0,979 | 0,992 |
+| `teams-windows-people-open-2` (85 s) | 1,000 | 0,917 | 0,929 |
+
+(c) hàng tiêu đề không khớp nên không đọc chữ ngoài phạm vi; `make_fixture.py` giữ lớp nguyên tử của `roster-avatar-img-*` vì chính
+chúng là chỉ báo (trước khi giữ, độ khớp 0,68). Đạt (a), (b) cho công thức này.
+
+Giới hạn: (1) chỉ chạy khi người dùng mở bảng People; đóng bảng thì không có ô nào, phụ đề là "Người N". (2) Hàng của chủ phòng
+không có `roster-avatar-img-*` trong cây (chưa có tín hiệu cho chủ phòng đang nói); hàng không có dấu nhận chính người dùng
+(`is_self` luôn sai). (3) Chỉ kiểm nhãn tiếng Anh. (4) Cả hai kịch bản bật mic khi nói, nên bản ghi không phân biệt "nói" với "mic
+mở"; việc đó dựa vào thí nghiệm phân biệt ở trên (Lan mở mic suốt, lớp đổi theo nhịp nói, tương quan ±1,00). (5) Một Teams, một
+máy, hai khách tự động cùng máy.
+
 ## Task 12: chi phí đọc (2026-10-30)
 
 Cuộc họp mở, ba người, không ai nói, bảng People đóng, máy không dùng. Mỗi mức 60 s, hai vòng. CPU của Teams = `ms-teams` cộng

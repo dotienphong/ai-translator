@@ -1019,6 +1019,27 @@ pub(crate) mod tests {
         }
     }
 
+    /// Teams Windows (kế hoạch 05b Task 11): tên ô của bảng People trong fixture là tên giả; hàng của bảng không có dấu nhận
+    /// chính người dùng (nhãn chỉ có vai trò "Organizer"), nên không ô nào là `is_self`.
+    #[test]
+    fn windows_people_fixture_tile_names_are_the_made_up_ones() {
+        let r = fixture_recipes("teams-windows-people.recipes.json");
+        let app = r.app(Os::Windows, MeetingApp::Teams).unwrap();
+        for file in ["teams-windows-people-open.jsonl", "teams-windows-people-open-2.jsonl"] {
+            for snap in fixture(file) {
+                let tiles = tiles_of(&snap, app).1;
+                assert_eq!(tiles.len(), 3, "{file}: ba hàng người, không tính hàng tiêu đề");
+                for t in tiles {
+                    assert!(
+                        FAKE_NAMES.contains(&t.name.as_str()) || t.name.starts_with("Khach "),
+                        "{file}: tên ô không phải tên giả"
+                    );
+                    assert!(!t.is_self, "{file}");
+                }
+            }
+        }
+    }
+
     /// Spec §6.2, QĐ 13 (rà soát A-Q3, B-Q2): một lượt (duyệt cửa sổ, lấy mẫu mọi ô, ứng viên tự hiệu chỉnh) không quá
     /// [`MAX_ELEMENTS`] lệnh đọc trên mọi ảnh chụp của mọi fixture, và mọi lệnh đều đi qua ngân sách. In số lệnh tệ nhất (Task 18 chép
     /// vào `results/04-do.md`).

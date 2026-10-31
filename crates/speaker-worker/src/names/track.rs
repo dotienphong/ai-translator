@@ -219,22 +219,32 @@ mod tests {
         }
     }
 
-    /// Kế hoạch 05b: Teams Windows chỉ có chỉ báo "đang nói" ở bảng People (lớp của ảnh đại diện), nên "ô" là hàng của bảng.
+    /// Kế hoạch 05b Task 11: Teams Windows chỉ có chỉ báo "đang nói" ở bảng People (lớp của ảnh đại diện), nên "ô" là hàng của
+    /// bảng. Hai bản ghi bảng mở (kịch bản khác nhau): (a) đủ ba người ở ≥ 95% ảnh chụp; (b) khớp sự thật từng khách ≥ 0,85.
     #[test]
     fn teams_windows_people_panel_follows_who_speaks() {
         let r = fixture_recipes("teams-windows-people.recipes.json");
-        for who in ["Lan", "Minh"] {
-            let name = format!("Khach {who}");
-            let a = agreement(
-                &r,
-                Os::Windows,
-                "teams-windows-people-open.jsonl",
-                MeetingApp::Teams,
-                &name,
-                who,
-            );
-            eprintln!("teams windows people-open {who}: {a:.3}");
-            assert!(a >= 0.85, "{who}: {a:.3}");
+        for file in ["teams-windows-people-open.jsonl", "teams-windows-people-open-2.jsonl"] {
+            let app = r.app(Os::Windows, MeetingApp::Teams).unwrap();
+            let snaps = fixture(file);
+            let full = snaps
+                .iter()
+                .filter(|s| {
+                    let names: BTreeSet<String> = tiles_of(s, app).1.into_iter().map(|t| t.name).collect();
+                    ["Hoa Phạm", "Khach Lan", "Khach Minh"]
+                        .iter()
+                        .all(|n| names.contains(*n))
+                })
+                .count();
+            let share = full as f64 / snaps.len() as f64;
+            eprintln!("{file} đủ ba người: {share:.3}");
+            assert!(share >= 0.95, "{file}: {share:.3}");
+            for who in ["Lan", "Minh"] {
+                let name = format!("Khach {who}");
+                let a = agreement(&r, Os::Windows, file, MeetingApp::Teams, &name, who);
+                eprintln!("{file} {who}: {a:.3}");
+                assert!(a >= 0.85, "{file} {who}: {a:.3}");
+            }
         }
     }
 
