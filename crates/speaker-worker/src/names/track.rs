@@ -298,6 +298,61 @@ mod tests {
         }
     }
 
+    /// Nhiều nguồn một app (Windows): mỗi nguồn có bộ theo dõi và độ trễ riêng; ở thời điểm nói τ, người đó đang nói nếu có nguồn nào
+    /// báo lúc τ + độ trễ của nguồn (như bộ ghép tên dời bằng chứng của từng nguồn theo độ trễ riêng rồi cộng lại).
+    fn combined_agreement(r: &Recipes, file: &str, name: &str, who: &str) -> f64 {
+        let variants = r.variants(Os::Windows, MeetingApp::Teams);
+        let (snaps, truth) = (fixture(file), truth(file));
+        let mut trackers: Vec<SpeakingTracker> = variants
+            .iter()
+            .map(|a| SpeakingTracker::new(a.speaking.iter().map(|s| s.kind).collect()))
+            .collect();
+        let mut series: Vec<Vec<bool>> = vec![Vec::new(); variants.len()];
+        let (t0, end, step) = (snaps[0].t, snaps.last().unwrap().t, 0.25);
+        let mut t = t0;
+        while t < end {
+            let i = snaps.partition_point(|s| s.t <= t) - 1;
+            for (v, app) in variants.iter().enumerate() {
+                let (_, tiles) = tiles_of(&snaps[i], app);
+                let now = trackers[v].push((t * 1000.0) as i64, &tiles, &BTreeMap::new(), !anyone_on(&truth, t));
+                series[v].push(now.iter().any(|p| p.name == name && p.speaking > 0.5));
+            }
+            t += step;
+        }
+        let max_delay = f64::from(variants.iter().map(|a| a.delay_ms).max().unwrap()) / 1000.0;
+        let (mut hits, mut total, mut tau) = (0usize, 0usize, t0 + 1.0);
+        while tau + max_delay < end {
+            let speaking = variants.iter().enumerate().any(|(v, a)| {
+                let k = ((tau + f64::from(a.delay_ms) / 1000.0 - t0) / step).round() as usize;
+                series[v].get(k).copied().unwrap_or(false)
+            });
+            hits += usize::from(speaking == on_at(&truth, who, tau));
+            total += 1;
+            tau += step;
+        }
+        hits as f64 / total as f64
+    }
+
+    /// Teams Windows, hai nguồn một lúc (bảng People và phụ đề): trên mọi bản ghi, dù chỉ một nguồn có (bảng mở, phụ đề tắt; bảng đóng,
+    /// phụ đề bật) hay cả hai (`captions-open`), người nói vẫn khớp.
+    #[test]
+    fn teams_windows_two_sources_together_follow_who_speaks() {
+        let r = fixture_recipes("teams-windows-sources.recipes.json");
+        assert_eq!(r.variants(Os::Windows, MeetingApp::Teams).len(), 2);
+        for file in [
+            "teams-windows-people-open.jsonl",
+            "teams-windows-people-open-2.jsonl",
+            "teams-windows-captions-closed.jsonl",
+            "teams-windows-captions-open.jsonl",
+        ] {
+            for who in ["Lan", "Minh"] {
+                let a = combined_agreement(&r, file, &format!("Khach {who}"), who);
+                eprintln!("{file} {who}: {a:.3}");
+                assert!(a >= 0.85, "{file} {who}: {a:.3}");
+            }
+        }
+    }
+
     /// Kế hoạch 01: ô của người nói trong cửa sổ của chính nó khớp 69–80% với từng tín hiệu (thanh âm lượng, lớp sáng); ở đây gộp
     /// hai tín hiệu, lịch sử theo từng ô rồi gộp theo tên (QĐ 23). Người rà đo cách này (theo ô, 250 ms): 0,890. Không có đường lùi
     /// hạ ngưỡng: đỏ thì dừng, báo. **Số này đo ô của tài khoản đang nói trong chính cửa sổ của nó** (khi dùng thật là ô của chính
@@ -376,6 +431,7 @@ mod tests {
             candidates,
             shapes: vec![],
             slot,
+            variant: 0,
         }
     }
 
@@ -504,6 +560,7 @@ mod tests {
             candidates: vec![],
             shapes: vec![],
             slot: 9_999,
+            variant: 0,
         };
         let tiles: Vec<TileSample> = std::iter::once(me)
             .chain((0..32u32).map(|i| TileSample {
@@ -515,6 +572,7 @@ mod tests {
                 candidates: (0..16u64).map(|k| (k, u64::from(i) + k)).collect(),
                 shapes: vec![],
                 slot: i,
+                variant: 0,
             }))
             .collect();
         let mut c = Calibrator::default();

@@ -23,6 +23,8 @@ pub const BUILTIN_JSON: &str = include_str!("../../../scripts/speaker-recipes/re
 pub const SCHEMA: u32 = 1;
 pub const MAX_PATTERN_CHARS: usize = 256;
 pub const MAX_APPS: usize = 16;
+/// Số nguồn tối đa (mục công thức) cho một app trên Windows.
+pub const MAX_VARIANTS: usize = 3;
 pub const MAX_SIGNALS: usize = 8;
 pub const MAX_PATTERNS: usize = 16;
 pub const MAX_DELAY_MS: u32 = 5_000;
@@ -260,6 +262,11 @@ impl Recipes {
         self.apps.iter().find(|a| a.os == os && a.app == app)
     }
 
+    /// Các nguồn của một app theo thứ tự trong file (Windows có thể có nhiều; macOS tối đa một). `app()` là nguồn đầu.
+    pub fn variants(&self, os: Os, app: MeetingApp) -> Vec<&AppRecipe> {
+        self.apps.iter().filter(|a| a.os == os && a.app == app).collect()
+    }
+
     pub fn has_os(&self, os: Os) -> bool {
         self.apps.iter().any(|a| a.os == os)
     }
@@ -373,7 +380,14 @@ pub fn parse(json: &str) -> Result<Recipes, RecipeError> {
             .map_err(|e| format!("sai dạng ({e})"))
             .and_then(compile_app);
         match compiled {
-            Ok(a) if apps.iter().any(|b| b.app == a.app && b.os == a.os) => dropped.push(format!("mục {i}: trùng app")),
+            // Windows đọc nhiều nguồn một lúc (bảng người tham dự, phụ đề): tối đa `MAX_VARIANTS` mục cho một app. Bản app cũ chỉ giữ mục
+            // đầu và bỏ các mục sau, nên mục đầu phải là nguồn nó hiểu. macOS chỉ có một mục mỗi app.
+            Ok(a)
+                if apps.iter().filter(|b| b.app == a.app && b.os == a.os).count()
+                    >= if a.os == Os::Windows { MAX_VARIANTS } else { 1 } =>
+            {
+                dropped.push(format!("mục {i}: trùng app"));
+            }
             Ok(a) => apps.push(a),
             Err(why) => dropped.push(format!("mục {i}: {why}")),
         }
@@ -589,6 +603,17 @@ mod tests {
         let teams_entry = r#"{"app":"teams","os":"macos","window_title":["^M"],"tile":{"role":"AXMenuItem","label":"^(?P<name>.+)$"},"name_from":"label","speaking":[{"kind":"presence","anchor":{"scope":"child","class_token":"x"}}],"delay_ms":900}"#;
         let r = parse(&with_apps(&format!(",{teams_entry}"))).unwrap();
         assert_eq!((r.apps.len(), r.dropped.len()), (1, 1), "mục trùng app bị bỏ");
+    }
+
+    #[test]
+    fn windows_keeps_several_sources_for_one_app_up_to_the_limit() {
+        let entry = r#"{"app":"teams","os":"windows","window_title":["^M"],"tile":{"role":"TreeItem"},"name_from":"text","speaking":[{"kind":"caption"}],"delay_ms":2400}"#;
+        let json =
+            format!(r#"{{"schema":1,"version":1,"min_app_version":"0.3.2","apps":[{entry},{entry},{entry},{entry}]}}"#);
+        let r = parse(&json).unwrap();
+        assert_eq!((r.apps.len(), r.dropped.len()), (MAX_VARIANTS, 1));
+        assert_eq!(r.variants(Os::Windows, MeetingApp::Teams).len(), MAX_VARIANTS);
+        assert!(r.variants(Os::Macos, MeetingApp::Teams).is_empty());
     }
 
     #[test]

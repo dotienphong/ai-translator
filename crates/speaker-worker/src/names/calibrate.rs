@@ -332,6 +332,7 @@ mod tests {
             candidates,
             shapes: vec![],
             slot: 0,
+            variant: 0,
         }
     }
 
@@ -340,6 +341,7 @@ mod tests {
         TileSample {
             is_self: true,
             slot: 1,
+            variant: 0,
             ..tile("Hoa Phạm", vec![])
         }
     }

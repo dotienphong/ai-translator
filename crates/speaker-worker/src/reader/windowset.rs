@@ -88,11 +88,13 @@ pub fn reconcile<N>(
 }
 
 /// Một lượt đọc: mẫu của mọi ô, và có đi tiếp lượt đầy đủ không. Hết ngân sách giữa chừng thì phần đang đọc dở bị bỏ, lượt sau đọc
-/// tiếp (lượt đầy đủ từ phần tử chưa duyệt, lượt nhanh từ ô chưa đọc).
+/// tiếp (lượt đầy đủ từ phần tử chưa duyệt, lượt nhanh từ ô chưa đọc). `variant`: thứ tự của `recipe` trong các nguồn của app; ghi
+/// vào mọi ô lấy mẫu ([`TileSample::variant`]).
 pub fn read_windows<T: Tree>(
     t: &mut T,
     windows: &mut [WindowState<T::Node>],
     recipe: &AppRecipe,
+    variant: u8,
     calibrate: bool,
     budget: &mut Budget,
 ) -> (Vec<TileSample>, bool) {
@@ -116,7 +118,7 @@ pub fn read_windows<T: Tree>(
         let round = sample_round(t, &w.tiles, recipe, w.next, calibrate, budget);
         w.next = round.next;
         w.stale |= round.gone;
-        tiles.extend(round.samples);
+        tiles.extend(round.samples.into_iter().map(|s| TileSample { variant, ..s }));
     }
     (tiles, full)
 }
@@ -175,11 +177,11 @@ mod tests {
         let r = parse(BUILTIN_JSON).unwrap();
         let app = r.app(Os::Macos, MeetingApp::Teams).unwrap();
         let (mut t, mut windows) = teams_window(&fixture("teams-macos-people-closed.jsonl")[0]);
-        let (first, full) = read_windows(&mut t, &mut windows[..1], app, false, &mut Budget::unlimited());
+        let (first, full) = read_windows(&mut t, &mut windows[..1], app, 0, false, &mut Budget::unlimited());
         assert!(full);
         assert_eq!(names(&first), BTreeSet::from(["Hoa Phạm", "Lan", "Minh"]));
         assert_eq!(windows[0].tile_count(), 3);
-        let (second, full) = read_windows(&mut t, &mut windows[..1], app, false, &mut Budget::unlimited());
+        let (second, full) = read_windows(&mut t, &mut windows[..1], app, 0, false, &mut Budget::unlimited());
         assert!(!full, "chưa tới {FULL_EVERY:?}");
         assert_eq!(names(&second), names(&first));
     }
@@ -195,7 +197,7 @@ mod tests {
             passes += 1;
             assert!(passes < 200, "không hội tụ");
             let mut budget = Budget::new(40, Duration::from_secs(5));
-            let (s, _) = read_windows(&mut t, &mut windows[..1], app, false, &mut budget);
+            let (s, _) = read_windows(&mut t, &mut windows[..1], app, 0, false, &mut budget);
             if windows[0].tile_count() == 3 && s.len() == 3 {
                 break s;
             }
@@ -210,12 +212,12 @@ mod tests {
         let r = parse(BUILTIN_JSON).unwrap();
         let app = r.app(Os::Macos, MeetingApp::Teams).unwrap();
         let (mut t, mut windows) = teams_window(&fixture("teams-macos-people-closed.jsonl")[0]);
-        read_windows(&mut t, &mut windows[..1], app, false, &mut Budget::unlimited());
+        read_windows(&mut t, &mut windows[..1], app, 0, false, &mut Budget::unlimited());
         t.dead = true;
-        let (none, _) = read_windows(&mut t, &mut windows[..1], app, false, &mut Budget::unlimited());
+        let (none, _) = read_windows(&mut t, &mut windows[..1], app, 0, false, &mut Budget::unlimited());
         assert!(none.is_empty());
         t.dead = false;
-        let (again, full) = read_windows(&mut t, &mut windows[..1], app, false, &mut Budget::unlimited());
+        let (again, full) = read_windows(&mut t, &mut windows[..1], app, 0, false, &mut Budget::unlimited());
         assert!(full, "duyệt lại cả cửa sổ");
         assert_eq!(names(&again).len(), 3);
     }

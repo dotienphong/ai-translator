@@ -154,6 +154,9 @@ pub struct TileSample {
     pub shapes: Vec<CandidateShape>,
     /// Như [`TileRef::slot`].
     pub slot: u32,
+    /// Nguồn (mục công thức) đã đọc ra ô này, theo thứ tự trong file; `anchors` theo `speaking` của chính nguồn đó. Chỉ Windows có
+    /// nhiều nguồn một app (bảng người tham dự, phụ đề); nơi khác luôn 0.
+    pub variant: u8,
 }
 
 // Debug viết tay: tên không vào log.
@@ -168,6 +171,7 @@ impl fmt::Debug for TileSample {
             .field("candidates", &self.candidates.len())
             .field("shapes", &self.shapes.len())
             .field("slot", &self.slot)
+            .field("variant", &self.variant)
             .finish()
     }
 }
@@ -535,6 +539,7 @@ fn read_tile<T: Tree>(t: &mut T, tile: &TileRef<T::Node>, app: &AppRecipe, calib
         candidates,
         shapes,
         slot: tile.slot,
+        variant: 0,
     })
 }
 
@@ -992,6 +997,7 @@ pub(crate) mod tests {
             candidates: vec![],
             shapes: vec![],
             slot: 0,
+            variant: 0,
         };
         assert!(!format!("{s:?}").contains("Lan"));
     }

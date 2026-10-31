@@ -126,6 +126,24 @@ Câu hỏi: đóng bảng People thì phụ đề còn đúng tên không. Thử
   0,9 s và 2,4 s, hai bộ neo); cần nhiều biến thể cho một app (`Sample`/`TileSample`, bộ theo dõi và độ trễ theo biến thể, `LiveReader`
   Windows). (2) Người dùng phải bật phụ đề của Teams (Teams gửi âm thanh lên dịch vụ của Microsoft để làm phụ đề). (3) Lớp
   `fui-ChatMessageCompact__body` có thể trùng với khung chat của họp (chưa kiểm khi chat mở). (4) Chưa kiểm tiếng Việt và nói chồng.
+- **Hai nguồn chạy cùng lúc (đã nối vào bộ đọc, 2026-10-31).** Công thức cho phép tối đa 3 mục cho một app trên Windows
+  (`Recipes::variants`; bản app cũ giữ mục đầu và bỏ các mục sau, nên bảng People đứng trước, phụ đề đứng sau). `LiveReader` Windows
+  đọc từng nguồn trong cùng một ngân sách; `TileSample::variant` ghi nguồn; `Worker` giữ một `SpeakingTracker` cho mỗi (app, nguồn)
+  và mỗi nguồn dời bằng chứng theo độ trễ riêng (0,9 s và 2,4 s) rồi cộng vào cùng một người (`observe_groups`); độ trễ chờ bằng
+  chứng của đoạn lấy nguồn chậm nhất. File `teams-windows-sources.recipes.json` (ứng viên, chưa vào `recipes.json`).
+  Test `teams_windows_two_sources_together_follow_who_speaks` (trên cả bốn bản ghi, kể cả `captions-open` có cả hai nguồn):
+
+  | Bản ghi | Lan | Minh |
+  |---|---|---|
+  | `people-open` (chỉ bảng) | 0,960 | 0,951 |
+  | `people-open-2` (chỉ bảng) | 0,914 | 0,914 |
+  | `captions-closed` (chỉ phụ đề) | 0,859 | 0,877 |
+  | `captions-open` (cả hai) | 0,950 | 0,967 |
+
+  Test phiên `windows_names_a_voice_from_live_captions_alone`: bảng đóng, chỉ phụ đề, giọng của Lan vẫn có tên. Chạy thật
+  (`uia-record stats` với công thức hai nguồn, bảng People mở và phụ đề bật, 36 s, 144 lượt): 3 ô của bảng cộng 2–7 dòng phụ đề, 0 lệnh
+  quá hạn, lượt nhanh p50 7,3 ms (lớn nhất 14,3), lượt đầy đủ p50 30,1 ms (ngân sách 30).
+
 - **Chỉ trạng thái mic (không bật).** Nhãn ô video vẫn có `muted` khi bảng đóng (2 ô khách ở 360/360 ảnh), nhưng `NameMatcher` cần chỉ báo
   làm bằng chứng (QĐ 24); bản ghi của ta bật mic đúng lúc nói nên không đo được độ sai của "mic mở nhưng im".
 - **Bảng People thu nhỏ/kéo sang bên:** không cần code, chưa thử.

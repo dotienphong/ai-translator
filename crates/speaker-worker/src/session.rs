@@ -25,7 +25,7 @@ use speaker_protocol::{
     NamesSetup, PROTOCOL_VERSION, PersonName, ReaderPlatform, ReaderStatus, Request, Response, SegmentAudio, Source,
     SpeakerConfig, VoiceInfo, f32_from_pcm,
 };
-use speaker_recipe::{AppRecipe, Os, Recipes, SignalKind};
+use speaker_recipe::{Os, Recipes, SignalKind};
 
 use crate::cluster::OnlineClusterer;
 use crate::embed::{Embedder, MIN_SAMPLES};
@@ -96,7 +96,8 @@ struct Names {
     clock: Clock,
     speech: Spans,
     matcher: NameMatcher,
-    trackers: BTreeMap<MeetingApp, SpeakingTracker>,
+    /// Khóa: (app, nguồn của công thức).
+    trackers: BTreeMap<(MeetingApp, u8), SpeakingTracker>,
     calibrator: Calibrator,
     app: Option<MeetingApp>,
     unexplained_ms: i64,
@@ -459,15 +460,13 @@ impl<E: Embed> Worker<E> {
         self.tally.iter().filter(|(_, t)| t.room()).map(|(v, _)| *v).collect()
     }
 
-    fn recipe(&self, app: MeetingApp) -> Option<&AppRecipe> {
-        self.names.recipes.as_deref()?.app(self.os, app)
-    }
-
+    /// Độ trễ để chờ bằng chứng của một đoạn: nguồn chậm nhất của app (bằng chứng từ phụ đề tới muộn hơn từ bảng người tham dự).
     fn delay_ms(&self) -> i64 {
         self.names
             .app
-            .and_then(|a| self.recipe(a))
-            .map_or(DEFAULT_DELAY_MS, |r| i64::from(r.delay_ms))
+            .and_then(|a| self.names.recipes.as_deref().map(|r| r.variants(self.os, a)))
+            .and_then(|v| v.iter().map(|r| i64::from(r.delay_ms)).max())
+            .unwrap_or(DEFAULT_DELAY_MS)
     }
 
     fn voices(&self) -> Vec<VoiceInfo> {
@@ -637,6 +636,23 @@ impl<E: Embed> Worker<E> {
         now: &[ParticipantNow],
         tiles: &[TileSample],
     ) -> Vec<Response> {
+        let delay = self.delay_ms();
+        self.observe_groups(at_unix_ms, period_ms, app, app_version, &[(delay, now.to_vec())], tiles)
+    }
+
+    /// Như [`Worker::observe_at`], nhưng `groups` là người tham dự theo từng nguồn của công thức, mỗi nguồn kèm độ trễ của nó
+    /// (bảng người tham dự 0,9 s, phụ đề 2,4 s): bằng chứng của mỗi nguồn dời theo độ trễ riêng rồi cộng vào cùng một người.
+    pub fn observe_groups(
+        &mut self,
+        at_unix_ms: u64,
+        period_ms: u32,
+        app: MeetingApp,
+        app_version: Option<String>,
+        groups: &[(i64, Vec<ParticipantNow>)],
+        tiles: &[TileSample],
+    ) -> Vec<Response> {
+        let now: Vec<ParticipantNow> = groups.iter().flat_map(|(_, g)| g.iter().cloned()).collect();
+        let now = &now[..];
         let mut out = Vec::new();
         if !self.names.enabled || self.names.paused {
             return out;
@@ -650,12 +666,16 @@ impl<E: Embed> Worker<E> {
         self.names.self_seen = tiles.iter().filter(|t| t.is_self).count() == 1;
         let explained = now.iter().any(|p| !p.is_self && p.speaking > 0.5);
         let matcher = &self.names.matcher;
+        // Tự hiệu chỉnh chỉ theo nguồn đầu (ô có nhãn, như macOS); các nguồn sau (phụ đề) không có ứng viên.
+        let first: Vec<TileSample> = tiles.iter().filter(|t| t.variant == 0).cloned().collect();
         self.names
             .calibrator
-            .push(at, period, tiles, explained, &self.names.speech, || {
+            .push(at, period, &first, explained, &self.names.speech, || {
                 matcher.voice_spans(at - CAL_WINDOW_MS - CAL_SHIFT_MS)
             });
-        self.names.matcher.observe(at, period, delay, now);
+        for (group_delay, group) in groups {
+            self.names.matcher.observe(at, period, *group_delay, group);
+        }
         let mic_open = now.iter().any(|p| !p.is_self && p.muted == Some(false));
         if explained || mic_open {
             self.names.unexplained_ms = 0;
@@ -693,24 +713,39 @@ impl<E: Embed> Worker<E> {
         if s.pass == Pass::Full && s.tiles.is_empty() {
             return out;
         }
-        let Some(kinds) = self
-            .recipe(app)
-            .map(|r| r.speaking.iter().map(|x| x.kind).collect::<Vec<SignalKind>>())
+        let Some(variants) = self
+            .names
+            .recipes
+            .as_deref()
+            .map(|r| r.variants(self.os, app))
+            .filter(|v| !v.is_empty())
         else {
             return out;
         };
+        let sources: Vec<(i64, Vec<SignalKind>)> = variants
+            .iter()
+            .map(|r| (i64::from(r.delay_ms), r.speaking.iter().map(|x| x.kind).collect()))
+            .collect();
         let Some(at) = self.names.clock.to_session_ms(s.at_unix_ms) else {
             return out;
         };
-        let delay = self.recipe(app).map_or(DEFAULT_DELAY_MS, |r| i64::from(r.delay_ms));
-        let quiet = quiet_at(&self.names.speech, at, delay);
-        let tracker = self
-            .names
-            .trackers
-            .entry(app)
-            .or_insert_with(|| SpeakingTracker::new(kinds));
-        let now = tracker.push(at, &s.tiles, self.names.calibrator.learned(), quiet);
-        self.observe_at(s.at_unix_ms, s.period_ms, app, s.app_version, &now, &s.tiles)
+        let mut groups = Vec::with_capacity(sources.len());
+        for (v, (delay, kinds)) in sources.into_iter().enumerate() {
+            let tiles: Vec<TileSample> = s
+                .tiles
+                .iter()
+                .filter(|t| usize::from(t.variant) == v)
+                .cloned()
+                .collect();
+            let quiet = quiet_at(&self.names.speech, at, delay);
+            let tracker = self
+                .names
+                .trackers
+                .entry((app, v as u8))
+                .or_insert_with(|| SpeakingTracker::new(kinds));
+            groups.push((delay, tracker.push(at, &tiles, self.names.calibrator.learned(), quiet)));
+        }
+        self.observe_groups(s.at_unix_ms, s.period_ms, app, s.app_version, &groups, &s.tiles)
     }
 
     /// Bộ đọc nên làm gì (luồng chính đặt vào `Control` sau mỗi việc, QĐ 13).
@@ -807,6 +842,7 @@ mod tests {
                     candidates: vec![],
                     shapes: vec![],
                     slot: 0,
+                    variant: 0,
                 })
                 .collect(),
             pass: Pass::Fast,
@@ -849,6 +885,60 @@ mod tests {
         out.extend(replies(w.handle(seg_at(1, 10_000, 14_000, 100))));
         read(&mut w, 6_000, 16_000, &[("Lan", LAN), ("Minh", &[])], &mut out);
         (w, out)
+    }
+
+    /// Windows, nguồn phụ đề (kế hoạch 05b): bảng People đóng nên nguồn 0 không có ô nào; chỉ nguồn 1 (dòng phụ đề, trễ 2,4 s) có. Lan nói
+    /// ở [0, 4) s và [10, 14) s; dòng phụ đề cuối của Lan đổi chữ mỗi 500 ms khi chữ tới (trễ 2,4 s). Giọng của Lan vẫn có tên.
+    #[test]
+    fn windows_names_a_voice_from_live_captions_alone() {
+        let json = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../scripts/speaker-recipes/fixtures/teams-windows-sources.recipes.json"),
+        )
+        .unwrap();
+        let (w, _) = worker();
+        let mut w = w.with_os(Os::Windows);
+        replies(w.handle(Request::Load {
+            model_path: "/m/tot.onnx".into(),
+            model_sha256: None,
+            config: SpeakerConfig::default(),
+            names: NamesSetup {
+                recipe_json: json,
+                ..names_on()
+            },
+        }));
+        replies(w.handle_at(Request::SessionStart { unix_ms: T0 }, T0));
+        let caption_tile = |name: &str, state: u64| TileSample {
+            name: name.into(),
+            is_self: false,
+            muted: None,
+            label_speaking: false,
+            anchors: vec![Some(state)],
+            candidates: vec![],
+            shapes: vec![],
+            slot: 0,
+            variant: 1,
+        };
+        let read_captions = |w: &mut Worker<Fake>, from: u64, to: u64, out: &mut Vec<Response>| {
+            let mut t = from;
+            while t < to {
+                let talking = LAN.iter().any(|&(s, e)| s + 2_400 <= t && t < e + 2_400);
+                let lan = if talking { t / 500 + 1 } else { 0 };
+                let mut sample = teams(t, &[]);
+                sample.tiles = vec![caption_tile("Minh", 7), caption_tile("Lan", lan)];
+                out.extend(w.sample(sample));
+                t += 250;
+            }
+        };
+        let mut out = Vec::new();
+        out.extend(replies(w.handle(seg_at(0, 0, 4_000, 100))));
+        read_captions(&mut w, 0, 8_000, &mut out);
+        assert!(last_voices(&out).0[0].name.is_none(), "một đoạn chưa đủ (spec §6.6)");
+        out.extend(replies(w.handle(seg_at(1, 10_000, 14_000, 100))));
+        read_captions(&mut w, 8_000, 20_000, &mut out);
+        let (voices, _) = last_voices(&out);
+        assert_eq!(voices[0].name, PersonName::new("Lan"));
+        assert_eq!(voices[0].name_source, Some(NameSource::Indicator));
     }
 
     /// Rà soát đợt A (A2): đủ `max_voices` giọng thì đoạn không giống giọng nào (sim < θ) bị ép vào giọng gần nhất với `confidence` dưới

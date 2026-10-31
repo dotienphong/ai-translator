@@ -299,7 +299,8 @@ pub struct LiveReader {
     app: Option<MeetingApp>,
     /// Phiên bản của app họp đang đọc (`ReaderState.app_version`), nếu hỏi được.
     version: Option<String>,
-    windows: Vec<WindowState<Node>>,
+    /// Trạng thái đọc các cửa sổ họp, theo từng nguồn (mục công thức) của app: `windows[v]` là của `Recipes::variants(..)[v]`.
+    windows: Vec<Vec<WindowState<Node>>>,
     tree: UiaTree<ComBackend>,
     failures: u32,
     stats: Stats,
@@ -333,13 +334,18 @@ impl LiveReader {
             return;
         };
         let list: Vec<(isize, String)> = found.windows.into_iter().map(|w| (w.id, w.title)).collect();
-        let old = if self.app == Some(found.app) {
+        let sources = self.recipes.variants(Os::Windows, found.app).len().max(1);
+        let mut old = if self.app == Some(found.app) {
             std::mem::take(&mut self.windows)
         } else {
             Vec::new()
         };
+        old.resize_with(sources, Vec::new);
         let backend = self.tree.backend();
-        self.windows = reconcile(old, &list, |id| backend.element_from_hwnd(id).map(UiaNode::new));
+        self.windows = old
+            .into_iter()
+            .map(|per_source| reconcile(per_source, &list, |id| backend.element_from_hwnd(id).map(UiaNode::new)))
+            .collect();
         self.app = Some(found.app);
         self.version = found.version;
     }
@@ -367,11 +373,23 @@ impl LiveReader {
             self.rescan(started);
         }
         let recipes = self.recipes.clone();
-        let Some((app, recipe)) = self.app.and_then(|a| recipes.app(Os::Windows, a).map(|r| (a, r))) else {
+        let Some((app, variants)) = self
+            .app
+            .map(|a| (a, recipes.variants(Os::Windows, a)))
+            .filter(|(_, v)| !v.is_empty())
+        else {
             return self.finish(empty(ReaderStatus::NoMeeting, None, Pass::Idle), at, started);
         };
         let mut budget = Budget::new(MAX_ELEMENTS, PASS_BUDGET);
-        let (tiles, full) = read_windows(&mut self.tree, &mut self.windows, recipe, calibrate, &mut budget);
+        let (mut tiles, mut full) = (Vec::new(), false);
+        for (v, recipe) in variants.into_iter().enumerate() {
+            let Some(windows) = self.windows.get_mut(v) else {
+                continue;
+            };
+            let (t, f) = read_windows(&mut self.tree, windows, recipe, v as u8, calibrate, &mut budget);
+            tiles.extend(t);
+            full |= f;
+        }
         let broken = self.tree.timeouts() + self.tree.denied() > 0;
         let (failures, status) = health(self.failures, broken);
         self.failures = failures;
@@ -410,7 +428,7 @@ impl LiveReader {
             return Vec::new();
         };
         let mut out = Vec::new();
-        for w in &self.windows {
+        for w in self.windows.first().into_iter().flatten() {
             out.extend(dump_lines(&mut self.tree, &w.node, &w.title, "", recipe));
         }
         out

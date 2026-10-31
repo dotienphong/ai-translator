@@ -306,6 +306,7 @@ mod tests {
             candidates: vec![],
             shapes: vec![],
             slot,
+            variant: 0,
         }
     }
 
