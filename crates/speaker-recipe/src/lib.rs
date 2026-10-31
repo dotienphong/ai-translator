@@ -550,7 +550,7 @@ mod tests {
     /// QĐ 16, 32 của kế hoạch 04: bản build sẵn chỉ có Teams. Zoom chưa có bản ghi thật (rà soát A-Q11); Meet không có chỉ báo ở cửa
     /// sổ người nghe (rà soát lần 2 A-Q1). Task 21 thêm lại khi đạt tiêu chí và chủ dự án đồng ý.
     #[test]
-    fn the_builtin_recipes_cover_only_teams_on_macos() {
+    fn the_builtin_recipes_cover_only_teams() {
         let r = parse(BUILTIN_JSON).unwrap();
         assert!(r.dropped.is_empty(), "{:?}", r.dropped);
         assert!(r.version >= 1);
@@ -558,7 +558,14 @@ mod tests {
         for app in [MeetingApp::Zoom, MeetingApp::MeetChrome, MeetingApp::MeetEdge] {
             assert!(r.app(Os::Macos, app).is_none(), "{app:?} tắt mặc định");
         }
-        assert!(!r.has_os(Os::Windows), "kế hoạch 05 thêm Windows");
+        for app in [MeetingApp::Zoom, MeetingApp::MeetChrome, MeetingApp::MeetEdge] {
+            assert!(r.variants(Os::Windows, app).is_empty(), "{app:?} Windows tắt mặc định");
+        }
+        // Kế hoạch 05b: Teams Windows có hai nguồn, bảng người tham dự trước (bản app cũ chỉ giữ mục đầu), phụ đề sau.
+        let teams = r.variants(Os::Windows, MeetingApp::Teams);
+        assert_eq!(teams.len(), 2);
+        let kinds: Vec<_> = teams.iter().map(|a| a.speaking[0].kind).collect();
+        assert_eq!(kinds, [SignalKind::Deviation, SignalKind::Caption]);
     }
 
     /// Cuộc họp Teams có tên: `window_subrole` nhận cửa sổ họp theo AXSubrole, nhưng phải đi kèm `confirm_id`, chỉ cho macOS, và hợp lệ

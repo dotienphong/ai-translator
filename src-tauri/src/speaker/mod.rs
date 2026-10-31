@@ -2,7 +2,7 @@
 //! và model, kiểm SHA-256 trước mỗi lần chạy (§10.2), rồi chạy `pipeline::speaker_client` cho phiên. Phiên không chờ worker.
 //!
 //! **Bản phát hành (kế hoạch 07, QĐ 2):** [`enabled`] theo bảng hệ điều hành đã nghiệm thu ([`ships_on`]): macOS bật, Windows theo
-//! [`SHIPS_ON_WINDOWS`] (`false` tới khi có số đo máy Windows i5), hệ điều hành khác tắt. Bản phát hành không đọc biến môi trường
+//! [`SHIPS_ON_WINDOWS`] (`true` từ 0.5.2, sau khi đo trên máy Windows i5), hệ điều hành khác tắt. Bản phát hành không đọc biến môi trường
 //! nào. Công tắc dev: chỉ bản debug, `AI_TRANSLATOR_DEV_SPEAKER=true` trong `.env` (đọc qua `scripts/run-dev-app.sh`, cùng cơ chế
 //! `AI_TRANSLATOR_DEV_PRO`, spec 2026-10-04 §2); mã đọc biến nằm sau `cfg(debug_assertions)`, bản phát hành không có chuỗi tên
 //! biến (`release-check.mjs no-dev-gate` chặn). Bản này có mã tính năng chưa có nghĩa là tính năng đang chạy: model nhận giọng chỉ
@@ -54,9 +54,10 @@ pub mod recipes;
 /// Tên file model trong thư mục model của bản dev (`MT_MODELS_DIR` hay `<repo>/models`), dùng khi kho chưa có.
 pub const DEV_MODEL_FILE: &str = "eres2net-sv-en-voxceleb-16k.onnx";
 
-/// Bản phát hành có tính năng trên Windows không. Giữ `false` tới khi có số đo A-spk4 và A-spk5 trên máy Windows i5 và bản ghi
-/// cây UI Automation thật (kế hoạch 07, QĐ 2); bật là đổi hằng này ở bản phát hành đó.
-pub const SHIPS_ON_WINDOWS: bool = false;
+/// Bản phát hành có tính năng trên Windows không. Bật ở 0.5.2 sau khi có số đo A-spk4 và A-spk5 trên máy Windows i5 (nhận giọng bằng
+/// ONNX Runtime đi kèm, `results/11-onnxruntime-windows.md`) và bản ghi cây UI Automation thật của Teams (bảng người tham dự và phụ
+/// đề trực tiếp, `results/05-windows.md`). Tắt lại ở bản sau là đổi hằng này (docs/release/phat-hanh.md, mục 16.8, lớp 3).
+pub const SHIPS_ON_WINDOWS: bool = true;
 
 /// Bản phát hành có tính năng trên hệ điều hành `os` (`std::env::consts::OS`) không.
 #[cfg_attr(debug_assertions, allow(dead_code))]

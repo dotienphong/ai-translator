@@ -1,13 +1,20 @@
 {
   "schema": 1,
-  "version": 2,
+  "version": 3,
   "min_app_version": "0.3.4",
   "apps": [
     {
       "app": "teams",
       "os": "macos",
-      "window_title": ["^Meeting with ", "^Meeting in ", "^Cuộc họp với ", "^Cuộc họp trong "],
-      "window_subrole": ["^AXStandardWindow$"],
+      "window_title": [
+        "^Meeting with ",
+        "^Meeting in ",
+        "^Cuộc họp với ",
+        "^Cuộc họp trong "
+      ],
+      "window_subrole": [
+        "^AXStandardWindow$"
+      ],
       "confirm_id": "hangup-button",
       "enhanced_ui": true,
       "tile": {
@@ -15,12 +22,88 @@
         "label": "^(?:(?P<self>Myself video), )?(?P<name>[^,]{1,120}?)(?:, (?P<muted>[Mm]uted))?, (?:Context menu is available|Has context menu)$"
       },
       "name_from": "label",
-      "name_suffixes": ["\\s*\\((?:Guest|Khách|Host|Organizer|Người tổ chức|External|Bên ngoài)\\)$"],
-      "mic": { "muted_values": ["muted", "Muted"], "absent_means_unmuted": true },
+      "name_suffixes": [
+        "\\s*\\((?:Guest|Khách|Host|Organizer|Người tổ chức|External|Bên ngoài)\\)$"
+      ],
+      "mic": {
+        "muted_values": [
+          "muted",
+          "Muted"
+        ],
+        "absent_means_unmuted": true
+      },
       "speaking": [
-        { "kind": "presence", "anchor": { "scope": "child", "role": "AXGroup", "class_token": "vdi-frame-occlusion" } }
+        {
+          "kind": "presence",
+          "anchor": {
+            "scope": "child",
+            "role": "AXGroup",
+            "class_token": "vdi-frame-occlusion"
+          }
+        }
       ],
       "delay_ms": 900
+    },
+    {
+      "app": "teams",
+      "os": "windows",
+      "window_title": [
+        "^Meeting with ",
+        "^Meeting in ",
+        "^Cuộc họp với ",
+        "^Cuộc họp trong "
+      ],
+      "confirm_id": "hangup-button",
+      "tile": {
+        "role": "TreeItem",
+        "label": "^(?P<name>[^,]{1,120}?), [^,]{1,40}, (?:Unmuted|(?P<muted>Muted))$"
+      },
+      "name_from": "label",
+      "name_suffixes": [
+        "\\s*\\((?:Unverified|Chưa xác minh|Guest|Khách|External|Bên ngoài)\\)$"
+      ],
+      "mic": {
+        "muted_values": [
+          "Muted"
+        ],
+        "absent_means_unmuted": true
+      },
+      "speaking": [
+        {
+          "kind": "deviation",
+          "anchor": {
+            "scope": "descendant",
+            "id_prefix": "roster-avatar-img-",
+            "max_depth": 3
+          }
+        }
+      ],
+      "delay_ms": 900
+    },
+    {
+      "app": "teams",
+      "os": "windows",
+      "window_title": [
+        "^Meeting with ",
+        "^Meeting in ",
+        "^Cuộc họp với ",
+        "^Cuộc họp trong "
+      ],
+      "confirm_id": "hangup-button",
+      "tile": {
+        "role": "Group",
+        "class_token": "fui-ChatMessageCompact__body"
+      },
+      "name_from": "text",
+      "name_suffixes": [
+        "\\s*\\((?:Unverified|Chưa xác minh|Guest|Khách|External|Bên ngoài)\\)$"
+      ],
+      "speaking": [
+        {
+          "kind": "caption"
+        }
+      ],
+      "delay_ms": 2400
     }
   ]
 }

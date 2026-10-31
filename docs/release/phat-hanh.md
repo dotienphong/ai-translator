@@ -1599,7 +1599,7 @@ Các công tắc, từ xa tới gần người dùng:
 |---|---|---|
 | Mục `speaker` (và `speaker_config`) ở gốc phần thân manifest | `releases.aitranslator.vn/models/models.json` | `node scripts/models/speaker-manifest.mjs add` / `remove` rồi ký, đăng (16.5, 16.8) |
 | Công thức đọc tên | `releases.aitranslator.vn/speaker/recipes.json` | `pnpm recipes:update` (mục 15.2, 15.3) |
-| Bảng hệ điều hành của bản app | hằng `SHIPS_ON_WINDOWS` và hàm `ships_on` ở `src-tauri/src/speaker/mod.rs`: macOS bật, Windows tắt tới khi có số đo máy Windows i5 và bản ghi UI Automation thật | đổi hằng, phát hành bản app mới |
+| Bảng hệ điều hành của bản app | hằng `SHIPS_ON_WINDOWS` và hàm `ships_on` ở `src-tauri/src/speaker/mod.rs`: macOS bật, Windows bật từ 0.5.2 (đã có số đo máy Windows i5 và bản ghi UI Automation thật) | đổi hằng, phát hành bản app mới |
 | Công tắc của người dùng | Cài đặt › Phụ đề › Người nói ("Phân biệt người nói", "Lấy tên từ Teams") | người dùng |
 
 App "ngủ" khi `ModelService::speaker_offered` (`src-tauri/src/models/service.rs`) là `false`, tức manifest chưa có mục `speaker` dùng được cho bản này. Bản phát hành không đọc biến môi trường nào; `AI_TRANSLATOR_DEV_SPEAKER` chỉ có ở bản debug (`release-check.mjs no-dev-gate` chặn).
