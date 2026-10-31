@@ -344,6 +344,7 @@ mod tests {
             "teams-windows-people-open-2.jsonl",
             "teams-windows-captions-closed.jsonl",
             "teams-windows-captions-open.jsonl",
+            "teams-windows-captions-vi-chat.jsonl",
         ] {
             for who in ["Lan", "Minh"] {
                 let a = combined_agreement(&r, file, &format!("Khach {who}"), who);

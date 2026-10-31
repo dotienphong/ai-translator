@@ -1068,6 +1068,28 @@ pub(crate) mod tests {
         }
     }
 
+    /// Teams Windows, nguồn phụ đề (kế hoạch 05b): khung chat của họp mở cùng lúc (tin nhắn của khách và của chủ phòng, một tin gửi giữa
+    /// lúc người khác nói) không thành ô: tin nhắn dùng lớp `fui-ChatMessage__body`, phụ đề dùng `fui-ChatMessageCompact__body`. Mọi ô
+    /// của hai nguồn đều là tên người (giả), không phải chữ của tin nhắn; bản ghi tiếng Việt (Teams nhận dạng đúng tiếng Việt).
+    #[test]
+    fn open_chat_never_becomes_a_caption_tile() {
+        let r = fixture_recipes("teams-windows-sources.recipes.json");
+        let sources = r.variants(Os::Windows, MeetingApp::Teams);
+        let mut caption_tiles = 0;
+        for snap in fixture("teams-windows-captions-vi-chat.jsonl") {
+            for (v, app) in sources.iter().enumerate() {
+                for t in tiles_of(&snap, app).1 {
+                    assert!(
+                        ["Khach Lan", "Khach Minh"].contains(&t.name.as_str()) || t.name == "Hoa Phạm",
+                        "nguồn {v}: ô không phải tên người"
+                    );
+                    caption_tiles += usize::from(v == 1);
+                }
+            }
+        }
+        assert!(caption_tiles > 100, "có dòng phụ đề: {caption_tiles}");
+    }
+
     /// Spec §6.2, QĐ 13 (rà soát A-Q3, B-Q2): một lượt (duyệt cửa sổ, lấy mẫu mọi ô, ứng viên tự hiệu chỉnh) không quá
     /// [`MAX_ELEMENTS`] lệnh đọc trên mọi ảnh chụp của mọi fixture, và mọi lệnh đều đi qua ngân sách. In số lệnh tệ nhất (Task 18 chép
     /// vào `results/04-do.md`).

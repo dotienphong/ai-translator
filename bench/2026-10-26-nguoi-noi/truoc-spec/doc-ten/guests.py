@@ -65,7 +65,8 @@ INIT = r"""
 })();
 """
 
-GUESTS = {"lan": "lan.wav", "minh": "minh.wav"}
+# Âm thanh của từng khách trong `audio/`; đổi bằng biến môi trường (ví dụ thử phụ đề tiếng Việt với `vi.wav`).
+GUESTS = {"lan": os.environ.get("GUEST_LAN_WAV", "lan.wav"), "minh": os.environ.get("GUEST_MINH_WAV", "minh.wav")}
 log = []
 
 

@@ -144,6 +144,14 @@ Câu hỏi: đóng bảng People thì phụ đề còn đúng tên không. Thử
   (`uia-record stats` với công thức hai nguồn, bảng People mở và phụ đề bật, 36 s, 144 lượt): 3 ô của bảng cộng 2–7 dòng phụ đề, 0 lệnh
   quá hạn, lượt nhanh p50 7,3 ms (lớn nhất 14,3), lượt đầy đủ p50 30,1 ms (ngân sách 30).
 
+- **Khung chat mở và tiếng Việt (đã kiểm, 2026-10-31).** Cuộc họp thử mới, Teams đặt "Meeting spoken language" là Vietnamese
+  (Vietnam), hai khách phát giọng người đọc tiếng Việt (`vi.wav` của bộ đo độ trễ, FLEURS), khung chat mở cùng phụ đề, khách Lan gửi
+  tin giữa lúc Minh nói và chủ phòng gửi một tin giữa lúc Lan nói; 90 s, kịch bản 2. Kết quả: (1) tin nhắn chat dùng lớp
+  `fui-ChatMessage__body`, phụ đề dùng `fui-ChatMessageCompact__body`, nên chat không thành ô (test
+  `open_chat_never_becomes_a_caption_tile`: mọi ô đều là tên người). (2) Teams nhận dạng đúng tiếng Việt (505/508 dòng lời có dấu
+  tiếng Việt), tên người nói vẫn đúng. (3) Hai nguồn cùng lúc khớp 0,907 (Lan) và 0,920 (Minh) trên `captions-vi-chat` (60 s đầu).
+  Còn chưa kiểm: nói chồng thật (kịch bản 2 có đoạn chồng 3 s, chưa tách số riêng), họp từ ba người nói trở lên, giọng thật.
+
 - **Chỉ trạng thái mic (không bật).** Nhãn ô video vẫn có `muted` khi bảng đóng (2 ô khách ở 360/360 ảnh), nhưng `NameMatcher` cần chỉ báo
   làm bằng chứng (QĐ 24); bản ghi của ta bật mic đúng lúc nói nên không đo được độ sai của "mic mở nhưng im".
 - **Bảng People thu nhỏ/kéo sang bên:** không cần code, chưa thử.
