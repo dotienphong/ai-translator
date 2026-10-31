@@ -230,15 +230,14 @@ describe("GET /v1/support/messages, PUT /v1/support/email, DELETE /v1/support/co
     expect(r.headers.get("retry-after")).toBe("60");
   });
 
-  it("PUT email: lưu chữ thường, báo Zalo không kèm địa chỉ, cùng email thì không báo lại; null thì bỏ; sai 400; quá 5 lần mỗi giờ 429; bị chặn 403", async () => {
+  it("PUT email: lưu chữ thường, báo Zalo kèm địa chỉ, cùng email thì không báo lại; null thì bỏ; sai 400; quá 5 lần mỗi giờ 429; bị chặn 403", async () => {
     const w = makeWorld();
     await enableChat();
     const chat = await startChat(w);
     const put = (email: unknown) => w.call("PUT", "/v1/support/email", { email }, auth(chat.token));
     expect(await put("Khach@Example.com")).toMatchObject({ status: 200, body: { ok: true } });
     expect(await conversation(chat.id)).toMatchObject({ email: "khach@example.com" });
-    expect(w.zalo.texts()[1]).toBe(`#${chat.code} ✉️ khách đã để lại email`);
-    expect(w.zalo.texts().join("\n")).not.toContain("khach@example.com");
+    expect(w.zalo.texts()[1]).toBe(`#${chat.code} ✉️ khách đã để lại email: khach@example.com`);
     expect(await put("khach@example.com")).toMatchObject({ status: 200 });
     expect(w.zalo.sent).toHaveLength(2);
     expect(await put(null)).toMatchObject({ status: 200 });

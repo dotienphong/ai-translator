@@ -1,5 +1,6 @@
-// Chữ gửi tới Zalo của chủ dự án (spec 2026-10-22 §2.3–2.5): văn bản thuần, tiếng Việt, tối đa 2000 ký tự mỗi tin.
-// Email của khách không bao giờ có ở đây: không hàm nào nhận email (test support-webhook khóa điều này từ đầu tới cuối).
+// Chữ gửi tới Zalo của chủ dự án (spec 2026-10-22 §2.3–2.5, cập nhật 2026-10-31: email báo kèm địa chỉ): văn bản thuần, tiếng
+// Việt, tối đa 2000 ký tự mỗi tin. Chỉ `emailSaved` nhận địa chỉ email; mọi hàm khác (customerText, listText…) không bao giờ
+// nhận email (test support-webhook khóa điều này cho các hàm đó).
 import type { Conversation, RecentConversation } from "./store";
 import { truncate, ZALO_MAX_TEXT } from "./text";
 
@@ -61,6 +62,6 @@ export const BOT_TEXT = {
   needCode: (command: string) => `Thiếu mã, ví dụ: ${command} #K7Q`,
   turnedOff: "Đã TẮT chat trên website và app. Khách thấy email support@ thay ô nhập. Gõ /bat để bật lại.",
   turnedOn: "Đã BẬT chat trên website và app.",
-  emailSaved: (code: string) => `#${code} ✉️ khách đã để lại email`,
+  emailSaved: (code: string, email: string) => `#${code} ✉️ khách đã để lại email: ${email}`,
   deleted: (code: string) => `#${code} 🗑 khách đã xóa cuộc chat`,
 } as const;

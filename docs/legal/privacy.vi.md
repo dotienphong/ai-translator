@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.9, hiệu lực từ 28/10/2026.**
+**Phiên bản 1.10, hiệu lực từ 31/10/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -85,7 +85,7 @@ Máy chủ cũng lưu **báo cáo tình trạng của bộ đọc tên** (mục 
 | **Cloudflare** | Máy chủ chạy license server, cơ sở dữ liệu, lưu trữ và phân phối bản cập nhật, model | Dữ liệu ở mục 5, kể cả báo cáo lỗi (mục 10) và chat hỗ trợ (mục 11); nhật ký kỹ thuật tự hết hạn |
 | **Resend** | Gửi email chứa key, và email chứa câu trả lời chat hỗ trợ khi bạn để lại email | Email bạn, nội dung thư (có key, hay câu trả lời chat); theo chính sách lưu của Resend |
 | **Google** (Google LLC, Hoa Kỳ; Google Ireland Limited với người dùng ở châu Âu) | Google Analytics 4 cho website, chỉ khi bạn bấm "Đồng ý" ở thanh thông báo (mục 14) | Trang bạn xem, trang giới thiệu, loại trình duyệt và thiết bị, ngôn ngữ, vị trí gần đúng, thời gian xem, mã nhận diện trong cookie. Không có email, license hay nội dung chat của bạn |
-| **Zalo** (Công ty Cổ phần VNG, Việt Nam; máy chủ ở Việt Nam) | Chuyển tin nhắn chat hỗ trợ của bạn tới tài khoản Zalo của người vận hành, và chuyển câu trả lời của người vận hành về máy chủ của chúng tôi | Nội dung tin, mã cuộc chat (3 ký tự), nguồn (website hay ứng dụng), ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email hay đã xóa cuộc chat. **Không có email của bạn** và không có địa chỉ IP của bạn. Zalo xử lý các dữ liệu đó theo điều khoản và chính sách riêng của Zalo |
+| **Zalo** (Công ty Cổ phần VNG, Việt Nam; máy chủ ở Việt Nam) | Chuyển tin nhắn chat hỗ trợ của bạn tới tài khoản Zalo của người vận hành, và chuyển câu trả lời của người vận hành về máy chủ của chúng tôi | Nội dung tin, mã cuộc chat (3 ký tự), nguồn (website hay ứng dụng), ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email (kèm địa chỉ email) hay đã xóa cuộc chat. Không có địa chỉ IP của bạn. Zalo xử lý các dữ liệu đó theo điều khoản và chính sách riêng của Zalo |
 
 Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5, mục 10 và mục 11 có thể được xử lý ở nước ngoài; Google đặt máy chủ ở nhiều nước, nên dữ liệu đo lường ở mục 14 cũng có thể được xử lý ở nước ngoài; Zalo đặt máy chủ ở Việt Nam. Bằng việc mua gói và đồng ý xử lý email, hoặc gửi tin ở chat hỗ trợ, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
 
@@ -141,10 +141,10 @@ Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở g�
 | Nội dung | Chi tiết |
 |---|---|
 | Máy chủ lưu gì | Nội dung các tin của bạn và câu trả lời, thời điểm các tin; nguồn (website hay ứng dụng) và ngôn ngữ; trang bạn đang xem lúc mở chat (chỉ trên website, chỉ đường dẫn của trang); dòng thông tin máy nếu bạn để tích (chỉ trong ứng dụng); email nếu bạn tự để lại; **mã băm** của mã bí mật của cuộc chat (máy chủ không lưu mã gốc) |
-| Email | Không bắt buộc. Nếu bạn để lại, chúng tôi chỉ dùng nó để gửi câu trả lời qua email (qua Resend, mục 6) khi câu trả lời chưa tới được khung chat của bạn sau khoảng 2 phút (ví dụ bạn đã đóng trang hay ứng dụng), và bạn trả lời được bằng chính thư đó. Muốn bỏ email, hãy xóa cuộc trò chuyện bằng nút trong khung chat, hoặc yêu cầu theo mục 7. Email bạn nhập ở ô email **không bao giờ được gửi sang Zalo** |
+| Email | Không bắt buộc. Nếu bạn để lại, chúng tôi dùng nó để gửi câu trả lời qua email (qua Resend, mục 6) khi câu trả lời chưa tới được khung chat của bạn sau khoảng 2 phút (ví dụ bạn đã đóng trang hay ứng dụng), và bạn trả lời được bằng chính thư đó; đồng thời báo địa chỉ email này cho người vận hành qua Zalo, để người vận hành chủ động liên hệ hay trả lời qua email khi cần. Muốn bỏ email, hãy xóa cuộc trò chuyện bằng nút trong khung chat, hoặc yêu cầu theo mục 7 |
 | Thông tin máy (ứng dụng) | Ô gửi kèm thông tin máy được tích sẵn, bỏ tích được, chỉ hiện trước tin đầu tiên và chỉ đi kèm tin đầu tiên. Ứng dụng hiện nguyên văn dòng này trước khi gửi: phiên bản ứng dụng, hệ điều hành và phiên bản, chip hoặc CPU, RAM, card đồ họa (Windows), tên gói bản quyền, gói model, ngôn ngữ giao diện. **Không bao giờ** có license key, email, mã máy, tên máy hay tên tài khoản hệ điều hành |
 | Địa chỉ IP | Không lưu cùng cuộc chat. IP chỉ dùng để giới hạn tần suất; bộ đếm trên máy chủ chỉ lưu giá trị băm của IP (mục 5) |
-| Gửi sang Zalo | Nội dung tin, mã cuộc chat (3 ký tự), nguồn, ngôn ngữ, trang (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email hay đã xóa cuộc chat (không kèm địa chỉ email). Câu trả lời của người vận hành đi từ Zalo về máy chủ của chúng tôi |
+| Gửi sang Zalo | Nội dung tin, mã cuộc chat (3 ký tự), nguồn, ngôn ngữ, trang (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email (kèm địa chỉ email) hay đã xóa cuộc chat. Câu trả lời của người vận hành đi từ Zalo về máy chủ của chúng tôi |
 | Trên máy hay trình duyệt của bạn | Mã bí mật của cuộc chat và vị trí tin đã đọc: trên website, lưu trong bộ nhớ của trình duyệt (`localStorage`); trong ứng dụng, lưu trong một file ở thư mục dữ liệu của ứng dụng. Ai có mã này thì mở được cuộc chat. Xóa cuộc trò chuyện thì mã này cũng bị xóa |
 | Khi nào có kết nối | Website: khi bạn mở khung chat, trình duyệt hỏi chat có đang bật không; đã có cuộc chat thì trình duyệt hỏi tin mới khi khung chat đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua; chưa mở khung chat thì trình duyệt không kết nối gì cho chat. Ứng dụng: như mục 4 (chưa nhắn tin nào thì không kết nối) |
 | Giữ bao lâu | Cuộc chat và mọi tin **tự xóa sau 90 ngày** kể từ tin cuối cùng. Bạn xóa ngay được bằng nút xóa cuộc trò chuyện trong khung chat |

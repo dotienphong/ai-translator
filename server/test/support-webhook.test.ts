@@ -229,7 +229,7 @@ describe("webhook Zalo POST /v1/webhooks/zalo (spec 2026-10-22 §2.4, §2.5)", (
     expect(await isEnabled(env.DB)).toBe(true);
   });
 
-  it("email khách để lại không bao giờ được ghép vào tin gửi Zalo (tin sau, lời báo email, /ds)", async () => {
+  it("email khách để lại chỉ được ghép vào đúng lời báo 'đã để lại email', không lọt vào tin sau hay /ds", async () => {
     const w = makeWorld();
     await enableChat();
     const chat = await startChat(w);
@@ -237,6 +237,7 @@ describe("webhook Zalo POST /v1/webhooks/zalo (spec 2026-10-22 §2.4, §2.5)", (
     await w.call("POST", "/v1/support/messages", { text: "Mình gửi thêm" }, auth(chat.token));
     await webhook(w, ownerSays("/ds"));
     expect(w.zalo.texts()).toHaveLength(4);
-    expect(w.zalo.texts().join("\n")).not.toContain("rieng-tu");
+    expect(w.zalo.texts()[1]).toBe(`#${chat.code} ✉️ khách đã để lại email: rieng-tu@example.com`);
+    expect(w.zalo.texts().filter((t, i) => i !== 1).join("\n")).not.toContain("rieng-tu");
   });
 });

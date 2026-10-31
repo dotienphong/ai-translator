@@ -1231,8 +1231,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.9", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.9", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.10", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.10", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1412,13 +1412,13 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA lên 1.6 (phân biệt người nói, hiệu lực 2026-10-28); chính sách lên 1.9 (thêm Google Analytics cho website, mục 14, spec ở
-  // docs/legal/README.md), hiệu lực không sớm hơn 2026-10-28. Đổi ngày phát hành thật thì sửa ở đây và ở README.
+  // EULA lên 1.6 (phân biệt người nói, hiệu lực 2026-10-28); chính sách lên 1.10 (email để lại ở chat hỗ trợ báo kèm địa chỉ
+  // sang Zalo, spec ở docs/legal/README.md), hiệu lực không sớm hơn 2026-10-31. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.6" || privacyHead?.version !== "1.9") errors.push("EULA 1.6 và chính sách 1.9");
+  if (eulaHead?.version !== "1.6" || privacyHead?.version !== "1.10") errors.push("EULA 1.6 và chính sách 1.10");
   if (eulaHead?.iso !== "2026-10-28") errors.push(`EULA 1.6 hiệu lực 2026-10-28, đang ghi ${eulaHead?.iso}`);
-  if (!privacyHead || privacyHead.iso < "2026-10-28") errors.push(`chính sách 1.9 hiệu lực từ 2026-10-28 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
+  if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.10 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
 });
 
@@ -2294,13 +2294,13 @@ test("chat hỗ trợ: data-chat-ui, data-chat-css trỏ tới file có thật; 
 
 // ---- Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo-design §5): chính sách 1.5, trang Liên hệ, Dữ liệu và bảo mật, không lộ kênh nội bộ ----
 
-test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email không sang Zalo, IP chỉ băm, nhịp kết nối, 90 ngày, bản sao trong Zalo), các mục 2, 4, 5, 6, 7 nhắc chat, Zalo là bên xử lý", () => {
+test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email để lại báo kèm địa chỉ sang Zalo, IP chỉ băm, nhịp kết nối, 90 ngày, bản sao trong Zalo), các mục 2, 4, 5, 6, 7 nhắc chat, Zalo là bên xử lý", () => {
   const errors = [
     ...sectionErrors("/chinh-sach-quyen-rieng-tu/", {
       2: ["chat hỗ trợ", "tự xóa sau 90 ngày kể từ tin cuối", "tin nhắn chat hỗ trợ (giữ 90 ngày)"],
       4: ["Khi bạn dùng chat hỗ trợ", "chưa từng dùng chat thì không có kết nối nào cho chat", "Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi"],
       5: ["Chat hỗ trợ (mục 11)", "không lưu địa chỉ IP cùng cuộc chat", "trừ email bạn tự để lại trong chat"],
-      6: ["Công ty Cổ phần VNG", "máy chủ ở Việt Nam", "Không có email của bạn", "mục 5, mục 10 và mục 11"],
+      6: ["Công ty Cổ phần VNG", "máy chủ ở Việt Nam", "kèm địa chỉ email", "mục 5, mục 10 và mục 11"],
       7: ["cuộc chat hỗ trợ (tự xóa sau 90 ngày kể từ tin cuối, mục 11)", "xóa các cuộc chat hỗ trợ mà bạn đã để lại email đó"],
       11: [
         "Chat hỗ trợ",
@@ -2308,7 +2308,7 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
         "sau khoảng 2 phút",
         "xóa cuộc trò chuyện bằng nút trong khung chat",
         "chưa mở khung chat thì trình duyệt không kết nối gì cho chat",
-        "Email bạn nhập ở ô email không bao giờ được gửi sang Zalo",
+        "báo địa chỉ email này cho người vận hành qua Zalo",
         "Không lưu cùng cuộc chat",
         "Không bao giờ có license key, email, mã máy, tên máy",
         "localStorage",
@@ -2323,7 +2323,7 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
       2: ["support chat", "deleted automatically 90 days after the last message", "support chat messages (kept for 90 days)"],
       4: ["When you use the support chat", "if you have never used the chat, the app makes no connection for it", "While translating, the app sends or receives chat messages only when the Support screen is open or when you press send"],
       5: ["Support chat (section 11)", "no IP address is stored with the chat", "except one you choose to leave in the chat"],
-      6: ["VNG Corporation", "servers in Vietnam", "Not your email", "sections 5, 10 and 11"],
+      6: ["VNG Corporation", "servers in Vietnam", "with the email address", "sections 5, 10 and 11"],
       7: ["the support chat (deleted 90 days after the last message, section 11)", "delete the support chats in which you left that email"],
       11: [
         "Support chat",
@@ -2331,7 +2331,7 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
         "after about 2 minutes",
         "delete the conversation with the button in the chat",
         "if you have not opened the chat, the browser makes no connection for it",
-        "The email you enter in the email box is never sent to Zalo",
+        "we also tell the operator this email address over Zalo",
         "Not stored with the chat",
         "never contains a license key, email, machine ID, computer name",
         "localStorage",
@@ -2343,19 +2343,18 @@ test("chính sách quyền riêng tư: mục 11 Chat hỗ trợ (lưu gì, email
       13: ["Contact"],
     }),
   ];
-  // Dữ liệu gửi Zalo (hàng "Gửi sang Zalo" của mục 11, hàng Zalo của mục 6): có câu phủ định về email, và ngoài câu đó cùng cụm
-  // "đã để lại email" (thông báo không kèm địa chỉ) thì không còn chữ "email" nào (spec §2.3: email không bao giờ tới Zalo).
-  for (const [urlPath, row11, row6, not11, not6, notice] of [
-    ["/chinh-sach-quyen-rieng-tu/", "Gửi sang Zalo", "Zalo (", "không kèm địa chỉ email", "Không có email của bạn", "để lại email"],
-    ["/en/privacy/", "Sent to Zalo", "Zalo (", "without the email address", "Not your email", "left an email"],
+  // Dữ liệu gửi Zalo (hàng "Gửi sang Zalo" của mục 11, hàng Zalo của mục 6): từ 2026-10-31 (chính sách 1.10), email để lại
+  // được báo kèm địa chỉ, nên cả hai hàng phải nói rõ "kèm địa chỉ email" (vi) / "with the email address" (en).
+  for (const [urlPath, row11, row6, ok] of [
+    ["/chinh-sach-quyen-rieng-tu/", "Gửi sang Zalo", "Zalo (", "kèm địa chỉ email"],
+    ["/en/privacy/", "Sent to Zalo", "Zalo (", "with the email address"],
   ]) {
     const sections = legalSections(urlPath);
-    for (const [where, row, ok] of [
-      [`mục 11, hàng "${row11}"`, rowText(sections.get("11")?.html, row11), not11],
-      [`mục 6, hàng "${row6}"`, rowText(sections.get("6")?.html, row6), not6],
+    for (const [where, row] of [
+      [`mục 11, hàng "${row11}"`, rowText(sections.get("11")?.html, row11)],
+      [`mục 6, hàng "${row6}"`, rowText(sections.get("6")?.html, row6)],
     ]) {
       if (!row.includes(ok)) errors.push(`${urlPath} ${where}: thiếu "${ok}" (hàng: ${row || "không có"})`);
-      else if (/email/i.test(row.replace(ok, "").replaceAll(notice, ""))) errors.push(`${urlPath} ${where}: dữ liệu gửi Zalo nhắc email ngoài câu phủ định`);
     }
   }
   assert.deepEqual(errors, []);
