@@ -129,6 +129,20 @@ nhãn tới đúng lúc 35–55% → 94–98%; khứ hồi p50 300–411 → 91�
   (chưa xác minh). A-spk5 lõi E nay đạt (7,8% ≤ 10%).
 - Chọn 1 luồng.
 
+## DLL tự dựng và nguyên nhân phiên `mixed` chậm (2026-10-31)
+
+DLL tự dựng (`--no_telemetry`, CRT tĩnh, ONNX Runtime 1.31.1, 17,3 MB): nhập `KERNEL32`, `ADVAPI32`, `api-ms-win-core-path`, `dbghelp`,
+`SETUPAPI`, `dxgi`; không DLL mạng, không chuỗi endpoint telemetry (còn nhật ký ETW cục bộ của ORT). Cùng worker 1 luồng:
+A-spk5 3,6–3,7% (P 3,6%, E 7,8%), RAM ~100 MB, nhãn giống hệt DLL chính thức. A-spk4 12 cặp: A2 p50 +23,7 [+5,1; +42,4],
+p90 +6,9 [−10,0; +23,7], chữ đầu p50 +26,1 [+2,3; +50,0]; phiên `en` đạt cả ba, `mixed` +50/+58 ms ở p50.
+
+Nguyên nhân `mixed` (so từng câu, 6 cặp): 19/20 câu chỉ chậm thêm ~10–30 ms; một câu tiếng Hàn (bắt đầu 33,5 s) chậm thêm
++1,4 s chữ đầu ở cả 6/6 lượt bật. Ở câu đó nhận diện đổi giọng giữa câu (giọng 3 → 4 lúc 35,8 s), nên theo luật hàng dịch
+(`queue.rs`: hai giọng đã biết khác nhau không gộp thành một dòng) câu bị tách hai dòng; phần cuối câu hiện chữ qua dòng gộp
+muộn hơn. Chữ đầu của dòng đầu hiện cùng lúc (35,89 s) ở cả hai chế độ. Bỏ câu đó, độ lệch p50 còn +23 (chữ đầu) và +20 (A2)
+ms, trung bình 6 cặp, từng cặp −18…+65. Vậy phần lớn "không đạt" là một câu lật hạng trung vị, không phải chi phí CPU, và đến
+từ chuyện đổi giọng giữa câu (có thể là nhận nhầm: phiên `mixed` ghép nhiều clip, worker báo 8 giọng còn sống).
+
 ## Kết luận và việc còn lại
 
 - A-spk5 (worker) đạt khi không ghim và ở lõi P; lõi E 11,5–11,8% với 2 luồng (7,8% với 1 luồng). Gán giọng giống hệt candle.
