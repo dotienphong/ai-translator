@@ -427,9 +427,14 @@ mod tests {
     fn there_is_nothing_to_check_without_a_recipe_for_the_app() {
         let none = parse(r#"{"schema":1,"version":1,"min_app_version":"0.3.2","apps":[]}"#).unwrap();
         assert!(Collector::new(&none, Os::Macos, MeetingApp::Teams, vec![]).is_none());
+        assert!(Collector::new(&none, Os::Windows, MeetingApp::Teams, vec![]).is_none());
         assert!(
-            Collector::new(&recipes(), Os::Windows, MeetingApp::Teams, vec![]).is_none(),
-            "bản build sẵn chưa có Teams Windows"
+            Collector::new(&recipes(), Os::Windows, MeetingApp::Teams, vec![]).is_some(),
+            "bản build sẵn có Teams Windows từ 0.5.2 (nguồn đầu: bảng người tham dự)"
+        );
+        assert!(
+            Collector::new(&recipes(), Os::Windows, MeetingApp::MeetChrome, vec![]).is_none(),
+            "Meet Windows chưa có"
         );
     }
 

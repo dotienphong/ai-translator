@@ -1019,7 +1019,10 @@ mod tests {
                 Response::ReaderState {
                     state, recipe_version, ..
                 } => {
-                    assert_eq!(*recipe_version, 2);
+                    assert_eq!(
+                        *recipe_version,
+                        speaker_recipe::parse(speaker_recipe::BUILTIN_JSON).unwrap().version
+                    );
                     Some(*state)
                 }
                 _ => None,
