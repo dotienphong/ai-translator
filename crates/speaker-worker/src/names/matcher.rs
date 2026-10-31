@@ -733,6 +733,30 @@ pub(crate) mod tests {
         assert_eq!(m.records().next().unwrap().attributed.as_deref(), Some("Lan"));
     }
 
+    /// Teams Windows (kế hoạch 05b): bảng People đóng thì không còn hàng nào để đọc (`now` rỗng). Tên đã gán lúc bảng mở phải giữ cho
+    /// các đoạn sau đó của cùng giọng, và giọng mới chưa có bằng chứng vẫn là "Người N".
+    #[test]
+    fn names_given_while_the_panel_was_open_stay_after_it_closes() {
+        let mut m = NameMatcher::default();
+        m.segment(seg(0, 0, 4_000, 1));
+        m.segment(seg(1, 10_000, 14_000, 1));
+        read(&mut m, 0, 16_000, 900, &[("Lan", LAN), ("Minh", &[])]);
+        assert!(m.settle(900, &Spans::default(), &ROOMLESS));
+        assert_eq!(name_of(&m, 1).as_deref(), Some("Lan"));
+        // Bảng đóng: các lượt đọc sau đó không có ai; có thêm đoạn của giọng 1 và một giọng 2 mới.
+        m.segment(seg(2, 20_000, 24_000, 1));
+        m.segment(seg(3, 30_000, 34_000, 2));
+        m.segment(seg(4, 40_000, 44_000, 2));
+        let mut t = 16_000;
+        while t < 50_000 {
+            m.observe(t, 250, 900, &[]);
+            t += 250;
+        }
+        m.settle(900, &Spans::default(), &ROOMLESS);
+        assert_eq!(name_of(&m, 1).as_deref(), Some("Lan"), "tên giữ sau khi bảng đóng");
+        assert_eq!(name_of(&m, 2), None, "giọng mới lúc bảng đóng chưa có tên");
+    }
+
     /// Nói chồng cả hai lượt: mỗi tên 50% < 60%, không gán (thà "Người N" còn hơn sai tên).
     #[test]
     fn overlapping_speakers_leave_the_voice_unnamed() {

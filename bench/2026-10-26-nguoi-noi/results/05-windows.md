@@ -103,6 +103,24 @@ không có `roster-avatar-img-*` trong cây (chưa có tín hiệu cho chủ ph�
 mở"; việc đó dựa vào thí nghiệm phân biệt ở trên (Lan mở mic suốt, lớp đổi theo nhịp nói, tương quan ±1,00). (5) Một Teams, một
 máy, hai khách tự động cùng máy.
 
+### Task 11: khi bảng People đóng (2026-10-31)
+
+Câu hỏi: đóng bảng People thì phụ đề còn đúng tên không. Thử bốn hướng trên cùng máy, Teams `26225.1806.5074.1452`, hai khách tự động.
+
+- **Giữ tên đã gán (đạt).** `NameMatcher` chỉ xóa tên khi `SetNames(false)`; hết hàng để đọc (`now` rỗng) không làm mất tên. Test
+  `names_given_while_the_panel_was_open_stay_after_it_closes`: tên gán lúc bảng mở còn nguyên cho các đoạn sau, giọng mới lúc bảng
+  đóng vẫn là "Người N". Chưa kiểm ở mức app (giao diện khi trạng thái `NoNames`).
+- **Phụ đề trực tiếp của Teams (có tên, chưa vào công thức).** Bật "Language and speech › Show live captions": nhóm `Live Captions`
+  trong cây UI Automation của cửa sổ họp có từng dòng `Text` tên người nói rồi `Text` lời (`fui-ChatMessageCompact__body`), **không
+  phụ thuộc bảng People**. Bản ghi 90 s, bảng đóng, hai khách xen kẽ (kịch bản 2): dòng phụ đề cuối mang đúng tên khách, dựa vào
+  lúc chữ của dòng đó đổi (cửa sổ 1 s) khớp 0,86 (Lan) và 0,89 (Minh) ở độ trễ 2–2,5 s so với lúc nói (Teams nhận dạng rồi mới hiện;
+  dòng còn đổi thêm 1–3 s sau khi khách tắt tiếng). Cần công thức mới (dòng phụ đề cuối làm tín hiệu "đang nói"; hiện chỉ có
+  `label`, `presence`, `flicker`, `deviation` theo ô), `delay_ms` ~2 400, và người dùng phải bật phụ đề của Teams (Teams gửi âm thanh lên
+  dịch vụ của Microsoft để làm phụ đề). Chưa kiểm tiếng Việt và cuộc họp nhiều người nói chồng.
+- **Chỉ trạng thái mic (không bật).** Nhãn ô video vẫn có `muted` khi bảng đóng (2 ô khách ở 360/360 ảnh), nhưng `NameMatcher` cần chỉ báo
+  làm bằng chứng (QĐ 24); bản ghi của ta bật mic đúng lúc nói nên không đo được độ sai của "mic mở nhưng im".
+- **Bảng People thu nhỏ/kéo sang bên:** không cần code, chưa thử.
+
 ## Task 12: chi phí đọc (2026-10-30)
 
 Cuộc họp mở, ba người, không ai nói, bảng People đóng, máy không dùng. Mỗi mức 60 s, hai vòng. CPU của Teams = `ms-teams` cộng
