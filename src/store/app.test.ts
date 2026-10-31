@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { AppInfo, AppStatus, Ipc, Settings } from "../lib/ipc";
-import { canOpenScreens, createAppStore, levelToMeter, toUiError, updateInvite, updateReprompts } from "./app";
+import { canOpenScreens, createAppStore, levelToMeter, toUiError, updateInvite, updateModal, updateReprompts } from "./app";
 
 const settings: Settings = {
   uiLanguage: "vi",
@@ -629,6 +629,25 @@ describe("app store", () => {
     expect(updateInvite({ status: { ...ready, session: "starting" }, updateDismissed: null })).toBeNull();
     expect(updateInvite({ status: ready, updateDismissed: "0.2.0" })).toBeNull();
     expect(updateInvite({ status: { ...ready, updateReady: "0.2.1" }, updateDismissed: "0.2.0" })).toBe("0.2.1");
+  });
+
+  it("hộp thoại modal hiện cùng điều kiện với lời mời; Hủy chỉ ẩn hộp thoại, thanh báo vẫn còn; bản mới hơn hiện lại", async () => {
+    const ready = { ...status, updateReady: "0.2.0" };
+    const none = { updateDismissed: null, updateModalDismissed: null };
+    expect(updateModal({ status, ...none })).toBeNull();
+    expect(updateModal({ status: null, ...none })).toBeNull();
+    expect(updateModal({ status: ready, ...none })).toBe("0.2.0");
+    expect(updateModal({ status: { ...ready, session: "running" }, ...none })).toBeNull();
+    expect(updateModal({ status: ready, ...none, updateDismissed: "0.2.0" })).toBeNull();
+    expect(updateModal({ status: ready, ...none, updateModalDismissed: "0.2.0" })).toBeNull();
+    expect(updateModal({ status: { ...ready, updateReady: "0.2.1" }, ...none, updateModalDismissed: "0.2.0" })).toBe("0.2.1");
+    const { fake, store } = setup();
+    await store.getState().init();
+    fake.emit("app://status", { ...ready, rev: 5 });
+    expect(updateModal(store.getState())).toBe("0.2.0");
+    store.getState().dismissUpdateModal();
+    expect(updateModal(store.getState())).toBeNull();
+    expect(updateInvite(store.getState())).toBe("0.2.0");
   });
 
   it("lời mời cập nhật báo trước macOS hỏi lại mật khẩu chỉ khi trạng thái bảo vậy", () => {

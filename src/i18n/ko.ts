@@ -415,6 +415,10 @@ export const ko: Record<MessageKey, string> = {
   "notice.updateReprompt": "업데이트 후 macOS가 오디오 녹음 권한을 한 번 더 요청할 수 있습니다. 허용해 주세요.",
   "notice.restartToUpdate": "다시 시작",
   "notice.updateLater": "나중에",
+  "updateModal.title": "새 버전이 있습니다",
+  "updateModal.body": "버전 {version} 다운로드가 완료되었습니다. 지금 다시 시작하여 업데이트할까요?",
+  "updateModal.updateNow": "지금 업데이트",
+  "updateModal.cancel": "취소",
 
   "plan.free": "Free",
   "plan.monthly": "Monthly",

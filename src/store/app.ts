@@ -78,6 +78,8 @@ export interface AppStoreState {
   dataCleared: boolean;
   // Phiên bản cập nhật mà người dùng đã bấm "Để sau" (chỉ trong lần chạy này; menu khay vẫn còn mục khởi động lại).
   updateDismissed: string | null;
+  // Phiên bản cập nhật mà người dùng đã bấm "Hủy" ở hộp thoại modal (chỉ trong lần chạy này; thanh báo và menu khay vẫn còn).
+  updateModalDismissed: string | null;
   // macOS: đã có quyền Trợ năng chưa (Cài đặt › Gõ dịch, spec 2026-10-17-go-dich §1.4); `null` là chưa đọc.
   accessibilityTrusted: boolean | null;
   init(): Promise<() => void>;
@@ -132,6 +134,7 @@ export interface AppStoreState {
   // Khởi động lại để cài bản cập nhật đã tải (kế hoạch 07b). Lỗi (đang dịch, đang tải model) hiện ở thanh báo lỗi.
   restartToUpdate(): Promise<void>;
   dismissUpdate(): void;
+  dismissUpdateModal(): void;
 }
 
 // Đã xong các bước lần đầu mở chưa. Chưa xong thì `App` chỉ hiện `Onboarding`, nên đổi `screen` không có
@@ -147,6 +150,15 @@ export function updateInvite(state: Pick<AppStoreState, "status" | "updateDismis
   if (!status?.updateReady) return null;
   if (status.session === "starting" || status.session === "running") return null;
   return state.updateDismissed === status.updateReady ? null : status.updateReady;
+}
+
+// Phiên bản để hiện hộp thoại modal "Cập nhật ngay / Hủy": cùng điều kiện với lời mời ở thanh báo (`updateInvite`: đã tải xong, app
+// rảnh, chưa bấm "Để sau"), và người dùng chưa bấm "Hủy" ở hộp thoại cho đúng bản đó. Bản mới hơn thì hộp thoại hiện lại.
+export function updateModal(
+  state: Pick<AppStoreState, "status" | "updateDismissed" | "updateModalDismissed">,
+): string | null {
+  const version = updateInvite(state);
+  return version !== null && state.updateModalDismissed !== version ? version : null;
 }
 
 // Lời mời cập nhật có báo trước macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm không (bản ký ad-hoc).
@@ -219,6 +231,7 @@ export function createAppStore(ipc: Ipc) {
       debugSessions: null,
       dataCleared: false,
       updateDismissed: null,
+      updateModalDismissed: null,
       accessibilityTrusted: null,
 
       // Lỗi ở bất kỳ bước nào thì gỡ các listener đã đăng ký rồi ném lỗi tiếp cho bên gọi (`main.tsx` hiện câu báo).
@@ -521,6 +534,10 @@ export function createAppStore(ipc: Ipc) {
 
       dismissUpdate() {
         set({ updateDismissed: get().status?.updateReady ?? null });
+      },
+
+      dismissUpdateModal() {
+        set({ updateModalDismissed: get().status?.updateReady ?? null });
       },
     };
   });

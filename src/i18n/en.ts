@@ -414,6 +414,10 @@ export const en = {
   "notice.updateReprompt": "After updating, macOS may ask for audio-recording permission once more: please allow it.",
   "notice.restartToUpdate": "Restart",
   "notice.updateLater": "Later",
+  "updateModal.title": "New version available",
+  "updateModal.body": "Version {version} has been downloaded. Restart now to update?",
+  "updateModal.updateNow": "Update now",
+  "updateModal.cancel": "Cancel",
 
   "plan.free": "Free",
   "plan.monthly": "Monthly",

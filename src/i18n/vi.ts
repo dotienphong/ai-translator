@@ -414,6 +414,10 @@ export const vi: Record<MessageKey, string> = {
   "notice.updateReprompt": "Sau khi cập nhật, macOS có thể hỏi lại quyền thu âm một lần: hãy cho phép.",
   "notice.restartToUpdate": "Khởi động lại",
   "notice.updateLater": "Để sau",
+  "updateModal.title": "Có phiên bản mới",
+  "updateModal.body": "Bản {version} đã tải xong. Khởi động lại ngay để cập nhật?",
+  "updateModal.updateNow": "Cập nhật ngay",
+  "updateModal.cancel": "Hủy",
 
   "plan.free": "Free",
   "plan.monthly": "Monthly",

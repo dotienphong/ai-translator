@@ -415,6 +415,10 @@ export const zh: Record<MessageKey, string> = {
   "notice.updateReprompt": "更新后，macOS 可能会再次请求一次音频录制权限：请允许。",
   "notice.restartToUpdate": "重启",
   "notice.updateLater": "稍后",
+  "updateModal.title": "有新版本",
+  "updateModal.body": "版本 {version} 已下载。现在重启并更新吗？",
+  "updateModal.updateNow": "立即更新",
+  "updateModal.cancel": "取消",
 
   "plan.free": "Free",
   "plan.monthly": "Monthly",

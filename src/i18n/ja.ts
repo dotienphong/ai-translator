@@ -415,6 +415,10 @@ export const ja: Record<MessageKey, string> = {
   "notice.updateReprompt": "更新後、macOS が音声録音の許可をもう一度求めることがあります。許可してください。",
   "notice.restartToUpdate": "再起動",
   "notice.updateLater": "後で",
+  "updateModal.title": "新しいバージョンがあります",
+  "updateModal.body": "バージョン {version} をダウンロードしました。今すぐ再起動して更新しますか？",
+  "updateModal.updateNow": "今すぐ更新",
+  "updateModal.cancel": "キャンセル",
 
   "plan.free": "Free",
   "plan.monthly": "Monthly",

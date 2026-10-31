@@ -6,6 +6,7 @@ import { useApp, useT } from "./appStore";
 import { useLicense } from "./licenseStore";
 import { PlanName } from "./LicenseText";
 import { Notice } from "./Notice";
+import { UpdateModal } from "./UpdateModal";
 import { About } from "./screens/About";
 import { Home } from "./screens/Home";
 import { GlossaryScreen } from "./screens/GlossaryScreen";
@@ -101,6 +102,7 @@ export function Shell() {
           <Body />
         </div>
       </main>
+      <UpdateModal />
     </div>
   );
 }
