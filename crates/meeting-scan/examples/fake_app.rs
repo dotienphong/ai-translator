@@ -81,9 +81,19 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let title = args.get(1).cloned().unwrap_or_else(|| "-".into());
     // Tiến trình con: một bản của chính file này, không cửa sổ; cha giữ nó sống tới khi bị giết.
-    let _child = args
-        .get(2)
-        .and_then(|path| std::process::Command::new(path).arg("-").spawn().ok());
+    let tone = args.get(2).map(String::as_str) == Some("tone");
+    let _child = args.get(2).filter(|a| a.as_str() != "tone").and_then(|path| {
+        let mut command = std::process::Command::new(path);
+        command.arg("-");
+        // Tiến trình con phát tiếng khi cha được yêu cầu (biến môi trường kế thừa).
+        if std::env::var_os("FAKE_APP_CHILD_TONE").is_some() {
+            command.arg("tone");
+        }
+        command.spawn().ok()
+    });
+    if tone {
+        play_tone();
+    }
     if title == "-" {
         // Không cửa sổ: ngủ tới khi bị giết.
         loop {
