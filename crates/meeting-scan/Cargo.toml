@@ -28,3 +28,10 @@ serde_json.workspace = true
 # Công cụ kiểm `examples/hint_probe.rs` chạy trên Windows thật, đọc mức tiếng của loa.
 [target.'cfg(windows)'.dev-dependencies]
 audio-capture = { path = "../audio-capture" }
+# `examples/fake_app.rs` (app giả cho `tests/windows_real.rs`): tạo cửa sổ thật.
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_WindowsAndMessaging",
+] }

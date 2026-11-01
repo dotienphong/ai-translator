@@ -30,6 +30,20 @@ impl ProcTable {
         self.procs.get(&pid).map(|(_, exe)| exe.as_str())
     }
 
+    /// Số hiệu tiến trình cha, nếu tiến trình có trong bảng.
+    pub fn parent_of(&self, pid: u32) -> Option<u32> {
+        self.procs.get(&pid).map(|(parent, _)| *parent)
+    }
+
+    /// Các tiến trình con trực tiếp của `parent`.
+    pub fn children_of(&self, parent: u32) -> Vec<u32> {
+        self.procs
+            .iter()
+            .filter(|(_, (p, _))| *p == parent)
+            .map(|(pid, _)| *pid)
+            .collect()
+    }
+
     pub fn len(&self) -> usize {
         self.procs.len()
     }

@@ -1,0 +1,47 @@
+# Kiểm gợi ý bật dịch khi có cuộc họp bằng Windows thật (spec 2026-11-01-goi-y-bat-dich-khi-hop §8): chạy các test cần cửa sổ, tiến trình và cây
+# tiến trình thật (`crates/meeting-scan/tests/windows_real.rs`, mặc định `#[ignore]`) trên runner Windows. Không dùng secret nào. Chạy khi
+# đẩy nhánh `feat/meeting-hint` hoặc chạy tay; không nằm trong CI chuẩn (`ci.yml`) vì cần cửa sổ thật và chạy khoảng vài phút.
+name: Meeting hint (Windows thật)
+
+on:
+  push:
+    branches: [feat/meeting-hint]
+    paths:
+      - ".github/workflows/meeting-hint-windows.yml"
+      - "crates/meeting-scan/**"
+      - "crates/audio-capture/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Rust theo rust-toolchain.toml
+        run: |
+          rustup toolchain install
+          rustc --version
+      - name: Thiết bị âm thanh của runner (chỉ để biết, không bắt buộc)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-Service Audiosrv, AudioEndpointBuilder | Format-Table Name, Status, StartType
+          Get-CimInstance Win32_SoundDevice | Format-Table Name, Status
+      - name: Test thường của meeting-scan
+        run: cargo test --locked -p meeting-scan
+      - name: Test với cửa sổ, tiến trình và cây tiến trình thật
+        run: cargo test --locked -p meeting-scan --test windows_real -- --ignored --nocapture --test-threads=1
