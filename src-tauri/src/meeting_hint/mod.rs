@@ -8,8 +8,27 @@
 //! - Phần ở đây: vòng lấy mẫu 500 ms, các lệnh của cửa sổ gợi ý (`get_meeting_hint_view`, `meeting_hint_accept`,
 //!   `meeting_hint_dismiss`) và việc ghi "Không hỏi lại" vào cài đặt.
 //!
+//! **An toàn (yêu cầu của chủ dự án 2026-11-01: không được làm hỏng hay sập app):**
+//! - `install` không bao giờ trả lỗi: không tạo được luồng thì chỉ ghi log và tắt tính năng; app vẫn khởi động bình thường.
+//! - Cửa sổ gợi ý chỉ được tạo lúc cần hiện lần đầu (không tốn bộ nhớ hay thời gian khởi động nếu không có cuộc họp); không tạo được
+//!   thì ghi log, không gợi ý, không ảnh hưởng gì khác.
+//! - Bản release đặt `panic = "abort"`: một lần panic là sập cả app. Mã ở đây và ở `meeting-scan` cấm `unwrap`, `expect`, chỉ số mảng,
+//!   `panic!` (lint `clippy`); khóa bị nhiễm độc thì dùng tiếp; mọi lỗi của Win32 hay COM chỉ thành giá trị rỗng và dòng log.
+//! - Chỉ đọc: không đổi gì trong app họp hay trong cấu hình âm thanh; không mở luồng âm thanh, không đụng tới việc thu của phiên dịch.
+//!
 //! macOS chưa làm (chủ dự án 2026-11-01): `install` không tạo gì, các lệnh trả "chưa có gợi ý nào".
 //! Log chỉ có số liệu và tên app họp (Teams, Zoom, Meet); không có tiêu đề cửa sổ, tên cuộc họp hay tên người.
+
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        clippy::unreachable
+    )
+)]
 
 #[cfg(windows)]
 mod sensor;
@@ -61,10 +80,13 @@ pub struct HintView {
 }
 
 pub fn view<R: Runtime>(app: &AppHandle<R>) -> HintView {
-    let settings = app.state::<AppState>().settings();
+    let (ui_language, theme) = app
+        .try_state::<AppState>()
+        .map(|state| state.settings())
+        .map_or((UiLanguage::Vi, Theme::System), |s| (s.ui_language, s.theme));
     HintView {
-        ui_language: settings.ui_language,
-        theme: settings.theme,
+        ui_language,
+        theme,
         app: app.try_state::<Service>().and_then(|s| s.hint().shown()),
     }
 }
@@ -77,16 +99,18 @@ pub fn idle(settings: &Settings, status: &AppStatus) -> bool {
         && settings.capture_mode != CaptureMode::Mic
 }
 
-/// Tạo cửa sổ gợi ý và chạy vòng lấy mẫu. Gọi một lần trong `setup`, sau `AppState` và `compose::create`.
+/// Chạy vòng lấy mẫu. Gọi một lần trong `setup`, sau `AppState`. Không bao giờ trả lỗi (xem mục An toàn): cửa sổ gợi ý được tạo lúc cần.
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     #[cfg(windows)]
     {
-        window::create(app)?;
         app.manage(Service::new());
         let handle = app.clone();
-        std::thread::Builder::new()
+        if let Err(e) = std::thread::Builder::new()
             .name("meeting-hint".into())
-            .spawn(move || sensor::run(handle))?;
+            .spawn(move || sensor::run(handle))
+        {
+            log::warn!("gợi ý bật dịch: không tạo được luồng, tắt tính năng: {e}");
+        }
     }
     #[cfg(not(windows))]
     let _ = app;
@@ -132,7 +156,9 @@ pub fn accept<R: Runtime>(app: &AppHandle<R>) {
     };
     service.hint().accepted();
     hide(app);
-    let state = app.state::<AppState>();
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
     if idle(&state.settings(), &state.status()) {
         log::info!("gợi ý bật dịch: người dùng bật dịch");
         actions::run_hotkey(app, HotkeyAction::ToggleSession);
@@ -155,7 +181,10 @@ pub fn dismiss<R: Runtime>(app: &AppHandle<R>, ignore_app: bool) {
     let Some(hinted) = shown.filter(|_| ignore_app) else {
         return;
     };
-    let mut ignored = app.state::<AppState>().settings().meeting_hint.ignored_apps;
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let mut ignored = state.settings().meeting_hint.ignored_apps;
     if ignored.contains(&hinted) {
         return;
     }

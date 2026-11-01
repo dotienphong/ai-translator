@@ -144,10 +144,15 @@ impl Scanner {
             };
             if is_meeting_window(recipe, &title, &class, "") {
                 let slot = MeetingApp::ALL.iter().position(|a| *a == app).unwrap_or(0);
-                if per_app[slot].is_empty() {
-                    versions[slot] = version;
+                // `per_app` và `versions` đúng cỡ `MeetingApp::ALL`, nên `get_mut` luôn có; dùng nó thay chỉ số để không có đường panic.
+                if let Some(list) = per_app.get_mut(slot) {
+                    if list.is_empty()
+                        && let Some(v) = versions.get_mut(slot)
+                    {
+                        *v = version;
+                    }
+                    list.push(MeetingWindow { id: w.id, title });
                 }
-                per_app[slot].push(MeetingWindow { id: w.id, title });
             }
         }
         self.exes.retain(|pid, _| seen.contains(pid));

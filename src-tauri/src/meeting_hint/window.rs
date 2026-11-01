@@ -16,8 +16,12 @@ const HEIGHT: f64 = 168.0;
 /// Cách mép vùng làm việc, px logic.
 const MARGIN: f64 = 8.0;
 
-/// Tạo cửa sổ gợi ý, ẩn.
-pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+/// Tạo cửa sổ gợi ý nếu chưa có, ẩn. Gọi lúc cần hiện lần đầu (không tạo lúc khởi động: không tốn bộ nhớ, không có gì để hỏng nếu app
+/// không bao giờ có cuộc họp). Gọi từ luồng lấy mẫu, không phải luồng giao diện.
+fn ensure<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    if app.get_webview_window(LABEL).is_some() {
+        return Ok(());
+    }
     WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("hint.html".into()))
         .title(app.package_info().name.clone())
         .inner_size(WIDTH, HEIGHT)
@@ -39,6 +43,7 @@ pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
 /// Đặt cửa sổ ở góc dưới phải của màn hình chính rồi hiện mà không kích hoạt.
 pub fn show<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    ensure(app)?;
     let Some(window) = app.get_webview_window(LABEL) else {
         return Ok(());
     };

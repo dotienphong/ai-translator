@@ -39,10 +39,6 @@ impl HintApp {
             MeetingApp::MeetChrome | MeetingApp::MeetEdge => HintApp::Meet,
         }
     }
-
-    fn slot(self) -> usize {
-        Self::ALL.iter().position(|a| *a == self).unwrap_or(0)
-    }
 }
 
 /// Tiêu đề cửa sổ trình duyệt có phải trang họp Google Meet không: tiêu đề tab Meet bắt đầu bằng "Meet" rồi gạch ngang hay gạch
@@ -134,9 +130,40 @@ struct PerApp {
     last_present: Option<Instant>,
 }
 
+/// Trạng thái từng app họp. Ba trường riêng thay vì mảng có chỉ số: không có chỗ nào có thể chỉ số sai (bản release dùng `panic = "abort"`, một
+/// lần panic là app sập).
+#[derive(Default)]
+struct Apps {
+    teams: PerApp,
+    zoom: PerApp,
+    meet: PerApp,
+}
+
+impl Apps {
+    fn get(&self, app: HintApp) -> &PerApp {
+        match app {
+            HintApp::Teams => &self.teams,
+            HintApp::Zoom => &self.zoom,
+            HintApp::Meet => &self.meet,
+        }
+    }
+
+    fn get_mut(&mut self, app: HintApp) -> &mut PerApp {
+        match app {
+            HintApp::Teams => &mut self.teams,
+            HintApp::Zoom => &mut self.zoom,
+            HintApp::Meet => &mut self.meet,
+        }
+    }
+
+    fn all_mut(&mut self) -> [&mut PerApp; 3] {
+        [&mut self.teams, &mut self.zoom, &mut self.meet]
+    }
+}
+
 #[derive(Default)]
 pub struct Hint {
-    apps: [PerApp; 3],
+    apps: Apps,
     shown: Option<(HintApp, Instant)>,
     was_idle: bool,
 }
@@ -178,7 +205,7 @@ impl Hint {
         // Có phiên dịch (hay không rảnh): đóng cửa sổ nếu đang hiện, xóa mẫu, giữ "đã hỏi" để lúc dừng dịch giữa cuộc họp không hỏi lại.
         if !t.idle {
             self.was_idle = false;
-            for app in &mut self.apps {
+            for app in self.apps.all_mut() {
                 app.samples.clear();
             }
             return if self.shown.take().is_some() {
@@ -190,7 +217,7 @@ impl Hint {
         if !self.was_idle {
             // Vừa rảnh lại: cuộc họp đang có thì chưa tính là hết.
             self.was_idle = true;
-            for app in &mut self.apps {
+            for app in self.apps.all_mut() {
                 if app.asked {
                     app.last_sound = Some(t.now);
                 }
@@ -210,7 +237,7 @@ impl Hint {
             if t.ignored.contains(&a) || !self.ready(a, t.now) {
                 continue;
             }
-            self.apps[a.slot()].asked = true;
+            self.apps.get_mut(a).asked = true;
             self.shown = Some((a, t.now));
             return Action::Show(a);
         }
@@ -218,7 +245,7 @@ impl Hint {
     }
 
     fn update(&mut self, a: HintApp, t: &Tick<'_>) {
-        let st = &mut self.apps[a.slot()];
+        let st = self.apps.get_mut(a);
         if !t.present.contains(&a) {
             // Mất mặt đủ lâu (hơn một phút): cuộc họp hết, cuộc sau hỏi lại. Ngắn hơn (đổi tab trình duyệt) thì giữ nguyên.
             if st
@@ -253,7 +280,7 @@ impl Hint {
 
     /// Đủ điều kiện gợi ý (chưa xét ignored): chưa hỏi cuộc họp này, mẫu phủ gần đủ [`SOUND_WINDOW`], đủ tỉ lệ có tiếng.
     fn ready(&self, a: HintApp, now: Instant) -> bool {
-        let st = &self.apps[a.slot()];
+        let st = self.apps.get(a);
         if st.asked {
             return false;
         }

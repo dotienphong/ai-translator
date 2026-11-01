@@ -19,6 +19,9 @@ use crate::state::AppState;
 
 /// Đọc lại công thức đang có chừng này (công thức đổi chậm: tải về mỗi 6 giờ).
 const RECIPES_REFRESH: Duration = Duration::from_secs(600);
+/// Sau chừng này lần đọc âm thanh liên tiếp đều lỗi (ví dụ máy không có thiết bị phát) thì thưa ra, đỡ tốn máy.
+const FAILURES_BEFORE_BACKOFF: u32 = 10;
+const BACKOFF: Duration = Duration::from_secs(10);
 /// Lỗi đọc âm thanh chỉ ghi log chừng này một lần, để máy không có thiết bị phát không làm đầy log.
 const ERROR_LOG_EVERY: Duration = Duration::from_secs(300);
 
@@ -28,6 +31,8 @@ struct Sensor {
     recipes: Option<Recipes>,
     recipes_at: Option<Instant>,
     error_logged_at: Option<Instant>,
+    /// Số lần đọc âm thanh lỗi liên tiếp.
+    failures: u32,
 }
 
 impl Sensor {
@@ -38,6 +43,7 @@ impl Sensor {
             recipes: None,
             recipes_at: None,
             error_logged_at: None,
+            failures: 0,
         }
     }
 
@@ -62,11 +68,15 @@ impl Sensor {
 
     fn observe<R: Runtime>(&mut self, app: &AppHandle<R>, now: Instant) -> Observation {
         let levels = match audio_capture::windows::output_levels() {
-            Ok(l) => Levels {
-                sessions: l.sessions,
-                device_peak: l.device_peak,
-            },
+            Ok(l) => {
+                self.failures = 0;
+                Levels {
+                    sessions: l.sessions,
+                    device_peak: l.device_peak,
+                }
+            }
             Err(e) => {
+                self.failures = self.failures.saturating_add(1);
                 if self
                     .error_logged_at
                     .is_none_or(|at| now.saturating_duration_since(at) >= ERROR_LOG_EVERY)
@@ -93,12 +103,17 @@ impl Sensor {
     }
 }
 
-/// Vòng lấy mẫu; chạy trên luồng riêng tới khi app thoát.
+/// Vòng lấy mẫu; chạy trên luồng riêng tới khi app thoát. Không có `unwrap`, chỉ số mảng hay `state()` có thể panic (bản release dùng
+/// `panic = "abort"`): thiếu trạng thái thì bỏ qua lượt này.
 pub fn run<R: Runtime>(app: AppHandle<R>) {
     let mut sensor = Sensor::new();
     loop {
-        std::thread::sleep(SAMPLE_EVERY);
-        let Some(state) = app.try_state::<AppState>() else {
+        std::thread::sleep(if sensor.failures >= FAILURES_BEFORE_BACKOFF {
+            BACKOFF
+        } else {
+            SAMPLE_EVERY
+        });
+        let (Some(state), Some(service)) = (app.try_state::<AppState>(), app.try_state::<Service>()) else {
             continue;
         };
         let (settings, status) = (state.settings(), state.status());
@@ -110,17 +125,14 @@ pub fn run<R: Runtime>(app: AppHandle<R>) {
         } else {
             Observation::default()
         };
-        let action = {
-            let service = app.state::<Service>();
-            service.hint().tick(&Tick {
-                now,
-                enabled,
-                idle,
-                ignored: &settings.meeting_hint.ignored_apps,
-                present: &observation.present,
-                sound: &observation.sound,
-            })
-        };
+        let action = service.hint().tick(&Tick {
+            now,
+            enabled,
+            idle,
+            ignored: &settings.meeting_hint.ignored_apps,
+            present: &observation.present,
+            sound: &observation.sound,
+        });
         match action {
             Action::None => {}
             Action::Show(hinted) => show(&app, hinted),

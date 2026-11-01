@@ -25,6 +25,11 @@ impl ProcTable {
         self.procs.insert(pid, (parent, exe.into()));
     }
 
+    /// Tên file chạy của tiến trình, nếu có trong bảng (công cụ kiểm `hint_probe` in ra cho người đọc).
+    pub fn exe_of(&self, pid: u32) -> Option<&str> {
+        self.procs.get(&pid).map(|(_, exe)| exe.as_str())
+    }
+
     pub fn len(&self) -> usize {
         self.procs.len()
     }

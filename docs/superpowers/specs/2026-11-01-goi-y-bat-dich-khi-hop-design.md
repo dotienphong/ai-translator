@@ -58,6 +58,13 @@ Mã nằm ở crate mới `crates/meeting-scan` (phần thuần Rust, test trên
 - **Cam kết:** việc nhận biết chạy hoàn toàn trên máy, không gửi gì đi. Không ghi tiêu đề cửa sổ, tên người, đường dẫn file chạy vào đĩa hay log; log chỉ có số liệu (số phiên âm thanh thấy, số phiên gán được về app họp, kết quả gợi ý: hiện, bật, bỏ qua, tự đóng, tắt app). Báo cáo lỗi tự động không có thêm trường nào chứa tên app họp trừ khi đã có sẵn.
 - **Chính sách quyền riêng tư:** cập nhật `docs/legal/privacy.vi.md` và `privacy.en.md` (nêu: app kiểm tra app họp đang chạy và có tiếng để gợi ý, chỉ trên máy, tắt được) và ghi vào changelog pháp lý theo quy trình hiện có, trước khi phát hành bản có tính năng này.
 
+## 6b. An toàn: không được làm hỏng hay sập app (yêu cầu của chủ dự án 2026-11-01)
+
+- **Bản release đặt `panic = "abort"`:** một lần panic ở bất kỳ luồng nào là sập cả app. Vì vậy `meeting-scan` và `meeting_hint` cấm `unwrap`, `expect`, chỉ số mảng, `panic!`, `unreachable!` bằng lint `clippy` (`deny`, trừ test); máy trạng thái dùng ba trường có tên thay vì mảng có chỉ số; mọi lỗi Win32, COM chỉ thành giá trị rỗng và một dòng log; khóa bị nhiễm độc thì dùng tiếp; trạng thái thiếu thì bỏ qua lượt lấy mẫu.
+- **Không làm hỏng khởi động:** `meeting_hint::install` không bao giờ trả lỗi (không tạo được luồng thì ghi log và tắt tính năng). Cửa sổ gợi ý **không tạo lúc khởi động** mà tạo lần đầu cần hiện: không tốn bộ nhớ hay thời gian khởi động nếu không có cuộc họp, không tạo được thì chỉ ghi log.
+- **Không đụng tới chức năng cũ:** chỉ đọc (phiên âm thanh, tiến trình, cửa sổ); không mở luồng âm thanh, không đổi cấu hình âm thanh, không gửi gì vào app họp. Chạy ở luồng riêng, chỉ khi gợi ý bật **và** app rảnh (không có phiên dịch, không nạp model); có phiên dịch thì không quét gì. Khi lỗi đọc âm thanh liên tiếp (máy không có loa) thì thưa ra 10 giây một lần. "Bật dịch" chỉ bắt đầu phiên nếu app còn rảnh, kẻo phím chuyển đổi dừng nhầm phiên người dùng vừa tự bật.
+- **Tắt được:** Cài đặt › Chung. Cài đặt cũ chưa có nhóm `meetingHint` tự nhận mặc định (đã có test).
+
 ## 7. Không làm
 
 - Không tự bật dịch (kể cả có công tắc), không dịch ngầm khi chưa bấm.
@@ -67,6 +74,12 @@ Mã nằm ở crate mới `crates/meeting-scan` (phần thuần Rust, test trên
 - Không xin thêm quyền Trợ năng chỉ để gợi ý Meet trên macOS.
 
 ## 8. Kiểm thử
+
+Đã có (chạy trên mọi nền tảng, `cargo test -p meeting-scan`): 39 test đơn vị và 21 test kịch bản từ đầu tới cuối (`tests/scenarios.rs`) mô phỏng cây tiến trình, phiên âm thanh, cửa sổ và tiêu đề như máy Windows thật, cho từng app: **Teams** (cuộc gọi, cuộc họp có tên tự đặt, cửa sổ ẩn xuống khay, tiếng từ WebView2 con, dự phòng khi không gán được tiến trình, Teams mở sẵn mà Spotify phát nhạc, tiếng "ting" thông báo), **Zoom** (tiếng từ tiến trình chính và tiến trình phụ, chưa vào họp), **Google Meet** (Chrome, Edge, tên cuộc họp tự đặt, YouTube cùng trình duyệt, Meet ở Edge mà YouTube ở Chrome, Gmail có tiếng báo, đổi tab rồi quay lại, hai cuộc họp liên tiếp); cùng một test ngẫu nhiên 400 000 lần lấy mẫu kiểm các bất biến an toàn (chỉ hiện khi bật, rảnh, app không bị tắt; không bao giờ hai cửa sổ cùng lúc; đóng ngay khi không còn cần). Đã thử phá logic có chủ ý (bỏ điều kiện dự phòng, nhận mọi tiêu đề là Meet, bỏ ngưỡng, hỏi lại mỗi lần, không lần theo tiến trình cha, ngưỡng 1 giây, tiếng trình duyệt đủ để có mặt): mỗi lỗi đều làm ít nhất một test đỏ.
+
+**Công cụ kiểm trên máy thật:** `cargo run -p meeting-scan --example hint_probe --release` (Windows) in mỗi 500 ms những gì app thấy (tên tệp chạy của từng phiên âm thanh, đỉnh, app họp gán được, app có mặt, app có tiếng, `=> GỢI Ý` khi sẽ hiện). Chủ dự án chạy khi họp Teams, Zoom, Meet để xác nhận trước khi phát hành.
+
+Kế hoạch ban đầu:
 
 - **Test Rust (mọi nền tảng):** máy trạng thái gợi ý thuần (giờ giả, đầu vào là danh sách phiên âm thanh và cửa sổ họp giả): cửa sổ trượt 5 giây và ngưỡng 75%; tiếng ngắn không gợi ý; YouTube trong Chrome không gợi ý; mỗi cuộc họp một lần; im 60 giây thì cuộc họp sau hỏi lại; app trong `ignoredApps` không gợi ý; có phiên dịch hay chế độ micro thì không gợi ý; nhiều app cùng có tiếng theo thứ tự ưu tiên; tự đóng 15 giây không thêm vào "đã tắt". Test gán tiến trình con về app cha bằng cây tiến trình giả.
 - **Test quyền riêng tư:** tiêu đề chỉ được hỏi cho file chạy trong danh sách viết cứng (test giả `Desktop` đếm số lần gọi `title`); không có chuỗi tiêu đề nào xuất hiện trong log (giống test của `winscan`).

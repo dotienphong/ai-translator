@@ -4,6 +4,18 @@
 //! - [`hint`]: máy trạng thái gợi ý bật dịch (khi nào hiện, hỏi một lần mỗi cuộc họp, tự đóng).
 //! - [`is_meeting_window`]: cửa sổ có phải cửa sổ họp của app không, theo công thức đã ký.
 
+// Bản release đặt `panic = "abort"`: một lần panic ở luồng gợi ý làm sập cả app. Cấm các cách panic quen thuộc ở mã không phải test.
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        clippy::unreachable
+    )
+)]
+
 pub mod hint;
 pub mod probe;
 pub mod procmap;

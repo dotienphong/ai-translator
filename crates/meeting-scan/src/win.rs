@@ -66,7 +66,7 @@ impl Desktop for Win32Desktop {
             let mut len = buf.len() as u32;
             let ok = QueryFullProcessImageNameW(handle, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
             let _ = CloseHandle(handle);
-            ok.then(|| String::from_utf16_lossy(&buf[..len as usize]))
+            ok.then(|| String::from_utf16_lossy(buf.get(..len as usize).unwrap_or(&[])))
         }
     }
 
@@ -74,7 +74,7 @@ impl Desktop for Win32Desktop {
         let mut buf = [0u16; 512];
         // SAFETY: bộ đệm đủ chỗ; cửa sổ không còn thì trả 0.
         let n = unsafe { GetWindowTextW(hwnd(id), &mut buf) }.max(0) as usize;
-        String::from_utf16_lossy(&buf[..n.min(buf.len())])
+        String::from_utf16_lossy(buf.get(..n).unwrap_or(&[]))
             .chars()
             .take(WINDOW_TEXT)
             .collect()
@@ -84,7 +84,7 @@ impl Desktop for Win32Desktop {
         let mut buf = [0u16; 256];
         // SAFETY: như `title`.
         let n = unsafe { GetClassNameW(hwnd(id), &mut buf) }.max(0) as usize;
-        String::from_utf16_lossy(&buf[..n.min(buf.len())])
+        String::from_utf16_lossy(buf.get(..n).unwrap_or(&[]))
     }
 }
 
@@ -111,7 +111,7 @@ pub fn process_table() -> ProcTable {
                 table.insert(
                     entry.th32ProcessID,
                     entry.th32ParentProcessID,
-                    String::from_utf16_lossy(&entry.szExeFile[..len]),
+                    String::from_utf16_lossy(entry.szExeFile.get(..len).unwrap_or(&[])),
                 );
                 // Hết danh sách thì trả lỗi `ERROR_NO_MORE_FILES`.
                 if Process32NextW(snapshot, &mut entry).is_err() {

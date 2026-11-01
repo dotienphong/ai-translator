@@ -3202,6 +3202,7 @@ dependencies = [
 name = "meeting-scan"
 version = "0.1.0"
 dependencies = [
+ "audio-capture",
  "serde",
  "serde_json",
  "speaker-protocol",
