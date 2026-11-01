@@ -89,7 +89,11 @@ pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
         .args(["-ngl", if launch.use_gpu { "auto" } else { "0" }])
         // Chạy CPU thì không để llama.cpp chọn hay hỏi thiết bị Vulkan nào lúc nạp model (báo cáo R-BXKS-X9QQ: crash
         // 0xc0000005 khi nạp model ở chế độ CPU trên máy có card NVIDIA).
-        .args(if launch.use_gpu { &[][..] } else { &["--device", "none"][..] })
+        .args(if launch.use_gpu {
+            &[][..]
+        } else {
+            &["--device", "none"][..]
+        })
         .arg("--no-slots")
         .arg("--no-ui")
         .args(&launch.extra_args);
