@@ -4,7 +4,7 @@
 //!   -np 1 -ngl auto --no-ui`. API key đi qua biến môi trường, chỉ đặt cho tiến trình `llama-server`, không qua tham số
 //!   dòng lệnh (hiện ra trong `ps`). Key tạo mới mỗi lần chạy và chỉ nằm trong RAM; không bao giờ vào log hay `Debug`.
 //!   stderr của server đi qua `logfile::pump`, có che key, nên server lỡ in key thì `llama-server.log` vẫn không có.
-//! - Chạy bằng CPU (§9, chuyển sang CPU): `-ngl 0` thay cho `-ngl auto`. Không bao giờ truyền `-ngl 99`.
+//! - Chạy bằng CPU (§9, chuyển sang CPU): `-ngl 0 --device none` thay cho `-ngl auto`. Không bao giờ truyền `-ngl 99`.
 //! - Mỗi gói SSE của `llama-server` b11146 chứa đúng một token (đã kiểm lúc lập kế hoạch 02: 24 gói chữ, `predicted_n`
 //!   24), nên hậu xử lý đếm gói để đo độ dài bản dịch trong lúc stream.
 
@@ -87,6 +87,9 @@ pub fn command(launch: &LlamaLaunch, port: u16, api_key: &str) -> Command {
         .args(["--host", "127.0.0.1", "--port", &port.to_string()])
         .args(["-c", "2048", "-np", "1"])
         .args(["-ngl", if launch.use_gpu { "auto" } else { "0" }])
+        // Chạy CPU thì không để llama.cpp chọn hay hỏi thiết bị Vulkan nào lúc nạp model (báo cáo R-BXKS-X9QQ: crash
+        // 0xc0000005 khi nạp model ở chế độ CPU trên máy có card NVIDIA).
+        .args(if launch.use_gpu { &[][..] } else { &["--device", "none"][..] })
         .arg("--no-slots")
         .arg("--no-ui")
         .args(&launch.extra_args);
@@ -765,6 +768,8 @@ mod tests {
         let args = args(&command(&cpu, 18_000, "k"));
         let ngl = args.iter().position(|a| a == "-ngl").unwrap();
         assert_eq!(args[ngl + 1], "0");
+        let dev = args.iter().position(|a| a == "--device").unwrap();
+        assert_eq!(args[dev + 1], "none", "chạy CPU thì không nạp thiết bị Vulkan nào");
         assert_eq!(args.last().map(String::as_str), Some("--no-repack"));
         assert!(!args.iter().any(|a| a == "99"), "không bao giờ -ngl 99 (§6.5)");
     }
