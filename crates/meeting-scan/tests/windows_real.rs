@@ -61,10 +61,18 @@ fn copy_as(dir: &Path, name: &str) -> PathBuf {
 
 /// Chạy app giả tên `exe` có cửa sổ `title`, và (nếu có) một tiến trình con tên `child_exe` do chính nó sinh ra.
 fn launch(tag: &str, exe: &str, title: &str, child_exe: Option<&str>) -> Running {
+    launch_with(tag, exe, title, child_exe, false)
+}
+
+/// Như [`launch`]; `tone`: tiến trình con phát một âm thật ra thiết bị phát mặc định (phiên âm thanh thật của tiến trình con).
+fn launch_with(tag: &str, exe: &str, title: &str, child_exe: Option<&str>, tone: bool) -> Running {
     let dir = std::env::temp_dir().join(format!("mt-hint-real-{}-{tag}", std::process::id()));
     let app = copy_as(&dir, exe);
     let mut command = Command::new(&app);
     command.arg(title);
+    if tone {
+        command.env("FAKE_APP_CHILD_TONE", "1");
+    }
     if let Some(name) = child_exe {
         // Cha tên `exe` nằm ở `dir`; con tên `name` nằm ở thư mục con để không trùng tên với cha khi cả hai cùng là chrome.exe.
         let child = copy_as(&dir.join("child"), name);
@@ -289,4 +297,122 @@ fn the_real_win32_helpers_and_audio_probe_do_not_panic() {
         std::thread::sleep(Duration::from_millis(200));
     }
     println!("output_levels Ok {ok}/5");
+}
+
+/// Chạy vòng lấy mẫu của app với **mức tiếng thật** (`output_levels()` của thiết bị phát thật) thay vì mức đưa tay vào.
+fn run_loop_real(secs: f32) -> (Vec<(f32, Action)>, Observation, usize) {
+    let recipes = speaker_recipe::parse(BUILTIN_JSON).ok();
+    let (mut probe, mut hint, mut desktop) = (Probe::default(), Hint::new(), Win32Desktop);
+    let started = Instant::now();
+    let (mut events, mut last, mut n, mut max_sessions) = (Vec::new(), Observation::default(), 0u32, 0usize);
+    while started.elapsed().as_secs_f32() < secs {
+        std::thread::sleep(SAMPLE_EVERY);
+        n += 1;
+        let now = Instant::now();
+        let raw = audio_capture::windows::output_levels().expect("output_levels lỗi: máy không có thiết bị phát?");
+        max_sessions = max_sessions.max(raw.sessions.len());
+        let levels = Levels {
+            sessions: raw.sessions,
+            device_peak: raw.device_peak,
+        };
+        last = probe.observe(&mut desktop, recipes.as_ref(), &levels, &process_table(), now);
+        let action = hint.tick(&Tick {
+            now,
+            enabled: true,
+            idle: true,
+            ignored: &[],
+            present: &last.present,
+            sound: &last.sound,
+        });
+        if action != Action::None {
+            events.push((n as f32 * 0.5, action));
+        }
+        if matches!(action, Action::Show(_)) {
+            hint.dismissed();
+        }
+    }
+    (events, last, max_sessions)
+}
+
+fn check_app_real(tag: &str, exe: &str, title: &str, child_exe: &str, expected: Option<HintApp>) {
+    let parent = launch_with(tag, exe, title, Some(child_exe), true);
+    let child_pid = child_of(parent.pid());
+    // Chờ phiên âm thanh thật của tiến trình con xuất hiện trong `output_levels()`.
+    let end = Instant::now() + Duration::from_secs(25);
+    loop {
+        let raw = audio_capture::windows::output_levels().expect("output_levels lỗi: máy không có thiết bị phát?");
+        if let Some((_, peak)) = raw.sessions.iter().find(|(pid, _)| *pid == child_pid) {
+            println!(
+                "[{tag}] phiên thật của pid {child_pid}: đỉnh {peak:.3}; loa {:.3}",
+                raw.device_peak
+            );
+            break;
+        }
+        assert!(
+            Instant::now() < end,
+            "[{tag}] không thấy phiên âm thanh của pid {child_pid}; có {:?}",
+            raw.sessions
+        );
+        std::thread::sleep(Duration::from_millis(300));
+    }
+    if let Some(app) = expected {
+        wait_present(app, child_pid);
+    }
+    let (events, last, sessions) = run_loop_real(14.0);
+    println!("[{tag}] (tiếng thật) sự kiện {events:?}; quan sát cuối {last:?}; tối đa {sessions} phiên");
+    match expected {
+        Some(app) => {
+            assert_eq!(shows(&events), vec![app], "[{tag}] {events:?}");
+            let when = events
+                .iter()
+                .find(|(_, a)| matches!(a, Action::Show(_)))
+                .map(|(t, _)| *t)
+                .unwrap();
+            assert!(
+                (4.0..=8.5).contains(&when),
+                "[{tag}] gợi ý lúc {when}s, mong khoảng 5 giây"
+            );
+        }
+        None => assert!(
+            shows(&events).is_empty() && last.sound.is_empty(),
+            "[{tag}] {events:?} {last:?}"
+        ),
+    }
+}
+
+/// Phiên âm thanh **thật** của Windows (thiết bị phát có thật, tiếng phát ra từ chính tiến trình con): đường WASAPI, gán về app qua cây
+/// tiến trình, rồi gợi ý. Cần máy có thiết bị phát (runner dùng thiết bị ảo); không có thì đỏ với thông báo rõ.
+#[test]
+#[ignore = "cần cửa sổ và thiết bị phát âm thanh thật; chạy với --ignored"]
+fn real_audio_sessions_map_to_the_meeting_apps() {
+    check_app_real(
+        "a-teams",
+        "ms-teams.exe",
+        "Meeting with Hoa Phạm | Microsoft Teams",
+        "msedgewebview2.exe",
+        Some(HintApp::Teams),
+    );
+    check_app_real("a-zoom", "Zoom.exe", "Zoom Meeting", "CptHost.exe", Some(HintApp::Zoom));
+    check_app_real(
+        "a-meet",
+        "chrome.exe",
+        "Meet - abc-defg-hij - Google Chrome",
+        "chrome.exe",
+        Some(HintApp::Meet),
+    );
+    check_app_real(
+        "a-meet-edge",
+        "msedge.exe",
+        "Meet - abc-defg-hij - Microsoft Edge",
+        "msedge.exe",
+        Some(HintApp::Meet),
+    );
+    // YouTube: cũng có tiếng thật nhưng không phải họp.
+    check_app_real(
+        "a-youtube",
+        "chrome.exe",
+        "Nhạc hay nhất 2026 - YouTube - Google Chrome",
+        "chrome.exe",
+        None,
+    );
 }

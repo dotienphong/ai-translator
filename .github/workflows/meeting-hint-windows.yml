@@ -41,7 +41,46 @@ jobs:
         run: |
           Get-Service Audiosrv, AudioEndpointBuilder | Format-Table Name, Status, StartType
           Get-CimInstance Win32_SoundDevice | Format-Table Name, Status
+      # Runner không có thiết bị phát. Cài thiết bị âm thanh ảo (VB-CABLE, driver có chữ ký của VB-Audio; chủ dự án cho phép 2026-11-01) để có phiên
+      # âm thanh thật. Chỉ chạy trong máy ảo dùng một lần của runner. Không cài được thì các test tiếng thật đỏ với thông báo rõ, các test còn
+      # lại vẫn chạy. Workflow thử nghiệm này sẽ gỡ trước khi merge.
+      - name: Cài thiết bị phát ảo (VB-CABLE)
+        id: vbcable
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path $env:RUNNER_TEMP 'vbcable.zip'
+          $ok = $false
+          foreach ($v in 45, 43) {
+            try { Invoke-WebRequest "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack$v.zip" -OutFile $zip; $ok = $true; break } catch { Write-Host "Pack$v không tải được: $_" }
+          }
+          if (-not $ok) { throw 'không tải được VB-CABLE' }
+          $dir = Join-Path $env:RUNNER_TEMP 'vbcable'
+          Expand-Archive $zip $dir -Force
+          Get-ChildItem $dir | Format-Table Name
+          # Tin chữ ký của nhà phát hành driver để cài không hỏi.
+          $cat = Get-ChildItem $dir -Filter *.cat | Select-Object -First 1
+          $sig = Get-AuthenticodeSignature $cat.FullName
+          Write-Host "chữ ký: $($sig.Status) $($sig.SignerCertificate.Subject)"
+          $cer = Join-Path $dir 'publisher.cer'
+          [IO.File]::WriteAllBytes($cer, $sig.SignerCertificate.Export('Cert'))
+          Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
+          $setup = Get-ChildItem $dir -Filter 'VBCABLE_Setup_x64.exe' | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '-i','-h' -Wait -NoNewWindow
+          Start-Sleep -Seconds 5
+          Restart-Service Audiosrv -Force
+          Start-Sleep -Seconds 5
+      - name: Thiết bị âm thanh sau khi cài
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-Service Audiosrv, AudioEndpointBuilder | Format-Table Name, Status
+          Get-CimInstance Win32_SoundDevice | Format-Table Name, Status
+          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table FriendlyName, Status
       - name: Test thường của meeting-scan
         run: cargo test --locked -p meeting-scan
-      - name: Test với cửa sổ, tiến trình và cây tiến trình thật
-        run: cargo test --locked -p meeting-scan --test windows_real -- --ignored --nocapture --test-threads=1
+      - name: Test với cửa sổ, tiến trình và cây tiến trình thật (tiếng đưa tay vào)
+        run: cargo test --locked -p meeting-scan --test windows_real -- --ignored --nocapture --test-threads=1 --skip real_audio
+      - name: Test với phiên âm thanh thật (thiết bị phát ảo)
+        run: cargo test --locked -p meeting-scan --test windows_real real_audio -- --ignored --nocapture --test-threads=1
