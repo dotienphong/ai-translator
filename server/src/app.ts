@@ -12,6 +12,7 @@ import { registerOrders } from "./orders";
 import { registerSupport, supportCors } from "./support/routes";
 import { registerZaloWebhook } from "./support/webhook";
 import { registerTrial } from "./trial";
+import { registerUnsubscribe } from "./unsubscribe";
 
 export type AppEnv = { Bindings: ApiEnv; Variables: { deps: Deps } };
 
@@ -51,6 +52,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   registerOrders(app);
   registerLicenses(app);
   registerTrial(app);
+  registerUnsubscribe(app);
   registerDiagnostics(app);
   registerSupport(app);
   app.notFound((c) => fail(c, 404, "not_found"));

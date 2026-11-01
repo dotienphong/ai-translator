@@ -29,6 +29,8 @@ export async function resetDb(): Promise<void> {
       "rate_limits",
       "ops_alerts",
       "trials",
+      "expiry_reminders",
+      "reminder_optouts",
       "sqlite_sequence",
     ].map((t) => env.DB.prepare(`DELETE FROM ${t}`)),
   );

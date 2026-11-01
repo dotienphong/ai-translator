@@ -31,7 +31,9 @@ export default defineConfig(async () => {
         // điều đó). Riêng khi test, giá trị này nới ba chỗ: không ép chỉ HTTPS, cho phép khóa ký test-*, không bắt buộc ACCESS_AUD.
         // MIGRATION_DB: D1 trống riêng cho test chuyển dữ liệu của từng migration (test/migrations.test.ts).
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS, ENVIRONMENT: "test" },
+          // EXPIRY_REMINDERS = "off": wrangler.jsonc bật thư nhắc gia hạn ("on"), nhưng test của các tính năng khác không được tự nhận thư
+        // nhắc (cron gửi thư cho license còn ≤ 3 ngày); test/expiry-reminders.test.ts tự bật "on" cho từng test.
+        bindings: { TEST_MIGRATIONS: migrations, ...FAKE_SECRETS, ENVIRONMENT: "test", EXPIRY_REMINDERS: "off" },
           d1Databases: ["MIGRATION_DB"],
         },
       }),

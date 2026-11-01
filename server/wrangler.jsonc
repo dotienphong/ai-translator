@@ -37,6 +37,9 @@
     // Tên miền gửi mail.aitranslator.vn phải xác thực ở Resend (SPF, DKIM) trước khi deploy; khách trả lời thư thì về EMAIL_REPLY_TO.
     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
     "EMAIL_REPLY_TO": "support@aitranslator.vn",
+    // Thư nhắc gia hạn trước 3 ngày cho khách đã mua gói 6 tháng hay 1 năm và có email (spec 2026-11-02, src/reminders.ts). "on" bật,
+    // bất cứ giá trị nào khác (hay xóa dòng này) là tắt. Áp migration 0008 TRƯỚC khi deploy Worker có dòng này (docs/release/phat-hanh.md mục 17).
+    "EXPIRY_REMINDERS": "on",
     // Giá chính thức (spec 2026-10-07 §2.1; thay bốn gói chốt 2026-10-01). six_months thêm theo spec 2026-10-13 §1:
     // 100 giờ mỗi chu kỳ 30 ngày, 180 ngày mỗi đơn. Thứ tự các gói là thứ tự trong màn hình Nâng cấp (theo thời hạn).
     // Giá USD (cent, bán qua Creem) thêm theo spec 2026-10-14 D2: giữ tỉ lệ giá mỗi ngày giữa các gói gần bảng VND (sai số 3%,

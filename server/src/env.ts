@@ -21,6 +21,8 @@ export interface ApiEnv {
   EMAIL_FROM: string;
   /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
   EMAIL_REPLY_TO?: string;
+  /** "on" thì cron gửi thư nhắc gia hạn trước 3 ngày (src/reminders.ts); thiếu hay giá trị khác thì tắt. */
+  EXPIRY_REMINDERS?: string;
   // Secret
   PAYOS_CLIENT_ID: string;
   PAYOS_API_KEY: string;

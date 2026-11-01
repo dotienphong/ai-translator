@@ -183,6 +183,11 @@ test("dùng thử Free 10 ngày mỗi máy (spec 2026-10-07 §3.1)", () => {
   assert.equal("TRIAL_DAYS" in admin.vars, false, "chỉ Worker API cấp token dùng thử");
 });
 
+test("thư nhắc gia hạn: biến EXPIRY_REMINDERS chỉ ở Worker API, và không thêm secret mới (spec 2026-11-02)", () => {
+  assert.equal(api.vars.EXPIRY_REMINDERS, "on");
+  assert.equal("EXPIRY_REMINDERS" in admin.vars, false, "chỉ cron của Worker API gửi thư nhắc");
+});
+
 test("secret bắt buộc có đủ và không nằm trong vars", () => {
   assert.deepEqual(api.secrets.required, [
     "PAYOS_CLIENT_ID",

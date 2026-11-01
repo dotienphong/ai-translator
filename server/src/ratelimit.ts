@@ -20,6 +20,8 @@ export const LIMITS = {
   order_poll: 600,
   // Đăng ký dùng thử Free (spec 2026-10-07 §3.1). Không tính vào bộ đếm thất bại.
   trial_ip: 10,
+  // Link ngừng nhận thư nhắc gia hạn (src/unsubscribe.ts): mỗi lần mở trang hay bấm nút là một lần đếm.
+  unsub_ip: 30,
   // Lần thất bại (key sai định dạng hay không tồn tại, activation lạ) của một IP, tính chung mọi endpoint.
   // Chạm ngưỡng thì IP đó bị chặn tới hết giờ, trừ request có key hợp lệ kèm activation đang hoạt động
   // và khớp (nhiều người dùng chung một IP qua CGNAT vẫn validate được), và có cảnh báo cho người vận hành.

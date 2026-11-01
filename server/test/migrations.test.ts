@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 const db = env.MIGRATION_DB;
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 
-it("có đúng bảy migration theo thứ tự", () => {
+it("có đúng tám migration theo thứ tự", () => {
   expect(names).toEqual([
     "0001_init.sql",
     "0002_three_plans_trials.sql",
@@ -16,6 +16,7 @@ it("có đúng bảy migration theo thứ tự", () => {
     "0005_support_chat.sql",
     "0006_order_lang.sql",
     "0007_speaker_health.sql",
+    "0008_expiry_reminders.sql",
   ]);
 });
 
@@ -393,7 +394,8 @@ it("0007 chỉ thêm bảng speaker_health và hai index; bảng cũ giữ nguy�
   const before = await tables();
   const indexesBefore = await indexNames();
 
-  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+  // Chỉ 0001 đến 0007: 0008 có test riêng ở cuối file.
+  await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 7));
 
   const after = await tables();
   expect(after.filter((t) => t.name !== "speaker_health")).toEqual(before);
@@ -414,5 +416,41 @@ it("0007 chỉ thêm bảng speaker_health và hai index; bảng cũ giữ nguy�
   await expect(insert("no_names", "teams", 0).run()).rejects.toThrow(/UNIQUE|PRIMARY/);
   await insert("ok", "teams", 1).run();
   await insert("ok", "teams", 0, "d2").run();
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("0008 chỉ thêm expiry_reminders, reminder_optouts và index licenses_expires; bảng cũ giữ nguyên; trạng thái chỉ nhận giá trị đã biết; mỗi (license, mốc hạn) một dòng", async () => {
+  // D1 đang ở trạng thái sau 0007.
+  const tables = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name",
+        )
+        .all<{ name: string; sql: string }>()
+    ).results;
+  const indexNames = async () =>
+    (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results.map((r) => r.name);
+  const before = await tables();
+  const indexesBefore = await indexNames();
+
+  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+
+  const after = await tables();
+  const added = ["expiry_reminders", "reminder_optouts"];
+  expect(after.filter((t) => !added.includes(t.name))).toEqual(before);
+  expect(after.map((t) => t.name)).toEqual(expect.arrayContaining(added));
+  expect(await indexNames()).toEqual([...indexesBefore, "expiry_reminders_pending", "licenses_expires"].sort());
+
+  const insert = (status: string, cycle: number) =>
+    db.prepare("INSERT INTO expiry_reminders (license_id, status, cycle, created_at) VALUES ('L1', ?, ?, 0)").bind(status, cycle);
+  await expect(insert("queued", 100).run()).rejects.toThrow(/CHECK/);
+  await insert("pending", 100).run();
+  await expect(insert("pending", 100).run()).rejects.toThrow(/UNIQUE|PRIMARY/);
+  await insert("pending", 200).run(); // hạn khác (đã gia hạn rồi lại gần hết hạn) là dòng khác
+  await db.prepare("INSERT INTO reminder_optouts (email_hash, at) VALUES ('h', 0)").run();
+  await expect(db.prepare("INSERT INTO reminder_optouts (email_hash, at) VALUES ('h', 1)").run()).rejects.toThrow(/UNIQUE|PRIMARY/);
+  // Không có khóa ngoại tới licenses: thư nhắc không cản việc xóa hay ẩn danh license.
+  expect((await db.prepare("PRAGMA foreign_key_list(expiry_reminders)").all()).results).toEqual([]);
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });

@@ -2,7 +2,8 @@
 // - hỏi cổng thanh toán các đơn chưa xác nhận, phòng khi webhook đến chậm hoặc mất;
 // - gửi lại email mua hàng chưa gửi được;
 // - gửi cảnh báo cho người vận hành; dọn bộ đếm cũ và báo cáo lỗi quá hạn (spec 2026-10-17 §3);
-// - chat hỗ trợ: gửi lại tin chưa tới Zalo, gửi email câu trả lời, xóa cuộc chat quá 90 ngày (spec 2026-10-22 §2.6).
+// - chat hỗ trợ: gửi lại tin chưa tới Zalo, gửi email câu trả lời, xóa cuộc chat quá 90 ngày (spec 2026-10-22 §2.6);
+// - thư nhắc gia hạn trước 3 ngày cho khách đã mua gói 6 tháng hay 1 năm (spec 2026-11-02).
 // Mỗi bước chạy riêng: một bước lỗi thì ghi log, các bước sau vẫn chạy.
 import { type AlertKind, authFailedAlert, raiseAlert, sendAlerts } from "./alerts";
 import type { Deps } from "./deps";
@@ -10,6 +11,7 @@ import { pruneErrorReports } from "./error-reports";
 import { fulfilOrder, retryUnsentEmails } from "./orders";
 import { isProviderAuthFailure, PaymentProviderError } from "./payment/provider";
 import { pruneRateLimits } from "./ratelimit";
+import { runExpiryReminders } from "./reminders";
 import { evaluateSpeakerHealth, pruneSpeakerHealth } from "./speaker-health";
 import { forwardPendingSupport, pruneSupport, sendSupportEmails } from "./support/cron";
 
@@ -67,7 +69,7 @@ async function step(name: string, run: () => Promise<void>): Promise<void> {
 }
 
 export async function reconcile(
-  env: { DB: D1Database; ENVIRONMENT: string; PLANS?: unknown; OPERATOR_EMAIL?: string },
+  env: { DB: D1Database; ENVIRONMENT: string; PLANS?: unknown; OPERATOR_EMAIL?: string; EXPIRY_REMINDERS?: string; RATE_LIMIT_PEPPER?: string },
   deps: Deps,
 ): Promise<ReconcileResult> {
   const now = deps.now();
@@ -139,6 +141,8 @@ export async function reconcile(
   await step("support_emails", async () => {
     await sendSupportEmails(env.DB, deps, now);
   });
+  // Thư nhắc gia hạn trước 3 ngày (src/reminders.ts, spec 2026-11-02): tắt khi EXPIRY_REMINDERS khác "on". Lỗi ở đây chỉ ghi log.
+  await step("expiry_reminders", () => runExpiryReminders(env, deps));
   // Trước send_alerts, để cảnh báo bộ đọc tên của lần này đi luôn trong lần gửi cảnh báo này.
   await step("speaker_health_alerts", async () => {
     await evaluateSpeakerHealth(env.DB, now);

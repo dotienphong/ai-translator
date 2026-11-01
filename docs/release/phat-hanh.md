@@ -1712,3 +1712,55 @@ Cần nhanh hơn 25 giờ thì chỉ lớp 1 (6 giờ) và chỉ tắt được 
 ### 16.10. Theo dõi 7 ngày sau khi bật
 
 Tab **Bộ đọc tên** của Web Admin (mục 15.4); email `speaker_health_degraded` và `speaker_canary_failed`; báo cáo lỗi mới (`asr-worker` hay `speaker-worker` chết, `unclean_exit`); chat và email hỗ trợ (tên sai được báo, phụ đề chậm đi). Điều kiện tắt khẩn: tên sai được báo lặp lại, phụ đề chậm đi sau khi bật, kết nối lạ, hay một phiên bản app họp có ≥ 30% báo cáo hỏng kéo dài.
+
+## 17. Đợt thêm thư nhắc gia hạn trước 3 ngày (migration D1 0008)
+
+Spec `2026-11-02-nhac-gia-han-qua-email-design.md`. Đợt này **chỉ có server** (Worker API và migration D1): không đổi app, website hay Worker admin, nên **không cần phát hành app** (mục 2) và app đang cài không bị ảnh hưởng. **Mỗi bước chỉ làm khi chủ dự án cho phép**; các lệnh ghi vào production do chủ dự án chạy. Thứ tự không đổi được: migration, rồi Worker API. Chạy trong `server/`; `PROD=https://api.aitranslator.vn`.
+
+Vì sao thứ tự này: migration 0008 chỉ **thêm** hai bảng (`expiry_reminders`, `reminder_optouts`) và một index (`licenses_expires`), không đổi bảng nào đã có, nên Worker cũ chạy đúng trên schema mới. Worker mới có biến `EXPIRY_REMINDERS` = `"on"` và bước cron mới cần hai bảng đó; thiếu bảng thì bước này chỉ ghi log lỗi mỗi 5 phút (`reconcile_step_failed`, bước `expiry_reminders`), không chặn đối soát đơn, gửi key hay chat hỗ trợ. Không có secret mới (link ngừng nhận ký bằng `RATE_LIMIT_PEPPER` sẵn có).
+
+**Điều kiện trước khi bắt đầu.**
+
+- `pnpm check` trong `server/` xanh trên `main`, và CI xanh.
+- **Chủ dự án đã chốt phần pháp lý:** câu đồng ý khi mua hiện chỉ nói "gửi và khôi phục license key"; thư nhắc gia hạn là mục đích thêm, nên cần cập nhật Chính sách quyền riêng tư (`website/src/content/vi/privacy.mjs` và bản en) và xin luật sư xem có cần nhãn [QC] hay xin đồng ý lại với khách đã mua không (Nghị định 91/2020/NĐ-CP, Điều 17 và 18).
+- Hạn mức gửi của gói Resend đang dùng đủ cho số khách (mỗi lần cron gửi tối đa 20 thư).
+
+1. **Kiểm trước khi áp (chỉ đọc).** Số license sẽ nhận thư ngay sau khi bật:
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT plan, COUNT(*) AS n FROM licenses WHERE revoked_at IS NULL AND email IS NOT NULL AND plan IN ('six_months','yearly') AND expires_at > strftime('%s','now') AND expires_at <= strftime('%s','now') + 259200 GROUP BY plan"
+   ```
+
+   Expected: số dòng (có thể rỗng). Mỗi license ở đây nhận đúng một thư trong khung 08:00 đến 20:00 giờ Việt Nam, tối đa 20 thư mỗi 5 phút.
+
+2. **Áp migration:**
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: chỉ `0008_expiry_reminders.sql` được áp.
+
+3. **Kiểm sau khi áp (chỉ đọc):**
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE name IN ('expiry_reminders','reminder_optouts','licenses_expires') ORDER BY name"
+   ```
+
+   Expected: ba dòng `expiry_reminders`, `licenses_expires`, `reminder_optouts`.
+
+4. **Deploy Worker API:**
+
+   ```bash
+   pnpm exec wrangler deploy
+   ```
+
+5. **Theo dõi** (vài giờ đầu, trong khung 08:00 đến 20:00 giờ Việt Nam): `pnpm exec wrangler tail mt-license --format json | grep -E 'expiry_reminder'` thấy `{"event":"expiry_reminders","queued":…,"sent":…}`; không có `expiry_reminder_failed` hay `reconcile_step_failed`. Số thư đã gửi:
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT status, COUNT(*) AS n FROM expiry_reminders GROUP BY status"
+   ```
+
+   Nên tự mua một license thử rồi đặt hạn còn 2 ngày để nhận thư mẫu trước khi tin số liệu (đặt hạn bằng lệnh `UPDATE licenses SET expires_at = … WHERE id = …`, chỉ khi chủ dự án cho phép).
+
+**Tắt khẩn:** đổi `"EXPIRY_REMINDERS": "on"` thành `"off"` trong `wrangler.jsonc` rồi `pnpm exec wrangler deploy` (cron lần kế tiếp, tối đa 5 phút, không gửi gì nữa; dòng đã gửi giữ nguyên). Không cần rollback migration. Khách bấm "Ngừng nhận thư nhắc gia hạn" ghi vào `reminder_optouts` (mã băm email, không lưu email); thư key và thư giao dịch khác không bị ảnh hưởng.

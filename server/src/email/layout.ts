@@ -1,12 +1,12 @@
 // Khung HTML của thư gửi khách (spec 2026-10-23 §2): bảng lồng, kiểu đặt inline, không ảnh (hộp thư chặn ảnh từ xa, tải ảnh là
-// một cách theo dõi người đọc), không font web, không script. Mọi chữ động đi qua escapeHtml; link chỉ trỏ tới SITE_URL. Màu và
+// một cách theo dõi người đọc), không font web, không script. Mọi chữ động đi qua escapeHtml; link chỉ trỏ tới SITE_URL (riêng thư nhắc gia hạn thêm một link ngừng nhận trỏ về API, email/reminder.ts). Màu và
 // font theo website (website/src/assets/site.css). Khối <style> trong <head> lo màn hình hẹp (Gmail cũng dùng, kể cả media query
 // max-width) và hộp thư tối (Apple Mail, iOS Mail, Outlook cho Mac); Gmail bỏ phần prefers-color-scheme và tự đảo màu, nên bản
 // sáng vẫn phải đọc được khi bị đảo. Outlook cho Windows (vẽ bằng Word) bỏ qua max-width nên có thêm bảng "ma" rộng 560 px.
 import type { Lang } from "../lang";
 import { SITE_URL } from "./strings";
 
-const C = {
+export const C = {
   bg: "#f1f5fb",
   card: "#ffffff",
   line: "#dfe7f2",
@@ -50,8 +50,15 @@ export function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c);
 }
 
+export interface EmailPageOptions {
+  /** Quy tắc CSS thêm sau khối <style> chung (thư nhắc gia hạn: ô lịch, nhãn, nút). Thiếu thì thư giống hệt trước. */
+  extraCss?: string;
+  /** HTML đặt trong một hàng chân thư, trên dòng "AI Translator · aitranslator.vn" (thư nhắc gia hạn: lý do nhận và link ngừng nhận). */
+  footerHtml?: string;
+}
+
 /** Cả thư. `rows` là các hàng `<tr>` của thẻ thư: mainRow, rồi RULE_ROW và englishRow, hay END_ROW khi không có phần tiếng Anh. */
-export function emailPage(lang: Lang, subject: string, preheader: string, rows: string): string {
+export function emailPage(lang: Lang, subject: string, preheader: string, rows: string, opts: EmailPageOptions = {}): string {
   const font = FONTS[lang];
   // Tiếng Hàn ngắt dòng theo từ, không ngắt giữa một từ (như website).
   const wrap = lang === "ko" ? "word-break:keep-all;overflow-wrap:break-word;" : "";
@@ -64,7 +71,7 @@ export function emailPage(lang: Lang, subject: string, preheader: string, rows: 
 <meta name="supported-color-schemes" content="light dark">
 <title>${escapeHtml(subject)}</title>
 <style>
-${STYLE}
+${STYLE}${opts.extraCss ? `\n${opts.extraCss}` : ""}
 </style>
 </head>
 <body class="bg" style="margin:0;padding:0;background:${C.bg};">
@@ -77,7 +84,7 @@ ${STYLE}
 ${rows}
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;font-family:${font};">
-<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.vn</a></td></tr>
+${opts.footerHtml ? `<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">${opts.footerHtml}</td></tr>\n` : ""}<tr><td class="ink3" align="center" style="padding:18px 20px 0;font-size:12px;line-height:18px;color:${C.ink3};">AI Translator · <a href="${SITE_URL}/" style="color:${C.ink3};text-decoration:underline;">aitranslator.vn</a></td></tr>
 </table>
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
