@@ -49,7 +49,18 @@ fn play_tone() {
         .chain(std::iter::once(0))
         .collect();
     // SAFETY: đường dẫn kết thúc bằng NUL và sống hơn lệnh gọi (`SND_ASYNC` đọc file bằng luồng riêng, file còn nguyên).
-    let _ = unsafe { PlaySoundW(PCWSTR(path16.as_ptr()), None, SND_FILENAME | SND_ASYNC | SND_LOOP) };
+    let played = unsafe { PlaySoundW(PCWSTR(path16.as_ptr()), None, SND_FILENAME | SND_ASYNC | SND_LOOP) };
+    // Ghi kết quả ra file để test in khi cần chẩn đoán.
+    let note = format!(
+        "PlaySoundW={} file={} bytes={}\n",
+        played.as_bool(),
+        path.display(),
+        wav.len()
+    );
+    let _ = std::fs::write(
+        std::env::temp_dir().join(format!("fake-app-tone-{}.log", std::process::id())),
+        note,
+    );
 }
 
 #[cfg(windows)]

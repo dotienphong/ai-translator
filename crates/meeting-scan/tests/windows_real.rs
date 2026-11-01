@@ -348,11 +348,32 @@ fn check_app_real(tag: &str, exe: &str, title: &str, child_exe: &str, expected: 
             );
             break;
         }
-        assert!(
-            Instant::now() < end,
-            "[{tag}] không thấy phiên âm thanh của pid {child_pid}; có {:?}",
-            raw.sessions
-        );
+        if Instant::now() >= end {
+            // Chẩn đoán: nhật ký của tiến trình con, mọi tệp tone/log trong thư mục tạm, tiến trình con còn sống không.
+            let temp = std::env::temp_dir();
+            let diag: Vec<String> = std::fs::read_dir(&temp)
+                .map(|d| {
+                    d.flatten()
+                        .map(|e| e.file_name().to_string_lossy().into_owned())
+                        .filter(|n| n.starts_with("fake-app-tone"))
+                        .map(|n| {
+                            format!(
+                                "{n}: {}",
+                                std::fs::read_to_string(temp.join(&n))
+                                    .unwrap_or_default()
+                                    .trim()
+                                    .to_string()
+                            )
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let alive = process_table().exe_of(child_pid).is_some();
+            panic!(
+                "[{tag}] không thấy phiên âm thanh của pid {child_pid} (còn sống: {alive}); có {:?}; loa {:.3}; chẩn đoán: {diag:?}",
+                raw.sessions, raw.device_peak
+            );
+        }
         std::thread::sleep(Duration::from_millis(300));
     }
     if let Some(app) = expected {
