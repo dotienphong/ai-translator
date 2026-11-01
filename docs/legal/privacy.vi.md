@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.10, hiệu lực từ 31/10/2026.**
+**Phiên bản 1.11, hiệu lực từ 01/11/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -10,6 +10,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 
 - Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi bạn chọn nguồn có micro, ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
 - Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
+- **Gợi ý bật dịch khi có cuộc họp** (Windows; bật mặc định, tắt ở Cài đặt › Chung): ứng dụng kiểm tra **ngay trên máy bạn** xem Teams, Zoom hoặc Google Meet có đang họp và có tiếng không để hiện gợi ý "Bật dịch?". Không lưu, không ghi vào log, không gửi gì đi, và không tự bật dịch khi bạn chưa bấm.
 - **Phân biệt người nói** (hiện chỉ có trên macOS, Windows chưa có tính năng này; bật mặc định, tắt được ở Cài đặt › Phụ đề › Người nói): ứng dụng tạm thời phân tích đặc điểm giọng ngay trên máy để biết câu nào do cùng một người nói và hiện nhãn "Người 1", "Người 2". Đặc điểm giọng **chỉ nằm trong bộ nhớ RAM, tự xóa khi hết phiên, không ghi xuống đĩa, không gửi đi**, và ứng dụng không dùng nó để xác định danh tính ai (mục 3). Trên macOS, ứng dụng còn đọc **tên người tham dự hiển thị trên cửa sổ cuộc họp Microsoft Teams bản cài** để gắn tên vào phụ đề (mục 3).
 - Ứng dụng **không có tài khoản đăng nhập, không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
 - **Website** aitranslator.vn chỉ đo lượt truy cập bằng Google Analytics **khi bạn bấm "Đồng ý"** ở thanh thông báo. Không đồng ý thì website không tải Google Analytics và không đặt cookie đo lường (mục 14). Ứng dụng không dùng Google Analytics.
@@ -33,6 +34,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 | Đặc điểm giọng để phân biệt người nói (khi tính năng bật) | Ứng dụng tạm thời phân tích đặc điểm giọng của âm thanh đang dịch để biết câu nào do cùng một người nói. Dữ liệu này chỉ nằm trong bộ nhớ RAM của một tiến trình phụ trên máy bạn và **tự xóa khi hết phiên**; không ghi xuống đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Ứng dụng không dùng nó để xác định danh tính ai và không nhớ một người qua các phiên |
 | Tên người tham dự đọc từ cuộc họp (khi tính năng bật) | Ứng dụng đọc tên hiển thị, trạng thái mic và dấu "đang nói" của người tham dự trên **cửa sổ cuộc họp Microsoft Teams bản cài trên máy bạn** để gắn tên vào phụ đề. Không đọc chat, nội dung chia sẻ, địa chỉ hay cửa sổ khác; không chụp màn hình. Tên chỉ nằm trong bộ nhớ RAM trong lúc dịch; chỉ được ghi xuống đĩa khi bạn bật Lưu lịch sử (Pro), cùng bản chép lời đã mã hóa, hoặc khi bạn tự xuất bản chép lời ra file (Pro); không có trong log, báo cáo lỗi hay báo cáo tình trạng. Nút Sao chép (mọi gói) đưa tên và nhãn người nói vào văn bản bạn sao chép vào bộ nhớ tạm của hệ điều hành; việc sao chép do chính bạn thực hiện và ứng dụng không gửi văn bản đó đi đâu |
 | Công thức đọc tên | Một tệp mô tả nhỏ (không chứa mã chạy) có chữ ký số, tải từ `releases.aitranslator.vn`, lưu trên máy bạn |
+| Phát hiện cuộc họp để gợi ý bật dịch (Windows; mặc định bật, tắt được ở Cài đặt › Chung) | Ứng dụng kiểm tra **ngay trên máy bạn** xem Microsoft Teams, Zoom hoặc Google Meet (trong Chrome hay Edge) có đang họp và đang phát tiếng ra loa không, rồi hiện gợi ý "Bật dịch?" cạnh khay hệ thống. Để làm việc này, ứng dụng đọc tên tệp chạy và số hiệu của các tiến trình, mức âm lượng của loa (chỉ độ lớn, không đọc nội dung âm thanh), và tiêu đề cửa sổ của Teams, Zoom, Chrome, Edge, chỉ để biết đó có phải cửa sổ họp không. Tiêu đề cửa sổ của mọi ứng dụng khác không bao giờ bị đọc. Các thông tin này **không được lưu, không ghi vào log, không gửi đi**. Ứng dụng không tự bật dịch: chỉ khi bạn bấm "Bật dịch" |
 
 Các công cụ phụ của ứng dụng chỉ nghe trên `127.0.0.1` (máy bạn) hoặc không mở cổng mạng nào.
 
