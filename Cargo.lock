@@ -3212,7 +3212,7 @@ dependencies = [
 
 [[package]]
 name = "meeting-translator"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
