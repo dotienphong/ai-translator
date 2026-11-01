@@ -359,10 +359,7 @@ fn check_app_real(tag: &str, exe: &str, title: &str, child_exe: &str, expected: 
                         .map(|n| {
                             format!(
                                 "{n}: {}",
-                                std::fs::read_to_string(temp.join(&n))
-                                    .unwrap_or_default()
-                                    .trim()
-                                    .to_string()
+                                std::fs::read_to_string(temp.join(&n)).unwrap_or_default().trim()
                             )
                         })
                         .collect()
