@@ -16,11 +16,13 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
 use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
+use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
 use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
-    AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, DEVICE_STATE_ACTIVE, EDataFlow, ERole,
-    IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVEFORMATEX,
-    WAVEFORMATEXTENSIBLE, WAVEFORMATEXTENSIBLE_0, eCapture, eCommunications, eConsole, eRender,
+    AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, AudioSessionStateActive,
+    DEVICE_STATE_ACTIVE, EDataFlow, ERole, IAudioCaptureClient, IAudioClient, IAudioSessionControl2,
+    IAudioSessionManager2, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
+    WAVEFORMATEXTENSIBLE_0, eCapture, eCommunications, eConsole, eRender,
 };
 use windows::Win32::Media::KernelStreaming::{
     SPEAKER_FRONT_CENTER, SPEAKER_FRONT_LEFT, SPEAKER_FRONT_RIGHT, WAVE_FORMAT_EXTENSIBLE,
@@ -30,7 +32,7 @@ use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, STGM_READ,
 };
 use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
-use windows::core::{HSTRING, PWSTR};
+use windows::core::{HSTRING, Interface, PWSTR};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {
@@ -122,6 +124,52 @@ pub fn default_endpoint_id(role: Role) -> Result<String> {
         let enumerator: IMMDeviceEnumerator = unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)? };
         let device = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, role.erole())? };
         pwstr_to_string(unsafe { device.GetId()? })
+    })
+}
+
+/// Mức tiếng đang phát ra loa: đỉnh của thiết bị phát mặc định và của từng phiên âm thanh đang hoạt động.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct OutputLevels {
+    /// (số hiệu tiến trình, đỉnh 0..1) của từng phiên đang hoạt động; bỏ phiên âm thanh hệ thống (số hiệu 0).
+    pub sessions: Vec<(u32, f32)>,
+    /// Đỉnh 0..1 của cả thiết bị phát mặc định.
+    pub device_peak: f32,
+}
+
+/// Đọc mức tiếng đang phát ra loa (spec 2026-11-01-goi-y-bat-dich-khi-hop §3): thiết bị phát mặc định (vai trò Console), các phiên
+/// âm thanh của nó (`IAudioSessionManager2`) với số hiệu tiến trình và đỉnh âm lượng. Chỉ đọc, không mở luồng âm thanh, không đọc nội
+/// dung tiếng. Lỗi ở một phiên thì bỏ phiên đó; lỗi ở thiết bị thì trả lỗi.
+pub fn output_levels() -> Result<OutputLevels> {
+    with_com(|| {
+        let enumerator: IMMDeviceEnumerator = unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)? };
+        let device = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eConsole)? };
+        let device_meter: IAudioMeterInformation = unsafe { device.Activate(CLSCTX_ALL, None)? };
+        let device_peak = unsafe { device_meter.GetPeakValue()? };
+        let manager: IAudioSessionManager2 = unsafe { device.Activate(CLSCTX_ALL, None)? };
+        let list = unsafe { manager.GetSessionEnumerator()? };
+        let mut sessions = Vec::new();
+        for i in 0..unsafe { list.GetCount()? } {
+            let Ok(control) = (unsafe { list.GetSession(i) }) else {
+                continue;
+            };
+            if unsafe { control.GetState() }.ok() != Some(AudioSessionStateActive) {
+                continue;
+            }
+            let Ok(control2) = control.cast::<IAudioSessionControl2>() else {
+                continue;
+            };
+            let pid = unsafe { control2.GetProcessId() }.unwrap_or(0);
+            if pid == 0 {
+                continue;
+            }
+            let peak = control
+                .cast::<IAudioMeterInformation>()
+                .ok()
+                .and_then(|m| unsafe { m.GetPeakValue() }.ok())
+                .unwrap_or(0.0);
+            sessions.push((pid, peak));
+        }
+        Ok(OutputLevels { sessions, device_peak })
     })
 }
 

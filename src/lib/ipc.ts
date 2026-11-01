@@ -27,6 +27,12 @@ export type UpdateChannel = "stable" | "beta";
 export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "failed" | "unavailable";
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
+// App họp mà gợi ý bật dịch nhận biết (`meeting_scan::hint::HintApp`, spec 2026-11-01-goi-y-bat-dich-khi-hop). Chrome và Edge là một "meet".
+export type HintApp = "teams" | "zoom" | "meet";
+export const HINT_APPS: readonly HintApp[] = ["teams", "zoom", "meet"];
+// Tên app họp là tên riêng: không dịch, giống nhau ở mọi ngôn ngữ giao diện.
+export const HINT_APP_NAMES: Record<HintApp, string> = { teams: "Microsoft Teams", zoom: "Zoom", meet: "Google Meet" };
+
 // Ngôn ngữ đích của Gõ dịch (`settings::ComposeTarget`, spec 2026-10-17-go-dich §2.1): "auto" là "tiếng người bên kia".
 export type ComposeTarget = "auto" | Lang;
 // "compose": mở ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.1); chỉ đăng ký khi bật Gõ dịch.
@@ -89,6 +95,8 @@ export interface Settings {
   speakerNames: boolean;
   // Gõ dịch (spec 2026-10-17-go-dich §1.4): bật/tắt (tắt thì gỡ phím tắt), ngôn ngữ đích, tự dán (chỉ có tác dụng trên macOS).
   compose: { enabled: boolean; target: ComposeTarget; autoPaste: boolean };
+  // Gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop §6): mặc định bật; app đã chọn "Không hỏi lại". Bản đầu chỉ có tác dụng trên Windows.
+  meetingHint: { enabled: boolean; ignoredApps: HintApp[] };
   modelTier: ModelTier | null;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
@@ -108,11 +116,12 @@ export interface Settings {
 // (dùng `set_overlay_locked`), `overlay.positions`, `overlay.lastMonitor` và `revision` (chỉ phía Rust ghi), `modelTier`
 // (lệnh của quản lý model).
 export type SettingsPatch = Partial<
-  Omit<Settings, "hotkeys" | "overlay" | "experimental" | "compose" | "revision" | "modelTier">
+  Omit<Settings, "hotkeys" | "overlay" | "experimental" | "compose" | "meetingHint" | "revision" | "modelTier">
 > & {
   overlay?: Partial<Omit<Settings["overlay"], "locked" | "positions" | "lastMonitor">>;
   experimental?: Partial<Settings["experimental"]>;
   compose?: Partial<Settings["compose"]>;
+  meetingHint?: Partial<Settings["meetingHint"]>;
 };
 
 // Trạng thái phiên (`state::SessionStatus`): "starting" là lúc chạy tiến trình phụ và mở nguồn âm thanh.
@@ -195,6 +204,14 @@ export interface OverlayView {
   // Công tắc "Dịch trong lúc người nói chưa dừng": cùng `AppStatus.streamingTooSlow`, thanh phụ đề biết chế độ có hiệu lực
   // không (spec 2026-10-10 §6.1).
   translateWhileSpeaking: boolean;
+}
+
+// Phần cài đặt và nội dung của cửa sổ gợi ý bật dịch (`meeting_hint::HintView`, spec 2026-11-01-goi-y-bat-dich-khi-hop §5): chỉ ngôn
+// ngữ, giao diện sáng tối và app đang gợi ý (`null` khi cửa sổ đang ẩn). Không có tiêu đề cuộc họp hay tên người.
+export interface HintView {
+  uiLanguage: UiLanguage;
+  theme: Theme;
+  app: HintApp | null;
 }
 
 // Phần cài đặt của ô soạn Gõ dịch (`compose::ComposeView`, spec 2026-10-17-go-dich §1.2, §1.4), gửi kèm mỗi lần mở.
@@ -655,6 +672,10 @@ export interface Commands {
   verify_models: { args: { pack: string }; result: ModelsView };
   // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §3.6), chỉ cửa sổ `compose` gọi được. `compose_translate` trả số của yêu cầu, kết
   // quả tới qua `compose://delta` và `compose://done`; `compose_submit` dán kết quả đã lưu của đúng yêu cầu đó (không nhận chữ).
+  // Cửa sổ gợi ý bật dịch (spec 2026-11-01-goi-y-bat-dich-khi-hop §5), chỉ cửa sổ `hint` gọi được.
+  get_meeting_hint_view: { args: undefined; result: HintView };
+  meeting_hint_accept: { args: undefined; result: null };
+  meeting_hint_dismiss: { args: { ignoreApp: boolean }; result: null };
   get_compose_view: { args: undefined; result: ComposeView };
   compose_translate: { args: { text: string }; result: number };
   compose_submit: { args: { id: number }; result: ComposeSubmitted };
@@ -688,6 +709,8 @@ export interface Events {
   // Trạng thái quản lý model (kế hoạch 04).
   "models://state": ModelsView;
   // Ô soạn Gõ dịch: mở (kèm phần cài đặt của nó), yêu cầu đang chờ nạp model, phần chữ dịch mới, kết quả.
+  // Cửa sổ gợi ý bật dịch đổi nội dung (hiện cho một app, hay ẩn: `app` là `null`).
+  "meeting-hint://changed": HintView;
   "compose://open": ComposeView;
   "compose://loading": { id: number };
   "compose://delta": ComposeDelta;

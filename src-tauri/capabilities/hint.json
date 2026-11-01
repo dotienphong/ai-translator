@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "hint",
+  "description": "Cửa sổ gợi ý bật dịch khi có cuộc họp: đọc phần cài đặt của nó, bật dịch, bỏ qua (kèm không hỏi lại), nghe sự kiện (spec 2026-11-01-goi-y-bat-dich-khi-hop §5). Không cấp lệnh nào của cửa sổ khác hay của plugin.",
+  "windows": ["hint"],
+  "permissions": [
+    "allow-get-meeting-hint-view",
+    "allow-meeting-hint-accept",
+    "allow-meeting-hint-dismiss",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

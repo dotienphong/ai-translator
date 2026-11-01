@@ -101,6 +101,9 @@ fn main() {
                 "compose_open_accessibility",
                 "compose_copy_only",
                 "compose_open_main",
+                "get_meeting_hint_view",
+                "meeting_hint_accept",
+                "meeting_hint_dismiss",
             ])),
     )
     .expect("tauri-build thất bại");

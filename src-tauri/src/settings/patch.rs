@@ -24,7 +24,7 @@ const READ_ONLY: &[&str] = &[
 ];
 
 /// Khóa là object con: bản sửa gửi object con thì ghép theo từng khóa con.
-const NESTED: &[&str] = &["overlay", "experimental", "compose"];
+const NESTED: &[&str] = &["overlay", "experimental", "compose", "meetingHint"];
 
 /// Áp bản sửa `patch` lên `current`. Trả về cài đặt mới đã kiểm phạm vi, hoặc lỗi của một khóa sai.
 ///
@@ -217,6 +217,31 @@ mod tests {
 
     /// Spec 2026-10-17-go-dich §1.4: nhóm Cài đặt "Gõ dịch" sửa từng khóa con; khóa con lạ hay sai kiểu bị từ chối và báo đúng
     /// tên khóa con.
+    /// Spec 2026-11-01-goi-y-bat-dich-khi-hop §6: nhóm `meetingHint` sửa từng khóa con; danh sách app chỉ nhận tên app đã biết.
+    #[test]
+    fn meeting_hint_keys_are_patched_one_by_one() {
+        use meeting_scan::hint::HintApp;
+        assert!(current().meeting_hint.enabled, "mặc định bật");
+        let s = apply(
+            &current(),
+            &json!({ "meetingHint": { "ignoredApps": ["teams", "meet"] } }),
+        )
+        .unwrap();
+        assert_eq!(s.meeting_hint.ignored_apps, [HintApp::Teams, HintApp::Meet]);
+        assert!(s.meeting_hint.enabled, "khóa con khác giữ nguyên");
+        let s = apply(&s, &json!({ "meetingHint": { "enabled": false } })).unwrap();
+        assert!(!s.meeting_hint.enabled);
+        assert_eq!(s.meeting_hint.ignored_apps.len(), 2);
+        assert_eq!(
+            apply(&current(), &json!({ "meetingHint": { "ignoredApps": ["skype"] } })),
+            Err(Invalid::new("meetingHint.ignoredApps", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&current(), &json!({ "meetingHint": { "mode": "auto" } })),
+            Err(Invalid::new("meetingHint.mode", Reason::UnknownKey))
+        );
+    }
+
     #[test]
     fn compose_keys_are_patched_one_by_one() {
         use crate::settings::ComposeTarget;

@@ -3,7 +3,7 @@ import logo from "../../../../app-icon.svg";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
 import { UI_LANGUAGES, type UiLanguage } from "../../../i18n";
-import type { Theme, UpdateChannel } from "../../../lib/ipc";
+import { HINT_APP_NAMES, type Theme, type UpdateChannel } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
 
 // Nhóm Cài đặt "Chung" (§4.3). Kênh cập nhật được kế hoạch 07 dùng.
@@ -11,6 +11,7 @@ export function GeneralSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
   const update = useApp((s) => s.updateSettings);
+  const windows = useApp((s) => s.info?.platform === "windows");
   if (!settings) return null;
   return (
     <>
@@ -42,6 +43,36 @@ export function GeneralSettings() {
             onChange={(e) => void update({ launchAtLogin: e.target.checked })}
           />
         </Field>
+        {/* Gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop §6): bản đầu chỉ có trên Windows. */}
+        {windows && (
+          <Field
+            label={t("settings.general.meetingHint")}
+            htmlFor="meeting-hint"
+            hint={t("settings.general.meetingHint.hint")}
+          >
+            <input
+              id="meeting-hint"
+              className="switch"
+              type="checkbox"
+              checked={settings.meetingHint.enabled}
+              onChange={(e) => void update({ meetingHint: { enabled: e.target.checked } })}
+            />
+          </Field>
+        )}
+        {windows &&
+          settings.meetingHint.ignoredApps.map((app) => (
+            <Field key={app} label={t("settings.general.meetingHint.ignored", { app: HINT_APP_NAMES[app] })}>
+              <button
+                onClick={() =>
+                  void update({
+                    meetingHint: { ignoredApps: settings.meetingHint.ignoredApps.filter((a) => a !== app) },
+                  })
+                }
+              >
+                {t("settings.general.meetingHint.allow")}
+              </button>
+            </Field>
+          ))}
         <Field label={t("settings.general.theme")} htmlFor="theme">
           <select id="theme" value={settings.theme} onChange={(e) => void update({ theme: e.target.value as Theme })}>
             <option value="system">{t("theme.system")}</option>

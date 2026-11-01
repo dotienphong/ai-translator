@@ -12,7 +12,7 @@
 
 use serde_json::{Value, json};
 
-use crate::commands::{COMPOSE_COMMANDS, MAIN_COMMANDS, OVERLAY_COMMANDS};
+use crate::commands::{COMPOSE_COMMANDS, HINT_COMMANDS, MAIN_COMMANDS, OVERLAY_COMMANDS};
 use crate::test_support::{compose_calls, denied, invoke, mock_app, system_calls, window};
 
 /// Quyền không phải lệnh của app, theo từng cửa sổ.
@@ -26,6 +26,8 @@ const OVERLAY_CORE_PERMISSIONS: &[&str] = &[
     "core:event:allow-unlisten",
     "core:window:allow-start-dragging",
 ];
+/// Cửa sổ gợi ý bật dịch: chỉ đọc phần của nó và nghe sự kiện.
+const HINT_CORE_PERMISSIONS: &[&str] = &["core:event:allow-listen", "core:event:allow-unlisten"];
 /// Ô soạn Gõ dịch: không kéo được (spec 2026-10-17-go-dich §1.2), đổi chiều cao qua lệnh của app.
 const COMPOSE_CORE_PERMISSIONS: &[&str] = &["core:event:allow-listen", "core:event:allow-unlisten"];
 
@@ -117,6 +119,11 @@ fn capabilities_grant_exactly_the_fixed_lists() {
         expected(COMPOSE_COMMANDS, COMPOSE_CORE_PERMISSIONS),
         "ô soạn chỉ có các lệnh của Gõ dịch và nghe sự kiện"
     );
+    assert_eq!(
+        permissions(include_str!("../capabilities/hint.json"), "hint"),
+        expected(HINT_COMMANDS, HINT_CORE_PERMISSIONS),
+        "cửa sổ gợi ý chỉ có các lệnh của gợi ý bật dịch và nghe sự kiện"
+    );
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
     let mut files: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
@@ -125,7 +132,7 @@ fn capabilities_grant_exactly_the_fixed_lists() {
     files.sort();
     assert_eq!(
         files,
-        ["compose.json", "main.json", "overlay.json"],
+        ["compose.json", "hint.json", "main.json", "overlay.json"],
         "không có capability nào khác"
     );
     let conf: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
@@ -186,10 +193,30 @@ fn each_window_only_reaches_its_own_commands() {
         "plugin:webview|set_webview_zoom",
         json!({ "value": 1.2 })
     )));
+    // Cửa sổ gợi ý bật dịch (spec 2026-11-01-goi-y-bat-dich-khi-hop §5): chỉ ba lệnh của nó; các cửa sổ kia không gọi được lệnh của nó.
+    let hint = window(&app, "hint");
+    let view = invoke(&hint, "get_meeting_hint_view", json!({})).expect("cửa sổ gợi ý đọc được phần của nó");
+    assert!(view["app"].is_null(), "chưa có gợi ý nào");
+    assert!(view.get("hotkeys").is_none(), "cửa sổ gợi ý không thấy cài đặt khác");
+    for cmd in MAIN_COMMANDS.iter().chain(OVERLAY_COMMANDS).chain(COMPOSE_COMMANDS) {
+        let result = invoke(&hint, cmd, json!({}));
+        assert!(denied(&result), "hint không được gọi {cmd}: {result:?}");
+    }
+    for cmd in HINT_COMMANDS {
+        for other in [&main, &overlay, &compose] {
+            let result = invoke(other, cmd, json!({}));
+            assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", other.label());
+        }
+    }
+    assert!(denied(&invoke(
+        &hint,
+        "plugin:webview|set_webview_zoom",
+        json!({ "value": 1.2 })
+    )));
     // Không cửa sổ nào tự đọc ghi file cài đặt, bật tắt khởi động cùng hệ thống, mở URL hay đường dẫn,
     // tạo cửa sổ, di chuyển cửa sổ, phát sự kiện, hay đăng ký phím tắt.
     for cmd in FORBIDDEN {
-        for window in [&main, &overlay, &compose] {
+        for window in [&main, &overlay, &compose, &hint] {
             let result = invoke(window, cmd, json!({}));
             assert!(denied(&result), "{} không được gọi {cmd}: {result:?}", window.label());
         }

@@ -12,7 +12,8 @@ pub mod tree;
 pub mod uia;
 pub mod uia_tree;
 pub mod windowset;
-pub mod winscan;
+// Chuyển sang crate `meeting-scan` (spec 2026-11-01-goi-y-bat-dich-khi-hop §3); giữ tên cũ cho `reader::winscan::...`.
+pub use meeting_scan::winscan;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};

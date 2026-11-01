@@ -1,0 +1,26 @@
+[package]
+name = "meeting-scan"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Nhận biết cuộc họp trên máy (spec 2026-11-01-goi-y-bat-dich-khi-hop): bộ quét cửa sổ họp của Teams, Zoom, Meet (`winscan`, chuyển từ
+# `speaker-worker`) và máy trạng thái gợi ý bật dịch (`hint`). Phần thuần Rust, test trên mọi nền tảng; hàm Win32 nằm sau trait.
+# `speaker-worker` và app dùng chung. Không có mã mạng.
+[dependencies]
+serde.workspace = true
+speaker-protocol = { path = "../speaker-protocol" }
+speaker-recipe = { path = "../speaker-recipe" }
+
+[target.'cfg(windows)'.dependencies]
+# Cùng bản `windows` với audio-capture và speaker-worker. Chỉ các hàm đọc: cửa sổ, tiến trình, ảnh chụp tiến trình.
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+serde_json.workspace = true

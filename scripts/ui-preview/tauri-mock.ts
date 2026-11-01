@@ -117,6 +117,7 @@ let settings: Settings = {
   speakerDiarization: param("diarization") !== "0",
   speakerNames: param("names") !== "0",
   compose: { enabled: true, target: "auto", autoPaste: true },
+  meetingHint: { enabled: true, ignoredApps: [] },
   modelTier: "standard",
   hotkeys: {
     toggleSession: "Ctrl+Alt+T",
@@ -711,13 +712,14 @@ type Handlers = { [C in Command]?: (args: Commands[C]["args"]) => Commands[C]["r
 const handlers = {
   get_settings: () => settings,
   update_settings: ({ patch }) => {
-    const { overlay, experimental, compose, ...rest } = patch;
+    const { overlay, experimental, compose, meetingHint, ...rest } = patch;
     return changeSettings({
       ...settings,
       ...rest,
       overlay: { ...settings.overlay, ...overlay },
       experimental: { ...settings.experimental, ...experimental },
       compose: { ...settings.compose, ...compose },
+      meetingHint: { ...settings.meetingHint, ...meetingHint },
     });
   },
   set_hotkey: ({ action, accelerator }) => changeSettings({ ...settings, hotkeys: { ...settings.hotkeys, [action]: accelerator } }),

@@ -82,7 +82,7 @@ fn v2_to_v3(raw: &mut Map<String, Value>) {
 pub const RUNTIME_KEYS: &[&str] = &["revision"];
 
 /// Khóa là object con: ghép theo từng khóa con, để một khóa con hỏng không kéo cả nhóm về mặc định.
-const NESTED: &[&str] = &["overlay", "hotkeys", "experimental", "compose"];
+const NESTED: &[&str] = &["overlay", "hotkeys", "experimental", "compose", "meetingHint"];
 
 /// Giá trị thô của một khóa không đọc được trong file của bản app mới hơn.
 #[derive(Clone, Debug, PartialEq)]
@@ -547,6 +547,33 @@ mod tests {
             (false, ComposeTarget::Auto, false)
         );
         assert_eq!(loaded.rejected, ["compose.target"]);
+    }
+
+    /// Spec 2026-11-01-goi-y-bat-dich-khi-hop §6: file của bản trước chưa có nhóm `meetingHint` thì nhận mặc định (bật, không app nào bị tắt)
+    /// mà không phải ghi lại; danh sách app hỏng chỉ kéo khóa con đó về mặc định.
+    #[test]
+    fn an_old_file_without_meeting_hint_gets_the_defaults() {
+        use meeting_scan::hint::HintApp;
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark" }));
+        let loaded = load(raw, defaults());
+        assert!(loaded.settings.meeting_hint.enabled);
+        assert!(loaded.settings.meeting_hint.ignored_apps.is_empty());
+        assert!(!loaded.needs_save(), "nhóm thiếu thì không phải ghi lại file");
+        let raw = object(json!({
+            "schemaVersion": CURRENT_SCHEMA_VERSION,
+            "meetingHint": { "enabled": false, "ignoredApps": ["zoom"] },
+        }));
+        let loaded = load(raw, defaults());
+        assert!(!loaded.settings.meeting_hint.enabled);
+        assert_eq!(loaded.settings.meeting_hint.ignored_apps, [HintApp::Zoom]);
+        let raw = object(json!({
+            "schemaVersion": CURRENT_SCHEMA_VERSION,
+            "meetingHint": { "enabled": false, "ignoredApps": ["skype"] },
+        }));
+        let loaded = load(raw, defaults());
+        assert!(!loaded.settings.meeting_hint.enabled, "khóa con tốt được giữ");
+        assert!(loaded.settings.meeting_hint.ignored_apps.is_empty());
+        assert_eq!(loaded.rejected, ["meetingHint.ignoredApps"]);
     }
 
     /// Bản trước chỉ có ba phím tắt: hai phím cuộn phụ đề lấy mặc định, và không bị coi là khóa hỏng.

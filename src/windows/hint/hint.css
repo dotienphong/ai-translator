@@ -1,0 +1,110 @@
+/* Cửa sổ gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop §5): thẻ bo góc trên cửa sổ trong suốt, màu theo token
+   của app (sáng, tối), mũi tên nhỏ ở góc dưới phải chỉ xuống khay hệ thống. Chừa 8px dưới cùng cho mũi tên. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Tiếng Hàn có dấu cách giữa các từ: xuống dòng ở dấu cách, không ngắt giữa âm tiết. */
+:lang(ko) {
+  word-break: keep-all;
+}
+
+.hint {
+  position: relative;
+  box-sizing: border-box;
+  height: calc(100% - 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem 0.95rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.hint h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding-right: 1.6rem;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.hint h1 .icon {
+  flex: none;
+  color: var(--accent-fg);
+}
+
+.hint p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.hint .actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.hint button {
+  min-height: 1.95rem;
+}
+
+.hint .close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  min-height: 0;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  line-height: 0;
+}
+
+.hint .close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* Dòng nhỏ "Không hỏi lại": nút trông như liên kết. */
+.hint .ignore {
+  align-self: flex-start;
+  min-height: 0;
+  margin-top: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.hint .ignore:hover {
+  color: var(--muted);
+}
+
+/* Mũi tên: hình vuông xoay 45°, viền trùng viền thẻ, nằm nửa trong nửa ngoài mép dưới của thẻ. */
+.hint .arrow {
+  position: absolute;
+  right: 22px;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--surface);
+  transform: rotate(45deg);
+}

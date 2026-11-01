@@ -20,6 +20,8 @@ rayon = "1.12.0"
 realfft = "3.5.1"
 serde_json.workspace = true
 serde.workspace = true
+# Quét cửa sổ họp (`winscan`) và `is_meeting_window`, dùng chung với app chính.
+meeting-scan = { path = "../meeting-scan" }
 # Công thức đọc tên (kế hoạch 04): định dạng, mẫu chữ, `Attrs`.
 speaker-recipe = { path = "../speaker-recipe" }
 # SHA-256 của model đúng các byte worker đọc (spec §10). Cùng bản app đang khóa (0.11.0); bản mới nhất 0.11.1: xem mục

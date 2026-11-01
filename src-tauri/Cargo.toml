@@ -29,6 +29,8 @@ log = "0.4.34"
 pipeline = { path = "../crates/pipeline" }
 # Giao thức nhận giọng (spec 2026-10-26-phan-biet-nguoi-noi §4.2): cờ nguồn, `SpeakerConfig` của manifest.
 speaker-protocol = { path = "../crates/speaker-protocol" }
+# Nhận biết cuộc họp và máy trạng thái gợi ý bật dịch (spec 2026-11-01-goi-y-bat-dich-khi-hop).
+meeting-scan = { path = "../crates/meeting-scan" }
 # Công thức đọc tên build sẵn (kế hoạch 04 của phân biệt người nói): gửi cho worker qua `Load.names`.
 speaker-recipe = { path = "../crates/speaker-recipe" }
 # Vận hành của phân biệt người nói (kế hoạch 06): phong bì ký của công thức tải từ xa, chống quay lui, báo cáo tình trạng bộ đọc tên.

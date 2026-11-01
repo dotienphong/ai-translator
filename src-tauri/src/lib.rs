@@ -24,6 +24,7 @@ pub mod i18n;
 pub mod license;
 pub mod logging;
 pub mod login_item;
+pub mod meeting_hint;
 pub mod models;
 pub mod navigation;
 pub mod overlay;
@@ -207,6 +208,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     overlay::create(&handle)?;
     // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §3.1): tạo ẩn sẵn, để bấm phím tắt là hiện ngay.
     compose::create(&handle)?;
+    // Gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop): cửa sổ gợi ý ẩn sẵn và vòng lấy mẫu. Chỉ Windows.
+    meeting_hint::install(&handle)?;
     let failures = hotkey_registry::register_all(&handle, &settings.active_hotkeys());
     handle
         .state::<AppState>()

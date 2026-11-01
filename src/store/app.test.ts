@@ -29,6 +29,7 @@ const settings: Settings = {
   speakerDiarization: true,
   speakerNames: true,
   compose: { enabled: true, target: "auto", autoPaste: true },
+  meetingHint: { enabled: true, ignoredApps: [] },
   modelTier: null,
   hotkeys: {
     toggleSession: "Ctrl+Alt+T",

@@ -10,6 +10,7 @@ pub mod migrate;
 pub mod patch;
 pub mod persist;
 
+use meeting_scan::hint::HintApp;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -233,6 +234,16 @@ pub struct ComposeSettings {
     pub auto_paste: bool,
 }
 
+/// Gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop §6). Bản đầu chỉ có tác dụng trên Windows.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeetingHintSettings {
+    /// Mặc định bật (chủ dự án chốt 2026-11-01). Tắt thì app không quét cửa sổ hay phiên âm thanh nào.
+    pub enabled: bool,
+    /// App đã chọn "Không hỏi lại" ở cửa sổ gợi ý; gỡ ở Cài đặt › Chung.
+    pub ignored_apps: Vec<HintApp>,
+}
+
 /// Toàn bộ cài đặt. Tên khóa trong file JSON là tên trường dạng camelCase.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -273,6 +284,9 @@ pub struct Settings {
     /// Gõ dịch (spec 2026-10-17-go-dich §3.5). File của bản trước chưa có nhóm này thì lấy mặc định (`migrate::load` ghép
     /// từng khóa vào giá trị mặc định), không cần bước migrate.
     pub compose: ComposeSettings,
+    /// Gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop). File của bản trước chưa có nhóm này thì lấy mặc định
+    /// (`migrate::load` ghép từng khóa vào giá trị mặc định), không cần bước migrate.
+    pub meeting_hint: MeetingHintSettings,
     /// Gói model đang dùng (§6.7): mã gói trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest, Đ7).
     /// `None` là chưa có gói nào. Chỉ đổi qua lệnh của kế hoạch 04 (gói phải đã tải xong).
     pub model_tier: Option<String>,
@@ -348,6 +362,10 @@ impl Settings {
                 enabled: true,
                 target: ComposeTarget::Auto,
                 auto_paste: true,
+            },
+            meeting_hint: MeetingHintSettings {
+                enabled: true,
+                ignored_apps: Vec::new(),
             },
             model_tier: None,
             hotkeys: Hotkeys {

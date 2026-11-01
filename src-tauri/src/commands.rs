@@ -19,6 +19,7 @@ use crate::hotkeys::HotkeyAction;
 use crate::license::app::{self as license_app, ActivateOutcome};
 use crate::license::manager::LicenseView;
 use crate::license::purchase::{CheckoutView, PlansView};
+use crate::meeting_hint;
 use crate::overlay::{self, placement::Edge};
 use crate::settings::Settings;
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
@@ -507,6 +508,24 @@ pub async fn support_machine_info<R: Runtime>(app: AppHandle<R>) -> Result<Strin
     blocking(app, |app| Ok(support::machine_line(app))).await
 }
 
+// ---- Lệnh của cửa sổ `hint` (gợi ý bật dịch khi có cuộc họp, spec 2026-11-01-goi-y-bat-dich-khi-hop §5): đọc phần của nó, bật dịch,
+// bỏ qua (kèm "không hỏi lại"). Không nhận chữ hay tên nào từ giao diện: app gợi ý do phía Rust giữ. ----
+
+#[tauri::command]
+pub fn get_meeting_hint_view<R: Runtime>(app: AppHandle<R>) -> meeting_hint::HintView {
+    meeting_hint::view(&app)
+}
+
+#[tauri::command]
+pub fn meeting_hint_accept<R: Runtime>(app: AppHandle<R>) {
+    meeting_hint::accept(&app);
+}
+
+#[tauri::command]
+pub fn meeting_hint_dismiss<R: Runtime>(app: AppHandle<R>, ignore_app: bool) {
+    meeting_hint::dismiss(&app, ignore_app);
+}
+
 // ---- Lệnh của cửa sổ `compose` (Gõ dịch, spec 2026-10-17-go-dich §3.6): chỉ đụng tới ô soạn và các việc của nó. Lệnh dán
 // nhận số của yêu cầu dịch, không nhận chữ: cửa sổ này không gửi được chữ tùy ý vào app khác. ----
 
@@ -638,6 +657,9 @@ pub const OVERLAY_COMMANDS: &[&str] = &[
     "open_speaker_settings",
 ];
 
+/// Lệnh của cửa sổ `hint` (gợi ý bật dịch khi có cuộc họp, spec 2026-11-01-goi-y-bat-dich-khi-hop §5).
+pub const HINT_COMMANDS: &[&str] = &["get_meeting_hint_view", "meeting_hint_accept", "meeting_hint_dismiss"];
+
 /// Lệnh của cửa sổ `compose` (Gõ dịch).
 pub const COMPOSE_COMMANDS: &[&str] = &[
     "get_compose_view",
@@ -716,6 +738,9 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         overlay_resize_move,
         end_overlay_resize,
         open_speaker_settings,
+        get_meeting_hint_view,
+        meeting_hint_accept,
+        meeting_hint_dismiss,
         get_compose_view,
         compose_translate,
         compose_submit,

@@ -3199,6 +3199,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "meeting-scan"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "speaker-protocol",
+ "speaker-recipe",
+ "windows",
+]
+
+[[package]]
 name = "meeting-translator"
 version = "0.5.3"
 dependencies = [
@@ -3215,6 +3226,7 @@ dependencies = [
  "keyring-core",
  "libc",
  "log",
+ "meeting-scan",
  "objc2",
  "objc2-app-kit",
  "objc2-core-graphics",
@@ -5476,6 +5488,7 @@ dependencies = [
  "candle-onnx",
  "core-foundation 0.10.1",
  "libc",
+ "meeting-scan",
  "prost",
  "rayon",
  "realfft",
