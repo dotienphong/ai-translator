@@ -16,9 +16,12 @@ import {
   streamingEffective,
 } from "../../lib/subtitleView";
 import { type OverlayRow, createOverlayStore, createResizeDrag, visibleRows } from "../../store/overlay";
+import { createListenStore } from "../../store/listen";
+import { ListenControls, listenDisabledReason } from "./ListenControls";
 import { LiveLineView } from "./LiveLineView";
 import { OverlayLine } from "./OverlayLine";
 import { SpeakerAsk } from "./SpeakerAsk";
+import { overlayTtsStore } from "./ttsStore";
 
 const store = createOverlayStore(ipc);
 // Thuộc tính `lang` của trang theo ngôn ngữ giao diện, để WebView chọn đúng font CJK và trình đọc màn hình đọc đúng giọng.
@@ -26,6 +29,29 @@ store.subscribe((state) => {
   if (state.view) document.documentElement.lang = htmlLang(state.view.uiLanguage);
 });
 void store.getState().init();
+
+// "Nghe dịch" (spec 2026-11-02-nghe-dich-truc-tiep): hạ tiếng họp (phía Rust) và đọc bản dịch của tiếng máy bằng giọng đọc của riêng overlay.
+// `localStorage` có thể ném lỗi (ngữ cảnh bị chặn): khi đó chỉ không nhớ mức tiếng họp.
+const safeStorage = (): Pick<Storage, "getItem" | "setItem"> => {
+  try {
+    return window.localStorage;
+  } catch {
+    return { getItem: () => null, setItem: () => {} };
+  }
+};
+const listenStore = createListenStore({
+  ipc,
+  tts: overlayTtsStore,
+  overlay: store,
+  now: () => Date.now(),
+  setTimer: (fn, ms) => {
+    const id = window.setTimeout(fn, ms);
+    return () => window.clearTimeout(id);
+  },
+  storage: safeStorage(),
+});
+void overlayTtsStore.getState().init();
+void listenStore.getState().init();
 
 // Vùng kéo cạnh và góc để đổi kích thước (§4.4, cả macOS lẫn Windows), chỉ khi chưa khóa. Bấm giữ thì phía Rust đổi kích
 // thước theo con trỏ (`createResizeDrag`). Vùng này không phải vùng kéo di chuyển (`data-tauri-drag-region="false"`).
@@ -92,6 +118,8 @@ function Overlay() {
   const voices = useStore(store, (s) => s.voices);
   const askAccess = useStore(store, (s) => s.askAccess);
   const askDismissed = useStore(store, (s) => s.askDismissed);
+  const listen = useStore(listenStore, (s) => s);
+  const ttsStatus = useStore(overlayTtsStore, (s) => s.status);
   // Phụ đề và dòng đang nói theo đúng chỗ, cùng giọng và cờ dòng đầu lượt; chỉ tính lại khi phụ đề, dòng đang nói hay bảng giọng
   // đổi. Đối tượng phụ đề, dòng đang nói và giọng giữ nguyên tham chiếu, nên các dòng memo không đổi thì không vẽ lại.
   const rows = useMemo(() => decorate(visibleRows(lines, live), rowSpeaker, voices), [lines, live, voices]);
@@ -183,6 +211,26 @@ function Overlay() {
           </span>
         ))}
       </div>
+      {!view.locked && (
+        <ListenControls
+          uiLanguage={view.uiLanguage}
+          supported={listen.supported}
+          active={listen.active}
+          level={listen.level}
+          pending={listen.pending}
+          error={listen.error}
+          unresolved={listen.unresolved}
+          disabledReason={listenDisabledReason({
+            ttsAvailable: ttsStatus?.available ?? false,
+            targetLanguage: view.targetLanguage,
+            captureMode: view.captureMode,
+          })}
+          onToggle={() => void listen.toggle()}
+          onLevel={(level) => void listen.setLevel(level)}
+          onSkip={() => listen.skip()}
+          onDismissError={() => listen.dismiss()}
+        />
+      )}
       {showAsk && (
         <SpeakerAsk
           uiLanguage={view.uiLanguage}

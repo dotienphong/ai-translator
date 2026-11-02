@@ -35,6 +35,8 @@ meeting-scan = { path = "../crates/meeting-scan" }
 speaker-recipe = { path = "../crates/speaker-recipe" }
 # Vận hành của phân biệt người nói (kế hoạch 06): phong bì ký của công thức tải từ xa, chống quay lui, báo cáo tình trạng bộ đọc tên.
 speaker-ops = { path = "../crates/speaker-ops" }
+tts-client = { path = "../crates/tts-client" }
+audio-ducking = { path = "../crates/audio-ducking" }
 rtrb.workspace = true
 # SQLite mã hóa bằng SQLCipher (spec §6.6, §10.2): SQLCipher 4.14 (SQLite 3.51.3) build kèm. macOS dùng CommonCrypto của
 # hệ thống; Windows thêm OpenSSL build tĩnh từ mã nguồn (bên dưới). Không bật `cache` mặc định (không cần `hashlink`).

@@ -1,0 +1,39 @@
+[package]
+name = "tts-worker"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Worker đọc bản dịch (spec 2026-11-02-doc-ban-dich-tts-design §3, §4). Lõi không cần model (lấy mẫu, cửa sổ phạt lặp,
+# đọc `.npz`) luôn có; phần suy luận thật (`config`, `engine`, `phonemize`) nằm sau feature `engine`, tắt mặc định để
+# `cargo build`/`cargo test` của workspace không kéo `ort`. Duyệt 2026-11-02: xem spec §7c.
+[features]
+engine = ["dep:tts-protocol", "dep:ort", "dep:tokenizers", "dep:sea-g2p-rs", "dep:serde", "dep:serde_json", "dep:regex", "dep:rayon"]
+
+[[bin]]
+name = "tts-worker"
+path = "src/main.rs"
+required-features = ["engine"]
+
+[dependencies]
+# Giao thức app ↔ worker; chỉ cần cho binary nên đi theo feature `engine`.
+tts-protocol = { path = "../tts-protocol", optional = true }
+# ort chỉ có bản 2.0.0-rc (cả dòng 2.x); chủ dự án chấp nhận ngoại lệ so với quy tắc "bản ổn định" (spec §7c, 2026-11-02),
+# nên ghim đúng `=2.0.0-rc.15`. `load-dynamic`: không tải nhị phân lúc build, app tự đóng onnxruntime (MIT) cùng bản 1.31 và
+# truyền đường dẫn cho `Engine::load`. Tắt feature mặc định để không kéo ureq/OpenSSL (deny.toml chỉ cho OpenSSL vào qua SQLCipher).
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["load-dynamic", "std"], optional = true }
+# Cùng bản 0.22.2 đang khóa trong Cargo.lock (qua candle); bản ổn định mới nhất là 0.23.2 nhưng thêm bản thứ hai chỉ để
+# đọc một tokenizer.json nhỏ thì không đáng. Nâng cùng candle.
+tokenizers = { version = "0.22.2", optional = true }
+# Không có trên crates.io và deny.toml cấm nguồn git lạ (`unknown-git = "deny"`), nên chép vào third_party (spec §7c).
+sea-g2p-rs = { path = "../../third_party/sea-g2p-rs", optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+regex = { version = "1", optional = true }
+# Đã có trong Cargo.lock (qua tokenizers và sea-g2p-rs); dùng trực tiếp để chia phép nhân ma trận đầu ra cho nhiều luồng.
+rayon = { version = "1.12.0", optional = true }
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true

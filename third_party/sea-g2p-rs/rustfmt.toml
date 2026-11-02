@@ -1,0 +1,2 @@
+# Mã bên thứ ba chép nguyên văn: giữ định dạng mặc định của upstream (max_width 100), không theo rustfmt.toml của repo.
+edition = "2021"

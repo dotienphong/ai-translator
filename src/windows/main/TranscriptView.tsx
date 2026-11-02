@@ -1,13 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
 import { errorKey } from "../../i18n";
 import type { ExportFormat, SpeakerVoice, SrtText, Transcript, TranscriptRef } from "../../lib/ipc";
 import { NO_VOICES, type VoiceMap, decorate, mergeVoices } from "../../lib/speakers";
+import { canSpeakLang } from "../../lib/tts";
 import { clockTime, localOffsetMinutes } from "../../lib/subtitleView";
 import { searchLines } from "../../store/transcript";
 import { fallbackLanguage, useApp, useT } from "./appStore";
-import { useTranscript } from "./dataStores";
+import { ttsStore, useTranscript, useTts } from "./dataStores";
 import { SpeakerMenu } from "./SpeakerMenu";
 import { TranscriptRow } from "./TranscriptRow";
 
@@ -37,6 +38,27 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
   const notice = useTranscript((s) => s.notice);
   const error = useTranscript((s) => s.error);
   const dismiss = useTranscript((s) => s.dismiss);
+  // Nút nghe bản dịch (spec 2026-11-02-doc-ban-dich-tts-design): chỉ khi máy có giọng đọc và ngôn ngữ dịch là Việt hay Anh.
+  const ttsAvailable = useTts((s) => s.status?.available ?? false);
+  const speakingId = useTts((s) => s.speaking);
+  const ttsLoading = useTts((s) => s.loading);
+  const ttsError = useTts((s) => s.error);
+  const speak = useTts((s) => s.speak);
+  const dismissTts = useTts((s) => s.dismiss);
+  useEffect(() => {
+    void ttsStore.getState().init();
+    // Rời màn hình thì dừng đọc.
+    return () => {
+      if (ttsStore.getState().speaking !== null) void ttsStore.getState().stop();
+    };
+  }, []);
+  const listenLang = ttsAvailable && canSpeakLang(transcript.targetLang) ? transcript.targetLang : null;
+  const onSpeak = useCallback(
+    (lineId: number, text: string) => {
+      if (listenLang) void speak(lineId, text, listenLang);
+    },
+    [speak, listenLang],
+  );
   const [query, setQuery] = useState("");
   const [format, setFormat] = useState<ExportFormat>("txt");
   const [srtText, setSrtText] = useState<SrtText>("translation");
@@ -134,6 +156,13 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
               <button onClick={dismiss}>{t("common.dismiss")}</button>
             </div>
           )}
+          {ttsError && (
+            <div className="notice error">
+              <Icon name="alert" />
+              <span>{t(errorKey(ttsError.code))}</span>
+              <button onClick={dismissTts}>{t("common.dismiss")}</button>
+            </div>
+          )}
         </div>
       </div>
       {transcript.lines.length > 0 && rows.length === 0 && <EmptyState icon="search" text={t("transcript.noMatch")} />}
@@ -148,6 +177,9 @@ export function TranscriptView({ transcript, source }: { transcript: Transcript;
               voice={voice}
               turnStart={turnStart}
               onSpeaker={editable ? openMenu : undefined}
+              onSpeak={listenLang ? onSpeak : undefined}
+              speaking={speakingId === l.id}
+              loading={speakingId === l.id && ttsLoading}
               menu={
                 editable && voice && menuLine === l.id ? (
                   <SpeakerMenu

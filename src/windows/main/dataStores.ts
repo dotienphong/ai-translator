@@ -1,5 +1,7 @@
+import { Channel } from "@tauri-apps/api/core";
 import { useStore } from "zustand";
-import { tauriIpc } from "../../lib/ipc";
+import { type TtsControl, tauriIpc } from "../../lib/ipc";
+import { type AudioContextLike, TtsPlayer } from "../../lib/tts";
 import {
   type GlossaryStoreState,
   type HistoryStoreState,
@@ -8,6 +10,7 @@ import {
   resetWhenDataCleared,
 } from "../../store/library";
 import { type TranscriptStoreState, createTranscriptStore } from "../../store/transcript";
+import { type TtsStoreState, createTtsStore } from "../../store/tts";
 import { appStore } from "./appStore";
 
 // Sao chép vào clipboard. `navigator.clipboard` cần trang an toàn và thao tác của người dùng; webview cũ không có thì
@@ -35,6 +38,15 @@ export async function writeClipboard(text: string): Promise<void> {
 export const transcriptStore = createTranscriptStore({ ipc: tauriIpc, writeClipboard });
 export const historyStore = createHistoryStore(tauriIpc);
 export const glossaryStore = createGlossaryStore(tauriIpc);
+// Giọng đọc bản dịch (spec 2026-11-02-doc-ban-dich-tts-design): nút nghe ở bản chép lời. AudioContext chỉ tạo ở lần bấm đầu tiên.
+export const ttsStore = createTtsStore({
+  ipc: tauriIpc,
+  player: new TtsPlayer({
+    createContext: () => new AudioContext() as unknown as AudioContextLike,
+    markPlaying: (ms) => void tauriIpc.invoke("tts_mark_playing", { ms }).catch(() => {}),
+  }),
+  createChannel: () => new Channel<ArrayBuffer | TtsControl>(),
+});
 // "Xóa toàn bộ dữ liệu" xong thì bỏ cả bản chép lời, lịch sử và từ điển đang hiện (N2 của review 03).
 resetWhenDataCleared(appStore, [transcriptStore, historyStore, glossaryStore]);
 
@@ -48,4 +60,8 @@ export function useHistory<T>(selector: (state: HistoryStoreState) => T): T {
 
 export function useGlossary<T>(selector: (state: GlossaryStoreState) => T): T {
   return useStore(glossaryStore, selector);
+}
+
+export function useTts<T>(selector: (state: TtsStoreState) => T): T {
+  return useStore(ttsStore, selector);
 }

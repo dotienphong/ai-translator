@@ -360,9 +360,24 @@ fn the_overlay_only_gains_open_speaker_settings() {
         "begin_overlay_resize",
         "overlay_resize_move",
         "end_overlay_resize",
+        "open_speaker_settings",
     ];
+    // Spec 2026-11-02-nghe-dich-truc-tiep §3, §6: nút Nghe dịch cần lệnh bật/tắt và giọng đọc riêng của overlay (mỏng, dùng chung dịch
+    // vụ với `tts_*` của cửa sổ chính); overlay không được cấp lệnh của cửa sổ chính.
     let added: Vec<&&str> = OVERLAY_COMMANDS.iter().filter(|c| !before.contains(c)).collect();
-    assert_eq!(added, [&"open_speaker_settings"], "overlay chỉ thêm đúng một lệnh");
+    assert_eq!(
+        added,
+        [
+            &"overlay_listen_set",
+            &"overlay_listen_status",
+            &"overlay_tts_status",
+            &"overlay_tts_warmup",
+            &"overlay_tts_speak",
+            &"overlay_tts_mark_playing",
+            &"overlay_tts_stop",
+        ],
+        "overlay chỉ thêm đúng các lệnh của Nghe dịch"
+    );
     let app = mock_app();
     let (main, overlay) = (window(&app, "main"), window(&app, "overlay"));
     let (compose, stranger) = (window(&app, "compose"), window(&app, "stranger"));

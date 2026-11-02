@@ -90,6 +90,8 @@ pub fn settings_changed<R: Runtime>(app: &AppHandle<R>, settings: &Settings) {
 pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
     emit(app, window::MAIN, STATUS_CHANGED, status);
     emit(app, overlay::LABEL, STATUS_CHANGED, status);
+    // Phiên dừng hay thanh phụ đề ẩn thì "Nghe dịch" tắt và tiếng họp được trả về (rẻ khi chưa bật).
+    crate::listen::on_status(app, status);
 }
 
 pub fn overlay_view<R: Runtime>(app: &AppHandle<R>, view: &OverlayView) {

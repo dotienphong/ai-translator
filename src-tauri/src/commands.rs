@@ -576,6 +576,99 @@ pub fn compose_open_main<R: Runtime>(app: AppHandle<R>, screen: compose::MainScr
     compose::open_main(&app, screen);
 }
 
+/// Giọng đọc bản dịch (spec 2026-11-02-doc-ban-dich-tts-design): `tts_status` cho biết có hiện nút nghe không; `tts_speak` đọc
+/// một câu và phát âm thanh (PCM nhị phân) cùng thông báo kết thúc về giao diện qua `on_event`. Mặc định không có tác dụng (xem `tts`).
+#[tauri::command]
+pub fn tts_status<R: Runtime>(app: AppHandle<R>, svc: State<'_, crate::tts::TtsService>) -> crate::tts::TtsStatus {
+    crate::tts::status(&app, &svc)
+}
+
+#[tauri::command]
+pub fn tts_warmup<R: Runtime>(app: AppHandle<R>, svc: State<'_, crate::tts::TtsService>) -> Result<(), CommandError> {
+    crate::tts::warmup(&app, &svc)
+}
+
+#[tauri::command]
+pub fn tts_speak<R: Runtime>(
+    app: AppHandle<R>,
+    svc: State<'_, crate::tts::TtsService>,
+    lang: String,
+    text: String,
+    on_event: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
+) -> Result<u64, CommandError> {
+    crate::tts::speak(&app, &svc, &lang, &text, on_event)
+}
+
+#[tauri::command]
+pub fn tts_cancel(svc: State<'_, crate::tts::TtsService>, id: u64) {
+    crate::tts::cancel(&svc, id);
+}
+
+/// Giao diện báo còn `ms` ms âm thanh đã xếp lịch phát: gia hạn cờ chặn thu (tự hết hạn).
+#[tauri::command]
+pub fn tts_mark_playing(ms: u64) {
+    crate::tts::mark_playing(ms);
+}
+
+#[tauri::command]
+pub fn tts_stop(svc: State<'_, crate::tts::TtsService>) {
+    crate::tts::stop(&svc);
+}
+
+/// Nghe dịch trực tiếp (spec 2026-11-02-nghe-dich-truc-tiep) và giọng đọc cho overlay. Overlay là cửa sổ quyền tối thiểu nên có
+/// lệnh riêng (mỏng, dùng chung dịch vụ với `tts_*` của cửa sổ chính) thay vì được cấp lệnh của cửa sổ chính.
+#[tauri::command]
+pub fn overlay_listen_set<R: Runtime>(
+    app: AppHandle<R>,
+    svc: State<'_, crate::listen::ListenService>,
+    enabled: bool,
+    level: u8,
+) -> Result<crate::listen::ListenStatus, CommandError> {
+    svc.set(&app, enabled, level)
+}
+
+#[tauri::command]
+pub fn overlay_listen_status(svc: State<'_, crate::listen::ListenService>) -> crate::listen::ListenStatus {
+    svc.status()
+}
+
+#[tauri::command]
+pub fn overlay_tts_status<R: Runtime>(
+    app: AppHandle<R>,
+    svc: State<'_, crate::tts::TtsService>,
+) -> crate::tts::TtsStatus {
+    crate::tts::status(&app, &svc)
+}
+
+#[tauri::command]
+pub fn overlay_tts_warmup<R: Runtime>(
+    app: AppHandle<R>,
+    svc: State<'_, crate::tts::TtsService>,
+) -> Result<(), CommandError> {
+    crate::tts::warmup(&app, &svc)
+}
+
+#[tauri::command]
+pub fn overlay_tts_speak<R: Runtime>(
+    app: AppHandle<R>,
+    svc: State<'_, crate::tts::TtsService>,
+    lang: String,
+    text: String,
+    on_event: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
+) -> Result<u64, CommandError> {
+    crate::tts::speak(&app, &svc, &lang, &text, on_event)
+}
+
+#[tauri::command]
+pub fn overlay_tts_mark_playing(ms: u64) {
+    crate::tts::mark_playing(ms);
+}
+
+#[tauri::command]
+pub fn overlay_tts_stop(svc: State<'_, crate::tts::TtsService>) {
+    crate::tts::stop(&svc);
+}
+
 /// Lệnh của cửa sổ `main`.
 pub const MAIN_COMMANDS: &[&str] = &[
     "get_settings",
@@ -645,6 +738,12 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "support_set_email",
     "support_delete",
     "support_machine_info",
+    "tts_status",
+    "tts_warmup",
+    "tts_speak",
+    "tts_cancel",
+    "tts_mark_playing",
+    "tts_stop",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -655,6 +754,13 @@ pub const OVERLAY_COMMANDS: &[&str] = &[
     "overlay_resize_move",
     "end_overlay_resize",
     "open_speaker_settings",
+    "overlay_listen_set",
+    "overlay_listen_status",
+    "overlay_tts_status",
+    "overlay_tts_warmup",
+    "overlay_tts_speak",
+    "overlay_tts_mark_playing",
+    "overlay_tts_stop",
 ];
 
 /// Lệnh của cửa sổ `hint` (gợi ý bật dịch khi có cuộc họp, spec 2026-11-01-goi-y-bat-dich-khi-hop §5).
@@ -758,5 +864,18 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         crate::models::commands::delete_models_and_data,
         crate::models::commands::dismiss_models_update,
         crate::models::commands::verify_models,
+        tts_status,
+        tts_warmup,
+        tts_speak,
+        tts_cancel,
+        tts_mark_playing,
+        tts_stop,
+        overlay_listen_set,
+        overlay_listen_status,
+        overlay_tts_status,
+        overlay_tts_warmup,
+        overlay_tts_speak,
+        overlay_tts_mark_playing,
+        overlay_tts_stop,
     ]
 }

@@ -1370,6 +1370,22 @@ fieldset {
   padding-top: 0.15rem;
 }
 
+/* Nút nghe bản dịch (spec 2026-11-02-doc-ban-dich-tts-design): nhỏ, nằm cuối câu dịch. */
+.transcript .tts-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 0;
+  margin-left: 0.6rem;
+  padding: 0.05rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  vertical-align: baseline;
+}
+
+.transcript .tts-btn[aria-pressed="true"] {
+  border-color: var(--accent, currentColor);
+}
+
 .spk-chip {
   display: inline-flex;
   align-items: center;

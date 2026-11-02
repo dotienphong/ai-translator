@@ -17,6 +17,11 @@ export interface TranscriptRowProps {
   onSpeaker?: (lineId: number) => void;
   // Menu đang mở của dòng này (`SpeakerMenu`), hay `null`.
   menu: ReactNode;
+  // Nút nghe bản dịch (spec 2026-11-02-doc-ban-dich-tts-design): chỉ hiện khi có `onSpeak` và câu đã dịch xong. `speaking`: đang đọc câu
+  // này; `loading`: đã bấm nhưng chưa có âm thanh (lần đầu phải nạp giọng).
+  onSpeak?: (lineId: number, text: string) => void;
+  speaking?: boolean;
+  loading?: boolean;
 }
 
 // Một câu của bản chép lời (§4.3): giờ, câu gốc, bản dịch; với người nói thì nhãn ở câu đầu mỗi lượt và vạch màu bên trái (spec
@@ -29,6 +34,9 @@ export const TranscriptRow = memo(function TranscriptRow({
   turnStart,
   onSpeaker,
   menu,
+  onSpeak,
+  speaking = false,
+  loading = false,
 }: TranscriptRowProps) {
   const t = (key: MessageKey, params?: Params) => translate(lang, key, params);
   const v = lineView(line, true);
@@ -66,7 +74,16 @@ export const TranscriptRow = memo(function TranscriptRow({
         <div className="src" lang={line.src_lang}>
           {v.kind === "dropped" ? t("subtitle.dropped") : line.src_text}
         </div>
-        {translation && <div className="tgt">{translation}</div>}
+        {translation && (
+          <div className="tgt">
+            {translation}
+            {onSpeak && v.kind === "translated" && (
+              <button type="button" className="tts-btn" aria-pressed={speaking} onClick={() => onSpeak(line.id, translation)}>
+                {speaking ? (loading ? t("transcript.tts.loading") : t("transcript.tts.stop")) : t("transcript.tts.speak")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {menu}
     </li>

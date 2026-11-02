@@ -39,6 +39,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use audio_capture::agc::Agc;
 use audio_capture::duck::{DuckingMixer, GateParams, SpeechDetector};
 use audio_capture::mic_chain::MicPreprocessor;
 use audio_capture::preprocess::{ClockFiller, MAX_SKEW_SAMPLES, Preprocessor, RING_SAMPLES, drain_when_ready};
@@ -626,23 +627,107 @@ impl Frames {
     }
 }
 
+/// Bộ bù mức của âm thanh máy (spec 2026-11-02-nghe-dich-truc-tiep §5) trong một lần đọc: tắt (mẫu không bị sửa), bật, hay giữ nguyên
+/// ước lượng (app đang đọc ra loa nên mẫu không dùng để đo).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Boost {
+    Off,
+    On,
+    Hold,
+}
+
+impl Boost {
+    fn apply(self, agc: &mut Agc, samples: &mut [f32]) {
+        match self {
+            Boost::Off => agc.process(samples, false),
+            Boost::On => agc.process(samples, true),
+            Boost::Hold => {}
+        }
+    }
+}
+
 /// Bộ tiền xử lý của nguồn đang mở.
 enum Pre {
-    Playback(Preprocessor),
+    /// Âm thanh máy và bộ bù mức thu khi đang "Nghe dịch" (spec 2026-11-02-nghe-dich-truc-tiep §5; `Box` để biến thể không phình).
+    Playback(Preprocessor, Box<Agc>),
     /// Đóng hộp: chuỗi micro có bộ đệm khung của RNNoise, lớn hơn hẳn `Preprocessor`.
     Mic(Box<MicPreprocessor>),
     Both(Box<BothPre>),
 }
 
 impl Pre {
-    /// `speech`: bộ phát hiện tiếng nói của bộ nhường lời; chỉ chế độ trộn dùng.
+    /// Đọc mẫu mới của mọi nguồn. Trong lúc app đang đọc ra loa (`tts::is_playing`) thì mẫu mới của dòng nhận dạng và VAD bị thay
+    /// bằng 0, để tiếng đọc của chính app (Windows thu mọi âm thanh máy qua loopback) không thành phụ đề giả. Dòng thời gian giữ
+    /// nguyên; bản thô của từng loại nguồn (cho bộ canh "toàn số 0") không đổi, nên không sinh cảnh báo "không có âm thanh".
     fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>) -> anyhow::Result<()> {
+        self.drain_with(f, speech, crate::listen::is_engaged())
+    }
+
+    /// `engaged`: đang "Nghe dịch" (tiếng họp bị hạ): bộ bù mức chạy trên **âm thanh máy** (không phải micro) trước khi trộn; tắt
+    /// thì mẫu không bị sửa. Bản thô `playback` (cho bộ canh "toàn số 0") luôn là mẫu chưa bù.
+    fn drain_with(
+        &mut self,
+        f: &mut Frames,
+        speech: Option<&mut dyn SpeechDetector>,
+        engaged: bool,
+    ) -> anyhow::Result<()> {
+        self.drain_inner(f, speech, engaged, crate::tts::is_playing())
+    }
+
+    /// `playing`: app đang đọc ra loa. Khi đó dòng nhận dạng và VAD bị thay bằng 0 (sau khi đọc), và bộ bù mức **giữ nguyên** ước
+    /// lượng (không đo tiếng đọc của chính app, vì app mình không bị hạ nên nó to hơn hẳn tiếng họp đã hạ).
+    fn drain_inner(
+        &mut self,
+        f: &mut Frames,
+        speech: Option<&mut dyn SpeechDetector>,
+        engaged: bool,
+        playing: bool,
+    ) -> anyhow::Result<()> {
+        let (asr_from, vad_from) = (f.asr.len(), f.vad.len());
+        let boost = match (engaged, playing) {
+            (false, _) => Boost::Off,
+            (true, false) => Boost::On,
+            (true, true) => Boost::Hold,
+        };
+        self.drain_sources(f, speech, boost)?;
+        if playing {
+            f.asr[asr_from..].fill(0.0);
+            f.vad[vad_from..].fill(0.0);
+        }
+        Ok(())
+    }
+
+    /// Mức nền mà bộ bù đã học, để mang sang `Pre` mới khi nguồn thu mở lại giữa phiên (đổi thiết bị phát, mất kết nối).
+    fn agc_baseline(&self) -> Option<(f32, u32)> {
         match self {
-            Pre::Playback(p) => {
+            Pre::Playback(_, agc) => agc.learned(),
+            Pre::Both(b) => b.agc.learned(),
+            Pre::Mic(_) => None,
+        }
+    }
+
+    fn set_agc_baseline(&mut self, baseline: (f32, u32)) {
+        match self {
+            Pre::Playback(_, agc) => **agc = std::mem::take(&mut **agc).with_baseline(baseline),
+            Pre::Both(b) => b.agc = std::mem::take(&mut b.agc).with_baseline(baseline),
+            Pre::Mic(_) => {}
+        }
+    }
+
+    /// `speech`: bộ phát hiện tiếng nói của bộ nhường lời; chỉ chế độ trộn dùng.
+    fn drain_sources(
+        &mut self,
+        f: &mut Frames,
+        speech: Option<&mut dyn SpeechDetector>,
+        boost: Boost,
+    ) -> anyhow::Result<()> {
+        match self {
+            Pre::Playback(p, agc) => {
                 let from = f.asr.len();
                 p.drain(&mut f.asr)?;
-                f.vad.extend_from_slice(&f.asr[from..]);
                 f.playback.extend_from_slice(&f.asr[from..]);
+                boost.apply(agc, &mut f.asr[from..]);
+                f.vad.extend_from_slice(&f.asr[from..]);
                 f.tags.resize(f.tags.len() + (f.asr.len() - from), SourceTag::System);
                 Ok(())
             }
@@ -653,7 +738,7 @@ impl Pre {
                 f.tags.resize(f.tags.len() + (f.asr.len() - from), SourceTag::Mic);
                 Ok(())
             }
-            Pre::Both(b) => b.drain(f, speech),
+            Pre::Both(b) => b.drain(f, speech, boost),
         }
     }
 }
@@ -664,6 +749,8 @@ struct BothPre {
     mic: Option<MicPreprocessor>,
     mixer: DuckingMixer,
     pb: Vec<f32>,
+    /// Bộ bù mức của âm thanh máy (spec 2026-11-02-nghe-dich-truc-tiep §5); micro không bị bù.
+    agc: Agc,
     mic_asr: Vec<f32>,
     mic_vad: Vec<f32>,
     /// Lần cuối âm thanh máy trả mẫu; quá `idle_after` thì micro được xả ngay (tap macOS không trả khung khi không app nào phát).
@@ -690,6 +777,7 @@ impl BothPre {
             mic: None,
             mixer: tagging_mixer(),
             pb: Vec::new(),
+            agc: Agc::new(),
             mic_asr: Vec::new(),
             mic_vad: Vec::new(),
             last_pb: Instant::now(),
@@ -717,7 +805,7 @@ impl BothPre {
         self.mixer.ducked_ratio()
     }
 
-    fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>) -> anyhow::Result<()> {
+    fn drain(&mut self, f: &mut Frames, speech: Option<&mut dyn SpeechDetector>, boost: Boost) -> anyhow::Result<()> {
         f.asr.append(&mut self.pending_asr);
         f.vad.append(&mut self.pending_vad);
         f.tags.append(&mut self.pending_tags);
@@ -727,6 +815,7 @@ impl BothPre {
             self.last_pb = Instant::now();
         }
         f.playback.extend_from_slice(&self.pb);
+        boost.apply(&mut self.agc, &mut self.pb);
         let Some(mic) = self.mic.as_mut() else {
             f.asr.extend_from_slice(&self.pb);
             f.vad.extend_from_slice(&self.pb);
@@ -926,7 +1015,7 @@ fn start_plan(plan: &CapturePlan) -> anyhow::Result<(Opened, Pre)> {
         CapturePlan::Mic { device, noise_filter } => start_mic(device.as_deref(), *noise_filter),
         CapturePlan::Both { source, .. } => {
             let (opened, pre) = start_sources(source, false)?;
-            let Pre::Playback(playback) = pre else {
+            let Pre::Playback(playback, _) = pre else {
                 unreachable!("start_sources chỉ dựng Pre::Playback")
             };
             Ok((opened, Pre::Both(Box::new(BothPre::new(playback)))))
@@ -1041,7 +1130,7 @@ fn start_sources(source: &AudioSource, include_self: bool) -> anyhow::Result<(Op
         rings.push((consumer, s.format()));
     }
     match Preprocessor::new(rings) {
-        Ok(p) => Ok((opened, Pre::Playback(p))),
+        Ok(p) => Ok((opened, Pre::Playback(p, Box::new(Agc::new())))),
         Err(e) => {
             opened.sources.iter_mut().for_each(|s| s.stop());
             Err(e)
@@ -1072,7 +1161,16 @@ fn capture_loop(plan: CapturePlan, shared: Arc<Mutex<Option<Pre>>>, stop: Arc<At
         let signature = device_signature(&plan);
         let mut opened = match start_plan(&plan) {
             Ok((opened, preprocessor)) => {
-                *shared.lock().unwrap_or_else(|e| e.into_inner()) = Some(preprocessor);
+                {
+                    let mut slot = shared.lock().unwrap_or_else(|e| e.into_inner());
+                    // Mở lại giữa phiên: giữ mức nền đã học của bộ bù (bộ mới không còn dịp học vì tiếng họp đã bị hạ).
+                    let baseline = slot.as_ref().and_then(Pre::agc_baseline);
+                    let mut preprocessor = preprocessor;
+                    if let Some(baseline) = baseline {
+                        preprocessor.set_agc_baseline(baseline);
+                    }
+                    *slot = Some(preprocessor);
+                }
                 if policy.on_ok() {
                     on_event(CaptureEvent::WaitingForApp(false));
                 }
@@ -1441,7 +1539,7 @@ mod tests {
                 mic_in.push(0.05).unwrap();
             }
             let mut f = Frames::default();
-            both.drain(&mut f, None).unwrap();
+            both.drain(&mut f, None, Boost::Off).unwrap();
             (f.asr.len(), f.vad.len())
         };
         assert_eq!(
@@ -1995,5 +2093,186 @@ mod tests {
         pre.drain(&mut f, None).unwrap();
         assert_eq!(f.tags.len(), f.asr.len());
         assert!(f.tags[1_600..].iter().all(|&t| t == SourceTag::System));
+    }
+
+    fn mono_16k() -> AudioFormat {
+        AudioFormat {
+            sample_rate: 16_000,
+            channels: 1,
+        }
+    }
+
+    fn sine_chunk(amplitude: f32, start: usize, n: usize) -> impl Iterator<Item = f32> {
+        (start..start + n).map(move |i| amplitude * (2.0 * std::f32::consts::PI * 440.0 * i as f32 / 16_000.0).sin())
+    }
+
+    fn peak(x: &[f32]) -> f32 {
+        x.iter().fold(0.0_f32, |m, v| m.max(v.abs()))
+    }
+
+    /// Đẩy `seconds` giây sin vào vòng đệm âm thanh máy (từng 0,1 s), `drain_with`, gom đầu ra.
+    fn feed_playback(
+        pre: &mut Pre,
+        producer: &mut rtrb::Producer<f32>,
+        amplitude: f32,
+        seconds: usize,
+        engaged: bool,
+        phase: &mut usize,
+    ) -> Frames {
+        let mut all = Frames::default();
+        for _ in 0..seconds * 10 {
+            for v in sine_chunk(amplitude, *phase, 1_600) {
+                producer.push(v).unwrap();
+            }
+            *phase += 1_600;
+            let mut f = Frames::default();
+            pre.drain_with(&mut f, None, engaged).unwrap();
+            all.asr.extend(f.asr);
+            all.vad.extend(f.vad);
+            all.playback.extend(f.playback);
+            all.mic.extend(f.mic);
+        }
+        all
+    }
+
+    /// Spec 2026-11-02-nghe-dich-truc-tiep §5: không \"Nghe dịch\" thì đường thu không đổi chút nào.
+    #[test]
+    fn the_playback_agc_changes_nothing_unless_engaged() {
+        let (mut producer, consumer) = rtrb::RingBuffer::new(16_000);
+        let mut pre = Pre::Playback(
+            Preprocessor::new(vec![(consumer, mono_16k())]).unwrap(),
+            Box::new(Agc::new()),
+        );
+        let mut phase = 0;
+        let out = feed_playback(&mut pre, &mut producer, 0.2, 3, false, &mut phase);
+        assert_eq!(out.asr.len(), 48_000);
+        assert_eq!(out.asr, out.playback);
+        assert_eq!(out.vad, out.asr);
+    }
+
+    /// Đang \"Nghe dịch\": mức tiếng họp được nâng lại về mức trước khi hạ cho nhận dạng và VAD; bản thô giữ nguyên.
+    #[test]
+    fn the_playback_agc_restores_the_level_when_engaged_and_keeps_the_raw_samples() {
+        let (mut producer, consumer) = rtrb::RingBuffer::new(16_000);
+        let mut pre = Pre::Playback(
+            Preprocessor::new(vec![(consumer, mono_16k())]).unwrap(),
+            Box::new(Agc::new()),
+        );
+        let mut phase = 0;
+        feed_playback(&mut pre, &mut producer, 0.2, 10, false, &mut phase);
+        let out = feed_playback(&mut pre, &mut producer, 0.05, 4, true, &mut phase);
+        let last = out.asr.len() - 16_000;
+        let boosted = peak(&out.asr[last..]);
+        assert!((0.18..=0.22).contains(&boosted), "đỉnh sau khi bù = {boosted}");
+        assert_eq!(out.vad, out.asr);
+        assert!(peak(&out.playback) <= 0.0501, "bản thô bị sửa: {}", peak(&out.playback));
+    }
+
+    /// Chế độ trộn: chỉ âm thanh máy được bù; micro (đã mở) không bị đụng.
+    #[test]
+    fn the_both_agc_boosts_playback_but_never_the_mic() {
+        let run = |engaged_second_phase: bool| {
+            let (mut pb_in, pb_out) = rtrb::RingBuffer::new(16_000);
+            let (mut mic_in, mic_out) = rtrb::RingBuffer::new(16_000);
+            let mut both = BothPre::new(Preprocessor::new(vec![(pb_out, mono_16k())]).unwrap());
+            both.attach_mic(MicPreprocessor::new(mic_out, mono_16k(), false).unwrap());
+            let mut pre = Pre::Both(Box::new(both));
+            let mut phase = 0;
+            let mut total = Frames::default();
+            for second in 0..14 {
+                let engaged = engaged_second_phase && second >= 10;
+                let amp = if second >= 10 { 0.05 } else { 0.2 };
+                for _ in 0..10 {
+                    for v in sine_chunk(amp, phase, 1_600) {
+                        pb_in.push(v).unwrap();
+                    }
+                    for i in 0..1_600 {
+                        mic_in
+                            .push(0.1 * (2.0 * std::f32::consts::PI * 300.0 * (phase + i) as f32 / 16_000.0).sin())
+                            .unwrap();
+                    }
+                    phase += 1_600;
+                    let mut f = Frames::default();
+                    pre.drain_with(&mut f, None, engaged).unwrap();
+                    if second >= 10 {
+                        total.asr.extend(f.asr);
+                        total.mic.extend(f.mic);
+                        total.playback.extend(f.playback);
+                    }
+                }
+            }
+            total
+        };
+        let (plain, boosted) = (run(false), run(true));
+        assert_eq!(plain.mic, boosted.mic, "micro bị sửa bởi bộ bù");
+        assert_eq!(plain.playback, boosted.playback, "bản thô của âm thanh máy bị sửa");
+        assert!(boosted.asr.iter().all(|v| v.is_finite() && v.abs() <= 1.0 + 1e-6));
+        assert_ne!(plain.asr, boosted.asr, "bộ bù không có tác dụng");
+    }
+
+    /// Spec 2026-11-02-nghe-dich-truc-tiep §5 (rà soát cuối): tiếng đọc của chính app (không bị hạ nên to hơn hẳn) không được làm lệch
+    /// ước lượng của bộ bù mức; sau khi đọc xong, tiếng họp đã hạ vẫn được bù đúng.
+    #[test]
+    fn the_agc_holds_its_estimate_while_the_app_is_speaking() {
+        let (mut producer, consumer) = rtrb::RingBuffer::new(16_000);
+        let mut pre = Pre::Playback(
+            Preprocessor::new(vec![(consumer, mono_16k())]).unwrap(),
+            Box::new(Agc::new()),
+        );
+        let mut phase = 0;
+        let step = |pre: &mut Pre,
+                    producer: &mut rtrb::Producer<f32>,
+                    amp: f32,
+                    secs: usize,
+                    playing: bool,
+                    phase: &mut usize| {
+            let mut asr = Vec::new();
+            for _ in 0..secs * 10 {
+                for v in sine_chunk(amp, *phase, 1_600) {
+                    producer.push(v).unwrap();
+                }
+                *phase += 1_600;
+                let mut f = Frames::default();
+                pre.drain_inner(&mut f, None, true, playing).unwrap();
+                asr.extend(f.asr);
+            }
+            asr
+        };
+        feed_playback(&mut pre, &mut producer, 0.2, 10, false, &mut phase);
+        step(&mut pre, &mut producer, 0.05, 3, false, &mut phase);
+        let speaking = step(&mut pre, &mut producer, 0.5, 6, true, &mut phase);
+        assert!(
+            speaking.iter().all(|&v| v == 0.0),
+            "tiếng đọc phải bị chặn khỏi nhận dạng"
+        );
+        let after = step(&mut pre, &mut producer, 0.05, 2, false, &mut phase);
+        let boosted = peak(&after[after.len() - 8_000..]);
+        assert!(
+            (0.18..=0.22).contains(&boosted),
+            "sau khi đọc xong, tiếng họp phải được bù đúng: {boosted}"
+        );
+    }
+
+    /// Nguồn thu mở lại giữa phiên: bộ bù mới thừa hưởng mức nền đã học của bộ cũ.
+    #[test]
+    fn a_reopened_capture_keeps_the_learned_baseline() {
+        let (mut producer, consumer) = rtrb::RingBuffer::new(16_000);
+        let mut old = Pre::Playback(
+            Preprocessor::new(vec![(consumer, mono_16k())]).unwrap(),
+            Box::new(Agc::new()),
+        );
+        let mut phase = 0;
+        feed_playback(&mut old, &mut producer, 0.2, 10, false, &mut phase);
+        let baseline = old.agc_baseline().expect("đã học được mức nền");
+        let (mut producer2, consumer2) = rtrb::RingBuffer::new(16_000);
+        let mut fresh = Pre::Playback(
+            Preprocessor::new(vec![(consumer2, mono_16k())]).unwrap(),
+            Box::new(Agc::new()),
+        );
+        assert!(fresh.agc_baseline().is_none());
+        fresh.set_agc_baseline(baseline);
+        let out = feed_playback(&mut fresh, &mut producer2, 0.05, 4, true, &mut phase);
+        let boosted = peak(&out.asr[out.asr.len() - 16_000..]);
+        assert!((0.18..=0.22).contains(&boosted), "đỉnh sau khi bù = {boosted}");
     }
 }

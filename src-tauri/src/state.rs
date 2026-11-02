@@ -8,7 +8,7 @@ use pipeline::engine::Indicators;
 
 use crate::hotkeys::HotkeyAction;
 use crate::settings::migrate::FileMeta;
-use crate::settings::{BackgroundColor, Settings, TextColor, UiLanguage};
+use crate::settings::{BackgroundColor, CaptureMode, Lang, Settings, TextColor, UiLanguage};
 
 /// Trạng thái phiên dịch (§4.3: Sẵn sàng, Đang dịch, Lỗi).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -140,6 +140,9 @@ pub struct OverlayView {
     /// Công tắc "Dịch trong lúc người nói chưa dừng" (spec 2026-10-10 §6.1, §6.3). Cùng `AppStatus::streaming_too_slow`,
     /// thanh phụ đề biết chế độ có hiệu lực không, để thôi làm nhạt cả dòng phụ đề tạm.
     pub translate_while_speaking: bool,
+    /// Thu gì và dịch sang ngôn ngữ nào: "Nghe dịch" cần biết câu nào là của micro và có đọc được không (spec 2026-11-02-nghe-dich-truc-tiep §6).
+    pub capture_mode: CaptureMode,
+    pub target_language: Lang,
 }
 
 impl OverlayView {
@@ -155,6 +158,8 @@ impl OverlayView {
             show_source: o.show_source,
             locked: o.locked,
             translate_while_speaking: settings.translate_while_speaking,
+            capture_mode: settings.capture_mode,
+            target_language: settings.target_language,
         }
     }
 }

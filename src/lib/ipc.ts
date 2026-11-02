@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { type Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { UiLanguage } from "../i18n";
 import type { ModelsView } from "./models";
@@ -204,6 +204,9 @@ export interface OverlayView {
   // Công tắc "Dịch trong lúc người nói chưa dừng": cùng `AppStatus.streamingTooSlow`, thanh phụ đề biết chế độ có hiệu lực
   // không (spec 2026-10-10 §6.1).
   translateWhileSpeaking: boolean;
+  // Thu gì và dịch sang ngôn ngữ nào ("Nghe dịch": câu nào là của micro, có đọc được không).
+  captureMode: CaptureMode;
+  targetLanguage: Lang;
 }
 
 // Phần cài đặt và nội dung của cửa sổ gợi ý bật dịch (`meeting_hint::HintView`, spec 2026-11-01-goi-y-bat-dich-khi-hop §5): chỉ ngôn
@@ -268,6 +271,32 @@ export interface Subtitle {
   // Mã giọng (spec 2026-10-26-phan-biet-nguoi-noi §9): `null` khi chưa xác định hay phiên không có nhận giọng. Nhãn, màu ở
   // `speaker://roster`.
   speaker: number | null;
+}
+
+// Giọng đọc bản dịch (spec 2026-11-02-doc-ban-dich-tts-design, `tts.rs`). `available`: có `tts-worker` và gói model giọng đọc (và chưa
+// bị tắt tới hết phiên). `reason`: `workerMissing`, `modelMissing`, `runtimeMissing` khi thiếu file; `disabled` khi worker hỏng
+// nhiều lần.
+export interface TtsStatus {
+  available: boolean;
+  running: boolean;
+  reason: string | null;
+}
+
+// Thông báo trong kênh của `tts_speak` (âm thanh đi dưới dạng `ArrayBuffer` PCM i16 little-endian 48 kHz mono, không nằm ở đây).
+// `code`: `cancelled`, `modelMissing`, `badRequest`, `inference`, `workerDied`, `disabled`.
+export type TtsControl = { kind: "done" } | { kind: "failed"; code: string };
+
+// "Nghe dịch" (spec 2026-11-02-nghe-dich-truc-tiep; `listen.rs`). `supported`: nền tảng hỗ trợ hạ âm lượng họp (hiện Windows). `active` ở kết
+// quả của `overlay_listen_set` là yêu cầu; trạng thái thật (kể cả lỗi) tới qua `listen://state`.
+export interface ListenStatus {
+  supported: boolean;
+  active: boolean;
+}
+
+// `listen://state`: `error` ∈ `listenFailed`, `listenUnsupported`.
+export interface ListenState {
+  active: boolean;
+  error: string | null;
 }
 
 // Phần chữ dịch mới trong lúc đang dịch: nối vào `tgt_text` của phụ đề cùng `id`.
@@ -617,6 +646,23 @@ export interface Commands {
   clear_all_data: { args: undefined; result: null };
   get_debug_sessions: { args: undefined; result: DebugSession[] };
   get_overlay_view: { args: undefined; result: OverlayView };
+  // Giọng đọc bản dịch: chỉ tiếng Việt và tiếng Anh. `tts_speak` trả id (để hủy) và gửi âm thanh, rồi `done`/`failed`, qua `onEvent`;
+  // câu đang đọc (nếu có) bị thay. Lỗi: `ttsUnavailable` (thiếu file), `ttsBadText`, `ttsUnsupportedLanguage`. `tts_mark_playing`: còn
+  // `ms` ms âm thanh đã xếp lịch, để lõi thu bỏ qua tiếng đọc của chính app (tự hết hạn).
+  tts_status: { args: undefined; result: TtsStatus };
+  tts_warmup: { args: undefined; result: null };
+  tts_speak: { args: { lang: "vi" | "en"; text: string; onEvent: Channel<ArrayBuffer | TtsControl> }; result: number };
+  tts_cancel: { args: { id: number }; result: null };
+  tts_mark_playing: { args: { ms: number }; result: null };
+  tts_stop: { args: undefined; result: null };
+  // Lệnh riêng của overlay (cửa sổ quyền tối thiểu): "Nghe dịch" và giọng đọc, dùng chung dịch vụ với `tts_*` của cửa sổ chính.
+  overlay_listen_set: { args: { enabled: boolean; level: number }; result: ListenStatus };
+  overlay_listen_status: { args: undefined; result: ListenStatus };
+  overlay_tts_status: { args: undefined; result: TtsStatus };
+  overlay_tts_warmup: { args: undefined; result: null };
+  overlay_tts_speak: { args: { lang: "vi" | "en"; text: string; onEvent: Channel<ArrayBuffer | TtsControl> }; result: number };
+  overlay_tts_mark_playing: { args: { ms: number }; result: null };
+  overlay_tts_stop: { args: undefined; result: null };
   get_license: { args: undefined; result: LicenseView | null };
   // `allowConflict`: người dùng đã xác nhận "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2).
   activate_license: { args: { key: string; allowConflict?: boolean }; result: ActivateOutcome };
@@ -691,6 +737,8 @@ export interface Events {
   "app://navigate": Navigate;
   "app://notice": AppNotice;
   "overlay://view": OverlayView;
+  // Trạng thái thật của "Nghe dịch" (bật xong, tắt, lỗi), chỉ tới thanh phụ đề.
+  "listen://state": ListenState;
   // Phím tắt cuộn lên hay xuống (§4.4): dùng được cả khi thanh khóa, lúc con lăn chuột xuyên qua thanh.
   "overlay://scroll": ScrollDirection;
   "license://changed": LicenseView;

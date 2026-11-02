@@ -37,6 +37,8 @@ const view: OverlayView = {
   showSource: false,
   locked: false,
   translateWhileSpeaking: true,
+  captureMode: "playback",
+  targetLanguage: "vi",
 };
 
 describe("upsertLine", () => {

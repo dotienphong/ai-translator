@@ -22,6 +22,7 @@ pub mod hotkey_registry;
 pub mod hotkeys;
 pub mod i18n;
 pub mod license;
+pub mod listen;
 pub mod logging;
 pub mod login_item;
 pub mod meeting_hint;
@@ -42,6 +43,7 @@ pub mod transcript;
 pub mod tray;
 pub mod tray_badge;
 pub mod tray_menu;
+pub mod tts;
 pub mod updater;
 pub mod window;
 
@@ -150,6 +152,10 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     transcript.set_ui_language(settings.ui_language);
     app.manage(transcript);
     app.manage(speaker::Running::default());
+    app.manage(tts::TtsService::default());
+    app.manage(listen::ListenService::default());
+    // Âm lượng mà lần chạy trước (sập giữa lúc đang hạ) bỏ lại: trả ngay ở luồng ngắn, không chặn khởi động.
+    listen::restore_on_start(&handle);
     files::install(&handle);
     app.manage(debug::DebugLog::default());
     app.manage(HotkeyRegistry::default());
@@ -257,6 +263,8 @@ pub(crate) fn on_exit<R: tauri::Runtime>(app: &AppHandle<R>, kill_all: fn()) {
     // Đầu tiên: xóa dấu "đang chạy" để lần mở sau không báo crash. Trên Windows `updater::install_on_exit` có thể thoát tiến trình
     // ngay (bộ cài), nên không được để sau nó.
     diagnostics::mark_clean_exit(app);
+    // Trả âm lượng đang hạ của "Nghe dịch" (chờ tối đa 1,5 s) trước khi đóng.
+    listen::release_on_exit(app);
     kill_all();
     session::save_on_exit(app);
     updater::install_on_exit(app);

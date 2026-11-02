@@ -1,0 +1,13 @@
+[package]
+name = "tts-protocol"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Giao thức giữa app và `tts-worker` (spec 2026-11-02-doc-ban-dich-tts-design §4): chỉ kiểu dữ liệu và mã hóa khung.
+# Không I/O mạng, không luồng.
+[dependencies]
+postcard.workspace = true
+serde.workspace = true
+thiserror.workspace = true

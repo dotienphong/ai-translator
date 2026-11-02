@@ -689,6 +689,8 @@ function overlayView() {
     showSource: o.showSource,
     locked: o.locked,
     translateWhileSpeaking: settings.translateWhileSpeaking,
+    captureMode: settings.captureMode,
+    targetLanguage: settings.targetLanguage,
   };
 }
 

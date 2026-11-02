@@ -1,11 +1,12 @@
 # third_party
 
-Bản sao đã vá của hai crate, nối vào qua `[patch.crates-io]` trong `Cargo.toml` ở gốc repo.
+Bản sao của các crate bên thứ ba: hai crate đã vá (nối vào qua `[patch.crates-io]` trong `Cargo.toml` ở gốc repo) và `sea-g2p-rs` (phụ thuộc đường dẫn của `tts-worker`).
 
 | Thư mục | Nguồn | Bản vá |
 |---|---|---|
 | `whisper-rs-sys/` | crates.io `whisper-rs-sys` 0.15.0 (kèm whisper.cpp 1.8.3) | `patches/0001-whisper-cpp-set-audio-ctx.patch` (whisper.cpp và `src/bindings.rs`), `patches/0003-whisper-rs-sys-msvc-optimization-flags.patch` (`build.rs`), `patches/0004-whisper-cpp-upstream-hardening.patch` (whisper.cpp) |
 | `whisper-rs/` | crates.io `whisper-rs` 0.16.0 | `patches/0002-whisper-rs-set-audio-ctx.patch` |
+| `sea-g2p-rs/` | GitHub `pnnbao97/sea-g2p` 0.10.0, commit ghi trong `sea-g2p-rs/UPSTREAM_REV` (Apache-2.0) | không vá mã; chỉ bỏ PyO3 và tính năng `python` khỏi `Cargo.toml`, thêm `rustfmt.toml` và khối `[lints]` |
 
 ## Vì sao phải vá (spec §6.4)
 
@@ -64,3 +65,11 @@ git apply --directory=third_party third_party/patches/0004-whisper-cpp-upstream-
 3. Chạy lại `asr-eval` ở cả hai chế độ và so với kết quả cũ (bench/phase0).
 4. Commit bằng `git add -f third_party`, vì .gitignore của whisper-rs chặn Cargo.lock của nó.
 5. Gửi bản vá C lên upstream whisper.cpp. Khi upstream đã có API tương đương thì bỏ thư mục này.
+
+## Vì sao có `sea-g2p-rs` (spec 2026-11-02-doc-ban-dich-tts-design §7c)
+
+Chuyển chữ sang âm vị (chuẩn hóa số, ngày, đơn vị; G2P song ngữ Việt–Anh) cho giọng đọc. Crate này không có trên crates.io và
+`deny.toml` đặt `unknown-git = "deny"`, nên chép vào đây thay vì dùng phụ thuộc git. Chỉ `crates/tts-worker` dùng, sau feature `engine`.
+Từ điển `sea_g2p.bin` (khoảng 63 MB) KHÔNG nằm trong repo: đi cùng gói model.
+Nâng bản: lấy commit mới của upstream, chép lại `src/`, `include/`, `LICENSE`, cập nhật `UPSTREAM_REV`, chạy lại
+`cargo test -p tts-worker --features engine --test engine_ref -- --ignored` (cần model, xem đầu file test).

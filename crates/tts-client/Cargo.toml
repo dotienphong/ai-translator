@@ -1,0 +1,17 @@
+[package]
+name = "tts-client"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Client của tiến trình phụ `tts-worker` (spec 2026-11-02-doc-ban-dich-tts-design §4): chạy lười, hủy, khởi động lại khi worker
+# chết, tự tắt khi rảnh để nhả RAM. Chỉ phụ thuộc `tts-protocol`. Cách chạy tiến trình (Job Object, process group, cờ cửa sổ)
+# do app truyền vào qua `Config::spawn`, nên crate này không biết gì về Tauri hay hệ điều hành.
+[[bin]]
+name = "fake-tts-worker"
+path = "src/bin/fake_tts_worker.rs"
+# Worker giả cho test; không đi vào bản phát hành.
+
+[dependencies]
+tts-protocol = { path = "../tts-protocol" }
