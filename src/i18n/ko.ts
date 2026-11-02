@@ -7,6 +7,7 @@ export const ko: Record<MessageKey, string> = {
   "app.loadFailed": "AI Translator에서 이 창을 불러오지 못했습니다. 메뉴 막대 또는 트레이 아이콘에서 종료한 후 앱을 다시 여세요.",
 
   "nav.home": "홈",
+  "nav.compose": "입력 번역",
   "nav.transcript": "대본",
   "nav.history": "기록",
   "nav.glossary": "용어집",
@@ -149,7 +150,6 @@ export const ko: Record<MessageKey, string> = {
 
   "settings.group.general": "일반",
   "settings.group.subtitles": "자막",
-  "settings.group.compose": "입력 번역",
   "settings.group.audio": "오디오",
   "settings.group.model": "모델",
   "settings.group.hotkeys": "단축키",
@@ -157,7 +157,7 @@ export const ko: Record<MessageKey, string> = {
   "settings.group.privacy": "개인정보 보호",
   "settings.license.description": "라이선스 키, 상태, 만료일을 확인하고 갱신하거나 비활성화합니다.",
   "settings.compose.enabled": "입력 번역 켜기",
-  "settings.compose.enabled.hint": "아무 채팅 입력란에서 {hotkey}를 누르고 메시지를 입력한 뒤 Enter를 누르면 번역이 채팅 입력란에 붙여넣어집니다. Enter를 한 번 더 누르면 전송됩니다. 단축키는 단축키 설정에서 바꿀 수 있습니다.",
+  "settings.compose.enabled.hint": "아무 채팅 입력란에서 {hotkey}를 누르고 메시지를 입력한 뒤 Enter를 누르면 번역이 채팅 입력란에 붙여넣어집니다. Enter를 한 번 더 누르면 전송됩니다. 단축키는 ‘설정 › 단축키’에서 바꿀 수 있습니다.",
   "settings.compose.target": "번역 언어",
   "settings.compose.target.auto": "자동(현재: {lang})",
   "settings.compose.target.hint": "자동은 자막 설정에서 상대방의 언어를 가져옵니다. 회의 언어가 하나뿐이면 그 언어, 아니면 English(자막이 English이면 Tiếng Việt)입니다.",

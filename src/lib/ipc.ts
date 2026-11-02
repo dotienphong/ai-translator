@@ -400,12 +400,11 @@ export interface DebugSession {
 }
 
 // "support": màn hình Hỗ trợ (chat, spec 2026-10-22-chat-ho-tro-zalo §4), giữa Nâng cấp và Giới thiệu.
-export type Screen = "home" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
-// "compose": nhóm Cài đặt "Gõ dịch" (spec 2026-10-17-go-dich §1.4).
+// "compose": màn hình Gõ dịch (spec 2026-11-02-tach-go-dich-thanh-tab), ngay dưới Màn hình chính; trước đó là nhóm của Cài đặt.
+export type Screen = "home" | "compose" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
 export type SettingsGroup =
   | "general"
   | "subtitles"
-  | "compose"
   | "audio"
   | "model"
   | "hotkeys"

@@ -6,6 +6,7 @@ export const en = {
   "app.loadFailed": "AI Translator could not load this window. Quit from the menu bar or tray icon, then open the app again.",
 
   "nav.home": "Home",
+  "nav.compose": "Type & Translate",
   "nav.transcript": "Transcript",
   "nav.history": "History",
   "nav.glossary": "Glossary",
@@ -148,7 +149,6 @@ export const en = {
 
   "settings.group.general": "General",
   "settings.group.subtitles": "Subtitles",
-  "settings.group.compose": "Type & Translate",
   "settings.group.audio": "Audio",
   "settings.group.model": "Model",
   "settings.group.hotkeys": "Shortcuts",
@@ -156,7 +156,7 @@ export const en = {
   "settings.group.privacy": "Privacy",
   "settings.license.description": "License key, status and expiry date, renew or deactivate.",
   "settings.compose.enabled": "Turn on Type & Translate",
-  "settings.compose.enabled.hint": "In any chat box, press {hotkey}, type your message and press Enter: the translation is pasted into the chat box. Press Enter again to send. Change the shortcut under Shortcuts.",
+  "settings.compose.enabled.hint": "In any chat box, press {hotkey}, type your message and press Enter: the translation is pasted into the chat box. Press Enter again to send. Change the shortcut in Settings › Shortcuts.",
   "settings.compose.target": "Translate into",
   "settings.compose.target.auto": "Automatic (now {lang})",
   "settings.compose.target.hint": "Automatic uses the language of the people you talk to, from the subtitle settings: the meeting language if there is only one, otherwise English (Vietnamese when the subtitles are in English).",

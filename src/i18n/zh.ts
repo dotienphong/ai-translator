@@ -7,6 +7,7 @@ export const zh: Record<MessageKey, string> = {
   "app.loadFailed": "AI Translator 无法加载此窗口。请从菜单栏或托盘图标退出，然后重新打开应用。",
 
   "nav.home": "主页",
+  "nav.compose": "输入翻译",
   "nav.transcript": "转写记录",
   "nav.history": "历史记录",
   "nav.glossary": "术语表",
@@ -149,7 +150,6 @@ export const zh: Record<MessageKey, string> = {
 
   "settings.group.general": "通用",
   "settings.group.subtitles": "字幕",
-  "settings.group.compose": "输入翻译",
   "settings.group.audio": "音频",
   "settings.group.model": "模型",
   "settings.group.hotkeys": "快捷键",
@@ -157,7 +157,7 @@ export const zh: Record<MessageKey, string> = {
   "settings.group.privacy": "隐私",
   "settings.license.description": "许可证密钥、状态和到期日期；可续订或停用。",
   "settings.compose.enabled": "开启输入翻译",
-  "settings.compose.enabled.hint": "在任意聊天框中按 {hotkey}，输入消息后按 Enter，译文会粘贴到聊天框中。再按一次 Enter 即可发送。可在“快捷键”中更改快捷键。",
+  "settings.compose.enabled.hint": "在任意聊天框中按 {hotkey}，输入消息后按 Enter，译文会粘贴到聊天框中。再按一次 Enter 即可发送。可在“设置 › 快捷键”中更改快捷键。",
   "settings.compose.target": "目标语言",
   "settings.compose.target.auto": "自动（当前：{lang}）",
   "settings.compose.target.hint": "自动会根据字幕设置使用对方的语言：会议只有一种语言时用该语言，否则用 English（字幕为 English 时用 Tiếng Việt）。",

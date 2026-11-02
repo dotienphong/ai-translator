@@ -6,6 +6,7 @@ export const vi: Record<MessageKey, string> = {
   "app.loadFailed": "AI Translator không mở được cửa sổ này. Hãy thoát ở biểu tượng trên menu bar hoặc trong khay, rồi mở lại app.",
 
   "nav.home": "Màn hình chính",
+  "nav.compose": "Gõ dịch",
   "nav.transcript": "Bản chép lời",
   "nav.history": "Lịch sử",
   "nav.glossary": "Từ điển thuật ngữ",
@@ -148,7 +149,6 @@ export const vi: Record<MessageKey, string> = {
 
   "settings.group.general": "Chung",
   "settings.group.subtitles": "Phụ đề",
-  "settings.group.compose": "Gõ dịch",
   "settings.group.audio": "Âm thanh",
   "settings.group.model": "Model",
   "settings.group.hotkeys": "Phím tắt",
@@ -156,7 +156,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.group.privacy": "Quyền riêng tư",
   "settings.license.description": "Key bản quyền, trạng thái và ngày hết hạn, gia hạn hoặc gỡ kích hoạt.",
   "settings.compose.enabled": "Bật Gõ dịch",
-  "settings.compose.enabled.hint": "Ở ô chat bất kỳ, bấm {hotkey}, gõ tin nhắn rồi Enter: bản dịch được dán vào ô chat. Enter lần nữa để gửi. Đổi phím ở nhóm Phím tắt.",
+  "settings.compose.enabled.hint": "Ở ô chat bất kỳ, bấm {hotkey}, gõ tin nhắn rồi Enter: bản dịch được dán vào ô chat. Enter lần nữa để gửi. Đổi phím ở Cài đặt › Phím tắt.",
   "settings.compose.target": "Dịch sang",
   "settings.compose.target.auto": "Tự động (đang là {lang})",
   "settings.compose.target.hint": "Tự động lấy tiếng của người bên kia theo cài đặt phụ đề: ngôn ngữ của cuộc họp nếu chỉ có một, không thì English (Tiếng Việt khi phụ đề đang dịch sang English).",

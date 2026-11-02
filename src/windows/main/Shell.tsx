@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
 import logo from "../../../app-icon.svg";
-import { Icon, type IconName } from "../../components/Icon";
+import { Icon } from "../../components/Icon";
 import type { Screen } from "../../lib/ipc";
 import { useApp, useT } from "./appStore";
 import { useLicense } from "./licenseStore";
 import { PlanName } from "./LicenseText";
+import { ICONS, SCREENS } from "./navigation";
 import { Notice } from "./Notice";
 import { UpdateModal } from "./UpdateModal";
 import { About } from "./screens/About";
+import { ComposeScreen } from "./screens/ComposeScreen";
 import { Home } from "./screens/Home";
 import { GlossaryScreen } from "./screens/GlossaryScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
@@ -17,21 +19,9 @@ import { SupportScreen } from "./screens/SupportScreen";
 import { TranscriptScreen } from "./screens/TranscriptScreen";
 import { useSupport } from "./supportStore";
 
-const SCREENS: readonly Screen[] = ["home", "transcript", "history", "glossary", "settings", "upgrade", "support", "about"];
-
-const ICONS: Record<Screen, IconName> = {
-  home: "home",
-  transcript: "transcript",
-  history: "history",
-  glossary: "glossary",
-  settings: "settings",
-  upgrade: "upgrade",
-  support: "support",
-  about: "about",
-};
-
 const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   home: Home,
+  compose: ComposeScreen,
   transcript: TranscriptScreen,
   history: HistoryScreen,
   glossary: GlossaryScreen,

@@ -5,10 +5,11 @@ import { formatAccelerator } from "../../../lib/hotkeys";
 import { type ComposeTarget, LANGS } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
 
-// Nhóm Cài đặt "Gõ dịch" (spec 2026-10-17-go-dich §1.4): công tắc bật (tắt thì gỡ phím tắt, phím vẫn giữ), ngôn ngữ đích ("Tự
+// Màn hình "Gõ dịch" (spec 2026-10-17-go-dich §1.4; từ spec 2026-11-02-tach-go-dich-thanh-tab là mục riêng của thanh điều hướng, dưới
+// Màn hình chính, không còn là nhóm của Cài đặt): công tắc bật (tắt thì gỡ phím tắt, phím vẫn giữ), ngôn ngữ đích ("Tự
 // động" ghi rõ đang là ngôn ngữ nào), và chỉ trên macOS: tự dán cùng trạng thái quyền Trợ năng (đọc lại mỗi khi cửa sổ được
-// focus lại, vì người dùng bật quyền ở System Settings rồi quay về). Phím tắt đổi ở nhóm Phím tắt.
-export function ComposeSettings() {
+// focus lại, vì người dùng bật quyền ở System Settings rồi quay về). Phím tắt đổi ở nhóm Phím tắt của Cài đặt.
+export function ComposeScreen() {
   const t = useT();
   const settings = useApp((s) => s.settings);
   const info = useApp((s) => s.info);

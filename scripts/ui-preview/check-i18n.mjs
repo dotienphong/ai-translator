@@ -633,10 +633,10 @@ const SCREENS = [
   ["settings-privacy", "screen=settings&group=privacy", { interact: toggleReportsSwitch }],
   // Người dùng đã tắt báo cáo lỗi (reports=0): công tắc tắt.
   ["settings-privacy-off", "screen=settings&group=privacy&reports=0"],
-  // Gõ dịch (spec 2026-10-17-go-dich §1.4): macOS đã cấp quyền Trợ năng, chưa cấp (ax=0); Windows không có mục tự dán.
-  ["settings-compose", "screen=settings&group=compose"],
-  ["settings-compose-noax", "screen=settings&group=compose&ax=0"],
-  ["settings-compose-windows", "screen=settings&group=compose&platform=windows"],
+  // Gõ dịch (spec 2026-10-17-go-dich §1.4; mục riêng của thanh điều hướng từ spec 2026-11-02-tach-go-dich-thanh-tab): macOS đã cấp quyền Trợ năng, chưa cấp (ax=0); Windows không có mục tự dán.
+  ["compose", "screen=compose"],
+  ["compose-noax", "screen=compose&ax=0"],
+  ["compose-windows", "screen=compose&platform=windows"],
   // Nâng cấp (spec 2026-10-14, 2026-10-22): ba bước; cách trả chọn sẵn theo ngôn ngữ của lượt chạy (vi: VietQR, còn lại: thẻ).
   ["upgrade", "screen=upgrade&plan=free"],
   // Bấm sang cách trả còn lại: chữ, giá và ghi chú của cách đó.

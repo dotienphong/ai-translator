@@ -7,6 +7,7 @@ export const ja: Record<MessageKey, string> = {
   "app.loadFailed": "AI Translator でこのウィンドウを読み込めませんでした。メニューバーまたはトレイのアイコンから終了し、もう一度アプリを開いてください。",
 
   "nav.home": "ホーム",
+  "nav.compose": "入力翻訳",
   "nav.transcript": "文字起こし",
   "nav.history": "履歴",
   "nav.glossary": "用語集",
@@ -149,7 +150,6 @@ export const ja: Record<MessageKey, string> = {
 
   "settings.group.general": "一般",
   "settings.group.subtitles": "字幕",
-  "settings.group.compose": "入力翻訳",
   "settings.group.audio": "音声",
   "settings.group.model": "モデル",
   "settings.group.hotkeys": "ショートカット",
@@ -157,7 +157,7 @@ export const ja: Record<MessageKey, string> = {
   "settings.group.privacy": "プライバシー",
   "settings.license.description": "ライセンスキー、状態、有効期限の確認と、更新・無効化ができます。",
   "settings.compose.enabled": "入力翻訳をオンにする",
-  "settings.compose.enabled.hint": "チャット欄で {hotkey} を押し、メッセージを入力して Enter を押すと、翻訳がチャット欄に貼り付けられます。もう一度 Enter を押すと送信されます。ショートカットは「ショートカット」で変更できます。",
+  "settings.compose.enabled.hint": "チャット欄で {hotkey} を押し、メッセージを入力して Enter を押すと、翻訳がチャット欄に貼り付けられます。もう一度 Enter を押すと送信されます。ショートカットは「設定 › ショートカット」で変更できます。",
   "settings.compose.target": "翻訳先の言語",
   "settings.compose.target.auto": "自動（現在：{lang}）",
   "settings.compose.target.hint": "自動では、字幕の設定から相手の言語を使います。会議の言語が 1 つだけならその言語、それ以外は English（字幕が English の場合は Tiếng Việt）です。",
