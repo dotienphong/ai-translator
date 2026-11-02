@@ -10,14 +10,16 @@ yanked = "deny"
 unsound = "all"
 ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste chỉ là macro lúc biên dịch, do candle (gemm) kéo vào; candle 0.11 chưa bỏ" },
-    # zip 8.6.0 (RUSTSEC-2026-0367, -0368, -0369: giải nén bằng `extract()` giữ bit SUID/SGID, theo liên kết symlink ra ngoài thư mục đích).
+    # zip 8.6.0 (RUSTSEC-2026-0367, -0368, -0369, -0429: giải nén bằng `extract()` giữ bit SUID/SGID, theo liên kết symlink ra ngoài thư mục đích, hay
+# abort tiến trình khi gặp mục symlink khai kích thước lớn).
     # zip chỉ vào qua candle-core, bản mới nhất 0.11.0 (2026-06-26) đòi `zip = "^8.6.0"`, nên chưa nâng lên zip 9.0 (bản sửa) được. candle-core
     # chỉ ĐỌC zip vào bộ nhớ (`ZipArchive::new`, cho file `.npz` và pickle), không gọi `extract()` ở đâu; app dùng candle chỉ cho Tensor/Device của
-    # VAD (crates/pipeline/src/vad.rs), không mở file zip hay `.npz` nào. Cả ba lỗi nằm ở `extract()`, nên không chạm tới đường chạy của app.
-    # Bỏ ba dòng này (và `.cargo/audit.toml`) khi candle nâng lên zip 9 hay bỏ phụ thuộc zip, rồi chạy lại `cargo deny check` và `cargo audit`.
+    # VAD (crates/pipeline/src/vad.rs), không mở file zip hay `.npz` nào. Cả bốn lỗi nằm ở `extract()`, nên không chạm tới đường chạy của app.
+    # Bỏ bốn dòng này (và `.cargo/audit.toml`) khi candle nâng lên zip 9 hay bỏ phụ thuộc zip, rồi chạy lại `cargo deny check` và `cargo audit`.
     { id = "RUSTSEC-2026-0367", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
     { id = "RUSTSEC-2026-0368", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
     { id = "RUSTSEC-2026-0369", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
+    { id = "RUSTSEC-2026-0429", reason = "zip 8.6.0 qua candle-core 0.11.0; chỉ lỗi ở extract(), candle và app không gọi" },
 ]
 
 [licenses]
