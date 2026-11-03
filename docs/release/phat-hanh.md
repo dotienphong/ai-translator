@@ -97,6 +97,13 @@ hdiutil detach $ram                                  # ổ RAM mất hẳn
    - `curl -s <RELEASES_BASE_URL>/<kênh>/latest.json` có đúng `version`;
    - tải `.dmg` và `.exe` từ `<RELEASES_BASE_URL>/<version>/`, so SHA-256 với `SHA256SUMS-*.txt`;
    - một máy đang chạy bản trước, cùng kênh: trong vòng 24 giờ (hay mở lại app) thấy lời mời khởi động lại để cập nhật.
+6. **Deploy website để script cài nhận bản mới** (`cd website && pnpm deploy`, bằng phiên `wrangler login` của chủ dự án; nó đọc
+   `stable/latest.json` và `SHA256SUMS-*.txt` của đúng bản vừa đăng rồi ghim vào `install.ps1` và `install.sh`). Quên bước này thì
+   `irm https://aitranslator.vn/install.ps1 | iex` và `curl … | bash` vẫn cài bản đã ghim cũ (2026-11-03: ghim 0.5.2 trong khi stable là
+   0.6.2, và file 0.5.2 không còn trên R2 nên báo "could not download"). Kiểm: `node scripts/release/check-site-pin.mjs`. Workflow
+   `Site pin check` chạy mỗi 3 giờ và chuyển đỏ (GitHub gửi email) khi script ghim khác stable quá 2 giờ, hay file cài của bản ghim
+   không tải được. CI không deploy thay vì website là nơi tin cậy riêng (`website/README.md`, mục ghim bản cài).
+   Không xóa thư mục `<version>/` của bản cũ trên R2: bản ghim cũ hơn một bản phải còn tải được.
 
 ### Phát hành lần lượt
 
