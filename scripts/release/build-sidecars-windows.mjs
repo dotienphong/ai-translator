@@ -89,6 +89,10 @@ export function steps({ work, target, out, versions, ortBuildDir }) {
     // speaker-worker (spec 2026-10-26-phan-biet-nguoi-noi §4.1): Rust thuần, không ggml; CRT tĩnh như asr-worker.
     { run: ["cargo", "build", "--release", "--locked", "-p", "speaker-worker"], env: crt, cwd: root },
     { copy: [join(target, "release", "speaker-worker.exe"), join(out, `speaker-worker-${TRIPLE}.exe`)] },
+    // tts-worker (spec 2026-11-02-doc-ban-dich-tts-design §3): giọng đọc bản dịch. Phần suy luận nằm sau feature `engine` (tắt mặc định
+    // để cargo test của workspace không kéo `ort`), nên bản phát hành phải bật. Nạp onnxruntime.dll ngay dưới (cùng bản 1.31) khi chạy.
+    { run: ["cargo", "build", "--release", "--locked", "-p", "tts-worker", "--features", "engine"], env: crt, cwd: root },
+    { copy: [join(target, "release", "tts-worker.exe"), join(out, `tts-worker-${TRIPLE}.exe`)] },
     {
       run: [
         "python",
@@ -285,12 +289,13 @@ function signAndCheck(out, msvc) {
   }
   const check = join(root, "scripts/release/release-check.mjs");
   const env = mergeEnv(process.env, msvc);
-  const workers = files.filter((f) => /(asr-worker-(vulkan|cpu)|speaker-worker)-/.test(f));
+  const workers = files.filter((f) => /(asr-worker-(vulkan|cpu)|speaker-worker|tts-worker)-/.test(f));
   const rest = files.filter((f) => !workers.includes(f));
   execFileSync("node", [check, "deps-windows", "--no-local-libs", ...workers], { stdio: "inherit", env });
   execFileSync("node", [check, "deps-windows", ...rest], { stdio: "inherit", env });
-  // speaker-worker và DLL nó nạp không có mã mạng (spec 2026-10-26-phan-biet-nguoi-noi §4.1, §10).
-  const offline = files.filter((f) => /speaker-worker-|onnxruntime\.dll$/i.test(f));
+  // speaker-worker, tts-worker và DLL chúng nạp không có mã mạng (spec 2026-10-26-phan-biet-nguoi-noi §4.1, §10; tts-worker chỉ nói
+  // chuyện với app qua stdin/stdout, model do app tải).
+  const offline = files.filter((f) => /(speaker-worker|tts-worker)-|onnxruntime\.dll$/i.test(f));
   execFileSync("node", [check, "deps-windows", "--no-network", "--no-local-libs", ...offline], { stdio: "inherit", env });
   execFileSync("node", [check, "table", out, "--target", TRIPLE], { stdio: "inherit" });
 }

@@ -31,6 +31,7 @@ const WIN_SIDECARS = [
   "src-tauri/binaries/asr-worker-cpu-x86_64-pc-windows-msvc.exe",
   "src-tauri/binaries/llama-server-x86_64-pc-windows-msvc.exe",
   "src-tauri/binaries/speaker-worker-x86_64-pc-windows-msvc.exe",
+  "src-tauri/binaries/tts-worker-x86_64-pc-windows-msvc.exe",
   "src-tauri/binaries/ggml-vulkan.dll",
   "src-tauri/binaries/ggml-cpu-haswell.dll",
   "THIRD_PARTY_NOTICES.txt",
@@ -67,6 +68,19 @@ test("speaker-worker bắt buộc trong bốn artifact tiến trình phụ (spec
   }
 });
 
+test("tts-worker bắt buộc trong hai artifact tiến trình phụ của Windows (spec 2026-11-02-doc-ban-dich-tts-design)", (t) => {
+  const strip = (files) => files.map((f) => f.replace(/^src-tauri\/binaries\//, "")).filter((f) => f !== "THIRD_PARTY_NOTICES.txt");
+  for (const [name, files] of [
+    ["windows-sidecars", WIN_SIDECARS],
+    ["windows-sidecars-signed", strip(WIN_SIDECARS)],
+  ]) {
+    const without = tempDir(t);
+    put(without, files.filter((f) => !f.includes("tts-worker")));
+    assert.equal(plan(name, without).errors.length, 1, name);
+    assert.match(plan(name, without).errors[0], /^thiếu (src-tauri\/binaries\/)?tts-worker-/, name);
+  }
+});
+
 test("script của repo, file lạ, thư mục lạ, symlink hay thiếu file: lỗi và không chép gì", (t) => {
   for (const [extra, message] of [
     [["scripts/release/macos-keychain.sh"], /thư mục lạ: scripts.*file lạ: scripts\/release\/macos-keychain.sh/],
@@ -98,7 +112,8 @@ test("tên DLL và bộ cài chặt: không %, nháy, &, thư mục con", (t) =>
   }
   const signed = tempDir(t);
   put(signed, ["asr-worker-vulkan-x86_64-pc-windows-msvc.exe", "asr-worker-cpu-x86_64-pc-windows-msvc.exe",
-    "llama-server-x86_64-pc-windows-msvc.exe", "speaker-worker-x86_64-pc-windows-msvc.exe", "ggml-base.dll"]);
+    "llama-server-x86_64-pc-windows-msvc.exe", "speaker-worker-x86_64-pc-windows-msvc.exe",
+    "tts-worker-x86_64-pc-windows-msvc.exe", "ggml-base.dll"]);
   assert.deepEqual(plan("windows-sidecars-signed", signed).errors, []);
   const out = tempDir(t);
   const files = [

@@ -27,7 +27,13 @@ const WIN = "x86_64-pc-windows-msvc";
 const DLL = /^[A-Za-z0-9._-]+\.dll$/;
 
 const mac = [`asr-worker-${MAC}`, `llama-server-${MAC}`, `speaker-worker-${MAC}`];
-const win = [`asr-worker-vulkan-${WIN}.exe`, `asr-worker-cpu-${WIN}.exe`, `llama-server-${WIN}.exe`, `speaker-worker-${WIN}.exe`];
+const win = [
+  `asr-worker-vulkan-${WIN}.exe`,
+  `asr-worker-cpu-${WIN}.exe`,
+  `llama-server-${WIN}.exe`,
+  `speaker-worker-${WIN}.exe`,
+  `tts-worker-${WIN}.exe`,
+];
 const macOut = (v) => [
   `AI Translator_${v}_aarch64.dmg`,
   "AI Translator.app.tar.gz",

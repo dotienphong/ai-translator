@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Sinh THIRD_PARTY_NOTICES.txt (spec §10.1; kế hoạch 07a): giấy phép của mọi thư viện đi vào bản phát hành.
-//   - Rust: `cargo about generate --format json --frozen` cho app, asr-worker và speaker-worker (ba binary được phát hành
-//     có code Rust), gộp theo văn bản giấy phép. `about.toml` chỉ nhận các giấy phép trong `[licenses] allow` của deny.toml.
+//   - Rust: `cargo about generate --format json --frozen` cho app, asr-worker, speaker-worker và tts-worker (bốn binary được
+//     phát hành có code Rust; tts-worker kéo `ort`, tokenizers… qua feature `engine`, nên `--all-features`), gộp theo văn bản giấy phép. `about.toml` chỉ nhận các giấy phép trong `[licenses] allow` của deny.toml.
 //   - JavaScript: `pnpm licenses list --prod --json` (gói nằm trong giao diện đã build), văn bản lấy từ file LICENSE của
 //     từng gói. Giấy phép phải nằm trong allow-list của deny.toml.
 //   - C/C++ trong tiến trình phụ: whisper.cpp và ggml (third_party/), llama.cpp cùng các thư viện nó nhúng (mã nguồn đã
 //     clone ở --llama-src, đúng commit khóa trong versions.env).
-//   - Model: Hy-MT2, trọng số Whisper, Silero VAD, 3D-Speaker ERes2Net (licenses/models/).
+//   - Model: Hy-MT2, trọng số Whisper, Silero VAD, 3D-Speaker ERes2Net, VieNeu-TTS và codec MOSS (licenses/models/).
 //
 //   node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src <thư mục llama.cpp> [--onnxruntime-src <thư mục>]
 //   (bản Windows thêm --onnxruntime-src: mã nguồn ONNX Runtime của onnxruntime.dll, đúng commit khóa trong versions.env)
@@ -194,6 +194,19 @@ export function nativeComponents(llamaSrc, llamaTag, ortSrc = null, ortTag = nul
         "Modification: the ONNX graph was simplified with onnxsim; the model was not retrained or fine-tuned.\n" +
         "The model runs only on your computer.\n",
     },
+    {
+      title: "Text-to-speech models: VieNeu-TTS v3 Turbo and MOSS-Audio-Tokenizer-Nano codec (Apache-2.0)",
+      files: [join(root, "licenses/models/TTS-Apache-2.0-LICENSE.txt")],
+    },
+    {
+      title: "Text-to-speech models: source notice",
+      text:
+        "The voice that reads translations aloud uses the ONNX files of VieNeu-TTS v3 Turbo (published by pnnbao-ump, including its\n" +
+        "preset voices and the sea_g2p pronunciation dictionary) and the ONNX export of the MOSS-Audio-Tokenizer-Nano codec\n" +
+        "(OpenMOSS-Team, https://github.com/OpenMOSS/MOSS-Audio-Tokenizer). Both model cards state the Apache License, Version 2.0 (text above).\n" +
+        "The files are used as published; the models were not retrained or fine-tuned. They are downloaded once to your computer and run\n" +
+        "only on your computer.\n",
+    },
   );
   return items;
 }
@@ -263,7 +276,7 @@ export function main(argv) {
   if (JSON.stringify([...accepted].sort()) !== JSON.stringify([...allow].sort())) {
     errors.push("about.toml `accepted` khác deny.toml `[licenses] allow`");
   }
-  const rust = mergeAbout([cargoAbout("src-tauri/Cargo.toml"), cargoAbout("crates/asr-worker/Cargo.toml"), cargoAbout("crates/speaker-worker/Cargo.toml")]);
+  const rust = mergeAbout([cargoAbout("src-tauri/Cargo.toml"), cargoAbout("crates/asr-worker/Cargo.toml"), cargoAbout("crates/speaker-worker/Cargo.toml"), cargoAbout("crates/tts-worker/Cargo.toml")]);
   const listing = JSON.parse(
     execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: root, encoding: "utf8", shell: process.platform === "win32" }),
   );

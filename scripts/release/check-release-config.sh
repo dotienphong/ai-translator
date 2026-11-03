@@ -48,9 +48,9 @@ placeholder speaker-worker-aarch64-apple-darwin
 copied "$target/debug" asr-worker llama-server speaker-worker THIRD_PARTY_NOTICES.txt
 
 echo "== tauri.windows.json"
-for name in asr-worker-vulkan asr-worker-cpu llama-server speaker-worker; do placeholder "$name-x86_64-pc-windows-msvc.exe"; done
+for name in asr-worker-vulkan asr-worker-cpu llama-server speaker-worker tts-worker; do placeholder "$name-x86_64-pc-windows-msvc.exe"; done
 placeholder ggml-placeholder.dll
 (cd "$root" && TAURI_CONFIG="$(cat src-tauri/release/tauri.windows.json)" ./scripts/check-windows.sh -q --locked)
-copied "$target/x86_64-pc-windows-msvc/debug" asr-worker-vulkan.exe asr-worker-cpu.exe llama-server.exe speaker-worker.exe ggml-placeholder.dll \
+copied "$target/x86_64-pc-windows-msvc/debug" asr-worker-vulkan.exe asr-worker-cpu.exe llama-server.exe speaker-worker.exe tts-worker.exe ggml-placeholder.dll \
   THIRD_PARTY_NOTICES.txt
 echo "hai cấu hình đóng gói hợp lệ"

@@ -18,7 +18,7 @@ test("build Windows: asr-worker và speaker-worker CRT tĩnh + DEPENDENTLOADFLAG
   const cargo = list.filter((s) => s.run?.[0] === "cargo");
   assert.deepEqual(
     cargo.map((s) => s.run.at(-1)),
-    ["vulkan,shared-encode", "shared-encode", "speaker-worker"],
+    ["vulkan,shared-encode", "shared-encode", "speaker-worker", "engine"],
   );
   for (const s of cargo) {
     assert.equal(s.env.RUSTFLAGS, "-C target-feature=+crt-static -C link-arg=/DEPENDENTLOADFLAG:0x800");
@@ -30,6 +30,7 @@ test("build Windows: asr-worker và speaker-worker CRT tĩnh + DEPENDENTLOADFLAG
       join("O", `asr-worker-vulkan-${TRIPLE}.exe`),
       join("O", `asr-worker-cpu-${TRIPLE}.exe`),
       join("O", `speaker-worker-${TRIPLE}.exe`),
+      join("O", `tts-worker-${TRIPLE}.exe`),
       join("O", "onnxruntime.dll"),
       join("O", `llama-server-${TRIPLE}.exe`),
     ],
@@ -66,7 +67,7 @@ test("build Windows: onnxruntime.dll dựng từ mã nguồn khóa, không telem
   }
   assert.ok(ort.run.includes("Patch_EXECUTABLE=C:/Program Files/Git/usr/bin/patch.exe"), "patch của Git, không phải của Strawberry Perl");
   assert.equal(ort.run[ort.run.indexOf("--build_dir") + 1], join("W", "onnxruntime-build"));
-  // Bước build đứng sau speaker-worker, ngay trước bước chép DLL.
+  // Bước build đứng sau speaker-worker và tts-worker, ngay trước bước chép DLL.
   const i = list.indexOf(ort);
   assert.deepEqual(list[i + 1], { copy: [join("W", "onnxruntime-build", "Release", "onnxruntime.dll"), join("O", "onnxruntime.dll")] });
   const short = steps({ work: "W", target: "T", out: "O", versions, ortBuildDir: "D:\\ob" });
