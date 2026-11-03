@@ -552,7 +552,10 @@ impl ModelService {
             return self.changed(app);
         };
         let now = (self.cfg.now)();
-        let due = self.lock().manifest.is_none() || source::due(&self.store.state(), now);
+        let state = self.store.state();
+        let due = self.lock().manifest.is_none()
+            || source::due(&state, now)
+            || state.checked_version.as_deref() != Some(self.cfg.app_version.as_str());
         if !due {
             return self.view(app);
         }
@@ -581,6 +584,7 @@ impl ModelService {
                 drop(inner);
                 let mut state = self.store.state();
                 state.last_check = Some(now);
+                state.checked_version = Some(self.cfg.app_version.clone());
                 if let Err(e) = self.store.save_state(&state) {
                     log::warn!("không ghi được trạng thái kiểm manifest: {e}");
                 }
@@ -1369,6 +1373,43 @@ mod tests {
             Some(MODELS_NOW + DAY),
             "ghi lần kiểm"
         );
+    }
+
+    /// Vừa cập nhật app (hay cài mới): kiểm manifest ngay dù chưa hết ngày, vì bản app mới có thể đọc khóa mà bản cũ bỏ qua (`tts`).
+    /// Trạng thái cũ chưa có `checked_version` cũng tính là phiên bản khác.
+    #[test]
+    fn a_new_app_version_checks_the_manifest_again_within_the_day() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(manifest_requests(&h), 1);
+        assert_eq!(
+            h.service().store().state().checked_version.as_deref(),
+            Some("0.1.0"),
+            "ghi phiên bản đã kiểm"
+        );
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(manifest_requests(&h), 1, "cùng phiên bản, chưa hết ngày: không kiểm");
+        // Giả lập app vừa được cập nhật: lần kiểm gần nhất là của phiên bản trước.
+        let mut state = h.service().store().state();
+        state.checked_version = Some("0.0.9".into());
+        h.service().store().save_state(&state).unwrap();
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(manifest_requests(&h), 2, "phiên bản khác: kiểm ngay");
+        assert_eq!(h.service().store().state().checked_version.as_deref(), Some("0.1.0"));
+        // File trạng thái của app cũ (chưa có trường này) cũng vậy.
+        let mut state = h.service().store().state();
+        state.checked_version = None;
+        h.service().store().save_state(&state).unwrap();
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(manifest_requests(&h), 3, "chưa có checked_version: kiểm ngay");
+    }
+
+    /// Kiểm không được thì không ghi phiên bản: lần sau thử lại (không chờ hết ngày) cho tới khi kiểm được.
+    #[test]
+    fn a_failed_check_does_not_record_the_app_version() {
+        let h = harness(|c| c.source = Some(Url::parse("http://127.0.0.1:9/models.json").unwrap()));
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(h.service().store().state().checked_version, None);
     }
 
     /// Spec 2026-10-21-goi-nhanh (sau phát hành 0.2.0): app chạy liên tục nhiều ngày vẫn nhận manifest mới. Luồng nền

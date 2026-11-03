@@ -58,6 +58,10 @@ pub struct StoreState {
     /// Người dùng đã bấm "Để sau" với bản cập nhật của manifest này.
     #[serde(default)]
     pub dismissed_sequence: u64,
+    /// Phiên bản app đã kiểm manifest lần gần nhất. Khác phiên bản đang chạy (vừa cập nhật app, hay file cũ chưa có trường này)
+    /// thì kiểm lại ngay, không chờ hết ngày: bản app mới có thể đọc những khóa của manifest mà bản cũ bỏ qua (ví dụ `tts`).
+    #[serde(default)]
+    pub checked_version: Option<String>,
 }
 
 /// Tình trạng một gói trên máy.
@@ -619,6 +623,7 @@ pub(crate) mod tests {
         let state = StoreState {
             last_check: Some(1_790_000_000),
             dismissed_sequence: 4,
+            checked_version: Some("0.6.2".into()),
         };
         store.save_state(&state).unwrap();
         assert_eq!(store.state(), state);
