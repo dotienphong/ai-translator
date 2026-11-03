@@ -757,6 +757,9 @@ export interface Events {
   "audio://level": number;
   // Trạng thái quản lý model (kế hoạch 04).
   "models://state": ModelsView;
+  // Giọng đọc có thể vừa dùng được (gói ASR hay gói giọng đọc vừa tải xong): hỏi lại `tts_status`. Không mang dữ liệu. Tới cửa sổ
+  // chính và thanh phụ đề.
+  "tts://changed": null;
   // Ô soạn Gõ dịch: mở (kèm phần cài đặt của nó), yêu cầu đang chờ nạp model, phần chữ dịch mới, kết quả.
   // Cửa sổ gợi ý bật dịch đổi nội dung (hiện cho một app, hay ẩn: `app` là `null`).
   "meeting-hint://changed": HintView;

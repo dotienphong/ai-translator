@@ -56,6 +56,50 @@ describe("trạng thái", () => {
   });
 });
 
+describe("model đổi (tải xong gói ASR hay gói giọng đọc)", () => {
+  const MISSING: TtsStatus = { available: false, running: false, reason: "modelMissing", progress: null };
+
+  it("nhận tts://changed thì hỏi lại trạng thái: nút sáng lên mà không phải mở lại app", async () => {
+    let ready = false;
+    const { store, f } = setup({ tts_status: () => (ready ? AVAILABLE : MISSING) });
+    await store.getState().init();
+    expect(store.getState().status).toEqual(MISSING);
+    ready = true;
+    f.emit("tts://changed", null);
+    await vi.waitFor(() => expect(store.getState().status).toEqual(AVAILABLE));
+  });
+
+  it("init gọi hai lần vẫn chỉ nghe sự kiện một lần", async () => {
+    const { store, f } = setup();
+    await store.getState().init();
+    await store.getState().init();
+    expect(f.listenerCount("tts://changed")).toBe(1);
+  });
+
+  it("không nghe được sự kiện thì init vẫn xong và trạng thái vẫn có", async () => {
+    const { store, f } = setup();
+    f.ipc.listen = async () => {
+      throw new Error("không nghe được");
+    };
+    await expect(store.getState().init()).resolves.toBeUndefined();
+    expect(store.getState().status).toEqual(AVAILABLE);
+  });
+
+  it("hỏi lại mà lệnh lỗi thì coi như chưa có giọng đọc, không ném lỗi ra ngoài", async () => {
+    let fail = false;
+    const { store, f } = setup({
+      tts_status: () => {
+        if (fail) throw { code: "x", field: null, message: "" };
+        return AVAILABLE;
+      },
+    });
+    await store.getState().init();
+    fail = true;
+    f.emit("tts://changed", null);
+    await vi.waitFor(() => expect(store.getState().status?.available).toBe(false));
+  });
+});
+
 describe("tải gói giọng đọc về nền", () => {
   afterEach(() => vi.useRealTimers());
 

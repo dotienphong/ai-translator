@@ -255,7 +255,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>, svc: &TtsService) -> TtsStatus {
             && let Some(models) = models
             && models.tts_offered()
         {
-            models.download_tts_pack_in_background();
+            models.download_tts_pack_in_background(app);
             return match models.tts_progress() {
                 Some((done, total)) => missing("downloading", Some(percent(done, total))),
                 None => missing("waiting", None),

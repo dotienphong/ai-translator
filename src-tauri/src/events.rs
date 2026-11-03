@@ -47,6 +47,9 @@ pub const COMPOSE_OPEN: &str = "compose://open";
 pub const COMPOSE_LOADING: &str = "compose://loading";
 pub const COMPOSE_DELTA: &str = "compose://delta";
 pub const COMPOSE_DONE: &str = "compose://done";
+/// Giọng đọc có thể vừa dùng được (gói ASR hay gói giọng đọc vừa tải xong): giao diện hỏi lại `tts_status`. Không mang dữ liệu.
+/// Cửa sổ chính và thanh phụ đề.
+pub const TTS_CHANGED: &str = "tts://changed";
 /// Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4), chỉ gửi cho cửa sổ chính: trạng thái mới sau lần hỏi tin nền
 /// (`support::chat::SupportView`, không có token).
 pub const SUPPORT_VIEW: &str = "support://view";
@@ -92,6 +95,12 @@ pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
     emit(app, overlay::LABEL, STATUS_CHANGED, status);
     // Phiên dừng hay thanh phụ đề ẩn thì "Nghe dịch" tắt và tiếng họp được trả về (rẻ khi chưa bật).
     crate::listen::on_status(app, status);
+}
+
+/// Báo giao diện hỏi lại trạng thái giọng đọc (`TTS_CHANGED`). Gửi lỗi thì chỉ ghi log.
+pub fn tts_changed<R: Runtime>(app: &AppHandle<R>) {
+    emit(app, window::MAIN, TTS_CHANGED, ());
+    emit(app, overlay::LABEL, TTS_CHANGED, ());
 }
 
 pub fn overlay_view<R: Runtime>(app: &AppHandle<R>, view: &OverlayView) {

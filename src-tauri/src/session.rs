@@ -306,6 +306,29 @@ fn check_broken_model<R: Runtime>(app: &AppHandle<R>, code: &str) {
     }
 }
 
+/// Gói model vừa tải xong: lỗi thiếu hay hỏng model của lần bắt đầu trước (`modelMissing`, `modelBroken`) hết lý do, nên về
+/// `idle` để màn hình chính bỏ dòng đỏ; không thì dòng đó ở lại tới lần bấm Bắt đầu kế tiếp. Lỗi khác, phiên đang bắt đầu hay
+/// đang chạy thì giữ nguyên. Chưa có trạng thái app thì bỏ qua, không panic.
+pub fn clear_model_error<R: Runtime>(app: &AppHandle<R>) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let cleared = state.update_status(|s| {
+        let code = s.session_error.as_deref();
+        let model_error = code == Some(errors::MODEL_MISSING) || code == Some(errors::MODEL_BROKEN);
+        if s.session == SessionStatus::Error && model_error {
+            s.session = SessionStatus::Idle;
+            s.session_error = None;
+            true
+        } else {
+            false
+        }
+    });
+    if cleared {
+        changed(app);
+    }
+}
+
 /// Báo lỗi của lần bắt đầu số `attempt`, trừ khi người dùng đã hủy lần đó (trạng thái đã về `idle`, hay đã sang lần sau).
 fn start_failed<R: Runtime>(app: &AppHandle<R>, attempt: u64, code: &str) -> AppStatus {
     check_broken_model(app, code);
@@ -1418,6 +1441,31 @@ impl<R: Runtime> SessionDeps for LiveDeps<R> {
 mod tests {
     use super::*;
     use crate::settings::UiLanguage;
+
+    /// Gói model tải xong thì dòng đỏ "chưa có model" của lần bắt đầu trước mất; lỗi khác và phiên đang bắt đầu hay chạy thì
+    /// giữ nguyên.
+    #[test]
+    fn clearing_the_model_error_touches_nothing_else() {
+        use SessionStatus::{Error, Idle, Running, Starting};
+        let app = crate::test_support::mock_app();
+        let state = app.state::<AppState>();
+        let run = |session: SessionStatus, error: Option<&str>| {
+            state.update_status(|s| {
+                s.session = session;
+                s.session_error = error.map(str::to_string);
+            });
+            clear_model_error(app.handle());
+            let status = state.status();
+            (status.session, status.session_error)
+        };
+        assert_eq!(run(Error, Some(errors::MODEL_MISSING)), (Idle, None));
+        assert_eq!(run(Error, Some(errors::MODEL_BROKEN)), (Idle, None));
+        let other = Some(errors::AUDIO_PERMISSION.to_string());
+        assert_eq!(run(Error, Some(errors::AUDIO_PERMISSION)), (Error, other));
+        assert_eq!(run(Idle, None), (Idle, None));
+        assert_eq!(run(Starting, None), (Starting, None));
+        assert_eq!(run(Running, None), (Running, None));
+    }
 
     /// Đếm số lần giám sát hỏi trước khi chạy một tiến trình phụ.
     #[derive(Default)]

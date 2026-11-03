@@ -674,7 +674,9 @@ impl ModelService {
         std::thread::spawn(move || {
             service.run_download(&app, &manifest, &url, &pack, todo);
             if service.lock().job.state == JobState::Done {
-                service.download_tts_pack_in_background();
+                // Giao diện hỏi lại giọng đọc: cài mới thì gói ASR vừa xong là lúc giọng đọc bắt đầu tải.
+                crate::events::tts_changed(&app);
+                service.download_tts_pack_in_background(&app);
             }
         });
         Ok(view)
@@ -746,6 +748,8 @@ impl ModelService {
                 log::warn!("không dọn được file model cũ: {e}");
             }
             actions::set_model_tier(app, Some(pack.to_string()));
+            // Lỗi "chưa có model" của lần bắt đầu trước hết lý do: bỏ dòng đỏ ở màn hình chính.
+            session::clear_model_error(app);
         }
         {
             let mut inner = self.lock();
@@ -1127,14 +1131,29 @@ impl ModelService {
     /// Như [`Self::download_tts_pack`], trên luồng nền, và chỉ khi manifest có gói giọng đọc. Không chạy ở bản dev (dùng
     /// `models/tts` của thư mục model dev; `tauri::is_dev()` cũng đúng trong `cargo test`, nên cổng này nằm ở đây chứ không ở
     /// `download_tts_pack`, để test gọi thẳng được).
-    pub fn download_tts_pack_in_background(self: &Arc<Self>) {
+    pub fn download_tts_pack_in_background<R: Runtime>(self: &Arc<Self>, app: &AppHandle<R>) {
         if tauri::is_dev() || !self.tts_offered() {
             return;
         }
-        let service = self.clone();
+        let (service, app) = (self.clone(), app.clone());
         std::thread::spawn(move || {
-            service.download_tts_pack();
+            // Chỉ báo giao diện khi lần này thật sự tải thêm file: đã đủ từ trước thì không có gì để hỏi lại.
+            let had_missing = service.tts_missing();
+            if service.download_tts_pack() && had_missing {
+                crate::events::tts_changed(&app);
+            }
         });
+    }
+
+    /// Manifest có gói giọng đọc mà máy còn thiếu file của nó.
+    fn tts_missing(&self) -> bool {
+        let Some(manifest) = self.manifest() else {
+            return false;
+        };
+        let Some(pack) = manifest.manifest.tts_pack(&self.cfg.app_version) else {
+            return false;
+        };
+        !self.tts.missing(&pack).is_empty()
     }
 
     /// Như [`Self::download_speaker_model`], trên luồng nền.
@@ -1188,7 +1207,7 @@ pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
     std::thread::spawn(move || {
         if let Some(service) = app.try_state::<Arc<ModelService>>() {
             service.load(&app);
-            service.download_tts_pack_in_background();
+            service.download_tts_pack_in_background(&app);
         }
         // App chạy liên tục nhiều ngày vẫn nhận manifest mới: thức dậy mỗi giờ, `check_if_due` tự so với lần kiểm trước
         // theo giờ máy (máy ngủ thì đồng hồ đơn điệu dừng), như bộ kiểm cập nhật app (`updater::WAKE_EVERY`).
@@ -1199,7 +1218,7 @@ pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
                     log::info!("bỏ lượt kiểm manifest model: đang tải hay bảo trì model");
                 }
                 // Manifest mới có thể vừa thêm gói giọng đọc; đã đủ thì không làm gì (rẻ).
-                service.download_tts_pack_in_background();
+                service.download_tts_pack_in_background(&app);
             }
         }
     });
@@ -1479,6 +1498,55 @@ mod tests {
         let view = h.call("load_models", json!({})).unwrap();
         assert_eq!(view["manifestError"], "modelsOffline");
         assert_eq!(view["sequence"], 3);
+    }
+
+    /// Cài mới: bấm Bắt đầu khi chưa có model thì báo `modelMissing`; tải xong thì dòng đỏ phải mất ngay, không chờ lần bấm sau.
+    #[test]
+    fn finishing_a_download_clears_the_missing_model_error() {
+        for code in [errors::MODEL_MISSING, errors::MODEL_BROKEN] {
+            let h = harness(|_| {});
+            h.call("load_models", json!({})).unwrap();
+            h.app.state::<AppState>().update_status(|s| {
+                s.session = SessionStatus::Error;
+                s.session_error = Some(code.to_string());
+            });
+            h.call("download_models", json!({ "pack": "lite" })).unwrap();
+            h.wait("done");
+            let status = h.app.state::<AppState>().status();
+            assert_eq!(status.session, SessionStatus::Idle, "{code}");
+            assert_eq!(status.session_error, None, "{code}");
+        }
+    }
+
+    /// Tải xong chỉ bỏ lỗi thiếu hay hỏng model; lỗi khác (quyền, hạn mức…) vẫn còn.
+    #[test]
+    fn finishing_a_download_keeps_other_session_errors() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        h.app.state::<AppState>().update_status(|s| {
+            s.session = SessionStatus::Error;
+            s.session_error = Some(errors::AUDIO_PERMISSION.to_string());
+        });
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.wait("done");
+        let status = h.app.state::<AppState>().status();
+        assert_eq!(status.session, SessionStatus::Error);
+        assert_eq!(status.session_error.as_deref(), Some(errors::AUDIO_PERMISSION));
+    }
+
+    /// Tải xong gói ASR thì báo giao diện hỏi lại giọng đọc: cài mới, nút "Nghe dịch" đã hỏi lúc chưa có model và sẽ không hỏi lại.
+    #[test]
+    fn finishing_a_download_tells_the_ui_to_ask_the_voice_again() {
+        let h = harness(|_| {});
+        let count = Arc::new(AtomicU64::new(0));
+        let sink = count.clone();
+        h.app.listen_any(crate::events::TTS_CHANGED, move |_| {
+            sink.fetch_add(1, Ordering::SeqCst);
+        });
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_models", json!({ "pack": "lite" })).unwrap();
+        h.wait("done");
+        wait_for("tts://changed", || count.load(Ordering::SeqCst) > 0);
     }
 
     /// §4.1 bước 3: tải xong là dùng được ngay (gói thành gói đang dùng).

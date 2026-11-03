@@ -55,6 +55,8 @@ export function createTtsStore(deps: TtsDeps) {
   // Mỗi lần bấm một số mới: âm thanh và thông báo của lượt cũ tới muộn thì bỏ.
   let turn = 0;
   let poll: ReturnType<typeof setTimeout> | null = null;
+  // Đã đăng ký nghe `tts://changed` (init gọi lại thì không đăng ký thêm).
+  let watching = false;
   const commands = deps.commands ?? MAIN_TTS_COMMANDS;
   return createStore<TtsStoreState>()((set, get) => ({
     status: null,
@@ -63,6 +65,20 @@ export function createTtsStore(deps: TtsDeps) {
     error: null,
 
     async init() {
+      // Gói model về máy sau lúc mở app (cài mới: tải gói ASR rồi gói giọng đọc): phía Rust báo `tts://changed` để hỏi lại, nút
+      // tự sáng lên mà không phải mở lại app. Đăng ký trước lần hỏi đầu để không lỡ sự kiện, và không chờ nó: nghe không được
+      // thì thôi, trạng thái vẫn có từ lần hỏi đầu.
+      if (!watching) {
+        watching = true;
+        const watch = async () => {
+          try {
+            await deps.ipc.listen("tts://changed", () => void get().refreshStatus());
+          } catch {
+            watching = false;
+          }
+        };
+        void watch();
+      }
       await get().refreshStatus();
     },
 
