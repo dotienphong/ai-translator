@@ -222,9 +222,11 @@ function Overlay() {
           unresolved={listen.unresolved}
           disabledReason={listenDisabledReason({
             ttsAvailable: ttsStatus?.available ?? false,
+            ttsReason: ttsStatus?.reason ?? null,
             targetLanguage: view.targetLanguage,
             captureMode: view.captureMode,
           })}
+          ttsProgress={ttsStatus?.progress ?? null}
           onToggle={() => void listen.toggle()}
           onLevel={(level) => void listen.setLevel(level)}
           onSkip={() => listen.skip()}

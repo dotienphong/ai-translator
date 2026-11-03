@@ -631,6 +631,8 @@ export const vi: Record<MessageKey, string> = {
   "overlay.listen.pending": "còn {n} câu",
   "overlay.listen.skip": "Bỏ qua",
   "overlay.listen.noTts": "chưa cài giọng đọc",
+  "overlay.listen.ttsDownloading": "đang tải giọng đọc {n}%",
+  "overlay.listen.ttsWaiting": "đang chờ tải giọng đọc",
   "overlay.listen.unsupportedLang": "chỉ có tiếng Việt và tiếng Anh",
   "overlay.listen.micOnly": "chỉ thu micro nên không có gì để đọc",
   "overlay.listen.unresolved": "Chưa phân biệt được lời của bạn, mọi câu đều được đọc",

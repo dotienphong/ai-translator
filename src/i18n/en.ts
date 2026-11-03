@@ -632,6 +632,8 @@ export const en = {
   "overlay.listen.pending": "{n} queued",
   "overlay.listen.skip": "Skip",
   "overlay.listen.noTts": "voice reading is not installed",
+  "overlay.listen.ttsDownloading": "downloading the voice… {n}%",
+  "overlay.listen.ttsWaiting": "waiting to download the voice",
   "overlay.listen.unsupportedLang": "only Vietnamese and English can be read aloud",
   "overlay.listen.micOnly": "microphone-only capture: nothing to read",
   "overlay.listen.unresolved": "Can't tell your own speech apart; every sentence is read",

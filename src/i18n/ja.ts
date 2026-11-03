@@ -632,6 +632,8 @@ export const ja: Record<MessageKey, string> = {
   "overlay.listen.pending": "残り{n}文",
   "overlay.listen.skip": "スキップ",
   "overlay.listen.noTts": "読み上げ音声が未インストールです",
+  "overlay.listen.ttsDownloading": "読み上げ音声をダウンロード中… {n}%",
+  "overlay.listen.ttsWaiting": "読み上げ音声のダウンロード待ち",
   "overlay.listen.unsupportedLang": "ベトナム語と英語のみ読み上げできます",
   "overlay.listen.micOnly": "マイクのみの収音では読み上げる内容がありません",
   "overlay.listen.unresolved": "あなた自身の発言を区別できないため、すべての文を読み上げます",

@@ -36,7 +36,13 @@ pub fn manifest_url() -> Option<Url> {
 /// URL tuyệt đối của một file trong manifest. File phải cùng giao thức `https`, trừ khi chính manifest ở server thử
 /// trên máy.
 pub fn file_url(manifest_url: &Url, entry: &FileEntry) -> Option<Url> {
-    let url = manifest_url.join(&entry.url).ok()?;
+    rel_url(manifest_url, &entry.url)
+}
+
+/// URL của một file theo trường `url` của manifest (tương đối so với URL manifest, hay `https://` đầy đủ); `http` chỉ khi cả
+/// manifest và file ở loopback (test).
+pub fn rel_url(manifest_url: &Url, rel: &str) -> Option<Url> {
+    let url = manifest_url.join(rel).ok()?;
     let ok = url.scheme() == "https" || (url.scheme() == "http" && is_loopback(manifest_url) && is_loopback(&url));
     ok.then_some(url)
 }

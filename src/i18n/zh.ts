@@ -632,6 +632,8 @@ export const zh: Record<MessageKey, string> = {
   "overlay.listen.pending": "还有{n}句",
   "overlay.listen.skip": "跳过",
   "overlay.listen.noTts": "未安装朗读语音",
+  "overlay.listen.ttsDownloading": "正在下载朗读语音… {n}%",
+  "overlay.listen.ttsWaiting": "等待下载朗读语音",
   "overlay.listen.unsupportedLang": "仅支持朗读越南语和英语",
   "overlay.listen.micOnly": "仅采集麦克风，没有可朗读的内容",
   "overlay.listen.unresolved": "无法区分您自己的发言，所有句子都会朗读",

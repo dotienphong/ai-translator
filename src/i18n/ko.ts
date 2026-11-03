@@ -632,6 +632,8 @@ export const ko: Record<MessageKey, string> = {
   "overlay.listen.pending": "{n}문장 대기",
   "overlay.listen.skip": "건너뛰기",
   "overlay.listen.noTts": "읽어 주기 음성이 설치되지 않음",
+  "overlay.listen.ttsDownloading": "읽어 주기 음성 다운로드 중… {n}%",
+  "overlay.listen.ttsWaiting": "읽어 주기 음성 다운로드 대기 중",
   "overlay.listen.unsupportedLang": "베트남어와 영어만 읽어 줄 수 있음",
   "overlay.listen.micOnly": "마이크만 수음하므로 읽을 내용이 없음",
   "overlay.listen.unresolved": "내 발언을 구분하지 못해 모든 문장을 읽습니다",

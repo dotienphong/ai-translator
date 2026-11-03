@@ -16,6 +16,10 @@
 //!   giọng. Đọc lỏng: mục sai, hay cần app mới hơn, thì chỉ mất phần nhận giọng ([`Manifest::speaker_model`],
 //!   [`Manifest::speaker_config`]).
 //!
+//! - `tts` (spec 2026-11-02-doc-ban-dich-tts-design): gói model giọng đọc ở khóa gốc, nhiều file (đường dẫn tương đối trong
+//!   `models/tts`), không thuộc gói ASR nào. Đọc lỏng như `speaker`: mục sai hay cần app mới hơn thì chỉ mất giọng đọc
+//!   ([`Manifest::tts_pack`]); app cũ bỏ qua khóa lạ ở gốc.
+//!
 //! Khóa lạ trong phần thân bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
 
 use pipeline::config::PipelineConfig;
@@ -145,6 +149,9 @@ pub struct Manifest {
     /// Ngưỡng của nhận giọng, thô; đọc qua [`Manifest::speaker_config`].
     #[serde(default)]
     pub speaker_config: Option<serde_json::Value>,
+    /// Gói model giọng đọc, thô; đọc qua [`Manifest::tts_pack`].
+    #[serde(default)]
+    pub tts: Option<serde_json::Value>,
 }
 
 /// Trường đầu tiên không hợp lệ, dạng `files[2].sha256`.
@@ -234,6 +241,60 @@ struct SpeakerEntry {
     sha256: String,
     license_id: String,
     min_app_version: String,
+}
+
+/// Một file model giọng đọc không lớn hơn chừng này (backbone int8/fp32 của VieNeu v3 Turbo: 415 MB).
+pub const MAX_TTS_FILE_BYTES: u64 = 2 << 30;
+/// Cả gói giọng đọc không lớn hơn chừng này.
+pub const MAX_TTS_BYTES: u64 = 3 << 30;
+/// Số file tối đa của gói giọng đọc.
+const MAX_TTS_FILES: usize = 64;
+
+/// Một file của gói giọng đọc.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub struct TtsFile {
+    /// Đường dẫn tương đối trong `models/tts`, dùng `/` (ví dụ `moss-codec/codec_browser_onnx_meta.json`).
+    pub path: String,
+    /// Đường dẫn tương đối so với URL của manifest, hoặc URL `https://` đầy đủ.
+    pub url: String,
+    pub bytes: u64,
+    pub sha256: String,
+}
+
+/// Mục `tts` của manifest đã kiểm.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub struct TtsPack {
+    pub id: String,
+    pub version: String,
+    pub license_id: String,
+    pub min_app_version: String,
+    pub files: Vec<TtsFile>,
+}
+
+impl TtsPack {
+    /// Tổng số byte của cả gói.
+    pub fn bytes(&self) -> u64 {
+        self.files.iter().map(|f| f.bytes).sum()
+    }
+}
+
+/// Đường dẫn trong gói giọng đọc: các đoạn là tên file an toàn (cùng luật [`is_safe_file_name`], trừ tên của kho vì nằm trong
+/// thư mục con riêng), ngăn bằng `/`, tối đa 4 đoạn.
+fn is_tts_path(path: &str) -> bool {
+    path.len() <= 256 && path.split('/').count() <= 4 && path.split('/').all(is_tts_segment)
+}
+
+fn is_tts_segment(seg: &str) -> bool {
+    let lower = seg.to_ascii_lowercase();
+    let stem = lower.split('.').next().unwrap_or_default();
+    let mut chars = seg.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphanumeric())
+        && seg.len() <= 128
+        && !seg.ends_with('.')
+        && !lower.ends_with(".part")
+        && !lower.ends_with(".tmp")
+        && !WINDOWS_DEVICES.contains(&stem)
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
 impl Manifest {
@@ -460,6 +521,49 @@ impl Manifest {
                 log::warn!("manifest: không đọc được speaker_config ({e}), dùng mặc định");
                 SpeakerConfig::default()
             }
+        }
+    }
+    /// Gói model giọng đọc cho app bản `app_version`. `None` khi không có khóa, mục sai (ghi log), hay cần app mới hơn.
+    pub fn tts_pack(&self, app_version: &str) -> Option<TtsPack> {
+        let value = self.tts.as_ref()?;
+        let pack = match self.tts_entry(value) {
+            Ok(pack) => pack,
+            Err(field) => {
+                log::warn!("manifest: mục `tts.{field}` không hợp lệ, bỏ qua giọng đọc");
+                return None;
+            }
+        };
+        (version(&pack.min_app_version)? <= version(app_version)?).then_some(pack)
+    }
+
+    fn tts_entry(&self, value: &serde_json::Value) -> Result<TtsPack, String> {
+        let pack: TtsPack = serde_json::from_value(value.clone()).map_err(|_| "json".to_string())?;
+        let mut seen = std::collections::HashSet::new();
+        let unique = pack.files.iter().all(|f| seen.insert(f.path.to_ascii_lowercase()));
+        let checks = [
+            ("id", is_id(&pack.id, 64)),
+            ("version", !pack.version.is_empty() && pack.version.len() <= 32),
+            (
+                "license_id",
+                !pack.license_id.trim().is_empty() && pack.license_id.len() <= 64,
+            ),
+            ("min_app_version", version(&pack.min_app_version).is_some()),
+            (
+                "files",
+                !pack.files.is_empty() && pack.files.len() <= MAX_TTS_FILES && unique,
+            ),
+            ("files.path", pack.files.iter().all(|f| is_tts_path(&f.path))),
+            ("files.url", pack.files.iter().all(|f| is_model_url(&f.url))),
+            (
+                "files.bytes",
+                pack.files.iter().all(|f| f.bytes > 0 && f.bytes <= MAX_TTS_FILE_BYTES),
+            ),
+            ("bytes", pack.bytes() <= MAX_TTS_BYTES),
+            ("files.sha256", pack.files.iter().all(|f| is_sha256(&f.sha256))),
+        ];
+        match checks.iter().find(|(_, ok)| !ok) {
+            Some((field, _)) => Err((*field).to_string()),
+            None => Ok(pack),
         }
     }
 }
@@ -776,6 +880,108 @@ pub(crate) mod tests {
         }
     }
 
+    fn tts_entry(min_app_version: &str) -> Value {
+        let file = |path: &str, bytes: u64| json!({ "path": path, "url": format!("tts/{}", path.replace('/', "_")), "bytes": bytes, "sha256": "cd".repeat(32) });
+        json!({
+            "id": "vieneu-v3-turbo", "version": "1", "license_id": "Apache-2.0", "min_app_version": min_app_version,
+            "files": [
+                file("sea_g2p.bin", 1000),
+                file("vieneu-v3-turbo/onnx_update/config.json", 2152),
+                file("moss-codec/moss_audio_tokenizer_decode_shared.data", 44_198_912),
+            ]
+        })
+    }
+
+    /// Gói giọng đọc ở khóa gốc `tts`: chỉ dùng khi app đủ mới; app không có khóa thì không có giọng đọc.
+    #[test]
+    fn the_tts_pack_is_read_when_valid_and_new_enough() {
+        let mut value = sample();
+        value["tts"] = tts_entry("0.5.7");
+        let m = parse(&value).unwrap();
+        assert_eq!(m.tts_pack("0.5.6"), None, "app cũ hơn min_app_version");
+        let pack = m.tts_pack("0.5.7").unwrap();
+        assert_eq!(pack.id, "vieneu-v3-turbo");
+        assert_eq!(pack.files.len(), 3);
+        assert_eq!(pack.files[1].path, "vieneu-v3-turbo/onnx_update/config.json");
+        assert_eq!(pack.bytes(), 1000 + 2152 + 44_198_912);
+        assert_eq!(
+            parse(&sample()).unwrap().tts_pack("9.0.0"),
+            None,
+            "manifest không có khóa"
+        );
+        assert!(m.files_of("standard").len() == 4, "gói ASR không đổi");
+    }
+
+    /// Mục sai chỉ làm mất giọng đọc; manifest và các gói ASR vẫn dùng được.
+    #[test]
+    fn a_bad_tts_entry_is_ignored_without_breaking_the_manifest() {
+        let bad_file = |key: &str, v: Value| {
+            let mut e = tts_entry("0.1.0");
+            e["files"][1][key] = v;
+            e
+        };
+        let entries = [
+            ("sha256", bad_file("sha256", json!("xyz"))),
+            ("path ..", bad_file("path", json!("../thoat.bin"))),
+            ("path tuyệt đối", bad_file("path", json!("/etc/passwd"))),
+            ("path ổ đĩa", bad_file("path", json!("C:/x.bin"))),
+            ("path ngược", bad_file("path", json!("a\\b.bin"))),
+            ("path .part", bad_file("path", json!("a/b.part"))),
+            ("path thiết bị", bad_file("path", json!("a/NUL.bin"))),
+            ("path rỗng đoạn", bad_file("path", json!("a//b.bin"))),
+            ("path trùng", bad_file("path", json!("SEA_G2P.BIN"))),
+            ("bytes 0", bad_file("bytes", json!(0))),
+            ("bytes quá lớn", bad_file("bytes", json!(3u64 << 30))),
+            ("url http", bad_file("url", json!("http://khong-an-toan/x.bin"))),
+            ("url ..", bad_file("url", json!("../x.bin"))),
+            ("không có file", {
+                let mut e = tts_entry("0.1.0");
+                e["files"] = json!([]);
+                e
+            }),
+            ("tổng quá lớn", {
+                let mut e = tts_entry("0.1.0");
+                e["files"] = json!(
+                    (0..3)
+                        .map(|i| json!({
+                            "path": format!("f{i}.bin"), "url": format!("tts/f{i}.bin"),
+                            "bytes": 1u64 << 30, "sha256": "cd".repeat(32)
+                        }))
+                        .chain([
+                            json!({ "path": "g.bin", "url": "tts/g.bin", "bytes": 1u64, "sha256": "cd".repeat(32) })
+                        ])
+                        .collect::<Vec<_>>()
+                );
+                e
+            }),
+            ("id", {
+                let mut e = tts_entry("0.1.0");
+                e["id"] = json!("HOA");
+                e
+            }),
+            ("min_app_version", {
+                let mut e = tts_entry("0.1.0");
+                e["min_app_version"] = json!("moi");
+                e
+            }),
+            ("license_id", {
+                let mut e = tts_entry("0.1.0");
+                e["license_id"] = json!("  ");
+                e
+            }),
+        ];
+        for (name, entry) in entries {
+            let mut value = sample();
+            value["tts"] = entry;
+            let m = parse(&value).unwrap();
+            assert_eq!(m.tts_pack("9.0.0"), None, "{name}");
+            assert_eq!(m.files_of("standard").len(), 4, "{name}");
+        }
+        let mut value = sample();
+        value["tts"] = json!("không phải object");
+        assert_eq!(parse(&value).unwrap().tts_pack("9.0.0"), None);
+    }
+
     #[test]
     fn ordinary_names_are_safe() {
         for name in ["ggml-small-q5_1.bin", "NOTICE.txt", "console.bin", "nuls.gguf", "a.b.c"] {
@@ -796,6 +1002,10 @@ pub(crate) mod tests {
         assert!(late.is_empty(), "{late:?}");
         if m.speaker.is_some() {
             assert!(m.speaker_model("999.0.0").is_some(), "mục `speaker` không hợp lệ");
+        }
+        if m.tts.is_some() {
+            let pack = m.tts_pack("999.0.0").expect("mục `tts` không hợp lệ");
+            println!("tts: {} file, {} byte", pack.files.len(), pack.bytes());
         }
         if let Some(config) = &m.speaker_config {
             let config: speaker_protocol::SpeakerConfig =

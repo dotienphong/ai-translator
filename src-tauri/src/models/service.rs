@@ -13,6 +13,7 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -30,6 +31,7 @@ use super::recommend::{self, Unsupported, Verdict};
 use super::signed::{self, Signed, TrustedKey};
 use super::source::{self, FetchError};
 use super::store::{self, PackStatus, ResolveError, Store};
+use super::tts_pack::TtsStore;
 use crate::errors::{self, CommandError};
 use crate::settings::Settings;
 use crate::sidecar::integrity;
@@ -226,9 +228,40 @@ impl Drop for SpeakerDownloading<'_> {
     }
 }
 
+/// Cờ "đang tải gói giọng đọc" (`ModelService::tts_progress`) bật trong lúc giữ; chỉ một lần tải cùng lúc. Thả ra (kể cả lối ra
+/// sớm hay panic) thì tắt.
+struct TtsDownloading<'a>(&'a ModelService);
+
+impl<'a> TtsDownloading<'a> {
+    fn start(service: &'a ModelService, total: u64, done: u64) -> Option<Self> {
+        service
+            .tts_downloading
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .ok()?;
+        service.tts_total.store(total, Ordering::SeqCst);
+        service.tts_done.store(done, Ordering::SeqCst);
+        Some(Self(service))
+    }
+}
+
+impl Drop for TtsDownloading<'_> {
+    fn drop(&mut self) {
+        self.0.tts_downloading.store(false, Ordering::SeqCst);
+    }
+}
+
 pub struct ModelService {
     cfg: Config,
     store: Store,
+    /// Gói model giọng đọc (`models/tts`), tách khỏi kho chính vì có thư mục con.
+    tts: TtsStore,
+    /// Đang tải gói giọng đọc; giao diện hỏi tiến độ qua [`Self::tts_progress`] (không có sự kiện: overlay không nhận
+    /// `models://state`).
+    tts_downloading: AtomicBool,
+    tts_done: AtomicU64,
+    tts_total: AtomicU64,
+    /// Tạm dừng việc tải giọng đọc khi người dùng bắt đầu tải một gói ASR (gói ASR được ưu tiên băng thông).
+    tts_pause: Pause,
     /// Tạo lúc dùng lần đầu: client đồng bộ của reqwest giữ một luồng riêng.
     client: OnceLock<Option<Client>>,
     inner: Mutex<Inner>,
@@ -265,6 +298,11 @@ impl ModelService {
     pub fn new(cfg: Config) -> Self {
         Self {
             store: Store::new(&cfg.dir),
+            tts: TtsStore::new(&cfg.dir),
+            tts_downloading: AtomicBool::new(false),
+            tts_done: AtomicU64::new(0),
+            tts_total: AtomicU64::new(0),
+            tts_pause: Pause::default(),
             cfg,
             client: OnceLock::new(),
             inner: Mutex::new(Inner {
@@ -625,9 +663,16 @@ impl ModelService {
             };
         }
         self.pause.clear();
+        // Gói ASR được ưu tiên băng thông: việc tải giọng đọc (nếu đang chạy) tạm dừng, và tiếp tục khi gói tải xong.
+        self.tts_pause.request();
         let view = self.changed(app);
         let (service, app, pack) = (self.clone(), app.clone(), pack.to_string());
-        std::thread::spawn(move || service.run_download(&app, &manifest, &url, &pack, todo));
+        std::thread::spawn(move || {
+            service.run_download(&app, &manifest, &url, &pack, todo);
+            if service.lock().job.state == JobState::Done {
+                service.download_tts_pack_in_background();
+            }
+        });
         Ok(view)
     }
 
@@ -970,6 +1015,124 @@ impl ModelService {
         installed
     }
 
+    /// Manifest hiện có gói giọng đọc dùng được cho bản app này (khóa `tts`).
+    pub fn tts_offered(&self) -> bool {
+        self.manifest()
+            .and_then(|s| s.manifest.tts_pack(&self.cfg.app_version))
+            .is_some()
+    }
+
+    /// Tiến độ tải gói giọng đọc: `(đã tải, tổng)` byte; `None` khi không đang tải.
+    pub fn tts_progress(&self) -> Option<(u64, u64)> {
+        self.tts_downloading.load(Ordering::SeqCst).then(|| {
+            (
+                self.tts_done.load(Ordering::SeqCst),
+                self.tts_total.load(Ordering::SeqCst),
+            )
+        })
+    }
+
+    /// Tải gói giọng đọc nếu manifest có mà máy chưa có (hay còn bản cũ). Tải tiếp được khi rớt mạng; mọi file đủ và đúng
+    /// SHA-256 mới đổi tên cùng lúc ([`TtsStore::commit`]). Không tải khi đang tải một gói ASR (nhường băng thông; tải xong gói đó thì gọi lại), khi ổ không đủ chỗ, hay khi đã có một lần tải
+    /// đang chạy. Không đụng tới việc dùng model đang chạy: file giọng đọc không thuộc gói ASR nào. Trả `true` khi gói đã đủ.
+    pub fn download_tts_pack(&self) -> bool {
+        let Some(manifest) = self.manifest() else {
+            return false;
+        };
+        let Some(pack) = manifest.manifest.tts_pack(&self.cfg.app_version) else {
+            return false;
+        };
+        let missing = self.tts.missing(&pack);
+        if missing.is_empty() {
+            return true;
+        }
+        let Some(base) = self.cfg.source.as_ref() else {
+            return false;
+        };
+        let Some(urls) = missing
+            .iter()
+            .map(|f| source::rel_url(base, &f.url))
+            .collect::<Option<Vec<_>>>()
+        else {
+            log::warn!("giọng đọc: URL file model không dùng được");
+            return false;
+        };
+        let Some(client) = self.client() else {
+            return false;
+        };
+        if self.lock().job.state == JobState::Downloading {
+            log::info!("giọng đọc: đang tải gói model, tải giọng đọc sau");
+            return false;
+        }
+        let remaining = self.tts.remaining_bytes(&pack);
+        if let Some(free) = (self.cfg.free_disk)(&self.cfg.dir)
+            && free < remaining + DISK_MARGIN
+        {
+            log::info!(
+                "giọng đọc: ổ không đủ chỗ (cần {} byte, còn {free})",
+                remaining + DISK_MARGIN
+            );
+            return false;
+        }
+        let total: u64 = missing.iter().map(|f| f.bytes).sum();
+        let Some(_downloading) = TtsDownloading::start(self, total, total - remaining.min(total)) else {
+            return false;
+        };
+        self.tts_pause.clear();
+        log::info!("giọng đọc: tải {} file ({total} byte)", missing.len());
+        for (file, url) in missing.iter().zip(urls) {
+            let job = self.tts.job(file, url);
+            if let Some(dir) = job.dest.parent()
+                && std::fs::create_dir_all(dir).is_err()
+            {
+                return false;
+            }
+            let part = std::fs::metadata(job.part()).map(|m| m.len()).unwrap_or(0);
+            let before = self
+                .tts_done
+                .load(Ordering::SeqCst)
+                .saturating_sub(part.min(file.bytes));
+            let result = download::download(
+                client,
+                &job,
+                &self.tts_pause,
+                &self.cfg.retry,
+                &mut |wait| download::sleep_unless_paused(&self.tts_pause, wait),
+                &mut |n| self.tts_done.store(before + n, Ordering::SeqCst),
+            );
+            match result {
+                Ok(()) => self.tts_done.store(before + file.bytes, Ordering::SeqCst),
+                Err(e) => {
+                    log::warn!("giọng đọc: không tải được {}: {e}", file.path);
+                    return false;
+                }
+            }
+        }
+        match self.tts.commit(&missing) {
+            Ok(()) => {
+                log::info!("giọng đọc: đã có đủ model");
+                true
+            }
+            Err(e) => {
+                log::warn!("giọng đọc: không đặt được file model vào chỗ: {e}");
+                false
+            }
+        }
+    }
+
+    /// Như [`Self::download_tts_pack`], trên luồng nền, và chỉ khi manifest có gói giọng đọc. Không chạy ở bản dev (dùng
+    /// `models/tts` của thư mục model dev; `tauri::is_dev()` cũng đúng trong `cargo test`, nên cổng này nằm ở đây chứ không ở
+    /// `download_tts_pack`, để test gọi thẳng được).
+    pub fn download_tts_pack_in_background(self: &Arc<Self>) {
+        if tauri::is_dev() || !self.tts_offered() {
+            return;
+        }
+        let service = self.clone();
+        std::thread::spawn(move || {
+            service.download_tts_pack();
+        });
+    }
+
     /// Như [`Self::download_speaker_model`], trên luồng nền.
     pub fn download_speaker_model_in_background<R: Runtime>(self: &Arc<Self>, app: &AppHandle<R>) {
         let (service, app) = (self.clone(), app.clone());
@@ -1021,15 +1184,18 @@ pub fn check_on_startup<R: Runtime>(app: &AppHandle<R>) {
     std::thread::spawn(move || {
         if let Some(service) = app.try_state::<Arc<ModelService>>() {
             service.load(&app);
+            service.download_tts_pack_in_background();
         }
         // App chạy liên tục nhiều ngày vẫn nhận manifest mới: thức dậy mỗi giờ, `check_if_due` tự so với lần kiểm trước
         // theo giờ máy (máy ngủ thì đồng hồ đơn điệu dừng), như bộ kiểm cập nhật app (`updater::WAKE_EVERY`).
         loop {
             std::thread::sleep(MANIFEST_WAKE_EVERY);
-            if let Some(service) = app.try_state::<Arc<ModelService>>()
-                && !service.check_if_due(&app)
-            {
-                log::info!("bỏ lượt kiểm manifest model: đang tải hay bảo trì model");
+            if let Some(service) = app.try_state::<Arc<ModelService>>() {
+                if !service.check_if_due(&app) {
+                    log::info!("bỏ lượt kiểm manifest model: đang tải hay bảo trì model");
+                }
+                // Manifest mới có thể vừa thêm gói giọng đọc; đã đủ thì không làm gì (rẻ).
+                service.download_tts_pack_in_background();
             }
         }
     });
@@ -2029,6 +2195,117 @@ mod tests {
         // Không thuộc gói nào: trạng thái các gói như cũ.
         let view = h.call("get_models_state", json!({})).unwrap();
         assert_eq!(view["packs"][0]["usable"], false);
+    }
+
+    /// Nội dung và SHA-256 của một file giọng đọc giả.
+    fn tts_file(path: &str, bytes: u64) -> (Value, Vec<u8>) {
+        let data = content(path, bytes);
+        let sha: String = Sha256::digest(&data).iter().map(|b| format!("{b:02x}")).collect();
+        let url = format!("tts/{}", path.replace('/', "_"));
+        (json!({ "path": path, "url": url, "bytes": bytes, "sha256": sha }), data)
+    }
+
+    /// Đặt manifest có khóa `tts` (hai file, một ở thư mục con) và nội dung lên server giả.
+    fn publish_tts(h: &Harness, specs: &[(&str, u64)]) -> Vec<(Value, Vec<u8>)> {
+        let files: Vec<_> = specs.iter().map(|(p, b)| tts_file(p, *b)).collect();
+        let mut body = real_sample();
+        body["tts"] = json!({
+            "id": "vieneu-v3-turbo", "version": "1", "license_id": "Apache-2.0", "min_app_version": "0.1.0",
+            "files": files.iter().map(|(e, _)| e.clone()).collect::<Vec<_>>()
+        });
+        publish(&h.server, &body);
+        for (entry, data) in &files {
+            h.server.put(entry["url"].as_str().unwrap(), data);
+        }
+        files
+    }
+
+    /// Gói giọng đọc tải vào `models/tts` đúng cấu trúc thư mục, kiểm SHA-256, đã đủ thì không tải lại.
+    #[test]
+    fn the_tts_pack_is_downloaded_once_into_its_own_dir() {
+        let h = harness(|_| {});
+        let files = publish_tts(&h, &[("sea_g2p.bin", 300), ("moss-codec/meta.json", 120)]);
+        h.call("load_models", json!({})).unwrap();
+        let service = h.service();
+        assert!(service.tts_offered());
+        assert_eq!(service.tts_progress(), None);
+        assert!(service.download_tts_pack());
+        assert_eq!(service.tts_progress(), None, "xong thì hết cờ");
+        for (entry, data) in &files {
+            let path = entry["path"]
+                .as_str()
+                .unwrap()
+                .split('/')
+                .fold(h.dir().join("tts"), |d, s| d.join(s));
+            assert_eq!(&std::fs::read(path).unwrap(), data);
+        }
+        let before = h.server.requests().len();
+        assert!(service.download_tts_pack(), "đã đủ");
+        assert_eq!(h.server.requests().len(), before, "không tải lại");
+        // Gói ASR không bị đụng tới.
+        let view = h.call("get_models_state", json!({})).unwrap();
+        assert_eq!(view["packs"][0]["usable"], false);
+    }
+
+    /// File sai SHA-256 không vào chỗ: gói còn thiếu, không file nào được đổi tên.
+    #[test]
+    fn a_corrupt_tts_file_leaves_the_pack_uninstalled() {
+        let h = harness(|c| {
+            c.retry = Retry {
+                retries: 0,
+                backoff: vec![],
+            }
+        });
+        publish_tts(&h, &[("a.bin", 100), ("dir/b.bin", 100)]);
+        h.server.put("tts/dir_b.bin", &content("khac", 100));
+        h.call("load_models", json!({})).unwrap();
+        assert!(!h.service().download_tts_pack());
+        assert!(
+            !h.dir().join("tts").join("a.bin").exists(),
+            "không đổi tên khi gói chưa đủ"
+        );
+        assert!(!h.dir().join("tts").join("installed.json").exists());
+    }
+
+    /// Rớt mạng giữa chừng thì lần sau tải tiếp phần dở, không tải lại file đã đủ.
+    #[test]
+    fn an_interrupted_tts_download_resumes() {
+        let h = harness(|c| {
+            c.retry = Retry {
+                retries: 0,
+                backoff: vec![],
+            }
+        });
+        publish_tts(&h, &[("a.bin", 1000)]);
+        h.call("load_models", json!({})).unwrap();
+        h.server.fault(Fault::DropAfter(400));
+        assert!(!h.service().download_tts_pack());
+        assert!(h.service().download_tts_pack(), "lần sau tải tiếp");
+        let ranges: Vec<_> = h.server.requests().iter().filter_map(|r| r.range.clone()).collect();
+        assert_eq!(ranges, ["bytes=400-"]);
+    }
+
+    /// Ổ không đủ chỗ (cần phần còn phải tải cộng 1 GB) thì không tải, không báo đang tải.
+    #[test]
+    fn the_tts_pack_waits_for_disk_space() {
+        let h = harness(|c| c.free_disk = Box::new(|_| Some(10)));
+        publish_tts(&h, &[("a.bin", 100)]);
+        h.call("load_models", json!({})).unwrap();
+        let before = h.server.requests().len();
+        assert!(!h.service().download_tts_pack());
+        assert_eq!(h.server.requests().len(), before);
+        assert_eq!(h.service().tts_progress(), None);
+    }
+
+    /// Manifest không có khóa `tts`: giọng đọc "ngủ", không tải gì.
+    #[test]
+    fn without_a_tts_entry_nothing_is_downloaded() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        let before = h.server.requests().len();
+        assert!(!h.service().tts_offered());
+        assert!(!h.service().download_tts_pack());
+        assert_eq!(h.server.requests().len(), before);
     }
 
     /// Kế hoạch 07, QĐ 3: "manifest có mục `speaker` dùng được cho bản này" là điều kiện để tính năng thôi "ngủ" (tải công thức,

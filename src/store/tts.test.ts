@@ -1,13 +1,13 @@
 import type { Channel } from "@tauri-apps/api/core";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeIpc } from "../lib/fakeIpc";
 import type { TtsControl, TtsStatus } from "../lib/ipc";
-import { createTtsStore } from "./tts";
+import { TTS_POLL_MS, createTtsStore } from "./tts";
 
 type Msg = ArrayBuffer | TtsControl;
 type FakeChannel = { onmessage: (m: Msg) => void };
 
-const AVAILABLE: TtsStatus = { available: true, running: false, reason: null };
+const AVAILABLE: TtsStatus = { available: true, running: false, reason: null, progress: null };
 
 function setup(handlers: Parameters<typeof fakeIpc>[0] = {}) {
   const channels: FakeChannel[] = [];
@@ -53,6 +53,74 @@ describe("trạng thái", () => {
     });
     await store.getState().init();
     expect(store.getState().status?.available).toBe(false);
+  });
+});
+
+describe("tải gói giọng đọc về nền", () => {
+  afterEach(() => vi.useRealTimers());
+
+  const downloading = (progress: number): TtsStatus => ({
+    available: false,
+    running: false,
+    reason: "downloading",
+    progress,
+  });
+
+  it("đang tải thì hỏi lại định kỳ, xong thì nút sáng lên và dừng hỏi", async () => {
+    vi.useFakeTimers();
+    const answers = [downloading(10), downloading(60), AVAILABLE];
+    let calls = 0;
+    const { store } = setup({ tts_status: () => answers[Math.min(calls++, answers.length - 1)] });
+    await store.getState().init();
+    expect(store.getState().status?.progress).toBe(10);
+    await vi.advanceTimersByTimeAsync(TTS_POLL_MS);
+    expect(store.getState().status?.progress).toBe(60);
+    await vi.advanceTimersByTimeAsync(TTS_POLL_MS);
+    expect(store.getState().status?.available).toBe(true);
+    await vi.advanceTimersByTimeAsync(TTS_POLL_MS * 5);
+    expect(calls).toBe(3);
+  });
+
+  it("chờ tải (waiting) cũng hỏi lại", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const { store } = setup({
+      tts_status: () => (++calls < 2 ? { available: false, running: false, reason: "waiting", progress: null } : AVAILABLE),
+    });
+    await store.getState().init();
+    await vi.advanceTimersByTimeAsync(TTS_POLL_MS);
+    expect(store.getState().status?.available).toBe(true);
+  });
+
+  it("thiếu file mà manifest không có gói thì không hỏi lại", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const { store } = setup({
+      tts_status: () => {
+        calls += 1;
+        return { available: false, running: false, reason: "modelMissing", progress: null };
+      },
+    });
+    await store.getState().init();
+    await vi.advanceTimersByTimeAsync(TTS_POLL_MS * 5);
+    expect(calls).toBe(1);
+  });
+
+  it("gọi refreshStatus liên tiếp không đẻ thêm bộ hẹn giờ", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const { store } = setup({
+      tts_status: () => {
+        calls += 1;
+        return downloading(5);
+      },
+    });
+    await store.getState().refreshStatus();
+    await store.getState().refreshStatus();
+    await store.getState().refreshStatus();
+    expect(calls).toBe(3);
+    await vi.advanceTimersByTimeAsync(TTS_POLL_MS);
+    expect(calls).toBe(4);
   });
 });
 

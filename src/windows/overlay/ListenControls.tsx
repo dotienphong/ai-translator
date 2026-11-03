@@ -7,17 +7,23 @@ import { MIN_LEVEL } from "../../store/listen";
 // lại khi đang đọc), "còn N câu" và Bỏ qua (nếu dồn), ghi chú nếu chưa phân biệt được lời của người dùng. Lỗi hiện ngay cạnh nút.
 // Lý do mờ chỉ nằm ở gợi ý (title) của nút, không chiếm chỗ trên thanh của người không dùng tính năng. Bên gọi chỉ vẽ khi thanh chưa khóa (khóa thì click đi xuyên qua). Không phải vùng kéo thanh.
 
-export type ListenDisabledReason = "noTts" | "unsupportedLang" | "micOnly";
+export type ListenDisabledReason = "noTts" | "ttsDownloading" | "ttsWaiting" | "unsupportedLang" | "micOnly";
 
 // Vì sao chưa bật được (nút mờ kèm lý do); `null` là dùng được.
+// `ttsReason`: `TtsStatus.reason`; đang tải (`downloading`) hay chờ tải (`waiting`) gói giọng đọc thì nói rõ thay vì "chưa cài".
 export function listenDisabledReason(input: {
   ttsAvailable: boolean;
+  ttsReason?: string | null;
   targetLanguage: string;
   captureMode: CaptureMode;
 }): ListenDisabledReason | null {
   if (input.captureMode === "mic") return "micOnly";
   if (!canSpeakLang(input.targetLanguage)) return "unsupportedLang";
-  if (!input.ttsAvailable) return "noTts";
+  if (!input.ttsAvailable) {
+    if (input.ttsReason === "downloading") return "ttsDownloading";
+    if (input.ttsReason === "waiting") return "ttsWaiting";
+    return "noTts";
+  }
   return null;
 }
 
@@ -30,6 +36,8 @@ export interface ListenControlsProps {
   error: string | null;
   unresolved: boolean;
   disabledReason: ListenDisabledReason | null;
+  // Phần trăm đã tải gói giọng đọc (khi `disabledReason` là `ttsDownloading`).
+  ttsProgress?: number | null;
   onToggle(): void;
   onLevel(level: number): void;
   onSkip(): void;
@@ -39,7 +47,8 @@ export interface ListenControlsProps {
 export function ListenControls(p: ListenControlsProps) {
   if (!p.supported) return null;
   const t = (key: MessageKey, params?: Record<string, string | number>) => translate(p.uiLanguage, key, params);
-  const reason = p.disabledReason === null ? null : t(`overlay.listen.${p.disabledReason}`);
+  const reason =
+    p.disabledReason === null ? null : t(`overlay.listen.${p.disabledReason}`, { n: Math.round(p.ttsProgress ?? 0) });
   // Đang bật thì luôn tắt được, dù lý do mờ vừa xuất hiện giữa chừng.
   const disabled = !p.active && reason !== null;
   return (

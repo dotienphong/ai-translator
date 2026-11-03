@@ -11,6 +11,7 @@
 //! - Log chỉ có số đếm và lý do, không có chữ hay âm thanh.
 
 use crate::errors::CommandError;
+use crate::models::service::ModelService;
 use crate::sidecar::{integrity, paths};
 use pipeline::process;
 use serde::Serialize;
@@ -220,17 +221,47 @@ pub struct TtsStatus {
     pub available: bool,
     /// Worker đang chạy (đã hay đang nạp model).
     pub running: bool,
-    /// `workerMissing`, `modelMissing`, `runtimeMissing` khi thiếu file; `disabled` khi đã bị tắt tới hết phiên.
+    /// `workerMissing`, `modelMissing`, `runtimeMissing` khi thiếu file; `downloading` khi đang tải gói model giọng đọc về
+    /// (manifest có khóa `tts`); `waiting` khi manifest có gói mà việc tải chưa chạy (đang tải gói ASR, ổ thiếu chỗ…) và sẽ thử
+    /// lại; `disabled` khi đã bị tắt tới hết phiên.
     pub reason: Option<String>,
+    /// Phần trăm đã tải (0–100) khi `reason` là `downloading`.
+    pub progress: Option<u8>,
+}
+
+/// Phần trăm `done / total`, 0 khi `total` là 0, tối đa 100.
+fn percent(done: u64, total: u64) -> u8 {
+    if total == 0 {
+        return 0;
+    }
+    (u128::from(done.min(total)) * 100 / u128::from(total)) as u8
 }
 
 pub fn status<R: Runtime>(app: &AppHandle<R>, svc: &TtsService) -> TtsStatus {
     if let Err(why) = locate(app) {
-        return TtsStatus {
+        let missing = |reason: &str, progress: Option<u8>| TtsStatus {
             available: false,
             running: false,
-            reason: Some(why.to_string()),
+            reason: Some(reason.to_string()),
+            progress,
         };
+        let models = app.try_state::<Arc<ModelService>>();
+        if let Some((done, total)) = models.as_ref().and_then(|m| m.tts_progress()) {
+            return missing("downloading", Some(percent(done, total)));
+        }
+        // Thiếu model mà manifest có gói: bắt đầu (hay thử lại) việc tải; giao diện hỏi lại cho tới khi xong.
+        if why == "modelMissing"
+            && !tauri::is_dev()
+            && let Some(models) = models
+            && models.tts_offered()
+        {
+            models.download_tts_pack_in_background();
+            return match models.tts_progress() {
+                Some((done, total)) => missing("downloading", Some(percent(done, total))),
+                None => missing("waiting", None),
+            };
+        }
+        return missing(why, None);
     }
     let client = svc.existing();
     let disabled = client.as_ref().and_then(|c| c.disabled_reason()).is_some();
@@ -238,6 +269,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>, svc: &TtsService) -> TtsStatus {
         available: !disabled,
         running: client.as_ref().is_some_and(|c| c.is_running()),
         reason: disabled.then(|| "disabled".to_string()),
+        progress: None,
     }
 }
 
@@ -398,6 +430,16 @@ mod tests {
             root.join(ort_lib_name())
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn download_percent_is_clamped() {
+        assert_eq!(percent(0, 0), 0);
+        assert_eq!(percent(0, 100), 0);
+        assert_eq!(percent(1, 3), 33);
+        assert_eq!(percent(520 << 20, 520 << 20), 100);
+        assert_eq!(percent(u64::MAX, 10), 100, "không vượt 100");
+        assert_eq!(percent(u64::MAX / 2, u64::MAX), 49, "không tràn số");
     }
 
     #[test]

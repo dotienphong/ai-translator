@@ -143,3 +143,19 @@ Còn thiếu: đo khi chạy chung với ASR (whisper) và dịch (llama) trong 
 2. ~~Quyết mục 5~~ Đã chốt: chặn thu trong lúc phát.
 3. ~~Đặt model~~ Xong (`models/tts/`).
 4. Chỗ đặt nút nghe trong giao diện (phụ đề nổi, bản chép lời, hay cả hai).
+
+## 8. Phát hành gói model giọng đọc (2026-11-03)
+
+Vì sao: bản cài mới và bản update không có `tts-worker` lẫn model, nên `tts::status` trả `workerMissing`/`modelMissing` và nút "Nghe dịch" mờ với chữ "chưa cài giọng đọc". Máy dev không bị vì đọc `models/tts` của thư mục model dev.
+
+- **Worker và ONNX Runtime**: đi trong bộ cài như `speaker-worker` (`externalBin` của `src-tauri/release/tauri.windows.json`, build `cargo build -p tts-worker --features engine` ở `build-sidecars-windows.mjs`, kiểm SHA-256 lúc chạy). `onnxruntime.dll` là bản 1.31.1 dựng sẵn cho speaker-worker, đặt cạnh binary (`tts::locate_files` ưu tiên bản cạnh binary ở bản phát hành). **macOS chưa có**: pipeline chưa đóng `libonnxruntime.dylib`, nên trên macOS nút vẫn ẩn/mờ cho tới khi thêm.
+- **Model (~520 MB, 13 file)**: không nằm trong bộ cài. Manifest model có thêm khóa gốc `tts` (app ≤ 0.5.6 bỏ qua khóa lạ ở gốc), đọc lỏng như `speaker`: mục sai hay cần app mới hơn thì chỉ mất giọng đọc (`Manifest::tts_pack`). Mỗi file có `path` (tương đối trong `models/tts`), `url`, `bytes`, `sha256`.
+- **App tải nền** (`ModelService::download_tts_pack`): lúc khởi động sau khi nạp manifest, mỗi giờ, khi một gói ASR tải xong, và khi giao diện hỏi trạng thái mà còn thiếu model. Tải tiếp được khi rớt mạng (`*.part`); chỉ khi cả gói đủ và đúng SHA-256 mới đổi tên cùng lúc và ghi `models/tts/installed.json`. Nhường băng thông cho gói ASR (tạm dừng khi người dùng bắt đầu tải gói), cần ổ trống ≥ phần còn lại + 1 GB, không chạy ở bản dev.
+- **Giao diện**: `tts_status` trả thêm `progress` và `reason` `downloading` (đang tải, kèm %) hay `waiting` (manifest có gói mà chưa tải được: đang tải gói ASR, ổ thiếu chỗ…); store hỏi lại mỗi 3 giây tới khi xong. Nút "Nghe dịch" hiện "đang tải giọng đọc N%" thay vì "chưa cài".
+
+### Các bước phát hành model (chủ dự án)
+
+1. `node scripts/release/tts-pack-entry.mjs --dir models/tts --min-app <bản app đầu tiên có tính năng> --upload-list --out tts-entry.json`: băm 13 file (danh sách lấy từ `MODEL_FILES`), in đường dẫn R2 của từng file.
+2. Upload từng file lên R2 đúng đường dẫn đã in (cùng thư mục với `models.json`). File đã phát hành không được ghi đè: đổi model thì tăng `--version` (đổi cả tiền tố URL).
+3. Dán `tts-entry.json` vào khóa `tts` của phần thân manifest, tăng `sequence`, rồi chạy `MANIFEST_BODY=<body.json> cargo test -p meeting-translator --lib check_manifest_body -- --ignored --nocapture` và workflow *Sign model manifest*.
+4. App ≥ `min_app` nhận manifest trong vòng một ngày (hoặc khi mở lại app) và tự tải.

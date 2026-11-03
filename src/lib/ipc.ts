@@ -274,12 +274,14 @@ export interface Subtitle {
 }
 
 // Giọng đọc bản dịch (spec 2026-11-02-doc-ban-dich-tts-design, `tts.rs`). `available`: có `tts-worker` và gói model giọng đọc (và chưa
-// bị tắt tới hết phiên). `reason`: `workerMissing`, `modelMissing`, `runtimeMissing` khi thiếu file; `disabled` khi worker hỏng
-// nhiều lần.
+// bị tắt tới hết phiên). `reason`: `workerMissing`, `modelMissing`, `runtimeMissing` khi thiếu file; `downloading` khi đang tải gói
+// model giọng đọc về (`progress` là phần trăm 0–100); `waiting` khi manifest có gói mà việc tải chưa chạy (sẽ tự thử lại);
+// `disabled` khi worker hỏng nhiều lần.
 export interface TtsStatus {
   available: boolean;
   running: boolean;
   reason: string | null;
+  progress: number | null;
 }
 
 // Thông báo trong kênh của `tts_speak` (âm thanh đi dưới dạng `ArrayBuffer` PCM i16 little-endian 48 kHz mono, không nằm ở đây).

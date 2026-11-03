@@ -42,11 +42,19 @@ export interface TtsStoreState {
   dismiss(): void;
 }
 
-const UNAVAILABLE: TtsStatus = { available: false, running: false, reason: null };
+const UNAVAILABLE: TtsStatus = { available: false, running: false, reason: null, progress: null };
+
+// Gói model giọng đọc đang tải (hay chờ tải) về nền: hỏi lại trạng thái chừng này ms một lần cho tới khi xong.
+export const TTS_POLL_MS = 3000;
+
+function isPending(status: TtsStatus | null): boolean {
+  return status !== null && !status.available && (status.reason === "downloading" || status.reason === "waiting");
+}
 
 export function createTtsStore(deps: TtsDeps) {
   // Mỗi lần bấm một số mới: âm thanh và thông báo của lượt cũ tới muộn thì bỏ.
   let turn = 0;
+  let poll: ReturnType<typeof setTimeout> | null = null;
   const commands = deps.commands ?? MAIN_TTS_COMMANDS;
   return createStore<TtsStoreState>()((set, get) => ({
     status: null,
@@ -59,10 +67,21 @@ export function createTtsStore(deps: TtsDeps) {
     },
 
     async refreshStatus() {
+      if (poll !== null) {
+        clearTimeout(poll);
+        poll = null;
+      }
       try {
         set({ status: await deps.ipc.invoke(commands.status) });
       } catch {
         set({ status: UNAVAILABLE });
+      }
+      // Đang tải giọng đọc về: hỏi lại tới khi xong, để nút tự sáng lên mà không phải mở lại app.
+      if (isPending(get().status) && poll === null) {
+        poll = setTimeout(() => {
+          poll = null;
+          void get().refreshStatus();
+        }, TTS_POLL_MS);
       }
     },
 

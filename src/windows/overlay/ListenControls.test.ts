@@ -67,6 +67,15 @@ describe("ListenControls", () => {
     }
   });
 
+  it("đang tải giọng đọc thì nói rõ phần trăm, không báo 'chưa cài'", () => {
+    const html = render({ disabledReason: "ttsDownloading", ttsProgress: 42.4 });
+    expect(html).toContain("disabled");
+    expect(html).toContain("đang tải giọng đọc 42%");
+    expect(html).not.toContain("chưa cài");
+    expect(render({ disabledReason: "ttsDownloading", ttsProgress: null })).toContain("đang tải giọng đọc 0%");
+    expect(render({ disabledReason: "ttsWaiting" })).toContain("đang chờ tải giọng đọc");
+  });
+
   it("đang bật thì vẫn tắt được dù lý do mờ vừa xuất hiện", () => {
     const html = render({ active: true, disabledReason: "noTts" });
     expect(html).not.toMatch(/listen-toggle[^>]*disabled/);
@@ -99,6 +108,12 @@ describe("listenDisabledReason", () => {
   });
   it("giọng đọc chưa sẵn sàng", () => {
     expect(listenDisabledReason({ ...ok, ttsAvailable: false })).toBe("noTts");
+  });
+  it("đang tải hay chờ tải gói giọng đọc", () => {
+    expect(listenDisabledReason({ ...ok, ttsAvailable: false, ttsReason: "downloading" })).toBe("ttsDownloading");
+    expect(listenDisabledReason({ ...ok, ttsAvailable: false, ttsReason: "waiting" })).toBe("ttsWaiting");
+    expect(listenDisabledReason({ ...ok, ttsAvailable: false, ttsReason: "modelMissing" })).toBe("noTts");
+    expect(listenDisabledReason({ ...ok, ttsAvailable: false, ttsReason: null })).toBe("noTts");
   });
   it("ngôn ngữ đích không có giọng", () => {
     expect(listenDisabledReason({ ...ok, targetLanguage: "ja" })).toBe("unsupportedLang");
