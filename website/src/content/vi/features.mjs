@@ -14,7 +14,7 @@ export default {
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown. Tất cả chạy offline trên máy bạn.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model) cùng số đo hiệu năng có ghi điều kiện.",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
@@ -24,6 +24,7 @@ ${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cu
 <div class="grid grid-4 reveal">
 <a class="card card-link" href="#dich-truc-tiep"><strong class="card-title">Dịch trực tiếp</strong><p class="muted">5 ngôn ngữ, tự nhận diện</p></a>
 <a class="card card-link" href="#thanh-phu-de"><strong class="card-title">Thanh phụ đề</strong><p class="muted">Kéo, khóa, đổi cỡ chữ</p></a>
+<a class="card card-link" href="#nghe-dich"><strong class="card-title">Nghe bản dịch</strong><p class="muted">Đọc thành tiếng, Windows</p></a>
 <a class="card card-link" href="#ban-chep-loi"><strong class="card-title">Bản chép lời</strong><p class="muted">Lịch sử, xuất file (Pro)</p></a>
 <a class="card card-link" href="#tu-dien"><strong class="card-title">Từ điển thuật ngữ</strong><p class="muted">Tên riêng, thuật ngữ (Pro)</p></a>
 <a class="card card-link" href="#go-dich"><strong class="card-title">Gõ dịch</strong><p class="muted">Nhắn tin bằng tiếng người bên kia</p></a>
@@ -86,6 +87,32 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề vớ
 ${appShot({ slug: "app-settings-subtitles", lang: "vi", alt: "Cài đặt Phụ đề: khung xem trước câu mẫu, cỡ chữ, màu chữ, màu nền, độ mờ nền và tùy chọn hiện câu gốc", caption: "Cài đặt › Phụ đề: khung xem trước và thanh phụ đề đổi ngay theo." })}
 </div>
 </div>
+</div></section>
+
+<section class="section" id="nghe-dich"><div class="container">
+${sectionHead({ eyebrow: "Nghe bản dịch", title: "Nghe bản dịch thành tiếng, khi không tiện nhìn màn hình", text: "Giọng đọc chạy trên máy bạn, đọc được tiếng Việt và tiếng Anh. Hiện có trên Windows; macOS chưa có.", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>Nghe dịch: đọc bản dịch ngay trong cuộc họp</h3>
+<p>Bật nút <strong>Nghe dịch</strong> trên thanh phụ đề: tiếng cuộc họp ở loa được hạ nhỏ, còn mỗi câu dịch vừa chốt của người đối diện được đọc thành tiếng.</p>
+${checkList([
+  "<strong>Chỉ đọc lời người đối diện.</strong> Lời của bạn qua micro vẫn hiện chữ như cũ và không bị đọc",
+  "Chỉnh mức bằng thanh <strong>Tiếng họp</strong>; tắt nút thì âm lượng trở lại như cũ",
+  "Khi đọc không kịp, thanh hiện số câu còn chờ và nút <strong>Bỏ qua</strong> nhảy tới câu mới nhất",
+  "Đọc lỗi nhiều lần liên tiếp thì tự tắt và trả tiếng họp về như cũ",
+])}
+</div>
+<div class="stack-lg reveal">
+<h3>Nghe một câu: nút Nghe ở bản chép lời</h3>
+<p>Muốn nghe lại một câu, bấm <strong>Nghe</strong> ở dòng đó trong bản chép lời. Mỗi lúc chỉ đọc một câu: bấm câu khác thì chuyển sang câu đó, bấm lại để <strong>Dừng</strong>.</p>
+${checkList([
+  "Chỉ có nút khi bản dịch là tiếng Việt hoặc tiếng Anh; câu dịch ra tiếng Nhật, Trung, Hàn không có nút Nghe",
+  "Giọng đọc chạy hoàn toàn trên máy, không cần internet khi đọc",
+  "Gói giọng đọc khoảng 520 MB, app tải nền một lần sau khi cài; trong lúc tải, nút hiện tiến độ",
+])}
+</div>
+</div>
+${callout({ title: "Giới hạn hiện tại", text: "Nghe dịch và nút Nghe hiện chỉ có trên Windows. Trên macOS chưa có." })}
 </div></section>
 
 <section class="section" id="nguon-am-thanh"><div class="container">

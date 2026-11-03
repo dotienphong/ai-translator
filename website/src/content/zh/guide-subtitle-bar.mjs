@@ -13,6 +13,7 @@ const toc = [
   { level: 2, id: "scroll", text: "回看之前的句子" },
   { level: 2, id: "style", text: "字号、颜色、不透明度" },
   { level: 2, id: "speakers", text: "谁在说话：颜色和姓名" },
+  { level: 2, id: "listen", text: "听译文：朗读译文" },
   { level: 2, id: "indicators", text: "字幕条上的提示" },
   { level: 2, id: "shortcuts", text: "默认快捷键" },
   { level: 2, id: "change-shortcuts", text: "更改快捷键" },
@@ -31,7 +32,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-22",
+  modified: "2026-11-03",
   body: () => `
 ${pageHero({
   crumbs,
@@ -91,6 +92,16 @@ ${overlayShot({ slug: "overlay-custom", lang: "zh", alt: "自定义字幕条：�
 <li><strong>历史记录和导出。</strong>标签和姓名只有在你使用 Pro 套餐并开启“保存历史记录”时才会存入历史记录。此外，复制（所有套餐）和导出为文件（仅 Pro）会把标签和姓名写进文本：即使没有开启“保存历史记录”，你复制的文本或导出的文件里也可能带有姓名（SRT 仅在你选择添加说话人姓名时）。</li>
 </ul>
 <p>局限：声音非常相似的两个人可能共用一个标签，多人同时说话时标签可能出错。暂不支持 Windows；在 Google Meet 和 Zoom 中，应用会显示颜色和“说话人N”，但暂时没有姓名。</p>
+
+<h2 id="listen">听译文：朗读译文</h2>
+<p>在 Windows 上，字幕条有一个<strong>听译文</strong>按钮。打开后，扬声器里的会议声音会被调小，对方每说完一句，译文一确定就会用越南语或英语朗读出来。默认关闭；关闭按钮后一切恢复原样。</p>
+<ul>
+<li><strong>会议音量。</strong>开启期间，字幕条上会出现<em>会议音量</em>调节，用来设置保留的会议声音大小。</li>
+<li><strong>排队的句子和跳过。</strong>句子来得比朗读快时，字幕条会显示排队的句数；点<em>跳过</em>可直接跳到最新一句。</li>
+<li><strong>不会朗读你自己的话。</strong>只朗读电脑音频的译文。仅采集麦克风时没有可朗读的内容。在同时采集电脑音频和麦克风的模式下，如果应用暂时无法区分你和其他人的声音，就会朗读每一句，字幕条也会提示这一点。</li>
+<li><strong>语音还没准备好。</strong>第一次使用时，应用会在后台下载语音包（约 520 MB），期间字幕条会显示进度。</li>
+</ul>
+<p>限制：只朗读越南语和英语；译文是其他语言时，字幕条会提示。macOS 版没有。连续多次朗读失败时，应用会自动关闭“听译文”并恢复会议音量。</p>
 
 <h2 id="indicators">字幕条上的提示</h2>
 <p>字幕条右上角会显示一个圆点和几条简短的提示：</p>

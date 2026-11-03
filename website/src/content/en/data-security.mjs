@@ -31,7 +31,7 @@ export default {
   description:
     "AI Translator processes audio on your computer and never sends it out. See what stays on your device, where it connects, what servers store, and how to delete it.",
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS, what our servers store and for how long, automatic error reports (what is sent, how to turn them off), the support chat (what is stored, for how long), processors, protections, signing status and how to request deletion.",
   llmTitle: "Data and security in AI Translator",
   body: () => `
@@ -68,6 +68,7 @@ ${facts([
 <tr><th scope="row">Keys, tokens, quota counters</th><td>The history encryption key, license token, trial token and quota counters live in Keychain (macOS) or Credential Manager (Windows).</td></tr>
 <tr><th scope="row">Logs</th><td>Stored on your computer and free of transcript content. Only the part of a log that relates to an error leaves your computer, inside an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>).</td></tr>
 <tr><th scope="row">Glossary, settings, models</th><td>Stored on your computer. Models are downloaded once and run entirely on your computer.</td></tr>
+<tr><th scope="row">Text read aloud (the Listen buttons)</th><td>Read on your computer with the downloaded voice pack. The text and the generated voice are not sent over the network. The voice pack (about 520 MB) is downloaded once from the release server, like the other models.</td></tr>
 </tbody></table></div>
 <p>On macOS, Type &amp; Translate asks for the Accessibility permission only to send the ⌘V paste keys to the chat box you are typing in. The app does not read text, content or the clipboard of other apps; without the permission it only copies the translation for you to paste (see <a href="/en/guide/type-and-translate/#accessibility">Type &amp; Translate</a>).</p>
 

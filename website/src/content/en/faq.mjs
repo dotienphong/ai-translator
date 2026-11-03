@@ -230,6 +230,18 @@ const GROUPS = [
         q: "Does the app update itself?",
         a: `<p>Yes, through the Stable or Beta channel (Settings › General › Update channel). The app checks at launch and every 24 hours, verifies the signature before writing any file, and then invites you to restart when it is idle. To check right away, click <strong>Check for updates</strong> in the block at the top of Settings › General, next to “Version …” (after each check the app shows “Checked at HH:MM:SS”), or choose “Check for updates…” from the app icon menu. The Windows build has the same two channels; you can also run the install command again to update. On the ad-hoc signed macOS build, each update makes macOS ask again with 1 Keychain dialog and possibly the audio-recording permission; the app warns you in advance.</p>`,
       },
+      {
+        q: "Can the app read the translation aloud?",
+        a: `<p>Yes, on Windows. The <strong>Listen</strong> button in the transcript reads the translation of one sentence, and the <strong>Listen</strong> button on the subtitle bar reads each translated sentence from the other side during a meeting while turning the meeting audio down. The voice runs on your computer and needs no internet while reading. It reads Vietnamese and English translations only, and it is not available on macOS. See <a href="/en/features/#read-aloud">Features</a> and the <a href="/en/guide/subtitle-bar-and-shortcuts/#listen">subtitle bar guide</a>.</p>`,
+      },
+      {
+        q: "Does reading aloud download anything, and does my text leave my computer?",
+        a: `<p>It needs one extra download: a voice pack of about 520 MB, which the app fetches once in the background from the project's release server, with the progress shown on the button. After that, reading happens entirely on your computer: the text to read and the generated voice are not sent over the network.</p>`,
+      },
+      {
+        q: "Does Listen also read what I say into the microphone?",
+        a: `<p>No. Listen reads only the translation of the audio coming from the computer (the other side). What you say into the microphone still appears as text and is not read aloud. With microphone-only capture there is nothing to read. In computer audio + microphone mode, if the app cannot yet tell your voice from the others, every sentence is read and the subtitle bar says so.</p>`,
+      },
     ],
   },
 ];
@@ -255,7 +267,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

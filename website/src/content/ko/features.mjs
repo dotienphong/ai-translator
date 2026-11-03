@@ -14,7 +14,7 @@ export default {
     "5개 언어 실시간 번역 자막, 자막 바, 채팅용 입력 번역, 용어집, 기록, TXT/SRT/Markdown 내보내기. 모두 내 컴퓨터에서 오프라인으로 실행됩니다.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   body: () => `
 ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 번역 기능", lead: "AI Translator가 지금 할 수 있는 일을 앱에서 실제로 작동하는 그대로 소개합니다. 유료 요금제에만 있는 기능은 분명히 표시했습니다." })}
 
@@ -23,6 +23,7 @@ ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 �
 <div class="grid grid-4 reveal">
 <a class="card card-link" href="#live-translation"><h3>실시간 번역</h3><p class="muted">5개 언어, 자동 감지</p></a>
 <a class="card card-link" href="#subtitle-bar"><h3>자막 바</h3><p class="muted">끌기, 잠금, 글자 크기 조절</p></a>
+<a class="card card-link" href="#read-aloud"><h3>읽어 주기</h3><p class="muted">번역을 음성으로 듣기 (Windows)</p></a>
 <a class="card card-link" href="#transcript"><h3>대본</h3><p class="muted">기록, 내보내기(Pro)</p></a>
 <a class="card card-link" href="#glossary"><h3>용어집</h3><p class="muted">이름과 용어(Pro)</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>입력 번역</h3><p class="muted">상대방의 언어로 채팅</p></a>
@@ -86,6 +87,32 @@ ${overlayShot({ slug: "overlay-custom", lang: "ko", alt: "큰 글자 크기로 �
 ${appShot({ slug: "app-settings-subtitles", lang: "ko", alt: "자막 설정: 예문 미리보기, 글자 크기, 글자 색, 배경 색, 배경 불투명도, 원문 표시 옵션", caption: "설정 › 자막: 미리보기와 바가 바로 바뀝니다." })}
 </div>
 </div>
+</div></section>
+
+<section class="section" id="read-aloud"><div class="container">
+${sectionHead({ eyebrow: "번역 듣기", title: "화면을 볼 수 없을 때도 번역을 음성으로 들을 수 있습니다", text: "읽어 주기 음성은 내 컴퓨터에서 실행되며 베트남어와 영어를 읽어 줍니다. 현재 Windows에서만 쓸 수 있고, macOS에는 아직 없습니다.", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>자막 바의 ‘번역 듣기’: 회의 중 번역을 읽어 주기</h3>
+<p>자막 바에서 <strong>번역 듣기</strong>를 켜면 스피커로 나오는 회의 소리는 작아지고, 상대방 발언의 번역이 확정될 때마다 한 문장씩 소리 내어 읽어 줍니다.</p>
+${checkList([
+  "<strong>상대방의 말만 읽어 줍니다.</strong> 마이크로 말한 내 말은 지금처럼 글자로만 표시되고 읽어 주지 않습니다",
+  "<strong>회의 음량</strong>으로 남겨 둘 회의 소리의 크기를 조절합니다. 버튼을 끄면 음량이 원래대로 돌아옵니다",
+  "읽는 속도가 문장이 오는 속도를 따라가지 못하면 대기 중인 문장 수가 표시되고, <strong>건너뛰기</strong>를 누르면 가장 최근 문장으로 넘어갑니다",
+  "읽기에 연속으로 여러 번 실패하면 자동으로 꺼지고 회의 음량이 원래대로 돌아옵니다",
+])}
+</div>
+<div class="stack-lg reveal">
+<h3>한 문장만 듣기: 대본의 ‘듣기’ 버튼</h3>
+<p>다시 듣고 싶은 문장은 대본에서 그 행의 <strong>듣기</strong>를 누르세요. 한 번에 한 문장만 읽습니다. 다른 문장을 누르면 그 문장으로 바뀌고, 같은 문장을 다시 누르면 <strong>중지</strong>됩니다.</p>
+${checkList([
+  "번역이 베트남어 또는 영어일 때만 버튼이 나타납니다. 일본어, 중국어, 한국어로 번역한 문장에는 듣기 버튼이 없습니다",
+  "읽어 주기 음성은 모두 내 컴퓨터에서 실행되며, 읽는 동안 인터넷이 필요 없습니다",
+  "음성 팩은 약 520 MB이며, 설치 후 앱이 백그라운드에서 한 번 내려받고, 그동안 버튼에 진행률이 표시됩니다",
+])}
+</div>
+</div>
+${callout({ title: "현재 제한", text: "자막 바의 ‘번역 듣기’와 대본의 ‘듣기’ 버튼은 현재 Windows에서만 쓸 수 있습니다. macOS에서는 쓸 수 없습니다." })}
 </div></section>
 
 <section class="section" id="audio-source"><div class="container">

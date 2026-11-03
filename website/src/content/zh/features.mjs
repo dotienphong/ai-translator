@@ -14,7 +14,7 @@ export default {
     "5 种语言的实时翻译字幕、字幕条、聊天用的输入翻译、术语表、历史记录以及 TXT/SRT/Markdown 导出。全部在你的电脑上离线运行。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   body: () => `
 ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", lead: "这里介绍 AI Translator 目前能做的事，与应用中的实际表现完全一致。只有付费套餐才有的功能都会明确标出。" })}
 
@@ -23,6 +23,7 @@ ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", 
 <div class="grid grid-4 reveal">
 <a class="card card-link" href="#live-translation"><h3>实时翻译</h3><p class="muted">5 种语言，自动检测</p></a>
 <a class="card card-link" href="#subtitle-bar"><h3>字幕条</h3><p class="muted">拖动、锁定、调整字号</p></a>
+<a class="card card-link" href="#read-aloud"><h3>朗读</h3><p class="muted">听译文（Windows）</p></a>
 <a class="card card-link" href="#transcript"><h3>转写记录</h3><p class="muted">历史记录、导出（Pro）</p></a>
 <a class="card card-link" href="#glossary"><h3>术语表</h3><p class="muted">人名和术语（Pro）</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>输入翻译</h3><p class="muted">用对方的语言聊天</p></a>
@@ -86,6 +87,32 @@ ${overlayShot({ slug: "overlay-custom", lang: "zh", alt: "大字号、藏青色�
 ${appShot({ slug: "app-settings-subtitles", lang: "zh", alt: "字幕设置：例句预览、字号、文字颜色、背景颜色、背景不透明度以及显示原文的选项", caption: "设置 › 字幕：预览和字幕条会立即更新。" })}
 </div>
 </div>
+</div></section>
+
+<section class="section" id="read-aloud"><div class="container">
+${sectionHead({ eyebrow: "听译文", title: "不方便看屏幕时，也能听到译文", text: "朗读语音在你的电脑上运行，可朗读越南语和英语。目前只有 Windows 版可用，macOS 版暂时没有。", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>字幕条上的“听译文”：开会时朗读译文</h3>
+<p>在字幕条上打开<strong>听译文</strong>后，扬声器里的会议声音会被调小，对方每说完一句，译文一确定就会被朗读出来。</p>
+${checkList([
+  "<strong>只朗读对方的话。</strong>你对着麦克风说的话仍然以文字显示，不会被朗读",
+  "用<strong>会议音量</strong>调整保留的会议声音大小；关闭按钮后音量恢复原样",
+  "朗读跟不上时，字幕条会显示排队的句数，<strong>跳过</strong>可直接跳到最新一句",
+  "连续多次朗读失败时会自动关闭，并恢复会议音量",
+])}
+</div>
+<div class="stack-lg reveal">
+<h3>听一句：转写记录里的“朗读”按钮</h3>
+<p>想再听一遍某一句，点击转写记录中该行的<strong>朗读</strong>。一次只读一句：点另一句会切换过去，再点同一句则<strong>停止</strong>。</p>
+${checkList([
+  "只有译文是越南语或英语时才显示按钮；译成日语、中文、韩语的句子没有朗读按钮",
+  "朗读语音完全在你的电脑上运行，朗读时不需要联网",
+  "语音包约 520 MB，安装后由应用在后台下载一次，下载期间按钮会显示进度",
+])}
+</div>
+</div>
+${callout({ title: "当前限制", text: "字幕条上的“听译文”和转写记录里的“朗读”按钮目前只有 Windows 版可用，macOS 版没有。" })}
 </div></section>
 
 <section class="section" id="audio-source"><div class="container">

@@ -230,6 +230,18 @@ const GROUPS = [
         q: "App có tự cập nhật không?",
         a: `<p>Có, qua kênh Ổn định hoặc Beta (Cài đặt › Chung › Kênh cập nhật). App kiểm tra khi khởi động và mỗi 24 giờ, kiểm chữ ký trước khi ghi file rồi mời bạn khởi động lại khi app rảnh. Muốn kiểm ngay, bấm <strong>Kiểm tra cập nhật</strong> ở khối đầu trang Cài đặt › Chung, cạnh dòng “Phiên bản …” (mỗi lần kiểm xong app ghi “Kiểm tra lúc HH:MM:SS”), hoặc chọn “Kiểm tra cập nhật…” ở menu của biểu tượng app. Bản Windows cũng có hai kênh này; bạn có thể chạy lại lệnh cài để cập nhật. Trên macOS bản ký ad-hoc, mỗi lần cập nhật macOS hỏi lại 1 hộp thoại Keychain và có thể hỏi lại quyền ghi âm; app báo trước.</p>`,
       },
+      {
+        q: "App có đọc bản dịch thành tiếng không?",
+        a: `<p>Có, trên Windows. Nút <strong>Nghe</strong> ở bản chép lời đọc bản dịch của một câu, còn nút <strong>Nghe dịch</strong> trên thanh phụ đề đọc từng câu dịch của người đối diện trong lúc họp và hạ nhỏ tiếng cuộc họp. Giọng đọc chạy trên máy bạn, không cần internet khi đọc. Chỉ đọc bản dịch tiếng Việt và tiếng Anh; macOS chưa có. Xem <a href="/tinh-nang/#nghe-dich">Tính năng</a> và <a href="/huong-dan/thanh-phu-de-va-phim-tat/#nghe-dich">hướng dẫn thanh phụ đề</a>.</p>`,
+      },
+      {
+        q: "Đọc thành tiếng có phải tải thêm gì không? Chữ cần đọc có gửi đi đâu không?",
+        a: `<p>Có tải thêm một lần: gói giọng đọc khoảng 520 MB, app tải nền từ máy chủ phát hành sau khi cài và nút hiện tiến độ. Tải xong thì đọc hoàn toàn trên máy: chữ cần đọc và âm thanh giọng đọc không gửi qua mạng.</p>`,
+      },
+      {
+        q: "Nghe dịch có đọc cả lời tôi nói qua micro không?",
+        a: `<p>Không. Nghe dịch chỉ đọc bản dịch của âm thanh phát ra từ máy (người đối diện). Lời bạn nói qua micro vẫn hiện chữ như cũ và không bị đọc. Chế độ chỉ micro thì không có gì để đọc. Ở chế độ âm thanh máy + micro, nếu app chưa phân biệt được lời của bạn với người khác thì mọi câu đều được đọc và thanh phụ đề báo điều đó.</p>`,
+      },
     ],
   },
 ];
@@ -255,7 +267,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

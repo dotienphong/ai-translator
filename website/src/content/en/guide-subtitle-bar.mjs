@@ -13,6 +13,7 @@ const toc = [
   { level: 2, id: "scroll", text: "Scroll back through sentences" },
   { level: 2, id: "style", text: "Font size, colors, opacity" },
   { level: 2, id: "speakers", text: "Who is speaking: colors and names" },
+  { level: 2, id: "listen", text: "Listen: hear the translation read aloud" },
   { level: 2, id: "indicators", text: "Indicators on the bar" },
   { level: 2, id: "shortcuts", text: "Default shortcuts" },
   { level: 2, id: "change-shortcuts", text: "Change a shortcut" },
@@ -31,7 +32,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-09",
+  modified: "2026-11-03",
   llm: "Using the subtitle bar: move, resize, lock (click-through), show/hide, scroll back; font size, colors and opacity; default macOS and Windows shortcuts; changing shortcuts; the menu bar menu.",
   llmTitle: "The subtitle bar and shortcuts",
   body: () => `
@@ -93,6 +94,16 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Customized subtitle ba
 <li><strong>History and exports.</strong> Labels and names are saved to History only with a Pro plan and only when you turn on Save history. In addition, the Copy button (every plan) and exporting to a file (Pro only) put the labels and names into the text: a name can be in text you copy or a file you export even if Save history is off (in SRT files, when you choose to add speaker names).</li>
 </ul>
 <p>Limits: two people with very similar voices can share one label, and when several people talk over each other a label can be wrong. Windows is not supported yet, and in Google Meet and Zoom the app shows colors and “Speaker N” but no names (not available yet).</p>
+
+<h2 id="listen">Listen: hear the translation read aloud</h2>
+<p>On Windows, the subtitle bar has a <strong>Listen</strong> button. Turn it on and the meeting audio from your speakers is turned down, while each newly finished translated sentence from the other side is read aloud in Vietnamese or English. It is off by default; turn the button off and everything goes back to normal.</p>
+<ul>
+<li><strong>Meeting volume.</strong> While it is on, the bar shows a <em>Meeting volume</em> control for the level of the meeting audio that remains.</li>
+<li><strong>Queued sentences and Skip.</strong> If sentences arrive faster than they are read, the bar shows how many are queued; <em>Skip</em> jumps to the latest one.</li>
+<li><strong>Your own words are not read.</strong> Only the translation of the computer's audio is read. With microphone-only capture there is nothing to read. In computer audio + microphone mode, if the app cannot yet tell your voice from the others, every sentence is read and the bar says so.</li>
+<li><strong>Voice not ready.</strong> The first time, the app downloads the voice pack (about 520 MB) in the background; the bar shows the progress meanwhile.</li>
+</ul>
+<p>Limits: only Vietnamese and English are read; for other target languages the bar says so. It is not available on macOS. After several read errors in a row, the app turns Listen off by itself and restores the meeting volume.</p>
 
 <h2 id="indicators">Indicators on the bar</h2>
 <p>The top-right corner of the bar holds a dot and a few short notes:</p>

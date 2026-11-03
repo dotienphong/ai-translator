@@ -13,6 +13,7 @@ const toc = [
   { level: 2, id: "cuon", text: "Cuộn xem câu cũ" },
   { level: 2, id: "tuy-chinh", text: "Chỉnh cỡ chữ, màu, độ mờ" },
   { level: 2, id: "nguoi-noi", text: "Ai đang nói: màu và tên" },
+  { level: 2, id: "nghe-dich", text: "Nghe dịch: đọc bản dịch thành tiếng" },
   { level: 2, id: "chi-bao", text: "Chỉ báo trên thanh" },
   { level: 2, id: "phim-tat", text: "Phím tắt mặc định" },
   { level: 2, id: "doi-phim-tat", text: "Đổi phím tắt" },
@@ -31,7 +32,7 @@ export default {
   schemaType: "TechArticle",
   breadcrumbs: crumbs,
   published: "2026-10-08",
-  modified: "2026-10-09",
+  modified: "2026-11-03",
   llm: "Dùng thanh phụ đề: kéo, đổi kích thước, khóa click xuyên qua, ẩn/hiện, cuộn câu cũ; chỉnh cỡ chữ, màu, độ mờ; bảng phím tắt mặc định macOS và Windows; đổi phím tắt; menu menu bar.",
   llmTitle: "Thanh phụ đề và phím tắt",
   body: () => `
@@ -93,6 +94,16 @@ ${overlayShot({ slug: "overlay-custom", lang: "vi", alt: "Thanh phụ đề đã
 <li><strong>Lịch sử và xuất file.</strong> Nhãn và tên được lưu vào Lịch sử chỉ khi bạn có gói Pro và chỉ khi bạn bật Lưu lịch sử. Ngoài ra, nút Sao chép (mọi gói) và Xuất ra file (chỉ Pro) đưa nhãn và tên vào văn bản: tên có thể nằm trong văn bản bạn sao chép hay file bạn xuất, kể cả khi chưa bật Lưu lịch sử (với file SRT, khi bạn chọn thêm tên người nói).</li>
 </ul>
 <p>Giới hạn: hai người có giọng rất giống có thể dùng chung một nhãn, và khi nhiều người nói chồng, nhãn có thể sai. Windows chưa hỗ trợ; ở Google Meet và Zoom app hiện màu và “Người N” nhưng chưa có tên tự động.</p>
+
+<h2 id="nghe-dich">Nghe dịch: đọc bản dịch thành tiếng</h2>
+<p>Trên Windows, thanh phụ đề có nút <strong>Nghe dịch</strong>. Bật lên thì tiếng cuộc họp ở loa được hạ nhỏ, còn mỗi câu dịch vừa chốt của người đối diện được đọc thành tiếng bằng tiếng Việt hoặc tiếng Anh. Mặc định nút tắt; tắt nút thì mọi thứ trở lại như cũ.</p>
+<ul>
+<li><strong>Tiếng họp.</strong> Khi bật, thanh hiện phần chỉnh <em>Tiếng họp</em> để đặt mức tiếng họp còn lại.</li>
+<li><strong>Số câu còn chờ và Bỏ qua.</strong> Khi câu đến nhanh hơn lúc đọc, thanh hiện số câu còn chờ; bấm <em>Bỏ qua</em> để nhảy tới câu mới nhất.</li>
+<li><strong>Không đọc lời bạn.</strong> Chỉ đọc bản dịch của âm thanh máy. Chế độ chỉ micro thì không có gì để đọc. Ở chế độ âm thanh máy + micro, nếu app chưa phân biệt được lời của bạn với người khác thì mọi câu đều được đọc và thanh báo điều đó.</li>
+<li><strong>Giọng đọc chưa sẵn sàng.</strong> Lần đầu, app tải gói giọng đọc (khoảng 520 MB) trong nền; trong lúc đó thanh hiện tiến độ.</li>
+</ul>
+<p>Giới hạn: chỉ đọc tiếng Việt và tiếng Anh; với ngôn ngữ dịch khác, thanh báo chỉ có hai ngôn ngữ này. macOS chưa có Nghe dịch. Nếu đọc lỗi nhiều lần liên tiếp, app tự tắt Nghe dịch và trả tiếng họp về như cũ.</p>
 
 <h2 id="chi-bao">Chỉ báo trên thanh</h2>
 <p>Ở góc trên bên phải của thanh có chấm tròn và các nhãn nhắc ngắn:</p>

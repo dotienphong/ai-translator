@@ -14,7 +14,7 @@ export default {
     "5 言語のリアルタイム翻訳字幕、字幕バー、チャット用の入力翻訳、用語集、履歴、TXT/SRT/Markdown 書き出し。すべてパソコン上でオフラインで動きます。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   body: () => `
 ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイム翻訳機能", lead: "AI Translator が今できることを、アプリでの実際の動きそのままにご紹介します。有料プランだけの機能ははっきり示しています。" })}
 
@@ -23,6 +23,7 @@ ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイ
 <div class="grid grid-4 reveal">
 <a class="card card-link" href="#live-translation"><h3>リアルタイム翻訳</h3><p class="muted">5 言語、自動検出</p></a>
 <a class="card card-link" href="#subtitle-bar"><h3>字幕バー</h3><p class="muted">ドラッグ、ロック、文字サイズ変更</p></a>
+<a class="card card-link" href="#read-aloud"><h3>読み上げ</h3><p class="muted">翻訳を音声で聞く（Windows）</p></a>
 <a class="card card-link" href="#transcript"><h3>文字起こし</h3><p class="muted">履歴、書き出し（Pro）</p></a>
 <a class="card card-link" href="#glossary"><h3>用語集</h3><p class="muted">人名と用語（Pro）</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>入力翻訳</h3><p class="muted">相手の言語でチャット</p></a>
@@ -86,6 +87,32 @@ ${overlayShot({ slug: "overlay-custom", lang: "ja", alt: "大きな文字サイ�
 ${appShot({ slug: "app-settings-subtitles", lang: "ja", alt: "字幕の設定：例文のプレビュー、文字サイズ、文字色、背景色、背景の不透明度、原文を表示する設定", caption: "設定 › 字幕：プレビューとバーはすぐに反映されます。" })}
 </div>
 </div>
+</div></section>
+
+<section class="section" id="read-aloud"><div class="container">
+${sectionHead({ eyebrow: "翻訳を聞く", title: "画面を見られないときも、翻訳を音声で聞けます", text: "読み上げ音声はお使いのパソコン上で動き、ベトナム語と英語を読み上げます。現在は Windows で使えます。macOS ではまだ使えません。", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>字幕バーの「翻訳を聞く」：会議中に翻訳を読み上げ</h3>
+<p>字幕バーの<strong>翻訳を聞く</strong>をオンにすると、スピーカーから出る会議の音声が小さくなり、相手の発言の翻訳が確定するたびに 1 文ずつ音声で読み上げられます。</p>
+${checkList([
+  "<strong>読み上げるのは相手の発言だけです。</strong>マイクで話したあなたの言葉は、これまでどおり文字で表示され、読み上げられません",
+  "<strong>会議の音量</strong>で、残す会議音声のレベルを調整できます。ボタンをオフにすると音量は元に戻ります",
+  "読み上げが追いつかないときは、待っている文の数が表示され、<strong>スキップ</strong>で最新の文に移れます",
+  "読み上げに続けて失敗すると、自動的にオフになり、会議の音量も元に戻ります",
+])}
+</div>
+<div class="stack-lg reveal">
+<h3>1 文だけ聞く：文字起こしの「聞く」ボタン</h3>
+<p>もう一度聞きたい文は、文字起こしのその行にある<strong>聞く</strong>を押します。読み上げは一度に 1 文だけです。別の文を押すとそちらに切り替わり、同じ文をもう一度押すと<strong>停止</strong>します。</p>
+${checkList([
+  "翻訳がベトナム語または英語のときだけボタンが表示されます。日本語、中国語、韓国語に翻訳した文には「聞く」ボタンはありません",
+  "読み上げ音声はすべてパソコン上で動き、読み上げ中にインターネットは不要です",
+  "音声パックは約 520 MB です。インストール後にアプリがバックグラウンドで一度だけダウンロードし、その間はボタンに進捗が表示されます",
+])}
+</div>
+</div>
+${callout({ title: "現在の制限", text: "字幕バーの「翻訳を聞く」と文字起こしの「聞く」ボタンは、現在 Windows でのみ使えます。macOS では使えません。" })}
 </div></section>
 
 <section class="section" id="audio-source"><div class="container">

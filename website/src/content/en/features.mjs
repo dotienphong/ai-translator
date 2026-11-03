@@ -14,7 +14,7 @@ export default {
     "Live translated subtitles in 5 languages, a subtitle bar, Type & Translate for chat, glossary, history and TXT/SRT/Markdown export. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
   llmTitle: "AI Translator features",
   body: () => `
@@ -25,6 +25,7 @@ ${pageHero({ crumbs, title: "Live meeting translation features, running on your 
 <div class="grid grid-4 reveal">
 <a class="card card-link" href="#live-translation"><h3>Live translation</h3><p class="muted">5 languages, auto-detect</p></a>
 <a class="card card-link" href="#subtitle-bar"><h3>Subtitle bar</h3><p class="muted">Drag, lock, resize the text</p></a>
+<a class="card card-link" href="#read-aloud"><h3>Read aloud</h3><p class="muted">Hear the translation, Windows</p></a>
 <a class="card card-link" href="#transcript"><h3>Transcript</h3><p class="muted">History, export (Pro)</p></a>
 <a class="card card-link" href="#glossary"><h3>Glossary</h3><p class="muted">Names and terms (Pro)</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>Type &amp; Translate</h3><p class="muted">Chat in the other person's language</p></a>
@@ -88,6 +89,32 @@ ${overlayShot({ slug: "overlay-custom", lang: "en", alt: "Subtitle bar with yell
 ${appShot({ slug: "app-settings-subtitles", lang: "en", alt: "Subtitles settings: a sample-sentence preview, font size, text color, background color, background opacity and the option to show the original text", caption: "Settings › Subtitles: the preview and the bar update immediately." })}
 </div>
 </div>
+</div></section>
+
+<section class="section" id="read-aloud"><div class="container">
+${sectionHead({ eyebrow: "Hear the translation", title: "Hear the translation read aloud, when you cannot watch the screen", text: "The voice runs on your computer and reads Vietnamese and English. It is available on Windows today; macOS does not have it yet.", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>Listen on the subtitle bar: the translation read aloud in the meeting</h3>
+<p>Turn on <strong>Listen</strong> on the subtitle bar: the meeting audio from your speakers is turned down, and each newly finished translated sentence from the other side is read aloud.</p>
+${checkList([
+  "<strong>Only the other side is read.</strong> What you say into the microphone still appears as text and is not read aloud",
+  "Set the level with the <strong>Meeting volume</strong> control; turn the button off and the volume goes back to normal",
+  "If sentences arrive faster than they are read, the bar shows how many are queued and <strong>Skip</strong> jumps to the latest one",
+  "After several read errors in a row, it turns itself off and restores the meeting volume",
+])}
+</div>
+<div class="stack-lg reveal">
+<h3>Hear one sentence: the Listen button in the transcript</h3>
+<p>To hear a sentence again, press <strong>Listen</strong> on its line in the transcript. Only one sentence is read at a time: press another and it switches; press the same one again to <strong>Stop</strong>.</p>
+${checkList([
+  "The button appears only when the translation is Vietnamese or English; sentences translated into Japanese, Chinese or Korean have no Listen button",
+  "The voice runs entirely on your computer and needs no internet while reading",
+  "The voice pack is about 520 MB; the app downloads it once in the background after installing, and the button shows the progress meanwhile",
+])}
+</div>
+</div>
+${callout({ title: "Current limits", text: "Listen on the subtitle bar and the Listen button in the transcript are available on Windows only. They are not available on macOS." })}
 </div></section>
 
 <section class="section" id="audio-source"><div class="container">

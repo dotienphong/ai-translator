@@ -31,7 +31,7 @@ export default {
   description:
     "AI Translator 在你的电脑上处理音频，从不外传。了解哪些数据留在设备上、应用连接到哪里、服务器保存什么，以及如何删除。",
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-03",
   body: () => `
 ${pageHero({
   crumbs,
@@ -66,6 +66,7 @@ ${facts([
 <tr><th scope="row">密钥、令牌、翻译时长计数</th><td>历史记录的加密密钥、许可证令牌、试用令牌和翻译时长计数保存在钥匙串（macOS）或凭据管理器（Windows）中。</td></tr>
 <tr><th scope="row">日志</th><td>保存在你的电脑上，不含转写内容。只有与错误相关的那部分日志会离开你的电脑，并且是放在已去除个人数据的错误报告中（见<a href="#error-reports">错误报告</a>）。</td></tr>
 <tr><th scope="row">术语表、设置、模型</th><td>保存在你的电脑上。模型只需下载一次，之后完全在你的电脑上运行。</td></tr>
+<tr><th scope="row">被朗读的文字（“朗读”“听译文”）</th><td>使用已下载的语音包在你的电脑上朗读。要朗读的文字和生成的语音都不会通过网络发送。语音包（约 520 MB）和其他模型一样，从发布服务器下载一次。</td></tr>
 </tbody></table></div>
 <p>在 macOS 上，输入翻译请求辅助功能权限，只是为了向你正在输入的聊天框发送粘贴键 ⌘V。应用不会读取其他应用的文字、内容或剪贴板；没有这项权限时，应用只会复制译文，由你自己粘贴（见<a href="/zh/guide/type-and-translate/#accessibility">输入翻译</a>）。</p>
 
