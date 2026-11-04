@@ -255,7 +255,8 @@ pub struct Settings {
     pub source_lock: Option<Lang>,
     pub audio_source: AudioSource,
     /// Thu âm thanh máy hay micro (spec 2026-10-24-nguon-micro §3.1, §4). File của bản trước chưa có khóa này thì lấy
-    /// mặc định `playback` (`migrate::load` ghép từng khóa), người dùng cũ không đổi gì.
+    /// mặc định `playback` (`migrate::load` ghép từng khóa), người dùng cũ không đổi gì. Chỉ máy cài mới được đặt `both` ở lần
+    /// chạy đầu ([`Settings::apply_first_run_defaults`]).
     pub capture_mode: CaptureMode,
     /// Micro đã chọn: macOS là UID, Windows là ID endpoint. `None` là micro mặc định của hệ thống, tự theo khi người dùng
     /// đổi micro mặc định.
@@ -324,6 +325,12 @@ const MAX_ID_LEN: usize = 512;
 pub const COMPOSE_HOTKEY: &str = "Ctrl+Alt+G";
 
 impl Settings {
+    /// Lần chạy đầu của máy cài mới (chưa có file cài đặt): "Thu từ" là Âm thanh máy + Micro (chủ dự án, 2026-11-04). Không đổi
+    /// [`Settings::defaults`]: file cũ thiếu khóa `captureMode` vẫn lấy `playback`, nên người dùng cũ không bị đổi nguồn thu.
+    pub fn apply_first_run_defaults(&mut self) {
+        self.capture_mode = CaptureMode::Both;
+    }
+
     /// Giá trị mặc định. Ngôn ngữ đích mặc định theo ngôn ngữ giao diện (§4.1, bước 5).
     pub fn defaults(ui_language: UiLanguage) -> Self {
         let target_language = match ui_language {
@@ -521,6 +528,22 @@ mod tests {
 
     fn rejects(settings: Settings, field: &str, reason: Reason) {
         assert_eq!(settings.validate(), Err(Invalid::new(field, reason)));
+    }
+
+    /// Máy cài mới chọn sẵn Âm thanh máy + Micro; `defaults` (nền cho file cũ thiếu khóa) vẫn là âm thanh máy.
+    #[test]
+    fn a_fresh_install_captures_computer_audio_and_microphone() {
+        let mut fresh = Settings::defaults(UiLanguage::Vi);
+        assert_eq!(fresh.capture_mode, CaptureMode::Playback);
+        fresh.apply_first_run_defaults();
+        assert_eq!(fresh.capture_mode, CaptureMode::Both);
+        assert_eq!(
+            fresh.audio_source,
+            AudioSource::System,
+            "nguồn âm thanh máy vẫn là toàn hệ thống"
+        );
+        assert_eq!(fresh.mic_device, None, "micro mặc định của hệ thống");
+        assert_eq!(fresh.validate(), Ok(()));
     }
 
     #[test]
