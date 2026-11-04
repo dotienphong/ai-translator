@@ -5,7 +5,7 @@ import type { Screen } from "../../lib/ipc";
 import { useApp, useT } from "./appStore";
 import { useLicense } from "./licenseStore";
 import { PlanName } from "./LicenseText";
-import { ICONS, SCREENS } from "./navigation";
+import { ICONS, visibleScreens } from "./navigation";
 import { Notice } from "./Notice";
 import { UpdateModal } from "./UpdateModal";
 import { About } from "./screens/About";
@@ -17,11 +17,13 @@ import { UpgradeScreen } from "./screens/UpgradeScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { SupportScreen } from "./screens/SupportScreen";
 import { TranscriptScreen } from "./screens/TranscriptScreen";
+import { VoiceScreen } from "./screens/VoiceScreen";
 import { useSupport } from "./supportStore";
 
 const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   home: Home,
   compose: ComposeScreen,
+  voice: VoiceScreen,
   transcript: TranscriptScreen,
   history: HistoryScreen,
   glossary: GlossaryScreen,
@@ -35,11 +37,15 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
 // thì đưa focus về tiêu đề của màn hình mới, để người dùng bàn phím và trình đọc màn hình biết đã sang chỗ khác.
 // Cửa sổ hẹp thì thanh điều hướng chỉ còn biểu tượng; tên màn hình vẫn là nhãn của nút (`aria-label`, `title`). Mục Hỗ trợ có chấm
 // đỏ khi có câu trả lời mới chưa xem (spec 2026-10-22-chat-ho-tro-zalo §4); nhãn của nút nói điều đó cho trình đọc màn hình.
+// Mục Giọng đọc chỉ hiện trên Windows (spec 2026-11-04-giong-doc §7).
 export function Shell() {
   const t = useT();
   const screen = useApp((s) => s.screen);
   const navigate = useApp((s) => s.navigate);
   const version = useApp((s) => s.info?.version);
+  // Mục Giọng đọc chỉ có trên Windows; chưa đọc được nền tảng thì chưa hiện mục đó (như macOS).
+  const platform = useApp((s) => s.info?.platform);
+  const screens = visibleScreens(platform ?? "macos");
   const plan = useLicense((s) => s.view?.plan ?? null);
   const unread = useSupport((s) => s.view?.unread ?? false);
   const Body = BODIES[screen];
@@ -59,7 +65,7 @@ export function Shell() {
           <img src={logo} alt="" />
           <span>{t("app.name")}</span>
         </div>
-        {SCREENS.map((s) => {
+        {screens.map((s) => {
           const dot = s === "support" && unread;
           const label = dot ? t("support.unread") : t(`nav.${s}`);
           return (

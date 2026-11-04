@@ -99,6 +99,8 @@ pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
 
 /// Báo giao diện hỏi lại trạng thái giọng đọc (`TTS_CHANGED`). Gửi lỗi thì chỉ ghi log.
 pub fn tts_changed<R: Runtime>(app: &AppHandle<R>) {
+    // Gói giọng đọc đổi: bỏ danh sách giọng đã lưu trước khi giao diện hỏi lại (spec 2026-11-04-giong-doc §5).
+    crate::tts::on_changed(app);
     emit(app, window::MAIN, TTS_CHANGED, ());
     emit(app, overlay::LABEL, TTS_CHANGED, ());
 }

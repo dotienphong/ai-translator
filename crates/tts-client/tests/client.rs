@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tts_client::{Config, Event, Failure, Language, Spawner, TtsClient};
+use tts_client::{Config, Event, Failure, Language, Spawner, SpeakOptions, TtsClient, VoiceList};
 
 fn spawner(envs: &'static [(&'static str, &'static str)]) -> (Spawner, Arc<Mutex<u32>>) {
     let count = Arc::new(Mutex::new(0u32));
@@ -32,8 +32,12 @@ fn fast(sp: Spawner) -> Config {
 }
 
 fn speak(c: &TtsClient, text: &str) -> (u64, Receiver<Event>) {
+    speak_with(c, text, SpeakOptions::default())
+}
+
+fn speak_with(c: &TtsClient, text: &str, opts: SpeakOptions) -> (u64, Receiver<Event>) {
     let (tx, rx) = mpsc::channel();
-    let id = c.speak(Language::Vi, text, None, move |e| {
+    let id = c.speak(Language::Vi, text, opts, move |e| {
         let _ = tx.send(e);
     });
     (id, rx)
@@ -225,4 +229,99 @@ fn shutdown_fails_pending_and_stops_the_worker() {
     c.shutdown();
     assert!(drain(&rx).last().is_some_and(|e| matches!(e, Event::Failed(_))));
     assert!(!c.is_running());
+}
+
+/// Fake worker, với chữ `opts`, phát một khung PCM mã hóa tùy chọn nhận được:
+/// `[độ dài tên giọng + 1 (0 nếu None), byte đầu tên giọng, tốc độ x100, hệ số nghỉ x100]` (0 nếu None).
+#[test]
+fn speak_passes_options_to_worker() {
+    let (sp, _) = spawner(&[]);
+    let c = TtsClient::new(fast(sp));
+    let (_, rx) = speak_with(&c, "opts", SpeakOptions::new(Some("B".into()), 1.25, 0.5));
+    let ev = drain(&rx);
+    assert_eq!(ev[0], Event::Audio(vec![2, b'B' as i16, 125, 50]));
+    assert_eq!(ev.last(), Some(&Event::Done));
+    let (_, rx) = speak_with(&c, "opts", SpeakOptions::default());
+    assert_eq!(drain(&rx)[0], Event::Audio(vec![0, 0, 100, 100]));
+}
+
+/// Tùy chọn ngoài khoảng bị kẹp ở máy khách (khung sai làm worker thoát, tính là một lần chết): `SpeakOptions::new` và cả
+/// `SpeakOptions` dựng thẳng từ trường công khai đều ra khung hợp lệ.
+#[test]
+fn speak_options_are_clamped() {
+    use tts_protocol::{MAX_VOICE_BYTES, PAUSE_RANGE, SPEED_RANGE};
+    let o = SpeakOptions::new(Some("B".into()), 9.0, 0.01);
+    assert_eq!((o.speed, o.pause_scale), (*SPEED_RANGE.end(), *PAUSE_RANGE.start()));
+    let o = SpeakOptions::new(None, -3.0, 50.0);
+    assert_eq!((o.speed, o.pause_scale), (*SPEED_RANGE.start(), *PAUSE_RANGE.end()));
+    let o = SpeakOptions::new(None, f32::NAN, f32::INFINITY);
+    assert_eq!((o.speed, o.pause_scale), (1.0, 1.0));
+    assert_eq!(SpeakOptions::new(Some(String::new()), 1.0, 1.0).voice, None);
+    assert_eq!(
+        SpeakOptions::new(Some("v".repeat(MAX_VOICE_BYTES + 1)), 1.0, 1.0).voice,
+        None
+    );
+    assert_eq!(
+        SpeakOptions::new(Some("v".repeat(MAX_VOICE_BYTES)), 1.0, 1.0)
+            .voice
+            .map(|v| v.len()),
+        Some(MAX_VOICE_BYTES)
+    );
+
+    // Dựng thẳng từ trường công khai: speak() vẫn kẹp, worker không chết.
+    let (sp, count) = spawner(&[]);
+    let c = TtsClient::new(fast(sp));
+    let bad = SpeakOptions {
+        voice: Some("B".repeat(MAX_VOICE_BYTES + 1)),
+        speed: f32::NAN,
+        pause_scale: 99.0,
+    };
+    let (_, rx) = speak_with(&c, "opts", bad);
+    let ev = drain(&rx);
+    assert_eq!(ev[0], Event::Audio(vec![0, 0, 100, 200]));
+    assert_eq!(ev.last(), Some(&Event::Done));
+    assert_eq!(*count.lock().unwrap(), 1);
+}
+
+#[test]
+fn list_voices_returns_names_and_default() {
+    let (sp, count) = spawner(&[]);
+    let c = TtsClient::new(fast(sp));
+    let (tx, rx) = mpsc::channel();
+    c.list_voices(move |r| {
+        let _ = tx.send(r);
+    });
+    let got = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+    assert_eq!(
+        got,
+        Ok(VoiceList {
+            names: vec!["A".into(), "B".into()],
+            default: "A".into()
+        })
+    );
+    assert_eq!(*count.lock().unwrap(), 1, "chạy lười như warmup");
+}
+
+#[test]
+fn list_voices_on_old_protocol_worker_fails_disabled() {
+    let (sp, _) = spawner(&[("FAKE_PROTOCOL", "2")]);
+    let c = TtsClient::new(fast(sp));
+    let (tx, rx) = mpsc::channel();
+    c.list_voices(move |r| {
+        let _ = tx.send(r);
+    });
+    assert!(matches!(
+        rx.recv_timeout(Duration::from_secs(5)).unwrap(),
+        Err(Failure::Disabled(_))
+    ));
+}
+
+#[test]
+fn old_protocol_worker_is_disabled() {
+    let (sp, count) = spawner(&[("FAKE_PROTOCOL", "2")]);
+    let c = TtsClient::new(fast(sp));
+    let (_, rx) = speak(&c, "xin chào");
+    assert!(matches!(drain(&rx).last(), Some(Event::Failed(Failure::Disabled(r))) if r.contains("giao thức")));
+    assert_eq!(*count.lock().unwrap(), 1, "không thử lại");
+    assert!(c.disabled_reason().is_some());
 }

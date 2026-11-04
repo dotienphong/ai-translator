@@ -480,6 +480,34 @@ mod tests {
         assert!(!loaded.settings.speaker_diarization && loaded.settings.speaker_names);
     }
 
+    /// Spec 2026-11-04-giong-doc §4: file của bản trước chưa có năm khóa `tts*` thì nhận mặc định, giá trị khác không đổi, không
+    /// phải ghi lại file.
+    #[test]
+    fn old_settings_file_gets_tts_defaults() {
+        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark", "micEndSilenceMs": 200 }));
+        let loaded = load(raw, defaults());
+        let s = &loaded.settings;
+        assert_eq!(
+            (
+                s.tts_voice_vi.clone(),
+                s.tts_voice_en.clone(),
+                s.tts_volume,
+                s.tts_speed,
+                s.tts_pause
+            ),
+            (
+                Some("Thục Đoan".to_string()),
+                Some("Đức Trí".to_string()),
+                100,
+                1.0,
+                1.0
+            )
+        );
+        assert_eq!(s.mic_end_silence_ms, 200, "khóa khác giữ nguyên");
+        assert!(loaded.rejected.is_empty());
+        assert!(!loaded.needs_save(), "khóa thiếu thì không phải ghi lại file");
+    }
+
     /// Spec 2026-10-24-nguon-micro §4: file của bản trước chưa có ba khóa nguồn micro thì người dùng cũ không đổi gì (âm
     /// thanh máy, micro mặc định, lọc ồn bật), không phải ghi lại file. Giá trị lạ thì về mặc định.
     #[test]

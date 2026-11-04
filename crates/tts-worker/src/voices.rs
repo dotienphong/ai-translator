@@ -2,6 +2,7 @@
 //! Không dùng nhân bản giọng nên không cần bộ mã hóa người nói hay khử nhiễu.
 
 use serde::Deserialize;
+use serde::de::IgnoredAny;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -78,9 +79,69 @@ impl Voices {
     }
 }
 
+/// Chỉ đọc tên giọng và tên mặc định, không giải mã vector hay mã tham chiếu (cho `ListVoices`, không nạp model).
+/// Mặc định theo đúng quy tắc của [`Voices::parse`]: `default_voice` nếu có trong danh sách, không thì tên đầu theo thứ tự chữ.
+pub fn list_names(path: &Path) -> Result<(Vec<String>, String), Box<dyn std::error::Error>> {
+    #[derive(Deserialize)]
+    struct NamesOnly {
+        #[serde(default)]
+        default_voice: Option<String>,
+        presets: HashMap<String, IgnoredAny>,
+    }
+    let raw: NamesOnly = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+    let mut names: Vec<String> = raw.presets.into_keys().collect();
+    names.sort_unstable();
+    let default = raw
+        .default_voice
+        .filter(|d| names.contains(d))
+        .or_else(|| names.first().cloned())
+        .ok_or("không có giọng nào")?;
+    Ok((names, default))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Ghi `json` ra file tạm riêng cho từng test rồi gọi `list_names`.
+    fn list_json(tag: &str, json: &str) -> Result<(Vec<String>, String), Box<dyn std::error::Error>> {
+        let path = std::env::temp_dir().join(format!("tts-worker-voices-{tag}-{}.json", std::process::id()));
+        std::fs::write(&path, json).unwrap();
+        let r = list_names(&path);
+        let _ = std::fs::remove_file(&path);
+        r
+    }
+
+    #[test]
+    fn list_names_sorted_with_default() {
+        let j = r#"{"default_voice":"Hải Đăng","presets":{
+            "Ngọc Lan":{"speaker_emb":[1],"codes":[[1,2]]},
+            "Hải Đăng":{"speaker_emb":[2],"codes":[[3,4]]},
+            "An":{"speaker_emb":[3],"codes":[[5,6]],"thừa":true}}}"#;
+        let (names, default) = list_json("sorted", j).unwrap();
+        assert_eq!(names, ["An", "Hải Đăng", "Ngọc Lan"]);
+        assert_eq!(default, "Hải Đăng");
+        // Cùng quy tắc với `Voices::parse`.
+        assert_eq!(Voices::parse(j, 2).unwrap().get(None).name, default);
+    }
+
+    #[test]
+    fn list_names_falls_back_to_first_name_when_default_missing() {
+        let j = r#"{"default_voice":"Không có","presets":{"B":{"speaker_emb":[1],"codes":[[1]]},"A":{"speaker_emb":[1],"codes":[[1]]}}}"#;
+        assert_eq!(
+            list_json("missing", j).unwrap(),
+            (vec!["A".into(), "B".into()], "A".into())
+        );
+        let j = r#"{"presets":{"B":{"speaker_emb":[1],"codes":[[1]]},"A":{"speaker_emb":[1],"codes":[[1]]}}}"#;
+        assert_eq!(list_json("absent", j).unwrap().1, "A");
+    }
+
+    #[test]
+    fn list_names_rejects_empty_presets() {
+        assert!(list_json("empty", r#"{"default_voice":"A","presets":{}}"#).is_err());
+        assert!(list_json("broken", "{không phải json").is_err());
+        assert!(list_names(Path::new("/không/có/file/này.json")).is_err());
+    }
 
     const J: &str = r#"{"default_voice":"B","presets":{"A":{"speaker_emb":[1,2],"codes":[[1,2],[3,4]]},"B":{"speaker_emb":[3],"codes":[[5,6]]}}}"#;
 

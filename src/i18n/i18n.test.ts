@@ -47,6 +47,9 @@ describe("từ điển giao diện", () => {
         "license.standing.free",
         // Mẫu ghép hai nhãn đã dịch ("{source} + {mic}"): không có chữ nào để dịch.
         "home.audioSource.both",
+        // Câu mẫu Nghe thử ở màn hình Giọng đọc: đọc bằng tiếng của khối, giống nhau ở mọi ngôn ngữ giao diện.
+        "voice.sample.vi",
+        "voice.sample.en",
       ].sort(),
     );
   });

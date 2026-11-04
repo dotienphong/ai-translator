@@ -110,6 +110,8 @@ fn main() {
                 "tts_cancel",
                 "tts_mark_playing",
                 "tts_stop",
+                "tts_list_voices",
+                "tts_preview",
                 "overlay_listen_set",
                 "overlay_listen_status",
                 "overlay_tts_status",

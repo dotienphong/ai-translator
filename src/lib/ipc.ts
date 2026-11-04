@@ -74,6 +74,13 @@ export interface Settings {
   vadEndSilenceMs: number;
   // Như `vadEndSilenceMs`, riêng cho chế độ có micro (micro, âm thanh máy + micro). Mặc định 50 ms.
   micEndSilenceMs: number;
+  // Giọng đọc bản dịch (spec 2026-11-04-giong-doc §4). Tên giọng cho đích tiếng Việt / tiếng Anh, null là giọng mặc định của gói.
+  ttsVoiceVi: string | null;
+  ttsVoiceEn: string | null;
+  // Âm lượng 0–100, tốc độ 0,8–1,3, hệ số khoảng nghỉ giữa các câu 0,5–2,0.
+  ttsVolume: number;
+  ttsSpeed: number;
+  ttsPause: number;
   overlay: {
     fontSize: number;
     // Không còn dùng: thanh giữ mọi câu và cuộn được (§4.4). Giữ khóa để file cài đặt cũ vẫn đọc được.
@@ -288,6 +295,13 @@ export interface TtsStatus {
 // `code`: `cancelled`, `modelMissing`, `badRequest`, `inference`, `workerDied`, `disabled`.
 export type TtsControl = { kind: "done" } | { kind: "failed"; code: string };
 
+// Giọng có trong gói giọng đọc đã cài (`tts::TtsVoices`, spec 2026-11-04-giong-doc §5). `default`: giọng dùng khi cài đặt để `null`
+// (hay tên đã lưu không còn trong gói).
+export interface TtsVoices {
+  names: string[];
+  default: string;
+}
+
 // "Nghe dịch" (spec 2026-11-02-nghe-dich-truc-tiep; `listen.rs`). `supported`: nền tảng hỗ trợ hạ âm lượng họp (hiện Windows). `active` ở kết
 // quả của `overlay_listen_set` là yêu cầu; trạng thái thật (kể cả lỗi) tới qua `listen://state`.
 export interface ListenStatus {
@@ -432,7 +446,8 @@ export interface DebugSession {
 
 // "support": màn hình Hỗ trợ (chat, spec 2026-10-22-chat-ho-tro-zalo §4), giữa Nâng cấp và Giới thiệu.
 // "compose": màn hình Gõ dịch (spec 2026-11-02-tach-go-dich-thanh-tab), ngay dưới Màn hình chính; trước đó là nhóm của Cài đặt.
-export type Screen = "home" | "compose" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
+// "voice": màn hình Giọng đọc (spec 2026-11-04-giong-doc §7), ngay dưới Gõ dịch, chỉ trên Windows.
+export type Screen = "home" | "compose" | "voice" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
 export type SettingsGroup =
   | "general"
   | "subtitles"
@@ -654,6 +669,21 @@ export interface Commands {
   tts_status: { args: undefined; result: TtsStatus };
   tts_warmup: { args: undefined; result: null };
   tts_speak: { args: { lang: "vi" | "en"; text: string; onEvent: Channel<ArrayBuffer | TtsControl> }; result: number };
+  // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §5, §7): danh sách giọng của gói, và Nghe thử một câu mẫu với giọng, tốc độ,
+  // khoảng nghỉ, âm lượng đang chọn (chưa cần lưu), cùng đường và cùng kênh như `tts_speak`. Lỗi như `tts_speak`.
+  tts_list_voices: { args: undefined; result: TtsVoices };
+  tts_preview: {
+    args: {
+      lang: "vi" | "en";
+      text: string;
+      voice: string | null;
+      speed: number;
+      pause: number;
+      volume: number;
+      onEvent: Channel<ArrayBuffer | TtsControl>;
+    };
+    result: number;
+  };
   tts_cancel: { args: { id: number }; result: null };
   tts_mark_playing: { args: { ms: number }; result: null };
   tts_stop: { args: undefined; result: null };

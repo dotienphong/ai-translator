@@ -6,9 +6,9 @@ use crate::frames::{is_cue_only, max_expected_frames, syllable_count};
 use crate::phonemize::Phonemizer;
 use crate::sampling::Rng;
 use crate::speech::{
-    BABBLE_MAX_RETRIES, BABBLE_MAX_SYLLABLES, Babble, GAP_MINOR_S, GAP_SENTENCE_S, babble_prefer, babble_suspect,
-    pause_pad_samples,
+    BABBLE_MAX_RETRIES, BABBLE_MAX_SYLLABLES, Babble, babble_prefer, babble_suspect, gap_seconds, pause_pad_samples,
 };
+use crate::tempo::Tempo;
 use crate::text::{split_into_sentences, split_long};
 use crate::voices::Voices;
 
@@ -25,6 +25,24 @@ pub struct Synth {
     pub params: GenParams,
     pub babble_retries: usize,
     rng: Rng,
+}
+
+/// Tùy chọn đọc của người dùng (spec 2026-11-04-giong-doc-design §5). `Default` = hành vi cũ (1,0 / 1,0).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpeakParams {
+    /// Tốc độ đọc (1,0 = bình thường, bỏ qua hẳn bộ đổi nhịp).
+    pub speed: f32,
+    /// Hệ số nhân khoảng nghỉ giữa các đoạn (1,0 = bình thường).
+    pub pause_scale: f32,
+}
+
+impl Default for SpeakParams {
+    fn default() -> Self {
+        Self {
+            speed: 1.0,
+            pause_scale: 1.0,
+        }
+    }
 }
 
 /// Số liệu của một lần đọc (không chứa chữ của người dùng).
@@ -54,10 +72,13 @@ impl Synth {
     }
 
     /// Đọc `text`; mỗi đoạn PCM (kể cả khoảng lặng) đi qua `emit` ngay khi có. `cancelled` được hỏi giữa các khung.
+    /// Tiếng nói của từng đoạn đi qua [`Tempo`] theo `params.speed`; khoảng lặng giữa hai đoạn (tính trên PCM gốc, nhân
+    /// `params.pause_scale`) chèn sau khi đã xả `Tempo` của đoạn trước nên không bị co/giãn.
     pub fn speak(
         &mut self,
         text: &str,
         voice: Option<&str>,
+        params: SpeakParams,
         cancelled: &dyn Fn() -> bool,
         emit: &mut dyn FnMut(&[f32]) -> Result<()>,
     ) -> Result<SpeakStats> {
@@ -69,38 +90,38 @@ impl Synth {
             .flat_map(|s| split_long(s, MAX_UNIT_CHARS))
             .collect();
         let mut prev: Option<(Vec<f32>, String)> = None;
+        // Đầu ra của `Tempo` cho một lần gọi; dùng lại giữa các nhóm để khỏi cấp phát.
+        let mut scratch: Vec<f32> = Vec::new();
         for unit in &units {
             let ph = self.phonemizer.phonemize(unit);
             if ph.trim().is_empty() {
                 continue;
             }
-            let gap = |t: &str| {
-                if t.trim_end().ends_with(['.', '!', '?']) {
-                    GAP_SENTENCE_S
-                } else {
-                    GAP_MINOR_S
-                }
-            };
+            // Mỗi đoạn một `Tempo` riêng: khoảng lặng chèn giữa hai đoạn không đi qua bộ đổi nhịp. Hủy (`?` trả
+            // `Cancelled`) thì bỏ luôn, không xả.
+            let mut tempo = Tempo::new(params.speed, SAMPLE_RATE);
             let streamable = self.stream && !is_cue_only(&ph) && syllable_count(&ph) > BABBLE_MAX_SYLLABLES;
             let wav = if streamable {
                 // Phát dần từng nhóm khung; khoảng nghỉ đầu đoạn tính từ nhóm đầu tiên.
                 let (wav, frames) =
                     self.stream_unit(&ph, &voice.speaker_emb, &voice.codes, cancelled, |chunk, first| {
                         if first && let Some((prev_wav, prev_text)) = &prev {
-                            let pad = pause_pad_samples(prev_wav, chunk, SAMPLE_RATE, gap(prev_text));
+                            let pad = pause_pad_samples(
+                                prev_wav,
+                                chunk,
+                                SAMPLE_RATE,
+                                gap_seconds(prev_text, params.pause_scale),
+                            );
                             if pad > 0 {
                                 emit(&vec![0.0f32; pad])?;
                                 stats.audio_samples += pad;
                             }
                         }
-                        if stats.first_audio_ms == 0 {
-                            stats.first_audio_ms = t0.elapsed().as_millis();
-                        }
-                        stats.audio_samples += chunk.len();
-                        emit(chunk)
+                        emit_speech(&mut tempo, chunk, &mut scratch, &mut stats, t0, emit)
                     })?;
                 stats.units += 1;
                 stats.frames += frames;
+                flush_speech(&mut tempo, &mut scratch, &mut stats, t0, emit)?;
                 wav
             } else {
                 let (wav, frames, retries) = self.gen_unit(&ph, &voice.speaker_emb, &voice.codes, cancelled)?;
@@ -111,22 +132,21 @@ impl Synth {
                     continue;
                 }
                 if let Some((prev_wav, prev_text)) = &prev {
-                    let pad = pause_pad_samples(prev_wav, &wav, SAMPLE_RATE, gap(prev_text));
+                    let pad =
+                        pause_pad_samples(prev_wav, &wav, SAMPLE_RATE, gap_seconds(prev_text, params.pause_scale));
                     if pad > 0 {
                         emit(&vec![0.0f32; pad])?;
                         stats.audio_samples += pad;
                     }
                 }
-                if stats.first_audio_ms == 0 {
-                    stats.first_audio_ms = t0.elapsed().as_millis();
-                }
-                stats.audio_samples += wav.len();
-                emit(&wav)?;
+                emit_speech(&mut tempo, &wav, &mut scratch, &mut stats, t0, emit)?;
+                flush_speech(&mut tempo, &mut scratch, &mut stats, t0, emit)?;
                 wav
             };
             if wav.is_empty() {
                 continue;
             }
+            // Giữ PCM gốc (chưa đổi nhịp) để đo khoảng lặng đuôi cho đoạn sau.
             prev = Some((wav, unit.clone()));
         }
         stats.gen_ms = t0.elapsed().as_millis();
@@ -240,6 +260,53 @@ impl Synth {
         }
         Ok((wav, n, tries))
     }
+}
+
+/// Cho `pcm` (tiếng nói gốc) qua `tempo` rồi phát phần đã chốt. Tốc độ 1,0 phát thẳng `pcm`, không chép.
+fn emit_speech(
+    tempo: &mut Tempo,
+    pcm: &[f32],
+    scratch: &mut Vec<f32>,
+    stats: &mut SpeakStats,
+    t0: std::time::Instant,
+    emit: &mut dyn FnMut(&[f32]) -> Result<()>,
+) -> Result<()> {
+    if tempo.is_bypass() {
+        return emit_counted(pcm, stats, t0, emit);
+    }
+    scratch.clear();
+    tempo.process(pcm, scratch);
+    emit_counted(scratch, stats, t0, emit)
+}
+
+/// Xả phần còn lại của `tempo` ở cuối một đoạn.
+fn flush_speech(
+    tempo: &mut Tempo,
+    scratch: &mut Vec<f32>,
+    stats: &mut SpeakStats,
+    t0: std::time::Instant,
+    emit: &mut dyn FnMut(&[f32]) -> Result<()>,
+) -> Result<()> {
+    scratch.clear();
+    tempo.flush(scratch);
+    emit_counted(scratch, stats, t0, emit)
+}
+
+/// Phát `pcm` (bỏ qua nếu rỗng), đếm số mẫu thực sự phát và ghi mốc âm thanh đầu tiên.
+fn emit_counted(
+    pcm: &[f32],
+    stats: &mut SpeakStats,
+    t0: std::time::Instant,
+    emit: &mut dyn FnMut(&[f32]) -> Result<()>,
+) -> Result<()> {
+    if pcm.is_empty() {
+        return Ok(());
+    }
+    if stats.first_audio_ms == 0 {
+        stats.first_audio_ms = t0.elapsed().as_millis();
+    }
+    stats.audio_samples += pcm.len();
+    emit(pcm)
 }
 
 /// PCM f32 → i16 có kẹp biên.

@@ -1386,6 +1386,47 @@ fieldset {
   border-color: var(--accent, currentColor);
 }
 
+/* Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): hai cột chọn giọng (dropdown), nút Nghe thử dưới ô chọn. */
+.voice-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .voice-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.voice-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.voice-pick select {
+  width: 100%;
+}
+
+.voice-pick .tts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 0;
+  padding: 0.1rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.voice-pick .tts-btn[aria-pressed="true"] {
+  border-color: var(--accent, currentColor);
+}
+
+.field.voice-reset {
+  justify-content: flex-end;
+}
+
 .spk-chip {
   display: inline-flex;
   align-items: center;

@@ -10,6 +10,7 @@ pub mod frames;
 pub mod rep_history;
 pub mod sampling;
 pub mod speech;
+pub mod tempo;
 pub mod text;
 
 #[cfg(feature = "engine")]

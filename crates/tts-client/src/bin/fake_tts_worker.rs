@@ -1,5 +1,7 @@
 //! Worker giả cho test của `tts-client`: nói đúng giao thức, hành vi chọn theo chữ nhận được.
 //! `crash` thoát bất ngờ; `model` trả ModelMissing; `slow` phát 20 đoạn chậm và nghe được Cancel; còn lại trả 3 đoạn rồi Done.
+//! `opts` phát một khung PCM mã hóa `voice/speed/pause_scale` nhận được (xem test `speak_passes_options_to_worker`); `ListVoices`
+//! trả `["A", "B"]` mặc định `A`.
 //! Biến môi trường: `FAKE_PROTOCOL=<số>` báo sai phiên bản; `FAKE_NO_READY=1` không báo Ready.
 
 use std::collections::HashSet;
@@ -41,7 +43,23 @@ fn main() {
     while let Ok(req) = rx.recv() {
         match req {
             Request::Warmup { id } => write_frame(&mut out, &Response::Done { id }).unwrap(),
-            Request::Speak { id, text, .. } => {
+            Request::ListVoices { id } => write_frame(
+                &mut out,
+                &Response::Voices {
+                    id,
+                    names: vec!["A".into(), "B".into()],
+                    default: "A".into(),
+                },
+            )
+            .unwrap(),
+            Request::Speak {
+                id,
+                text,
+                voice,
+                speed,
+                pause_scale,
+                ..
+            } => {
                 if cancels.lock().unwrap().remove(&id) {
                     write_frame(
                         &mut out,
@@ -55,6 +73,15 @@ fn main() {
                 }
                 match text.as_str() {
                     "crash" => std::process::exit(3),
+                    "opts" => {
+                        let x100 = |v: Option<f32>| v.map_or(0, |v| (v * 100.0).round() as i16);
+                        let (len, first) = voice
+                            .as_deref()
+                            .map_or((0, 0), |v| (v.len() as i16 + 1, v.bytes().next().unwrap_or(0) as i16));
+                        let pcm = vec![len, first, x100(speed), x100(pause_scale)];
+                        write_frame(&mut out, &Response::Audio { id, seq: 0, pcm }).unwrap();
+                        write_frame(&mut out, &Response::Done { id }).unwrap();
+                    }
                     "model" => {
                         write_frame(
                             &mut out,

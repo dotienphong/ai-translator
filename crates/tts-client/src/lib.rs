@@ -37,6 +37,7 @@ pub type ExitHook = Arc<dyn Fn(u32) + Send + Sync>;
 
 type WarmupCb = Box<dyn FnOnce(Result<(), Failure>) + Send>;
 type SpeakCb = Box<dyn FnMut(Event) + Send>;
+type VoicesCb = Box<dyn FnOnce(Result<VoiceList, Failure>) + Send>;
 
 pub struct Config {
     pub spawn: Spawner,
@@ -60,6 +61,60 @@ impl Config {
             on_exit: Arc::new(|_| {}),
         }
     }
+}
+
+/// Tùy chọn đọc một câu. `voice = None` dùng giọng mặc định của worker; `speed` trong `SPEED_RANGE`, `pause_scale` trong
+/// `PAUSE_RANGE` của `tts-protocol`. Khung ngoài khoảng làm worker thoát (tính là một lần chết, chết 3 lần thì tắt TTS), nên máy
+/// khách tự kẹp: [`SpeakOptions::new`] và lúc gửi khung đều kẹp `speed`, `pause_scale` vào khoảng (`NaN`/vô cực thành 1,0) và bỏ
+/// tên giọng rỗng hoặc dài quá `MAX_VOICE_BYTES` (thành `None`, dùng giọng mặc định).
+#[derive(Clone, Debug)]
+pub struct SpeakOptions {
+    pub voice: Option<String>,
+    pub speed: f32,
+    pub pause_scale: f32,
+}
+
+impl SpeakOptions {
+    pub fn new(voice: Option<String>, speed: f32, pause_scale: f32) -> Self {
+        Self {
+            voice,
+            speed,
+            pause_scale,
+        }
+        .sanitized()
+    }
+
+    /// Bản đã kẹp vào khoảng hợp lệ của giao thức (các trường công khai có thể bị gán thẳng).
+    fn sanitized(self) -> Self {
+        fn clamp(v: f32, range: &std::ops::RangeInclusive<f32>) -> f32 {
+            if v.is_finite() {
+                v.clamp(*range.start(), *range.end())
+            } else {
+                1.0
+            }
+        }
+        Self {
+            voice: self
+                .voice
+                .filter(|v| !v.is_empty() && v.len() <= tts_protocol::MAX_VOICE_BYTES),
+            speed: clamp(self.speed, &tts_protocol::SPEED_RANGE),
+            pause_scale: clamp(self.pause_scale, &tts_protocol::PAUSE_RANGE),
+        }
+    }
+}
+
+impl Default for SpeakOptions {
+    /// Giọng mặc định, tốc độ và thời gian nghỉ bình thường (1.0).
+    fn default() -> Self {
+        Self::new(None, 1.0, 1.0)
+    }
+}
+
+/// Danh sách giọng của worker và giọng mặc định.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VoiceList {
+    pub names: Vec<String>,
+    pub default: String,
 }
 
 /// Lý do một yêu cầu không xong.
@@ -93,12 +148,16 @@ enum Cmd {
         id: u64,
         lang: Lang,
         text: String,
-        voice: Option<String>,
+        opts: SpeakOptions,
         cb: Box<dyn FnMut(Event) + Send>,
     },
     Warmup {
         id: u64,
         cb: Box<dyn FnOnce(Result<(), Failure>) + Send>,
+    },
+    ListVoices {
+        id: u64,
+        cb: VoicesCb,
     },
     Cancel(u64),
     CancelAll,
@@ -122,6 +181,7 @@ pub struct TtsClient {
 enum Pending {
     Speak(SpeakCb),
     Warmup(Option<WarmupCb>),
+    Voices(Option<VoicesCb>),
 }
 
 struct Proc {
@@ -183,7 +243,7 @@ impl TtsClient {
         &self,
         lang: Lang,
         text: &str,
-        voice: Option<String>,
+        opts: SpeakOptions,
         mut on_event: impl FnMut(Event) + Send + 'static,
     ) -> u64 {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
@@ -195,7 +255,7 @@ impl TtsClient {
             id,
             lang,
             text: text.to_string(),
-            voice,
+            opts,
             cb: Box::new(on_event),
         };
         if self.tx.send(Ev::Cmd(cmd)).is_err() {
@@ -212,6 +272,19 @@ impl TtsClient {
             return;
         }
         let _ = self.tx.send(Ev::Cmd(Cmd::Warmup {
+            id,
+            cb: Box::new(on_done),
+        }));
+    }
+
+    /// Hỏi danh sách giọng; `on_done` nhận kết quả. Chạy lười và theo cùng quy tắc hết giờ/tắt như [`TtsClient::warmup`].
+    pub fn list_voices(&self, on_done: impl FnOnce(Result<VoiceList, Failure>) + Send + 'static) {
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        if let Some(reason) = self.disabled.lock().unwrap().clone() {
+            on_done(Err(Failure::Disabled(reason)));
+            return;
+        }
+        let _ = self.tx.send(Ev::Cmd(Cmd::ListVoices {
             id,
             cb: Box::new(on_done),
         }));
@@ -315,7 +388,8 @@ impl Core {
             match p {
                 Pending::Speak(mut cb) => cb(Event::Failed(f.clone())),
                 Pending::Warmup(Some(cb)) => cb(Err(f.clone())),
-                Pending::Warmup(None) => {}
+                Pending::Voices(Some(cb)) => cb(Err(f.clone())),
+                Pending::Warmup(None) | Pending::Voices(None) => {}
             }
         }
     }
@@ -440,6 +514,7 @@ impl Core {
             match cmd {
                 Cmd::Speak { mut cb, .. } => cb(Event::Failed(Failure::Disabled(reason))),
                 Cmd::Warmup { cb, .. } => cb(Err(Failure::Disabled(reason))),
+                Cmd::ListVoices { cb, .. } => cb(Err(Failure::Disabled(reason))),
                 _ => {}
             }
             return;
@@ -449,7 +524,7 @@ impl Core {
                 id,
                 lang,
                 text,
-                voice,
+                opts,
                 mut cb,
             } => {
                 // Chỉ đọc một câu mỗi lúc: hủy câu đang đọc.
@@ -473,7 +548,15 @@ impl Core {
                     return;
                 }
                 self.pending.insert(id, Pending::Speak(cb));
-                self.send(Request::Speak { id, lang, text, voice });
+                let opts = opts.sanitized();
+                self.send(Request::Speak {
+                    id,
+                    lang,
+                    text,
+                    voice: opts.voice,
+                    speed: Some(opts.speed),
+                    pause_scale: Some(opts.pause_scale),
+                });
             }
             Cmd::Warmup { id, cb } => {
                 if !self.ensure_proc() {
@@ -488,6 +571,20 @@ impl Core {
                 }
                 self.pending.insert(id, Pending::Warmup(Some(cb)));
                 self.send(Request::Warmup { id });
+            }
+            Cmd::ListVoices { id, cb } => {
+                if !self.ensure_proc() {
+                    cb(Err(Failure::Disabled(
+                        self.disabled
+                            .lock()
+                            .unwrap()
+                            .clone()
+                            .unwrap_or_else(|| "không chạy được worker".into()),
+                    )));
+                    return;
+                }
+                self.pending.insert(id, Pending::Voices(Some(cb)));
+                self.send(Request::ListVoices { id });
             }
             Cmd::Cancel(id) => {
                 if self.pending.contains_key(&id) {
@@ -539,6 +636,11 @@ impl Core {
                     _ => {}
                 }
             }
+            Response::Voices { id, names, default } => {
+                if let Some(Pending::Voices(Some(cb))) = self.pending.remove(&id) {
+                    cb(Ok(VoiceList { names, default }));
+                }
+            }
             Response::Failed { id, kind } => {
                 let f = match kind {
                     ErrorKind::Cancelled => Failure::Cancelled,
@@ -549,6 +651,7 @@ impl Core {
                 match self.pending.remove(&id) {
                     Some(Pending::Speak(mut cb)) => cb(Event::Failed(f.clone())),
                     Some(Pending::Warmup(Some(cb))) => cb(Err(f.clone())),
+                    Some(Pending::Voices(Some(cb))) => cb(Err(f.clone())),
                     _ => {}
                 }
                 // Thiếu model là lỗi cấu hình, không phải worker hỏng: không chạy lại vô ích.

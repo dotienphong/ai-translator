@@ -11,6 +11,7 @@ export function CommitRange({
   format,
   onCommit,
   onDraft,
+  disabled,
 }: {
   id: string;
   min: number;
@@ -20,6 +21,7 @@ export function CommitRange({
   format: (v: number) => string;
   onCommit: (v: number) => void;
   onDraft?: (v: number | null) => void;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState<number | null>(null);
   const shown = draft ?? value;
@@ -37,6 +39,7 @@ export function CommitRange({
         max={max}
         step={step}
         value={shown}
+        disabled={disabled}
         onChange={(e) => {
           setDraft(Number(e.target.value));
           onDraft?.(Number(e.target.value));

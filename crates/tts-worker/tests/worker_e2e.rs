@@ -83,6 +83,7 @@ impl Worker {
                     return (pcm, n, first, Err(kind));
                 }
                 Response::Ready { .. } => panic!("Ready lần hai"),
+                Response::Voices { .. } => panic!("Voices khi đang đọc"),
             }
         }
     }
@@ -93,6 +94,8 @@ impl Worker {
             lang,
             text: text.into(),
             voice: None,
+            speed: None,
+            pause_scale: None,
         });
         self.collect(id)
     }
@@ -190,6 +193,8 @@ fn cancel_stops_generation_quickly_and_worker_stays_usable() {
         lang: Lang::Vi,
         text: long,
         voice: None,
+        speed: None,
+        pause_scale: None,
     });
     std::thread::sleep(Duration::from_millis(300));
     let t = Instant::now();
@@ -232,6 +237,8 @@ fn bad_model_dir_reports_model_missing() {
             lang: Lang::Vi,
             text: "x".into(),
             voice: None,
+            speed: None,
+            pause_scale: None,
         },
     )
     .unwrap();

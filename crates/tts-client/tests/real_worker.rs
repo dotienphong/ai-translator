@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tts_client::{Config, Event, Failure, Language, Spawner, TtsClient};
+use tts_client::{Config, Event, Failure, Language, Spawner, SpeakOptions, TtsClient};
 
 fn env(k: &str) -> String {
     std::env::var(k).unwrap_or_else(|_| panic!("thiếu biến môi trường {k}"))
@@ -67,7 +67,7 @@ fn real_worker_through_the_client() {
     c.speak(
         Language::Vi,
         "Cuộc họp bắt đầu lúc ba giờ chiều. Vui lòng tham gia đúng giờ.",
-        None,
+        SpeakOptions::default(),
         move |e| {
             let _ = tx.send(e);
         },
@@ -87,7 +87,7 @@ fn real_worker_through_the_client() {
     c.speak(
         Language::Vi,
         &"Đây là một đoạn dài để đọc lâu. ".repeat(6),
-        None,
+        SpeakOptions::default(),
         move |e| {
             let _ = tx1.send(e);
         },
@@ -98,7 +98,7 @@ fn real_worker_through_the_client() {
     ));
     let t = Instant::now();
     let (tx2, rx2) = mpsc::channel();
-    c.speak(Language::En, "Hello there.", None, move |e| {
+    c.speak(Language::En, "Hello there.", SpeakOptions::default(), move |e| {
         let _ = tx2.send(e);
     });
     let (_, _, fin1) = collect(&rx1);
