@@ -1,0 +1,646 @@
+diff --git a/src-tauri/src/settings/migrate.rs b/src-tauri/src/settings/migrate.rs
+index b4b8b6e..f5a530f 100644
+--- a/src-tauri/src/settings/migrate.rs
++++ b/src-tauri/src/settings/migrate.rs
+@@ -495,7 +495,13 @@ mod tests {
+                 s.tts_speed,
+                 s.tts_pause
+             ),
+-            (None, None, 100, 1.0, 1.0)
++            (
++                Some("Thục Đoan".to_string()),
++                Some("Đức Trí".to_string()),
++                100,
++                1.0,
++                1.0
++            )
+         );
+         assert_eq!(s.mic_end_silence_ms, 200, "khóa khác giữ nguyên");
+         assert!(loaded.rejected.is_empty());
+diff --git a/src-tauri/src/settings/mod.rs b/src-tauri/src/settings/mod.rs
+index 7388105..a39207a 100644
+--- a/src-tauri/src/settings/mod.rs
++++ b/src-tauri/src/settings/mod.rs
+@@ -329,6 +329,11 @@ pub const TTS_PAUSE: std::ops::RangeInclusive<f32> = 0.5..=2.0;
+ /// Độ dài tối đa (byte) của tên giọng. Bằng `tts_protocol::MAX_VOICE_BYTES`; `src-tauri` chưa phụ thuộc `tts-protocol`
+ /// nên giữ hằng cục bộ, đổi một nơi thì đổi nơi kia.
+ pub const TTS_VOICE_MAX_BYTES: usize = 64;
++/// Giọng đọc mặc định theo ngôn ngữ của câu (spec 2026-11-04-giong-doc): máy cài mới và người dùng chưa chọn giọng dùng các giọng
++/// này. Cùng giá trị với `DEFAULT_VOICE` ở giao diện (`src/lib/ttsVoices.ts`). Gói giọng không có tên này thì worker đọc bằng
++/// giọng mặc định của chính gói.
++pub const TTS_DEFAULT_VOICE_VI: &str = "Thục Đoan";
++pub const TTS_DEFAULT_VOICE_EN: &str = "Đức Trí";
+ pub const OVERLAY_FONT_SIZE: std::ops::RangeInclusive<u32> = 14..=48;
+ pub const OVERLAY_LINES: std::ops::RangeInclusive<u32> = 1..=3;
+ pub const OVERLAY_WIDTH: std::ops::RangeInclusive<f64> = 200.0..=10_000.0;
+@@ -368,8 +373,8 @@ impl Settings {
+             mic_noise_filter: true,
+             vad_end_silence_ms: 50,
+             mic_end_silence_ms: 50,
+-            tts_voice_vi: None,
+-            tts_voice_en: None,
++            tts_voice_vi: Some(TTS_DEFAULT_VOICE_VI.to_string()),
++            tts_voice_en: Some(TTS_DEFAULT_VOICE_EN.to_string()),
+             tts_volume: 100,
+             tts_speed: 1.0,
+             tts_pause: 1.0,
+@@ -778,7 +783,7 @@ mod tests {
+         assert_eq!(s.validate(), Ok(()));
+     }
+ 
+-    /// Spec 2026-11-04-giong-doc §4: mặc định giữ nguyên hành vi hiện tại (giọng mặc định, âm lượng đầy, tốc độ và nghỉ chuẩn).
++    /// Spec 2026-11-04-giong-doc §4: mặc định là giọng Thục Đoan (Việt) và Đức Trí (Anh), âm lượng đầy, tốc độ và nghỉ chuẩn.
+     #[test]
+     fn tts_defaults_keep_todays_behaviour() {
+         let s = valid();
+@@ -790,7 +795,13 @@ mod tests {
+                 s.tts_speed,
+                 s.tts_pause
+             ),
+-            (None, None, 100, 1.0, 1.0)
++            (
++                Some("Thục Đoan".to_string()),
++                Some("Đức Trí".to_string()),
++                100,
++                1.0,
++                1.0
++            )
+         );
+         assert_eq!(s.validate(), Ok(()));
+     }
+diff --git a/src-tauri/src/tts.rs b/src-tauri/src/tts.rs
+index 54cbefa..f2122f9 100755
+--- a/src-tauri/src/tts.rs
++++ b/src-tauri/src/tts.rs
+@@ -398,11 +398,14 @@ fn preview_options(voice: Option<String>, speed: f32, pause: f32) -> SpeakOption
+ /// Tùy chọn đọc theo cài đặt: giọng theo ngôn ngữ của câu, tốc độ và khoảng nghỉ kẹp vào khoảng hợp lệ (file cài đặt sửa tay
+ /// sai vẫn đọc bình thường).
+ fn options_for(settings: &Settings, lang: Language) -> SpeakOptions {
+-    let voice = match lang {
+-        Language::Vi => settings.tts_voice_vi.clone(),
+-        Language::En => settings.tts_voice_en.clone(),
++    let (saved, default) = match lang {
++        Language::Vi => (settings.tts_voice_vi.clone(), crate::settings::TTS_DEFAULT_VOICE_VI),
++        Language::En => (settings.tts_voice_en.clone(), crate::settings::TTS_DEFAULT_VOICE_EN),
+     };
+-    preview_options(voice, settings.tts_speed, settings.tts_pause)
++    let mut options = preview_options(saved, settings.tts_speed, settings.tts_pause);
++    // Chưa chọn giọng (file cài đặt của bản trước lưu `null`) hay tên không dùng được: giọng mặc định của ngôn ngữ.
++    options.voice.get_or_insert_with(|| default.to_string());
++    options
+ }
+ 
+ fn check_text(text: &str) -> Result<(), CommandError> {
+@@ -651,11 +654,22 @@ mod tests {
+         let s = Settings::defaults(crate::settings::UiLanguage::Vi);
+         for lang in [Language::Vi, Language::En] {
+             let o = options_for(&s, lang);
+-            assert_eq!(o.voice, None);
+             assert_eq!(o.speed, 1.0);
+             assert_eq!(o.pause_scale, 1.0);
+         }
+         assert_eq!(s.tts_volume, 100);
++        assert_eq!(options_for(&s, Language::Vi).voice.as_deref(), Some("Thục Đoan"));
++        assert_eq!(options_for(&s, Language::En).voice.as_deref(), Some("Đức Trí"));
++    }
++
++    #[test]
++    fn options_use_the_language_default_when_no_voice_was_saved() {
++        // File cài đặt của bản trước lưu `null`: đọc bằng giọng mặc định của ngôn ngữ, không phải giọng mặc định của gói.
++        let mut s = Settings::defaults(crate::settings::UiLanguage::Vi);
++        s.tts_voice_vi = None;
++        s.tts_voice_en = None;
++        assert_eq!(options_for(&s, Language::Vi).voice.as_deref(), Some("Thục Đoan"));
++        assert_eq!(options_for(&s, Language::En).voice.as_deref(), Some("Đức Trí"));
+     }
+ 
+     #[test]
+@@ -698,8 +712,8 @@ mod tests {
+         let mut s = Settings::defaults(crate::settings::UiLanguage::Vi);
+         s.tts_voice_vi = Some(String::new());
+         s.tts_voice_en = Some("x".repeat(settings::TTS_VOICE_MAX_BYTES + 1));
+-        assert_eq!(options_for(&s, Language::Vi).voice, None);
+-        assert_eq!(options_for(&s, Language::En).voice, None);
++        assert_eq!(options_for(&s, Language::Vi).voice.as_deref(), Some("Thục Đoan"));
++        assert_eq!(options_for(&s, Language::En).voice.as_deref(), Some("Đức Trí"));
+         let longest = "x".repeat(settings::TTS_VOICE_MAX_BYTES);
+         assert_eq!(preview_options(Some(longest.clone()), 1.0, 1.0).voice, Some(longest));
+         let o = preview_options(Some(String::new()), f32::NAN, 7.0);
+diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index c0ff5ec..26837fa 100755
+--- a/src/i18n/en.ts
++++ b/src/i18n/en.ts
+@@ -647,7 +647,6 @@ export const en = {
+   "voice.title": "Reading",
+   "voice.lang.vi": "Vietnamese voice",
+   "voice.lang.en": "English voice",
+-  "voice.default": "Default",
+   "voice.region.north": "North",
+   "voice.region.central": "Central",
+   "voice.region.south": "South",
+diff --git a/src/i18n/ja.ts b/src/i18n/ja.ts
+index d3b3cca..ad89e10 100755
+--- a/src/i18n/ja.ts
++++ b/src/i18n/ja.ts
+@@ -646,7 +646,6 @@ export const ja: Record<MessageKey, string> = {
+   "voice.title": "読み上げ方",
+   "voice.lang.vi": "ベトナム語の音声",
+   "voice.lang.en": "英語の音声",
+-  "voice.default": "既定",
+   "voice.region.north": "北部",
+   "voice.region.central": "中部",
+   "voice.region.south": "南部",
+diff --git a/src/i18n/ko.ts b/src/i18n/ko.ts
+index 13f6daa..875df93 100755
+--- a/src/i18n/ko.ts
++++ b/src/i18n/ko.ts
+@@ -646,7 +646,6 @@ export const ko: Record<MessageKey, string> = {
+   "voice.title": "읽기 방식",
+   "voice.lang.vi": "베트남어 음성",
+   "voice.lang.en": "영어 음성",
+-  "voice.default": "기본값",
+   "voice.region.north": "북부",
+   "voice.region.central": "중부",
+   "voice.region.south": "남부",
+diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index 72c0cb9..cc08b40 100755
+--- a/src/i18n/vi.ts
++++ b/src/i18n/vi.ts
+@@ -646,7 +646,6 @@ export const vi: Record<MessageKey, string> = {
+   "voice.title": "Cách đọc",
+   "voice.lang.vi": "Giọng tiếng Việt",
+   "voice.lang.en": "Giọng tiếng Anh",
+-  "voice.default": "Mặc định",
+   "voice.region.north": "Miền Bắc",
+   "voice.region.central": "Miền Trung",
+   "voice.region.south": "Miền Nam",
+diff --git a/src/i18n/zh.ts b/src/i18n/zh.ts
+index 0f1474c..92fdcca 100755
+--- a/src/i18n/zh.ts
++++ b/src/i18n/zh.ts
+@@ -646,7 +646,6 @@ export const zh: Record<MessageKey, string> = {
+   "voice.title": "朗读方式",
+   "voice.lang.vi": "越南语语音",
+   "voice.lang.en": "英语语音",
+-  "voice.default": "默认",
+   "voice.region.north": "北部",
+   "voice.region.central": "中部",
+   "voice.region.south": "南部",
+diff --git a/src/lib/ttsVoices.ts b/src/lib/ttsVoices.ts
+index ab140b7..c1ad742 100644
+--- a/src/lib/ttsVoices.ts
++++ b/src/lib/ttsVoices.ts
+@@ -4,6 +4,9 @@
+ export type VoiceRegion = "north" | "central" | "south" | "other";
+ export type VoiceGender = "male" | "female" | "unknown";
+ 
++// Giọng mặc định của từng ngôn ngữ đọc (cùng giá trị với `TTS_DEFAULT_VOICE_VI/EN` ở phía Rust).
++export const DEFAULT_VOICE = { vi: "Thục Đoan", en: "Đức Trí" } as const;
++
+ export const VOICE_REGIONS: readonly VoiceRegion[] = ["north", "central", "south", "other"];
+ 
+ type Known = { region: Exclude<VoiceRegion, "other">; gender: Exclude<VoiceGender, "unknown"> };
+diff --git a/src/styles/main.css b/src/styles/main.css
+index 40882dd..a9e075a 100755
+--- a/src/styles/main.css
++++ b/src/styles/main.css
+@@ -1386,36 +1386,31 @@ fieldset {
+   border-color: var(--accent, currentColor);
+ }
+ 
+-/* Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): danh sách giọng nhóm theo vùng, nút Nghe thử cạnh giọng đang chọn. */
+-.voice-list {
+-  padding-block: 0.4rem;
++/* Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): hai cột chọn giọng (dropdown), nút Nghe thử dưới ô chọn. */
++.voice-cols {
++  display: grid;
++  grid-template-columns: repeat(2, minmax(0, 1fr));
++  gap: 1rem;
+ }
+ 
+-.voice-region {
+-  margin: 0.7rem 0 0.2rem;
+-  color: var(--muted);
+-  font-size: 0.86rem;
+-  font-weight: 600;
++@media (max-width: 640px) {
++  .voice-cols {
++    grid-template-columns: minmax(0, 1fr);
++  }
+ }
+ 
+-.voice-row {
++.voice-pick {
+   display: flex;
+-  align-items: center;
+-  gap: 0.75rem;
+-  min-height: 2.25rem;
+-}
+-
+-.voice-row label {
+-  display: inline-flex;
+-  align-items: center;
+-  gap: 0.55rem;
++  flex-direction: column;
++  align-items: flex-start;
++  gap: 0.6rem;
+ }
+ 
+-.voice-row .hint {
+-  margin: 0;
++.voice-pick select {
++  width: 100%;
+ }
+ 
+-.voice-row .tts-btn {
++.voice-pick .tts-btn {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.35rem;
+@@ -1424,7 +1419,7 @@ fieldset {
+   font-size: 0.85rem;
+ }
+ 
+-.voice-row .tts-btn[aria-pressed="true"] {
++.voice-pick .tts-btn[aria-pressed="true"] {
+   border-color: var(--accent, currentColor);
+ }
+ 
+diff --git a/src/windows/main/screens/VoiceScreen.test.ts b/src/windows/main/screens/VoiceScreen.test.ts
+index ec9d4d5..e2c58bd 100644
+--- a/src/windows/main/screens/VoiceScreen.test.ts
++++ b/src/windows/main/screens/VoiceScreen.test.ts
+@@ -12,7 +12,7 @@ const props = (patch: Partial<VoiceScreenViewProps> = {}): VoiceScreenViewProps
+   lang: "vi",
+   status: AVAILABLE,
+   voices: { names: NAMES, default: "Hải Đăng" },
+-  settings: { ttsVoiceVi: "Mai Anh", ttsVoiceEn: null, ttsVolume: 70, ttsSpeed: 1.05, ttsPause: 1.5 },
++  settings: { ttsVoiceVi: "Mai Anh", ttsVoiceEn: "Thái Sơn", ttsVolume: 70, ttsSpeed: 1.05, ttsPause: 1.5 },
+   previewing: null,
+   loading: false,
+   error: null,
+@@ -28,17 +28,22 @@ const html = (p: VoiceScreenViewProps) => renderToStaticMarkup(createElement(Voi
+ // Mọi thẻ `<input …>` và `<button …>` của trang.
+ const inputs = (markup: string) => markup.match(/<input [^>]*>/g) ?? [];
+ const buttons = (markup: string) => markup.match(/<button [^>]*>[\s\S]*?<\/button>/g) ?? [];
+-const radio = (markup: string, name: string, value: string) =>
+-  inputs(markup).find((tag) => tag.includes(`name="${name}"`) && tag.includes(`value="${value}"`));
++// Thẻ `<select id=…>` cùng các `<option>` của nó; option được chọn có `selected=""`.
++const select = (markup: string, id: string) => markup.match(new RegExp(`<select [^>]*id="${id}"[^>]*>[\\s\\S]*?</select>`))?.[0];
++const selectedOption = (markup: string, id: string) =>
++  select(markup, id)?.match(/<option [^>]*selected=""[^>]*value="([^"]*)"|<option [^>]*value="([^"]*)"[^>]*selected=""/)?.slice(1).find(Boolean);
+ const slider = (markup: string, id: string) => inputs(markup).find((tag) => tag.includes(`id="${id}"`));
+ 
+-// Spec 2026-11-04-giong-doc §7: hai khối chọn giọng (Việt, Anh) nhóm theo vùng, có "Mặc định"; ba thanh trượt; Khôi phục mặc định.
++// Spec 2026-11-04-giong-doc §7: hai cột chọn giọng (Việt, Anh) dạng dropdown nhóm theo vùng, mặc định Thục Đoan / Đức Trí; ba thanh
++// trượt; Khôi phục mặc định.
+ describe("VoiceScreenView", () => {
+   it("locked_while_downloading_shows_percent_and_disables_controls", () => {
+     const markup = html(props({ status: { available: false, running: false, reason: "downloading", progress: 42 } }));
+     expect(markup).toContain(translate("vi", "voice.locked.downloading", { percent: 42 }));
+     expect(inputs(markup).length).toBeGreaterThan(0);
+     for (const tag of inputs(markup)) expect(tag, tag).toContain('disabled=""');
++    expect(select(markup, "voice-vi")).toContain('disabled=""');
++    expect(select(markup, "voice-en")).toContain('disabled=""');
+     const controls = buttons(markup);
+     expect(controls.some((b) => b.includes(viText["voice.reset"]))).toBe(true);
+     for (const b of controls) expect(b, b).toContain('disabled=""');
+@@ -66,33 +71,35 @@ describe("VoiceScreenView", () => {
+     for (const tag of inputs(markup)) expect(tag, tag).not.toContain('disabled=""');
+   });
+ 
+-  it("lists_voices_grouped_with_default_option", () => {
++  it("lists_voices_in_two_dropdowns_grouped_by_region", () => {
+     const markup = html(props());
+     expect(markup).toContain(viText["voice.lang.vi"]);
+     expect(markup).toContain(viText["voice.lang.en"]);
+-    for (const name of ["voice-vi", "voice-en"]) {
+-      expect(radio(markup, name, ""), name).toBeTruthy();
+-      for (const voice of NAMES) expect(radio(markup, name, voice), `${name} ${voice}`).toBeTruthy();
++    expect(inputs(markup).some((tag) => tag.includes('type="radio"'))).toBe(false);
++    expect(markup.indexOf(viText["voice.lang.vi"])).toBeLessThan(markup.indexOf(viText["voice.lang.en"]));
++    for (const id of ["voice-vi", "voice-en"]) {
++      const box = select(markup, id) ?? "";
++      expect(box, id).toBeTruthy();
++      for (const voice of NAMES) expect(box, `${id} ${voice}`).toContain(`value="${voice}"`);
++      expect(box).not.toContain('value=""');
++      // Nhóm theo vùng: Bắc, Trung, Nam, Khác.
++      const at = (key: "north" | "central" | "south" | "other") => box.indexOf(`label="${viText[`voice.region.${key}`]}"`);
++      expect(at("north")).toBeGreaterThan(-1);
++      expect(at("north")).toBeLessThan(at("central"));
++      expect(at("central")).toBeLessThan(at("south"));
++      expect(at("south")).toBeLessThan(at("other"));
++      expect(box.indexOf('value="Mai Anh"')).toBeGreaterThan(at("north"));
++      expect(box.indexOf('value="Mai Anh"')).toBeLessThan(at("central"));
++      expect(box.indexOf('value="Thái Sơn"')).toBeGreaterThan(at("south"));
++      expect(box.indexOf('value="Hải Đăng"')).toBeGreaterThan(at("other"));
++      expect(box).toContain(`Mai Anh (${viText["voice.gender.female"]})`);
++      expect(box).toContain(`Thái Sơn (${viText["voice.gender.male"]})`);
++      expect(box).toContain(">Hải Đăng<");
+     }
+-    expect(markup).toContain(viText["voice.default"]);
+-    // Nhóm theo vùng: Bắc, Trung, Nam, Khác (trong khối tiếng Việt).
+-    const block = markup.slice(0, markup.indexOf(viText["voice.lang.en"]));
+-    const at = (key: "north" | "central" | "south" | "other") => block.indexOf(viText[`voice.region.${key}`]);
+-    expect(at("north")).toBeGreaterThan(-1);
+-    expect(at("north")).toBeLessThan(at("central"));
+-    expect(at("central")).toBeLessThan(at("south"));
+-    expect(at("south")).toBeLessThan(at("other"));
+-    expect(block.indexOf("Mai Anh")).toBeGreaterThan(at("north"));
+-    expect(block.indexOf("Mai Anh")).toBeLessThan(at("central"));
+-    expect(block.indexOf("Thái Sơn")).toBeGreaterThan(at("south"));
+-    expect(block.indexOf("Hải Đăng", at("other"))).toBeGreaterThan(at("other"));
+-    expect(block).toContain(viText["voice.gender.female"]);
+-    expect(block).toContain(viText["voice.gender.male"]);
+-    // Giọng đã lưu được chọn; khối tiếng Anh để mặc định.
+-    expect(radio(markup, "voice-vi", "Mai Anh")).toContain('checked=""');
+-    expect(radio(markup, "voice-vi", "")).not.toContain('checked=""');
+-    expect(radio(markup, "voice-en", "")).toContain('checked=""');
+-    // Một nút Nghe thử mỗi khối, cạnh giọng đang chọn.
++    // Giọng đã lưu được chọn ở từng cột.
++    expect(selectedOption(markup, "voice-vi")).toBe("Mai Anh");
++    expect(selectedOption(markup, "voice-en")).toBe("Thái Sơn");
++    // Một nút Nghe thử mỗi cột.
+     expect(buttons(markup).filter((b) => b.includes(viText["voice.preview"]))).toHaveLength(2);
+   });
+ 
+@@ -103,17 +110,51 @@ describe("VoiceScreenView", () => {
+     expect(markup.indexOf(viText["voice.previewStop"])).toBeGreaterThan(markup.indexOf(viText["voice.lang.en"]));
+   });
+ 
+-  it("unknown_saved_voice_shows_default_selected", () => {
+-    const markup = html(props({ settings: { ...props().settings, ttsVoiceVi: "Giọng đã bỏ" } }));
+-    expect(radio(markup, "voice-vi", "")).toContain('checked=""');
++  it("unknown_saved_voice_shows_the_language_default_selected", () => {
++    const names = [...NAMES, "Thục Đoan", "Đức Trí"];
++    const markup = html(
++      props({
++        voices: { names, default: "Hải Đăng" },
++        settings: { ...props().settings, ttsVoiceVi: "Giọng đã bỏ", ttsVoiceEn: null },
++      }),
++    );
++    // Việt mặc định Thục Đoan, Anh mặc định Đức Trí (cả giá trị null cũ của bản trước).
++    expect(selectedOption(markup, "voice-vi")).toBe("Thục Đoan");
++    expect(selectedOption(markup, "voice-en")).toBe("Đức Trí");
+     expect(markup).not.toContain("Giọng đã bỏ");
+-    for (const voice of NAMES) expect(radio(markup, "voice-vi", voice)).not.toContain('checked=""');
+   });
+ 
+-  it("chưa có danh sách giọng thì vẫn có lựa chọn Mặc định, được chọn", () => {
+-    const markup = html(props({ voices: null }));
+-    expect(radio(markup, "voice-vi", "")).toContain('checked=""');
+-    expect(radio(markup, "voice-en", "")).toContain('checked=""');
++  it("language_default_missing_from_the_pack_falls_back_to_the_first_voice", () => {
++    const markup = html(props({ settings: { ...props().settings, ttsVoiceVi: "Giọng đã bỏ" } }));
++    expect(selectedOption(markup, "voice-vi")).toBe("Hải Đăng");
++  });
++
++  it("chưa có danh sách giọng thì ô chọn vẫn hiện một giọng (đã lưu hay mặc định)", () => {
++    const markup = html(props({ voices: null, settings: { ...props().settings, ttsVoiceEn: null } }));
++    expect(selectedOption(markup, "voice-vi")).toBe("Mai Anh");
++    expect(selectedOption(markup, "voice-en")).toBe("Đức Trí");
++  });
++
++  it("nút Nghe thử gửi giọng đang chọn và giá trị thanh trượt", () => {
++    // Static markup không bấm được: kiểm bằng cách gọi lại onPreview mà view truyền cho nút.
++    const calls: unknown[] = [];
++    const tree = VoiceScreenView(props({ onPreview: (lang, opts) => calls.push([lang, opts]) }));
++    const clicks: (() => void)[] = [];
++    const walk = (node: unknown): void => {
++      if (!node || typeof node !== "object") return;
++      const el = node as { props?: Record<string, unknown> };
++      if (el.props && typeof el.props.onClick === "function" && el.props.className === "tts-btn")
++        clicks.push(el.props.onClick as () => void);
++      const kids = el.props?.children;
++      for (const k of Array.isArray(kids) ? kids.flat(Infinity) : [kids]) walk(k);
++    };
++    walk(tree);
++    expect(clicks).toHaveLength(2);
++    for (const click of clicks) click();
++    expect(calls).toEqual([
++      ["vi", { text: viText["voice.sample.vi"], voice: "Mai Anh", speed: 1.05, pause: 1.5, volume: 70 }],
++      ["en", { text: viText["voice.sample.en"], voice: "Thái Sơn", speed: 1.05, pause: 1.5, volume: 70 }],
++    ]);
+   });
+ 
+   it("sliders_show_current_values_and_ranges", () => {
+@@ -162,13 +203,14 @@ describe("VoiceScreen wiring", () => {
+     expect(voicePatch("en", "Hải Đăng")).toEqual({ ttsVoiceEn: "Hải Đăng" });
+   });
+ 
+-  it("default_choice_patches_null", () => {
+-    expect(voicePatch("vi", null)).toEqual({ ttsVoiceVi: null });
+-    expect(voicePatch("en", null)).toEqual({ ttsVoiceEn: null });
+-  });
+-
+   it("reset_patches_all_five_keys_to_defaults", () => {
+-    expect(resetPatch()).toEqual({ ttsVoiceVi: null, ttsVoiceEn: null, ttsVolume: 100, ttsSpeed: 1, ttsPause: 1 });
++    expect(resetPatch()).toEqual({
++      ttsVoiceVi: "Thục Đoan",
++      ttsVoiceEn: "Đức Trí",
++      ttsVolume: 100,
++      ttsSpeed: 1,
++      ttsPause: 1,
++    });
+     expect(resetPatch()).toEqual(VOICE_DEFAULTS);
+   });
+ });
+diff --git a/src/windows/main/screens/VoiceScreen.tsx b/src/windows/main/screens/VoiceScreen.tsx
+index c034734..e129e04 100644
+--- a/src/windows/main/screens/VoiceScreen.tsx
++++ b/src/windows/main/screens/VoiceScreen.tsx
+@@ -4,7 +4,7 @@ import { Icon } from "../../../components/Icon";
+ import { errorKey, type MessageKey, type Params, type UiLanguage, translate } from "../../../i18n";
+ import type { Settings, SettingsPatch, TtsStatus, TtsVoices } from "../../../lib/ipc";
+ import type { TtsLang } from "../../../lib/tts";
+-import { describeVoice, groupVoices } from "../../../lib/ttsVoices";
++import { DEFAULT_VOICE, describeVoice, groupVoices } from "../../../lib/ttsVoices";
+ import type { UiError } from "../../../store/app";
+ import type { TtsPreviewOptions } from "../../../store/tts";
+ import { fallbackLanguage, useApp } from "../appStore";
+@@ -13,13 +13,18 @@ import { CommitRange } from "../settings/CommitRange";
+ 
+ type VoiceSettings = Pick<Settings, "ttsVoiceVi" | "ttsVoiceEn" | "ttsVolume" | "ttsSpeed" | "ttsPause">;
+ 
+-// Giá trị của "Khôi phục mặc định" (spec 2026-11-04-giong-doc, Global Constraints): giọng mặc định của gói, âm lượng 100, tốc độ
+-// và khoảng nghỉ 1,0.
+-export const VOICE_DEFAULTS: VoiceSettings = { ttsVoiceVi: null, ttsVoiceEn: null, ttsVolume: 100, ttsSpeed: 1, ttsPause: 1 };
++// Giá trị của "Khôi phục mặc định" (spec 2026-11-04-giong-doc, Global Constraints): giọng mặc định của từng ngôn ngữ (cùng giá trị
++// mặc định ở phía Rust), âm lượng 100, tốc độ và khoảng nghỉ 1,0.
++export const VOICE_DEFAULTS: VoiceSettings = {
++  ttsVoiceVi: DEFAULT_VOICE.vi,
++  ttsVoiceEn: DEFAULT_VOICE.en,
++  ttsVolume: 100,
++  ttsSpeed: 1,
++  ttsPause: 1,
++};
+ 
+-// Bộ dựng lệnh lưu của màn hình (tách ra để kiểm thử): chọn giọng ghi đúng khóa theo ngôn ngữ ("Mặc định" là null), khôi phục
+-// mặc định ghi cả năm khóa.
+-export const voicePatch = (lang: TtsLang, voice: string | null): SettingsPatch => ({ [VOICE_KEY[lang]]: voice });
++// Bộ dựng lệnh lưu của màn hình (tách ra để kiểm thử): chọn giọng ghi đúng khóa theo ngôn ngữ, khôi phục mặc định ghi cả năm khóa.
++export const voicePatch = (lang: TtsLang, voice: string): SettingsPatch => ({ [VOICE_KEY[lang]]: voice });
+ export const resetPatch = (): SettingsPatch => ({ ...VOICE_DEFAULTS });
+ 
+ const BLOCKS: readonly TtsLang[] = ["vi", "en"];
+@@ -33,17 +38,18 @@ export interface VoiceScreenViewProps {
+   previewing: TtsLang | null;
+   loading: boolean;
+   error: UiError | null;
+-  onVoice(lang: TtsLang, voice: string | null): void;
++  onVoice(lang: TtsLang, voice: string): void;
+   onChange(patch: SettingsPatch): void;
+   onPreview(lang: TtsLang, opts: TtsPreviewOptions): void;
+   onReset(): void;
+   onDismiss(): void;
+ }
+ 
+-// Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): hai khối chọn giọng (tiếng Việt, tiếng Anh), mỗi khối một nhóm nút radio có
+-// "Mặc định" và các giọng của gói nhóm theo vùng; nút Nghe thử cạnh giọng đang chọn đọc câu mẫu của khối với các giá trị đang chọn.
+-// Ba thanh trượt chỉ lưu khi thả (`CommitRange`). Giọng đọc chưa dùng được (đang tải gói, thiếu worker hay model) thì khóa mọi
+-// điều khiển và nói lý do. Giọng đã lưu mà gói không còn thì hiện "Mặc định" (phía Rust cũng đọc bằng giọng mặc định).
++// Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): hai cột chọn giọng (tiếng Việt, tiếng Anh), mỗi cột một ô chọn (dropdown) các
++// giọng của gói nhóm theo vùng; nút Nghe thử dưới ô chọn đọc câu mẫu của cột với các giá trị đang chọn. Ba thanh trượt chỉ lưu khi
++// thả (`CommitRange`). Giọng đọc chưa dùng được (đang tải gói, thiếu worker hay model) thì khóa mọi điều khiển và nói lý do.
++// Giọng đang chọn: giọng đã lưu nếu gói có; không thì giọng mặc định của ngôn ngữ (Việt: Thục Đoan, Anh: Đức Trí) nếu gói có;
++// không thì giọng đầu tiên của gói.
+ export function VoiceScreenView(p: VoiceScreenViewProps) {
+   const t = (key: MessageKey, params?: Params) => translate(p.lang, key, params);
+   const locked = p.status?.available === false;
+@@ -56,51 +62,16 @@ export function VoiceScreenView(p: VoiceScreenViewProps) {
+   const pause = number(1);
+   const names = p.voices?.names ?? [];
+   const groups = groupVoices(names);
+-  const selectedOf = (lang: TtsLang) => {
++  const selectedOf = (lang: TtsLang): string => {
+     const saved = p.settings[VOICE_KEY[lang]];
+-    return saved !== null && names.includes(saved) ? saved : null;
++    // Chưa có danh sách giọng thì tin giá trị đã lưu (hay mặc định): ô chọn vẫn hiện đúng một giọng.
++    if (names.length === 0) return saved ?? DEFAULT_VOICE[lang];
++    if (saved !== null && names.includes(saved)) return saved;
++    return names.includes(DEFAULT_VOICE[lang]) ? DEFAULT_VOICE[lang] : (names[0] ?? DEFAULT_VOICE[lang]);
+   };
+-  const row = (lang: TtsLang, voice: string | null, selected: string | null) => {
+-    const on = voice === selected;
+-    const playing = p.previewing === lang;
+-    const gender = voice === null ? null : describeVoice(voice).gender;
+-    return (
+-      <div className="voice-row" key={voice ?? ""}>
+-        <label>
+-          <input
+-            type="radio"
+-            name={`voice-${lang}`}
+-            value={voice ?? ""}
+-            checked={on}
+-            disabled={locked}
+-            onChange={() => p.onVoice(lang, voice)}
+-          />
+-          <span>{voice ?? t("voice.default")}</span>
+-          {voice === null && p.voices && <span className="hint">{p.voices.default}</span>}
+-          {gender && <span className="hint">{t(`voice.gender.${gender}`)}</span>}
+-        </label>
+-        {on && (
+-          <button
+-            type="button"
+-            className="tts-btn"
+-            aria-pressed={playing}
+-            disabled={locked || !canPreview}
+-            onClick={() =>
+-              p.onPreview(lang, {
+-                text: t(`voice.sample.${lang}`),
+-                voice: selected,
+-                speed: p.settings.ttsSpeed,
+-                pause: p.settings.ttsPause,
+-                volume: p.settings.ttsVolume,
+-              })
+-            }
+-          >
+-            <Icon name="speaker" size={16} />
+-            {playing ? (p.loading ? t("transcript.tts.loading") : t("voice.previewStop")) : t("voice.preview")}
+-          </button>
+-        )}
+-      </div>
+-    );
++  const optionLabel = (voice: string) => {
++    const { gender } = describeVoice(voice);
++    return gender === "unknown" ? voice : `${voice} (${t(`voice.gender.${gender}`)})`;
+   };
+   return (
+     <>
+@@ -125,26 +96,56 @@ export function VoiceScreenView(p: VoiceScreenViewProps) {
+           </button>
+         </div>
+       )}
+-      {BLOCKS.map((lang) => {
+-        const selected = selectedOf(lang);
+-        const title = `voice-${lang}-title`;
+-        return (
+-          <section key={lang} aria-labelledby={title}>
+-            <SectionTitle id={title}>{t(`voice.lang.${lang}`)}</SectionTitle>
+-            <div className="card voice-list" role="radiogroup" aria-labelledby={title}>
+-              {row(lang, null, selected)}
+-              {groups.map((g) => (
+-                <div className="voice-group" key={g.region} role="group" aria-labelledby={`${title}-${g.region}`}>
+-                  <h3 className="voice-region" id={`${title}-${g.region}`}>
+-                    {t(`voice.region.${g.region}`)}
+-                  </h3>
+-                  {g.names.map((name) => row(lang, name, selected))}
+-                </div>
+-              ))}
+-            </div>
+-          </section>
+-        );
+-      })}
++      <div className="voice-cols">
++        {BLOCKS.map((lang) => {
++          const selected = selectedOf(lang);
++          const title = `voice-${lang}-title`;
++          const playing = p.previewing === lang;
++          return (
++            <section key={lang} aria-labelledby={title}>
++              <SectionTitle id={title}>{t(`voice.lang.${lang}`)}</SectionTitle>
++              <div className="card voice-pick">
++                <select
++                  id={`voice-${lang}`}
++                  aria-labelledby={title}
++                  value={selected}
++                  disabled={locked}
++                  onChange={(e) => p.onVoice(lang, e.target.value)}
++                >
++                  {names.length === 0 && <option value={selected}>{selected}</option>}
++                  {groups.map((g) => (
++                    <optgroup key={g.region} label={t(`voice.region.${g.region}`)}>
++                      {g.names.map((name) => (
++                        <option key={name} value={name}>
++                          {optionLabel(name)}
++                        </option>
++                      ))}
++                    </optgroup>
++                  ))}
++                </select>
++                <button
++                  type="button"
++                  className="tts-btn"
++                  aria-pressed={playing}
++                  disabled={locked || !canPreview}
++                  onClick={() =>
++                    p.onPreview(lang, {
++                      text: t(`voice.sample.${lang}`),
++                      voice: selected,
++                      speed: p.settings.ttsSpeed,
++                      pause: p.settings.ttsPause,
++                      volume: p.settings.ttsVolume,
++                    })
++                  }
++                >
++                  <Icon name="speaker" size={16} />
++                  {playing ? (p.loading ? t("transcript.tts.loading") : t("voice.previewStop")) : t("voice.preview")}
++                </button>
++              </div>
++            </section>
++          );
++        })}
++      </div>
+       <section aria-labelledby="voice-style-title">
+         <SectionTitle id="voice-style-title">{t("voice.title")}</SectionTitle>
+         <div className="card list">
