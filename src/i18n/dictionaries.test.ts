@@ -47,6 +47,10 @@ const ENGLISH_SAMPLE: MessageKey[] = [
   "settings.subtitles.preview.live.sourceTail",
 ];
 
+// Câu mẫu Nghe thử ở màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): giọng tiếng Việt đọc câu tiếng Việt, giọng tiếng Anh đọc câu
+// English, nên giống hệt vi ở mọi ngôn ngữ giao diện.
+const VOICE_SAMPLE: MessageKey[] = ["voice.sample.vi", "voice.sample.en"];
+
 // Bảng thuật ngữ của spec (§3): các khóa nhìn thấy nhiều nhất.
 const GLOSSARY: Record<NewLang, Partial<Record<MessageKey, string>>> = {
   ja: {
@@ -125,8 +129,12 @@ describe.each(Object.entries(DICTS) as [NewLang, Dict][])("từ điển %s", (la
     for (const key of ENGLISH_SAMPLE) expect(dict[key], key).toBe(vi[key]);
   });
 
+  it("câu mẫu Nghe thử giống hệt vi", () => {
+    for (const key of VOICE_SAMPLE) expect(dict[key], key).toBe(vi[key]);
+  });
+
   it("mọi chuỗi còn lại có chữ của ngôn ngữ này và không lẫn hệ chữ khác", () => {
-    const skip = new Set<string>([...SAME_AS_EN, ...ENGLISH_SAMPLE]);
+    const skip = new Set<string>([...SAME_AS_EN, ...ENGLISH_SAMPLE, ...VOICE_SAMPLE]);
     for (const [key, text] of Object.entries(dict)) {
       if (skip.has(key)) continue;
       expect(SCRIPT[lang].has.test(text), `${key}: ${text}`).toBe(true);

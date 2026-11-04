@@ -599,6 +599,37 @@ pub fn tts_speak<R: Runtime>(
     crate::tts::speak(&app, &svc, &lang, &text, on_event)
 }
 
+/// Nút Nghe thử của màn hình "Giọng đọc" (spec 2026-11-04-giong-doc §6): giọng, tốc độ, khoảng nghỉ, âm lượng đang chỉnh trên
+/// màn hình, chưa cần lưu. Chỉ cửa sổ chính.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn tts_preview<R: Runtime>(
+    app: AppHandle<R>,
+    svc: State<'_, crate::tts::TtsService>,
+    lang: String,
+    text: String,
+    voice: Option<String>,
+    speed: f32,
+    pause: f32,
+    volume: u8,
+    on_event: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
+) -> Result<u64, CommandError> {
+    crate::tts::preview(&app, &svc, &lang, &text, voice, speed, pause, volume, on_event)
+}
+
+/// Danh sách giọng của gói đã cài (`{ names, default }`). Lần đầu có thể phải chạy worker, nên không chạy trên luồng chính:
+/// lệnh `async`, việc chờ chạy trên luồng của `spawn_blocking`. Chỉ cửa sổ chính.
+#[tauri::command]
+pub async fn tts_list_voices<R: Runtime>(app: AppHandle<R>) -> Result<crate::tts::TtsVoices, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use tauri::Manager;
+        let svc = app.state::<crate::tts::TtsService>();
+        crate::tts::list_voices(&app, &svc)
+    })
+    .await
+    .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
+}
+
 #[tauri::command]
 pub fn tts_cancel(svc: State<'_, crate::tts::TtsService>, id: u64) {
     crate::tts::cancel(&svc, id);
@@ -744,6 +775,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "tts_cancel",
     "tts_mark_playing",
     "tts_stop",
+    "tts_list_voices",
+    "tts_preview",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -870,6 +903,8 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         tts_cancel,
         tts_mark_playing,
         tts_stop,
+        tts_list_voices,
+        tts_preview,
         overlay_listen_set,
         overlay_listen_status,
         overlay_tts_status,

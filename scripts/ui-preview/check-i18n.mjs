@@ -637,6 +637,8 @@ const SCREENS = [
   ["compose", "screen=compose"],
   ["compose-noax", "screen=compose&ax=0"],
   ["compose-windows", "screen=compose&platform=windows"],
+  // Giọng đọc (spec 2026-11-04-giong-doc §7; mục chỉ có khi platform=windows).
+  ["voice", "screen=voice&platform=windows"],
   // Nâng cấp (spec 2026-10-14, 2026-10-22): ba bước; cách trả chọn sẵn theo ngôn ngữ của lượt chạy (vi: VietQR, còn lại: thẻ).
   ["upgrade", "screen=upgrade&plan=free"],
   // Bấm sang cách trả còn lại: chữ, giá và ghi chú của cách đó.

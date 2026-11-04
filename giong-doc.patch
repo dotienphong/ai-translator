@@ -1,0 +1,4240 @@
+diff --git a/crates/tts-client/src/bin/fake_tts_worker.rs b/crates/tts-client/src/bin/fake_tts_worker.rs
+index 3a49675..e7cad08 100755
+--- a/crates/tts-client/src/bin/fake_tts_worker.rs
++++ b/crates/tts-client/src/bin/fake_tts_worker.rs
+@@ -1,5 +1,7 @@
+ //! Worker giả cho test của `tts-client`: nói đúng giao thức, hành vi chọn theo chữ nhận được.
+ //! `crash` thoát bất ngờ; `model` trả ModelMissing; `slow` phát 20 đoạn chậm và nghe được Cancel; còn lại trả 3 đoạn rồi Done.
++//! `opts` phát một khung PCM mã hóa `voice/speed/pause_scale` nhận được (xem test `speak_passes_options_to_worker`); `ListVoices`
++//! trả `["A", "B"]` mặc định `A`.
+ //! Biến môi trường: `FAKE_PROTOCOL=<số>` báo sai phiên bản; `FAKE_NO_READY=1` không báo Ready.
+ 
+ use std::collections::HashSet;
+@@ -41,7 +43,23 @@ fn main() {
+     while let Ok(req) = rx.recv() {
+         match req {
+             Request::Warmup { id } => write_frame(&mut out, &Response::Done { id }).unwrap(),
+-            Request::Speak { id, text, .. } => {
++            Request::ListVoices { id } => write_frame(
++                &mut out,
++                &Response::Voices {
++                    id,
++                    names: vec!["A".into(), "B".into()],
++                    default: "A".into(),
++                },
++            )
++            .unwrap(),
++            Request::Speak {
++                id,
++                text,
++                voice,
++                speed,
++                pause_scale,
++                ..
++            } => {
+                 if cancels.lock().unwrap().remove(&id) {
+                     write_frame(
+                         &mut out,
+@@ -55,6 +73,15 @@ fn main() {
+                 }
+                 match text.as_str() {
+                     "crash" => std::process::exit(3),
++                    "opts" => {
++                        let x100 = |v: Option<f32>| v.map_or(0, |v| (v * 100.0).round() as i16);
++                        let (len, first) = voice
++                            .as_deref()
++                            .map_or((0, 0), |v| (v.len() as i16 + 1, v.bytes().next().unwrap_or(0) as i16));
++                        let pcm = vec![len, first, x100(speed), x100(pause_scale)];
++                        write_frame(&mut out, &Response::Audio { id, seq: 0, pcm }).unwrap();
++                        write_frame(&mut out, &Response::Done { id }).unwrap();
++                    }
+                     "model" => {
+                         write_frame(
+                             &mut out,
+diff --git a/crates/tts-client/src/lib.rs b/crates/tts-client/src/lib.rs
+index a7373d4..78ad1f5 100755
+--- a/crates/tts-client/src/lib.rs
++++ b/crates/tts-client/src/lib.rs
+@@ -37,6 +37,7 @@ pub type ExitHook = Arc<dyn Fn(u32) + Send + Sync>;
+ 
+ type WarmupCb = Box<dyn FnOnce(Result<(), Failure>) + Send>;
+ type SpeakCb = Box<dyn FnMut(Event) + Send>;
++type VoicesCb = Box<dyn FnOnce(Result<VoiceList, Failure>) + Send>;
+ 
+ pub struct Config {
+     pub spawn: Spawner,
+@@ -62,6 +63,60 @@ impl Config {
+     }
+ }
+ 
++/// Tùy chọn đọc một câu. `voice = None` dùng giọng mặc định của worker; `speed` trong `SPEED_RANGE`, `pause_scale` trong
++/// `PAUSE_RANGE` của `tts-protocol`. Khung ngoài khoảng làm worker thoát (tính là một lần chết, chết 3 lần thì tắt TTS), nên máy
++/// khách tự kẹp: [`SpeakOptions::new`] và lúc gửi khung đều kẹp `speed`, `pause_scale` vào khoảng (`NaN`/vô cực thành 1,0) và bỏ
++/// tên giọng rỗng hoặc dài quá `MAX_VOICE_BYTES` (thành `None`, dùng giọng mặc định).
++#[derive(Clone, Debug)]
++pub struct SpeakOptions {
++    pub voice: Option<String>,
++    pub speed: f32,
++    pub pause_scale: f32,
++}
++
++impl SpeakOptions {
++    pub fn new(voice: Option<String>, speed: f32, pause_scale: f32) -> Self {
++        Self {
++            voice,
++            speed,
++            pause_scale,
++        }
++        .sanitized()
++    }
++
++    /// Bản đã kẹp vào khoảng hợp lệ của giao thức (các trường công khai có thể bị gán thẳng).
++    fn sanitized(self) -> Self {
++        fn clamp(v: f32, range: &std::ops::RangeInclusive<f32>) -> f32 {
++            if v.is_finite() {
++                v.clamp(*range.start(), *range.end())
++            } else {
++                1.0
++            }
++        }
++        Self {
++            voice: self
++                .voice
++                .filter(|v| !v.is_empty() && v.len() <= tts_protocol::MAX_VOICE_BYTES),
++            speed: clamp(self.speed, &tts_protocol::SPEED_RANGE),
++            pause_scale: clamp(self.pause_scale, &tts_protocol::PAUSE_RANGE),
++        }
++    }
++}
++
++impl Default for SpeakOptions {
++    /// Giọng mặc định, tốc độ và thời gian nghỉ bình thường (1.0).
++    fn default() -> Self {
++        Self::new(None, 1.0, 1.0)
++    }
++}
++
++/// Danh sách giọng của worker và giọng mặc định.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct VoiceList {
++    pub names: Vec<String>,
++    pub default: String,
++}
++
+ /// Lý do một yêu cầu không xong.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub enum Failure {
+@@ -93,13 +148,17 @@ enum Cmd {
+         id: u64,
+         lang: Lang,
+         text: String,
+-        voice: Option<String>,
++        opts: SpeakOptions,
+         cb: Box<dyn FnMut(Event) + Send>,
+     },
+     Warmup {
+         id: u64,
+         cb: Box<dyn FnOnce(Result<(), Failure>) + Send>,
+     },
++    ListVoices {
++        id: u64,
++        cb: VoicesCb,
++    },
+     Cancel(u64),
+     CancelAll,
+     Shutdown,
+@@ -122,6 +181,7 @@ pub struct TtsClient {
+ enum Pending {
+     Speak(SpeakCb),
+     Warmup(Option<WarmupCb>),
++    Voices(Option<VoicesCb>),
+ }
+ 
+ struct Proc {
+@@ -183,7 +243,7 @@ impl TtsClient {
+         &self,
+         lang: Lang,
+         text: &str,
+-        voice: Option<String>,
++        opts: SpeakOptions,
+         mut on_event: impl FnMut(Event) + Send + 'static,
+     ) -> u64 {
+         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+@@ -195,7 +255,7 @@ impl TtsClient {
+             id,
+             lang,
+             text: text.to_string(),
+-            voice,
++            opts,
+             cb: Box::new(on_event),
+         };
+         if self.tx.send(Ev::Cmd(cmd)).is_err() {
+@@ -217,6 +277,19 @@ impl TtsClient {
+         }));
+     }
+ 
++    /// Hỏi danh sách giọng; `on_done` nhận kết quả. Chạy lười và theo cùng quy tắc hết giờ/tắt như [`TtsClient::warmup`].
++    pub fn list_voices(&self, on_done: impl FnOnce(Result<VoiceList, Failure>) + Send + 'static) {
++        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
++        if let Some(reason) = self.disabled.lock().unwrap().clone() {
++            on_done(Err(Failure::Disabled(reason)));
++            return;
++        }
++        let _ = self.tx.send(Ev::Cmd(Cmd::ListVoices {
++            id,
++            cb: Box::new(on_done),
++        }));
++    }
++
+     pub fn cancel(&self, id: u64) {
+         let _ = self.tx.send(Ev::Cmd(Cmd::Cancel(id)));
+     }
+@@ -315,7 +388,8 @@ impl Core {
+             match p {
+                 Pending::Speak(mut cb) => cb(Event::Failed(f.clone())),
+                 Pending::Warmup(Some(cb)) => cb(Err(f.clone())),
+-                Pending::Warmup(None) => {}
++                Pending::Voices(Some(cb)) => cb(Err(f.clone())),
++                Pending::Warmup(None) | Pending::Voices(None) => {}
+             }
+         }
+     }
+@@ -440,6 +514,7 @@ impl Core {
+             match cmd {
+                 Cmd::Speak { mut cb, .. } => cb(Event::Failed(Failure::Disabled(reason))),
+                 Cmd::Warmup { cb, .. } => cb(Err(Failure::Disabled(reason))),
++                Cmd::ListVoices { cb, .. } => cb(Err(Failure::Disabled(reason))),
+                 _ => {}
+             }
+             return;
+@@ -449,7 +524,7 @@ impl Core {
+                 id,
+                 lang,
+                 text,
+-                voice,
++                opts,
+                 mut cb,
+             } => {
+                 // Chỉ đọc một câu mỗi lúc: hủy câu đang đọc.
+@@ -473,7 +548,15 @@ impl Core {
+                     return;
+                 }
+                 self.pending.insert(id, Pending::Speak(cb));
+-                self.send(Request::Speak { id, lang, text, voice });
++                let opts = opts.sanitized();
++                self.send(Request::Speak {
++                    id,
++                    lang,
++                    text,
++                    voice: opts.voice,
++                    speed: Some(opts.speed),
++                    pause_scale: Some(opts.pause_scale),
++                });
+             }
+             Cmd::Warmup { id, cb } => {
+                 if !self.ensure_proc() {
+@@ -489,6 +572,20 @@ impl Core {
+                 self.pending.insert(id, Pending::Warmup(Some(cb)));
+                 self.send(Request::Warmup { id });
+             }
++            Cmd::ListVoices { id, cb } => {
++                if !self.ensure_proc() {
++                    cb(Err(Failure::Disabled(
++                        self.disabled
++                            .lock()
++                            .unwrap()
++                            .clone()
++                            .unwrap_or_else(|| "không chạy được worker".into()),
++                    )));
++                    return;
++                }
++                self.pending.insert(id, Pending::Voices(Some(cb)));
++                self.send(Request::ListVoices { id });
++            }
+             Cmd::Cancel(id) => {
+                 if self.pending.contains_key(&id) {
+                     self.send(Request::Cancel { id });
+@@ -539,6 +636,11 @@ impl Core {
+                     _ => {}
+                 }
+             }
++            Response::Voices { id, names, default } => {
++                if let Some(Pending::Voices(Some(cb))) = self.pending.remove(&id) {
++                    cb(Ok(VoiceList { names, default }));
++                }
++            }
+             Response::Failed { id, kind } => {
+                 let f = match kind {
+                     ErrorKind::Cancelled => Failure::Cancelled,
+@@ -549,6 +651,7 @@ impl Core {
+                 match self.pending.remove(&id) {
+                     Some(Pending::Speak(mut cb)) => cb(Event::Failed(f.clone())),
+                     Some(Pending::Warmup(Some(cb))) => cb(Err(f.clone())),
++                    Some(Pending::Voices(Some(cb))) => cb(Err(f.clone())),
+                     _ => {}
+                 }
+                 // Thiếu model là lỗi cấu hình, không phải worker hỏng: không chạy lại vô ích.
+diff --git a/crates/tts-client/tests/client.rs b/crates/tts-client/tests/client.rs
+index 61e7db6..84a00e6 100755
+--- a/crates/tts-client/tests/client.rs
++++ b/crates/tts-client/tests/client.rs
+@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
+ use std::sync::mpsc::{self, Receiver};
+ use std::sync::{Arc, Mutex};
+ use std::time::Duration;
+-use tts_client::{Config, Event, Failure, Language, Spawner, TtsClient};
++use tts_client::{Config, Event, Failure, Language, Spawner, SpeakOptions, TtsClient, VoiceList};
+ 
+ fn spawner(envs: &'static [(&'static str, &'static str)]) -> (Spawner, Arc<Mutex<u32>>) {
+     let count = Arc::new(Mutex::new(0u32));
+@@ -32,8 +32,12 @@ fn fast(sp: Spawner) -> Config {
+ }
+ 
+ fn speak(c: &TtsClient, text: &str) -> (u64, Receiver<Event>) {
++    speak_with(c, text, SpeakOptions::default())
++}
++
++fn speak_with(c: &TtsClient, text: &str, opts: SpeakOptions) -> (u64, Receiver<Event>) {
+     let (tx, rx) = mpsc::channel();
+-    let id = c.speak(Language::Vi, text, None, move |e| {
++    let id = c.speak(Language::Vi, text, opts, move |e| {
+         let _ = tx.send(e);
+     });
+     (id, rx)
+@@ -226,3 +230,98 @@ fn shutdown_fails_pending_and_stops_the_worker() {
+     assert!(drain(&rx).last().is_some_and(|e| matches!(e, Event::Failed(_))));
+     assert!(!c.is_running());
+ }
++
++/// Fake worker, với chữ `opts`, phát một khung PCM mã hóa tùy chọn nhận được:
++/// `[độ dài tên giọng + 1 (0 nếu None), byte đầu tên giọng, tốc độ x100, hệ số nghỉ x100]` (0 nếu None).
++#[test]
++fn speak_passes_options_to_worker() {
++    let (sp, _) = spawner(&[]);
++    let c = TtsClient::new(fast(sp));
++    let (_, rx) = speak_with(&c, "opts", SpeakOptions::new(Some("B".into()), 1.25, 0.5));
++    let ev = drain(&rx);
++    assert_eq!(ev[0], Event::Audio(vec![2, b'B' as i16, 125, 50]));
++    assert_eq!(ev.last(), Some(&Event::Done));
++    let (_, rx) = speak_with(&c, "opts", SpeakOptions::default());
++    assert_eq!(drain(&rx)[0], Event::Audio(vec![0, 0, 100, 100]));
++}
++
++/// Tùy chọn ngoài khoảng bị kẹp ở máy khách (khung sai làm worker thoát, tính là một lần chết): `SpeakOptions::new` và cả
++/// `SpeakOptions` dựng thẳng từ trường công khai đều ra khung hợp lệ.
++#[test]
++fn speak_options_are_clamped() {
++    use tts_protocol::{MAX_VOICE_BYTES, PAUSE_RANGE, SPEED_RANGE};
++    let o = SpeakOptions::new(Some("B".into()), 9.0, 0.01);
++    assert_eq!((o.speed, o.pause_scale), (*SPEED_RANGE.end(), *PAUSE_RANGE.start()));
++    let o = SpeakOptions::new(None, -3.0, 50.0);
++    assert_eq!((o.speed, o.pause_scale), (*SPEED_RANGE.start(), *PAUSE_RANGE.end()));
++    let o = SpeakOptions::new(None, f32::NAN, f32::INFINITY);
++    assert_eq!((o.speed, o.pause_scale), (1.0, 1.0));
++    assert_eq!(SpeakOptions::new(Some(String::new()), 1.0, 1.0).voice, None);
++    assert_eq!(
++        SpeakOptions::new(Some("v".repeat(MAX_VOICE_BYTES + 1)), 1.0, 1.0).voice,
++        None
++    );
++    assert_eq!(
++        SpeakOptions::new(Some("v".repeat(MAX_VOICE_BYTES)), 1.0, 1.0)
++            .voice
++            .map(|v| v.len()),
++        Some(MAX_VOICE_BYTES)
++    );
++
++    // Dựng thẳng từ trường công khai: speak() vẫn kẹp, worker không chết.
++    let (sp, count) = spawner(&[]);
++    let c = TtsClient::new(fast(sp));
++    let bad = SpeakOptions {
++        voice: Some("B".repeat(MAX_VOICE_BYTES + 1)),
++        speed: f32::NAN,
++        pause_scale: 99.0,
++    };
++    let (_, rx) = speak_with(&c, "opts", bad);
++    let ev = drain(&rx);
++    assert_eq!(ev[0], Event::Audio(vec![0, 0, 100, 200]));
++    assert_eq!(ev.last(), Some(&Event::Done));
++    assert_eq!(*count.lock().unwrap(), 1);
++}
++
++#[test]
++fn list_voices_returns_names_and_default() {
++    let (sp, count) = spawner(&[]);
++    let c = TtsClient::new(fast(sp));
++    let (tx, rx) = mpsc::channel();
++    c.list_voices(move |r| {
++        let _ = tx.send(r);
++    });
++    let got = rx.recv_timeout(Duration::from_secs(5)).unwrap();
++    assert_eq!(
++        got,
++        Ok(VoiceList {
++            names: vec!["A".into(), "B".into()],
++            default: "A".into()
++        })
++    );
++    assert_eq!(*count.lock().unwrap(), 1, "chạy lười như warmup");
++}
++
++#[test]
++fn list_voices_on_old_protocol_worker_fails_disabled() {
++    let (sp, _) = spawner(&[("FAKE_PROTOCOL", "2")]);
++    let c = TtsClient::new(fast(sp));
++    let (tx, rx) = mpsc::channel();
++    c.list_voices(move |r| {
++        let _ = tx.send(r);
++    });
++    assert!(matches!(
++        rx.recv_timeout(Duration::from_secs(5)).unwrap(),
++        Err(Failure::Disabled(_))
++    ));
++}
++
++#[test]
++fn old_protocol_worker_is_disabled() {
++    let (sp, count) = spawner(&[("FAKE_PROTOCOL", "2")]);
++    let c = TtsClient::new(fast(sp));
++    let (_, rx) = speak(&c, "xin chào");
++    assert!(matches!(drain(&rx).last(), Some(Event::Failed(Failure::Disabled(r))) if r.contains("giao thức")));
++    assert_eq!(*count.lock().unwrap(), 1, "không thử lại");
++    assert!(c.disabled_reason().is_some());
++}
+diff --git a/crates/tts-client/tests/real_worker.rs b/crates/tts-client/tests/real_worker.rs
+index 520ba73..9e2ac7b 100755
+--- a/crates/tts-client/tests/real_worker.rs
++++ b/crates/tts-client/tests/real_worker.rs
+@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
+ use std::sync::mpsc;
+ use std::sync::{Arc, Mutex};
+ use std::time::{Duration, Instant};
+-use tts_client::{Config, Event, Failure, Language, Spawner, TtsClient};
++use tts_client::{Config, Event, Failure, Language, Spawner, SpeakOptions, TtsClient};
+ 
+ fn env(k: &str) -> String {
+     std::env::var(k).unwrap_or_else(|_| panic!("thiếu biến môi trường {k}"))
+@@ -67,7 +67,7 @@ fn real_worker_through_the_client() {
+     c.speak(
+         Language::Vi,
+         "Cuộc họp bắt đầu lúc ba giờ chiều. Vui lòng tham gia đúng giờ.",
+-        None,
++        SpeakOptions::default(),
+         move |e| {
+             let _ = tx.send(e);
+         },
+@@ -87,7 +87,7 @@ fn real_worker_through_the_client() {
+     c.speak(
+         Language::Vi,
+         &"Đây là một đoạn dài để đọc lâu. ".repeat(6),
+-        None,
++        SpeakOptions::default(),
+         move |e| {
+             let _ = tx1.send(e);
+         },
+@@ -98,7 +98,7 @@ fn real_worker_through_the_client() {
+     ));
+     let t = Instant::now();
+     let (tx2, rx2) = mpsc::channel();
+-    c.speak(Language::En, "Hello there.", None, move |e| {
++    c.speak(Language::En, "Hello there.", SpeakOptions::default(), move |e| {
+         let _ = tx2.send(e);
+     });
+     let (_, _, fin1) = collect(&rx1);
+diff --git a/crates/tts-protocol/src/lib.rs b/crates/tts-protocol/src/lib.rs
+index 5905d04..6d1f145 100755
+--- a/crates/tts-protocol/src/lib.rs
++++ b/crates/tts-protocol/src/lib.rs
+@@ -24,7 +24,11 @@ pub const MAX_VOICE_BYTES: usize = 64;
+ /// Khung lớn nhất: 1 s PCM `i16` (96 KB) dư nhiều.
+ pub const MAX_FRAME_BYTES: u32 = 512 * 1024;
+ /// Phiên bản giao thức, trường đầu của [`Response::Ready`]. App tắt nút nghe nếu worker báo số khác.
+-pub const PROTOCOL_VERSION: u32 = 2;
++pub const PROTOCOL_VERSION: u32 = 3;
++/// Tốc độ đọc cho phép (1.0 = bình thường); ngoài khoảng hay không hữu hạn thì [`Request::validate`] từ chối.
++pub const SPEED_RANGE: std::ops::RangeInclusive<f32> = 0.8..=1.3;
++/// Hệ số nhân thời gian nghỉ giữa các câu/cụm (1.0 = bình thường); cùng cách kiểm như [`SPEED_RANGE`].
++pub const PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=2.0;
+ 
+ /// Ngôn ngữ đọc. v3 Turbo chỉ có hai ngôn ngữ này; tiếng Hàn, Trung, Nhật không có nút nghe.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+@@ -34,14 +38,18 @@ pub enum Lang {
+ }
+ 
+ /// Lệnh từ app tới worker.
+-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
++// Không `Eq`: có trường `f32`.
++#[derive(Clone, PartialEq, Serialize, Deserialize)]
+ pub enum Request {
+-    /// Đọc một câu. `voice = None` dùng giọng mặc định.
++    /// Đọc một câu. `voice = None` dùng giọng mặc định; `speed = None` là 1.0 ([`SPEED_RANGE`]); `pause_scale = None` là 1.0
++    /// ([`PAUSE_RANGE`]). Hai trường cuối thêm ở phiên bản giao thức 3.
+     Speak {
+         id: u64,
+         lang: Lang,
+         text: String,
+         voice: Option<String>,
++        speed: Option<f32>,
++        pause_scale: Option<f32>,
+     },
+     /// Hủy câu đang đọc (người dùng bấm lại, đổi câu hay đóng).
+     Cancel { id: u64 },
+@@ -50,6 +58,8 @@ pub enum Request {
+     /// Nạp model sẵn (mất vài giây ở lần đầu) để lần đọc đầu không bị trễ. Trả `Done { id }` hoặc `Failed { id, .. }`.
+     /// Thêm ở phiên bản giao thức 2.
+     Warmup { id: u64 },
++    /// Hỏi danh sách giọng. Trả `Voices { id, .. }`. Thêm ở phiên bản giao thức 3.
++    ListVoices { id: u64 },
+ }
+ 
+ /// Loại lỗi gửi về app (không kèm chữ của người dùng).
+@@ -76,21 +86,37 @@ pub enum Response {
+     Done { id: u64 },
+     /// Câu `id` lỗi.
+     Failed { id: u64, kind: ErrorKind },
++    /// Danh sách giọng (trả lời [`Request::ListVoices`]) và giọng mặc định. Thêm ở phiên bản giao thức 3.
++    Voices {
++        id: u64,
++        names: Vec<String>,
++        default: String,
++    },
+ }
+ 
+ impl fmt::Debug for Request {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+-            Request::Speak { id, lang, text, voice } => f
++            Request::Speak {
++                id,
++                lang,
++                text,
++                voice,
++                speed,
++                pause_scale,
++            } => f
+                 .debug_struct("Speak")
+                 .field("id", id)
+                 .field("lang", lang)
+                 .field("text_bytes", &text.len())
+                 .field("voice_set", &voice.is_some())
++                .field("speed", speed)
++                .field("pause_scale", pause_scale)
+                 .finish(),
+             Request::Cancel { id } => f.debug_struct("Cancel").field("id", id).finish(),
+             Request::Shutdown => f.write_str("Shutdown"),
+             Request::Warmup { id } => f.debug_struct("Warmup").field("id", id).finish(),
++            Request::ListVoices { id } => f.debug_struct("ListVoices").field("id", id).finish(),
+         }
+     }
+ }
+@@ -107,6 +133,11 @@ impl fmt::Debug for Response {
+                 .finish(),
+             Response::Done { id } => f.debug_struct("Done").field("id", id).finish(),
+             Response::Failed { id, kind } => f.debug_struct("Failed").field("id", id).field("kind", kind).finish(),
++            Response::Voices { id, names, .. } => f
++                .debug_struct("Voices")
++                .field("id", id)
++                .field("count", &names.len())
++                .finish(),
+         }
+     }
+ }
+@@ -129,7 +160,14 @@ pub enum ProtocolError {
+ impl Request {
+     /// Kiểm giới hạn nội dung; worker gọi sau khi giải mã (khung của app cũng chỉ tin vừa đủ).
+     pub fn validate(&self) -> Result<(), ProtocolError> {
+-        if let Request::Speak { text, voice, .. } = self {
++        if let Request::Speak {
++            text,
++            voice,
++            speed,
++            pause_scale,
++            ..
++        } = self
++        {
+             if text.trim().is_empty() {
+                 return Err(ProtocolError::Invalid("chữ rỗng"));
+             }
+@@ -139,6 +177,13 @@ impl Request {
+             if voice.as_ref().is_some_and(|v| v.len() > MAX_VOICE_BYTES) {
+                 return Err(ProtocolError::Invalid("tên giọng quá dài"));
+             }
++            // `RangeInclusive::contains` trả false với NaN; vô cực nằm ngoài khoảng.
++            if speed.is_some_and(|v| !SPEED_RANGE.contains(&v)) {
++                return Err(ProtocolError::Invalid("tốc độ ngoài khoảng"));
++            }
++            if pause_scale.is_some_and(|v| !PAUSE_RANGE.contains(&v)) {
++                return Err(ProtocolError::Invalid("hệ số nghỉ ngoài khoảng"));
++            }
+         }
+         Ok(())
+     }
+@@ -205,12 +250,16 @@ mod tests {
+             lang: Lang::Vi,
+             text: "Xin chào".into(),
+             voice: Some("Minh Quân".into()),
++            speed: None,
++            pause_scale: None,
+         });
+         roundtrip(Request::Speak {
+             id: 8,
+             lang: Lang::En,
+             text: "Hello".into(),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         });
+         roundtrip(Request::Cancel { id: 7 });
+         roundtrip(Request::Shutdown);
+@@ -243,10 +292,13 @@ mod tests {
+                 id: 0,
+                 lang: Lang::Vi,
+                 text: String::new(),
+-                voice: None
++                voice: None,
++                speed: None,
++                pause_scale: None
+             }),
+             0
+         );
++        assert_eq!(idx(&Request::ListVoices { id: 0 }), 4);
+         assert_eq!(idx(&Request::Cancel { id: 0 }), 1);
+         assert_eq!(idx(&Request::Shutdown), 2);
+         assert_eq!(idx(&Request::Warmup { id: 0 }), 3);
+@@ -268,6 +320,14 @@ mod tests {
+             }),
+             3
+         );
++        assert_eq!(
++            ridx(&Response::Voices {
++                id: 0,
++                names: vec![],
++                default: String::new()
++            }),
++            4
++        );
+         assert_eq!(postcard::to_stdvec(&Lang::Vi).unwrap(), [0]);
+         assert_eq!(postcard::to_stdvec(&Lang::En).unwrap(), [1]);
+     }
+@@ -311,6 +371,8 @@ mod tests {
+             lang: Lang::Vi,
+             text: "a".into(),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         };
+         assert!(ok.validate().is_ok());
+         let empty = Request::Speak {
+@@ -318,6 +380,8 @@ mod tests {
+             lang: Lang::Vi,
+             text: "  \n".into(),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         };
+         assert!(empty.validate().is_err());
+         let long = Request::Speak {
+@@ -325,6 +389,8 @@ mod tests {
+             lang: Lang::En,
+             text: "a".repeat(MAX_TEXT_BYTES + 1),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         };
+         assert!(long.validate().is_err());
+         let voice = Request::Speak {
+@@ -332,6 +398,8 @@ mod tests {
+             lang: Lang::En,
+             text: "a".into(),
+             voice: Some("v".repeat(MAX_VOICE_BYTES + 1)),
++            speed: None,
++            pause_scale: None,
+         };
+         assert!(voice.validate().is_err());
+         assert!(Request::Shutdown.validate().is_ok());
+@@ -350,6 +418,8 @@ mod tests {
+             lang: Lang::Vi,
+             text: "bí mật cuộc họp".into(),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         };
+         assert!(!format!("{r:?}").contains("bí mật"));
+         let a = Response::Audio {
+@@ -374,4 +444,67 @@ mod tests {
+         .unwrap();
+         assert!(buf.len() <= MAX_FRAME_BYTES as usize + 4);
+     }
++
++    fn speak_with(speed: Option<f32>, pause_scale: Option<f32>) -> Request {
++        Request::Speak {
++            id: 1,
++            lang: Lang::Vi,
++            text: "a".into(),
++            voice: None,
++            speed,
++            pause_scale,
++        }
++    }
++
++    #[test]
++    fn speak_roundtrip_with_new_fields() {
++        roundtrip(Request::Speak {
++            id: 9,
++            lang: Lang::En,
++            text: "Hello".into(),
++            voice: Some("B".into()),
++            speed: Some(1.25),
++            pause_scale: Some(0.5),
++        });
++        assert!(
++            speak_with(Some(*SPEED_RANGE.start()), Some(*PAUSE_RANGE.end()))
++                .validate()
++                .is_ok()
++        );
++        assert!(
++            speak_with(Some(*SPEED_RANGE.end()), Some(*PAUSE_RANGE.start()))
++                .validate()
++                .is_ok()
++        );
++    }
++
++    #[test]
++    fn list_voices_roundtrip() {
++        roundtrip(Request::ListVoices { id: 3 });
++        roundtrip(Response::Voices {
++            id: 3,
++            names: vec!["A".into(), "Minh Quân".into()],
++            default: "A".into(),
++        });
++        assert!(Request::ListVoices { id: 3 }.validate().is_ok());
++    }
++
++    #[test]
++    fn validate_rejects_out_of_range_speed() {
++        for v in [0.79, 1.31, f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
++            assert!(speak_with(Some(v), None).validate().is_err(), "speed {v}");
++        }
++    }
++
++    #[test]
++    fn validate_rejects_out_of_range_pause() {
++        for v in [0.49, 2.01, f32::NAN, f32::INFINITY] {
++            assert!(speak_with(None, Some(v)).validate().is_err(), "pause {v}");
++        }
++    }
++
++    #[test]
++    fn ready_reports_protocol_3() {
++        assert_eq!(PROTOCOL_VERSION, 3);
++    }
+ }
+diff --git a/crates/tts-worker/src/lib.rs b/crates/tts-worker/src/lib.rs
+index 02fd73e..a59bf9f 100755
+--- a/crates/tts-worker/src/lib.rs
++++ b/crates/tts-worker/src/lib.rs
+@@ -10,6 +10,7 @@ pub mod frames;
+ pub mod rep_history;
+ pub mod sampling;
+ pub mod speech;
++pub mod tempo;
+ pub mod text;
+ 
+ #[cfg(feature = "engine")]
+diff --git a/crates/tts-worker/src/main.rs b/crates/tts-worker/src/main.rs
+index 5c479a3..7e92bd0 100755
+--- a/crates/tts-worker/src/main.rs
++++ b/crates/tts-worker/src/main.rs
+@@ -11,11 +11,11 @@ use std::path::PathBuf;
+ use std::process::ExitCode;
+ use std::sync::atomic::{AtomicBool, Ordering};
+ use std::sync::{Arc, Mutex, mpsc};
+-use tts_protocol::{ErrorKind, PROTOCOL_VERSION, Request, Response, read_frame, write_frame};
++use tts_protocol::{ErrorKind, PAUSE_RANGE, PROTOCOL_VERSION, Request, Response, SPEED_RANGE, read_frame, write_frame};
+ use tts_worker::engine::{Cancelled, Engine};
+ use tts_worker::phonemize::Phonemizer;
+-use tts_worker::synth::{Synth, to_i16};
+-use tts_worker::voices::Voices;
++use tts_worker::synth::{SpeakParams, Synth, to_i16};
++use tts_worker::voices::{self, Voices};
+ 
+ /// 0,2 s PCM mỗi khung: app phát mượt, khung nhỏ vẫn đủ gọn.
+ const CHUNK_SAMPLES: usize = 9_600;
+@@ -65,6 +65,19 @@ fn load(a: &Args) -> Result<Synth, Box<dyn std::error::Error>> {
+     Ok(synth)
+ }
+ 
++/// Tùy chọn đọc từ khung `Speak`: thiếu thì 1,0; kẹp vào khoảng của giao thức thêm một lần nữa (khung đã qua `validate`,
++/// nhưng phòng nguồn lạ), `NaN` coi như thiếu.
++fn speak_params(speed: Option<f32>, pause_scale: Option<f32>) -> SpeakParams {
++    let pick = |v: Option<f32>, r: &std::ops::RangeInclusive<f32>| {
++        v.filter(|x| x.is_finite())
++            .map_or(1.0, |x| x.clamp(*r.start(), *r.end()))
++    };
++    SpeakParams {
++        speed: pick(speed, &SPEED_RANGE),
++        pause_scale: pick(pause_scale, &PAUSE_RANGE),
++    }
++}
++
+ fn main() -> ExitCode {
+     let args = match parse_args() {
+         Ok(a) => a,
+@@ -128,8 +141,33 @@ fn main() -> ExitCode {
+     let mut synth: Option<Synth> = None;
+     let mut warmed = false;
+     while let Ok(msg) = rx.recv() {
+-        let (id, text, voice) = match msg {
+-            Msg::Req(Request::Speak { id, text, voice, .. }) => (id, text, voice),
++        let (id, text, voice, params) = match msg {
++            Msg::Req(Request::Speak {
++                id,
++                text,
++                voice,
++                speed,
++                pause_scale,
++                ..
++            }) => (id, text, voice, speak_params(speed, pause_scale)),
++            // Chỉ đọc tên trong file giọng, không nạp model (spec 2026-11-04-giong-doc-design §5). Lỗi gì cũng trả `Failed`
++            // và chạy tiếp, không bao giờ thoát vì lệnh này.
++            Msg::Req(Request::ListVoices { id }) => {
++                let resp = match voices::list_names(&args.voices) {
++                    Ok((names, default)) => Response::Voices { id, names, default },
++                    Err(e) => {
++                        eprintln!("tts-worker: không đọc được file giọng: {e}");
++                        Response::Failed {
++                            id,
++                            kind: ErrorKind::ModelMissing,
++                        }
++                    }
++                };
++                if write_frame(&mut out, &resp).is_err() {
++                    break;
++                }
++                continue;
++            }
+             Msg::Req(Request::Warmup { id }) => {
+                 if synth.is_none() {
+                     match load(&args) {
+@@ -149,17 +187,25 @@ fn main() -> ExitCode {
+                 }
+                 // Nạp xong chưa đủ nóng: lần suy luận đầu của ONNX còn khởi tạo nhân tính toán (câu đầu trễ vài giây). Đọc nháp một câu
+                 // ngắn, bỏ âm thanh, để câu thật đầu tiên chạy ở tốc độ bình thường. Lỗi ở đây không quan trọng.
+-                if let Some(s) = synth.as_mut() {
+-                    if !warmed {
+-                        warmed = true;
+-                        let stop = || shutdown.load(Ordering::SeqCst);
+-                        let _ = s.speak("Xin chào.", None, &stop, &mut |_pcm: &[f32]| Ok(()));
+-                    }
++                if let Some(s) = synth.as_mut()
++                    && !warmed
++                {
++                    warmed = true;
++                    let stop = || shutdown.load(Ordering::SeqCst);
++                    let _ = s.speak(
++                        "Xin chào.",
++                        None,
++                        SpeakParams::default(),
++                        &stop,
++                        &mut |_pcm: &[f32]| Ok(()),
++                    );
+                 }
+                 let _ = write_frame(&mut out, &Response::Done { id });
+                 continue;
+             }
+-            _ => break,
++            // Luồng đọc tự xử lý Cancel/Shutdown, không chuyển sang đây.
++            Msg::Req(Request::Cancel { .. } | Request::Shutdown) => continue,
++            Msg::Eof => break,
+         };
+         if cancels.lock().unwrap().remove(&id) {
+             let _ = write_frame(
+@@ -190,7 +236,7 @@ fn main() -> ExitCode {
+         let s = synth.as_mut().expect("vừa nạp");
+         let is_cancelled = || shutdown.load(Ordering::SeqCst) || cancels.lock().unwrap().contains(&id);
+         let mut seq = 0u32;
+-        let result = s.speak(&text, voice.as_deref(), &is_cancelled, &mut |pcm: &[f32]| {
++        let result = s.speak(&text, voice.as_deref(), params, &is_cancelled, &mut |pcm: &[f32]| {
+             for chunk in pcm.chunks(CHUNK_SAMPLES) {
+                 write_frame(
+                     &mut out,
+@@ -243,3 +289,31 @@ fn main() -> ExitCode {
+     let _ = out.flush();
+     ExitCode::SUCCESS
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn speak_params_default_and_clamp() {
++        assert_eq!(speak_params(None, None), SpeakParams::default());
++        assert_eq!(
++            speak_params(Some(1.15), Some(1.5)),
++            SpeakParams {
++                speed: 1.15,
++                pause_scale: 1.5
++            }
++        );
++        assert_eq!(
++            speak_params(Some(9.0), Some(0.0)),
++            SpeakParams {
++                speed: *SPEED_RANGE.end(),
++                pause_scale: *PAUSE_RANGE.start()
++            }
++        );
++        assert_eq!(
++            speak_params(Some(f32::NAN), Some(f32::INFINITY)),
++            SpeakParams::default()
++        );
++    }
++}
+diff --git a/crates/tts-worker/src/speech.rs b/crates/tts-worker/src/speech.rs
+index 1d44d8e..9af2558 100755
+--- a/crates/tts-worker/src/speech.rs
++++ b/crates/tts-worker/src/speech.rs
+@@ -132,10 +132,31 @@ pub fn babble_prefer(new: &Babble, old: &Babble) -> bool {
+     new.bursts < old.bursts || (new.bursts == old.bursts && new.n_frames < old.n_frames)
+ }
+ 
++/// Khoảng nghỉ tối thiểu sau đoạn `prev_text` (giây): sau dấu kết câu `.`/`!`/`?` là [`GAP_SENTENCE_S`], còn lại
++/// [`GAP_MINOR_S`]; nhân `scale` (hệ số nghỉ của người dùng, 1.0 giữ nguyên).
++pub fn gap_seconds(prev_text: &str, scale: f32) -> f32 {
++    let base = if prev_text.trim_end().ends_with(['.', '!', '?']) {
++        GAP_SENTENCE_S
++    } else {
++        GAP_MINOR_S
++    };
++    base * scale
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn gap_scales_sentence_and_minor_pauses() {
++        assert_eq!(gap_seconds("Xin chào.", 2.0), 1.0);
++        assert_eq!(gap_seconds("Xin chào,", 0.5), 0.15);
++        assert_eq!(gap_seconds("Xin chào!  ", 1.0), GAP_SENTENCE_S);
++        assert_eq!(gap_seconds("Thật sao? ", 1.0), 0.50);
++        assert_eq!(gap_seconds("Xin chào,", 1.0), 0.30);
++        assert_eq!(gap_seconds("Xin chào", 1.0), GAP_MINOR_S);
++    }
++
+     #[test]
+     fn silence_edges_and_pad() {
+         let sr = 48_000;
+diff --git a/crates/tts-worker/src/synth.rs b/crates/tts-worker/src/synth.rs
+index 046d5ee..1f9f950 100755
+--- a/crates/tts-worker/src/synth.rs
++++ b/crates/tts-worker/src/synth.rs
+@@ -6,9 +6,9 @@ use crate::frames::{is_cue_only, max_expected_frames, syllable_count};
+ use crate::phonemize::Phonemizer;
+ use crate::sampling::Rng;
+ use crate::speech::{
+-    BABBLE_MAX_RETRIES, BABBLE_MAX_SYLLABLES, Babble, GAP_MINOR_S, GAP_SENTENCE_S, babble_prefer, babble_suspect,
+-    pause_pad_samples,
++    BABBLE_MAX_RETRIES, BABBLE_MAX_SYLLABLES, Babble, babble_prefer, babble_suspect, gap_seconds, pause_pad_samples,
+ };
++use crate::tempo::Tempo;
+ use crate::text::{split_into_sentences, split_long};
+ use crate::voices::Voices;
+ 
+@@ -27,6 +27,24 @@ pub struct Synth {
+     rng: Rng,
+ }
+ 
++/// Tùy chọn đọc của người dùng (spec 2026-11-04-giong-doc-design §5). `Default` = hành vi cũ (1,0 / 1,0).
++#[derive(Debug, Clone, Copy, PartialEq)]
++pub struct SpeakParams {
++    /// Tốc độ đọc (1,0 = bình thường, bỏ qua hẳn bộ đổi nhịp).
++    pub speed: f32,
++    /// Hệ số nhân khoảng nghỉ giữa các đoạn (1,0 = bình thường).
++    pub pause_scale: f32,
++}
++
++impl Default for SpeakParams {
++    fn default() -> Self {
++        Self {
++            speed: 1.0,
++            pause_scale: 1.0,
++        }
++    }
++}
++
+ /// Số liệu của một lần đọc (không chứa chữ của người dùng).
+ #[derive(Debug, Default, Clone, Copy)]
+ pub struct SpeakStats {
+@@ -54,10 +72,13 @@ impl Synth {
+     }
+ 
+     /// Đọc `text`; mỗi đoạn PCM (kể cả khoảng lặng) đi qua `emit` ngay khi có. `cancelled` được hỏi giữa các khung.
++    /// Tiếng nói của từng đoạn đi qua [`Tempo`] theo `params.speed`; khoảng lặng giữa hai đoạn (tính trên PCM gốc, nhân
++    /// `params.pause_scale`) chèn sau khi đã xả `Tempo` của đoạn trước nên không bị co/giãn.
+     pub fn speak(
+         &mut self,
+         text: &str,
+         voice: Option<&str>,
++        params: SpeakParams,
+         cancelled: &dyn Fn() -> bool,
+         emit: &mut dyn FnMut(&[f32]) -> Result<()>,
+     ) -> Result<SpeakStats> {
+@@ -69,38 +90,38 @@ impl Synth {
+             .flat_map(|s| split_long(s, MAX_UNIT_CHARS))
+             .collect();
+         let mut prev: Option<(Vec<f32>, String)> = None;
++        // Đầu ra của `Tempo` cho một lần gọi; dùng lại giữa các nhóm để khỏi cấp phát.
++        let mut scratch: Vec<f32> = Vec::new();
+         for unit in &units {
+             let ph = self.phonemizer.phonemize(unit);
+             if ph.trim().is_empty() {
+                 continue;
+             }
+-            let gap = |t: &str| {
+-                if t.trim_end().ends_with(['.', '!', '?']) {
+-                    GAP_SENTENCE_S
+-                } else {
+-                    GAP_MINOR_S
+-                }
+-            };
++            // Mỗi đoạn một `Tempo` riêng: khoảng lặng chèn giữa hai đoạn không đi qua bộ đổi nhịp. Hủy (`?` trả
++            // `Cancelled`) thì bỏ luôn, không xả.
++            let mut tempo = Tempo::new(params.speed, SAMPLE_RATE);
+             let streamable = self.stream && !is_cue_only(&ph) && syllable_count(&ph) > BABBLE_MAX_SYLLABLES;
+             let wav = if streamable {
+                 // Phát dần từng nhóm khung; khoảng nghỉ đầu đoạn tính từ nhóm đầu tiên.
+                 let (wav, frames) =
+                     self.stream_unit(&ph, &voice.speaker_emb, &voice.codes, cancelled, |chunk, first| {
+                         if first && let Some((prev_wav, prev_text)) = &prev {
+-                            let pad = pause_pad_samples(prev_wav, chunk, SAMPLE_RATE, gap(prev_text));
++                            let pad = pause_pad_samples(
++                                prev_wav,
++                                chunk,
++                                SAMPLE_RATE,
++                                gap_seconds(prev_text, params.pause_scale),
++                            );
+                             if pad > 0 {
+                                 emit(&vec![0.0f32; pad])?;
+                                 stats.audio_samples += pad;
+                             }
+                         }
+-                        if stats.first_audio_ms == 0 {
+-                            stats.first_audio_ms = t0.elapsed().as_millis();
+-                        }
+-                        stats.audio_samples += chunk.len();
+-                        emit(chunk)
++                        emit_speech(&mut tempo, chunk, &mut scratch, &mut stats, t0, emit)
+                     })?;
+                 stats.units += 1;
+                 stats.frames += frames;
++                flush_speech(&mut tempo, &mut scratch, &mut stats, t0, emit)?;
+                 wav
+             } else {
+                 let (wav, frames, retries) = self.gen_unit(&ph, &voice.speaker_emb, &voice.codes, cancelled)?;
+@@ -111,22 +132,21 @@ impl Synth {
+                     continue;
+                 }
+                 if let Some((prev_wav, prev_text)) = &prev {
+-                    let pad = pause_pad_samples(prev_wav, &wav, SAMPLE_RATE, gap(prev_text));
++                    let pad =
++                        pause_pad_samples(prev_wav, &wav, SAMPLE_RATE, gap_seconds(prev_text, params.pause_scale));
+                     if pad > 0 {
+                         emit(&vec![0.0f32; pad])?;
+                         stats.audio_samples += pad;
+                     }
+                 }
+-                if stats.first_audio_ms == 0 {
+-                    stats.first_audio_ms = t0.elapsed().as_millis();
+-                }
+-                stats.audio_samples += wav.len();
+-                emit(&wav)?;
++                emit_speech(&mut tempo, &wav, &mut scratch, &mut stats, t0, emit)?;
++                flush_speech(&mut tempo, &mut scratch, &mut stats, t0, emit)?;
+                 wav
+             };
+             if wav.is_empty() {
+                 continue;
+             }
++            // Giữ PCM gốc (chưa đổi nhịp) để đo khoảng lặng đuôi cho đoạn sau.
+             prev = Some((wav, unit.clone()));
+         }
+         stats.gen_ms = t0.elapsed().as_millis();
+@@ -242,6 +262,53 @@ impl Synth {
+     }
+ }
+ 
++/// Cho `pcm` (tiếng nói gốc) qua `tempo` rồi phát phần đã chốt. Tốc độ 1,0 phát thẳng `pcm`, không chép.
++fn emit_speech(
++    tempo: &mut Tempo,
++    pcm: &[f32],
++    scratch: &mut Vec<f32>,
++    stats: &mut SpeakStats,
++    t0: std::time::Instant,
++    emit: &mut dyn FnMut(&[f32]) -> Result<()>,
++) -> Result<()> {
++    if tempo.is_bypass() {
++        return emit_counted(pcm, stats, t0, emit);
++    }
++    scratch.clear();
++    tempo.process(pcm, scratch);
++    emit_counted(scratch, stats, t0, emit)
++}
++
++/// Xả phần còn lại của `tempo` ở cuối một đoạn.
++fn flush_speech(
++    tempo: &mut Tempo,
++    scratch: &mut Vec<f32>,
++    stats: &mut SpeakStats,
++    t0: std::time::Instant,
++    emit: &mut dyn FnMut(&[f32]) -> Result<()>,
++) -> Result<()> {
++    scratch.clear();
++    tempo.flush(scratch);
++    emit_counted(scratch, stats, t0, emit)
++}
++
++/// Phát `pcm` (bỏ qua nếu rỗng), đếm số mẫu thực sự phát và ghi mốc âm thanh đầu tiên.
++fn emit_counted(
++    pcm: &[f32],
++    stats: &mut SpeakStats,
++    t0: std::time::Instant,
++    emit: &mut dyn FnMut(&[f32]) -> Result<()>,
++) -> Result<()> {
++    if pcm.is_empty() {
++        return Ok(());
++    }
++    if stats.first_audio_ms == 0 {
++        stats.first_audio_ms = t0.elapsed().as_millis();
++    }
++    stats.audio_samples += pcm.len();
++    emit(pcm)
++}
++
+ /// PCM f32 → i16 có kẹp biên.
+ pub fn to_i16(pcm: &[f32]) -> Vec<i16> {
+     pcm.iter()
+diff --git a/crates/tts-worker/src/tempo.rs b/crates/tts-worker/src/tempo.rs
+new file mode 100644
+index 0000000..feed416
+--- /dev/null
++++ b/crates/tts-worker/src/tempo.rs
+@@ -0,0 +1,380 @@
++//! Đổi nhịp đọc mà không đổi cao độ (spec 2026-11-04-giong-doc-design §5): WSOLA thuần Rust, chạy dần trên từng nhóm PCM.
++//!
++//! Mỗi khung tổng hợp dài [`WINDOW_S`] (cửa sổ Hann), đặt cách nhau [`HOP_S`] ở đầu ra (chồng 50%, tổng hai cửa sổ chồng nhau
++//! luôn bằng 1 nên biên độ không vượt đầu vào). Ở đầu vào, khung thứ `k` lấy quanh vị trí danh nghĩa `k × HOP × speed`, xê
++//! dịch trong ±[`SEARCH_S`] tới chỗ tương quan chéo lớn nhất với phần đuôi của khung trước (nửa sau khung trước, tức phần
++//! sẽ chồng lên khung này), nên sóng nối liền pha và không đổi cao độ. Khung chỉ được ghép khi đã có đủ đầu vào cho mọi vị
++//! trí thử, nên kết quả không phụ thuộc cách cắt nhóm PCM; độ trễ thêm là `SEARCH + WINDOW − HOP` ≈ 22,5 ms (quy về trục
++//! đầu vào, cộng tối đa 2,5 ms khi `speed = 0,8`). `flush` đệm số 0 sau đuôi để ghép nốt các khung còn lại rồi cắt đầu ra
++//! đúng `round(tổng_vào / speed)` mẫu.
++
++/// Độ dài cửa sổ phân tích/tổng hợp (giây).
++pub const WINDOW_S: f32 = 0.025;
++/// Bước tổng hợp ở đầu ra (giây), bằng nửa cửa sổ.
++pub const HOP_S: f32 = WINDOW_S / 2.0;
++/// Khoảng tìm vị trí khớp quanh vị trí danh nghĩa (giây, mỗi phía).
++pub const SEARCH_S: f32 = 0.010;
++/// Khoảng tốc độ chấp nhận; ngoài khoảng thì kẹp, `NaN`/vô cực coi như 1,0 (phòng gọi sai, giao thức đã kẹp chặt hơn).
++const SPEED_LIMITS: (f32, f32) = (0.5, 2.0);
++
++/// Bộ co/giãn thời gian. `speed > 1` đọc nhanh hơn (ít mẫu hơn), `speed < 1` chậm hơn; cao độ giữ nguyên.
++/// Dùng cho một dòng PCM liên tục: `process` nhiều lần, `flush` một lần ở cuối; sau `flush` dùng lại được như mới.
++pub struct Tempo {
++    speed: f32,
++    bypass: bool,
++    /// Bước tổng hợp, độ dài cửa sổ (= 2 × hop) và khoảng tìm, tính bằng mẫu.
++    hop: usize,
++    win: usize,
++    tol: usize,
++    /// Bước phân tích danh nghĩa = hop × speed.
++    hop_in: f64,
++    /// Cửa sổ Hann tuần hoàn dài `win`.
++    window: Vec<f32>,
++    /// Đầu vào còn cần; `buf[0]` là mẫu thứ `buf_start` (đếm tuyệt đối từ đầu dòng).
++    buf: Vec<f32>,
++    buf_start: usize,
++    /// Tổng số mẫu đầu vào thật đã nhận.
++    in_total: usize,
++    /// Chỉ số khung kế tiếp và vị trí (tuyệt đối, ở đầu vào) của khung vừa ghép.
++    k: usize,
++    prev: usize,
++    /// Đầu ra đang cộng chồng; `ola[0]` là mẫu ra thứ `ola_start` (= số mẫu đã trả ra).
++    ola: Vec<f32>,
++    ola_start: usize,
++}
++
++impl Tempo {
++    pub fn new(speed: f32, sample_rate: u32) -> Self {
++        let speed = if speed.is_finite() {
++            speed.clamp(SPEED_LIMITS.0, SPEED_LIMITS.1)
++        } else {
++            1.0
++        };
++        let sr = sample_rate as f32;
++        let hop = ((HOP_S * sr).round() as usize).max(1);
++        let win = 2 * hop;
++        let tol = (SEARCH_S * sr).round() as usize;
++        let window = (0..win)
++            .map(|i| 0.5 - 0.5 * (2.0 * std::f64::consts::PI * i as f64 / win as f64).cos())
++            .map(|w| w as f32)
++            .collect();
++        Self {
++            speed,
++            bypass: (speed - 1.0).abs() < 1e-3,
++            hop,
++            win,
++            tol,
++            hop_in: hop as f64 * f64::from(speed),
++            window,
++            buf: Vec::new(),
++            buf_start: 0,
++            in_total: 0,
++            k: 0,
++            prev: 0,
++            ola: Vec::new(),
++            ola_start: 0,
++        }
++    }
++
++    /// Đúng khi tốc độ coi như 1,0: `process` chép nguyên đầu vào, `flush` không thêm gì (đầu ra giống hệt từng bit).
++    pub fn is_bypass(&self) -> bool {
++        self.bypass
++    }
++
++    /// Nạp thêm `input`; nối vào `out` phần đầu ra đã chốt.
++    pub fn process(&mut self, input: &[f32], out: &mut Vec<f32>) {
++        if self.bypass {
++            out.extend_from_slice(input);
++            return;
++        }
++        self.buf.extend_from_slice(input);
++        self.in_total += input.len();
++        while self.try_frame(false) {
++            self.emit_until(self.k * self.hop, out);
++        }
++        self.trim();
++    }
++
++    /// Xả hết phần còn lại (đầu ra tổng cộng `round(tổng_vào / speed)` mẫu) rồi đặt lại trạng thái để dùng cho dòng mới.
++    pub fn flush(&mut self, out: &mut Vec<f32>) {
++        if self.bypass {
++            return;
++        }
++        let target = (self.in_total as f64 / f64::from(self.speed)).round() as usize;
++        while self.k * self.hop < target {
++            if !self.try_frame(true) {
++                break;
++            }
++        }
++        if self.ola_start < target {
++            let n = target - self.ola_start;
++            if self.ola.len() < n {
++                self.ola.resize(n, 0.0);
++            }
++            out.extend_from_slice(&self.ola[..n]);
++        }
++        self.reset();
++    }
++
++    /// Về trạng thái trống (giữ tốc độ, kích thước và cửa sổ).
++    fn reset(&mut self) {
++        self.buf.clear();
++        self.buf_start = 0;
++        self.in_total = 0;
++        self.k = 0;
++        self.prev = 0;
++        self.ola.clear();
++        self.ola_start = 0;
++    }
++
++    /// Vị trí danh nghĩa (đầu vào) của khung `k`.
++    fn nominal(&self, k: usize) -> usize {
++        (k as f64 * self.hop_in).round() as usize
++    }
++
++    /// Ghép khung `self.k` nếu đủ đầu vào. `padded`: đang xả, coi sau đuôi là số 0 và không tìm khớp vào vùng toàn số 0.
++    fn try_frame(&mut self, padded: bool) -> bool {
++        let (hop, win) = (self.hop, self.win);
++        let nominal = self.nominal(self.k);
++        let start = if self.k == 0 {
++            if !padded && self.in_total < win {
++                return false;
++            }
++            0
++        } else {
++            let lo = nominal.saturating_sub(self.tol).max(self.buf_start);
++            let mut hi = nominal + self.tol;
++            if padded {
++                // Chỉ thử các vị trí mà phần đem so (nửa đầu khung) còn nằm trong đầu vào thật, nếu được.
++                hi = hi.min(self.in_total.saturating_sub(hop).max(lo));
++            } else if self.in_total < hi + win {
++                return false;
++            }
++            self.ensure_buf(hi + win);
++            self.best_match(lo, hi, nominal.clamp(lo, hi))
++        };
++        self.ensure_buf(start + win);
++        let at = self.k * hop - self.ola_start;
++        if self.ola.len() < at + win {
++            self.ola.resize(at + win, 0.0);
++        }
++        let src = &self.buf[start - self.buf_start..start - self.buf_start + win];
++        let dst = &mut self.ola[at..at + win];
++        for (i, ((d, &x), &w)) in dst.iter_mut().zip(src).zip(&self.window).enumerate() {
++            // Khung đầu không có khung trước để chồng: giữ nguyên nửa đầu thay vì để cửa sổ làm mờ dần từ 0.
++            let w = if self.k == 0 && i < hop { 1.0 } else { w };
++            *d += w * x;
++        }
++        self.prev = start;
++        self.k += 1;
++        true
++    }
++
++    /// Vị trí trong `lo..=hi` (tìm thô rồi tinh) có tương quan chéo lớn nhất giữa nửa đầu khung thử và nửa sau khung trước. Hòa thì giữ `pref`
++    /// (vị trí danh nghĩa), nên đoạn lặng không bị xê dịch.
++    fn best_match(&self, lo: usize, hi: usize, pref: usize) -> usize {
++        let hop = self.hop;
++        let off = |abs: usize| abs - self.buf_start;
++        let r = &self.buf[off(self.prev + hop)..off(self.prev + 2 * hop)];
++        let score = |c: usize| -> f32 { r.iter().zip(&self.buf[off(c)..off(c) + hop]).map(|(a, b)| a * b).sum() };
++        let (mut best, mut best_score) = (pref, score(pref));
++        // Tìm thô bước COARSE rồi tinh quanh chỗ tốt nhất: đỉnh tương quan của tiếng nói rộng cỡ ¼ chu kỳ cao độ (≥ 0,5 ms),
++        // nên bước 4 mẫu (0,08 ms ở 48 kHz) không lỡ đỉnh mà nhanh gấp ~4 lần.
++        const COARSE: usize = 4;
++        for c in (lo..=hi).step_by(COARSE) {
++            let s = score(c);
++            if s > best_score {
++                (best, best_score) = (c, s);
++            }
++        }
++        let centre = best;
++        for c in centre.saturating_sub(COARSE - 1).max(lo)..=(centre + COARSE - 1).min(hi) {
++            let s = score(c);
++            if s > best_score {
++                (best, best_score) = (c, s);
++            }
++        }
++        best
++    }
++
++    /// Đệm số 0 để `buf` phủ tới mẫu tuyệt đối `end` (chỉ chạm tới khi đang xả; lúc `process` đầu vào đã đủ).
++    fn ensure_buf(&mut self, end: usize) {
++        let need = end - self.buf_start;
++        if self.buf.len() < need {
++            self.buf.resize(need, 0.0);
++        }
++    }
++
++    /// Trả ra `out` các mẫu đầu ra trước vị trí `until` (đã đủ hai khung chồng nên không còn thay đổi).
++    fn emit_until(&mut self, until: usize, out: &mut Vec<f32>) {
++        let n = until.saturating_sub(self.ola_start).min(self.ola.len());
++        out.extend(self.ola.drain(..n));
++        self.ola_start += n;
++    }
++
++    /// Bỏ phần đầu vào không còn cần: khung sau chỉ đọc từ `min(danh nghĩa − tol, nửa sau khung trước)` trở đi.
++    fn trim(&mut self) {
++        if self.k == 0 {
++            return;
++        }
++        let keep = self.nominal(self.k).saturating_sub(self.tol).min(self.prev + self.hop);
++        let n = keep.saturating_sub(self.buf_start).min(self.buf.len());
++        self.buf.drain(..n);
++        self.buf_start += n;
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    const SR: u32 = 48_000;
++
++    fn sine(n: usize) -> Vec<f32> {
++        (0..n)
++            .map(|i| 0.9 * (2.0 * std::f32::consts::PI * 220.0 * i as f32 / SR as f32).sin())
++            .collect()
++    }
++
++    /// Chạy cả tín hiệu qua `Tempo`, cắt đầu vào thành từng mẩu `chunk` mẫu.
++    fn run(t: &mut Tempo, input: &[f32], chunk: usize) -> Vec<f32> {
++        let mut out = Vec::new();
++        for c in input.chunks(chunk.max(1)) {
++            t.process(c, &mut out);
++        }
++        t.flush(&mut out);
++        out
++    }
++
++    #[test]
++    fn bypass_is_identity() {
++        let x = sine(2 * SR as usize);
++        let mut t = Tempo::new(1.0, SR);
++        assert!(t.is_bypass());
++        let y = run(&mut t, &x, 4800);
++        assert_eq!(y.len(), x.len());
++        assert!(x.iter().zip(&y).all(|(a, b)| a.to_bits() == b.to_bits()));
++        assert!(!Tempo::new(1.15, SR).is_bypass());
++    }
++
++    #[test]
++    fn output_length_tracks_speed() {
++        let x = sine(2 * SR as usize);
++        for speed in [0.8f32, 1.15, 1.3] {
++            let y = run(&mut Tempo::new(speed, SR), &x, x.len());
++            let want = x.len() as f32 / speed;
++            assert!(
++                (y.len() as f32 - want).abs() <= want * 0.02,
++                "speed {speed}: {} mẫu, cần ~{want}",
++                y.len()
++            );
++        }
++    }
++
++    #[test]
++    fn chunking_does_not_change_length() {
++        let x = sine(2 * SR as usize);
++        for speed in [0.8f32, 1.15, 1.3] {
++            let whole = run(&mut Tempo::new(speed, SR), &x, x.len()).len() as f32;
++            assert!(whole > 0.0);
++            for chunk in [480, 1000, 4800] {
++                let n = run(&mut Tempo::new(speed, SR), &x, chunk).len() as f32;
++                assert!(
++                    (n - whole).abs() <= whole * 0.01,
++                    "speed {speed}, mẩu {chunk}: {n} so với {whole}"
++                );
++            }
++        }
++    }
++
++    #[test]
++    fn chunking_gives_identical_samples() {
++        let x = sine(SR as usize);
++        let whole = run(&mut Tempo::new(1.15, SR), &x, x.len());
++        for chunk in [1, 333, 4800] {
++            assert_eq!(run(&mut Tempo::new(1.15, SR), &x, chunk), whole, "mẩu {chunk}");
++        }
++    }
++
++    #[test]
++    fn pitch_is_preserved() {
++        // Số lần đổi dấu mỗi giây ≈ 2 × 220 dù đọc nhanh hay chậm (đổi nhịp, không đổi cao độ).
++        let x = sine(2 * SR as usize);
++        for speed in [0.8f32, 1.15, 1.3] {
++            let y = run(&mut Tempo::new(speed, SR), &x, 4800);
++            let body = &y[2400..y.len() - 2400];
++            let zc = body.windows(2).filter(|w| (w[0] < 0.0) != (w[1] < 0.0)).count() as f32;
++            let hz = zc / 2.0 / (body.len() as f32 / SR as f32);
++            assert!((hz - 220.0).abs() < 220.0 * 0.03, "speed {speed}: {hz} Hz");
++        }
++    }
++
++    #[test]
++    fn output_is_finite_and_bounded() {
++        let mut x = sine(2 * SR as usize);
++        // Thêm đoạn biên độ tối đa và đoạn lặng để thử cả chỗ chuyển đột ngột.
++        x.extend((0..4800).map(|i| if i % 2 == 0 { 1.0 } else { -1.0 }));
++        x.extend(std::iter::repeat_n(0.0, 4800));
++        for speed in [0.8f32, 1.15, 1.3] {
++            let y = run(&mut Tempo::new(speed, SR), &x, 1000);
++            assert!(!y.is_empty());
++            assert!(
++                y.iter().all(|v| v.is_finite() && v.abs() <= 1.0 + 1e-3),
++                "speed {speed}"
++            );
++        }
++    }
++
++    #[test]
++    fn tiny_inputs_do_not_panic() {
++        for speed in [0.8f32, 1.0, 1.15, 1.3] {
++            let mut out = Vec::new();
++            let mut t = Tempo::new(speed, SR);
++            t.process(&[], &mut out);
++            t.flush(&mut out);
++            assert!(out.is_empty(), "đầu vào rỗng phải ra rỗng");
++            for n in [1usize, 100] {
++                let x = sine(n);
++                let y = run(&mut Tempo::new(speed, SR), &x, n);
++                let want = (n as f32 / speed).round() as usize;
++                assert!(y.len().abs_diff(want) <= 1, "speed {speed}, {n} mẫu → {}", y.len());
++                assert!(y.iter().all(|v| v.is_finite()));
++            }
++        }
++    }
++
++    #[test]
++    fn added_latency_is_at_most_30ms() {
++        let x = sine(SR as usize);
++        const CHUNK: usize = 480;
++        // 30 ms của thuật toán cộng độ hạt của mẩu nạp vào (mẩu chưa đủ thì chờ mẩu sau).
++        let max_lag = (0.030 * SR as f32) as usize + CHUNK;
++        for speed in [0.8f32, 1.15, 1.3] {
++            let (mut t, mut out, mut fed) = (Tempo::new(speed, SR), Vec::new(), 0usize);
++            for c in x.chunks(CHUNK) {
++                t.process(c, &mut out);
++                fed += c.len();
++                // Phần đầu vào đã "có mặt" ở đầu ra (quy về trục đầu vào) không được tụt quá 30 ms so với phần đã nạp.
++                let covered = (out.len() as f32 * speed) as usize;
++                assert!(
++                    fed.saturating_sub(covered) <= max_lag,
++                    "speed {speed}: nạp {fed}, ra tương ứng {covered}"
++                );
++            }
++        }
++    }
++
++    #[test]
++    fn reuse_after_flush() {
++        let a = sine(SR as usize / 2);
++        let b: Vec<f32> = sine(SR as usize).iter().map(|v| v * 0.5).collect();
++        for speed in [0.8f32, 1.0, 1.3] {
++            let mut t = Tempo::new(speed, SR);
++            let _ = run(&mut t, &a, 1000);
++            let again = run(&mut t, &b, 1000);
++            let fresh = run(&mut Tempo::new(speed, SR), &b, 1000);
++            assert!(!fresh.is_empty());
++            assert_eq!(again, fresh, "speed {speed}");
++        }
++    }
++}
+diff --git a/crates/tts-worker/src/voices.rs b/crates/tts-worker/src/voices.rs
+index 0a77552..e7a5bb1 100755
+--- a/crates/tts-worker/src/voices.rs
++++ b/crates/tts-worker/src/voices.rs
+@@ -2,6 +2,7 @@
+ //! Không dùng nhân bản giọng nên không cần bộ mã hóa người nói hay khử nhiễu.
+ 
+ use serde::Deserialize;
++use serde::de::IgnoredAny;
+ use std::collections::HashMap;
+ use std::path::Path;
+ 
+@@ -78,10 +79,70 @@ impl Voices {
+     }
+ }
+ 
++/// Chỉ đọc tên giọng và tên mặc định, không giải mã vector hay mã tham chiếu (cho `ListVoices`, không nạp model).
++/// Mặc định theo đúng quy tắc của [`Voices::parse`]: `default_voice` nếu có trong danh sách, không thì tên đầu theo thứ tự chữ.
++pub fn list_names(path: &Path) -> Result<(Vec<String>, String), Box<dyn std::error::Error>> {
++    #[derive(Deserialize)]
++    struct NamesOnly {
++        #[serde(default)]
++        default_voice: Option<String>,
++        presets: HashMap<String, IgnoredAny>,
++    }
++    let raw: NamesOnly = serde_json::from_str(&std::fs::read_to_string(path)?)?;
++    let mut names: Vec<String> = raw.presets.into_keys().collect();
++    names.sort_unstable();
++    let default = raw
++        .default_voice
++        .filter(|d| names.contains(d))
++        .or_else(|| names.first().cloned())
++        .ok_or("không có giọng nào")?;
++    Ok((names, default))
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
++    /// Ghi `json` ra file tạm riêng cho từng test rồi gọi `list_names`.
++    fn list_json(tag: &str, json: &str) -> Result<(Vec<String>, String), Box<dyn std::error::Error>> {
++        let path = std::env::temp_dir().join(format!("tts-worker-voices-{tag}-{}.json", std::process::id()));
++        std::fs::write(&path, json).unwrap();
++        let r = list_names(&path);
++        let _ = std::fs::remove_file(&path);
++        r
++    }
++
++    #[test]
++    fn list_names_sorted_with_default() {
++        let j = r#"{"default_voice":"Hải Đăng","presets":{
++            "Ngọc Lan":{"speaker_emb":[1],"codes":[[1,2]]},
++            "Hải Đăng":{"speaker_emb":[2],"codes":[[3,4]]},
++            "An":{"speaker_emb":[3],"codes":[[5,6]],"thừa":true}}}"#;
++        let (names, default) = list_json("sorted", j).unwrap();
++        assert_eq!(names, ["An", "Hải Đăng", "Ngọc Lan"]);
++        assert_eq!(default, "Hải Đăng");
++        // Cùng quy tắc với `Voices::parse`.
++        assert_eq!(Voices::parse(j, 2).unwrap().get(None).name, default);
++    }
++
++    #[test]
++    fn list_names_falls_back_to_first_name_when_default_missing() {
++        let j = r#"{"default_voice":"Không có","presets":{"B":{"speaker_emb":[1],"codes":[[1]]},"A":{"speaker_emb":[1],"codes":[[1]]}}}"#;
++        assert_eq!(
++            list_json("missing", j).unwrap(),
++            (vec!["A".into(), "B".into()], "A".into())
++        );
++        let j = r#"{"presets":{"B":{"speaker_emb":[1],"codes":[[1]]},"A":{"speaker_emb":[1],"codes":[[1]]}}}"#;
++        assert_eq!(list_json("absent", j).unwrap().1, "A");
++    }
++
++    #[test]
++    fn list_names_rejects_empty_presets() {
++        assert!(list_json("empty", r#"{"default_voice":"A","presets":{}}"#).is_err());
++        assert!(list_json("broken", "{không phải json").is_err());
++        assert!(list_names(Path::new("/không/có/file/này.json")).is_err());
++    }
++
+     const J: &str = r#"{"default_voice":"B","presets":{"A":{"speaker_emb":[1,2],"codes":[[1,2],[3,4]]},"B":{"speaker_emb":[3],"codes":[[5,6]]}}}"#;
+ 
+     #[test]
+diff --git a/crates/tts-worker/tests/list_voices.rs b/crates/tts-worker/tests/list_voices.rs
+new file mode 100644
+index 0000000..0786891
+--- /dev/null
++++ b/crates/tts-worker/tests/list_voices.rs
+@@ -0,0 +1,101 @@
++//! `ListVoices` chạy binary `tts-worker` thật nhưng KHÔNG cần model: đường dẫn model là giả, chỉ file giọng là thật.
++//! Worker phải trả `Voices` (hoặc `Failed { ModelMissing }` khi file giọng hỏng) và vẫn chạy tiếp (spec 2026-11-04 §5).
++#![cfg(feature = "engine")]
++
++use std::io::Write;
++use std::path::Path;
++use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
++use tts_protocol::{ErrorKind, PROTOCOL_VERSION, Request, Response, read_frame, write_frame};
++
++struct Worker {
++    child: Child,
++    stdin: ChildStdin,
++    stdout: ChildStdout,
++}
++
++fn spawn(voices: &Path) -> Worker {
++    let none = "/không/có/model";
++    let mut child = Command::new(env!("CARGO_BIN_EXE_tts-worker"))
++        .args(["--model-dir", none, "--codec-dir", none, "--g2p-dict", none])
++        .arg("--voices")
++        .arg(voices)
++        .stdin(Stdio::piped())
++        .stdout(Stdio::piped())
++        .stderr(Stdio::inherit())
++        .spawn()
++        .unwrap();
++    let (stdin, mut stdout) = (child.stdin.take().unwrap(), child.stdout.take().unwrap());
++    let ready: Response = read_frame(&mut stdout).unwrap().expect("worker đóng ngay");
++    assert_eq!(
++        ready,
++        Response::Ready {
++            protocol: PROTOCOL_VERSION
++        }
++    );
++    Worker { child, stdin, stdout }
++}
++
++impl Worker {
++    fn ask(&mut self, r: &Request) -> Response {
++        write_frame(&mut self.stdin, r).unwrap();
++        self.stdin.flush().unwrap();
++        read_frame(&mut self.stdout)
++            .unwrap()
++            .expect("worker đóng sau ListVoices")
++    }
++
++    fn finish(mut self) {
++        write_frame(&mut self.stdin, &Request::Shutdown).unwrap();
++        self.stdin.flush().unwrap();
++        assert!(self.child.wait().unwrap().success());
++    }
++}
++
++fn temp_file(tag: &str, body: &str) -> std::path::PathBuf {
++    let p = std::env::temp_dir().join(format!("tts-worker-listvoices-{tag}-{}.json", std::process::id()));
++    std::fs::write(&p, body).unwrap();
++    p
++}
++
++#[test]
++fn list_voices_answers_without_model_and_keeps_running() {
++    let p = temp_file(
++        "ok",
++        r#"{"default_voice":"Hải Đăng","presets":{"Ngọc Lan":{"speaker_emb":[1],"codes":[[1]]},"Hải Đăng":{"speaker_emb":[2],"codes":[[2]]}}}"#,
++    );
++    let mut w = spawn(&p);
++    let want = Response::Voices {
++        id: 7,
++        names: vec!["Hải Đăng".into(), "Ngọc Lan".into()],
++        default: "Hải Đăng".into(),
++    };
++    assert_eq!(w.ask(&Request::ListVoices { id: 7 }), want);
++    // Hỏi lần hai: worker vẫn sống.
++    assert_eq!(
++        w.ask(&Request::ListVoices { id: 8 }),
++        Response::Voices {
++            id: 8,
++            names: vec!["Hải Đăng".into(), "Ngọc Lan".into()],
++            default: "Hải Đăng".into(),
++        }
++    );
++    w.finish();
++    let _ = std::fs::remove_file(&p);
++}
++
++#[test]
++fn list_voices_reports_broken_file_and_keeps_running() {
++    let p = temp_file("broken", "{không phải json");
++    let mut w = spawn(&p);
++    for id in [1, 2] {
++        assert_eq!(
++            w.ask(&Request::ListVoices { id }),
++            Response::Failed {
++                id,
++                kind: ErrorKind::ModelMissing
++            }
++        );
++    }
++    w.finish();
++    let _ = std::fs::remove_file(&p);
++}
+diff --git a/crates/tts-worker/tests/worker_e2e.rs b/crates/tts-worker/tests/worker_e2e.rs
+index 5f96d8f..48188e2 100755
+--- a/crates/tts-worker/tests/worker_e2e.rs
++++ b/crates/tts-worker/tests/worker_e2e.rs
+@@ -83,6 +83,7 @@ impl Worker {
+                     return (pcm, n, first, Err(kind));
+                 }
+                 Response::Ready { .. } => panic!("Ready lần hai"),
++                Response::Voices { .. } => panic!("Voices khi đang đọc"),
+             }
+         }
+     }
+@@ -93,6 +94,8 @@ impl Worker {
+             lang,
+             text: text.into(),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         });
+         self.collect(id)
+     }
+@@ -190,6 +193,8 @@ fn cancel_stops_generation_quickly_and_worker_stays_usable() {
+         lang: Lang::Vi,
+         text: long,
+         voice: None,
++        speed: None,
++        pause_scale: None,
+     });
+     std::thread::sleep(Duration::from_millis(300));
+     let t = Instant::now();
+@@ -232,6 +237,8 @@ fn bad_model_dir_reports_model_missing() {
+             lang: Lang::Vi,
+             text: "x".into(),
+             voice: None,
++            speed: None,
++            pause_scale: None,
+         },
+     )
+     .unwrap();
+diff --git a/docs/superpowers/plans/2026-11-04-giong-doc.md b/docs/superpowers/plans/2026-11-04-giong-doc.md
+new file mode 100644
+index 0000000..741f088
+--- /dev/null
++++ b/docs/superpowers/plans/2026-11-04-giong-doc.md
+@@ -0,0 +1,187 @@
++# Màn hình "Giọng đọc" Implementation Plan
++
++> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
++
++**Goal:** Người dùng chọn giọng đọc (Việt/Anh) trong các giọng preset có sẵn của gói model và chỉnh âm lượng, tốc độ, khoảng nghỉ ở một mục mới "Giọng đọc" dưới "Gõ dịch".
++
++**Architecture:** Cài đặt mới (5 khóa) được `tts::speak` ở phía Rust đọc để chọn giọng, gửi `speed`/`pause_scale` cho `tts-worker` (giao thức v3) và nhân âm lượng vào PCM trước khi gửi về giao diện. Worker thêm bộ đổi nhịp WSOLA thuần Rust và lệnh liệt kê giọng không nạp ONNX. Giao diện thêm màn hình `voice` dùng chung `store/tts.ts`.
++
++**Tech Stack:** Rust workspace (tts-protocol, tts-client, tts-worker, src-tauri), React/TS + zustand + vitest. Không thêm thư viện bên thứ ba.
++
++**Spec:** `docs/superpowers/specs/2026-11-04-giong-doc-design.md` (đọc kèm `2026-11-02-doc-ban-dich-tts-design.md`). **Hai chỗ kế hoạch chốt khác chữ trong spec §6, đã cập nhật spec:** (1) âm lượng nhân ở Rust (`tts::speak`) chứ không ở `TtsPlayer`, để cửa sổ overlay (Nghe dịch) cũng theo mà không sửa giao diện overlay; (2) nghe thử dùng lệnh riêng `tts_preview` thay vì thêm tham số ghi đè vào `tts_speak`, để chữ ký `tts_speak`/`overlay_tts_speak` và ACL hiện có không đổi.
++
++## Global Constraints
++
++- Mọi khóa mới mặc định = hành vi hiện tại: giọng `None`, âm lượng 100, tốc độ 1,0, khoảng nghỉ 1,0. Tốc độ 1,0 **không qua** bộ đổi nhịp và đầu ra giống hệt từng mẫu.
++- Khoảng hợp lệ: `tts_volume` 0–100; `tts_speed` 0,8–1,3; `tts_pause` 0,5–2,0; `MAX_VOICE_BYTES` = 64.
++- `PROTOCOL_VERSION` tăng 2 → 3.
++- Không sửa `asr-worker`, `speaker-worker`, `pipeline`, đường thu âm, cờ chặn thu (`mark_playing`).
++- Không thêm thư viện; nếu bắt buộc thì theo CLAUDE.md (bản ổn định mới nhất, kiểm tương thích, build lại và chạy test).
++- Website không nêu tên model/engine/thư viện. Không bí mật nào vào app.
++- Mục "Giọng đọc" chỉ hiện trên Windows (`info.platform === "windows"`).
++- Chuỗi giao diện đủ 5 ngôn ngữ vi/en/ja/zh/ko (`dictionaries.test.ts` bắt thiếu khóa).
++- **Không commit/push khi chủ dự án chưa cho phép** (quy tắc dự án). Mỗi task kết thúc bằng bước "Checkpoint" (test xanh); chỉ commit nếu được phép, và khi đó thêm hai dòng attribution theo system-reminder của phiên làm việc.
++
++## Review Focus
++
++1. Tên giọng trong file mà bảng nhãn chưa biết → vẫn hiện, xếp nhóm "Khác" (Task 5).
++2. Giọng đã lưu không còn trong file giọng → đọc bằng giọng mặc định, màn hình hiện "Mặc định", không lỗi (Task 3, 5).
++3. Gói giọng đang tải / thiếu worker → màn hình khóa điều khiển, Nghe thử không gọi lệnh, không văng (Task 5).
++4. Đổi nhịp với đầu vào rỗng, 1 mẫu, ngắn hơn một cửa sổ, hủy giữa chừng → không panic, không `NaN`, không vượt ±1 (Task 2).
++5. Cài đặt có giá trị ngoài khoảng/`NaN` (file tay sửa) → `validate` từ chối khi lưu, `tts::speak` kẹp lại khi đọc nên vẫn nói bình thường (Task 3, 4).
++
++---
++
++### Task 0: Xác minh danh sách giọng thật (trên máy chủ dự án)
++
++**Files:**
++- Modify: `docs/superpowers/specs/2026-11-04-giong-doc-design.md` (mục 9.1)
++
++**Interfaces:**
++- Produces: danh sách tên giọng thật trong `models/tts/voices_v3_turbo.json`, dùng cho bảng nhãn ở Task 5.
++
++- [ ] **Step 1:** Trên máy Windows của chủ dự án chạy (PowerShell, ở gốc repo): `node -e "const j=JSON.parse(require('fs').readFileSync('models/tts/voices_v3_turbo.json','utf8'));console.log(j.default_voice,Object.keys(j.presets).sort().join('|'))"` (nếu thư mục khác, dùng `%APPDATA%` của dữ liệu app, thư mục con `models\tts`).
++- [ ] **Step 2:** Ghi kết quả (số giọng, tên mặc định, danh sách) vào mục 9.1 của spec. Kỳ vọng: 23 giọng, mặc định `Minh Quân`. Nếu khác, bảng ở Task 5 theo danh sách thật, không theo trang model gốc.
++
++---
++
++### Task 1: Giao thức v3 và `tts-client`
++
++**Files:**
++- Modify: `crates/tts-protocol/src/lib.rs`
++- Modify: `crates/tts-client/src/lib.rs`, `crates/tts-client/src/bin/fake_tts_worker.rs`, `crates/tts-client/tests/client.rs`
++
++**Interfaces:**
++- Produces (`tts-protocol`):
++  - `pub const PROTOCOL_VERSION: u32 = 3;`
++  - `Request::Speak { id, lang, text, voice: Option<String>, speed: Option<f32>, pause_scale: Option<f32> }`
++  - `Request::ListVoices { id: u64 }`
++  - `Response::Voices { id: u64, names: Vec<String>, default: String }`
++  - `pub const SPEED_RANGE: std::ops::RangeInclusive<f32> = 0.8..=1.3;` `pub const PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=2.0;`
++  - `Request::validate` từ chối `speed`/`pause_scale` ngoài khoảng hoặc không hữu hạn (`ProtocolError::Invalid`).
++- Produces (`tts-client`):
++  - `#[derive(Clone, Debug, Default)] pub struct SpeakOptions { pub voice: Option<String>, pub speed: f32, pub pause_scale: f32 }` (hàm dựng `SpeakOptions::new(voice, speed, pause_scale)`; `Default` = `None`, 1.0, 1.0).
++  - `TtsClient::speak(&self, lang: Lang, text: &str, opts: SpeakOptions, on_event: impl FnMut(Event) + Send + 'static) -> u64` (thay tham số `voice`).
++  - `pub struct VoiceList { pub names: Vec<String>, pub default: String }`
++  - `TtsClient::list_voices(&self, on_done: impl FnOnce(Result<VoiceList, Failure>) + Send + 'static)`.
++
++- [ ] **Step 1: Viết test (tts-protocol)** — `speak_roundtrip_with_new_fields`, `list_voices_roundtrip`, `validate_rejects_out_of_range_speed` (0.79, 1.31, `NaN`, `INFINITY`), `validate_rejects_out_of_range_pause` (0.49, 2.01), `ready_reports_protocol_3` (`PROTOCOL_VERSION == 3`). Cập nhật các test hiện có dùng `Request::Speak` thêm hai trường `None`.
++- [ ] **Step 2:** `cargo test -p tts-protocol` → FAIL (chưa có trường/biến thể).
++- [ ] **Step 3:** Sửa `tts-protocol` theo Interfaces. Postcard đặt trường theo thứ tự nên đổi kiểu là đổi định dạng (đúng lý do tăng phiên bản).
++- [ ] **Step 4: Viết test (tts-client)** trong `tests/client.rs`: `speak_passes_options_to_worker` (fake worker echo `voice/speed/pause_scale` bằng cách phát PCM có độ dài mã hóa các giá trị, hoặc ghi vào stderr — theo cách `fake_tts_worker` đang làm cho `voice`), `list_voices_returns_names_and_default`, `old_protocol_worker_is_disabled` (Ready với `protocol: 2` → `Failure::Disabled`).
++- [ ] **Step 5:** `cargo test -p tts-client` → FAIL.
++- [ ] **Step 6:** Sửa `tts-client` (`Cmd::Speak` mang `SpeakOptions`, thêm `Cmd::ListVoices` đi qua cùng vòng giám sát và cùng quy tắc khởi động lười/hết giờ) và `fake_tts_worker` (trả `Voices { names: ["A","B"], default: "A" }`). Tìm mọi nơi gọi `speak(` trong workspace bằng `grep` và sửa.
++- [ ] **Step 7:** `cargo test -p tts-protocol -p tts-client` → PASS.
++- [ ] **Step 8: Checkpoint** (không commit nếu chưa được phép).
++
++---
++
++### Task 2: Worker — liệt kê giọng, khoảng nghỉ, đổi nhịp (WSOLA)
++
++**Files:**
++- Create: `crates/tts-worker/src/tempo.rs`
++- Modify: `crates/tts-worker/src/voices.rs`, `crates/tts-worker/src/synth.rs`, `crates/tts-worker/src/main.rs`, `crates/tts-worker/src/lib.rs` (khai báo `mod tempo`)
++- Test: trong từng file (`#[cfg(test)]`) và `crates/tts-worker/tests/golden_text.rs` nếu cần cập nhật chữ ký
++
++**Interfaces:**
++- Consumes: Task 1 (`Request::Speak` có `speed`, `pause_scale`; `Request::ListVoices`; `Response::Voices`).
++- Produces:
++  - `voices::list_names(path: &Path) -> Result<(Vec<String>, String), Box<dyn std::error::Error>>`: tên đã sắp xếp và tên mặc định, **không** giải mã vector/mã (dùng `serde::de::IgnoredAny` cho giá trị); mặc định theo đúng quy tắc của `Voices::parse` (khóa `default_voice` nếu có trong danh sách, không thì tên đầu theo thứ tự chữ).
++  - `tempo::Tempo`: `Tempo::new(speed: f32, sample_rate: u32) -> Tempo`; `fn process(&mut self, input: &[f32], out: &mut Vec<f32>)`; `fn flush(&mut self, out: &mut Vec<f32>)`; `fn is_bypass(&self) -> bool` (đúng khi `|speed - 1.0| < 1e-3`). Bypass: `process` chép nguyên đầu vào, `flush` không thêm gì.
++  - `speech::gap_seconds(prev_text: &str, scale: f32) -> f32` (`GAP_SENTENCE_S` nếu `prev_text.trim_end()` kết thúc bằng `.`/`!`/`?`, ngược lại `GAP_MINOR_S`, nhân `scale`); `synth.rs` dùng hàm này thay cho closure `gap` hiện có.
++  - `Synth::speak(&mut self, text: &str, voice: Option<&str>, params: SpeakParams, cancelled, emit)` với `pub struct SpeakParams { pub speed: f32, pub pause_scale: f32 }` (`Default` 1.0/1.0).
++
++- [ ] **Step 1: Test `voices::list_names`** — `list_names_sorted_with_default` (JSON nhỏ 3 giọng, `default_voice` có thật), `list_names_falls_back_to_first_name_when_default_missing`, `list_names_rejects_empty_presets`.
++- [ ] **Step 2: Test `gap_seconds`** — `gap_scales_sentence_and_minor_pauses` (`("Xin chào.", 2.0)` = 1.0; `("Xin chào,", 0.5)` = 0.15; scale 1.0 giữ 0.50/0.30).
++- [ ] **Step 3: Test `Tempo`** (tín hiệu sin 220 Hz 2 s ở 48 kHz): `bypass_is_identity` (speed 1.0 → từng mẫu bằng nhau), `output_length_tracks_speed` (0.8, 1.15, 1.3: độ dài sau `process`+`flush` = độ dài vào / speed ± 2%), `chunking_does_not_change_length` (cắt đầu vào 480/1000/4800 mẫu: độ dài ± 1%), `output_is_finite_and_bounded` (không `NaN`, |x| ≤ 1.0 + 1e-3), `tiny_inputs_do_not_panic` (rỗng, 1 mẫu, 100 mẫu rồi `flush`), `reuse_after_flush` (`flush` xong dùng tiếp cho đoạn mới ra kết quả như `Tempo` mới).
++- [ ] **Step 4:** `cargo test -p tts-worker` → FAIL.
++- [ ] **Step 5: Cài `list_names`, `gap_seconds`, `SpeakParams`.** Trong `synth.rs` thay closure `gap` bằng `gap_seconds(t, params.pause_scale)`.
++- [ ] **Step 6: Cài `Tempo` trong `tempo.rs`.** Thuật toán WSOLA: cửa sổ 25 ms, bước tổng hợp 12,5 ms (chồng 50%, cửa sổ Hann), bước phân tích = bước tổng hợp × speed, tìm vị trí khớp trong ±10 ms bằng tương quan chéo với phần đuôi đã ghi; giữ bộ đệm đầu vào/đệm chồng lấn giữa các lần `process`; `flush` xả phần còn lại bằng cách ghép dần tới hết đầu vào. Độ trễ thêm ≤ 30 ms.
++- [ ] **Step 7: Nối vào `Synth::speak`.** Mỗi đoạn (unit) tạo `Tempo::new(params.speed, SAMPLE_RATE)`: đường phát dần cho từng `chunk` gọi `process` rồi `emit` kết quả; sau `stream_unit` gọi `flush` rồi `emit`; đường không phát dần xử lý cả `wav` một lần. Khoảng lặng chèn giữa đoạn (`emit(&vec![0.0; pad])`) vẫn tính từ `wav` gốc và **phát sau `flush` của đoạn trước**, trước đoạn kế (không qua `Tempo`). `prev` vẫn lưu `wav` gốc. `stats.audio_samples` đếm mẫu thực sự phát ra. Khi hủy (`Cancelled`) bỏ `Tempo` không `flush`.
++- [ ] **Step 8: `main.rs`:** `Request::Speak` truyền `SpeakParams { speed: speed.unwrap_or(1.0), pause_scale: pause_scale.unwrap_or(1.0) }` (kẹp vào `SPEED_RANGE`/`PAUSE_RANGE` thêm một lần nữa, phòng khung từ nguồn lạ). `Request::ListVoices { id }` xử lý ngay trong vòng lặp như `Warmup` nhưng **không** gọi `load(&args)`: gọi `voices::list_names(&args.voices)` rồi `Response::Voices`; lỗi đọc → `Response::Failed { id, kind: ErrorKind::ModelMissing }`. Cập nhật mọi test gọi `Synth::speak` (`tests/engine_ref.rs`, `tests/golden_text.rs`) với `SpeakParams::default()`.
++- [ ] **Step 9:** `cargo test -p tts-worker` và `cargo clippy -p tts-worker --all-targets -- -D warnings` → PASS. Test đối chiếu cần model (`--ignored`) chạy trên máy chủ dự án ở Task 6.
++- [ ] **Step 10: Checkpoint.**
++
++---
++
++### Task 3: Cài đặt (Rust) và kiểu TS
++
++**Files:**
++- Modify: `src-tauri/src/settings/mod.rs` (struct, `defaults`, `validate`, test)
++- Modify: `src-tauri/src/settings/migrate.rs` (test)
++- Modify: `src/lib/ipc.ts` (`Settings`, `SettingsPatch` nếu liệt kê khóa), `src/lib/fakeIpc.ts` (mặc định giả)
++
++**Interfaces:**
++- Produces (`Settings`, serde camelCase như các khóa khác): `tts_voice_vi: Option<String>`, `tts_voice_en: Option<String>`, `tts_volume: u8`, `tts_speed: f32`, `tts_pause: f32`; TS: `ttsVoiceVi: string | null`, `ttsVoiceEn: string | null`, `ttsVolume: number`, `ttsSpeed: number`, `ttsPause: number`.
++- `Settings::defaults`: `None`, `None`, 100, 1.0, 1.0.
++- `validate` trả `Invalid::new("ttsVolume" | "ttsSpeed" | "ttsPause" | "ttsVoiceVi" | "ttsVoiceEn", Reason::OutOfRange)` khi: âm lượng > 100; tốc độ/khoảng nghỉ ngoài khoảng hoặc không hữu hạn; tên giọng rỗng hoặc dài hơn `MAX_VOICE_BYTES` (dùng `tts_protocol::MAX_VOICE_BYTES`; nếu `src-tauri` chưa phụ thuộc `tts-protocol` thì dùng hằng cục bộ 64 kèm chú thích).
++
++- [ ] **Step 1: Viết test** (`mod.rs`): `tts_defaults_keep_todays_behaviour`, `validate_rejects_out_of_range_tts_values` (101, 0.79, 1.31, NaN, 0.49, 2.01, tên 65 byte, tên rỗng), `validate_accepts_boundaries` (0/100, 0.8/1.3, 0.5/2.0, tên 64 byte). `migrate.rs`: `old_settings_file_gets_tts_defaults` (file thiếu cả 5 khóa → mặc định, giá trị khác không đổi; theo mẫu test `mic_end_silence_ms` ở dòng ~494).
++- [ ] **Step 2:** `cargo test -p meeting-translator --lib settings` → FAIL.
++- [ ] **Step 3:** Thêm 5 trường, mặc định, `validate` (đặt cạnh kiểm `mic_end_silence_ms`, ~dòng 407). Làm theo đúng cách `micEndSilenceMs` đi qua cập nhật cài đặt (grep `mic_end_silence_ms` trong `src-tauri`; patch là JSON gộp nên thường không cần thêm gì).
++- [ ] **Step 4:** Thêm 5 khóa vào `Settings` trong `ipc.ts` và mặc định của `fakeIpc.ts`; sửa mọi chỗ `tsc` báo thiếu khóa (fixture test).
++- [ ] **Step 5:** `cargo test -p meeting-translator --lib settings` và `pnpm tsc --noEmit` → PASS.
++- [ ] **Step 6: Checkpoint.**
++
++---
++
++### Task 4: Phía app Tauri — chọn giọng, âm lượng, `tts_list_voices`, `tts_preview`
++
++**Files:**
++- Modify: `src-tauri/src/tts.rs`, `src-tauri/src/commands.rs`, `src-tauri/src/lib.rs` (`handler()`), `src-tauri/build.rs`, `src-tauri/capabilities/*.json` (cửa sổ chính), `src-tauri/src/acl_tests.rs` nếu danh sách lệnh nằm ở đó
++- Test: `src-tauri/src/tts.rs` (`#[cfg(test)]`)
++
++**Interfaces:**
++- Consumes: Task 1 (`SpeakOptions`, `VoiceList`, `TtsClient::list_voices`), Task 3 (`Settings` mới, `AppState::settings()`).
++- Produces:
++  - `pub fn apply_volume(pcm: &mut [i16], percent: u8)`: nhân `sample * percent / 100` (làm tròn, không tràn); 100 không đổi gì.
++  - `fn options_for(settings: &Settings, lang: Language) -> SpeakOptions`: giọng theo ngôn ngữ (`tts_voice_vi`/`tts_voice_en`), `speed`/`pause_scale` kẹp vào `SPEED_RANGE`/`PAUSE_RANGE` (giá trị không hữu hạn → 1.0).
++  - `tts::speak(...)` giữ chữ ký hiện có; bên trong đọc `AppState::settings()` (`app.try_state::<AppState>()`, không có thì dùng mặc định), dùng `options_for` và `apply_volume` trên mỗi `Event::Audio` **trước** `mark_playing`/gửi.
++  - `pub fn preview<R: Runtime>(app, svc, lang: &str, text: &str, voice: Option<String>, speed: f32, pause: f32, volume: u8, on_event: Channel<InvokeResponseBody>) -> Result<u64, CommandError>`: như `speak` nhưng dùng tham số truyền vào (cũng kẹp), cùng quy tắc kiểm chữ/ngôn ngữ.
++  - Lệnh Tauri: `tts_list_voices(app, svc) -> Result<TtsVoices, CommandError>` với `#[derive(Serialize)] pub struct TtsVoices { names: Vec<String>, default: String }` (camelCase); `tts_preview(app, svc, lang: String, text: String, voice: Option<String>, speed: f32, pause: f32, volume: u8, on_event)`. Chỉ cửa sổ chính được cấp (không thêm bản `overlay_`).
++  - `TtsService` giữ `voices: Mutex<Option<TtsVoices>>`; `tts_list_voices` trả bản đã lưu nếu có; xóa bản lưu khi `tts://changed` được phát (gói đổi) và khi `TtsService` dựng lại client.
++
++- [ ] **Step 1: Viết test** trong `tts.rs`: `apply_volume_scales_and_never_overflows` (100 → nguyên; 50 → nửa; 0 → toàn 0; `i16::MIN`/`MAX` không panic), `options_pick_voice_by_language` (vi/en khác nhau), `options_clamp_bad_values` (speed `NaN`→1.0, 9.0→1.3, pause −1→0.5), `options_default_settings_are_neutral` (`voice None`, 1.0, 1.0).
++- [ ] **Step 2:** `cargo test -p meeting-translator --lib tts::` → FAIL.
++- [ ] **Step 3:** Cài các hàm trên, sửa `speak`, thêm `preview` và `tts_list_voices` (dùng `client.list_voices` rồi chờ bằng kênh `std::sync::mpsc` với hạn 10 giây; hết hạn → `err("ttsUnavailable", …)`).
++- [ ] **Step 4:** Thêm hai lệnh vào `commands.rs`, `handler()`, danh sách lệnh trong `build.rs` (cạnh `tts_stop`, dòng ~112) và mảng lệnh cửa sổ chính trong `commands.rs` (~dòng 746), và quyền trong `capabilities/*.json` của cửa sổ chính, theo đúng cách `tts_speak` được khai báo.
++- [ ] **Step 5:** `cargo test -p meeting-translator --lib acl_tests` (hoặc tên test ACL hiện có) và `cargo test -p meeting-translator --lib tts::` → PASS. `cargo clippy -p meeting-translator --all-targets -- -D warnings` sạch.
++- [ ] **Step 6: Checkpoint.**
++
++---
++
++### Task 5: Giao diện — điều hướng, store, màn hình, chuỗi 5 ngôn ngữ
++
++**Files:**
++- Create: `src/lib/ttsVoices.ts`, `src/lib/ttsVoices.test.ts`, `src/windows/main/screens/VoiceScreen.tsx`, `src/windows/main/screens/VoiceScreen.test.ts`
++- Modify: `src/lib/ipc.ts` (`Screen` thêm `"voice"`, `TtsVoices`, bản đồ lệnh `tts_list_voices`, `tts_preview`), `src/windows/main/navigation.ts` (+ `navigation.test.ts`), `src/windows/main/Shell.tsx`, `src/store/tts.ts` (+ `tts.test.ts`), `src/i18n/{vi,en,ja,zh,ko}.ts`, CSS của cửa sổ chính (cạnh style màn hình khác)
++
++**Interfaces:**
++- Consumes: Task 3 (khóa `Settings` TS), Task 4 (lệnh `tts_list_voices`, `tts_preview`).
++- Produces:
++  - `ttsVoices.ts`: `export type VoiceRegion = "north" | "central" | "south" | "other"; export type VoiceGender = "male" | "female" | "unknown"; export function describeVoice(name: string): { region: VoiceRegion; gender: VoiceGender }` (bảng 23 giọng theo Task 0; tên lạ → `{ other, unknown }`); `export function groupVoices(names: string[]): { region: VoiceRegion; names: string[] }[]` (thứ tự Bắc, Trung, Nam, Khác; bỏ nhóm rỗng; giữ thứ tự tên đầu vào).
++  - `store/tts.ts` thêm: state `voices: TtsVoices | null`, `previewing: "vi" | "en" | null`; `loadVoices(): Promise<void>` (gọi `tts_list_voices`; lỗi → giữ `null`, không văng; gọi lại khi `tts://changed`); `preview(lang: TtsLang, opts: { voice: string | null; speed: number; pause: number; volume: number }): Promise<void>` (dùng `tts_preview` với kênh và bộ phát sẵn có; bấm lại hoặc gọi `stop` thì dừng; một lúc chỉ một lượt, như `speak`).
++  - `navigation.ts`: `SCREENS` có `"voice"` ngay sau `"compose"`; `ICONS.voice = "speaker"`; `export function visibleScreens(platform: "macos" | "windows"): readonly Screen[]` (bỏ `"voice"` trên macOS). `Shell.tsx` dùng `visibleScreens(info.platform)` (nếu `info` chưa có thì danh sách đầy đủ trừ `voice`) và thêm `voice: VoiceScreen` vào bảng màn hình.
++  - Khóa i18n mới (đủ 5 ngôn ngữ): `nav.voice` (vi "Giọng đọc"), `voice.title`, `voice.lang.vi`, `voice.lang.en`, `voice.default` ("Mặc định"), `voice.region.north|central|south|other`, `voice.gender.male|female|unknown`, `voice.preview`, `voice.previewStop`, `voice.sample.vi`, `voice.sample.en` (câu mẫu ngắn tự nhiên trong từng ngôn ngữ), `voice.volume`, `voice.speed`, `voice.pause`, `voice.reset`, `voice.locked.downloading` (có `{percent}`), `voice.locked.unavailable`. Nhãn dùng khóa `t(...)` đúng quy ước `MessageKey` hiện có.
++
++- [ ] **Step 1: Test `ttsVoices`**: `describes_known_voices` (ít nhất một giọng mỗi vùng/giới tính theo bảng ở Task 0), `unknown_voice_goes_to_other`, `groups_in_region_order_and_skips_empty`.
++- [ ] **Step 2: Test `navigation`**: `voice_follows_compose` (`SCREENS.indexOf("voice") === SCREENS.indexOf("compose") + 1`), `macos_hides_voice`, `windows_shows_voice`.
++- [ ] **Step 3: Test `store/tts`** (theo mẫu bộ test hiện có): `loadVoices_stores_the_list`, `loadVoices_failure_keeps_null_and_does_not_throw`, `preview_invokes_tts_preview_with_given_options`, `preview_twice_stops`, `tts_changed_reloads_voices`.
++- [ ] **Step 4: Test `VoiceScreen`** (render tĩnh như `SpeakerSettings.test.ts`): `locked_while_downloading_shows_percent_and_disables_controls`, `locked_when_unavailable`, `lists_voices_grouped_with_default_option`, `unknown_saved_voice_shows_default_selected` (tên đã lưu không có trong danh sách → "Mặc định" được chọn), `sliders_show_current_values_and_ranges` (min/max/step đúng Global Constraints: volume 0–100 bước 1; speed 0,8–1,3 bước 0,05; pause 0,5–2,0 bước 0,1), `reset_button_present`.
++- [ ] **Step 5:** `pnpm vitest run` các file trên → FAIL.
++- [ ] **Step 6:** Cài `ttsVoices.ts`; mở rộng `store/tts.ts`; sửa `ipc.ts`, `navigation.ts`, `Shell.tsx`.
++- [ ] **Step 7:** Cài `VoiceScreen.tsx`: hai khối (Việt, Anh) mỗi khối một nhóm `radio` có "Mặc định" + các giọng theo `groupVoices`, nút Nghe thử cạnh giọng đang chọn dùng `voice.sample.<lang>` và giá trị thanh trượt hiện tại; ba thanh trượt (kéo xong mới `updateSettings`, trong lúc kéo giữ giá trị cục bộ như `pause` ở `AudioSettings.tsx`); nút Khôi phục đặt `ttsVoiceVi/En: null, ttsVolume: 100, ttsSpeed: 1, ttsPause: 1`. Khóa điều khiển theo `status.available === false`. Tải giọng khi mở màn hình (`loadVoices`) và `refreshStatus`; dừng nghe thử khi rời màn hình (cleanup của `useEffect`). Thêm CSS tối thiểu theo style màn hình hiện có.
++- [ ] **Step 8:** Thêm toàn bộ khóa i18n cho 5 ngôn ngữ; `pnpm vitest run` toàn bộ, `pnpm tsc --noEmit`, `pnpm lint` (nếu có) → PASS.
++- [ ] **Step 9: Checkpoint.**
++
++---
++
++### Task 6: Kiểm tra toàn bộ và nghe thử (trên máy chủ dự án)
++
++**Files:** không sửa mã (chỉ ghi kết quả vào spec §9 nếu cần).
++
++- [ ] **Step 1:** `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` → PASS (số test không giảm so với trước, 2127).
++- [ ] **Step 2:** `pnpm tsc --noEmit`, `pnpm vitest run` → PASS (≥ 538 test); `pnpm build` thành công.
++- [ ] **Step 3:** `cargo test -p tts-worker --features engine --test engine_ref -- --ignored` (cần model) → PASS: đầu ra tốc độ mặc định giống hệt trước khi sửa.
++- [ ] **Step 4:** Nghe thử bằng `pnpm tauri dev` trên Windows: 3 giọng khác vùng ở tiếng Việt và tiếng Anh; tốc độ 0,8 / 1,0 / 1,3; khoảng nghỉ 0,5 / 2,0; âm lượng 0 / 50 / 100; bấm "Nghe dịch" và nút nghe ở bản chép lời vẫn đọc đúng giọng đã chọn; đổi giọng giữa chừng không crash. Ghi nhận xét và khoảng tốc độ chốt vào spec §9.2 (đổi `SPEED_RANGE` nếu âm thanh méo ở hai đầu, kéo theo test Task 1 và 3).
++- [ ] **Step 5:** Hỏi chủ dự án có cho commit/push/phát hành không. Sau phát hành mới cập nhật website 5 ngôn ngữ (spec §9.3) bằng một kế hoạch nhỏ riêng.
+diff --git a/docs/superpowers/specs/2026-11-04-giong-doc-design.md b/docs/superpowers/specs/2026-11-04-giong-doc-design.md
+new file mode 100644
+index 0000000..851286d
+--- /dev/null
++++ b/docs/superpowers/specs/2026-11-04-giong-doc-design.md
+@@ -0,0 +1,88 @@
++# Màn hình "Giọng đọc": chọn giọng, âm lượng, tốc độ, ngắt nghỉ — Design
++
++Trạng thái: **bản nháp chờ chủ dự án duyệt** (2026-11-04). Chưa có dòng code nào. Nối tiếp `2026-11-02-doc-ban-dich-tts-design.md` (gọi là "spec TTS"); không đổi các quyết định trong đó.
++
++## 1. Mục tiêu và phạm vi
++
++Người dùng chọn được giọng đọc khác (trong các giọng có sẵn của VieNeu-TTS v3 Turbo) và có một màn hình riêng để chỉnh cách đọc.
++
++Đã chốt với chủ dự án (2026-11-04):
++
++- Vị trí: **mục riêng ở thanh bên trái, ngay dưới "Gõ dịch"** (không phải tab trong Cài đặt).
++- Nội dung: chọn giọng + nghe thử; âm lượng, tốc độ, độ dài khoảng nghỉ giữa câu.
++- Tốc độ: **đổi nhịp giữ cao độ** (co/giãn thời gian) trong `tts-worker`.
++- Ngoài phạm vi: bật/tắt tính năng, tự đọc, làm nhỏ âm thanh cuộc họp, tải/xóa gói giọng (đã có chỗ khác); thông số sinh tiếng nâng cao (nhiệt độ, top-k, top-p, phạt lặp); nhân bản giọng; macOS (giọng đọc chỉ có trên Windows).
++
++## 2. Dữ kiện đã kiểm
++
++- Worker đã nhận tên giọng: `Request::Speak { voice: Option<String> }` (`crates/tts-protocol`), `Voices::get(name)` rơi về giọng mặc định khi tên lạ hoặc `None` (`crates/tts-worker/src/voices.rs`). Hiện app luôn gửi `voice = None`.
++- Trang model gốc (`pnnbao-ump/VieNeu-TTS-v3-Turbo`, đọc 2026-11-04): `voices_v3_turbo.json` chứa **23 giọng preset** (Bắc 13: nam 7, nữ 6; Trung 2; Nam 8: nam 4, nữ 4), mặc định upstream là Minh Quân; giấy phép Apache-2.0 bao cả giọng preset. Gói ~520 MB của app đã chứa file này, nên **không phải tải thêm gì**. Trang model gốc không có tham số tốc độ hay cao độ.
++- **Chưa xác minh được trong môi trường làm việc** (không có model): file giọng của gói đang phát hành có đủ 23 giọng, tên chính xác ra sao. Bước đầu của kế hoạch là đọc `models/tts/voices_v3_turbo.json` trên máy chủ dự án và ghi danh sách thật vào spec này (mục 9).
++
++## 3. Nguyên tắc không làm hỏng tính năng cũ
++
++1. Mọi khóa mới có mặc định = hành vi hiện tại: giọng mặc định của file, tốc độ 1,0, khoảng nghỉ 1,0, âm lượng 100%.
++2. Tốc độ 1,0 **không đi qua thuật toán đổi nhịp**; đầu ra phải giống hệt bản hiện tại (test so sánh từng mẫu).
++3. Không sửa `asr-worker`, `speaker-worker`, `pipeline`, đường thu âm và cơ chế chặn thu khi đang đọc (spec TTS §5). Không thêm thư viện bên thứ ba (thuật toán đổi nhịp tự viết, thuần Rust; nếu sau này muốn thêm thư viện thì theo CLAUDE.md: bản ổn định mới nhất, kiểm tương thích).
++4. Giọng không tồn tại, file giọng hỏng, thông số ngoài khoảng: không bao giờ làm crash hay im lặng; rơi về mặc định và đọc bình thường.
++5. Website không nêu tên model hay engine (CLAUDE.md).
++
++## 4. Cài đặt (`src-tauri/src/settings/`)
++
++Khóa mới trong `Settings` (tên camelCase ở JSON như các khóa khác):
++
++| Khóa | Kiểu | Mặc định | Khoảng hợp lệ |
++|---|---|---|---|
++| `tts_voice_vi` | `Option<String>` | `None` (giọng mặc định của file) | tên ≤ `MAX_VOICE_BYTES` |
++| `tts_voice_en` | `Option<String>` | `None` | như trên |
++| `tts_volume` | `u8` | 100 | 0–100 |
++| `tts_speed` | `f32` | 1,0 | 0,8–1,3 |
++| `tts_pause` | `f32` | 1,0 | 0,5–2,0 |
++
++- File cài đặt cũ thiếu khóa thì `migrate::load` ghép mặc định (không cần migration); `validate` từ chối khi lưu giá trị ngoài khoảng, `NaN`/vô cực (như các khóa hiện có); lúc đọc để nói thì kẹp lại (mục 6).
++- Tên giọng được kiểm lúc đọc, không kiểm lúc lưu (danh sách giọng phụ thuộc gói đã tải). Tên không còn trong file giọng thì `Voices::get` dùng giọng mặc định; giao diện hiện lựa chọn "Mặc định".
++- Đổi cài đặt có hiệu lực từ câu đọc kế tiếp; không khởi động lại worker.
++
++## 5. Worker và giao thức (`tts-protocol`, `tts-worker`, `tts-client`)
++
++- `Request::Speak` thêm hai trường tùy chọn `speed: Option<f32>` và `pause_scale: Option<f32>` (thêm cuối `Speak`; biến thể mới lấy chỉ số kế tiếp). Postcard mã hóa theo vị trí nên không có trường mặc định hay bỏ qua: khung cũ không đọc được bằng kiểu mới. Tương thích nhờ tăng `PROTOCOL_VERSION` từ 2 lên 3 (app và worker luôn build cùng nhau); worker cũ bị từ chối ngay ở `Ready`; `fake_tts_worker` và test của `tts-client` cập nhật theo. Worker lệch phiên bản bị app tắt ngay như đã quy định ở spec TTS §7e.
++- Lệnh mới `ListVoices` → `Voices { names: Vec<String>, default: String }`. Xử lý **không nạp ONNX**: chỉ đọc tên và tên mặc định trong `voices_v3_turbo.json`, nên trả lời nhanh và không tốn RAM model. Worker chưa chạy thì app dùng chính `tts-client` khởi động lười như `speak`. Kết quả được app giữ trong bộ nhớ tới khi gói giọng đổi.
++- `pause_scale`: nhân hai hằng `GAP_MINOR_S` và `GAP_SENTENCE_S` (`speech.rs`) lúc ghép khoảng lặng; giá trị 1,0 giữ nguyên đường cũ.
++- `speed`: bộ co/giãn thời gian dạng WSOLA, mô-đun riêng `tempo.rs` trong `tts-worker`, chạy trên từng nhóm khung PCM của đường phát dần, giữ trạng thái chồng lấn giữa các nhóm, độ trễ thêm không quá ~30 ms. Chỉ áp cho phần tiếng nói; khoảng lặng được chèn sau bước này nên không bị co/giãn. `speed == 1,0` bỏ qua hoàn toàn. Hủy giữa chừng (`cancel`) vẫn dừng trong thời gian như hiện nay.
++- Số liệu/log không chứa chữ của người dùng (giữ nguyên quy ước `Debug` đã có).
++
++## 6. Phía app Tauri (`src-tauri/src/tts.rs`, `commands.rs`)
++
++- `tts_speak` (và `overlay_tts_speak`, chữ ký không đổi) lấy giọng theo ngôn ngữ câu (vi/en) và `speed`, `pause_scale` từ cài đặt, rồi gửi kèm lệnh; giá trị đọc ra được kẹp vào khoảng hợp lệ (`NaN` → 1,0), nên file cài đặt sửa tay sai vẫn đọc bình thường.
++- Nút Nghe thử dùng lệnh riêng `tts_preview` (giọng, tốc độ, khoảng nghỉ, âm lượng truyền thẳng, dùng giá trị đang kéo trên màn hình, chưa cần đã lưu), chỉ cửa sổ chính được cấp.
++- Lệnh mới `tts_list_voices` trả `{ names, default }` (hoặc lỗi `ttsUnavailable` khi thiếu worker/model), đăng ký ở `handler()`, `build.rs` và `capabilities/*.json` (test `acl_tests` bắt buộc khớp).
++- Cài đặt mới đi qua lệnh lưu cài đặt hiện có, không thêm lệnh lưu riêng.
++- Âm lượng không vào worker: phía Rust (`tts::speak`/`preview`) nhân hệ số 0–100% vào PCM trước khi gửi về giao diện, nên cả cửa sổ chính lẫn overlay (Nghe dịch) đều theo mà không sửa `TtsPlayer`; chỉ giảm chứ không khuếch đại nên không méo tiếng. Cờ `mark_playing` chặn thu giữ nguyên.
++
++## 7. Giao diện
++
++- `Screen` thêm `"voice"`, nằm ngay sau `"compose"` trong `SCREENS`; biểu tượng loa (thêm vào `Icon` nếu chưa có); nhãn `nav.voice` ("Giọng đọc") đủ 5 ngôn ngữ giao diện (vi/en/ja/zh/ko). Mục ẩn khi không phải Windows.
++- `src/windows/main/screens/VoiceScreen.tsx`:
++  - Hai khối chọn giọng: **tiếng Việt** và **tiếng Anh**. Mỗi khối là danh sách chọn một, nhóm theo vùng (Bắc/Trung/Nam), mỗi dòng có tên, giới tính, nút Nghe thử; có lựa chọn "Mặc định".
++  - Nhãn vùng/giới tính lấy từ bảng tĩnh `src/lib/ttsVoices.ts` theo trang model gốc; tên chưa có trong bảng vẫn hiện, xếp vào nhóm "Khác".
++  - Ba thanh trượt: âm lượng (%), tốc độ (×), khoảng nghỉ (×), có số hiện bên cạnh; nút "Khôi phục mặc định".
++  - Nghe thử đọc câu mẫu cố định theo ngôn ngữ của khối (có trong bộ chuỗi giao diện), cùng đường `tts_speak`. Bấm lại hoặc rời màn hình thì hủy.
++- Trạng thái chưa dùng được dùng chung `store/tts.ts`: gói đang tải thì khóa điều khiển và hiện %, thiếu worker/model thì hiện cùng lý do như nút "Nghe dịch". Không cần thêm store trạng thái mới; danh sách giọng nằm trong `store/tts.ts`, tải khi mở màn hình và khi `tts://changed`.
++- Màn hình lỗi/bận: nút Nghe thử hiện trạng thái đang đọc/dừng giống nút nghe ở phụ đề; lỗi hiện thông báo ngắn, không văng.
++
++## 8. Kiểm thử và nghiệm thu
++
++- `tts-protocol`: khứ hồi (postcard) có hai trường mới và các biến thể mới; `ListVoices`/`Voices`.
++- `tts-worker`: `tempo` — độ dài đầu ra ≈ độ dài vào / tốc độ (dung sai 2%), không `NaN`/vượt ±1, `speed = 1,0` giống hệt từng mẫu, chia nhóm khác nhau cho cùng kết quả (dung sai nhỏ); `pause_scale` đổi đúng độ dài khoảng lặng; `ListVoices` không nạp ONNX.
++- Settings: validate (kẹp, `NaN`), migrate từ file cũ thiếu khóa, mặc định = hành vi cũ.
++- App: ACL khớp; `tts_speak` gửi đúng giọng theo ngôn ngữ.
++- Giao diện (vitest): `VoiceScreen` (khóa khi chưa có gói, chọn giọng lưu đúng khóa, khôi phục mặc định), `navigation` (mục ẩn trên macOS), `store/tts` (nạp danh sách giọng).
++- Toàn bộ test hiện có chạy nguyên (`cargo test --workspace`, `cargo clippy`, `cargo fmt --check`, `vitest`, `tsc`).
++- Chủ dự án nghe thử: vài giọng mỗi vùng, tốc độ 0,8 / 1,0 / 1,3 (chốt lại khoảng nếu âm thanh méo), khoảng nghỉ 0,5 / 2,0.
++
++## 9. Việc mở
++
++1. ~~Đọc `models/tts/voices_v3_turbo.json`~~ **Xong (2026-11-04)**: file thật có **25 giọng**, mặc định `Hải Đăng` (không phải 23 giọng/mặc định Minh Quân như trang model gốc). Danh sách: Adam, Adam bựa, Hải Đăng, Kim Thanh, Mai Anh, Minh Triết, Minh Đức, Mỹ Duyên, Ngọc Huyền, Ngọc Linh, Ngọc Trân, Phạm Tuyên, Quang Sơn, Quốc Tuấn, Quỳnh Anh, Thanh Bình, Thiền Tâm Đức, Thiện Minh, Thái Sơn, Thùy Dung, Thục Đoan, Trúc Ly, Xuân Vĩnh, Đoan Trang, Đức Trí. Vùng/giới tính chỉ gán cho 20 giọng có trong trang model gốc; 5 giọng còn lại (Adam bựa, Hải Đăng, Quốc Tuấn, Thiền Tâm Đức, Thiện Minh) vào nhóm "Khác", giới tính "không rõ". Chủ dự án cân nhắc có ẩn "Adam bựa" không.
++2. Nghe chất lượng đổi nhịp để chốt khoảng 0,8–1,3.
++3. Website (sau khi phát hành, 5 ngôn ngữ, không nêu tên model): bổ sung "chọn giọng nam/nữ theo ba miền, chỉnh tốc độ, âm lượng, khoảng nghỉ" ở `features`, guide liên quan, `faq`; số giọng chỉ nêu sau khi xác minh số thật ở mục 1. Chính sách quyền riêng tư không đổi (không có dữ liệu mới rời máy).
++4. Commit, push, phát hành: chỉ khi chủ dự án cho phép (quy tắc dự án).
+diff --git a/scripts/ui-preview/check-i18n.mjs b/scripts/ui-preview/check-i18n.mjs
+index 6f33af3..9d480cb 100644
+--- a/scripts/ui-preview/check-i18n.mjs
++++ b/scripts/ui-preview/check-i18n.mjs
+@@ -637,6 +637,8 @@ const SCREENS = [
+   ["compose", "screen=compose"],
+   ["compose-noax", "screen=compose&ax=0"],
+   ["compose-windows", "screen=compose&platform=windows"],
++  // Giọng đọc (spec 2026-11-04-giong-doc §7; mục chỉ có khi platform=windows).
++  ["voice", "screen=voice&platform=windows"],
+   // Nâng cấp (spec 2026-10-14, 2026-10-22): ba bước; cách trả chọn sẵn theo ngôn ngữ của lượt chạy (vi: VietQR, còn lại: thẻ).
+   ["upgrade", "screen=upgrade&plan=free"],
+   // Bấm sang cách trả còn lại: chữ, giá và ghi chú của cách đó.
+diff --git a/scripts/ui-preview/tauri-mock.ts b/scripts/ui-preview/tauri-mock.ts
+index 9a4bc5f..646f39a 100755
+--- a/scripts/ui-preview/tauri-mock.ts
++++ b/scripts/ui-preview/tauri-mock.ts
+@@ -5,7 +5,7 @@
+ //
+ // Tham số URL (đều không bắt buộc):
+ //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
+-//   screen=home|compose|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|privacy
++//   screen=home|compose|voice|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|privacy
+ //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
+ //   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
+ //   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
+@@ -102,6 +102,11 @@ let settings: Settings = {
+   micNoiseFilter: true,
+   vadEndSilenceMs: 300,
+   micEndSilenceMs: 50,
++  ttsVoiceVi: null,
++  ttsVoiceEn: null,
++  ttsVolume: 100,
++  ttsSpeed: 1,
++  ttsPause: 1,
+   overlay: {
+     fontSize: Number(param("size", "28")),
+     lines: 3,
+@@ -841,6 +846,16 @@ const handlers = {
+     return { id: "R-7F3K-92QD" };
+   },
+   // Chat hỗ trợ: trạng thái trong bộ nhớ theo `chat=`, `support=`; gửi tin sau nửa giây, hay đúng lỗi của lệnh thật theo `send=`.
++  // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7; mục chỉ có khi platform=windows): 25 giọng của gói thật, theo thứ tự tên.
++  // `tts_status` không có mẫu (null) nên màn hình chưa cho Nghe thử, như lúc chưa hỏi xong trạng thái.
++  tts_list_voices: () => ({
++    names: [
++      "Adam", "Adam bựa", "Đoan Trang", "Đức Trí", "Hải Đăng", "Kim Thanh", "Mai Anh", "Minh Đức", "Minh Triết", "Mỹ Duyên",
++      "Ngọc Huyền", "Ngọc Linh", "Ngọc Trân", "Phạm Tuyên", "Quang Sơn", "Quốc Tuấn", "Quỳnh Anh", "Thái Sơn", "Thanh Bình",
++      "Thiền Tâm Đức", "Thiện Minh", "Thục Đoan", "Thùy Dung", "Trúc Ly", "Xuân Vĩnh",
++    ],
++    default: "Hải Đăng",
++  }),
+   support_screen: ({ open }) => changeSupport(open ? { unread: false } : {}),
+   support_fetch: () => changeSupport({}),
+   support_machine_info: () => machineLine(),
+diff --git a/src-tauri/build.rs b/src-tauri/build.rs
+index c4c23b0..aee3af2 100755
+--- a/src-tauri/build.rs
++++ b/src-tauri/build.rs
+@@ -110,6 +110,8 @@ fn main() {
+                 "tts_cancel",
+                 "tts_mark_playing",
+                 "tts_stop",
++                "tts_list_voices",
++                "tts_preview",
+                 "overlay_listen_set",
+                 "overlay_listen_status",
+                 "overlay_tts_status",
+diff --git a/src-tauri/capabilities/main.json b/src-tauri/capabilities/main.json
+index 59ab72b..83629d6 100755
+--- a/src-tauri/capabilities/main.json
++++ b/src-tauri/capabilities/main.json
+@@ -79,6 +79,8 @@
+     "allow-tts-speak",
+     "allow-tts-cancel",
+     "allow-tts-mark-playing",
+-    "allow-tts-stop"
++    "allow-tts-stop",
++    "allow-tts-list-voices",
++    "allow-tts-preview"
+   ]
+ }
+diff --git a/src-tauri/src/commands.rs b/src-tauri/src/commands.rs
+index e19a737..1d89989 100755
+--- a/src-tauri/src/commands.rs
++++ b/src-tauri/src/commands.rs
+@@ -599,6 +599,37 @@ pub fn tts_speak<R: Runtime>(
+     crate::tts::speak(&app, &svc, &lang, &text, on_event)
+ }
+ 
++/// Nút Nghe thử của màn hình "Giọng đọc" (spec 2026-11-04-giong-doc §6): giọng, tốc độ, khoảng nghỉ, âm lượng đang chỉnh trên
++/// màn hình, chưa cần lưu. Chỉ cửa sổ chính.
++#[tauri::command]
++#[allow(clippy::too_many_arguments)]
++pub fn tts_preview<R: Runtime>(
++    app: AppHandle<R>,
++    svc: State<'_, crate::tts::TtsService>,
++    lang: String,
++    text: String,
++    voice: Option<String>,
++    speed: f32,
++    pause: f32,
++    volume: u8,
++    on_event: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
++) -> Result<u64, CommandError> {
++    crate::tts::preview(&app, &svc, &lang, &text, voice, speed, pause, volume, on_event)
++}
++
++/// Danh sách giọng của gói đã cài (`{ names, default }`). Lần đầu có thể phải chạy worker, nên không chạy trên luồng chính:
++/// lệnh `async`, việc chờ chạy trên luồng của `spawn_blocking`. Chỉ cửa sổ chính.
++#[tauri::command]
++pub async fn tts_list_voices<R: Runtime>(app: AppHandle<R>) -> Result<crate::tts::TtsVoices, CommandError> {
++    tauri::async_runtime::spawn_blocking(move || {
++        use tauri::Manager;
++        let svc = app.state::<crate::tts::TtsService>();
++        crate::tts::list_voices(&app, &svc)
++    })
++    .await
++    .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
++}
++
+ #[tauri::command]
+ pub fn tts_cancel(svc: State<'_, crate::tts::TtsService>, id: u64) {
+     crate::tts::cancel(&svc, id);
+@@ -744,6 +775,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
+     "tts_cancel",
+     "tts_mark_playing",
+     "tts_stop",
++    "tts_list_voices",
++    "tts_preview",
+ ];
+ 
+ /// Lệnh của cửa sổ `overlay`.
+@@ -870,6 +903,8 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send +
+         tts_cancel,
+         tts_mark_playing,
+         tts_stop,
++        tts_list_voices,
++        tts_preview,
+         overlay_listen_set,
+         overlay_listen_status,
+         overlay_tts_status,
+diff --git a/src-tauri/src/events.rs b/src-tauri/src/events.rs
+index 4f7346a..4190870 100755
+--- a/src-tauri/src/events.rs
++++ b/src-tauri/src/events.rs
+@@ -99,6 +99,8 @@ pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
+ 
+ /// Báo giao diện hỏi lại trạng thái giọng đọc (`TTS_CHANGED`). Gửi lỗi thì chỉ ghi log.
+ pub fn tts_changed<R: Runtime>(app: &AppHandle<R>) {
++    // Gói giọng đọc đổi: bỏ danh sách giọng đã lưu trước khi giao diện hỏi lại (spec 2026-11-04-giong-doc §5).
++    crate::tts::on_changed(app);
+     emit(app, window::MAIN, TTS_CHANGED, ());
+     emit(app, overlay::LABEL, TTS_CHANGED, ());
+ }
+diff --git a/src-tauri/src/settings/migrate.rs b/src-tauri/src/settings/migrate.rs
+index ba115ac..b4b8b6e 100644
+--- a/src-tauri/src/settings/migrate.rs
++++ b/src-tauri/src/settings/migrate.rs
+@@ -480,6 +480,28 @@ mod tests {
+         assert!(!loaded.settings.speaker_diarization && loaded.settings.speaker_names);
+     }
+ 
++    /// Spec 2026-11-04-giong-doc §4: file của bản trước chưa có năm khóa `tts*` thì nhận mặc định, giá trị khác không đổi, không
++    /// phải ghi lại file.
++    #[test]
++    fn old_settings_file_gets_tts_defaults() {
++        let raw = object(json!({ "schemaVersion": CURRENT_SCHEMA_VERSION, "theme": "dark", "micEndSilenceMs": 200 }));
++        let loaded = load(raw, defaults());
++        let s = &loaded.settings;
++        assert_eq!(
++            (
++                s.tts_voice_vi.clone(),
++                s.tts_voice_en.clone(),
++                s.tts_volume,
++                s.tts_speed,
++                s.tts_pause
++            ),
++            (None, None, 100, 1.0, 1.0)
++        );
++        assert_eq!(s.mic_end_silence_ms, 200, "khóa khác giữ nguyên");
++        assert!(loaded.rejected.is_empty());
++        assert!(!loaded.needs_save(), "khóa thiếu thì không phải ghi lại file");
++    }
++
+     /// Spec 2026-10-24-nguon-micro §4: file của bản trước chưa có ba khóa nguồn micro thì người dùng cũ không đổi gì (âm
+     /// thanh máy, micro mặc định, lọc ồn bật), không phải ghi lại file. Giá trị lạ thì về mặc định.
+     #[test]
+diff --git a/src-tauri/src/settings/mod.rs b/src-tauri/src/settings/mod.rs
+index 996def9..7388105 100644
+--- a/src-tauri/src/settings/mod.rs
++++ b/src-tauri/src/settings/mod.rs
+@@ -271,6 +271,17 @@ pub struct Settings {
+     /// (300–500 ms) ít cắt vụn hơn, nhận chính xác hơn, đổi lại phụ đề chậm hơn (spec 2026-10-24-nguon-micro mục 18). File của
+     /// bản trước chưa có khóa này thì lấy mặc định.
+     pub mic_end_silence_ms: u32,
++    /// Giọng đọc bản dịch (spec 2026-11-04-giong-doc §4) cho đích tiếng Việt / tiếng Anh: tên giọng trong gói giọng đọc, `None`
++    /// là giọng mặc định của gói. File của bản trước chưa có các khóa `tts*` thì lấy mặc định (`migrate::load` ghép từng khóa),
++    /// không cần bước migrate.
++    pub tts_voice_vi: Option<String>,
++    pub tts_voice_en: Option<String>,
++    /// Âm lượng đọc, 0–100 (mặc định 100).
++    pub tts_volume: u8,
++    /// Tốc độ đọc, 0,8–1,3 (mặc định 1,0).
++    pub tts_speed: f32,
++    /// Hệ số khoảng nghỉ giữa các câu, 0,5–2,0 (mặc định 1,0).
++    pub tts_pause: f32,
+     pub overlay: OverlaySettings,
+     /// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có
+     /// tác dụng từ đoạn kế tiếp (`session::set_streaming_enabled`). File của bản trước chưa có khóa này thì lấy mặc định
+@@ -312,6 +323,12 @@ pub struct Settings {
+ }
+ 
+ pub const VAD_END_SILENCE_MS: std::ops::RangeInclusive<u32> = 50..=800;
++pub const TTS_VOLUME_MAX: u8 = 100;
++pub const TTS_SPEED: std::ops::RangeInclusive<f32> = 0.8..=1.3;
++pub const TTS_PAUSE: std::ops::RangeInclusive<f32> = 0.5..=2.0;
++/// Độ dài tối đa (byte) của tên giọng. Bằng `tts_protocol::MAX_VOICE_BYTES`; `src-tauri` chưa phụ thuộc `tts-protocol`
++/// nên giữ hằng cục bộ, đổi một nơi thì đổi nơi kia.
++pub const TTS_VOICE_MAX_BYTES: usize = 64;
+ pub const OVERLAY_FONT_SIZE: std::ops::RangeInclusive<u32> = 14..=48;
+ pub const OVERLAY_LINES: std::ops::RangeInclusive<u32> = 1..=3;
+ pub const OVERLAY_WIDTH: std::ops::RangeInclusive<f64> = 200.0..=10_000.0;
+@@ -351,6 +368,11 @@ impl Settings {
+             mic_noise_filter: true,
+             vad_end_silence_ms: 50,
+             mic_end_silence_ms: 50,
++            tts_voice_vi: None,
++            tts_voice_en: None,
++            tts_volume: 100,
++            tts_speed: 1.0,
++            tts_pause: 1.0,
+             overlay: OverlaySettings {
+                 font_size: 20,
+                 lines: 2,
+@@ -414,6 +436,22 @@ impl Settings {
+         if !VAD_END_SILENCE_MS.contains(&self.mic_end_silence_ms) {
+             return Err(Invalid::new("micEndSilenceMs", Reason::OutOfRange));
+         }
++        if self.tts_volume > TTS_VOLUME_MAX {
++            return Err(Invalid::new("ttsVolume", Reason::OutOfRange));
++        }
++        if !TTS_SPEED.contains(&self.tts_speed) {
++            return Err(Invalid::new("ttsSpeed", Reason::OutOfRange));
++        }
++        if !TTS_PAUSE.contains(&self.tts_pause) {
++            return Err(Invalid::new("ttsPause", Reason::OutOfRange));
++        }
++        for (field, voice) in [("ttsVoiceVi", &self.tts_voice_vi), ("ttsVoiceEn", &self.tts_voice_en)] {
++            if let Some(name) = voice
++                && (name.is_empty() || name.len() > TTS_VOICE_MAX_BYTES)
++            {
++                return Err(Invalid::new(field, Reason::OutOfRange));
++            }
++        }
+         if self.source_languages.is_empty() {
+             return Err(Invalid::new("sourceLanguages", Reason::Empty));
+         }
+@@ -670,6 +708,11 @@ mod tests {
+             "micEndSilenceMs",
+             "speakerDiarization",
+             "speakerNames",
++            "ttsVoiceVi",
++            "ttsVoiceEn",
++            "ttsVolume",
++            "ttsSpeed",
++            "ttsPause",
+         ] {
+             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
+         }
+@@ -735,6 +778,61 @@ mod tests {
+         assert_eq!(s.validate(), Ok(()));
+     }
+ 
++    /// Spec 2026-11-04-giong-doc §4: mặc định giữ nguyên hành vi hiện tại (giọng mặc định, âm lượng đầy, tốc độ và nghỉ chuẩn).
++    #[test]
++    fn tts_defaults_keep_todays_behaviour() {
++        let s = valid();
++        assert_eq!(
++            (
++                s.tts_voice_vi.clone(),
++                s.tts_voice_en.clone(),
++                s.tts_volume,
++                s.tts_speed,
++                s.tts_pause
++            ),
++            (None, None, 100, 1.0, 1.0)
++        );
++        assert_eq!(s.validate(), Ok(()));
++    }
++
++    #[test]
++    fn validate_rejects_out_of_range_tts_values() {
++        let mut s = valid();
++        s.tts_volume = 101;
++        rejects(s, "ttsVolume", Reason::OutOfRange);
++        for speed in [0.79, 1.31, f32::NAN] {
++            let mut s = valid();
++            s.tts_speed = speed;
++            rejects(s, "ttsSpeed", Reason::OutOfRange);
++        }
++        for pause in [0.49, 2.01, f32::NAN] {
++            let mut s = valid();
++            s.tts_pause = pause;
++            rejects(s, "ttsPause", Reason::OutOfRange);
++        }
++        let mut s = valid();
++        s.tts_voice_vi = Some("x".repeat(65));
++        rejects(s, "ttsVoiceVi", Reason::OutOfRange);
++        let mut s = valid();
++        s.tts_voice_en = Some(String::new());
++        rejects(s, "ttsVoiceEn", Reason::OutOfRange);
++    }
++
++    #[test]
++    fn validate_accepts_boundaries() {
++        let mut s = valid();
++        s.tts_volume = 0;
++        s.tts_speed = 0.8;
++        s.tts_pause = 0.5;
++        s.tts_voice_vi = Some("x".repeat(64));
++        assert_eq!(s.validate(), Ok(()));
++        s.tts_volume = 100;
++        s.tts_speed = 1.3;
++        s.tts_pause = 2.0;
++        s.tts_voice_en = Some("x".repeat(64));
++        assert_eq!(s.validate(), Ok(()));
++    }
++
+     #[test]
+     fn source_languages_must_be_non_empty_and_unique() {
+         let mut s = valid();
+diff --git a/src-tauri/src/tts.rs b/src-tauri/src/tts.rs
+index f03bd14..54cbefa 100755
+--- a/src-tauri/src/tts.rs
++++ b/src-tauri/src/tts.rs
+@@ -8,23 +8,28 @@
+ //! - **Chặn thu khi đang đọc** (spec §5): Windows thu mọi âm thanh máy qua loopback (§6.1), nên tiếng đọc của chính app sẽ bị nhận
+ //!   dạng thành phụ đề giả. Trong lúc đọc, `capture::Pre::drain` thay mẫu của dòng nhận dạng và VAD bằng 0 ([`is_playing`]); dòng thời
+ //!   gian giữ nguyên, VAD coi như im lặng. Cờ tự hết hạn (không thể kẹt ở "đang đọc"): [`mark_playing`] chỉ gia hạn một khoảng ngắn.
++//! - Giọng, tốc độ, khoảng nghỉ, âm lượng (spec 2026-11-04-giong-doc §6): đọc từ cài đặt ở mỗi câu và kẹp vào khoảng hợp lệ
++//!   trước khi gửi worker; âm lượng không vào worker mà nhân vào PCM ở đây ([`apply_volume`]), nên overlay cũng theo.
+ //! - Log chỉ có số đếm và lý do, không có chữ hay âm thanh.
+ 
+ use crate::errors::CommandError;
+ use crate::models::service::ModelService;
++use crate::settings::{self, Settings};
+ use crate::sidecar::{integrity, paths};
++use crate::state::AppState;
+ use pipeline::process;
+ use serde::Serialize;
+ use std::fs::File;
+ use std::io;
++use std::ops::RangeInclusive;
+ use std::path::{Path, PathBuf};
+ use std::process::{Command, Stdio};
+ use std::sync::atomic::{AtomicU64, Ordering};
+-use std::sync::{Arc, Mutex, OnceLock};
+-use std::time::Instant;
++use std::sync::{Arc, Mutex, OnceLock, mpsc};
++use std::time::{Duration, Instant};
+ use tauri::ipc::{Channel, InvokeResponseBody};
+ use tauri::{AppHandle, Manager, Runtime};
+-use tts_client::{Config, Event, Failure, Language, Spawner, TtsClient};
++use tts_client::{Config, Event, Failure, Language, Spawner, SpeakOptions, TtsClient};
+ 
+ /// Tên tiến trình phụ (file theo quy ước `paths::file_name`).
+ pub const WORKER: &str = "tts-worker";
+@@ -34,6 +39,8 @@ pub const MAX_TEXT_BYTES: usize = 4_000;
+ const MAX_MARK_MS: u64 = 15_000;
+ /// Khoảng đệm cộng thêm khi chính backend gia hạn theo mỗi khung âm thanh gửi đi (ms).
+ const BACKEND_MARGIN_MS: u64 = 400;
++/// Chờ worker trả danh sách giọng tối đa chừng này (worker chỉ đọc file giọng, không nạp model).
++const LIST_VOICES_TIMEOUT: Duration = Duration::from_secs(10);
+ 
+ static BASE: OnceLock<Instant> = OnceLock::new();
+ /// Mốc (ms từ `BASE`) tới khi cờ chặn thu còn hiệu lực.
+@@ -179,10 +186,23 @@ fn spawner(files: TtsFiles, log: Option<PathBuf>) -> Spawner {
+     })
+ }
+ 
++/// Danh sách giọng của gói giọng đọc đã cài, cho màn hình "Giọng đọc" (spec 2026-11-04-giong-doc §6).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
++#[serde(rename_all = "camelCase")]
++pub struct TtsVoices {
++    pub names: Vec<String>,
++    /// Giọng dùng khi cài đặt để `None` (hay tên không còn trong gói).
++    pub default: String,
++}
++
+ /// Client của app: tạo ở lần dùng đầu tiên, giữ tới khi thoát.
+ #[derive(Default)]
+ pub struct TtsService {
+     client: Mutex<Option<Arc<TtsClient>>>,
++    /// Danh sách giọng đã hỏi worker, giữ tới khi gói giọng đổi ([`on_changed`]) hay client được dựng lại.
++    voices: Mutex<Option<TtsVoices>>,
++    /// Tăng mỗi lần bỏ danh sách đã lưu: kết quả của lần hỏi bắt đầu trước đó không được lưu đè.
++    voices_generation: AtomicU64,
+ }
+ 
+ impl TtsService {
+@@ -190,6 +210,29 @@ impl TtsService {
+         self.client.lock().unwrap_or_else(|e| e.into_inner()).clone()
+     }
+ 
++    fn cached_voices(&self) -> Option<TtsVoices> {
++        self.voices.lock().unwrap_or_else(|e| e.into_inner()).clone()
++    }
++
++    fn voices_generation(&self) -> u64 {
++        self.voices_generation.load(Ordering::SeqCst)
++    }
++
++    /// Lưu danh sách hỏi được, trừ khi đã bị bỏ (gói đổi) từ lúc bắt đầu hỏi.
++    fn store_voices(&self, generation: u64, voices: TtsVoices) {
++        let mut guard = self.voices.lock().unwrap_or_else(|e| e.into_inner());
++        if self.voices_generation() == generation {
++            *guard = Some(voices);
++        }
++    }
++
++    /// Bỏ danh sách giọng đã lưu; lần hỏi sau đọc lại file giọng.
++    fn forget_voices(&self) {
++        let mut guard = self.voices.lock().unwrap_or_else(|e| e.into_inner());
++        self.voices_generation.fetch_add(1, Ordering::SeqCst);
++        *guard = None;
++    }
++
+     fn client<R: Runtime>(&self, app: &AppHandle<R>) -> Result<Arc<TtsClient>, CommandError> {
+         let mut guard = self.client.lock().unwrap_or_else(|e| e.into_inner());
+         if let Some(c) = guard.as_ref() {
+@@ -202,6 +245,7 @@ impl TtsService {
+         cfg.on_exit = Arc::new(process::release);
+         let client = Arc::new(TtsClient::new(cfg));
+         *guard = Some(client.clone());
++        self.forget_voices();
+         Ok(client)
+     }
+ 
+@@ -210,6 +254,14 @@ impl TtsService {
+         if let Some(c) = self.client.lock().unwrap_or_else(|e| e.into_inner()).take() {
+             c.shutdown();
+         }
++        self.forget_voices();
++    }
++}
++
++/// Gói giọng đọc vừa đổi (`events::tts_changed`): bỏ danh sách giọng đã lưu. Rẻ khi chưa có dịch vụ.
++pub fn on_changed<R: Runtime>(app: &AppHandle<R>) {
++    if let Some(svc) = app.try_state::<TtsService>() {
++        svc.forget_voices();
+     }
+ }
+ 
+@@ -305,7 +357,63 @@ fn parse_lang(lang: &str) -> Result<Language, CommandError> {
+     }
+ }
+ 
+-/// Đọc một câu. Âm thanh và thông báo kết thúc đi qua `on_event`; trả `id` để hủy. Câu đang đọc (nếu có) bị hủy.
++/// Nhân âm lượng `percent`% (0–100) vào PCM, làm tròn ra xa 0. Chỉ giảm, không khuếch đại: từ 100 trở lên giữ nguyên, nên
++/// không tràn và không méo tiếng (spec 2026-11-04-giong-doc §6).
++pub fn apply_volume(pcm: &mut [i16], percent: u8) {
++    if percent >= settings::TTS_VOLUME_MAX {
++        return;
++    }
++    let p = i32::from(percent);
++    for s in pcm.iter_mut() {
++        let x = i32::from(*s) * p;
++        // |x / 100| ≤ |s| vì p < 100, nên kết quả luôn nằm trong `i16`.
++        *s = ((x + if x >= 0 { 50 } else { -50 }) / 100) as i16;
++    }
++}
++
++/// Kẹp `v` vào `range`; giá trị không hữu hạn (`NaN`, vô cực) thành 1,0 (bình thường). Worker từ chối khung lệnh có giá trị
++/// ngoài khoảng, nên mọi giá trị gửi đi phải qua đây.
++fn clamp_or_neutral(v: f32, range: &RangeInclusive<f32>) -> f32 {
++    if v.is_finite() {
++        v.clamp(*range.start(), *range.end())
++    } else {
++        1.0
++    }
++}
++
++/// Tên giọng gửi được cho worker: rỗng hay dài quá giới hạn thì `None` (giọng mặc định của gói).
++fn usable_voice(voice: Option<String>) -> Option<String> {
++    voice.filter(|v| !v.is_empty() && v.len() <= settings::TTS_VOICE_MAX_BYTES)
++}
++
++/// Tùy chọn đọc từ tham số của nút Nghe thử (hay cài đặt): giọng hợp lệ, tốc độ và khoảng nghỉ đã kẹp.
++fn preview_options(voice: Option<String>, speed: f32, pause: f32) -> SpeakOptions {
++    SpeakOptions::new(
++        usable_voice(voice),
++        clamp_or_neutral(speed, &settings::TTS_SPEED),
++        clamp_or_neutral(pause, &settings::TTS_PAUSE),
++    )
++}
++
++/// Tùy chọn đọc theo cài đặt: giọng theo ngôn ngữ của câu, tốc độ và khoảng nghỉ kẹp vào khoảng hợp lệ (file cài đặt sửa tay
++/// sai vẫn đọc bình thường).
++fn options_for(settings: &Settings, lang: Language) -> SpeakOptions {
++    let voice = match lang {
++        Language::Vi => settings.tts_voice_vi.clone(),
++        Language::En => settings.tts_voice_en.clone(),
++    };
++    preview_options(voice, settings.tts_speed, settings.tts_pause)
++}
++
++fn check_text(text: &str) -> Result<(), CommandError> {
++    if text.trim().is_empty() || text.len() > MAX_TEXT_BYTES {
++        return Err(err("ttsBadText", "chữ rỗng hoặc quá dài"));
++    }
++    Ok(())
++}
++
++/// Đọc một câu theo cài đặt giọng đọc hiện tại. Âm thanh và thông báo kết thúc đi qua `on_event`; trả `id` để hủy. Câu đang
++/// đọc (nếu có) bị hủy. Chưa có `AppState` (test dựng app không có trạng thái) thì đọc như mặc định.
+ pub fn speak<R: Runtime>(
+     app: &AppHandle<R>,
+     svc: &TtsService,
+@@ -314,12 +422,51 @@ pub fn speak<R: Runtime>(
+     on_event: Channel<InvokeResponseBody>,
+ ) -> Result<u64, CommandError> {
+     let lang = parse_lang(lang)?;
+-    if text.trim().is_empty() || text.len() > MAX_TEXT_BYTES {
+-        return Err(err("ttsBadText", "chữ rỗng hoặc quá dài"));
+-    }
++    check_text(text)?;
++    let (opts, volume) = match app.try_state::<AppState>() {
++        Some(state) => {
++            let s = state.settings();
++            (options_for(&s, lang), s.tts_volume)
++        }
++        None => (SpeakOptions::default(), settings::TTS_VOLUME_MAX),
++    };
++    start(app, svc, lang, text, opts, volume, on_event)
++}
++
++/// Nút Nghe thử (spec 2026-11-04-giong-doc §6): như [`speak`] nhưng dùng giá trị đang chỉnh trên màn hình, chưa cần lưu (cũng
++/// kẹp như cài đặt).
++#[allow(clippy::too_many_arguments)]
++pub fn preview<R: Runtime>(
++    app: &AppHandle<R>,
++    svc: &TtsService,
++    lang: &str,
++    text: &str,
++    voice: Option<String>,
++    speed: f32,
++    pause: f32,
++    volume: u8,
++    on_event: Channel<InvokeResponseBody>,
++) -> Result<u64, CommandError> {
++    let lang = parse_lang(lang)?;
++    check_text(text)?;
++    let opts = preview_options(voice, speed, pause);
++    start(app, svc, lang, text, opts, volume, on_event)
++}
++
++fn start<R: Runtime>(
++    app: &AppHandle<R>,
++    svc: &TtsService,
++    lang: Language,
++    text: &str,
++    opts: SpeakOptions,
++    volume: u8,
++    on_event: Channel<InvokeResponseBody>,
++) -> Result<u64, CommandError> {
+     let client = svc.client(app)?;
+-    Ok(client.speak(lang, text, None, move |event| match event {
+-        Event::Audio(pcm) => {
++    Ok(client.speak(lang, text, opts, move |event| match event {
++        Event::Audio(mut pcm) => {
++            // Âm lượng áp ở đây nên cửa sổ chính lẫn overlay (Nghe dịch) đều theo.
++            apply_volume(&mut pcm, volume);
+             // 48 kHz: số mẫu / 48 = ms. Gia hạn cờ chặn thu theo đúng độ dài âm thanh vừa gửi.
+             mark_playing(pcm.len() as u64 / 48 + BACKEND_MARGIN_MS);
+             let bytes: Vec<u8> = pcm.iter().flat_map(|s| s.to_le_bytes()).collect();
+@@ -335,6 +482,32 @@ pub fn speak<R: Runtime>(
+     }))
+ }
+ 
++/// Danh sách giọng của gói đã cài (lưu lại tới khi gói đổi). Chặn tới khi worker trả lời (tối đa [`LIST_VOICES_TIMEOUT`]),
++/// nên lệnh gọi hàm này chạy trên luồng của `spawn_blocking`. Thiếu worker/model hay worker không trả lời: `ttsUnavailable`.
++pub fn list_voices<R: Runtime>(app: &AppHandle<R>, svc: &TtsService) -> Result<TtsVoices, CommandError> {
++    if let Some(v) = svc.cached_voices() {
++        return Ok(v);
++    }
++    let client = svc.client(app)?;
++    let generation = svc.voices_generation();
++    let (tx, rx) = mpsc::channel();
++    client.list_voices(move |r| {
++        let _ = tx.send(r);
++    });
++    match rx.recv_timeout(LIST_VOICES_TIMEOUT) {
++        Ok(Ok(list)) => {
++            let voices = TtsVoices {
++                names: list.names,
++                default: list.default,
++            };
++            svc.store_voices(generation, voices.clone());
++            Ok(voices)
++        }
++        Ok(Err(f)) => Err(err("ttsUnavailable", failure_code(&f))),
++        Err(_) => Err(err("ttsUnavailable", "worker không trả danh sách giọng")),
++    }
++}
++
+ pub fn cancel(svc: &TtsService, id: u64) {
+     if let Some(c) = svc.existing() {
+         c.cancel(id);
+@@ -451,6 +624,121 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn apply_volume_scales_and_never_overflows() {
++        let src = [0i16, 1, -1, 3, -3, 1_000, -1_000, i16::MAX, i16::MIN];
++        let mut full = src;
++        apply_volume(&mut full, 100);
++        assert_eq!(full, src, "100% giữ nguyên từng mẫu");
++        let mut over = src;
++        apply_volume(&mut over, 255);
++        assert_eq!(over, src, "trên 100% không khuếch đại");
++        let mut half = src;
++        apply_volume(&mut half, 50);
++        assert_eq!(half, [0, 1, -1, 2, -2, 500, -500, 16_384, -16_384], "làm tròn ra xa 0");
++        let mut mute = src;
++        apply_volume(&mut mute, 0);
++        assert!(mute.iter().all(|&s| s == 0));
++        for p in 0..=100u8 {
++            let mut edge = [i16::MAX, i16::MIN];
++            apply_volume(&mut edge, p); // không panic, không tràn
++            assert!(edge[0] >= 0 && edge[1] <= 0);
++        }
++    }
++
++    #[test]
++    fn options_default_settings_are_neutral() {
++        let s = Settings::defaults(crate::settings::UiLanguage::Vi);
++        for lang in [Language::Vi, Language::En] {
++            let o = options_for(&s, lang);
++            assert_eq!(o.voice, None);
++            assert_eq!(o.speed, 1.0);
++            assert_eq!(o.pause_scale, 1.0);
++        }
++        assert_eq!(s.tts_volume, 100);
++    }
++
++    #[test]
++    fn options_pick_voice_by_language() {
++        let mut s = Settings::defaults(crate::settings::UiLanguage::Vi);
++        s.tts_voice_vi = Some("Ngọc Huyền".into());
++        s.tts_voice_en = Some("Minh Quân".into());
++        s.tts_speed = 1.2;
++        s.tts_pause = 1.5;
++        let vi = options_for(&s, Language::Vi);
++        let en = options_for(&s, Language::En);
++        assert_eq!(vi.voice.as_deref(), Some("Ngọc Huyền"));
++        assert_eq!(en.voice.as_deref(), Some("Minh Quân"));
++        assert_eq!((vi.speed, vi.pause_scale), (1.2, 1.5));
++        assert_eq!((en.speed, en.pause_scale), (1.2, 1.5));
++    }
++
++    #[test]
++    fn options_clamp_bad_values() {
++        let mut s = Settings::defaults(crate::settings::UiLanguage::Vi);
++        s.tts_speed = f32::NAN;
++        s.tts_pause = -1.0;
++        let o = options_for(&s, Language::Vi);
++        assert_eq!((o.speed, o.pause_scale), (1.0, 0.5));
++        s.tts_speed = 9.0;
++        s.tts_pause = f32::INFINITY;
++        let o = options_for(&s, Language::Vi);
++        assert_eq!((o.speed, o.pause_scale), (1.3, 1.0));
++        s.tts_speed = 0.1;
++        s.tts_pause = 99.0;
++        let o = options_for(&s, Language::Vi);
++        assert_eq!((o.speed, o.pause_scale), (0.8, 2.0));
++        assert_eq!(clamp_or_neutral(f32::NEG_INFINITY, &settings::TTS_SPEED), 1.0);
++    }
++
++    #[test]
++    fn options_drop_voice_names_the_worker_would_reject() {
++        // Tên rỗng hay quá dài (file cài đặt sửa tay, hay giao diện gửi lên) mà gửi đi thì worker từ chối khung lệnh:
++        // rơi về giọng mặc định thay vì hỏng (spec 2026-11-04-giong-doc §3.4).
++        let mut s = Settings::defaults(crate::settings::UiLanguage::Vi);
++        s.tts_voice_vi = Some(String::new());
++        s.tts_voice_en = Some("x".repeat(settings::TTS_VOICE_MAX_BYTES + 1));
++        assert_eq!(options_for(&s, Language::Vi).voice, None);
++        assert_eq!(options_for(&s, Language::En).voice, None);
++        let longest = "x".repeat(settings::TTS_VOICE_MAX_BYTES);
++        assert_eq!(preview_options(Some(longest.clone()), 1.0, 1.0).voice, Some(longest));
++        let o = preview_options(Some(String::new()), f32::NAN, 7.0);
++        assert_eq!((o.voice, o.speed, o.pause_scale), (None, 1.0, 2.0));
++    }
++
++    #[test]
++    fn voice_cache_is_dropped_when_the_pack_changes() {
++        let svc = TtsService::default();
++        let list = TtsVoices {
++            names: vec!["A".into(), "B".into()],
++            default: "A".into(),
++        };
++        let generation = svc.voices_generation();
++        svc.store_voices(generation, list.clone());
++        assert_eq!(svc.cached_voices(), Some(list.clone()));
++        svc.forget_voices();
++        assert_eq!(svc.cached_voices(), None);
++        // Kết quả của lần hỏi bắt đầu trước khi gói đổi không được lưu lại.
++        svc.store_voices(generation, list.clone());
++        assert_eq!(svc.cached_voices(), None);
++        svc.store_voices(svc.voices_generation(), list.clone());
++        assert_eq!(svc.cached_voices(), Some(list));
++        svc.shutdown();
++        assert_eq!(svc.cached_voices(), None, "dựng lại client thì hỏi lại");
++    }
++
++    #[test]
++    fn voices_serialize_in_camel_case() {
++        let v = TtsVoices {
++            names: vec!["A".into()],
++            default: "A".into(),
++        };
++        assert_eq!(
++            serde_json::to_value(&v).unwrap(),
++            serde_json::json!({ "names": ["A"], "default": "A" })
++        );
++    }
++
+     #[test]
+     fn failure_codes_are_stable() {
+         assert_eq!(failure_code(&Failure::Cancelled), "cancelled");
+diff --git a/src/i18n/dictionaries.test.ts b/src/i18n/dictionaries.test.ts
+index e5b50d1..5a3447d 100644
+--- a/src/i18n/dictionaries.test.ts
++++ b/src/i18n/dictionaries.test.ts
+@@ -47,6 +47,10 @@ const ENGLISH_SAMPLE: MessageKey[] = [
+   "settings.subtitles.preview.live.sourceTail",
+ ];
+ 
++// Câu mẫu Nghe thử ở màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): giọng tiếng Việt đọc câu tiếng Việt, giọng tiếng Anh đọc câu
++// English, nên giống hệt vi ở mọi ngôn ngữ giao diện.
++const VOICE_SAMPLE: MessageKey[] = ["voice.sample.vi", "voice.sample.en"];
++
+ // Bảng thuật ngữ của spec (§3): các khóa nhìn thấy nhiều nhất.
+ const GLOSSARY: Record<NewLang, Partial<Record<MessageKey, string>>> = {
+   ja: {
+@@ -125,8 +129,12 @@ describe.each(Object.entries(DICTS) as [NewLang, Dict][])("từ điển %s", (la
+     for (const key of ENGLISH_SAMPLE) expect(dict[key], key).toBe(vi[key]);
+   });
+ 
++  it("câu mẫu Nghe thử giống hệt vi", () => {
++    for (const key of VOICE_SAMPLE) expect(dict[key], key).toBe(vi[key]);
++  });
++
+   it("mọi chuỗi còn lại có chữ của ngôn ngữ này và không lẫn hệ chữ khác", () => {
+-    const skip = new Set<string>([...SAME_AS_EN, ...ENGLISH_SAMPLE]);
++    const skip = new Set<string>([...SAME_AS_EN, ...ENGLISH_SAMPLE, ...VOICE_SAMPLE]);
+     for (const [key, text] of Object.entries(dict)) {
+       if (skip.has(key)) continue;
+       expect(SCRIPT[lang].has.test(text), `${key}: ${text}`).toBe(true);
+diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index 3fd7acc..c0ff5ec 100755
+--- a/src/i18n/en.ts
++++ b/src/i18n/en.ts
+@@ -7,6 +7,7 @@ export const en = {
+ 
+   "nav.home": "Home",
+   "nav.compose": "Type & Translate",
++  "nav.voice": "Voice",
+   "nav.transcript": "Transcript",
+   "nav.history": "History",
+   "nav.glossary": "Glossary",
+@@ -642,6 +643,29 @@ export const en = {
+   "transcript.tts.speak": "Listen",
+   "transcript.tts.stop": "Stop",
+   "transcript.tts.loading": "Loading voice…",
++  // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7). Câu mẫu Nghe thử đọc bằng tiếng của khối (Việt, Anh), giống nhau ở mọi ngôn ngữ giao diện.
++  "voice.title": "Reading",
++  "voice.lang.vi": "Vietnamese voice",
++  "voice.lang.en": "English voice",
++  "voice.default": "Default",
++  "voice.region.north": "North",
++  "voice.region.central": "Central",
++  "voice.region.south": "South",
++  "voice.region.other": "Other",
++  "voice.gender.male": "Male",
++  "voice.gender.female": "Female",
++  "voice.gender.unknown": "Unspecified",
++  "voice.preview": "Preview",
++  "voice.previewStop": "Stop",
++  "voice.sample.vi": "Xin chào mọi người. Cuộc họp sẽ bắt đầu sau năm phút nữa.",
++  "voice.sample.en": "Hello everyone. The meeting will start in five minutes.",
++  "voice.volume": "Volume",
++  "voice.speed": "Speed",
++  "voice.pause": "Pause between sentences",
++  "voice.reset": "Restore defaults",
++  "voice.locked.downloading": "Downloading voices ({percent}%). You can choose a voice when it finishes.",
++  "voice.locked.unavailable": "Voice reading is not installed on this computer.",
++  "voice.locked.disabled": "Voice reading was turned off for this session after repeated errors. Restart the app to use it again.",
+   "transcript.speaker.rename": "Rename “{name}”",
+   "transcript.speaker.rename.placeholder": "Speaker name",
+   "transcript.speaker.rename.save": "Save",
+diff --git a/src/i18n/i18n.test.ts b/src/i18n/i18n.test.ts
+index d68f8b9..554b009 100644
+--- a/src/i18n/i18n.test.ts
++++ b/src/i18n/i18n.test.ts
+@@ -47,6 +47,9 @@ describe("từ điển giao diện", () => {
+         "license.standing.free",
+         // Mẫu ghép hai nhãn đã dịch ("{source} + {mic}"): không có chữ nào để dịch.
+         "home.audioSource.both",
++        // Câu mẫu Nghe thử ở màn hình Giọng đọc: đọc bằng tiếng của khối, giống nhau ở mọi ngôn ngữ giao diện.
++        "voice.sample.vi",
++        "voice.sample.en",
+       ].sort(),
+     );
+   });
+diff --git a/src/i18n/ja.ts b/src/i18n/ja.ts
+index 83c1066..d3b3cca 100755
+--- a/src/i18n/ja.ts
++++ b/src/i18n/ja.ts
+@@ -8,6 +8,7 @@ export const ja: Record<MessageKey, string> = {
+ 
+   "nav.home": "ホーム",
+   "nav.compose": "入力翻訳",
++  "nav.voice": "読み上げ音声",
+   "nav.transcript": "文字起こし",
+   "nav.history": "履歴",
+   "nav.glossary": "用語集",
+@@ -642,6 +643,28 @@ export const ja: Record<MessageKey, string> = {
+   "transcript.tts.speak": "聞く",
+   "transcript.tts.stop": "停止",
+   "transcript.tts.loading": "音声を読み込み中…",
++  "voice.title": "読み上げ方",
++  "voice.lang.vi": "ベトナム語の音声",
++  "voice.lang.en": "英語の音声",
++  "voice.default": "既定",
++  "voice.region.north": "北部",
++  "voice.region.central": "中部",
++  "voice.region.south": "南部",
++  "voice.region.other": "その他",
++  "voice.gender.male": "男性",
++  "voice.gender.female": "女性",
++  "voice.gender.unknown": "不明",
++  "voice.preview": "試聴",
++  "voice.previewStop": "停止",
++  "voice.sample.vi": "Xin chào mọi người. Cuộc họp sẽ bắt đầu sau năm phút nữa.",
++  "voice.sample.en": "Hello everyone. The meeting will start in five minutes.",
++  "voice.volume": "音量",
++  "voice.speed": "速度",
++  "voice.pause": "文と文の間隔",
++  "voice.reset": "既定に戻す",
++  "voice.locked.downloading": "読み上げ音声をダウンロード中です（{percent}%）。完了すると音声を選べます。",
++  "voice.locked.unavailable": "このパソコンには読み上げ音声がインストールされていません。",
++  "voice.locked.disabled": "エラーが続いたため、このセッションでは読み上げ音声が無効になりました。アプリを再起動すると再び使えます。",
+   "transcript.speaker.rename": "「{name}」の名前を変更",
+   "transcript.speaker.rename.placeholder": "話者の名前",
+   "transcript.speaker.rename.save": "保存",
+diff --git a/src/i18n/ko.ts b/src/i18n/ko.ts
+index d90b8c7..13f6daa 100755
+--- a/src/i18n/ko.ts
++++ b/src/i18n/ko.ts
+@@ -8,6 +8,7 @@ export const ko: Record<MessageKey, string> = {
+ 
+   "nav.home": "홈",
+   "nav.compose": "입력 번역",
++  "nav.voice": "읽어 주기 음성",
+   "nav.transcript": "대본",
+   "nav.history": "기록",
+   "nav.glossary": "용어집",
+@@ -642,6 +643,28 @@ export const ko: Record<MessageKey, string> = {
+   "transcript.tts.speak": "듣기",
+   "transcript.tts.stop": "중지",
+   "transcript.tts.loading": "음성을 불러오는 중…",
++  "voice.title": "읽기 방식",
++  "voice.lang.vi": "베트남어 음성",
++  "voice.lang.en": "영어 음성",
++  "voice.default": "기본값",
++  "voice.region.north": "북부",
++  "voice.region.central": "중부",
++  "voice.region.south": "남부",
++  "voice.region.other": "기타",
++  "voice.gender.male": "남성",
++  "voice.gender.female": "여성",
++  "voice.gender.unknown": "미상",
++  "voice.preview": "미리 듣기",
++  "voice.previewStop": "중지",
++  "voice.sample.vi": "Xin chào mọi người. Cuộc họp sẽ bắt đầu sau năm phút nữa.",
++  "voice.sample.en": "Hello everyone. The meeting will start in five minutes.",
++  "voice.volume": "음량",
++  "voice.speed": "속도",
++  "voice.pause": "문장 사이 간격",
++  "voice.reset": "기본값으로 복원",
++  "voice.locked.downloading": "읽어 주기 음성을 다운로드하는 중입니다({percent}%). 완료되면 음성을 선택할 수 있습니다.",
++  "voice.locked.unavailable": "이 컴퓨터에 읽어 주기 음성이 설치되어 있지 않습니다.",
++  "voice.locked.disabled": "오류가 반복되어 이번 세션에서는 읽어 주기 음성이 꺼졌습니다. 앱을 다시 시작하면 다시 사용할 수 있습니다.",
+   "transcript.speaker.rename": "“{name}” 이름 바꾸기",
+   "transcript.speaker.rename.placeholder": "화자 이름",
+   "transcript.speaker.rename.save": "저장",
+diff --git a/src/i18n/vi.ts b/src/i18n/vi.ts
+index 3dae078..72c0cb9 100755
+--- a/src/i18n/vi.ts
++++ b/src/i18n/vi.ts
+@@ -7,6 +7,7 @@ export const vi: Record<MessageKey, string> = {
+ 
+   "nav.home": "Màn hình chính",
+   "nav.compose": "Gõ dịch",
++  "nav.voice": "Giọng đọc",
+   "nav.transcript": "Bản chép lời",
+   "nav.history": "Lịch sử",
+   "nav.glossary": "Từ điển thuật ngữ",
+@@ -641,6 +642,29 @@ export const vi: Record<MessageKey, string> = {
+   "transcript.tts.speak": "Nghe",
+   "transcript.tts.stop": "Dừng",
+   "transcript.tts.loading": "Đang nạp giọng đọc…",
++  // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7). Câu mẫu Nghe thử đọc bằng tiếng của khối (Việt, Anh), giống nhau ở mọi ngôn ngữ giao diện.
++  "voice.title": "Cách đọc",
++  "voice.lang.vi": "Giọng tiếng Việt",
++  "voice.lang.en": "Giọng tiếng Anh",
++  "voice.default": "Mặc định",
++  "voice.region.north": "Miền Bắc",
++  "voice.region.central": "Miền Trung",
++  "voice.region.south": "Miền Nam",
++  "voice.region.other": "Khác",
++  "voice.gender.male": "Nam",
++  "voice.gender.female": "Nữ",
++  "voice.gender.unknown": "Chưa rõ",
++  "voice.preview": "Nghe thử",
++  "voice.previewStop": "Dừng",
++  "voice.sample.vi": "Xin chào mọi người. Cuộc họp sẽ bắt đầu sau năm phút nữa.",
++  "voice.sample.en": "Hello everyone. The meeting will start in five minutes.",
++  "voice.volume": "Âm lượng",
++  "voice.speed": "Tốc độ",
++  "voice.pause": "Khoảng nghỉ giữa các câu",
++  "voice.reset": "Khôi phục mặc định",
++  "voice.locked.downloading": "Đang tải giọng đọc ({percent}%). Tải xong là chọn được giọng.",
++  "voice.locked.unavailable": "Máy này chưa cài giọng đọc.",
++  "voice.locked.disabled": "Giọng đọc đã bị tắt đến hết phiên do lỗi. Khởi động lại app để dùng lại.",
+   "transcript.speaker.rename": "Đổi tên “{name}”",
+   "transcript.speaker.rename.placeholder": "Tên người nói",
+   "transcript.speaker.rename.save": "Lưu",
+diff --git a/src/i18n/zh.ts b/src/i18n/zh.ts
+index c4944f4..0f1474c 100755
+--- a/src/i18n/zh.ts
++++ b/src/i18n/zh.ts
+@@ -8,6 +8,7 @@ export const zh: Record<MessageKey, string> = {
+ 
+   "nav.home": "主页",
+   "nav.compose": "输入翻译",
++  "nav.voice": "朗读语音",
+   "nav.transcript": "转写记录",
+   "nav.history": "历史记录",
+   "nav.glossary": "术语表",
+@@ -642,6 +643,28 @@ export const zh: Record<MessageKey, string> = {
+   "transcript.tts.speak": "朗读",
+   "transcript.tts.stop": "停止",
+   "transcript.tts.loading": "正在加载语音…",
++  "voice.title": "朗读方式",
++  "voice.lang.vi": "越南语语音",
++  "voice.lang.en": "英语语音",
++  "voice.default": "默认",
++  "voice.region.north": "北部",
++  "voice.region.central": "中部",
++  "voice.region.south": "南部",
++  "voice.region.other": "其他",
++  "voice.gender.male": "男声",
++  "voice.gender.female": "女声",
++  "voice.gender.unknown": "未注明",
++  "voice.preview": "试听",
++  "voice.previewStop": "停止",
++  "voice.sample.vi": "Xin chào mọi người. Cuộc họp sẽ bắt đầu sau năm phút nữa.",
++  "voice.sample.en": "Hello everyone. The meeting will start in five minutes.",
++  "voice.volume": "音量",
++  "voice.speed": "语速",
++  "voice.pause": "句间停顿",
++  "voice.reset": "恢复默认",
++  "voice.locked.downloading": "正在下载朗读语音（{percent}%）。下载完成后即可选择语音。",
++  "voice.locked.unavailable": "此电脑尚未安装朗读语音。",
++  "voice.locked.disabled": "由于多次出错，朗读语音在本次会话中已被关闭。重启应用后即可再次使用。",
+   "transcript.speaker.rename": "重命名“{name}”",
+   "transcript.speaker.rename.placeholder": "说话人姓名",
+   "transcript.speaker.rename.save": "保存",
+diff --git a/src/lib/ipc.ts b/src/lib/ipc.ts
+index 63cabed..a307173 100755
+--- a/src/lib/ipc.ts
++++ b/src/lib/ipc.ts
+@@ -74,6 +74,13 @@ export interface Settings {
+   vadEndSilenceMs: number;
+   // Như `vadEndSilenceMs`, riêng cho chế độ có micro (micro, âm thanh máy + micro). Mặc định 50 ms.
+   micEndSilenceMs: number;
++  // Giọng đọc bản dịch (spec 2026-11-04-giong-doc §4). Tên giọng cho đích tiếng Việt / tiếng Anh, null là giọng mặc định của gói.
++  ttsVoiceVi: string | null;
++  ttsVoiceEn: string | null;
++  // Âm lượng 0–100, tốc độ 0,8–1,3, hệ số khoảng nghỉ giữa các câu 0,5–2,0.
++  ttsVolume: number;
++  ttsSpeed: number;
++  ttsPause: number;
+   overlay: {
+     fontSize: number;
+     // Không còn dùng: thanh giữ mọi câu và cuộn được (§4.4). Giữ khóa để file cài đặt cũ vẫn đọc được.
+@@ -288,6 +295,13 @@ export interface TtsStatus {
+ // `code`: `cancelled`, `modelMissing`, `badRequest`, `inference`, `workerDied`, `disabled`.
+ export type TtsControl = { kind: "done" } | { kind: "failed"; code: string };
+ 
++// Giọng có trong gói giọng đọc đã cài (`tts::TtsVoices`, spec 2026-11-04-giong-doc §5). `default`: giọng dùng khi cài đặt để `null`
++// (hay tên đã lưu không còn trong gói).
++export interface TtsVoices {
++  names: string[];
++  default: string;
++}
++
+ // "Nghe dịch" (spec 2026-11-02-nghe-dich-truc-tiep; `listen.rs`). `supported`: nền tảng hỗ trợ hạ âm lượng họp (hiện Windows). `active` ở kết
+ // quả của `overlay_listen_set` là yêu cầu; trạng thái thật (kể cả lỗi) tới qua `listen://state`.
+ export interface ListenStatus {
+@@ -432,7 +446,8 @@ export interface DebugSession {
+ 
+ // "support": màn hình Hỗ trợ (chat, spec 2026-10-22-chat-ho-tro-zalo §4), giữa Nâng cấp và Giới thiệu.
+ // "compose": màn hình Gõ dịch (spec 2026-11-02-tach-go-dich-thanh-tab), ngay dưới Màn hình chính; trước đó là nhóm của Cài đặt.
+-export type Screen = "home" | "compose" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
++// "voice": màn hình Giọng đọc (spec 2026-11-04-giong-doc §7), ngay dưới Gõ dịch, chỉ trên Windows.
++export type Screen = "home" | "compose" | "voice" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
+ export type SettingsGroup =
+   | "general"
+   | "subtitles"
+@@ -654,6 +669,21 @@ export interface Commands {
+   tts_status: { args: undefined; result: TtsStatus };
+   tts_warmup: { args: undefined; result: null };
+   tts_speak: { args: { lang: "vi" | "en"; text: string; onEvent: Channel<ArrayBuffer | TtsControl> }; result: number };
++  // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §5, §7): danh sách giọng của gói, và Nghe thử một câu mẫu với giọng, tốc độ,
++  // khoảng nghỉ, âm lượng đang chọn (chưa cần lưu), cùng đường và cùng kênh như `tts_speak`. Lỗi như `tts_speak`.
++  tts_list_voices: { args: undefined; result: TtsVoices };
++  tts_preview: {
++    args: {
++      lang: "vi" | "en";
++      text: string;
++      voice: string | null;
++      speed: number;
++      pause: number;
++      volume: number;
++      onEvent: Channel<ArrayBuffer | TtsControl>;
++    };
++    result: number;
++  };
+   tts_cancel: { args: { id: number }; result: null };
+   tts_mark_playing: { args: { ms: number }; result: null };
+   tts_stop: { args: undefined; result: null };
+diff --git a/src/lib/ttsVoices.test.ts b/src/lib/ttsVoices.test.ts
+new file mode 100644
+index 0000000..cf1d421
+--- /dev/null
++++ b/src/lib/ttsVoices.test.ts
+@@ -0,0 +1,45 @@
++import { describe, expect, it } from "vitest";
++import { describeVoice, groupVoices } from "./ttsVoices";
++
++// Tên giọng thật của gói giọng đọc (25 giọng, mặc định "Hải Đăng"); nhãn vùng và giới tính theo trang model gốc (spec
++// 2026-11-04-giong-doc §7). Năm tên trang model không ghi thì vào nhóm "Khác".
++describe("describeVoice", () => {
++  it("describes_known_voices: mỗi vùng và giới tính trong bảng", () => {
++    expect(describeVoice("Minh Đức")).toEqual({ region: "north", gender: "male" });
++    expect(describeVoice("Ngọc Huyền")).toEqual({ region: "north", gender: "female" });
++    expect(describeVoice("Đoan Trang")).toEqual({ region: "north", gender: "female" });
++    expect(describeVoice("Ngọc Trân")).toEqual({ region: "central", gender: "female" });
++    expect(describeVoice("Quang Sơn")).toEqual({ region: "central", gender: "male" });
++    expect(describeVoice("Adam")).toEqual({ region: "south", gender: "male" });
++    expect(describeVoice("Đức Trí")).toEqual({ region: "south", gender: "male" });
++    expect(describeVoice("Thục Đoan")).toEqual({ region: "south", gender: "female" });
++  });
++
++  it("so tên sau khi chuẩn hóa Unicode NFC (tên tổ hợp dấu rời vẫn khớp)", () => {
++    expect(describeVoice("Thục Đoan".normalize("NFD"))).toEqual({ region: "south", gender: "female" });
++    expect(describeVoice("Mỹ Duyên".normalize("NFD"))).toEqual({ region: "south", gender: "female" });
++  });
++
++  it("unknown_voice_goes_to_other: tên không có trong bảng thì vùng Khác, chưa rõ giới tính", () => {
++    for (const name of ["Adam bựa", "Hải Đăng", "Quốc Tuấn", "Thiền Tâm Đức", "Thiện Minh", "Giọng mới"]) {
++      expect(describeVoice(name), name).toEqual({ region: "other", gender: "unknown" });
++    }
++  });
++});
++
++describe("groupVoices", () => {
++  it("groups_in_region_order_and_skips_empty: Bắc, Trung, Nam, Khác; bỏ nhóm rỗng; giữ thứ tự đầu vào", () => {
++    expect(groupVoices(["Thái Sơn", "Hải Đăng", "Mai Anh", "Adam", "Minh Đức"])).toEqual([
++      { region: "north", names: ["Mai Anh", "Minh Đức"] },
++      { region: "south", names: ["Thái Sơn", "Adam"] },
++      { region: "other", names: ["Hải Đăng"] },
++    ]);
++    expect(groupVoices(["Quang Sơn", "Ngọc Trân"])).toEqual([{ region: "central", names: ["Quang Sơn", "Ngọc Trân"] }]);
++    expect(groupVoices([])).toEqual([]);
++  });
++
++  it("giữ nguyên tên như đầu vào (không đổi dạng chuẩn hóa)", () => {
++    const nfd = "Thục Đoan".normalize("NFD");
++    expect(groupVoices([nfd])).toEqual([{ region: "south", names: [nfd] }]);
++  });
++});
+diff --git a/src/lib/ttsVoices.ts b/src/lib/ttsVoices.ts
+new file mode 100644
+index 0000000..ab140b7
+--- /dev/null
++++ b/src/lib/ttsVoices.ts
+@@ -0,0 +1,40 @@
++// Nhãn vùng và giới tính của các giọng trong gói giọng đọc (spec 2026-11-04-giong-doc §7), theo trang model gốc. Bảng tĩnh: tên
++// giọng mà bảng chưa biết (gói mới thêm giọng, hay trang model không ghi) vẫn hiện, ở nhóm "Khác" với giới tính chưa rõ.
++
++export type VoiceRegion = "north" | "central" | "south" | "other";
++export type VoiceGender = "male" | "female" | "unknown";
++
++export const VOICE_REGIONS: readonly VoiceRegion[] = ["north", "central", "south", "other"];
++
++type Known = { region: Exclude<VoiceRegion, "other">; gender: Exclude<VoiceGender, "unknown"> };
++
++const TABLE: Record<Known["region"], Record<Known["gender"], readonly string[]>> = {
++  north: {
++    male: ["Minh Đức", "Phạm Tuyên", "Thanh Bình", "Xuân Vĩnh"],
++    female: ["Mai Anh", "Ngọc Huyền", "Ngọc Linh", "Quỳnh Anh", "Trúc Ly", "Đoan Trang"],
++  },
++  central: { male: ["Quang Sơn"], female: ["Ngọc Trân"] },
++  south: {
++    male: ["Adam", "Minh Triết", "Thái Sơn", "Đức Trí"],
++    female: ["Kim Thanh", "Mỹ Duyên", "Thùy Dung", "Thục Đoan"],
++  },
++};
++
++// Khóa là tên đã chuẩn hóa NFC: file giọng và mã nguồn có thể viết dấu tổ hợp khác nhau.
++const KNOWN = new Map<string, Known>();
++for (const [region, genders] of Object.entries(TABLE) as [Known["region"], Record<Known["gender"], readonly string[]>][]) {
++  for (const [gender, names] of Object.entries(genders) as [Known["gender"], readonly string[]][]) {
++    for (const name of names) KNOWN.set(name.normalize("NFC"), { region, gender });
++  }
++}
++
++export function describeVoice(name: string): { region: VoiceRegion; gender: VoiceGender } {
++  return KNOWN.get(name.normalize("NFC")) ?? { region: "other", gender: "unknown" };
++}
++
++// Nhóm theo vùng, thứ tự Bắc, Trung, Nam, Khác; bỏ nhóm rỗng; trong nhóm giữ thứ tự (và cách viết) của đầu vào.
++export function groupVoices(names: string[]): { region: VoiceRegion; names: string[] }[] {
++  return VOICE_REGIONS.map((region) => ({ region, names: names.filter((n) => describeVoice(n).region === region) })).filter(
++    (g) => g.names.length > 0,
++  );
++}
+diff --git a/src/store/app.test.ts b/src/store/app.test.ts
+index 9bb3d1e..89c4156 100644
+--- a/src/store/app.test.ts
++++ b/src/store/app.test.ts
+@@ -14,6 +14,11 @@ const settings: Settings = {
+   micNoiseFilter: true,
+   vadEndSilenceMs: 50,
+   micEndSilenceMs: 50,
++  ttsVoiceVi: null,
++  ttsVoiceEn: null,
++  ttsVolume: 100,
++  ttsSpeed: 1,
++  ttsPause: 1,
+   overlay: {
+     fontSize: 22,
+     lines: 2,
+diff --git a/src/store/tts.test.ts b/src/store/tts.test.ts
+index dcab6f3..80f426c 100755
+--- a/src/store/tts.test.ts
++++ b/src/store/tts.test.ts
+@@ -263,3 +263,122 @@ describe("lỗi", () => {
+     expect(store.getState().error).toBeNull();
+   });
+ });
++
++// Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): danh sách giọng của gói và Nghe thử.
++describe("danh sách giọng", () => {
++  const VOICES = { names: ["Hải Đăng", "Mai Anh"], default: "Hải Đăng" };
++
++  it("loadVoices_stores_the_list", async () => {
++    const { store, f } = setup({ tts_list_voices: () => VOICES });
++    expect(store.getState().voices).toBeNull();
++    await store.getState().loadVoices();
++    expect(store.getState().voices).toEqual(VOICES);
++    expect(f.calls.filter((c) => c.cmd === "tts_list_voices")).toHaveLength(1);
++  });
++
++  it("loadVoices_failure_keeps_null_and_does_not_throw", async () => {
++    const { store } = setup({
++      tts_list_voices: () => {
++        throw { code: "ttsUnavailable", field: null, message: "modelMissing" };
++      },
++    });
++    await expect(store.getState().loadVoices()).resolves.toBeUndefined();
++    expect(store.getState().voices).toBeNull();
++    expect(store.getState().error).toBeNull();
++  });
++
++  it("tts_changed_reloads_voices: gói giọng đổi thì hỏi lại danh sách", async () => {
++    let names = ["Hải Đăng"];
++    const { store, f } = setup({ tts_list_voices: () => ({ names, default: "Hải Đăng" }) });
++    await store.getState().init();
++    await store.getState().loadVoices();
++    names = ["Hải Đăng", "Ngọc Huyền"];
++    f.emit("tts://changed", null);
++    await vi.waitFor(() => expect(store.getState().voices?.names).toEqual(["Hải Đăng", "Ngọc Huyền"]));
++  });
++
++  it("chưa mở màn hình Giọng đọc (chưa gọi loadVoices) thì tts://changed không hỏi danh sách", async () => {
++    const { store, f } = setup({ tts_list_voices: () => VOICES });
++    await store.getState().init();
++    f.emit("tts://changed", null);
++    await vi.waitFor(() => expect(f.calls.filter((c) => c.cmd === "tts_status").length).toBe(2));
++    expect(f.calls.filter((c) => c.cmd === "tts_list_voices")).toHaveLength(0);
++  });
++});
++
++describe("nghe thử", () => {
++  const previews: FakeChannel[] = [];
++  const handlers = {
++    tts_preview: (args: { onEvent: unknown }) => {
++      previews.push(args.onEvent as FakeChannel);
++      return previews.length;
++    },
++  };
++  const OPTS = { text: "Xin chào", voice: "Mai Anh", speed: 1.2, pause: 0.5, volume: 70 };
++
++  it("preview_invokes_tts_preview_with_given_options", async () => {
++    previews.length = 0;
++    const { store, f, log } = setup(handlers);
++    await store.getState().preview("vi", OPTS);
++    expect(store.getState().previewing).toBe("vi");
++    expect(f.calls.find((c) => c.cmd === "tts_preview")?.args).toMatchObject({
++      lang: "vi",
++      text: "Xin chào",
++      voice: "Mai Anh",
++      speed: 1.2,
++      pause: 0.5,
++      volume: 70,
++    });
++    previews[0]?.onmessage(bytes(64));
++    expect(log).toContain("push:64");
++    expect(store.getState().loading).toBe(false);
++  });
++
++  it("preview_twice_stops: bấm lại Nghe thử của cùng khối thì dừng", async () => {
++    previews.length = 0;
++    const { store, f, log } = setup(handlers);
++    await store.getState().preview("en", { ...OPTS, voice: null });
++    await store.getState().preview("en", { ...OPTS, voice: null });
++    expect(store.getState().previewing).toBeNull();
++    expect(f.calls.filter((c) => c.cmd === "tts_preview")).toHaveLength(1);
++    expect(f.calls.filter((c) => c.cmd === "tts_stop")).toHaveLength(1);
++    expect(log.at(-1)).toBe("stop");
++  });
++
++  it("đọc xong thì hết trạng thái nghe thử; stop cũng dừng nghe thử", async () => {
++    previews.length = 0;
++    const { store, idle } = setup(handlers);
++    await store.getState().preview("vi", OPTS);
++    previews[0]?.onmessage({ kind: "done" });
++    idle[0]?.();
++    expect(store.getState().previewing).toBeNull();
++    await store.getState().preview("vi", OPTS);
++    await store.getState().stop();
++    expect(store.getState().previewing).toBeNull();
++  });
++
++  it("một lúc chỉ một lượt: nghe thử khối khác thay lượt cũ, đọc câu ở bản chép lời thì hết nghe thử", async () => {
++    previews.length = 0;
++    const { store, log } = setup(handlers);
++    await store.getState().preview("vi", OPTS);
++    await store.getState().preview("en", OPTS);
++    expect(store.getState().previewing).toBe("en");
++    log.length = 0;
++    previews[0]?.onmessage(bytes(10)); // của lượt cũ, tới muộn
++    expect(log).toEqual([]);
++    await store.getState().speak(4, "a", "vi");
++    expect(store.getState().previewing).toBeNull();
++    expect(store.getState().speaking).toBe(4);
++  });
++
++  it("lệnh bị từ chối thì hiện lỗi, không văng", async () => {
++    const { store } = setup({
++      tts_preview: () => {
++        throw { code: "ttsUnavailable", field: null, message: "modelMissing" };
++      },
++    });
++    await expect(store.getState().preview("vi", OPTS)).resolves.toBeUndefined();
++    expect(store.getState().previewing).toBeNull();
++    expect(store.getState().error?.code).toBe("ttsUnavailable");
++  });
++});
+diff --git a/src/store/tts.ts b/src/store/tts.ts
+index e14192a..50d1e7b 100755
+--- a/src/store/tts.ts
++++ b/src/store/tts.ts
+@@ -1,6 +1,6 @@
+ import type { Channel } from "@tauri-apps/api/core";
+ import { createStore } from "zustand/vanilla";
+-import type { Ipc, TtsControl, TtsStatus } from "../lib/ipc";
++import type { Ipc, TtsControl, TtsStatus, TtsVoices } from "../lib/ipc";
+ import type { TtsLang, TtsPlayer } from "../lib/tts";
+ import { type UiError, toUiError } from "./app";
+ 
+@@ -8,13 +8,22 @@ import { type UiError, toUiError } from "./app";
+ // bộ phát (`TtsPlayer`) xếp lịch phát. Mỗi lúc chỉ đọc một câu: bấm câu khác thì câu đang đọc bị thay, bấm lại câu đang đọc thì dừng.
+ // Mặc định không hiện gì: `status.available` chỉ `true` khi máy có `tts-worker` và gói model giọng đọc.
+ 
+-// Tên lệnh: cửa sổ chính dùng `tts_*`, overlay dùng `overlay_tts_*` (mỗi lệnh thuộc đúng một cửa sổ, `acl_tests`).
++// Tên lệnh: cửa sổ chính dùng `tts_*`, overlay dùng `overlay_tts_*` (mỗi lệnh thuộc đúng một cửa sổ, `acl_tests`). Danh sách giọng
++// và Nghe thử (màn hình Giọng đọc, spec 2026-11-04-giong-doc §7) chỉ có ở cửa sổ chính.
+ export interface TtsCommands {
+   status: "tts_status" | "overlay_tts_status";
+   speak: "tts_speak" | "overlay_tts_speak";
+   stop: "tts_stop" | "overlay_tts_stop";
++  listVoices?: "tts_list_voices";
++  preview?: "tts_preview";
+ }
+-export const MAIN_TTS_COMMANDS: TtsCommands = { status: "tts_status", speak: "tts_speak", stop: "tts_stop" };
++export const MAIN_TTS_COMMANDS: TtsCommands = {
++  status: "tts_status",
++  speak: "tts_speak",
++  stop: "tts_stop",
++  listVoices: "tts_list_voices",
++  preview: "tts_preview",
++};
+ export const OVERLAY_TTS_COMMANDS: TtsCommands = { status: "overlay_tts_status", speak: "overlay_tts_speak", stop: "overlay_tts_stop" };
+ 
+ export interface TtsDeps {
+@@ -25,6 +34,15 @@ export interface TtsDeps {
+   createChannel(): Channel<ArrayBuffer | TtsControl>;
+ }
+ 
++// Giá trị Nghe thử: câu mẫu và các cài đặt đang chọn trên màn hình (chưa cần lưu).
++export interface TtsPreviewOptions {
++  text: string;
++  voice: string | null;
++  speed: number;
++  pause: number;
++  volume: number;
++}
++
+ export interface TtsStoreState {
+   // `null` tới khi hỏi xong lần đầu.
+   status: TtsStatus | null;
+@@ -33,9 +51,17 @@ export interface TtsStoreState {
+   // Đã bấm nhưng chưa có âm thanh đầu tiên (lần đầu phải nạp model, vài giây).
+   loading: boolean;
+   error: UiError | null;
++  // Giọng của gói đã cài; `null` tới khi hỏi được (lỗi thì vẫn `null`).
++  voices: TtsVoices | null;
++  // Khối đang nghe thử ở màn hình Giọng đọc, `null` khi không nghe thử.
++  previewing: TtsLang | null;
+   init(): Promise<void>;
+   refreshStatus(): Promise<void>;
+   speak(lineId: number, text: string, lang: TtsLang): Promise<void>;
++  // Hỏi danh sách giọng; từ đó về sau `tts://changed` hỏi lại (gói giọng có thể vừa tải xong hay đổi).
++  loadVoices(): Promise<void>;
++  // Nghe thử: bấm lại cùng khối (hay gọi `stop`) thì dừng. Một lúc chỉ một lượt, dùng chung với `speak`.
++  preview(lang: TtsLang, opts: TtsPreviewOptions): Promise<void>;
+   stop(): Promise<void>;
+   // Khởi động sẵn bộ phát âm thanh (gọi trong thao tác bấm); xem `TtsPlayer.prepare`.
+   prepare(): void;
+@@ -57,62 +83,20 @@ export function createTtsStore(deps: TtsDeps) {
+   let poll: ReturnType<typeof setTimeout> | null = null;
+   // Đã đăng ký nghe `tts://changed` (init gọi lại thì không đăng ký thêm).
+   let watching = false;
++  // Đã gọi `loadVoices` (màn hình Giọng đọc đã mở): `tts://changed` thì hỏi lại danh sách giọng.
++  let wantVoices = false;
+   const commands = deps.commands ?? MAIN_TTS_COMMANDS;
+-  return createStore<TtsStoreState>()((set, get) => ({
+-    status: null,
+-    speaking: null,
+-    loading: false,
+-    error: null,
+-
+-    async init() {
+-      // Gói model về máy sau lúc mở app (cài mới: tải gói ASR rồi gói giọng đọc): phía Rust báo `tts://changed` để hỏi lại, nút
+-      // tự sáng lên mà không phải mở lại app. Đăng ký trước lần hỏi đầu để không lỡ sự kiện, và không chờ nó: nghe không được
+-      // thì thôi, trạng thái vẫn có từ lần hỏi đầu.
+-      if (!watching) {
+-        watching = true;
+-        const watch = async () => {
+-          try {
+-            await deps.ipc.listen("tts://changed", () => void get().refreshStatus());
+-          } catch {
+-            watching = false;
+-          }
+-        };
+-        void watch();
+-      }
+-      await get().refreshStatus();
+-    },
+-
+-    async refreshStatus() {
+-      if (poll !== null) {
+-        clearTimeout(poll);
+-        poll = null;
+-      }
+-      try {
+-        set({ status: await deps.ipc.invoke(commands.status) });
+-      } catch {
+-        set({ status: UNAVAILABLE });
+-      }
+-      // Đang tải giọng đọc về: hỏi lại tới khi xong, để nút tự sáng lên mà không phải mở lại app.
+-      if (isPending(get().status) && poll === null) {
+-        poll = setTimeout(() => {
+-          poll = null;
+-          void get().refreshStatus();
+-        }, TTS_POLL_MS);
+-      }
+-    },
+-
+-    prepare() {
+-      deps.player.prepare?.();
+-    },
+-
+-    async speak(lineId, text, lang) {
+-      if (get().speaking === lineId) {
+-        await get().stop();
+-        return;
+-      }
++  return createStore<TtsStoreState>()((set, get) => {
++    // Một lượt đọc (câu ở bản chép lời hay Nghe thử): lượt mới thay lượt cũ; âm thanh qua kênh vào bộ phát, xong hay lỗi thì trả về
++    // "không đọc". `who`: lượt này là câu nào hay khối nào.
++    const play = async (
++      who: Pick<TtsStoreState, "speaking" | "previewing">,
++      start: (onEvent: Channel<ArrayBuffer | TtsControl>) => Promise<number>,
++    ) => {
++      const idle = { speaking: null, previewing: null, loading: false };
+       const mine = ++turn;
+       deps.player.stop();
+-      set({ speaking: lineId, loading: true, error: null });
++      set({ ...who, loading: true, error: null });
+       const channel = deps.createChannel();
+       deps.player.begin();
+       channel.onmessage = (message) => {
+@@ -122,42 +106,126 @@ export function createTtsStore(deps: TtsDeps) {
+           deps.player.push(message);
+         } else if (message.kind === "done") {
+           deps.player.whenIdle(() => {
+-            if (mine === turn) set({ speaking: null, loading: false });
++            if (mine === turn) set(idle);
+           });
+         } else if (message.code === "cancelled") {
+           // Lượt này vẫn là lượt hiện tại mà bị hủy: cửa sổ khác (giọng đọc dùng chung) đã thay nó. Ta tự bấm câu khác hay dừng thì
+           // `turn` đã đổi và dòng `mine !== turn` ở trên đã bỏ qua. Trả trạng thái về "không đọc", không có lỗi.
+           deps.player.stop();
+-          set({ speaking: null, loading: false });
++          set(idle);
+         } else {
+           deps.player.stop();
+-          set({ speaking: null, loading: false, error: { code: "ttsFailed", field: null } });
++          set({ ...idle, error: { code: "ttsFailed", field: null } });
+           void get().refreshStatus();
+         }
+       };
+       try {
+-        await deps.ipc.invoke(commands.speak, { lang, text, onEvent: channel });
++        await start(channel);
+       } catch (e) {
+         if (mine !== turn) return;
+         deps.player.stop();
+-        set({ speaking: null, loading: false, error: toUiError(e) });
++        set({ ...idle, error: toUiError(e) });
+         void get().refreshStatus();
+       }
+-    },
++    };
++    return {
++      status: null,
++      speaking: null,
++      loading: false,
++      error: null,
++      voices: null,
++      previewing: null,
+ 
+-    async stop() {
+-      turn += 1;
+-      deps.player.stop();
+-      set({ speaking: null, loading: false });
+-      try {
+-        await deps.ipc.invoke(commands.stop);
+-      } catch {
+-        // Phía Rust tự hết hạn cờ chặn thu; không có gì để làm thêm.
+-      }
+-    },
++      async init() {
++        // Gói model về máy sau lúc mở app (cài mới: tải gói ASR rồi gói giọng đọc): phía Rust báo `tts://changed` để hỏi lại, nút
++        // tự sáng lên mà không phải mở lại app. Đăng ký trước lần hỏi đầu để không lỡ sự kiện, và không chờ nó: nghe không được
++        // thì thôi, trạng thái vẫn có từ lần hỏi đầu.
++        if (!watching) {
++          watching = true;
++          const watch = async () => {
++            try {
++              await deps.ipc.listen("tts://changed", () => {
++                void get().refreshStatus();
++                if (wantVoices) void get().loadVoices();
++              });
++            } catch {
++              watching = false;
++            }
++          };
++          void watch();
++        }
++        await get().refreshStatus();
++      },
++
++      async refreshStatus() {
++        if (poll !== null) {
++          clearTimeout(poll);
++          poll = null;
++        }
++        try {
++          set({ status: await deps.ipc.invoke(commands.status) });
++        } catch {
++          set({ status: UNAVAILABLE });
++        }
++        // Đang tải giọng đọc về: hỏi lại tới khi xong, để nút tự sáng lên mà không phải mở lại app.
++        if (isPending(get().status) && poll === null) {
++          poll = setTimeout(() => {
++            poll = null;
++            void get().refreshStatus();
++          }, TTS_POLL_MS);
++        }
++      },
++
++      prepare() {
++        deps.player.prepare?.();
++      },
++
++      async speak(lineId, text, lang) {
++        if (get().speaking === lineId) {
++          await get().stop();
++          return;
++        }
++        await play({ speaking: lineId, previewing: null }, (onEvent) =>
++          deps.ipc.invoke(commands.speak, { lang, text, onEvent }),
++        );
++      },
++
++      async loadVoices() {
++        if (!commands.listVoices) return;
++        wantVoices = true;
++        try {
++          set({ voices: await deps.ipc.invoke(commands.listVoices) });
++        } catch {
++          // Chưa có gói giọng (hay worker chưa chạy được): màn hình chỉ có lựa chọn "Mặc định"; `tts://changed` sẽ hỏi lại.
++        }
++      },
++
++      async preview(lang, opts) {
++        const command = commands.preview;
++        if (!command) return;
++        if (get().previewing === lang) {
++          await get().stop();
++          return;
++        }
++        await play({ speaking: null, previewing: lang }, (onEvent) =>
++          deps.ipc.invoke(command, { lang, ...opts, onEvent }),
++        );
++      },
++
++      async stop() {
++        turn += 1;
++        deps.player.stop();
++        set({ speaking: null, previewing: null, loading: false });
++        try {
++          await deps.ipc.invoke(commands.stop);
++        } catch {
++          // Phía Rust tự hết hạn cờ chặn thu; không có gì để làm thêm.
++        }
++      },
+ 
+-    dismiss() {
+-      set({ error: null });
+-    },
+-  }));
++      dismiss() {
++        set({ error: null });
++      },
++    };
++  });
+ }
+diff --git a/src/styles/main.css b/src/styles/main.css
+index 9e4e137..40882dd 100755
+--- a/src/styles/main.css
++++ b/src/styles/main.css
+@@ -1386,6 +1386,52 @@ fieldset {
+   border-color: var(--accent, currentColor);
+ }
+ 
++/* Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): danh sách giọng nhóm theo vùng, nút Nghe thử cạnh giọng đang chọn. */
++.voice-list {
++  padding-block: 0.4rem;
++}
++
++.voice-region {
++  margin: 0.7rem 0 0.2rem;
++  color: var(--muted);
++  font-size: 0.86rem;
++  font-weight: 600;
++}
++
++.voice-row {
++  display: flex;
++  align-items: center;
++  gap: 0.75rem;
++  min-height: 2.25rem;
++}
++
++.voice-row label {
++  display: inline-flex;
++  align-items: center;
++  gap: 0.55rem;
++}
++
++.voice-row .hint {
++  margin: 0;
++}
++
++.voice-row .tts-btn {
++  display: inline-flex;
++  align-items: center;
++  gap: 0.35rem;
++  min-height: 0;
++  padding: 0.1rem 0.65rem;
++  font-size: 0.85rem;
++}
++
++.voice-row .tts-btn[aria-pressed="true"] {
++  border-color: var(--accent, currentColor);
++}
++
++.field.voice-reset {
++  justify-content: flex-end;
++}
++
+ .spk-chip {
+   display: inline-flex;
+   align-items: center;
+diff --git a/src/windows/main/Shell.tsx b/src/windows/main/Shell.tsx
+index ea00234..e8aba42 100644
+--- a/src/windows/main/Shell.tsx
++++ b/src/windows/main/Shell.tsx
+@@ -5,7 +5,7 @@ import type { Screen } from "../../lib/ipc";
+ import { useApp, useT } from "./appStore";
+ import { useLicense } from "./licenseStore";
+ import { PlanName } from "./LicenseText";
+-import { ICONS, SCREENS } from "./navigation";
++import { ICONS, visibleScreens } from "./navigation";
+ import { Notice } from "./Notice";
+ import { UpdateModal } from "./UpdateModal";
+ import { About } from "./screens/About";
+@@ -17,11 +17,13 @@ import { UpgradeScreen } from "./screens/UpgradeScreen";
+ import { SettingsScreen } from "./screens/SettingsScreen";
+ import { SupportScreen } from "./screens/SupportScreen";
+ import { TranscriptScreen } from "./screens/TranscriptScreen";
++import { VoiceScreen } from "./screens/VoiceScreen";
+ import { useSupport } from "./supportStore";
+ 
+ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
+   home: Home,
+   compose: ComposeScreen,
++  voice: VoiceScreen,
+   transcript: TranscriptScreen,
+   history: HistoryScreen,
+   glossary: GlossaryScreen,
+@@ -35,11 +37,15 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
+ // thì đưa focus về tiêu đề của màn hình mới, để người dùng bàn phím và trình đọc màn hình biết đã sang chỗ khác.
+ // Cửa sổ hẹp thì thanh điều hướng chỉ còn biểu tượng; tên màn hình vẫn là nhãn của nút (`aria-label`, `title`). Mục Hỗ trợ có chấm
+ // đỏ khi có câu trả lời mới chưa xem (spec 2026-10-22-chat-ho-tro-zalo §4); nhãn của nút nói điều đó cho trình đọc màn hình.
++// Mục Giọng đọc chỉ hiện trên Windows (spec 2026-11-04-giong-doc §7).
+ export function Shell() {
+   const t = useT();
+   const screen = useApp((s) => s.screen);
+   const navigate = useApp((s) => s.navigate);
+   const version = useApp((s) => s.info?.version);
++  // Mục Giọng đọc chỉ có trên Windows; chưa đọc được nền tảng thì chưa hiện mục đó (như macOS).
++  const platform = useApp((s) => s.info?.platform);
++  const screens = visibleScreens(platform ?? "macos");
+   const plan = useLicense((s) => s.view?.plan ?? null);
+   const unread = useSupport((s) => s.view?.unread ?? false);
+   const Body = BODIES[screen];
+@@ -59,7 +65,7 @@ export function Shell() {
+           <img src={logo} alt="" />
+           <span>{t("app.name")}</span>
+         </div>
+-        {SCREENS.map((s) => {
++        {screens.map((s) => {
+           const dot = s === "support" && unread;
+           const label = dot ? t("support.unread") : t(`nav.${s}`);
+           return (
+diff --git a/src/windows/main/navigation.test.ts b/src/windows/main/navigation.test.ts
+index 207f94b..e106f94 100644
+--- a/src/windows/main/navigation.test.ts
++++ b/src/windows/main/navigation.test.ts
+@@ -1,10 +1,10 @@
+ import { describe, expect, it } from "vitest";
+ import { translate, UI_LANGUAGES } from "../../i18n";
+-import { ICONS, SCREENS } from "./navigation";
++import { ICONS, SCREENS, visibleScreens } from "./navigation";
+ 
+ describe("thanh điều hướng của cửa sổ chính", () => {
+   it("Gõ dịch là mục riêng, ngay dưới Màn hình chính", () => {
+-    expect(SCREENS.slice(0, 3)).toEqual(["home", "compose", "transcript"]);
++    expect(SCREENS.slice(0, 2)).toEqual(["home", "compose"]);
+     expect(SCREENS.indexOf("compose")).toBe(SCREENS.indexOf("home") + 1);
+   });
+ 
+@@ -23,6 +23,23 @@ describe("thanh điều hướng của cửa sổ chính", () => {
+     expect(translate("en", "nav.compose")).toBe("Type & Translate");
+   });
+ 
++  // Spec 2026-11-04-giong-doc §7: mục "Giọng đọc" ngay sau Gõ dịch, chỉ có trên Windows (giọng đọc chỉ có ở bản Windows).
++  it("voice_follows_compose: Giọng đọc ngay sau Gõ dịch, biểu tượng loa", () => {
++    expect(SCREENS.indexOf("voice")).toBe(SCREENS.indexOf("compose") + 1);
++    expect(ICONS.voice).toBe("speaker");
++    expect(translate("vi", "nav.voice")).toBe("Giọng đọc");
++  });
++
++  it("macos_hides_voice: macOS không có mục Giọng đọc, các mục khác giữ thứ tự", () => {
++    const screens = visibleScreens("macos");
++    expect(screens).not.toContain("voice");
++    expect(screens).toEqual(SCREENS.filter((s) => s !== "voice"));
++  });
++
++  it("windows_shows_voice: Windows có đủ mọi mục", () => {
++    expect(visibleScreens("windows")).toEqual(SCREENS);
++  });
++
+   it("Cài đặt không còn nhóm Gõ dịch (chữ nhóm đã bỏ khỏi từ điển cả năm ngôn ngữ)", () => {
+     for (const lang of UI_LANGUAGES) expect(translate(lang, "settings.group.compose" as never), lang).toBeUndefined();
+   });
+diff --git a/src/windows/main/navigation.ts b/src/windows/main/navigation.ts
+index a8aacbf..39f87fe 100644
+--- a/src/windows/main/navigation.ts
++++ b/src/windows/main/navigation.ts
+@@ -2,12 +2,25 @@ import type { IconName } from "../../components/Icon";
+ import type { Screen } from "../../lib/ipc";
+ 
+ // Thứ tự các mục của thanh điều hướng bên trái (cửa sổ chính, §4.3) và biểu tượng của từng mục. "compose" (Gõ dịch) nằm ngay dưới
+-// Màn hình chính, ngang hàng Cài đặt (spec 2026-11-02-tach-go-dich-thanh-tab). Nhãn mỗi mục là khóa `nav.<mục>` của i18n.
+-export const SCREENS: readonly Screen[] = ["home", "compose", "transcript", "history", "glossary", "settings", "upgrade", "support", "about"];
++// Màn hình chính, ngang hàng Cài đặt (spec 2026-11-02-tach-go-dich-thanh-tab); "voice" (Giọng đọc) ngay dưới Gõ dịch (spec
++// 2026-11-04-giong-doc §7). Nhãn mỗi mục là khóa `nav.<mục>` của i18n.
++export const SCREENS: readonly Screen[] = [
++  "home",
++  "compose",
++  "voice",
++  "transcript",
++  "history",
++  "glossary",
++  "settings",
++  "upgrade",
++  "support",
++  "about",
++];
+ 
+ export const ICONS: Record<Screen, IconName> = {
+   home: "home",
+   compose: "keyboard",
++  voice: "speaker",
+   transcript: "transcript",
+   history: "history",
+   glossary: "glossary",
+@@ -16,3 +29,10 @@ export const ICONS: Record<Screen, IconName> = {
+   support: "support",
+   about: "about",
+ };
++
++const WITHOUT_VOICE: readonly Screen[] = SCREENS.filter((s) => s !== "voice");
++
++// Các mục hiện trên thanh điều hướng: giọng đọc bản dịch chỉ có ở bản Windows, nên macOS không có mục Giọng đọc.
++export function visibleScreens(platform: "macos" | "windows"): readonly Screen[] {
++  return platform === "windows" ? SCREENS : WITHOUT_VOICE;
++}
+diff --git a/src/windows/main/screens/VoiceScreen.test.ts b/src/windows/main/screens/VoiceScreen.test.ts
+new file mode 100644
+index 0000000..ec9d4d5
+--- /dev/null
++++ b/src/windows/main/screens/VoiceScreen.test.ts
+@@ -0,0 +1,174 @@
++import { createElement } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { describe, expect, it } from "vitest";
++import { translate, vi as viText } from "../../../i18n";
++import type { TtsStatus } from "../../../lib/ipc";
++import { resetPatch, VOICE_DEFAULTS, VoiceScreenView, type VoiceScreenViewProps, voicePatch } from "./VoiceScreen";
++
++const AVAILABLE: TtsStatus = { available: true, running: false, reason: null, progress: null };
++const NAMES = ["Hải Đăng", "Thái Sơn", "Mai Anh", "Ngọc Trân", "Minh Đức"];
++
++const props = (patch: Partial<VoiceScreenViewProps> = {}): VoiceScreenViewProps => ({
++  lang: "vi",
++  status: AVAILABLE,
++  voices: { names: NAMES, default: "Hải Đăng" },
++  settings: { ttsVoiceVi: "Mai Anh", ttsVoiceEn: null, ttsVolume: 70, ttsSpeed: 1.05, ttsPause: 1.5 },
++  previewing: null,
++  loading: false,
++  error: null,
++  onVoice: () => {},
++  onChange: () => {},
++  onPreview: () => {},
++  onReset: () => {},
++  onDismiss: () => {},
++  ...patch,
++});
++
++const html = (p: VoiceScreenViewProps) => renderToStaticMarkup(createElement(VoiceScreenView, p));
++// Mọi thẻ `<input …>` và `<button …>` của trang.
++const inputs = (markup: string) => markup.match(/<input [^>]*>/g) ?? [];
++const buttons = (markup: string) => markup.match(/<button [^>]*>[\s\S]*?<\/button>/g) ?? [];
++const radio = (markup: string, name: string, value: string) =>
++  inputs(markup).find((tag) => tag.includes(`name="${name}"`) && tag.includes(`value="${value}"`));
++const slider = (markup: string, id: string) => inputs(markup).find((tag) => tag.includes(`id="${id}"`));
++
++// Spec 2026-11-04-giong-doc §7: hai khối chọn giọng (Việt, Anh) nhóm theo vùng, có "Mặc định"; ba thanh trượt; Khôi phục mặc định.
++describe("VoiceScreenView", () => {
++  it("locked_while_downloading_shows_percent_and_disables_controls", () => {
++    const markup = html(props({ status: { available: false, running: false, reason: "downloading", progress: 42 } }));
++    expect(markup).toContain(translate("vi", "voice.locked.downloading", { percent: 42 }));
++    expect(inputs(markup).length).toBeGreaterThan(0);
++    for (const tag of inputs(markup)) expect(tag, tag).toContain('disabled=""');
++    const controls = buttons(markup);
++    expect(controls.some((b) => b.includes(viText["voice.reset"]))).toBe(true);
++    for (const b of controls) expect(b, b).toContain('disabled=""');
++  });
++
++  it("locked_when_unavailable", () => {
++    const markup = html(props({ status: { available: false, running: false, reason: "workerMissing", progress: null } }));
++    expect(markup).toContain(viText["voice.locked.unavailable"]);
++    expect(markup).not.toContain(translate("vi", "voice.locked.downloading", { percent: 0 }));
++    for (const tag of inputs(markup)) expect(tag, tag).toContain('disabled=""');
++    for (const b of buttons(markup)) expect(b, b).toContain('disabled=""');
++  });
++
++  it("locked_when_disabled_does_not_say_not_installed", () => {
++    const markup = html(props({ status: { available: false, running: false, reason: "disabled", progress: null } }));
++    expect(markup).toContain(viText["voice.locked.disabled"]);
++    expect(markup).not.toContain(viText["voice.locked.unavailable"]);
++    expect(markup).not.toContain("chưa cài");
++    for (const tag of inputs(markup)) expect(tag, tag).toContain('disabled=""');
++  });
++
++  it("dùng được thì không có dòng khóa, điều khiển bấm được", () => {
++    const markup = html(props());
++    expect(markup).not.toContain(viText["voice.locked.unavailable"]);
++    for (const tag of inputs(markup)) expect(tag, tag).not.toContain('disabled=""');
++  });
++
++  it("lists_voices_grouped_with_default_option", () => {
++    const markup = html(props());
++    expect(markup).toContain(viText["voice.lang.vi"]);
++    expect(markup).toContain(viText["voice.lang.en"]);
++    for (const name of ["voice-vi", "voice-en"]) {
++      expect(radio(markup, name, ""), name).toBeTruthy();
++      for (const voice of NAMES) expect(radio(markup, name, voice), `${name} ${voice}`).toBeTruthy();
++    }
++    expect(markup).toContain(viText["voice.default"]);
++    // Nhóm theo vùng: Bắc, Trung, Nam, Khác (trong khối tiếng Việt).
++    const block = markup.slice(0, markup.indexOf(viText["voice.lang.en"]));
++    const at = (key: "north" | "central" | "south" | "other") => block.indexOf(viText[`voice.region.${key}`]);
++    expect(at("north")).toBeGreaterThan(-1);
++    expect(at("north")).toBeLessThan(at("central"));
++    expect(at("central")).toBeLessThan(at("south"));
++    expect(at("south")).toBeLessThan(at("other"));
++    expect(block.indexOf("Mai Anh")).toBeGreaterThan(at("north"));
++    expect(block.indexOf("Mai Anh")).toBeLessThan(at("central"));
++    expect(block.indexOf("Thái Sơn")).toBeGreaterThan(at("south"));
++    expect(block.indexOf("Hải Đăng", at("other"))).toBeGreaterThan(at("other"));
++    expect(block).toContain(viText["voice.gender.female"]);
++    expect(block).toContain(viText["voice.gender.male"]);
++    // Giọng đã lưu được chọn; khối tiếng Anh để mặc định.
++    expect(radio(markup, "voice-vi", "Mai Anh")).toContain('checked=""');
++    expect(radio(markup, "voice-vi", "")).not.toContain('checked=""');
++    expect(radio(markup, "voice-en", "")).toContain('checked=""');
++    // Một nút Nghe thử mỗi khối, cạnh giọng đang chọn.
++    expect(buttons(markup).filter((b) => b.includes(viText["voice.preview"]))).toHaveLength(2);
++  });
++
++  it("đang nghe thử khối nào thì nút của khối đó là Dừng", () => {
++    const markup = html(props({ previewing: "en" }));
++    expect(buttons(markup).filter((b) => b.includes(viText["voice.previewStop"]))).toHaveLength(1);
++    expect(buttons(markup).filter((b) => b.includes(viText["voice.preview"]))).toHaveLength(1);
++    expect(markup.indexOf(viText["voice.previewStop"])).toBeGreaterThan(markup.indexOf(viText["voice.lang.en"]));
++  });
++
++  it("unknown_saved_voice_shows_default_selected", () => {
++    const markup = html(props({ settings: { ...props().settings, ttsVoiceVi: "Giọng đã bỏ" } }));
++    expect(radio(markup, "voice-vi", "")).toContain('checked=""');
++    expect(markup).not.toContain("Giọng đã bỏ");
++    for (const voice of NAMES) expect(radio(markup, "voice-vi", voice)).not.toContain('checked=""');
++  });
++
++  it("chưa có danh sách giọng thì vẫn có lựa chọn Mặc định, được chọn", () => {
++    const markup = html(props({ voices: null }));
++    expect(radio(markup, "voice-vi", "")).toContain('checked=""');
++    expect(radio(markup, "voice-en", "")).toContain('checked=""');
++  });
++
++  it("sliders_show_current_values_and_ranges", () => {
++    const markup = html(props());
++    const volume = slider(markup, "tts-volume");
++    expect(volume).toMatch(/min="0"/);
++    expect(volume).toMatch(/max="100"/);
++    expect(volume).toMatch(/step="1"/);
++    expect(volume).toMatch(/value="70"/);
++    const speed = slider(markup, "tts-speed");
++    expect(speed).toMatch(/min="0.8"/);
++    expect(speed).toMatch(/max="1.3"/);
++    expect(speed).toMatch(/step="0.05"/);
++    expect(speed).toMatch(/value="1.05"/);
++    const pause = slider(markup, "tts-pause");
++    expect(pause).toMatch(/min="0.5"/);
++    expect(pause).toMatch(/max="2"/);
++    expect(pause).toMatch(/step="0.1"/);
++    expect(pause).toMatch(/value="1.5"/);
++    expect(markup).toContain(viText["voice.volume"]);
++    expect(markup).toContain(viText["voice.speed"]);
++    expect(markup).toContain(viText["voice.pause"]);
++    expect(markup).toContain("70%");
++    expect(markup).toContain("1,05×");
++    expect(markup).toContain("1,5×");
++  });
++
++  it("reset_button_present", () => {
++    const markup = html(props());
++    const reset = buttons(markup).find((b) => b.includes(viText["voice.reset"]));
++    expect(reset).toBeTruthy();
++    expect(reset).not.toContain('disabled=""');
++  });
++
++  it("lỗi đọc hiện thông báo ngắn có nút đóng", () => {
++    const markup = html(props({ error: { code: "ttsFailed", field: null } }));
++    expect(markup).toContain(viText["error.ttsFailed"]);
++    expect(markup).toContain(viText["common.dismiss"]);
++  });
++});
++
++// Spec §8: chọn giọng lưu đúng khóa; Khôi phục mặc định ghi cả năm khóa (đây là các bộ dựng mà `VoiceScreen` đưa vào `updateSettings`).
++describe("VoiceScreen wiring", () => {
++  it("choosing_a_voice_patches_the_key_of_its_language", () => {
++    expect(voicePatch("vi", "Mai Anh")).toEqual({ ttsVoiceVi: "Mai Anh" });
++    expect(voicePatch("en", "Hải Đăng")).toEqual({ ttsVoiceEn: "Hải Đăng" });
++  });
++
++  it("default_choice_patches_null", () => {
++    expect(voicePatch("vi", null)).toEqual({ ttsVoiceVi: null });
++    expect(voicePatch("en", null)).toEqual({ ttsVoiceEn: null });
++  });
++
++  it("reset_patches_all_five_keys_to_defaults", () => {
++    expect(resetPatch()).toEqual({ ttsVoiceVi: null, ttsVoiceEn: null, ttsVolume: 100, ttsSpeed: 1, ttsPause: 1 });
++    expect(resetPatch()).toEqual(VOICE_DEFAULTS);
++  });
++});
+diff --git a/src/windows/main/screens/VoiceScreen.tsx b/src/windows/main/screens/VoiceScreen.tsx
+new file mode 100644
+index 0000000..c034734
+--- /dev/null
++++ b/src/windows/main/screens/VoiceScreen.tsx
+@@ -0,0 +1,238 @@
++import { useEffect } from "react";
++import { Field, SectionTitle } from "../../../components/Field";
++import { Icon } from "../../../components/Icon";
++import { errorKey, type MessageKey, type Params, type UiLanguage, translate } from "../../../i18n";
++import type { Settings, SettingsPatch, TtsStatus, TtsVoices } from "../../../lib/ipc";
++import type { TtsLang } from "../../../lib/tts";
++import { describeVoice, groupVoices } from "../../../lib/ttsVoices";
++import type { UiError } from "../../../store/app";
++import type { TtsPreviewOptions } from "../../../store/tts";
++import { fallbackLanguage, useApp } from "../appStore";
++import { ttsStore, useTts } from "../dataStores";
++import { CommitRange } from "../settings/CommitRange";
++
++type VoiceSettings = Pick<Settings, "ttsVoiceVi" | "ttsVoiceEn" | "ttsVolume" | "ttsSpeed" | "ttsPause">;
++
++// Giá trị của "Khôi phục mặc định" (spec 2026-11-04-giong-doc, Global Constraints): giọng mặc định của gói, âm lượng 100, tốc độ
++// và khoảng nghỉ 1,0.
++export const VOICE_DEFAULTS: VoiceSettings = { ttsVoiceVi: null, ttsVoiceEn: null, ttsVolume: 100, ttsSpeed: 1, ttsPause: 1 };
++
++// Bộ dựng lệnh lưu của màn hình (tách ra để kiểm thử): chọn giọng ghi đúng khóa theo ngôn ngữ ("Mặc định" là null), khôi phục
++// mặc định ghi cả năm khóa.
++export const voicePatch = (lang: TtsLang, voice: string | null): SettingsPatch => ({ [VOICE_KEY[lang]]: voice });
++export const resetPatch = (): SettingsPatch => ({ ...VOICE_DEFAULTS });
++
++const BLOCKS: readonly TtsLang[] = ["vi", "en"];
++const VOICE_KEY = { vi: "ttsVoiceVi", en: "ttsVoiceEn" } as const;
++
++export interface VoiceScreenViewProps {
++  lang: UiLanguage;
++  status: TtsStatus | null;
++  voices: TtsVoices | null;
++  settings: VoiceSettings;
++  previewing: TtsLang | null;
++  loading: boolean;
++  error: UiError | null;
++  onVoice(lang: TtsLang, voice: string | null): void;
++  onChange(patch: SettingsPatch): void;
++  onPreview(lang: TtsLang, opts: TtsPreviewOptions): void;
++  onReset(): void;
++  onDismiss(): void;
++}
++
++// Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): hai khối chọn giọng (tiếng Việt, tiếng Anh), mỗi khối một nhóm nút radio có
++// "Mặc định" và các giọng của gói nhóm theo vùng; nút Nghe thử cạnh giọng đang chọn đọc câu mẫu của khối với các giá trị đang chọn.
++// Ba thanh trượt chỉ lưu khi thả (`CommitRange`). Giọng đọc chưa dùng được (đang tải gói, thiếu worker hay model) thì khóa mọi
++// điều khiển và nói lý do. Giọng đã lưu mà gói không còn thì hiện "Mặc định" (phía Rust cũng đọc bằng giọng mặc định).
++export function VoiceScreenView(p: VoiceScreenViewProps) {
++  const t = (key: MessageKey, params?: Params) => translate(p.lang, key, params);
++  const locked = p.status?.available === false;
++  const pending = p.status?.reason === "downloading" || p.status?.reason === "waiting";
++  // Chưa hỏi xong trạng thái thì chưa cho Nghe thử (chưa biết có giọng đọc không).
++  const canPreview = p.status?.available === true;
++  const number = (digits: number) =>
++    new Intl.NumberFormat(p.lang, { minimumFractionDigits: digits, maximumFractionDigits: digits });
++  const speed = number(2);
++  const pause = number(1);
++  const names = p.voices?.names ?? [];
++  const groups = groupVoices(names);
++  const selectedOf = (lang: TtsLang) => {
++    const saved = p.settings[VOICE_KEY[lang]];
++    return saved !== null && names.includes(saved) ? saved : null;
++  };
++  const row = (lang: TtsLang, voice: string | null, selected: string | null) => {
++    const on = voice === selected;
++    const playing = p.previewing === lang;
++    const gender = voice === null ? null : describeVoice(voice).gender;
++    return (
++      <div className="voice-row" key={voice ?? ""}>
++        <label>
++          <input
++            type="radio"
++            name={`voice-${lang}`}
++            value={voice ?? ""}
++            checked={on}
++            disabled={locked}
++            onChange={() => p.onVoice(lang, voice)}
++          />
++          <span>{voice ?? t("voice.default")}</span>
++          {voice === null && p.voices && <span className="hint">{p.voices.default}</span>}
++          {gender && <span className="hint">{t(`voice.gender.${gender}`)}</span>}
++        </label>
++        {on && (
++          <button
++            type="button"
++            className="tts-btn"
++            aria-pressed={playing}
++            disabled={locked || !canPreview}
++            onClick={() =>
++              p.onPreview(lang, {
++                text: t(`voice.sample.${lang}`),
++                voice: selected,
++                speed: p.settings.ttsSpeed,
++                pause: p.settings.ttsPause,
++                volume: p.settings.ttsVolume,
++              })
++            }
++          >
++            <Icon name="speaker" size={16} />
++            {playing ? (p.loading ? t("transcript.tts.loading") : t("voice.previewStop")) : t("voice.preview")}
++          </button>
++        )}
++      </div>
++    );
++  };
++  return (
++    <>
++      {locked && (
++        <div className="notice warning" role="status">
++          <Icon name="alert" />
++          <span>
++            {pending
++              ? t("voice.locked.downloading", { percent: Math.round(p.status?.progress ?? 0) })
++              : p.status?.reason === "disabled"
++                ? t("voice.locked.disabled")
++                : t("voice.locked.unavailable")}
++          </span>
++        </div>
++      )}
++      {p.error && (
++        <div className="notice error" role="alert">
++          <Icon name="alert" />
++          <span>{t(errorKey(p.error.code))}</span>
++          <button type="button" onClick={p.onDismiss}>
++            {t("common.dismiss")}
++          </button>
++        </div>
++      )}
++      {BLOCKS.map((lang) => {
++        const selected = selectedOf(lang);
++        const title = `voice-${lang}-title`;
++        return (
++          <section key={lang} aria-labelledby={title}>
++            <SectionTitle id={title}>{t(`voice.lang.${lang}`)}</SectionTitle>
++            <div className="card voice-list" role="radiogroup" aria-labelledby={title}>
++              {row(lang, null, selected)}
++              {groups.map((g) => (
++                <div className="voice-group" key={g.region} role="group" aria-labelledby={`${title}-${g.region}`}>
++                  <h3 className="voice-region" id={`${title}-${g.region}`}>
++                    {t(`voice.region.${g.region}`)}
++                  </h3>
++                  {g.names.map((name) => row(lang, name, selected))}
++                </div>
++              ))}
++            </div>
++          </section>
++        );
++      })}
++      <section aria-labelledby="voice-style-title">
++        <SectionTitle id="voice-style-title">{t("voice.title")}</SectionTitle>
++        <div className="card list">
++          <Field label={t("voice.volume")} htmlFor="tts-volume">
++            <CommitRange
++              id="tts-volume"
++              min={0}
++              max={100}
++              step={1}
++              value={p.settings.ttsVolume}
++              format={(v) => `${v}%`}
++              onCommit={(v) => p.onChange({ ttsVolume: Math.round(v) })}
++              disabled={locked}
++            />
++          </Field>
++          <Field label={t("voice.speed")} htmlFor="tts-speed">
++            <CommitRange
++              id="tts-speed"
++              min={0.8}
++              max={1.3}
++              step={0.05}
++              value={p.settings.ttsSpeed}
++              format={(v) => `${speed.format(v)}×`}
++              onCommit={(v) => p.onChange({ ttsSpeed: Math.round(v * 100) / 100 })}
++              disabled={locked}
++            />
++          </Field>
++          <Field label={t("voice.pause")} htmlFor="tts-pause">
++            <CommitRange
++              id="tts-pause"
++              min={0.5}
++              max={2}
++              step={0.1}
++              value={p.settings.ttsPause}
++              format={(v) => `${pause.format(v)}×`}
++              onCommit={(v) => p.onChange({ ttsPause: Math.round(v * 10) / 10 })}
++              disabled={locked}
++            />
++          </Field>
++          <div className="field voice-reset">
++            <button type="button" onClick={p.onReset} disabled={locked}>
++              {t("voice.reset")}
++            </button>
++          </div>
++        </div>
++      </section>
++    </>
++  );
++}
++
++// Nối màn hình với store: mở màn hình thì hỏi trạng thái giọng đọc và danh sách giọng; rời màn hình thì dừng Nghe thử.
++export function VoiceScreen() {
++  const lang = useApp((s) => s.settings?.uiLanguage ?? fallbackLanguage);
++  const settings = useApp((s) => s.settings);
++  const update = useApp((s) => s.updateSettings);
++  const status = useTts((s) => s.status);
++  const voices = useTts((s) => s.voices);
++  const previewing = useTts((s) => s.previewing);
++  const loading = useTts((s) => s.loading);
++  const error = useTts((s) => s.error);
++  const dismiss = useTts((s) => s.dismiss);
++  useEffect(() => {
++    const tts = ttsStore.getState();
++    void tts.init();
++    void tts.loadVoices();
++    return () => {
++      if (ttsStore.getState().previewing !== null) void ttsStore.getState().stop();
++    };
++  }, []);
++  if (!settings) return null;
++  return (
++    <VoiceScreenView
++      lang={lang}
++      status={status}
++      voices={voices}
++      settings={settings}
++      previewing={previewing}
++      loading={loading}
++      error={error}
++      onVoice={(l, voice) => void update(voicePatch(l, voice))}
++      onChange={(patch) => void update(patch)}
++      onPreview={(l, opts) => {
++        // Khởi động bộ phát trong chính thao tác bấm (webview chỉ cho phát âm thanh sau thao tác của người dùng).
++        ttsStore.getState().prepare();
++        void ttsStore.getState().preview(l, opts);
++      }}
++      onReset={() => void update(resetPatch())}
++      onDismiss={dismiss}
++    />
++  );
++}
+diff --git a/src/windows/main/settings/CommitRange.tsx b/src/windows/main/settings/CommitRange.tsx
+index 9a00798..0e68509 100644
+--- a/src/windows/main/settings/CommitRange.tsx
++++ b/src/windows/main/settings/CommitRange.tsx
+@@ -11,6 +11,7 @@ export function CommitRange({
+   format,
+   onCommit,
+   onDraft,
++  disabled,
+ }: {
+   id: string;
+   min: number;
+@@ -20,6 +21,7 @@ export function CommitRange({
+   format: (v: number) => string;
+   onCommit: (v: number) => void;
+   onDraft?: (v: number | null) => void;
++  disabled?: boolean;
+ }) {
+   const [draft, setDraft] = useState<number | null>(null);
+   const shown = draft ?? value;
+@@ -37,6 +39,7 @@ export function CommitRange({
+         max={max}
+         step={step}
+         value={shown}
++        disabled={disabled}
+         onChange={(e) => {
+           setDraft(Number(e.target.value));
+           onDraft?.(Number(e.target.value));

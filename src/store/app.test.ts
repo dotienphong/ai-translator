@@ -14,6 +14,11 @@ const settings: Settings = {
   micNoiseFilter: true,
   vadEndSilenceMs: 50,
   micEndSilenceMs: 50,
+  ttsVoiceVi: null,
+  ttsVoiceEn: null,
+  ttsVolume: 100,
+  ttsSpeed: 1,
+  ttsPause: 1,
   overlay: {
     fontSize: 22,
     lines: 2,

@@ -271,6 +271,17 @@ pub struct Settings {
     /// (300–500 ms) ít cắt vụn hơn, nhận chính xác hơn, đổi lại phụ đề chậm hơn (spec 2026-10-24-nguon-micro mục 18). File của
     /// bản trước chưa có khóa này thì lấy mặc định.
     pub mic_end_silence_ms: u32,
+    /// Giọng đọc bản dịch (spec 2026-11-04-giong-doc §4) cho đích tiếng Việt / tiếng Anh: tên giọng trong gói giọng đọc, `None`
+    /// là giọng mặc định của gói. File của bản trước chưa có các khóa `tts*` thì lấy mặc định (`migrate::load` ghép từng khóa),
+    /// không cần bước migrate.
+    pub tts_voice_vi: Option<String>,
+    pub tts_voice_en: Option<String>,
+    /// Âm lượng đọc, 0–100 (mặc định 100).
+    pub tts_volume: u8,
+    /// Tốc độ đọc, 0,8–1,3 (mặc định 1,0).
+    pub tts_speed: f32,
+    /// Hệ số khoảng nghỉ giữa các câu, 0,5–2,0 (mặc định 1,0).
+    pub tts_pause: f32,
     pub overlay: OverlaySettings,
     /// Dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6.3, Cài đặt › Phụ đề), mặc định bật. Đổi khi đang dịch thì có
     /// tác dụng từ đoạn kế tiếp (`session::set_streaming_enabled`). File của bản trước chưa có khóa này thì lấy mặc định
@@ -312,6 +323,17 @@ pub struct Settings {
 }
 
 pub const VAD_END_SILENCE_MS: std::ops::RangeInclusive<u32> = 50..=800;
+pub const TTS_VOLUME_MAX: u8 = 100;
+pub const TTS_SPEED: std::ops::RangeInclusive<f32> = 0.8..=1.3;
+pub const TTS_PAUSE: std::ops::RangeInclusive<f32> = 0.5..=2.0;
+/// Độ dài tối đa (byte) của tên giọng. Bằng `tts_protocol::MAX_VOICE_BYTES`; `src-tauri` chưa phụ thuộc `tts-protocol`
+/// nên giữ hằng cục bộ, đổi một nơi thì đổi nơi kia.
+pub const TTS_VOICE_MAX_BYTES: usize = 64;
+/// Giọng đọc mặc định theo ngôn ngữ của câu (spec 2026-11-04-giong-doc): máy cài mới và người dùng chưa chọn giọng dùng các giọng
+/// này. Cùng giá trị với `DEFAULT_VOICE` ở giao diện (`src/lib/ttsVoices.ts`). Gói giọng không có tên này thì worker đọc bằng
+/// giọng mặc định của chính gói.
+pub const TTS_DEFAULT_VOICE_VI: &str = "Thục Đoan";
+pub const TTS_DEFAULT_VOICE_EN: &str = "Đức Trí";
 pub const OVERLAY_FONT_SIZE: std::ops::RangeInclusive<u32> = 14..=48;
 pub const OVERLAY_LINES: std::ops::RangeInclusive<u32> = 1..=3;
 pub const OVERLAY_WIDTH: std::ops::RangeInclusive<f64> = 200.0..=10_000.0;
@@ -351,6 +373,11 @@ impl Settings {
             mic_noise_filter: true,
             vad_end_silence_ms: 50,
             mic_end_silence_ms: 50,
+            tts_voice_vi: Some(TTS_DEFAULT_VOICE_VI.to_string()),
+            tts_voice_en: Some(TTS_DEFAULT_VOICE_EN.to_string()),
+            tts_volume: 100,
+            tts_speed: 1.0,
+            tts_pause: 1.0,
             overlay: OverlaySettings {
                 font_size: 20,
                 lines: 2,
@@ -413,6 +440,22 @@ impl Settings {
         }
         if !VAD_END_SILENCE_MS.contains(&self.mic_end_silence_ms) {
             return Err(Invalid::new("micEndSilenceMs", Reason::OutOfRange));
+        }
+        if self.tts_volume > TTS_VOLUME_MAX {
+            return Err(Invalid::new("ttsVolume", Reason::OutOfRange));
+        }
+        if !TTS_SPEED.contains(&self.tts_speed) {
+            return Err(Invalid::new("ttsSpeed", Reason::OutOfRange));
+        }
+        if !TTS_PAUSE.contains(&self.tts_pause) {
+            return Err(Invalid::new("ttsPause", Reason::OutOfRange));
+        }
+        for (field, voice) in [("ttsVoiceVi", &self.tts_voice_vi), ("ttsVoiceEn", &self.tts_voice_en)] {
+            if let Some(name) = voice
+                && (name.is_empty() || name.len() > TTS_VOICE_MAX_BYTES)
+            {
+                return Err(Invalid::new(field, Reason::OutOfRange));
+            }
         }
         if self.source_languages.is_empty() {
             return Err(Invalid::new("sourceLanguages", Reason::Empty));
@@ -670,6 +713,11 @@ mod tests {
             "micEndSilenceMs",
             "speakerDiarization",
             "speakerNames",
+            "ttsVoiceVi",
+            "ttsVoiceEn",
+            "ttsVolume",
+            "ttsSpeed",
+            "ttsPause",
         ] {
             assert!(keys.contains(&key.to_string()), "thiếu khóa {key}");
         }
@@ -732,6 +780,67 @@ mod tests {
         s.mic_end_silence_ms = 800;
         s.overlay.lines = 1;
         s.overlay.opacity = 1.0;
+        assert_eq!(s.validate(), Ok(()));
+    }
+
+    /// Spec 2026-11-04-giong-doc §4: mặc định là giọng Thục Đoan (Việt) và Đức Trí (Anh), âm lượng đầy, tốc độ và nghỉ chuẩn.
+    #[test]
+    fn tts_defaults_keep_todays_behaviour() {
+        let s = valid();
+        assert_eq!(
+            (
+                s.tts_voice_vi.clone(),
+                s.tts_voice_en.clone(),
+                s.tts_volume,
+                s.tts_speed,
+                s.tts_pause
+            ),
+            (
+                Some("Thục Đoan".to_string()),
+                Some("Đức Trí".to_string()),
+                100,
+                1.0,
+                1.0
+            )
+        );
+        assert_eq!(s.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validate_rejects_out_of_range_tts_values() {
+        let mut s = valid();
+        s.tts_volume = 101;
+        rejects(s, "ttsVolume", Reason::OutOfRange);
+        for speed in [0.79, 1.31, f32::NAN] {
+            let mut s = valid();
+            s.tts_speed = speed;
+            rejects(s, "ttsSpeed", Reason::OutOfRange);
+        }
+        for pause in [0.49, 2.01, f32::NAN] {
+            let mut s = valid();
+            s.tts_pause = pause;
+            rejects(s, "ttsPause", Reason::OutOfRange);
+        }
+        let mut s = valid();
+        s.tts_voice_vi = Some("x".repeat(65));
+        rejects(s, "ttsVoiceVi", Reason::OutOfRange);
+        let mut s = valid();
+        s.tts_voice_en = Some(String::new());
+        rejects(s, "ttsVoiceEn", Reason::OutOfRange);
+    }
+
+    #[test]
+    fn validate_accepts_boundaries() {
+        let mut s = valid();
+        s.tts_volume = 0;
+        s.tts_speed = 0.8;
+        s.tts_pause = 0.5;
+        s.tts_voice_vi = Some("x".repeat(64));
+        assert_eq!(s.validate(), Ok(()));
+        s.tts_volume = 100;
+        s.tts_speed = 1.3;
+        s.tts_pause = 2.0;
+        s.tts_voice_en = Some("x".repeat(64));
         assert_eq!(s.validate(), Ok(()));
     }
 

@@ -263,3 +263,122 @@ describe("lỗi", () => {
     expect(store.getState().error).toBeNull();
   });
 });
+
+// Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7): danh sách giọng của gói và Nghe thử.
+describe("danh sách giọng", () => {
+  const VOICES = { names: ["Hải Đăng", "Mai Anh"], default: "Hải Đăng" };
+
+  it("loadVoices_stores_the_list", async () => {
+    const { store, f } = setup({ tts_list_voices: () => VOICES });
+    expect(store.getState().voices).toBeNull();
+    await store.getState().loadVoices();
+    expect(store.getState().voices).toEqual(VOICES);
+    expect(f.calls.filter((c) => c.cmd === "tts_list_voices")).toHaveLength(1);
+  });
+
+  it("loadVoices_failure_keeps_null_and_does_not_throw", async () => {
+    const { store } = setup({
+      tts_list_voices: () => {
+        throw { code: "ttsUnavailable", field: null, message: "modelMissing" };
+      },
+    });
+    await expect(store.getState().loadVoices()).resolves.toBeUndefined();
+    expect(store.getState().voices).toBeNull();
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("tts_changed_reloads_voices: gói giọng đổi thì hỏi lại danh sách", async () => {
+    let names = ["Hải Đăng"];
+    const { store, f } = setup({ tts_list_voices: () => ({ names, default: "Hải Đăng" }) });
+    await store.getState().init();
+    await store.getState().loadVoices();
+    names = ["Hải Đăng", "Ngọc Huyền"];
+    f.emit("tts://changed", null);
+    await vi.waitFor(() => expect(store.getState().voices?.names).toEqual(["Hải Đăng", "Ngọc Huyền"]));
+  });
+
+  it("chưa mở màn hình Giọng đọc (chưa gọi loadVoices) thì tts://changed không hỏi danh sách", async () => {
+    const { store, f } = setup({ tts_list_voices: () => VOICES });
+    await store.getState().init();
+    f.emit("tts://changed", null);
+    await vi.waitFor(() => expect(f.calls.filter((c) => c.cmd === "tts_status").length).toBe(2));
+    expect(f.calls.filter((c) => c.cmd === "tts_list_voices")).toHaveLength(0);
+  });
+});
+
+describe("nghe thử", () => {
+  const previews: FakeChannel[] = [];
+  const handlers = {
+    tts_preview: (args: { onEvent: unknown }) => {
+      previews.push(args.onEvent as FakeChannel);
+      return previews.length;
+    },
+  };
+  const OPTS = { text: "Xin chào", voice: "Mai Anh", speed: 1.2, pause: 0.5, volume: 70 };
+
+  it("preview_invokes_tts_preview_with_given_options", async () => {
+    previews.length = 0;
+    const { store, f, log } = setup(handlers);
+    await store.getState().preview("vi", OPTS);
+    expect(store.getState().previewing).toBe("vi");
+    expect(f.calls.find((c) => c.cmd === "tts_preview")?.args).toMatchObject({
+      lang: "vi",
+      text: "Xin chào",
+      voice: "Mai Anh",
+      speed: 1.2,
+      pause: 0.5,
+      volume: 70,
+    });
+    previews[0]?.onmessage(bytes(64));
+    expect(log).toContain("push:64");
+    expect(store.getState().loading).toBe(false);
+  });
+
+  it("preview_twice_stops: bấm lại Nghe thử của cùng khối thì dừng", async () => {
+    previews.length = 0;
+    const { store, f, log } = setup(handlers);
+    await store.getState().preview("en", { ...OPTS, voice: null });
+    await store.getState().preview("en", { ...OPTS, voice: null });
+    expect(store.getState().previewing).toBeNull();
+    expect(f.calls.filter((c) => c.cmd === "tts_preview")).toHaveLength(1);
+    expect(f.calls.filter((c) => c.cmd === "tts_stop")).toHaveLength(1);
+    expect(log.at(-1)).toBe("stop");
+  });
+
+  it("đọc xong thì hết trạng thái nghe thử; stop cũng dừng nghe thử", async () => {
+    previews.length = 0;
+    const { store, idle } = setup(handlers);
+    await store.getState().preview("vi", OPTS);
+    previews[0]?.onmessage({ kind: "done" });
+    idle[0]?.();
+    expect(store.getState().previewing).toBeNull();
+    await store.getState().preview("vi", OPTS);
+    await store.getState().stop();
+    expect(store.getState().previewing).toBeNull();
+  });
+
+  it("một lúc chỉ một lượt: nghe thử khối khác thay lượt cũ, đọc câu ở bản chép lời thì hết nghe thử", async () => {
+    previews.length = 0;
+    const { store, log } = setup(handlers);
+    await store.getState().preview("vi", OPTS);
+    await store.getState().preview("en", OPTS);
+    expect(store.getState().previewing).toBe("en");
+    log.length = 0;
+    previews[0]?.onmessage(bytes(10)); // của lượt cũ, tới muộn
+    expect(log).toEqual([]);
+    await store.getState().speak(4, "a", "vi");
+    expect(store.getState().previewing).toBeNull();
+    expect(store.getState().speaking).toBe(4);
+  });
+
+  it("lệnh bị từ chối thì hiện lỗi, không văng", async () => {
+    const { store } = setup({
+      tts_preview: () => {
+        throw { code: "ttsUnavailable", field: null, message: "modelMissing" };
+      },
+    });
+    await expect(store.getState().preview("vi", OPTS)).resolves.toBeUndefined();
+    expect(store.getState().previewing).toBeNull();
+    expect(store.getState().error?.code).toBe("ttsUnavailable");
+  });
+});

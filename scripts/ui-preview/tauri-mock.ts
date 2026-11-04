@@ -5,7 +5,7 @@
 //
 // Tham số URL (đều không bắt buộc):
 //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
-//   screen=home|compose|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|privacy
+//   screen=home|compose|voice|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|privacy
 //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
 //   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
@@ -102,6 +102,11 @@ let settings: Settings = {
   micNoiseFilter: true,
   vadEndSilenceMs: 300,
   micEndSilenceMs: 50,
+  ttsVoiceVi: null,
+  ttsVoiceEn: null,
+  ttsVolume: 100,
+  ttsSpeed: 1,
+  ttsPause: 1,
   overlay: {
     fontSize: Number(param("size", "28")),
     lines: 3,
@@ -841,6 +846,16 @@ const handlers = {
     return { id: "R-7F3K-92QD" };
   },
   // Chat hỗ trợ: trạng thái trong bộ nhớ theo `chat=`, `support=`; gửi tin sau nửa giây, hay đúng lỗi của lệnh thật theo `send=`.
+  // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7; mục chỉ có khi platform=windows): 25 giọng của gói thật, theo thứ tự tên.
+  // `tts_status` không có mẫu (null) nên màn hình chưa cho Nghe thử, như lúc chưa hỏi xong trạng thái.
+  tts_list_voices: () => ({
+    names: [
+      "Adam", "Adam bựa", "Đoan Trang", "Đức Trí", "Hải Đăng", "Kim Thanh", "Mai Anh", "Minh Đức", "Minh Triết", "Mỹ Duyên",
+      "Ngọc Huyền", "Ngọc Linh", "Ngọc Trân", "Phạm Tuyên", "Quang Sơn", "Quốc Tuấn", "Quỳnh Anh", "Thái Sơn", "Thanh Bình",
+      "Thiền Tâm Đức", "Thiện Minh", "Thục Đoan", "Thùy Dung", "Trúc Ly", "Xuân Vĩnh",
+    ],
+    default: "Hải Đăng",
+  }),
   support_screen: ({ open }) => changeSupport(open ? { unread: false } : {}),
   support_fetch: () => changeSupport({}),
   support_machine_info: () => machineLine(),

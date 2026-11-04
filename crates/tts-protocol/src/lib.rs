@@ -24,7 +24,11 @@ pub const MAX_VOICE_BYTES: usize = 64;
 /// Khung lớn nhất: 1 s PCM `i16` (96 KB) dư nhiều.
 pub const MAX_FRAME_BYTES: u32 = 512 * 1024;
 /// Phiên bản giao thức, trường đầu của [`Response::Ready`]. App tắt nút nghe nếu worker báo số khác.
-pub const PROTOCOL_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u32 = 3;
+/// Tốc độ đọc cho phép (1.0 = bình thường); ngoài khoảng hay không hữu hạn thì [`Request::validate`] từ chối.
+pub const SPEED_RANGE: std::ops::RangeInclusive<f32> = 0.8..=1.3;
+/// Hệ số nhân thời gian nghỉ giữa các câu/cụm (1.0 = bình thường); cùng cách kiểm như [`SPEED_RANGE`].
+pub const PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=2.0;
 
 /// Ngôn ngữ đọc. v3 Turbo chỉ có hai ngôn ngữ này; tiếng Hàn, Trung, Nhật không có nút nghe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,14 +38,18 @@ pub enum Lang {
 }
 
 /// Lệnh từ app tới worker.
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+// Không `Eq`: có trường `f32`.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum Request {
-    /// Đọc một câu. `voice = None` dùng giọng mặc định.
+    /// Đọc một câu. `voice = None` dùng giọng mặc định; `speed = None` là 1.0 ([`SPEED_RANGE`]); `pause_scale = None` là 1.0
+    /// ([`PAUSE_RANGE`]). Hai trường cuối thêm ở phiên bản giao thức 3.
     Speak {
         id: u64,
         lang: Lang,
         text: String,
         voice: Option<String>,
+        speed: Option<f32>,
+        pause_scale: Option<f32>,
     },
     /// Hủy câu đang đọc (người dùng bấm lại, đổi câu hay đóng).
     Cancel { id: u64 },
@@ -50,6 +58,8 @@ pub enum Request {
     /// Nạp model sẵn (mất vài giây ở lần đầu) để lần đọc đầu không bị trễ. Trả `Done { id }` hoặc `Failed { id, .. }`.
     /// Thêm ở phiên bản giao thức 2.
     Warmup { id: u64 },
+    /// Hỏi danh sách giọng. Trả `Voices { id, .. }`. Thêm ở phiên bản giao thức 3.
+    ListVoices { id: u64 },
 }
 
 /// Loại lỗi gửi về app (không kèm chữ của người dùng).
@@ -76,21 +86,37 @@ pub enum Response {
     Done { id: u64 },
     /// Câu `id` lỗi.
     Failed { id: u64, kind: ErrorKind },
+    /// Danh sách giọng (trả lời [`Request::ListVoices`]) và giọng mặc định. Thêm ở phiên bản giao thức 3.
+    Voices {
+        id: u64,
+        names: Vec<String>,
+        default: String,
+    },
 }
 
 impl fmt::Debug for Request {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Request::Speak { id, lang, text, voice } => f
+            Request::Speak {
+                id,
+                lang,
+                text,
+                voice,
+                speed,
+                pause_scale,
+            } => f
                 .debug_struct("Speak")
                 .field("id", id)
                 .field("lang", lang)
                 .field("text_bytes", &text.len())
                 .field("voice_set", &voice.is_some())
+                .field("speed", speed)
+                .field("pause_scale", pause_scale)
                 .finish(),
             Request::Cancel { id } => f.debug_struct("Cancel").field("id", id).finish(),
             Request::Shutdown => f.write_str("Shutdown"),
             Request::Warmup { id } => f.debug_struct("Warmup").field("id", id).finish(),
+            Request::ListVoices { id } => f.debug_struct("ListVoices").field("id", id).finish(),
         }
     }
 }
@@ -107,6 +133,11 @@ impl fmt::Debug for Response {
                 .finish(),
             Response::Done { id } => f.debug_struct("Done").field("id", id).finish(),
             Response::Failed { id, kind } => f.debug_struct("Failed").field("id", id).field("kind", kind).finish(),
+            Response::Voices { id, names, .. } => f
+                .debug_struct("Voices")
+                .field("id", id)
+                .field("count", &names.len())
+                .finish(),
         }
     }
 }
@@ -129,7 +160,14 @@ pub enum ProtocolError {
 impl Request {
     /// Kiểm giới hạn nội dung; worker gọi sau khi giải mã (khung của app cũng chỉ tin vừa đủ).
     pub fn validate(&self) -> Result<(), ProtocolError> {
-        if let Request::Speak { text, voice, .. } = self {
+        if let Request::Speak {
+            text,
+            voice,
+            speed,
+            pause_scale,
+            ..
+        } = self
+        {
             if text.trim().is_empty() {
                 return Err(ProtocolError::Invalid("chữ rỗng"));
             }
@@ -138,6 +176,13 @@ impl Request {
             }
             if voice.as_ref().is_some_and(|v| v.len() > MAX_VOICE_BYTES) {
                 return Err(ProtocolError::Invalid("tên giọng quá dài"));
+            }
+            // `RangeInclusive::contains` trả false với NaN; vô cực nằm ngoài khoảng.
+            if speed.is_some_and(|v| !SPEED_RANGE.contains(&v)) {
+                return Err(ProtocolError::Invalid("tốc độ ngoài khoảng"));
+            }
+            if pause_scale.is_some_and(|v| !PAUSE_RANGE.contains(&v)) {
+                return Err(ProtocolError::Invalid("hệ số nghỉ ngoài khoảng"));
             }
         }
         Ok(())
@@ -205,12 +250,16 @@ mod tests {
             lang: Lang::Vi,
             text: "Xin chào".into(),
             voice: Some("Minh Quân".into()),
+            speed: None,
+            pause_scale: None,
         });
         roundtrip(Request::Speak {
             id: 8,
             lang: Lang::En,
             text: "Hello".into(),
             voice: None,
+            speed: None,
+            pause_scale: None,
         });
         roundtrip(Request::Cancel { id: 7 });
         roundtrip(Request::Shutdown);
@@ -243,10 +292,13 @@ mod tests {
                 id: 0,
                 lang: Lang::Vi,
                 text: String::new(),
-                voice: None
+                voice: None,
+                speed: None,
+                pause_scale: None
             }),
             0
         );
+        assert_eq!(idx(&Request::ListVoices { id: 0 }), 4);
         assert_eq!(idx(&Request::Cancel { id: 0 }), 1);
         assert_eq!(idx(&Request::Shutdown), 2);
         assert_eq!(idx(&Request::Warmup { id: 0 }), 3);
@@ -267,6 +319,14 @@ mod tests {
                 kind: ErrorKind::ModelMissing
             }),
             3
+        );
+        assert_eq!(
+            ridx(&Response::Voices {
+                id: 0,
+                names: vec![],
+                default: String::new()
+            }),
+            4
         );
         assert_eq!(postcard::to_stdvec(&Lang::Vi).unwrap(), [0]);
         assert_eq!(postcard::to_stdvec(&Lang::En).unwrap(), [1]);
@@ -311,6 +371,8 @@ mod tests {
             lang: Lang::Vi,
             text: "a".into(),
             voice: None,
+            speed: None,
+            pause_scale: None,
         };
         assert!(ok.validate().is_ok());
         let empty = Request::Speak {
@@ -318,6 +380,8 @@ mod tests {
             lang: Lang::Vi,
             text: "  \n".into(),
             voice: None,
+            speed: None,
+            pause_scale: None,
         };
         assert!(empty.validate().is_err());
         let long = Request::Speak {
@@ -325,6 +389,8 @@ mod tests {
             lang: Lang::En,
             text: "a".repeat(MAX_TEXT_BYTES + 1),
             voice: None,
+            speed: None,
+            pause_scale: None,
         };
         assert!(long.validate().is_err());
         let voice = Request::Speak {
@@ -332,6 +398,8 @@ mod tests {
             lang: Lang::En,
             text: "a".into(),
             voice: Some("v".repeat(MAX_VOICE_BYTES + 1)),
+            speed: None,
+            pause_scale: None,
         };
         assert!(voice.validate().is_err());
         assert!(Request::Shutdown.validate().is_ok());
@@ -350,6 +418,8 @@ mod tests {
             lang: Lang::Vi,
             text: "bí mật cuộc họp".into(),
             voice: None,
+            speed: None,
+            pause_scale: None,
         };
         assert!(!format!("{r:?}").contains("bí mật"));
         let a = Response::Audio {
@@ -373,5 +443,68 @@ mod tests {
         )
         .unwrap();
         assert!(buf.len() <= MAX_FRAME_BYTES as usize + 4);
+    }
+
+    fn speak_with(speed: Option<f32>, pause_scale: Option<f32>) -> Request {
+        Request::Speak {
+            id: 1,
+            lang: Lang::Vi,
+            text: "a".into(),
+            voice: None,
+            speed,
+            pause_scale,
+        }
+    }
+
+    #[test]
+    fn speak_roundtrip_with_new_fields() {
+        roundtrip(Request::Speak {
+            id: 9,
+            lang: Lang::En,
+            text: "Hello".into(),
+            voice: Some("B".into()),
+            speed: Some(1.25),
+            pause_scale: Some(0.5),
+        });
+        assert!(
+            speak_with(Some(*SPEED_RANGE.start()), Some(*PAUSE_RANGE.end()))
+                .validate()
+                .is_ok()
+        );
+        assert!(
+            speak_with(Some(*SPEED_RANGE.end()), Some(*PAUSE_RANGE.start()))
+                .validate()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn list_voices_roundtrip() {
+        roundtrip(Request::ListVoices { id: 3 });
+        roundtrip(Response::Voices {
+            id: 3,
+            names: vec!["A".into(), "Minh Quân".into()],
+            default: "A".into(),
+        });
+        assert!(Request::ListVoices { id: 3 }.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_out_of_range_speed() {
+        for v in [0.79, 1.31, f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert!(speak_with(Some(v), None).validate().is_err(), "speed {v}");
+        }
+    }
+
+    #[test]
+    fn validate_rejects_out_of_range_pause() {
+        for v in [0.49, 2.01, f32::NAN, f32::INFINITY] {
+            assert!(speak_with(None, Some(v)).validate().is_err(), "pause {v}");
+        }
+    }
+
+    #[test]
+    fn ready_reports_protocol_3() {
+        assert_eq!(PROTOCOL_VERSION, 3);
     }
 }

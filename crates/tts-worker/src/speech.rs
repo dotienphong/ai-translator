@@ -132,9 +132,30 @@ pub fn babble_prefer(new: &Babble, old: &Babble) -> bool {
     new.bursts < old.bursts || (new.bursts == old.bursts && new.n_frames < old.n_frames)
 }
 
+/// Khoảng nghỉ tối thiểu sau đoạn `prev_text` (giây): sau dấu kết câu `.`/`!`/`?` là [`GAP_SENTENCE_S`], còn lại
+/// [`GAP_MINOR_S`]; nhân `scale` (hệ số nghỉ của người dùng, 1.0 giữ nguyên).
+pub fn gap_seconds(prev_text: &str, scale: f32) -> f32 {
+    let base = if prev_text.trim_end().ends_with(['.', '!', '?']) {
+        GAP_SENTENCE_S
+    } else {
+        GAP_MINOR_S
+    };
+    base * scale
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gap_scales_sentence_and_minor_pauses() {
+        assert_eq!(gap_seconds("Xin chào.", 2.0), 1.0);
+        assert_eq!(gap_seconds("Xin chào,", 0.5), 0.15);
+        assert_eq!(gap_seconds("Xin chào!  ", 1.0), GAP_SENTENCE_S);
+        assert_eq!(gap_seconds("Thật sao? ", 1.0), 0.50);
+        assert_eq!(gap_seconds("Xin chào,", 1.0), 0.30);
+        assert_eq!(gap_seconds("Xin chào", 1.0), GAP_MINOR_S);
+    }
 
     #[test]
     fn silence_edges_and_pad() {

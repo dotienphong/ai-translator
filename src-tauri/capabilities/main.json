@@ -79,6 +79,8 @@
     "allow-tts-speak",
     "allow-tts-cancel",
     "allow-tts-mark-playing",
-    "allow-tts-stop"
+    "allow-tts-stop",
+    "allow-tts-list-voices",
+    "allow-tts-preview"
   ]
 }
