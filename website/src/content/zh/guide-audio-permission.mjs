@@ -58,7 +58,7 @@ ${docLayout({
   tocTitle: "本指南内容",
   body: `
 <h2 id="which-permission">应用需要什么权限？</h2>
-<p>AI Translator 采集电脑上正在播放的音频（会议声音、视频、网络研讨会），以便识别和翻译。所以 macOS 要求<strong>系统音频录制</strong>权限。使用默认来源（<strong>电脑音频</strong>）时，应用不会打开麦克风；只有在你选择<strong>麦克风</strong>或<strong>电脑音频 + 麦克风</strong>时才会打开（见<a href="#microphone-permission">麦克风权限</a>）。应用不会把会议保存到磁盘：翻译时音频只留在内存中。Windows 没有系统音频的权限步骤。</p>
+<p>AI Translator 采集电脑上正在播放的音频（会议声音、视频、网络研讨会），以便识别和翻译。所以 macOS 要求<strong>系统音频录制</strong>权限。新安装默认选择<strong>电脑音频 + 麦克风</strong>，所以应用也会打开麦克风（见<a href="#microphone-permission">麦克风权限</a>）；如果不需要麦克风，请在设置 › 音频中选择<strong>电脑音频</strong>，应用就不会打开麦克风。之前已安装的用户保留他们原来选择的来源。应用不会把会议保存到磁盘：翻译时音频只留在内存中。Windows 没有系统音频的权限步骤。</p>
 ${facts([
   ["权限", "系统音频录制"],
   ["在哪里重新开启", "系统设置 › 隐私与安全性 › 屏幕与系统音频录制 › 仅系统音频录制"],

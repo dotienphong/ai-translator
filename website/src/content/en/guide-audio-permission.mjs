@@ -60,7 +60,7 @@ ${docLayout({
   tocTitle: "In this guide",
   body: `
 <h2 id="which-permission">Which permission does the app need?</h2>
-<p>AI Translator captures the audio playing on your computer (meeting sound, a video, a webinar) so it can recognize and translate it. That is why macOS requires the <strong>System Audio Recording</strong> permission. With the default source (<strong>Computer audio</strong>) the app does not open the microphone; it opens the microphone only when you choose <strong>Microphone</strong> or <strong>Computer audio + Microphone</strong> (see <a href="#microphone-permission">Microphone permission</a>). The app does not save the meeting to disk: audio stays in memory while it translates. Windows has no system audio permission step.</p>
+<p>AI Translator captures the audio playing on your computer (meeting sound, a video, a webinar) so it can recognize and translate it. That is why macOS requires the <strong>System Audio Recording</strong> permission. A new install is preselected to <strong>Computer audio + Microphone</strong>, so the app also opens the microphone (see <a href="#microphone-permission">Microphone permission</a>); choose <strong>Computer audio</strong> in Settings › Audio › Capture from if you do not need it, and the app will not open the microphone. People who installed earlier keep the source they already chose. The app does not save the meeting to disk: audio stays in memory while it translates. Windows has no system audio permission step.</p>
 ${facts([
   ["Permission", "System Audio Recording"],
   ["Where to turn it back on", "System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only"],

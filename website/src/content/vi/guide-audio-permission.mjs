@@ -60,7 +60,7 @@ ${docLayout({
   tocTitle: "Trong bài này",
   body: `
 <h2 id="quyen-nao">App cần quyền nào?</h2>
-<p>AI Translator thu âm thanh đang phát từ máy tính (tiếng của cuộc họp, video, webinar) để nhận dạng và dịch. Vì vậy macOS yêu cầu quyền <strong>Ghi âm thanh hệ thống</strong>. Với nguồn mặc định (<strong>Âm thanh máy</strong>), app không mở micro; app chỉ mở micro khi bạn chọn nguồn <strong>Micro</strong> hoặc <strong>Âm thanh máy + Micro</strong> (xem <a href="#quyen-micro">Quyền Micro</a>). App không ghi âm cuộc họp xuống đĩa: âm thanh chỉ nằm trong RAM trong lúc dịch. Windows không có bước cấp quyền ghi âm thanh hệ thống.</p>
+<p>AI Translator thu âm thanh đang phát từ máy tính (tiếng của cuộc họp, video, webinar) để nhận dạng và dịch. Vì vậy macOS yêu cầu quyền <strong>Ghi âm thanh hệ thống</strong>. Máy cài mới chọn sẵn nguồn <strong>Âm thanh máy + Micro</strong>, nên app cũng mở micro (xem <a href="#quyen-micro">Quyền Micro</a>); chọn nguồn <strong>Âm thanh máy</strong> ở Cài đặt › Âm thanh › Thu từ nếu bạn không cần micro, khi đó app không mở micro. Người dùng đã cài từ trước giữ nguồn họ đã chọn. App không ghi âm cuộc họp xuống đĩa: âm thanh chỉ nằm trong RAM trong lúc dịch. Windows không có bước cấp quyền ghi âm thanh hệ thống.</p>
 ${facts([
   ["Tên quyền", "Ghi âm thanh hệ thống (System Audio Recording)"],
   ["Vị trí bật lại", "System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording › System Audio Recording Only"],

@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.11, hiệu lực từ 01/11/2026.**
+**Phiên bản 1.12, hiệu lực từ 04/11/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -8,7 +8,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 
 ## 2. Tóm tắt
 
-- Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi bạn chọn nguồn có micro, ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
+- Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi nguồn thu có micro (máy cài mới chọn sẵn **Âm thanh máy + Micro**), ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
 - Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
 - **Gợi ý bật dịch khi có cuộc họp** (Windows; bật mặc định, tắt ở Cài đặt › Chung): ứng dụng kiểm tra **ngay trên máy bạn** xem Teams, Zoom hoặc Google Meet có đang họp và có tiếng không để hiện gợi ý "Bật dịch?". Không lưu, không ghi vào log, không gửi gì đi, và không tự bật dịch khi bạn chưa bấm.
 - **Phân biệt người nói** (hiện chỉ có trên macOS, Windows chưa có tính năng này; bật mặc định, tắt được ở Cài đặt › Phụ đề › Người nói): ứng dụng tạm thời phân tích đặc điểm giọng ngay trên máy để biết câu nào do cùng một người nói và hiện nhãn "Người 1", "Người 2". Đặc điểm giọng **chỉ nằm trong bộ nhớ RAM, tự xóa khi hết phiên, không ghi xuống đĩa, không gửi đi**, và ứng dụng không dùng nó để xác định danh tính ai (mục 3). Trên macOS, ứng dụng còn đọc **tên người tham dự hiển thị trên cửa sổ cuộc họp Microsoft Teams bản cài** để gắn tên vào phụ đề (mục 3).
@@ -42,7 +42,7 @@ Trên macOS, Gõ dịch có thể xin quyền **Trợ năng** (Accessibility) đ
 
 Cũng trên macOS, việc hiện tên người nói dùng quyền **Trợ năng** để đọc tên người tham dự trên cửa sổ cuộc họp Microsoft Teams. Ứng dụng chỉ đọc cửa sổ cuộc họp của Teams (không đọc cửa sổ hay ứng dụng khác), chỉ lấy tên hiển thị, trạng thái mic và dấu "đang nói", và không bấm hay gõ gì trong Teams. Để đọc được, ứng dụng bật chế độ trợ năng của Teams trong lúc dịch một cuộc họp; **chế độ trợ năng của Teams còn bật tới khi Teams được khởi động lại** (không tốn gì khi không ai đọc). Nếu bạn không cấp quyền, hay tắt "Lấy tên từ Teams" ở Cài đặt › Phụ đề › Người nói, ứng dụng vẫn phân biệt người nói bằng màu và nhãn "Người 1", "Người 2". Sau mỗi lần cập nhật ứng dụng, macOS có thể đòi cấp lại quyền Trợ năng. Windows chưa có tính năng phân biệt người nói và đọc tên.
 
-Ứng dụng chỉ dùng micro khi bạn chọn nguồn **Micro** hoặc **Âm thanh máy + Micro** ở Cài đặt › Âm thanh; nguồn mặc định, **Âm thanh máy**, không mở micro. Khi bạn chọn nguồn có micro, macOS hỏi quyền **Micro**; trên Windows, việc ứng dụng dùng micro theo cài đặt quyền riêng tư về micro của Windows. Trong lúc phiên dịch chạy, ứng dụng thu micro liên tục, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp**: việc đó chỉ chặn tiếng của bạn tới người cùng họp, không chặn ứng dụng này. Hệ điều hành báo khi có ứng dụng đang dùng micro (trên macOS là chấm màu cam ở thanh menu). Muốn ứng dụng ngừng thu micro, hãy bấm Dừng. Micro có thể thu giọng của người khác ở gần bạn; hãy xin phép họ khi cần (EULA mục 6).
+Ứng dụng chỉ dùng micro khi nguồn thu là **Micro** hoặc **Âm thanh máy + Micro** (Cài đặt › Âm thanh). **Máy cài mới chọn sẵn nguồn Âm thanh máy + Micro**, nên ứng dụng dùng micro ngay từ phiên dịch đầu tiên; bạn đổi sang **Âm thanh máy** (không mở micro) ở Cài đặt › Âm thanh bất cứ lúc nào, và người dùng đã cài từ trước giữ nguồn họ đã chọn. Khi nguồn thu có micro, macOS hỏi quyền **Micro**; trên Windows, việc ứng dụng dùng micro theo cài đặt quyền riêng tư về micro của Windows. Trong lúc phiên dịch chạy, ứng dụng thu micro liên tục, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp**: việc đó chỉ chặn tiếng của bạn tới người cùng họp, không chặn ứng dụng này. Hệ điều hành báo khi có ứng dụng đang dùng micro (trên macOS là chấm màu cam ở thanh menu). Muốn ứng dụng ngừng thu micro, hãy bấm Dừng. Micro có thể thu giọng của người khác ở gần bạn; hãy xin phép họ khi cần (EULA mục 6).
 
 ## 4. Khi nào ứng dụng kết nối mạng
 
