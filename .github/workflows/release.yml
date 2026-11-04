@@ -61,7 +61,7 @@ jobs:
   # đặt reviewers ở `release`). Mọi job có secret đều đứng sau job này qua chuỗi `needs`.
   gate:
     name: "0: cổng phát hành (commit thuộc main)"
-    runs-on: macos-26
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: release-gate
     steps:
@@ -479,7 +479,7 @@ jobs:
   update-signatures:
     name: "Chữ ký bản cập nhật (secret, không biên dịch)"
     needs: [macos-sign-app, windows-bundle]
-    runs-on: macos-26
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
     steps:
@@ -524,7 +524,7 @@ jobs:
     name: "Đăng bản lên R2 (secret, không biên dịch)"
     needs: update-signatures
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
-    runs-on: macos-26
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: release
     outputs:
@@ -576,7 +576,7 @@ jobs:
   github-release:
     name: "Bản nháp GitHub Release (không secret)"
     needs: publish
-    runs-on: macos-26
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
