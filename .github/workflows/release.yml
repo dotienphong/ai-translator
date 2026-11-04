@@ -130,7 +130,7 @@ jobs:
         with:
           node-version-file: .node-version
       # Artifact của job không secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (QA của review 07a lần 2).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-sidecars
           path: ${{ runner.temp }}/in/macos-sidecars
@@ -171,11 +171,11 @@ jobs:
         run: rustup toolchain install
       - name: protoc
         run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-sidecars-signed
           path: src-tauri/binaries
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-sidecars
           path: target/release-work/unsigned
@@ -220,15 +220,15 @@ jobs:
         with:
           node-version-file: .node-version
       # Artifact của job không secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (QA của review 07a lần 2).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-sidecars-signed
           path: ${{ runner.temp }}/in/macos-sidecars-signed
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-app
           path: ${{ runner.temp }}/in/macos-app
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-sidecars
           path: ${{ runner.temp }}/in/macos-sidecars
@@ -340,7 +340,7 @@ jobs:
         with:
           node-version-file: .node-version
       # Artifact của job không secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (QA của review 07a lần 2).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-sidecars
           path: ${{ runner.temp }}/in/windows-sidecars
@@ -380,11 +380,11 @@ jobs:
         run: rustup toolchain install
       - name: protoc
         run: node scripts/release/install-tools.mjs protoc --dest "$RUNNER_TEMP/protoc"
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-sidecars-signed
           path: src-tauri/binaries
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-sidecars
           path: target/release-work/unsigned
@@ -432,15 +432,15 @@ jobs:
       - name: Rust theo rust-toolchain.toml (tauri bundle đọc cargo metadata, không biên dịch)
         run: rustup toolchain install
       # Artifact của job không secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (QA của review 07a lần 2).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-sidecars-signed
           path: ${{ runner.temp }}/in/windows-sidecars-signed
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-app
           path: ${{ runner.temp }}/in/windows-app
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-sidecars
           path: ${{ runner.temp }}/in/windows-sidecars
@@ -493,11 +493,11 @@ jobs:
       # Artifact của hai job đóng gói, tải theo đúng tên vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (QA của
       # review 07a lần 2). Không tải theo `pattern`: một job bị chiếm có thể đăng thêm artifact khớp mẫu chứa bộ cài giả,
       # và `merge-multiple` để nó ghi đè bộ cài thật trước khi ký (Q-1 của review 07a lần 3).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-arm64
           path: ${{ runner.temp }}/in/macos-arm64
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-x64
           path: ${{ runner.temp }}/in/windows-x64
@@ -550,7 +550,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then tag="$GITHUB_REF_NAME"; else tag="v$(node -p 'require("./src-tauri/tauri.conf.json").version')"; fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       # Như mọi job có secret: tải vào thư mục trống ngoài checkout, chỉ nhận file đúng tên (07a QĐ29).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release
           path: ${{ runner.temp }}/in/release
@@ -587,7 +587,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release
           path: ${{ runner.temp }}/in/release
