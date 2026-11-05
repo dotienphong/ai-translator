@@ -35,7 +35,10 @@ export interface UpgradeViewProps {
   busy: boolean;
   // Giờ hiện tại (giây Unix): đơn thẻ quá `checkout.expiresAt` mà còn chờ thì báo "đã quá giờ hẹn trả".
   now: number;
-  onStart(plan: string, email: string, consent: boolean, renew: boolean, currency: PayCurrency): void;
+  // Server đang chào tự động gia hạn cho đơn thẻ (spec 2026-11-05 D3). Tắt hay chưa biết: ô đồng ý không hiện, đơn là trả một lần.
+  autoRenewAvailable?: boolean;
+  // `autoRenew`: ô "Tự động gia hạn" đang tích (chỉ có thể true với đơn thẻ khi server chào).
+  onStart(plan: string, email: string, consent: boolean, renew: boolean, currency: PayCurrency, autoRenew: boolean): void;
   onOpenPage(): void;
   onCancel(): void;
 }
@@ -49,6 +52,7 @@ export function UpgradeView({
   error,
   busy,
   now,
+  autoRenewAvailable = false,
   onStart,
   onOpenPage,
   onCancel,
@@ -62,6 +66,9 @@ export function UpgradeView({
   // Ô đồng ý gắn với loại tiền lúc tick: câu đồng ý của thẻ khác câu của VietQR (email gửi cho Creem), nên đổi cách trả thì
   // phải tick lại cho đúng câu đang hiện.
   const [consentFor, setConsentFor] = useState<PayCurrency | null>(null);
+  // Khách bỏ tích ô "Tự động gia hạn" (mặc định tích sẵn, spec 2026-11-05 D2): gắn với gói và loại tiền lúc bỏ tích không cần,
+  // vì ô chỉ có một trạng thái; đổi gói hay cách trả không đặt lại lựa chọn của khách.
+  const [autoRenewOff, setAutoRenewOff] = useState(false);
   const renew = isRenewal(view);
   const current = view?.plan ?? "free";
   // Đang có đơn chờ trả: gói và cách trả là của đơn đó và bị khóa (không theo lựa chọn cục bộ hay ngôn ngữ giao diện: đổi màn
@@ -75,6 +82,11 @@ export function UpgradeView({
   const card = currency === "USD";
   const consent = consentFor === currency;
   const browser = checkout !== null && isBrowserOrder(checkout);
+  // Ô tự động gia hạn: chỉ đơn thẻ khi server chào và gói đang chọn có giá USD; hiện kèm số tiền và chu kỳ của gói đó.
+  const offer = plans?.find((p) => p.code === plan);
+  const offerUsd = offer === undefined ? null : priceOf(offer, "USD");
+  const autoOffered = card && autoRenewAvailable && offer !== undefined && offerUsd !== null;
+  const autoRenew = autoOffered && !autoRenewOff;
   const planList = (
     <ul className="plans">
       <li className="plan">
@@ -227,7 +239,7 @@ export function UpgradeView({
               className="card"
               onSubmit={(e) => {
                 e.preventDefault();
-                onStart(plan, email, consent, renew, currency);
+                onStart(plan, email, consent, renew, currency, autoRenew);
               }}
             >
               {renew && (
@@ -244,6 +256,19 @@ export function UpgradeView({
                 <input type="checkbox" checked={consent} onChange={(e) => setConsentFor(e.target.checked ? currency : null)} />
                 <span>{t(card ? "upgrade.consentCard" : "upgrade.consent")}</span>
               </label>
+              {/* Tự động gia hạn (thẻ): tích sẵn; câu nói rõ số tiền, chu kỳ, kỳ đầu hôm nay và cách hủy trước khi khách trả. */}
+              {autoOffered && offer !== undefined && (
+                <label className="consent auto-renew">
+                  <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenewOff(!e.target.checked)} />
+                  <span>
+                    {t("upgrade.autoRenew", {
+                      price: formatPrice(offerUsd ?? 0, "USD"),
+                      days: offer.days_per_order,
+                    })}
+                  </span>
+                </label>
+              )}
+              {autoOffered && <p className="hint">{t(autoRenew ? "upgrade.autoRenewNote" : "upgrade.autoRenewOffNote")}</p>}
               <LegalDetails kind="privacy" />
               {/* Đơn thẻ: điều khoản bán hàng (EULA) ngay cạnh, cho người dùng bản cũ chưa thấy EULA mới (điều khoản Creem 3.7). */}
               {card && <LegalDetails kind="eula" />}

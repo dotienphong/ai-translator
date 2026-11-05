@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import type { CheckoutView, Device, Ipc, LicenseView, OrderOutcome, PlanOffer } from "../lib/ipc";
+import type { CheckoutView, Device, Ipc, LicenseView, OrderOutcome, PlanOffer, SubscriptionView } from "../lib/ipc";
 import type { PayCurrency } from "../lib/license";
 import { type UiError, toUiError } from "./app";
 
@@ -11,6 +11,10 @@ export interface LicenseStoreState {
   // Key người dùng vừa gõ đang dùng ở máy khác (`409 key_in_use`): danh sách máy để gỡ máy kia hay "Vẫn kích hoạt".
   devices: Device[] | null;
   plans: PlanOffer[] | null;
+  // Server đang chào tự động gia hạn (từ bảng gói); chưa tải bảng thì false.
+  autoRenewAvailable: boolean;
+  // Trạng thái tự động gia hạn của key đang dùng; null: chưa tải hay chưa có key.
+  subscription: SubscriptionView | null;
   checkout: CheckoutView | null;
   order: OrderOutcome | null;
   error: UiError | null;
@@ -26,7 +30,18 @@ export interface LicenseStoreState {
   deactivate(): Promise<void>;
   validate(): Promise<void>;
   loadPlans(): Promise<void>;
-  startCheckout(plan: string, email: string, consent: boolean, renew: boolean, currency: PayCurrency): Promise<boolean>;
+  startCheckout(
+    plan: string,
+    email: string,
+    consent: boolean,
+    renew: boolean,
+    currency: PayCurrency,
+    autoRenew?: boolean,
+  ): Promise<boolean>;
+  // Đọc trạng thái tự động gia hạn của key (không qua `busy`: chỉ đọc, lỗi thì không hiện dòng này, màn Bản quyền vẫn dùng được).
+  loadSubscription(): Promise<void>;
+  // Nút "Quản lý": phía Rust xin link ở server rồi mở bằng trình duyệt.
+  manageSubscription(): Promise<void>;
   openCheckoutPage(): Promise<void>;
   cancelCheckout(): Promise<void>;
   recover(email: string): Promise<boolean>;
@@ -55,8 +70,8 @@ export function createLicenseStore(ipc: Ipc) {
 
     async function fetchPlans(): Promise<void> {
       try {
-        const { plans } = await ipc.invoke("get_plans");
-        set({ plans, error: null });
+        const { plans, autoRenewAvailable } = await ipc.invoke("get_plans");
+        set({ plans, autoRenewAvailable: autoRenewAvailable === true, error: null });
       } catch (e) {
         set({ error: toUiError(e) });
       }
@@ -70,6 +85,8 @@ export function createLicenseStore(ipc: Ipc) {
       view: null,
       devices: null,
       plans: null,
+      autoRenewAvailable: false,
+      subscription: null,
       checkout: null,
       order: null,
       error: null,
@@ -138,10 +155,25 @@ export function createLicenseStore(ipc: Ipc) {
         return plansLoad;
       },
 
-      startCheckout(plan, email, consent, renew, currency) {
+      startCheckout(plan, email, consent, renew, currency, autoRenew = false) {
         return run(async () => {
-          set({ checkout: await ipc.invoke("start_checkout", { plan, email, consent, renew, currency }), order: null });
+          // `autoRenew` chỉ gửi khi khách tích ô: đơn trả một lần giữ nguyên lời gọi cũ.
+          const args = { plan, email, consent, renew, currency, ...(autoRenew ? { autoRenew: true } : {}) };
+          set({ checkout: await ipc.invoke("start_checkout", args), order: null });
         });
+      },
+
+      async loadSubscription() {
+        try {
+          set({ subscription: await ipc.invoke("get_subscription") });
+        } catch {
+          // Không đọc được (mất mạng, server cũ): không có dòng trạng thái, không báo lỗi cho một dòng phụ.
+          set({ subscription: null });
+        }
+      },
+
+      async manageSubscription() {
+        await run(() => ipc.invoke("manage_subscription").then(() => {}));
       },
 
       async openCheckoutPage() {

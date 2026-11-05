@@ -17,11 +17,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "Tôi có thể trả bằng thẻ quốc tế không?",
-    a: "<p>Có. Màn hình Nâng cấp trong app có hai cách trả: <strong>chuyển khoản VietQR bằng VND</strong> (từ ngân hàng Việt Nam, qua cổng PayOS) hoặc <strong>thẻ quốc tế bằng USD</strong> (Monthly 3,99 USD, 6 Months 21,99 USD, Yearly 39,99 USD, chưa gồm thuế). Với thẻ, app mở trang thanh toán của Creem trong trình duyệt của bạn; trả xong thì quay lại app, gói tự kích hoạt. Creem là bên bán lại (merchant of record) của đơn trả bằng thẻ và xử lý thanh toán, thuế của khoản đó; điều khoản người mua của Creem: <a href=\"https://www.creem.io/buyer-terms\" rel=\"noopener\">https://www.creem.io/buyer-terms</a>. Chưa có thanh toán định kỳ. Gói Free dùng thử không cần phương thức thanh toán.</p>",
+    a: "<p>Có. Màn hình Nâng cấp trong app có hai cách trả: <strong>chuyển khoản VietQR bằng VND</strong> (từ ngân hàng Việt Nam, qua cổng PayOS) hoặc <strong>thẻ quốc tế bằng USD</strong> (Monthly 3,99 USD, 6 Months 21,99 USD, Yearly 39,99 USD, chưa gồm thuế). Với thẻ, app mở trang thanh toán của Creem trong trình duyệt của bạn; trả xong thì quay lại app, gói tự kích hoạt. Creem là bên bán lại (merchant of record) của đơn trả bằng thẻ và xử lý thanh toán, thuế của khoản đó; điều khoản người mua của Creem: <a href=\"https://www.creem.io/buyer-terms\" rel=\"noopener\">https://www.creem.io/buyer-terms</a>. Thanh toán định kỳ là tùy chọn của đơn thẻ (ô Tự động gia hạn). Gói Free dùng thử không cần phương thức thanh toán.</p>",
   },
   {
     q: "Gói có tự động gia hạn không?",
-    a: "<p>Không. Mỗi gói là một đơn trả trước, hết hạn thì dừng. App nhắc bạn trước 7 ngày; bạn gia hạn khi muốn. Gia hạn cùng gói sẽ cộng thêm 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn.</p>",
+    a: "<p>Tùy cách trả. Đơn VietQR là một đơn trả trước, hết hạn thì dừng. Với thẻ quốc tế, màn hình thanh toán có ô <strong>Tự động gia hạn</strong> được tích sẵn: để nguyên thì Creem trừ thẻ của bạn mỗi kỳ (30 ngày với Monthly, 180 ngày với 6 Months, 365 ngày với Yearly) cho tới khi bạn hủy; bỏ tích thì bạn trả một lần. Hủy bất cứ lúc nào ở Cài đặt › Bản quyền › Quản lý tự động gia hạn: kỳ đã trả vẫn dùng tới hết hạn và bạn không bị trừ tiền thêm. Key đang tự động gia hạn thì chưa mua thêm hay đổi gói được cho tới khi bạn hủy. App nhắc bạn trước 7 ngày. Gia hạn thủ công cùng gói sẽ cộng thêm 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn.</p>",
   },
   {
     q: "Tôi dùng được key trên mấy máy?",
@@ -59,7 +59,7 @@ export default {
   llm: "Bảng giá bốn gói (Free dùng thử 10 ngày, Monthly 50.000 đ, 6 Months 269.000 đ, Yearly 500.000 đ), cách tính thời lượng, cách mua bằng VietQR (VND) hoặc thẻ quốc tế (USD), đổi gói, hoàn tiền và câu hỏi về giá.",
   llmTitle: "Bảng giá AI Translator",
   body: () => `
-${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, không tự gia hạn", lead: "Dùng thử miễn phí 10 ngày, rồi chọn Monthly, 6 Months hoặc Yearly khi bạn thấy hữu ích. Bắt đầu thanh toán ngay trong app, bằng VietQR hoặc thẻ quốc tế (với thẻ, bạn trả xong ở trình duyệt), rồi nhận key qua email." })}
+${pageHero({ crumbs, title: "Bảng giá đơn giản: trả trước, tự động gia hạn là tùy chọn", lead: "Dùng thử miễn phí 10 ngày, rồi chọn Monthly, 6 Months hoặc Yearly khi bạn thấy hữu ích. Bắt đầu thanh toán ngay trong app, bằng VietQR hoặc thẻ quốc tế (với thẻ, bạn trả xong ở trình duyệt), rồi nhận key qua email." })}
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">Các gói và giá</h2>
@@ -123,7 +123,7 @@ ${steps([
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "Gia hạn và đổi gói", title: "Linh hoạt, tính theo giá mỗi ngày", center: true })}
 <div class="grid grid-2">
-<div class="card reveal"><h3>Gia hạn cùng gói</h3><p>Mua thêm cùng gói thì được cộng 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn. App nhắc bạn trước 7 ngày và khi đã hết hạn. Không có tự động trừ tiền.</p></div>
+<div class="card reveal"><h3>Gia hạn cùng gói</h3><p>Mua thêm cùng gói thì được cộng 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn. App nhắc bạn trước 7 ngày và khi đã hết hạn. Đơn VietQR không tự trừ tiền; với đơn thẻ, bạn có thể bật tự động gia hạn (ô tích sẵn) và hủy bất cứ lúc nào.</p></div>
 <div class="card reveal"><h3>Đổi gói khi còn hạn</h3><p>Gói mới bắt đầu ngay; số ngày còn lại của gói cũ được quy đổi theo <strong>giá mỗi ngày</strong> và làm tròn xuống. Ví dụ tính theo giá VND (khi trả bằng USD, công thức dùng giá USD của cả hai gói nên số ngày có thể khác; ở ví dụ này chỉ lệch tối đa một ngày): Monthly còn 20 ngày, mua Yearly thì được cộng 24 ngày (Yearly chạy 389 ngày), còn mua 6 Months thì được cộng 22 ngày (6 Months chạy 202 ngày). App hiện sẵn số ngày quy đổi và ngày hết hạn mới (ước tính) trước khi bạn trả tiền. Đổi gói không hoàn tiền.</p></div>
 </div>
 ${callout({ title: "Khi hết hạn", text: "Máy quay về Free nếu còn trong 10 ngày dùng thử; hết dùng thử thì cần mua gói để dịch tiếp. Tính năng Pro (lịch sử, từ điển, xuất file) bị khóa khi không còn gói trả phí." })}

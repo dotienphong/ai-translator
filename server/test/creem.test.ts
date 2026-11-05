@@ -4,7 +4,7 @@ import { creemReaderFromEnv, realAdminDeps } from "../src/admin-deps";
 import { hmacSha256Hex } from "../src/crypto";
 import { creemFromEnv, type Deps, realDeps } from "../src/deps";
 import type { AdminEnv, ApiEnv } from "../src/env";
-import { CREEM_CHECKOUT_HOST, CreemProvider, parseProductIds } from "../src/payment/creem";
+import { CREEM_CHECKOUT_HOST, CreemProvider, parseProductIds, parseSubscriptionProductIds } from "../src/payment/creem";
 import { PaymentProviderError } from "../src/payment/provider";
 import type { PlanCode } from "../src/plans";
 import { FakeCreem, TEST_CREEM_API_KEY, TEST_CREEM_PRODUCTS, TEST_CREEM_WEBHOOK_SECRET } from "./fakes";
@@ -366,6 +366,45 @@ describe("Creem: cấu hình", () => {
     const p = creemFromEnv({ ...full, CREEM_PRODUCT_IDS: productIds });
     expect(p?.name).toBe("creem");
     expect(p?.sells).toBe(false);
+  });
+
+  describe("thuê bao tự gia hạn (spec 2026-11-05 D2, D3)", () => {
+    const subIds = { monthly: "prod_sub111", six_months: "prod_sub222", yearly: "prod_sub333" };
+    const withSub = (patch: Record<string, unknown>) => ({ ...full, CREEM_SUBSCRIPTION_PRODUCT_IDS: subIds, CREEM_AUTO_RENEW: "on", ...patch });
+
+    it("công tắc bật và đủ ba mã thuê bao khác mã một lần: chào thuê bao", () => {
+      expect(creemFromEnv(withSub({}))?.subscribes).toBe(true);
+    });
+
+    it.each([
+      ["công tắc tắt", { CREEM_AUTO_RENEW: "off" }],
+      ["thiếu công tắc", { CREEM_AUTO_RENEW: undefined }],
+      ["công tắc viết hoa (chỉ nhận đúng on)", { CREEM_AUTO_RENEW: "ON" }],
+      ["công tắc true", { CREEM_AUTO_RENEW: "true" }],
+      ["thiếu mã thuê bao", { CREEM_SUBSCRIPTION_PRODUCT_IDS: undefined }],
+      ["mã thuê bao chưa điền", { CREEM_SUBSCRIPTION_PRODUCT_IDS: { monthly: "", six_months: "", yearly: "" } }],
+      ["mã thuê bao điền dở", { CREEM_SUBSCRIPTION_PRODUCT_IDS: { ...subIds, yearly: "" } }],
+      ["hai mã thuê bao trùng nhau", { CREEM_SUBSCRIPTION_PRODUCT_IDS: { ...subIds, yearly: subIds.monthly } }],
+      ["một mã thuê bao trùng mã sản phẩm một lần (khách trả một lần mà tưởng là thuê bao)", { CREEM_SUBSCRIPTION_PRODUCT_IDS: { ...subIds, yearly: ids.yearly } }],
+    ])("%s: không chào thuê bao, nhưng vẫn bán một lần và vẫn xử lý webhook", (_why, patch) => {
+      const p = creemFromEnv(withSub(patch));
+      expect(p?.subscribes).toBe(false);
+      expect(p?.sells).toBe(true);
+    });
+
+    it("tắt công tắc không làm mất cổng: thuê bao của khách đã đăng ký vẫn được xử lý webhook", () => {
+      const p = creemFromEnv(withSub({ CREEM_AUTO_RENEW: "off", CREEM_PRODUCT_IDS: undefined }));
+      expect(p?.name).toBe("creem");
+      expect(p?.sells).toBe(false);
+      expect(p?.subscribes).toBe(false);
+    });
+
+    it("parseSubscriptionProductIds: cùng luật parseProductIds, và không mã nào trùng mã một lần", () => {
+      expect(parseSubscriptionProductIds(subIds, ids)).toEqual(subIds);
+      expect(parseSubscriptionProductIds(subIds, null)).toEqual(subIds);
+      expect(parseSubscriptionProductIds({ ...subIds, monthly: ids.six_months }, ids)).toBeNull();
+      expect(parseSubscriptionProductIds({ monthly: "", six_months: "", yearly: "" }, ids)).toBeNull();
+    });
   });
 
   it("realDeps: PayOS luôn có; cổng creem có khi có khóa API và secret webhook, bán khi đủ ba mã sản phẩm (không đọc mã sản phẩm của repo)", () => {

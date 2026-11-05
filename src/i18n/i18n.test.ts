@@ -234,6 +234,22 @@ describe("chữ màn hình Nâng cấp: cách trả bằng thẻ", () => {
     }
   });
 
+  it("tự động gia hạn (spec 2026-11-05): câu đồng ý nêu giá, chu kỳ và Creem; lời dặn chỉ đúng nút Quản lý của cùng ngôn ngữ", () => {
+    for (const lang of UI_LANGUAGES) {
+      expect([...placeholders(t(lang, "upgrade.autoRenew"))].sort(), lang).toEqual(["days", "price"]);
+      expect(t(lang, "upgrade.autoRenew"), lang).toContain("Creem");
+      expect(placeholders(t(lang, "upgrade.autoRenewNote")), lang).toEqual([]);
+      expect(placeholders(t(lang, "upgrade.autoRenewOffNote")), lang).toEqual([]);
+      // Khách đọc lời dặn rồi tìm nút: lời dặn phải gọi đúng tên nút ở Cài đặt › Bản quyền.
+      const manage = t(lang, "settings.license.autoRenew.manage");
+      expect(t(lang, "upgrade.autoRenewNote"), lang).toContain(manage);
+      expect(t(lang, "settings.license.autoRenew.problem"), lang).toContain(manage);
+      expect(t(lang, "error.licenseSubscriptionActive"), lang).toContain(manage);
+      expect(placeholders(t(lang, "settings.license.autoRenew.on")), lang).toEqual(["time"]);
+      expect(placeholders(t(lang, "settings.license.autoRenew.onNoDate")), lang).toEqual([]);
+    }
+  });
+
   it("en: câu nhờ liên hệ hỗ trợ của đơn đều gọi \"this order number\" (không lẫn \"order code\")", () => {
     for (const key of upgradeKeys) expect(en[key], key).not.toMatch(/order code/i);
     expect(en["upgrade.order.failedCard"]).toContain("this order number");

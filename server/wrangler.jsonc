@@ -34,6 +34,12 @@
     // không trả giá USD, POST /v1/checkout với currency USD trả 503, nhưng webhook Creem và đơn Creem đang chờ vẫn được xử lý.
     "CREEM_BASE_URL": "https://api.creem.io",
     "CREEM_PRODUCT_IDS": { "monthly": "prod_57yUG34lD35XDVFLLGA6nE", "six_months": "prod_4KnLuBCX1uqnJTEjL9utdD", "yearly": "prod_3tLlmFlWNKMR6xQonTQ1Wb" },
+    // Tự động gia hạn cho thẻ quốc tế (spec 2026-11-05-creem-tu-dong-gia-han-design). "on" mới chào thuê bao; mặc định "off" cho tới
+    // khi nghiệm thu bằng một đơn thật (docs/release/phat-hanh.md mục 18). CREEM_SUBSCRIPTION_PRODUCT_IDS: mã sản phẩm THUÊ BAO Creem
+    // (prod_…) của ba gói, khác hẳn ba mã trả một lần ở trên; cùng hai dạng như CREEM_PRODUCT_IDS (cả ba rỗng, hay cả ba prod_… khác
+    // nhau). Giá catalog của ba sản phẩm này phải bằng giá USD trong PLANS bên dưới.
+    "CREEM_AUTO_RENEW": "off",
+    "CREEM_SUBSCRIPTION_PRODUCT_IDS": { "monthly": "prod_2GgFvLAFZptu5fjaL2Y9F0", "six_months": "prod_2YVWwbifQtCZv3fGM7RH3N", "yearly": "prod_6rHlv6T6PsO1m4PZxscqhw" },
     // Tên miền gửi mail.aitranslator.vn phải xác thực ở Resend (SPF, DKIM) trước khi deploy; khách trả lời thư thì về EMAIL_REPLY_TO.
     "EMAIL_FROM": "AI Translator <no-reply@mail.aitranslator.vn>",
     "EMAIL_REPLY_TO": "support@aitranslator.vn",

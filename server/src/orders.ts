@@ -11,8 +11,19 @@ import { clientIp, fail, tooMany } from "./http";
 import type { Lang } from "./lang";
 import { formatLicenseKey, generateLicenseKey } from "./license-key";
 import type { WebhookEvent } from "./payment/provider";
-import { computeGrant, type GrantTerms, isPlan, PLAN_NAMES, type PlanCode, type PlanTable, parsePlans } from "./plans";
+import {
+  computeGrant,
+  DAY_SECONDS,
+  type GrantTerms,
+  isPlan,
+  PLAN_NAMES,
+  type PlanCode,
+  type PlanTable,
+  parsePlans,
+  SUBSCRIPTION_GRACE_DAYS,
+} from "./plans";
 import { hit } from "./ratelimit";
+import { handleSubscriptionEvent, linkSubscription } from "./subscriptions";
 
 export interface OrderRow {
   order_code: number;
@@ -87,6 +98,12 @@ export interface GrantOptions {
   paidAt?: number;
   amountPaid: number;
   actor: string;
+  /**
+   * Đơn gia hạn của thuê bao tự gia hạn (spec 2026-11-05 D7): hết kỳ Creem đã thu (giây Unix). Với đơn mua thêm cùng gói, hạn mới là
+   * max(hạn hiện có, hết kỳ + ân hạn) thay vì cộng thêm số ngày của gói, để tháng lịch của Creem không để hở hay cộng dồn. Không
+   * ảnh hưởng đơn license mới hay đổi gói.
+   */
+  subscriptionPeriodEnd?: number;
   /** Chỉ cho test: chạy sau khi đọc license, trước khi ghi, để giả lập một đơn khác ghi chen vào. */
   beforeCommit?: () => Promise<void>;
   /**
@@ -157,6 +174,9 @@ export async function grantOrder(
       from = { plan: cur.plan, expires_at: cur.expires_at };
       at = Math.max(opts.paidAt ?? opts.now, cur.cycle_anchor);
       terms = computeGrant(plans, cur, plan, order.currency, at);
+      if (opts.subscriptionPeriodEnd !== undefined && terms.kind === "extend") {
+        terms = { ...terms, expires_at: Math.max(cur.expires_at, opts.subscriptionPeriodEnd + SUBSCRIPTION_GRACE_DAYS * DAY_SECONDS) };
+      }
       // Chu kỳ được đặt lại (đổi gói, mua lại sau khi hết hạn): ghi lúc server áp thay đổi, là mốc của
       // quota_fresh (QĐ35). Không dùng cycle_anchor làm mốc, vì nó là lúc trả tiền và webhook có thể tới muộn.
       const anchorReset = terms.kind === "change" || terms.cycle_anchor !== cur.cycle_anchor;
@@ -370,6 +390,8 @@ export async function fulfilOrder(
     if (granted === "already_settled") return settledResult(await orderStatus(env.DB, orderCode));
     // Đơn chờ người vận hành: không gửi thư key.
     if (granted === "needs_review") return "needs_review";
+    // Đơn thuê bao: phiên mang mã thuê bao (đường đối soát, không có webhook): ghi thuê bao để kỳ sau được áp (spec 2026-11-05 D5).
+    if (st.subscription) await linkSubscription(env.DB, plans, now, orderCode, st.subscription);
     await mailGranted(env.DB, deps, env.ENVIRONMENT, order, granted);
     return "granted";
   }
@@ -733,9 +755,25 @@ export function registerOrders(app: Hono<AppEnv>) {
         return fail(c, 503, "temporarily_unavailable");
       }
     }
+    if (event.kind === "subscription") {
+      try {
+        const result = await handleSubscriptionEvent(c.env, deps, event);
+        // Chưa có thuê bao (sự kiện tới trước đơn đầu): 503 để Creem gửi lại (30 giây, 5 phút, 30 phút, 6 giờ).
+        if (result === "unknown_subscription") return fail(c, 503, "temporarily_unavailable");
+        return c.json({ ok: true, result });
+      } catch (err) {
+        console.error(JSON.stringify({ event: "webhook_subscription_failed", provider: name, error: String(err) }));
+        return fail(c, 503, "temporarily_unavailable");
+      }
+    }
     try {
       const hint = event.providerRef ? { provider: name, providerRef: event.providerRef } : undefined;
       const result = await fulfilOrder(c.env, deps, event.orderCode, "webhook", hint);
+      // Đơn thuê bao đã cấp: ghi thuê bao từ payload `checkout.completed` (idempotent; fulfilOrder đã ghi nếu phiên có mã thuê bao).
+      if (event.subscription && (result === "granted" || result === "already_paid")) {
+        const plans = parsePlans(c.env.PLANS);
+        if (plans) await linkSubscription(c.env.DB, plans, deps.now(), event.orderCode, event.subscription);
+      }
       // Cổng đặt reportUnknownOrder (Creem): mã đơn không có trong D1 thì người vận hành được báo như sự kiện không khớp đơn
       // (gửi lại cùng mã thì không ghi thêm). PayOS không đặt: mẫu confirm-webhook mang orderCode lạ, chỉ trả 200.
       if (result === "unknown_order" && event.reportUnknownOrder) {

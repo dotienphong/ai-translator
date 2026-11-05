@@ -99,9 +99,13 @@ pub struct PlanOffer {
 
 /// Bảng gói (`GET /v1/plans`). Server còn gửi `suggested_currency` (loại tiền gợi ý theo nước, cho app ≤ 0.2.2); app này chọn
 /// sẵn cách trả theo ngôn ngữ giao diện (spec 2026-10-22 §3.1) nên không đọc trường đó (serde bỏ qua trường lạ).
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 pub struct PlansReply {
     pub plans: Vec<PlanOffer>,
+    /// Server đang chào tự động gia hạn bằng thẻ (spec 2026-11-05 D3). Server cũ hay đang tắt tính năng: không có trường này,
+    /// tức `false`; app không hiện ô "Tự động gia hạn".
+    #[serde(default)]
+    pub auto_renew_available: bool,
 }
 
 /// Chuỗi rỗng là không có (`qr_code: ""` là đơn không có mã QR, không phải mã QR rỗng).
@@ -143,6 +147,22 @@ pub struct OrderStatus {
     pub grant_kind: Option<String>,
 }
 
+/// Trạng thái tự động gia hạn của một license (`POST /v1/subscription`, spec 2026-11-05). `portal_url` chỉ có khi xin quản lý
+/// (`manage`): link cổng khách hàng của Creem, nơi khách xem và hủy.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+pub struct SubscriptionInfo {
+    pub auto_renew: bool,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub plan: Option<String>,
+    /// Hết kỳ đã thu (giây Unix): kỳ sau trừ tiền vào khoảng này.
+    #[serde(default)]
+    pub renews_at: Option<i64>,
+    #[serde(default)]
+    pub portal_url: Option<String>,
+}
+
 /// Một response: kết quả, cùng header `Date` (giây Unix) nếu đọc được.
 pub struct Reply<T> {
     pub result: Result<T, ApiError>,
@@ -153,7 +173,8 @@ pub struct Reply<T> {
 pub trait LicenseApi: Send + Sync {
     fn plans(&self) -> Reply<PlansReply>;
     /// `currency`: `VND` (VietQR qua PayOS) hay `USD` (thẻ qua Creem; spec 2026-10-14 D4). `lang`: mã ngôn ngữ giao diện (`vi`,
-    /// `en`, `ja`, `zh`, `ko`), server lưu vào đơn để viết thư gửi key bằng ngôn ngữ đó (spec 2026-10-23).
+    /// `en`, `ja`, `zh`, `ko`), server lưu vào đơn để viết thư gửi key bằng ngôn ngữ đó (spec 2026-10-23). `auto_renew`: khách đã
+    /// tích ô tự động gia hạn (chỉ với `USD`, spec 2026-11-05); `false` thì thân request không có trường `auto_renew`.
     fn checkout(
         &self,
         plan: &str,
@@ -161,6 +182,7 @@ pub trait LicenseApi: Send + Sync {
         license_key: Option<&str>,
         currency: &str,
         lang: &str,
+        auto_renew: bool,
     ) -> Reply<Checkout>;
     fn order(&self, order_code: i64, order_token: &str) -> Reply<OrderStatus>;
     /// `allow_conflict`: người dùng đã chọn "Vẫn kích hoạt" khi key đang dùng ở máy khác (spec 2026-10-07 §4.2).
@@ -177,6 +199,8 @@ pub trait LicenseApi: Send + Sync {
     fn recover(&self, email: &str, lang: &str) -> Reply<()>;
     /// Đăng ký dùng thử của máy này, hay lấy lại token của lần đăng ký trước (spec 2026-10-07 §3.1).
     fn trial(&self, device_id_hash: &str) -> Reply<TrialGrant>;
+    /// Trạng thái tự động gia hạn của key (`POST /v1/subscription`, spec 2026-11-05). `manage`: xin thêm link cổng khách hàng.
+    fn subscription(&self, license_key: &str, manage: bool) -> Reply<SubscriptionInfo>;
 }
 
 /// Client HTTP thật.
@@ -337,10 +361,15 @@ impl LicenseApi for HttpApi {
         license_key: Option<&str>,
         currency: &str,
         lang: &str,
+        auto_renew: bool,
     ) -> Reply<Checkout> {
         let mut body = json!({ "plan": plan, "email": email, "consent": true, "currency": currency, "lang": lang });
         if let Some(key) = license_key {
             body["license_key"] = json!(key);
+        }
+        // Chỉ gửi khi khách tích ô: thân request của đơn trả một lần giữ nguyên như bản app trước.
+        if auto_renew {
+            body["auto_renew"] = json!(true);
         }
         self.call("POST", "/v1/checkout", Some(body), None)
     }
@@ -385,6 +414,14 @@ impl LicenseApi for HttpApi {
             Some(json!({ "device_id_hash": device_id_hash })),
             None,
         )
+    }
+
+    fn subscription(&self, license_key: &str, manage: bool) -> Reply<SubscriptionInfo> {
+        let mut body = json!({ "license_key": license_key });
+        if manage {
+            body["manage"] = json!(true);
+        }
+        self.call("POST", "/v1/subscription", Some(body), None)
     }
 }
 
@@ -672,11 +709,14 @@ mod tests {
         let body = r#"{"order_code":7,"order_token":"t","checkout_url":"https://pay.payos.vn/web/x","qr_code":"000201","plan":"monthly","amount":50000,"currency":"VND","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let order = api.checkout("monthly", "a@b.vn", None, "VND", "ja").result.unwrap();
+        let order = api
+            .checkout("monthly", "a@b.vn", None, "VND", "ja", false)
+            .result
+            .unwrap();
         assert_eq!(order.order_code, 7);
         // Server cũ (≤ 0.1.9) không có `provider`: không đoán, để nơi dùng coi là PayOS.
         assert_eq!((order.qr_code.as_deref(), order.provider), (Some("000201"), None));
-        api.checkout("monthly", "a@b.vn", Some("KEY"), "VND", "vi")
+        api.checkout("monthly", "a@b.vn", Some("KEY"), "VND", "vi", false)
             .result
             .unwrap();
         let reqs = seen.lock().unwrap().clone();
@@ -707,7 +747,10 @@ mod tests {
         let body = r#"{"order_code":8,"order_token":"t","provider":"creem","checkout_url":"https://checkout.creem.io/ch_1","qr_code":null,"plan":"monthly","amount":399,"currency":"USD","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let order = api.checkout("monthly", "a@b.vn", None, "USD", "en").result.unwrap();
+        let order = api
+            .checkout("monthly", "a@b.vn", None, "USD", "en", false)
+            .result
+            .unwrap();
         assert_eq!(
             (
                 order.qr_code,
@@ -718,6 +761,68 @@ mod tests {
             (None, Some("creem"), 399, "USD")
         );
         assert_eq!(seen.lock().unwrap()[0].body["currency"], "USD");
+    }
+
+    /// Tự động gia hạn (spec 2026-11-05): `auto_renew: true` chỉ được gửi khi khách tích ô; không tích thì thân request không có
+    /// trường đó (đơn trả một lần giống hệt bản app trước).
+    #[test]
+    fn checkout_sends_auto_renew_only_when_the_customer_ticked_it() {
+        let body = r#"{"order_code":8,"order_token":"t","provider":"creem","checkout_url":"https://checkout.creem.io/ch_1","qr_code":null,"plan":"monthly","amount":399,"currency":"USD","expires_at":9,"auto_renew":true}"#;
+        let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        api.checkout("monthly", "a@b.vn", None, "USD", "en", true)
+            .result
+            .unwrap();
+        api.checkout("monthly", "a@b.vn", None, "USD", "en", false)
+            .result
+            .unwrap();
+        let reqs = seen.lock().unwrap().clone();
+        assert_eq!(reqs[0].body["auto_renew"], json!(true));
+        assert!(reqs[1].body.get("auto_renew").is_none(), "{}", reqs[1].body);
+    }
+
+    /// `auto_renew_available` thiếu (server cũ hay tính năng tắt) là `false`; có thì đọc đúng.
+    #[test]
+    fn plans_reads_auto_renew_available_and_defaults_to_false() {
+        let plans = r#"[{"code":"monthly","name":"Monthly","quota_minutes_per_cycle":3000,"days_per_order":30,"prices":{"VND":50000,"USD":399}}]"#;
+        let on = format!(r#"{{"auto_renew_available":true,"plans":{plans}}}"#);
+        let off = format!(r#"{{"plans":{plans}}}"#);
+        assert!(serde_json::from_str::<PlansReply>(&on).unwrap().auto_renew_available);
+        assert!(!serde_json::from_str::<PlansReply>(&off).unwrap().auto_renew_available);
+    }
+
+    /// Trạng thái tự động gia hạn: gửi key, `manage` chỉ khi xin link; đọc đủ trường, trường thiếu là rỗng.
+    #[test]
+    fn subscription_posts_the_key_and_reads_the_status_and_portal_link() {
+        let status = r#"{"auto_renew":true,"status":"active","plan":"monthly","renews_at":1793491200}"#;
+        let portal = r#"{"auto_renew":true,"status":"active","plan":"monthly","renews_at":1793491200,"portal_url":"https://creem.io/my-orders/login/x"}"#;
+        let none = r#"{"auto_renew":false,"status":null,"plan":null,"renews_at":null}"#;
+        let (base, seen) = serve(vec![(200, vec![], status), (200, vec![], portal), (200, vec![], none)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        let info = api.subscription("KEY", false).result.unwrap();
+        assert_eq!(
+            (
+                info.auto_renew,
+                info.status.as_deref(),
+                info.plan.as_deref(),
+                info.renews_at,
+                info.portal_url
+            ),
+            (true, Some("active"), Some("monthly"), Some(1_793_491_200), None)
+        );
+        let managed = api.subscription("KEY", true).result.unwrap();
+        assert_eq!(
+            managed.portal_url.as_deref(),
+            Some("https://creem.io/my-orders/login/x")
+        );
+        assert_eq!(
+            api.subscription("KEY", false).result.unwrap(),
+            SubscriptionInfo::default()
+        );
+        let reqs = seen.lock().unwrap().clone();
+        assert_eq!(reqs[0].path, "/v1/subscription");
+        assert_eq!(reqs[0].body, json!({ "license_key": "KEY" }));
+        assert_eq!(reqs[1].body, json!({ "license_key": "KEY", "manage": true }));
     }
 
     /// `accept_base`: chỉ `https` không query; `http` tới máy này chỉ khi `allow_http` (dành cho test, không phải bản

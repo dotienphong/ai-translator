@@ -11,7 +11,7 @@ export const S = {
       usd: (price) => `hoặc ${price} bằng thẻ quốc tế`,
       cards: {
         free: { for: "Dùng thử trước khi quyết định.", per: "Dùng thử 10 ngày · mỗi máy một lần", feats: ["Phụ đề dịch trực tiếp, đủ 5 ngôn ngữ", "30 phút mỗi ngày trong 10 ngày dùng thử", "Thanh phụ đề tùy chỉnh, phím tắt, sao chép bản chép lời"] },
-        monthly: { for: "Cho người họp thường xuyên, dự án ngắn hạn.", per: "cho mỗi 30 ngày · trả trước", feats: ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Tính năng Pro: từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown", "Gia hạn khi cần, không tự động trừ tiền"] },
+        monthly: { for: "Cho người họp thường xuyên, dự án ngắn hạn.", per: "cho mỗi 30 ngày · trả trước", feats: ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Tính năng Pro: từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown", "Gia hạn khi cần; với thẻ có thể bật tự động gia hạn, hủy bất cứ lúc nào"] },
         six_months: { for: "Cho dự án nửa năm hoặc dùng đều đặn.", per: "cho 180 ngày · trả trước", feats: ["100 giờ dịch cho mỗi chu kỳ 30 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho nửa năm, quy ra khoảng 44.800 ₫ mỗi tháng"] },
         yearly: { for: "Cho người dùng hằng ngày. Tiết kiệm nhất.", per: "cho 365 ngày · trả trước", feats: ["Không giới hạn thời lượng dịch trong 365 ngày", "Đầy đủ tính năng Pro", "Trả một lần cho cả năm, quy ra khoảng 41.700 ₫ mỗi tháng"] },
       },
@@ -45,7 +45,7 @@ export const S = {
       usd: (price) => `or ${price} by international card`,
       cards: {
         free: { for: "Try it before you decide.", per: "10-day trial · once per device", feats: ["Live translated subtitles in all 5 languages", "30 minutes per day during the 10-day trial", "Subtitle bar, shortcuts and copying the transcript"] },
-        monthly: { for: "For regular meetings and short projects.", per: "per 30 days · prepaid", feats: ["50 hours of translation per 30-day cycle", "Pro features: glossary, history, TXT/SRT/Markdown export", "Renew when you need it, never charged automatically"] },
+        monthly: { for: "For regular meetings and short projects.", per: "per 30 days · prepaid", feats: ["50 hours of translation per 30-day cycle", "Pro features: glossary, history, TXT/SRT/Markdown export", "Renew when you need it; with a card you can turn on auto-renewal and cancel any time"] },
         six_months: { for: "For a half-year project or steady use.", per: "per 180 days · prepaid", feats: ["100 hours of translation per 30-day cycle", "All Pro features", "One payment for half a year, about 44,800 ₫ per month"] },
         yearly: { for: "For daily use. Best value.", per: "per 365 days · prepaid", feats: ["Unlimited translation time for 365 days", "All Pro features", "One payment for the whole year, about 41,700 ₫ per month"] },
       },
@@ -79,9 +79,9 @@ export const S = {
       usd: (price) => `またはカードで ${price}`,
       cards: {
         free: { for: "購入前にまずお試しください。", per: "10 日間のお試し · 1 台につき 1 回", feats: ["5 言語すべてでリアルタイム翻訳字幕", "10 日間のお試し期間中、1 日 30 分", "字幕バー、ショートカット、文字起こしのコピー"] },
-        monthly: { for: "定期的な会議や短期のプロジェクトに。", per: "30 日ごと · 前払い", feats: ["30 日サイクルごとに 50 時間の翻訳", "Pro 機能：用語集、履歴、TXT/SRT/Markdown 書き出し", "必要なときに更新、自動で課金されることはありません"] },
-        six_months: { for: "半年のプロジェクトや継続的な利用に。", per: "180 日間 · 前払い", feats: ["30 日サイクルごとに 100 時間の翻訳", "Pro 機能をすべて利用可能", "半年分を一括前払い、自動更新なし"] },
-        yearly: { for: "毎日使う方に。最もお得です。", per: "365 日間 · 前払い", feats: ["365 日間、翻訳時間は無制限", "Pro 機能をすべて利用可能", "1 年分を一括前払い、自動更新なし"] },
+        monthly: { for: "定期的な会議や短期のプロジェクトに。", per: "30 日ごと · 前払い", feats: ["30 日サイクルごとに 50 時間の翻訳", "Pro 機能：用語集、履歴、TXT/SRT/Markdown 書き出し", "必要なときに更新。カードなら自動更新も選べ、いつでも解約できます"] },
+        six_months: { for: "半年のプロジェクトや継続的な利用に。", per: "180 日間 · 前払い", feats: ["30 日サイクルごとに 100 時間の翻訳", "Pro 機能をすべて利用可能", "半年分を一括前払い。カードなら自動更新も選べます"] },
+        yearly: { for: "毎日使う方に。最もお得です。", per: "365 日間 · 前払い", feats: ["365 日間、翻訳時間は無制限", "Pro 機能をすべて利用可能", "1 年分を一括前払い。カードなら自動更新も選べます"] },
       },
     },
     dataFlow: {
@@ -120,9 +120,9 @@ export const S = {
       usd: (price) => `或用国际银行卡支付 ${price}`,
       cards: {
         free: { for: "先试用，再决定。", per: "试用 10 天 · 每台设备一次", feats: ["5 种语言的实时翻译字幕", "10 天试用期内每天 30 分钟", "字幕条、快捷键和复制转写记录"] },
-        monthly: { for: "适合经常开会和短期项目。", per: "每 30 天 · 预付", feats: ["每个 30 天周期 50 小时翻译", "Pro 功能：术语表、历史记录、TXT/SRT/Markdown 导出", "需要时再续费，绝不自动扣款"] },
-        six_months: { for: "适合半年项目或长期使用。", per: "180 天 · 预付", feats: ["每个 30 天周期 100 小时翻译", "全部 Pro 功能", "一次预付半年，不自动续费"] },
-        yearly: { for: "适合每天使用。最划算。", per: "365 天 · 预付", feats: ["365 天内翻译时长不限", "全部 Pro 功能", "一次预付一年，不自动续费"] },
+        monthly: { for: "适合经常开会和短期项目。", per: "每 30 天 · 预付", feats: ["每个 30 天周期 50 小时翻译", "Pro 功能：术语表、历史记录、TXT/SRT/Markdown 导出", "需要时再续费；银行卡可选自动续费，随时取消"] },
+        six_months: { for: "适合半年项目或长期使用。", per: "180 天 · 预付", feats: ["每个 30 天周期 100 小时翻译", "全部 Pro 功能", "一次预付半年；银行卡可选自动续费"] },
+        yearly: { for: "适合每天使用。最划算。", per: "365 天 · 预付", feats: ["365 天内翻译时长不限", "全部 Pro 功能", "一次预付一年；银行卡可选自动续费"] },
       },
     },
     dataFlow: {
@@ -161,9 +161,9 @@ export const S = {
       usd: (price) => `또는 카드로 ${price}`,
       cards: {
         free: { for: "결정하기 전에 먼저 써 보세요.", per: "10일 체험 · 기기당 1회", feats: ["5개 언어 모두 실시간 번역 자막", "10일 체험 기간 동안 하루 30분", "자막 바, 단축키, 받아쓰기 복사"] },
-        monthly: { for: "정기적인 회의와 단기 프로젝트에.", per: "30일마다 · 선불", feats: ["30일 주기마다 50시간 번역", "Pro 기능: 용어집, 기록, TXT/SRT/Markdown 내보내기", "필요할 때 갱신, 자동 결제 없음"] },
-        six_months: { for: "반년 프로젝트나 꾸준한 사용에.", per: "180일 · 선불", feats: ["30일 주기마다 100시간 번역", "모든 Pro 기능", "반년치를 한 번에 선불, 자동 갱신 없음"] },
-        yearly: { for: "매일 쓰는 분께. 가장 경제적입니다.", per: "365일 · 선불", feats: ["365일 동안 번역 시간 무제한", "모든 Pro 기능", "1년치를 한 번에 선불, 자동 갱신 없음"] },
+        monthly: { for: "정기적인 회의와 단기 프로젝트에.", per: "30일마다 · 선불", feats: ["30일 주기마다 50시간 번역", "Pro 기능: 용어집, 기록, TXT/SRT/Markdown 내보내기", "필요할 때 갱신. 카드는 자동 갱신을 선택할 수 있고 언제든 해지할 수 있습니다"] },
+        six_months: { for: "반년 프로젝트나 꾸준한 사용에.", per: "180일 · 선불", feats: ["30일 주기마다 100시간 번역", "모든 Pro 기능", "반년치를 한 번에 선불. 카드는 자동 갱신 선택 가능"] },
+        yearly: { for: "매일 쓰는 분께. 가장 경제적입니다.", per: "365일 · 선불", feats: ["365일 동안 번역 시간 무제한", "모든 Pro 기능", "1년치를 한 번에 선불. 카드는 자동 갱신 선택 가능"] },
       },
     },
     dataFlow: {

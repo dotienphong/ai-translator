@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { CheckoutView, LicenseView, OrderOutcome, PlanOffer, QuotaView } from "./ipc";
+import type { CheckoutView, LicenseView, OrderOutcome, PlanOffer, QuotaView, SubscriptionView } from "./ipc";
 import {
+  autoRenewKey,
+  canManageSubscription,
   cardOrderLate,
   chosenCurrency,
   defaultCurrency,
@@ -303,5 +305,43 @@ describe("đơn không có mã QR (thẻ quốc tế)", () => {
     // Loại tiền lạ: suy như đơn cũ.
     expect(lockedCurrency(view({ currency: "usd" }))).toBe("USD");
     expect(lockedCurrency(qr({ currency: "EUR" }))).toBe("VND");
+  });
+});
+
+describe("tự động gia hạn (spec 2026-11-05 D10)", () => {
+  const sub = (patch: Partial<SubscriptionView> = {}): SubscriptionView => ({
+    autoRenew: true,
+    status: "active",
+    plan: "monthly",
+    renewsAt: 1_800_000_000,
+    ...patch,
+  });
+
+  it("chưa tải hay key chưa từng tự gia hạn: không có dòng, không có nút Quản lý", () => {
+    for (const s of [null, sub({ autoRenew: false, status: null, plan: null, renewsAt: null })]) {
+      expect(autoRenewKey(s)).toBeNull();
+      expect(canManageSubscription(s)).toBe(false);
+    }
+  });
+
+  it("đang bật: có ngày kỳ tới thì nói ngày, chưa biết ngày thì chỉ nói đang bật", () => {
+    expect(autoRenewKey(sub())).toBe("settings.license.autoRenew.on");
+    expect(autoRenewKey(sub({ status: "trialing" }))).toBe("settings.license.autoRenew.on");
+    expect(autoRenewKey(sub({ renewsAt: null }))).toBe("settings.license.autoRenew.onNoDate");
+  });
+
+  it("bật mà lần trừ gần nhất lỗi hay thuê bao tạm dừng: dặn cập nhật thẻ", () => {
+    for (const status of ["past_due", "unpaid", "paused"]) {
+      expect(autoRenewKey(sub({ status })), status).toBe("settings.license.autoRenew.problem");
+    }
+  });
+
+  it("đã tắt (hủy, hủy cuối kỳ, hết): nói gói dùng tới hạn; vẫn có nút Quản lý để xem hóa đơn", () => {
+    for (const status of ["scheduled_cancel", "canceled", "expired"]) {
+      const s = sub({ autoRenew: false, status });
+      expect(autoRenewKey(s), status).toBe("settings.license.autoRenew.ended");
+      expect(canManageSubscription(s), status).toBe(true);
+    }
+    expect(canManageSubscription(sub())).toBe(true);
   });
 });

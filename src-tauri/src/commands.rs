@@ -18,7 +18,7 @@ use crate::glossary::{GlossaryEntry, ImportReport};
 use crate::hotkeys::HotkeyAction;
 use crate::license::app::{self as license_app, ActivateOutcome};
 use crate::license::manager::LicenseView;
-use crate::license::purchase::{CheckoutView, PlansView};
+use crate::license::purchase::{CheckoutView, PlansView, SubscriptionView};
 use crate::meeting_hint;
 use crate::overlay::{self, placement::Edge};
 use crate::settings::Settings;
@@ -374,11 +374,30 @@ pub async fn start_checkout<R: Runtime>(
     consent: bool,
     renew: bool,
     currency: String,
+    auto_renew: Option<bool>,
 ) -> Result<CheckoutView, CommandError> {
     blocking(app, move |app| {
-        license_app::start_checkout(app, &plan, &email, consent, renew, &currency)
+        license_app::start_checkout(
+            app,
+            &plan,
+            &email,
+            consent,
+            renew,
+            &currency,
+            auto_renew.unwrap_or(false),
+        )
     })
     .await
+}
+
+#[tauri::command]
+pub async fn get_subscription<R: Runtime>(app: AppHandle<R>) -> Result<Option<SubscriptionView>, CommandError> {
+    blocking(app, license_app::subscription).await
+}
+
+#[tauri::command]
+pub async fn manage_subscription<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    blocking(app, license_app::manage_subscription).await
 }
 
 // Ba lệnh dưới đọc hay ghi kho khóa (đơn đang chờ): Keychain có thể chờ hộp thoại quyền truy cập, nên không chạy trên luồng
@@ -755,6 +774,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "validate_license",
     "get_plans",
     "start_checkout",
+    "get_subscription",
+    "manage_subscription",
     "get_pending_order",
     "cancel_checkout",
     "open_checkout_page",
@@ -857,6 +878,8 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         validate_license,
         get_plans,
         start_checkout,
+        get_subscription,
+        manage_subscription,
         get_pending_order,
         cancel_checkout,
         open_checkout_page,

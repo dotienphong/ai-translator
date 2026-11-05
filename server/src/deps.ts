@@ -5,7 +5,7 @@ import { ResendEmailProvider } from "./email/resend";
 import { type LicenseEmailEntry, type LicenseEmailKind, licenseEmail } from "./email/templates";
 import type { ApiEnv } from "./env";
 import type { Lang } from "./lang";
-import { CreemProvider, parseProductIds } from "./payment/creem";
+import { CreemProvider, parseProductIds, parseSubscriptionProductIds } from "./payment/creem";
 import { PayOSProvider } from "./payment/payos";
 import type { PaymentProvider } from "./payment/provider";
 import { type OwnerBot, zaloFromEnv } from "./support/zalo";
@@ -94,15 +94,21 @@ export function payosFromEnv(env: Pick<ApiEnv, "PAYOS_BASE_URL" | "PAYOS_CLIENT_
  * cổng chỉ xử lý (`sells` false): tắt bán thẻ khẩn cấp không làm mất webhook hoàn tiền hay đơn Creem đang chờ.
  */
 export function creemFromEnv(
-  env: Pick<ApiEnv, "CREEM_BASE_URL" | "CREEM_API_KEY" | "CREEM_WEBHOOK_SECRET" | "CREEM_PRODUCT_IDS">,
+  env: Pick<ApiEnv, "CREEM_BASE_URL" | "CREEM_API_KEY" | "CREEM_WEBHOOK_SECRET" | "CREEM_PRODUCT_IDS"> &
+    Partial<Pick<ApiEnv, "CREEM_SUBSCRIPTION_PRODUCT_IDS" | "CREEM_AUTO_RENEW">>,
 ): CreemProvider | null {
   if (!env.CREEM_API_KEY || !env.CREEM_WEBHOOK_SECRET) return null;
   const productIds = parseProductIds(env.CREEM_PRODUCT_IDS);
+  // Thuê bao chỉ khi công tắc bật VÀ ba mã sản phẩm thuê bao hợp lệ, khác ba mã một lần (spec 2026-11-05 D2, D3). Công tắc tắt thì
+  // webhook thuê bao của khách đã đăng ký vẫn được xử lý (đó là phần XỬ LÝ, không cần mã sản phẩm), chỉ không chào thuê bao mới.
+  const subscriptionProductIds =
+    env.CREEM_AUTO_RENEW === "on" ? parseSubscriptionProductIds(env.CREEM_SUBSCRIPTION_PRODUCT_IDS, productIds) : null;
   return new CreemProvider({
     baseUrl: env.CREEM_BASE_URL,
     apiKey: env.CREEM_API_KEY,
     webhookSecret: env.CREEM_WEBHOOK_SECRET,
     ...(productIds ? { productIds } : {}),
+    ...(subscriptionProductIds ? { subscriptionProductIds } : {}),
   });
 }
 

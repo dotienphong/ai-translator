@@ -9,6 +9,7 @@ import { MAX_BODY_BYTES } from "./error-reports";
 import { fail, isJsonContentType } from "./http";
 import { registerLicenses } from "./licenses";
 import { registerOrders } from "./orders";
+import { registerSubscriptions } from "./subscriptions";
 import { registerSupport, supportCors } from "./support/routes";
 import { registerZaloWebhook } from "./support/webhook";
 import { registerTrial } from "./trial";
@@ -49,6 +50,7 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   // Trước registerOrders: route `/v1/webhooks/:provider` của cổng thanh toán bắt cả `/v1/webhooks/zalo` và trả 404 (Hono chọn route khớp đầu tiên).
   registerZaloWebhook(app);
   registerCheckout(app);
+  registerSubscriptions(app);
   registerOrders(app);
   registerLicenses(app);
   registerTrial(app);

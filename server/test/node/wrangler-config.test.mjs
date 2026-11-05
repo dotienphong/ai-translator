@@ -65,7 +65,7 @@ const PRODUCT_ID_PATTERN = /prod_[A-Za-z0-9]{8,}/;
  * Worker admin không tạo phiên nên không có chỗ nào được phép.
  */
 function strayProductIdProblem(text) {
-  const withoutAllowed = text.replace(/"CREEM_PRODUCT_IDS"\s*:\s*\{[^}]*\}/, "");
+  const withoutAllowed = text.replace(/"CREEM_(?:SUBSCRIPTION_)?PRODUCT_IDS"\s*:\s*\{[^}]*\}/g, "");
   return PRODUCT_ID_PATTERN.test(withoutAllowed) ? "có mã sản phẩm Creem (prod_…) ngoài vars.CREEM_PRODUCT_IDS của Worker API" : null;
 }
 
@@ -176,6 +176,29 @@ test("mã sản phẩm Creem thật (prod_…) chỉ được nằm trong vars.C
   assert.match(strayProductIdProblem(`// gói tháng: prod_aAbBcCdD1234\n{ "vars": { ${ids} } }`), /ngoài vars\.CREEM_PRODUCT_IDS/);
   assert.match(strayProductIdProblem(`{ "vars": { "OTHER": "prod_aAbBcCdD1234" } }`), /ngoài vars\.CREEM_PRODUCT_IDS/, "Worker admin không có chỗ nào được phép");
   assert.equal(strayProductIdProblem("// mã sản phẩm Creem (prod_…) của ba gói; prod_ng ngắn"), null, "chú thích nhắc dạng mã không phải mã thật");
+  // Mã sản phẩm thuê bao (spec 2026-11-05 D2) cũng chỉ ở vars.CREEM_SUBSCRIPTION_PRODUCT_IDS.
+  const subIds = '"CREEM_SUBSCRIPTION_PRODUCT_IDS": { "monthly": "prod_mMnNoOpP1234", "six_months": "prod_qQrRsStT5678", "yearly": "prod_uUvVwWxX9012" }';
+  assert.equal(strayProductIdProblem(`{ "vars": { ${ids}, ${subIds} } }`), null, "chỗ được phép của mã thuê bao");
+  assert.match(strayProductIdProblem(`// gói tháng thuê bao: prod_mMnNoOpP1234\n{ "vars": { ${subIds} } }`), /ngoài vars\.CREEM_PRODUCT_IDS/);
+});
+
+test("CREEM_SUBSCRIPTION_PRODUCT_IDS và CREEM_AUTO_RENEW (spec 2026-11-05 D2, D3): ba mã rỗng hay ba mã prod_… khác nhau và khác mã một lần; công tắc bật thì phải đủ mã; Worker admin không có", () => {
+  assert.ok(["on", "off"].includes(api.vars.CREEM_AUTO_RENEW), "CREEM_AUTO_RENEW chỉ nhận on hay off");
+  assert.deepEqual(Object.keys(api.vars.CREEM_SUBSCRIPTION_PRODUCT_IDS), ["monthly", "six_months", "yearly"]);
+  const sub = api.vars.CREEM_SUBSCRIPTION_PRODUCT_IDS;
+  assert.equal(productIdsProblem(sub), null, productIdsProblem(sub) ?? "");
+  const oneTime = Object.values(api.vars.CREEM_PRODUCT_IDS).filter((id) => id !== "");
+  for (const id of Object.values(sub).filter((id) => id !== "")) {
+    assert.equal(oneTime.includes(id), false, `mã thuê bao ${id} trùng mã sản phẩm một lần: khách trả một lần mà tưởng là thuê bao`);
+  }
+  if (api.vars.CREEM_AUTO_RENEW === "on") {
+    assert.ok(Object.values(sub).every((id) => id !== ""), "bật CREEM_AUTO_RENEW mà thiếu mã sản phẩm thuê bao: app sẽ không hiện ô tự gia hạn");
+    assert.ok(Object.values(api.vars.CREEM_PRODUCT_IDS).every((id) => id !== ""), "bật tự gia hạn mà không bán thẻ một lần");
+  }
+  assert.equal("CREEM_SUBSCRIPTION_PRODUCT_IDS" in admin.vars, false, "Worker admin không tạo phiên");
+  assert.equal("CREEM_AUTO_RENEW" in admin.vars, false, "Worker admin không tạo phiên");
+  // Luật bắt được lệch (kiểm trong bộ nhớ).
+  assert.match(productIdsProblem({ monthly: "prod_aaa111", six_months: "", yearly: "" }), /điền dở/);
 });
 
 test("dùng thử Free 10 ngày mỗi máy (spec 2026-10-07 §3.1)", () => {

@@ -23,6 +23,21 @@ export interface CheckoutRequest {
   plan: PlanCode;
   /** Email khách nhập trong app, để điền sẵn trang thanh toán nếu cổng cho phép. */
   email: string;
+  /** Đơn thuê bao tự gia hạn (spec 2026-11-05): cổng dùng sản phẩm thuê bao, giá lấy từ catalog của cổng. Thiếu là đơn một lần. */
+  autoRenew?: boolean;
+}
+
+/**
+ * Thuê bao do cổng báo kèm đơn đầu (Creem: `object.subscription` của `checkout.completed`, hay `subscription` của phiên khi hỏi
+ * lại). Chỉ mã và mốc; không có dữ liệu của khách.
+ */
+export interface SubscriptionRef {
+  /** Mã thuê bao ở cổng (Creem: sub_…). */
+  ref: string;
+  /** Mã khách ở cổng (Creem: cust_…); null nếu payload không có. */
+  customerRef: string | null;
+  /** Hết kỳ đã thu tiền (giây Unix); null nếu thiếu hay không đọc được. */
+  periodEnd: number | null;
 }
 
 export interface CheckoutResult {
@@ -64,6 +79,8 @@ export interface PaymentStatusResult {
   amountPaid: number;
   /** Thời điểm của giao dịch gần nhất do cổng báo (giây Unix); null nếu cổng không báo hoặc không đọc được. */
   paidAt: number | null;
+  /** Thuê bao của đơn nếu cổng báo khi hỏi lại (Creem: `subscription` của phiên); vắng với đơn một lần. */
+  subscription?: SubscriptionRef;
   /** Dữ kiện của cổng cho nhật ký khi đơn bị giữ để xem lại (fulfilOrder chép vào `detail`); cổng không đặt (PayOS) thì vắng. */
   reviewDetail?: ReviewDetail;
 }
@@ -88,6 +105,8 @@ export type WebhookEvent =
       kind: "payment";
       orderCode: number;
       providerRef?: string | null;
+      /** Thuê bao mang theo `checkout.completed` của sản phẩm thuê bao (Creem). Vắng với đơn một lần. */
+      subscription?: SubscriptionRef;
       reportUnknownOrder?: { eventType: string; eventId: string | null };
     }
   /**
@@ -125,8 +144,53 @@ export type WebhookEvent =
    * payload (Creem: `object.id`) để tra ở dashboard của cổng; `eventId` như của `refund`.
    */
   | { kind: "unmatched"; eventType: string | null; providerRef: string | null; eventId: string | null }
+  /**
+   * Sự kiện vòng đời thuê bao đã kiểm chữ ký (Creem `subscription.*`, spec 2026-11-05 D6). Mọi trường đã chuẩn hóa; trường không đọc
+   * được là null (không đoán). `status`: trạng thái thuê bao theo sự kiện (suy từ loại sự kiện khi payload không mang).
+   */
+  | {
+      kind: "subscription";
+      eventType: string;
+      /** Mã sự kiện của cổng (cùng mã khi gửi lại); null nếu thiếu hay sai dạng. */
+      eventId: string | null;
+      /** Giờ phát sự kiện (giây Unix); null nếu thiếu. */
+      eventAt: number | null;
+      subscriptionRef: string;
+      customerRef: string | null;
+      status: SubscriptionStatus;
+      /** Hết kỳ hiện tại (giây Unix); null nếu không đọc được. */
+      periodEnd: number | null;
+      /** Giao dịch của kỳ vừa thu (chỉ `subscription.paid`); null với sự kiện khác hay khi thiếu. */
+      transaction: SubscriptionTransaction | null;
+    }
   /** Sự kiện đúng chữ ký nhưng server không dùng: trả 200. */
   | { kind: "ignore" };
+
+export type SubscriptionStatus =
+  | "active"
+  | "scheduled_cancel"
+  | "canceled"
+  | "past_due"
+  | "unpaid"
+  | "paused"
+  | "expired"
+  | "trialing";
+
+/** Giao dịch của một kỳ thuê bao (Creem `last_transaction`), đơn vị nhỏ nhất của loại tiền. Trường thiếu hay sai kiểu là null. */
+export interface SubscriptionTransaction {
+  /** Mã giao dịch (tran_…). */
+  ref: string | null;
+  /** Trạng thái giao dịch do cổng báo (paid, ...), tối đa 64 ký tự. */
+  status: string | null;
+  currency: string | null;
+  /** Số khách trả, gồm thuế (`amount_paid`). */
+  amountPaid: number | null;
+  taxAmount: number | null;
+  /** Có dấu hiệu giảm giá (mã giảm giá của thuê bao, hay số giảm khác 0). */
+  hasDiscount: boolean;
+  /** Lúc thu tiền (giây Unix); null nếu thiếu. */
+  paidAt: number | null;
+}
 
 export interface PaymentProvider {
   readonly name: string;
@@ -136,7 +200,14 @@ export interface PaymentProvider {
    * sellableCurrencies). Creem chưa có đủ mã sản phẩm (hay tắt bán thẻ khẩn cấp) ở trạng thái này. Không khai báo là bán (PayOS).
    */
   readonly sells?: boolean;
+  /**
+   * Cổng có bán được thuê bao tự gia hạn lúc này không (Creem: có đủ ba mã sản phẩm thuê bao). Không khai báo là không (PayOS).
+   * POST /v1/checkout với `auto_renew` chỉ nhận khi `true` và công tắc CREEM_AUTO_RENEW bật.
+   */
+  readonly subscribes?: boolean;
   createCheckout(req: CheckoutRequest): Promise<CheckoutResult>;
+  /** Link cổng khách hàng để khách xem và hủy thuê bao (Creem). Chỉ cổng có thuê bao cài đặt. Ném PaymentProviderError khi lỗi. */
+  createPortalLink?(customerRef: string): Promise<string>;
   /**
    * Trả về null nếu không kiểm được chữ ký (thiếu chữ ký, thiếu `data`, thiếu secret: không ném lỗi) hoặc sai chữ ký: route trả 400
    * `invalid_signature` và tạo cảnh báo. "malformed" là thân không đọc được (Creem: chỉ khi thân không phải JSON; PayOS: không

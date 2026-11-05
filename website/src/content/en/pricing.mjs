@@ -17,11 +17,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "Can I pay with an international card?",
-    a: `<p>Yes. The Upgrade screen in the app offers two ways to pay: <strong>VietQR bank transfer in VND</strong> (from a Vietnamese bank, through the PayOS gateway) or <strong>international card in USD</strong> (Monthly $3.99, 6 Months $21.99, Yearly $39.99, excluding tax). For a card, the app opens the Creem payment page in your browser; when you are done, return to the app and the plan activates itself. Creem is the merchant of record (reseller) for orders paid by card and handles the payment and the tax on it; Creem's Buyer Terms: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. Recurring payments are not available. The Free trial needs no payment method.</p>`,
+    a: `<p>Yes. The Upgrade screen in the app offers two ways to pay: <strong>VietQR bank transfer in VND</strong> (from a Vietnamese bank, through the PayOS gateway) or <strong>international card in USD</strong> (Monthly $3.99, 6 Months $21.99, Yearly $39.99, excluding tax). For a card, the app opens the Creem payment page in your browser; when you are done, return to the app and the plan activates itself. Creem is the merchant of record (reseller) for orders paid by card and handles the payment and the tax on it; Creem's Buyer Terms: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. Recurring payments are an option on card orders (the Auto-renew box). The Free trial needs no payment method.</p>`,
   },
   {
     q: "Does my plan renew automatically?",
-    a: `<p>No. Every plan is a single prepaid order and simply ends when it expires. The app reminds you 7 days before, and you renew when you want to. Renewing the same plan adds 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active.</p>`,
+    a: `<p>It depends on how you pay. A VietQR order is a single prepaid order and simply ends when it expires. With an international card, the payment screen has an <strong>Auto-renew</strong> box, ticked by default: leave it ticked and Creem charges your card every period (30 days for Monthly, 180 for 6 Months, 365 for Yearly) until you cancel; untick it to pay once. Cancel any time in Settings › License › Manage auto-renewal: the period you paid for stays active until it ends and you are not charged again. A key that is auto-renewing cannot buy more time or change plan until you cancel. The app reminds you 7 days before. Renewing the same plan manually adds 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active.</p>`,
   },
   {
     q: "How many computers can I use a key on?",
@@ -53,7 +53,7 @@ export default {
   path: "/en/pricing/",
   title: "AI Translator pricing: Free trial, Monthly, 6 Months, Yearly",
   description:
-    "AI Translator plans: Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫. Prepaid by VietQR or international card (USD), no auto-renewal.",
+    "AI Translator plans: Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫. Pay by VietQR or international card; card auto-renewal is optional.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-15",
@@ -61,7 +61,7 @@ export default {
   llm: "Pricing for the four plans (Free 10-day trial, Monthly 50,000 VND, 6 Months 269,000 VND, Yearly 500,000 VND), how translation time is counted, how to buy with VietQR (VND) or an international card (USD), changing plans, refunds and pricing questions.",
   llmTitle: "AI Translator pricing",
   body: () => `
-${pageHero({ crumbs, title: "Simple pricing: prepaid, no auto-renewal", lead: "Try it free for 10 days, then choose Monthly, 6 Months or Yearly if it earns its place. You start paying inside the app, by VietQR in Vietnamese dong (VND) from a Vietnamese bank or by international card in US dollars (USD); with a card you finish in your browser. Your key arrives by email." })}
+${pageHero({ crumbs, title: "Simple pricing: prepaid, with optional auto-renewal", lead: "Try it free for 10 days, then choose Monthly, 6 Months or Yearly if it earns its place. You start paying inside the app, by VietQR in Vietnamese dong (VND) from a Vietnamese bank or by international card in US dollars (USD); with a card you finish in your browser. Your key arrives by email." })}
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">The four plans</h2>
@@ -126,7 +126,7 @@ ${steps([
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "Renewing and changing plans", title: "Flexible, and priced by the day", center: true })}
 <div class="grid grid-2">
-<div class="card reveal"><h3>Renew the same plan</h3><p>Buy the same plan again to add 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active. The app reminds you 7 days before the end and again after it expires. Nothing is ever charged automatically.</p></div>
+<div class="card reveal"><h3>Renew the same plan</h3><p>Buy the same plan again to add 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active. The app reminds you 7 days before the end and again after it expires. A VietQR order is not charged again automatically; with a card you can turn on auto-renewal (the box is ticked by default) and cancel any time.</p></div>
 <div class="card reveal"><h3>Change plan while it is active</h3><p>The new plan starts immediately, and the days left on the old plan are converted at the <strong>price per day</strong>, rounded down. For example, priced in VND (if you pay in USD the formula uses the USD prices of both plans, so the days can differ: in this example by at most one day), with 20 days left on Monthly, buying Yearly adds 24 days (Yearly then runs for 389 days), and buying 6 Months adds 22 days (6 Months then runs for 202 days). The app shows the converted days and the new expiry date (an estimate) before you pay. Changing plans is not refundable.</p></div>
 </div>
 ${callout({ title: "When a plan expires", text: "The computer goes back to Free if it is still within its 10-day trial; once the trial is over, it needs a paid plan to keep translating. Pro features (history, glossary, export) are locked when there is no paid plan." })}

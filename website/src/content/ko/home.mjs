@@ -160,7 +160,7 @@ ${feature({ icon: "shield", title: "서버에 회의 내용 없음", text: "서�
 </div></section>
 
 <section class="section" id="pricing"><div class="container">
-${sectionHead({ eyebrow: "요금", title: "간단한 요금제 네 가지, VietQR 또는 해외 카드로 선불", text: "자동 갱신도, 정기 결제도 없으며 자동으로 청구되는 일은 절대 없습니다.", center: true })}
+${sectionHead({ eyebrow: "요금", title: "간단한 요금제 네 가지, VietQR 또는 해외 카드로 선불", text: "VietQR 주문은 한 번만 결제하며 자동 갱신이 없습니다. 카드는 자동 갱신이 선택 사항이며 언제든 해지할 수 있습니다.", center: true })}
 ${plansGrid("ko", { ctaLabel: "다운로드", freeLabel: "설치하고 무료로 써 보기" })}
 <p class="disclaimer">VND 가격은 베트남 은행의 VietQR로, USD 가격은 해외 카드로 결제하며 세금 별도입니다(세금이 있는 경우).</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/ko/pricing/">요금제 자세히 비교하기 ${icon("arrow-right")}</a></p>

@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { type MessageKey, type Params, translate, type UiLanguage } from "../../../i18n";
-import type { CheckoutView, OrderOutcome, PlanOffer } from "../../../lib/ipc";
+import type { CheckoutView, LicenseView, OrderOutcome, PlanOffer } from "../../../lib/ipc";
 import { fallbackLanguage } from "../appStore";
 import { UpgradeView, type UpgradeViewProps } from "./UpgradeView";
 
@@ -322,5 +322,77 @@ describe("UpgradeView: có đơn đang chờ", () => {
     expect(markup).toContain("đừng trả lại");
     expect(markup).toContain(text("upgrade.newOrder"));
     expect(markup).not.toContain(text("upgrade.browser.cancelNote"));
+  });
+});
+
+// Key đang dùng gói Monthly (đổi `plan` ở từng test); chỉ để `isRenewal(view)` và `defaultPlan(view)` có dữ liệu.
+const ACTIVE_VIEW: LicenseView = {
+  standing: "active",
+  plan: "monthly",
+  licensedPlan: "monthly",
+  key: "ABCD-****-WXYZ",
+  expiresAt: T + 86_400,
+  refreshBefore: null,
+  validatedAt: T,
+  renewSoon: false,
+  quota: {
+    unlimited: false,
+    limitMs: 1_800_000,
+    usedMs: 0,
+    remainingMs: 1_800_000,
+    resetAt: T + 86_400,
+    resetKind: "cycle",
+    needsNetwork: false,
+    lost: false,
+    storageError: false,
+  },
+  serverConfigured: true,
+  devOverride: false,
+  clockRolledBack: false,
+  trial: { status: "none", endsAt: null, daysLeft: 0 },
+  conflict: null,
+};
+
+// Ô "Tự động gia hạn" (spec 2026-11-05 D2, D3): chỉ đơn thẻ khi server chào, tích sẵn, nói rõ số tiền, chu kỳ và cách hủy.
+describe("UpgradeView: tự động gia hạn", () => {
+  const autoBox = (markup: string) => /<label class="consent auto-renew">(<input[^>]*>)/.exec(markup)?.[1] ?? null;
+
+  it("thẻ, server chào: ô tích sẵn; câu nêu giá USD của gói đang chọn và chu kỳ; kèm lời dặn cách hủy", () => {
+    const markup = html({ lang: "en", autoRenewAvailable: true });
+    const box = autoBox(markup);
+    expect(box).not.toBeNull();
+    expect(checked(box ?? "")).toBe(true);
+    expect(markup).toContain(en("upgrade.autoRenew", { price: "$3.99", days: 30 }));
+    expect(markup).toContain(en("upgrade.autoRenewNote"));
+    expect(markup).not.toContain(en("upgrade.autoRenewOffNote"));
+  });
+
+  it("giá trong câu theo gói đang chọn: đơn của gói 6 tháng nêu giá của gói đó", () => {
+    const markup = html({
+      lang: "en",
+      autoRenewAvailable: true,
+      view: { ...ACTIVE_VIEW, plan: "six_months", licensedPlan: "six_months" },
+    });
+    expect(markup).toContain(en("upgrade.autoRenew", { price: "$21.99", days: 30 }));
+  });
+
+  it("server không chào (cờ tắt, server cũ): không có ô, không có lời dặn tự động gia hạn", () => {
+    for (const patch of [{}, { autoRenewAvailable: false }]) {
+      const markup = html({ lang: "en", ...patch });
+      expect(autoBox(markup), JSON.stringify(patch)).toBeNull();
+      expect(markup).not.toContain(en("upgrade.autoRenewNote"));
+      expect(markup).not.toContain(en("upgrade.autoRenewOffNote"));
+    }
+  });
+
+  it("VietQR (trả trước một lần): không có ô dù server chào", () => {
+    const markup = html({ lang: "vi", autoRenewAvailable: true });
+    expect(checked(input(markup, "method", "VND"))).toBe(true);
+    expect(autoBox(markup)).toBeNull();
+    expect(markup).not.toContain(translate("vi", "upgrade.autoRenewNote"));
+  });
+
+  it("đang có đơn chờ: không còn form nên không có ô", () => {
+    expect(autoBox(html({ lang: "en", autoRenewAvailable: true, checkout: card }))).toBeNull();
   });
 });

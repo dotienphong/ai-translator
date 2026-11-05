@@ -1,5 +1,15 @@
 import type { UiLanguage } from "../i18n";
-import type { CheckoutView, ConflictView, Device, LicenseView, OrderOutcome, PlanOffer, QuotaView, Standing } from "./ipc";
+import type {
+  CheckoutView,
+  ConflictView,
+  Device,
+  LicenseView,
+  OrderOutcome,
+  PlanOffer,
+  QuotaView,
+  Standing,
+  SubscriptionView,
+} from "./ipc";
 
 // Hiển thị bản quyền và hạn mức (kế hoạch 06; spec §4.2 bước 2, §4.3 "Bản quyền", "Nâng cấp"). Chỉ đọc kết quả phía Rust
 // trả về; không tự tính gói hay hạn mức.
@@ -181,4 +191,27 @@ export function orderMessageKey(outcome: OrderOutcome | null, browser = false, l
 // Đơn đã xong (thôi hỏi): cho tạo đơn mới. `underpaid` vẫn chờ chuyển bù.
 export function orderFinished(outcome: OrderOutcome | null): boolean {
   return outcome !== null && outcome.state !== "waiting" && outcome.state !== "underpaid";
+}
+
+// Dòng "Tự động gia hạn" ở nhóm Bản quyền (spec 2026-11-05 D10). Key chưa từng tự gia hạn (không có thuê bao) thì không có dòng
+// nào. Đang bật mà lần trừ gần nhất lỗi (`past_due`, `unpaid`) hay thuê bao bị tạm dừng thì dặn cập nhật thẻ; đã tắt (hủy,
+// hủy cuối kỳ, hết) thì nói gói dùng tới ngày hết hạn.
+export type AutoRenewKey =
+  | "settings.license.autoRenew.on"
+  | "settings.license.autoRenew.onNoDate"
+  | "settings.license.autoRenew.problem"
+  | "settings.license.autoRenew.ended";
+
+const AUTO_RENEW_PROBLEM = new Set(["past_due", "unpaid", "paused"]);
+
+export function autoRenewKey(subscription: SubscriptionView | null): AutoRenewKey | null {
+  if (subscription === null || subscription.status === null) return null;
+  if (!subscription.autoRenew) return "settings.license.autoRenew.ended";
+  if (AUTO_RENEW_PROBLEM.has(subscription.status)) return "settings.license.autoRenew.problem";
+  return subscription.renewsAt === null ? "settings.license.autoRenew.onNoDate" : "settings.license.autoRenew.on";
+}
+
+// Nút "Quản lý tự động gia hạn": có mọi lúc key đã có thuê bao (kể cả đã tắt: cổng Creem vẫn cho xem hóa đơn).
+export function canManageSubscription(subscription: SubscriptionView | null): boolean {
+  return subscription !== null && subscription.status !== null;
 }

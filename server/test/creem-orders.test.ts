@@ -811,16 +811,16 @@ describe("webhook Creem: checkout.completed", () => {
     expect(await count("ops_alerts")).toBe(0);
   });
 
-  it("sự kiện server không dùng (subscription.paid): 200 ignored, không hỏi Creem, không ghi D1; để lại một dòng log webhook_ignored có loại sự kiện (cắt 64 ký tự)", async () => {
+  it("sự kiện server không dùng (credits.granted): 200 ignored, không hỏi Creem, không ghi D1; để lại một dòng log webhook_ignored có loại sự kiện (cắt 64 ký tự)", async () => {
     const w = makeWorld();
-    const hook = await w.creem.signedEvent("subscription.paid", { id: "sub_1" });
+    const hook = await w.creem.signedEvent("credits.granted", { id: "sub_1" });
     const long = await w.creem.signedEvent(`x.${"y".repeat(100)}`, { id: "sub_2" });
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       expect(await w.call("POST", "/v1/webhooks/creem", hook.raw, hook.headers)).toMatchObject({ status: 200, body: { ok: true, result: "ignored" } });
       expect(await w.call("POST", "/v1/webhooks/creem", long.raw, long.headers)).toMatchObject({ status: 200, body: { ok: true, result: "ignored" } });
       expect(logged(warn)).toEqual([
-        { event: "webhook_ignored", provider: "creem", event_type: "subscription.paid" },
+        { event: "webhook_ignored", provider: "creem", event_type: "credits.granted" },
         { event: "webhook_ignored", provider: "creem", event_type: `x.${"y".repeat(62)}` },
       ]);
     } finally {

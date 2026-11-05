@@ -30,6 +30,13 @@ const LABELS: Record<string, readonly [string, Tone?]> = {
   order_disputed: ["Khách mở tranh chấp", "bad"],
   // Webhook đúng chữ ký mà không khớp đơn nào (không gắn đơn): khách có thể đã trả mà server không biết.
   payment_unmatched: ["Thanh toán không khớp đơn", "bad"],
+  // Thuê bao tự gia hạn của Creem (server/src/subscriptions.ts, spec 2026-11-05): webhook ghi, không phải thao tác tay.
+  subscription_linked: ["Bắt đầu tự gia hạn", "ok"],
+  subscription_renewed: ["Tự gia hạn kỳ mới", "ok"],
+  subscription_status: ["Đổi trạng thái tự gia hạn", "info"],
+  // Thu tiền mà server không tự cấp được (không đọc được hạn kỳ, hay thuê bao lạ chưa gắn license): cần người vận hành xem.
+  subscription_period_unreadable: ["Kỳ tự gia hạn cần xem", "warn"],
+  subscription_unlinked: ["Sự kiện thuê bao chưa gắn license", "bad"],
   // Người vận hành
   license_issued_manually: ["Cấp license tay", "info"],
   license_extended_manually: ["Gia hạn tay", "info"],

@@ -45,7 +45,7 @@ ${sectionHead({ eyebrow: "Trước khi bắt đầu", title: "Cần chuẩn bị
   ["Nền tảng", "macOS 14.2+ trên Apple Silicon và Windows 10/11 x64<small>Mac Intel và Windows ARM64: chưa hỗ trợ</small>"],
   ["Máy", "RAM tối thiểu 8 GB, khuyến nghị 16 GB<small>Tải model một lần: 1,3 GB (gói model Nhẹ) hoặc 2,5 GB (gói model Chuẩn)</small>"],
   ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Giao diện app: Tiếng Việt, English, 日本語, 中文 (giản thể), 한국어</small>"],
-  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR hoặc thẻ quốc tế (USD), không tự gia hạn. Thẻ không nhận được ở một số nước, theo danh sách của Creem.</small>"],
+  ["Giá", "Free dùng thử 10 ngày · Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR hoặc thẻ quốc tế (USD). VietQR không tự gia hạn; với thẻ, tự động gia hạn là tùy chọn (ô được tích sẵn) và hủy được bất cứ lúc nào. Thẻ không nhận được ở một số nước, theo danh sách của Creem.</small>"],
 ])}</div>
 </div></section>
 

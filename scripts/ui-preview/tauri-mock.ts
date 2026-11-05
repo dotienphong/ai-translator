@@ -12,6 +12,7 @@
 //     license… cố định giữa các lần chạy (ảnh chụp, ca kiểm); không có thì giờ thật
 //   thanh toán quốc tế (spec 2026-10-14, 2026-10-22): cách trả chọn sẵn theo lang= (vi: VietQR, ngôn ngữ khác: thẻ quốc tế)
 //     usd=0 (server chưa bán USD: bảng giá không có giá USD, bước Cách thanh toán chỉ có VietQR)
+//     autorenew=0 (server cũ/tắt tự động gia hạn: ô đồng ý không hiện)  sub=active|problem|ended (dòng tự động gia hạn ở Cài đặt > Giấy phép)
 //     checkout=1 (đơn VietQR đang chờ, có mã QR)  checkout=card (đơn thẻ đang chờ: không có mã QR, trang thanh toán ở trình
 //     duyệt)  pending=old (đơn đang chờ do bản app cũ lưu, đọc lại với số tiền 0 và loại tiền rỗng)  late=1 (đơn đã quá giờ
 //     hẹn trả mà server còn báo chờ). Tạo đơn bằng giao diện thì đơn theo đúng gói và loại tiền đã gửi; hủy thì hết đơn chờ.
@@ -56,6 +57,7 @@ import type {
   Settings,
   SpeakerRoster,
   Subtitle,
+  SubscriptionView,
   SupportView,
 } from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
@@ -516,7 +518,17 @@ const plansView = (): PlansView => ({
     const prices: Record<string, number> = param("usd") === "0" ? { VND: vnd } : { VND: vnd, USD: usd };
     return { ...p, prices };
   }),
+  // Server chào tự động gia hạn cho đơn thẻ (spec 2026-11-05); `autorenew=0` giả server cũ hay đang tắt (ô đồng ý không hiện).
+  autoRenewAvailable: param("autorenew") !== "0",
 });
+
+// Trạng thái tự động gia hạn của key: `sub=active|problem|ended` (không có: key chưa gắn thuê bao). Mốc kỳ tới cách 'bây giờ' 20 ngày.
+function subscriptionView(): SubscriptionView | null {
+  const kind = param("sub");
+  if (kind === "") return null;
+  const status = kind === "problem" ? "past_due" : kind === "ended" ? "canceled" : "active";
+  return { autoRenew: kind === "active" || kind === "problem", status, plan: "monthly", renewsAt: kind === "ended" ? null : sec(now) + 20 * 86_400 };
+}
 
 // Đơn đang chờ theo gói và loại tiền: VietQR (VND; có mã QR vẽ sẵn, hạn 15 phút) hay thẻ quốc tế (USD; không mã QR, khách
 // trả ở trang thanh toán mở bằng trình duyệt, hạn 30 phút). `expiresAtMs`: hạn đã định (đơn quá giờ hẹn trả).
@@ -831,6 +843,8 @@ const handlers = {
   get_license: () => licenseView(),
   get_pending_order: () => pendingOrder,
   get_plans: () => plansView(),
+  get_subscription: () => subscriptionView(),
+  manage_subscription: () => null,
   // Đơn mới theo đúng gói và loại tiền đã gửi (USD: thẻ, không mã QR; VND: VietQR); thay đơn đang chờ nếu có.
   start_checkout: ({ plan: code, currency }) => (pendingOrder = order(code, currency)),
   cancel_checkout: () => {

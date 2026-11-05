@@ -38,11 +38,11 @@ const SET = [
     ko: { t: "외국어 회의를 이해하는 데 필요한 모든 것", s: "자막 바, 용어집, 기록, 내보내기, 5개 언어." },
   }],
   ["pricing", {
-    vi: { t: "Free dùng thử · 50.000 ₫ · 500.000 ₫", s: "Ba gói trả trước bằng VietQR hoặc thẻ quốc tế, không tự gia hạn." },
-    en: { t: "Free trial · 50,000 ₫ · 500,000 ₫", s: "Three prepaid plans by VietQR or international card, no auto-renewal." },
-    ja: { t: "10 日間の無料お試し · US$3.99 から", s: "前払いプラン 3 種。カード（税抜）または VietQR、自動更新なし。" },
-    zh: { t: "免费试用 10 天 · US$3.99 起", s: "三种预付套餐，国际银行卡（不含税）或 VietQR，不自动续费。" },
-    ko: { t: "10일 무료 체험 · US$3.99부터", s: "선불 요금제 3종, 카드(세금 별도) 또는 VietQR, 자동 갱신 없음." },
+    vi: { t: "Free dùng thử · 50.000 ₫ · 500.000 ₫", s: "Ba gói trả trước bằng VietQR hoặc thẻ quốc tế; thẻ có thể tự động gia hạn." },
+    en: { t: "Free trial · 50,000 ₫ · 500,000 ₫", s: "Three prepaid plans by VietQR or international card; card plans can auto-renew." },
+    ja: { t: "10 日間の無料お試し · US$3.99 から", s: "前払いプラン 3 種。カード（税抜）または VietQR、カードは自動更新も選べます。" },
+    zh: { t: "免费试用 10 天 · US$3.99 起", s: "三种预付套餐，国际银行卡（不含税）或 VietQR，银行卡可选自动续费。" },
+    ko: { t: "10일 무료 체험 · US$3.99부터", s: "선불 요금제 3종, 카드(세금 별도) 또는 VietQR, 카드는 자동 갱신 선택 가능." },
   }],
   ["download", {
     vi: { t: "Tải AI Translator cho macOS và Windows", s: "Cài bằng một dòng lệnh. Dùng thử Free 10 ngày." },

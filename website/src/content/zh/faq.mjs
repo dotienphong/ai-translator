@@ -186,11 +186,11 @@ const GROUPS = [
       },
       {
         q: "如何付款？可以用国际银行卡付款吗？",
-        a: `<p>可以。在升级页面顶部的<strong>付款方式</strong>中有两种方式可选（如果看不到，请把应用更新到最新版本）：<strong>用 VND 进行 VietQR 银行转账</strong>（从越南银行转账，经由 PayOS 支付网关；二维码显示在应用中，15 分钟内有效），或<strong>用 USD 以国际银行卡付款</strong>（在浏览器中打开 Creem 付款页面；Monthly US$3.99、6 Months US$21.99、Yearly US$39.99，不含税）。对于银行卡支付的订单，Creem 是销售方（merchant of record，即转售商），负责处理付款及相关税费；Creem 的买家条款：<a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>。支付网关确认付款后，应用会激活套餐，密钥也会发送到你的邮箱。用银行卡付款时，请在创建订单后 30 分钟内付款；如果你已经付款，但应用显示订单未完成或付款时间已过，请不要重复付款：密钥仍会通过邮件发送（见<a href="/zh/guide/buy-and-activate/#refunds">付款问题</a>）。</p><p>不支持 PayPal。只有当 Creem 付款页面显示 Apple Pay 或 Google Pay 选项时才能使用它们。根据 Creem 的名单，部分国家不支持银行卡付款。不提供定期扣款；VietQR 订单目前还没有电子发票，银行卡订单会收到 Creem 发送的收据。</p>`,
+        a: `<p>可以。在升级页面顶部的<strong>付款方式</strong>中有两种方式可选（如果看不到，请把应用更新到最新版本）：<strong>用 VND 进行 VietQR 银行转账</strong>（从越南银行转账，经由 PayOS 支付网关；二维码显示在应用中，15 分钟内有效），或<strong>用 USD 以国际银行卡付款</strong>（在浏览器中打开 Creem 付款页面；Monthly US$3.99、6 Months US$21.99、Yearly US$39.99，不含税）。对于银行卡支付的订单，Creem 是销售方（merchant of record，即转售商），负责处理付款及相关税费；Creem 的买家条款：<a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>。支付网关确认付款后，应用会激活套餐，密钥也会发送到你的邮箱。用银行卡付款时，请在创建订单后 30 分钟内付款；如果你已经付款，但应用显示订单未完成或付款时间已过，请不要重复付款：密钥仍会通过邮件发送（见<a href="/zh/guide/buy-and-activate/#refunds">付款问题</a>）。</p><p>不支持 PayPal。只有当 Creem 付款页面显示 Apple Pay 或 Google Pay 选项时才能使用它们。根据 Creem 的名单，部分国家不支持银行卡付款。定期扣款是银行卡订单的可选项（自动续费复选框）；VietQR 订单目前还没有电子发票，银行卡订单会收到 Creem 发送的收据。</p>`,
       },
       {
         q: "套餐会自动续费吗？到期后会怎样？",
-        a: `<p>不会自动续费：每个套餐都是一次性的预付订单，到期就结束，不会再扣费。应用会提前 7 天提醒你。到期时，如果设备仍在 10 天试用期内，会回到 Free；试用期结束后，需要购买套餐才能继续翻译，Pro 功能（历史记录、术语表、导出）会被锁定。续订同一套餐会再增加 30 天（Monthly）、180 天（6 Months）或 365 天（Yearly）。</p>`,
+        a: `<p>取决于付款方式。VietQR 订单是预付订单，到期就结束，不会再扣费。银行卡订单带有<strong>自动续费</strong>复选框，默认已勾选：保持勾选，Creem 会在每个周期（30、180 或 365 天）向你的银行卡扣款，直到你取消；取消勾选则只付一次。可随时在“设置 › 许可证 › 管理自动续费”中取消，已付款的周期仍可使用到期满。正在自动续费的密钥，取消之前不能追加购买或更改套餐。应用会提前 7 天提醒你。到期时，如果设备仍在 10 天试用期内，会回到 Free；试用期结束后，需要购买套餐才能继续翻译，Pro 功能（历史记录、术语表、导出）会被锁定。续订同一套餐会再增加 30 天（Monthly）、180 天（6 Months）或 365 天（Yearly）。</p>`,
       },
       {
         q: "可以退款吗？",

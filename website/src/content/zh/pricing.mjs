@@ -17,11 +17,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "可以用国际银行卡付款吗？",
-    a: `<p>可以。应用的升级页面提供两种付款方式：<strong>用越南盾（VND）进行 VietQR 银行转账</strong>（从越南银行转账，经由 PayOS 支付网关），或<strong>用美元（USD）以国际银行卡付款</strong>（Monthly US$3.99、6 Months US$21.99、Yearly US$39.99，不含税）。用银行卡付款时，应用会在浏览器中打开 Creem 付款页面；付款完成后回到应用，套餐会自动生效。对于银行卡支付的订单，Creem 是销售方（merchant of record，即转售商），负责处理付款及相关税费；Creem 的买家条款：<a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>。不提供定期扣款。Free 试用不需要任何付款方式。</p>`,
+    a: `<p>可以。应用的升级页面提供两种付款方式：<strong>用越南盾（VND）进行 VietQR 银行转账</strong>（从越南银行转账，经由 PayOS 支付网关），或<strong>用美元（USD）以国际银行卡付款</strong>（Monthly US$3.99、6 Months US$21.99、Yearly US$39.99，不含税）。用银行卡付款时，应用会在浏览器中打开 Creem 付款页面；付款完成后回到应用，套餐会自动生效。对于银行卡支付的订单，Creem 是销售方（merchant of record，即转售商），负责处理付款及相关税费；Creem 的买家条款：<a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>。定期扣款是银行卡订单的可选项（自动续费复选框）。Free 试用不需要任何付款方式。</p>`,
   },
   {
     q: "我的套餐会自动续费吗？",
-    a: `<p>不会。每个套餐都是一次性的预付订单，到期后就会结束。应用会在到期前 7 天提醒你，由你决定何时续费。续订同一套餐会增加 30 天（Monthly）、180 天（6 Months）或 365 天（Yearly）；如果套餐仍然有效，则从到期日开始计算。</p>`,
+    a: `<p>取决于付款方式。VietQR 订单是一次性的预付订单，到期后就会结束。使用国际银行卡时，付款界面有<strong>自动续费</strong>复选框，默认已勾选：保持勾选，Creem 会在每个周期（Monthly 为 30 天，6 Months 为 180 天，Yearly 为 365 天）向你的银行卡扣款，直到你取消；取消勾选则只付一次。可随时在“设置 › 许可证 › 管理自动续费”中取消：已付款的周期仍可使用到期满，之后不再扣费。正在自动续费的密钥，取消之前不能追加购买或更改套餐。应用会在到期前 7 天提醒你。手动续订同一套餐会增加 30 天（Monthly）、180 天（6 Months）或 365 天（Yearly）；如果套餐仍然有效，则从到期日开始计算。</p>`,
   },
   {
     q: "一个密钥可以在几台电脑上使用？",
@@ -51,13 +51,13 @@ export default {
   path: "/zh/pricing/",
   title: "价格：免费试用和三种预付套餐",
   description:
-    "免费试用 10 天，以及 Monthly、6 Months、Yearly 三种预付套餐。可用国际银行卡（US$3.99 起，不含税）或 VietQR 支付，不自动续费。",
+    "免费试用 10 天，以及 Monthly、6 Months、Yearly 三种预付套餐。可用国际银行卡（US$3.99 起，不含税）或 VietQR 支付，银行卡可选自动续费。",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-22",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
-${pageHero({ crumbs, title: "简单的价格：预付，不自动续费", lead: "先免费试用 10 天，觉得有用再选择 Monthly、6 Months 或 Yearly。付款在应用内开始：可以从越南银行用越南盾（VND）通过 VietQR 支付，也可以用国际银行卡以美元（USD）支付；用银行卡时在浏览器中完成付款。密钥会通过邮件发送给你。" })}
+${pageHero({ crumbs, title: "简单的价格：预付，自动续费可选", lead: "先免费试用 10 天，觉得有用再选择 Monthly、6 Months 或 Yearly。付款在应用内开始：可以从越南银行用越南盾（VND）通过 VietQR 支付，也可以用国际银行卡以美元（USD）支付；用银行卡时在浏览器中完成付款。密钥会通过邮件发送给你。" })}
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">四种套餐</h2>
@@ -122,7 +122,7 @@ ${steps([
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "续订和更换套餐", title: "灵活，并按天计价", center: true })}
 <div class="grid grid-2">
-<div class="card reveal"><h3>续订同一套餐</h3><p>再次购买同一套餐，即可增加 30 天（Monthly）、180 天（6 Months）或 365 天（Yearly）；如果套餐仍然有效，则从到期日开始计算。应用会在到期前 7 天和到期后提醒你。从不自动扣费。</p></div>
+<div class="card reveal"><h3>续订同一套餐</h3><p>再次购买同一套餐，即可增加 30 天（Monthly）、180 天（6 Months）或 365 天（Yearly）；如果套餐仍然有效，则从到期日开始计算。应用会在到期前 7 天和到期后提醒你。VietQR 订单从不自动扣费；使用银行卡时可选自动续费（默认已勾选），可随时取消。</p></div>
 <div class="card reveal"><h3>在有效期内更换套餐</h3><p>新套餐立即生效，旧套餐剩余的天数按<strong>每天的价格</strong>折算，并向下取整。例如按 VND 价格计算（如果用 USD 付款，公式会使用两个套餐的 USD 价格，所以天数可能不同：在这个例子中最多相差一天），Monthly 还剩 20 天时，购买 Yearly 会增加 24 天（Yearly 将持续 389 天），购买 6 Months 会增加 22 天（6 Months 将持续 202 天）。付款前，应用会显示折算后的天数和新的到期日（估算）。更换套餐不予退款。</p></div>
 </div>
 ${callout({ title: "套餐到期时", text: "如果电脑仍在 10 天试用期内，它会回到 Free；试用期结束后，需要付费套餐才能继续翻译。没有付费套餐时，Pro 功能（历史记录、术语表、导出）会被锁定。" })}

@@ -17,11 +17,11 @@ export const PRICING_FAQ = [
   },
   {
     q: "해외 카드로 결제할 수 있나요?",
-    a: `<p>네. 앱의 업그레이드 화면에는 결제 방법이 두 가지 있습니다: <strong>VND로 하는 VietQR 계좌 이체</strong>(베트남 은행에서 PayOS 게이트웨이를 통해)와 <strong>USD로 하는 해외 카드 결제</strong>(Monthly US$3.99, 6 Months US$21.99, Yearly US$39.99, 세금 별도)입니다. 카드로 결제하면 앱이 브라우저에서 Creem 결제 페이지를 엽니다. 결제를 마치고 앱으로 돌아오면 요금제가 저절로 활성화됩니다. 카드로 결제한 주문은 Creem이 판매자(merchant of record, 재판매자)로서 결제와 세금을 처리합니다. Creem 구매자 약관: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. 정기 결제는 없습니다. Free 체험에는 결제 수단이 필요 없습니다.</p>`,
+    a: `<p>네. 앱의 업그레이드 화면에는 결제 방법이 두 가지 있습니다: <strong>VND로 하는 VietQR 계좌 이체</strong>(베트남 은행에서 PayOS 게이트웨이를 통해)와 <strong>USD로 하는 해외 카드 결제</strong>(Monthly US$3.99, 6 Months US$21.99, Yearly US$39.99, 세금 별도)입니다. 카드로 결제하면 앱이 브라우저에서 Creem 결제 페이지를 엽니다. 결제를 마치고 앱으로 돌아오면 요금제가 저절로 활성화됩니다. 카드로 결제한 주문은 Creem이 판매자(merchant of record, 재판매자)로서 결제와 세금을 처리합니다. Creem 구매자 약관: <a href="https://www.creem.io/buyer-terms" rel="noopener">https://www.creem.io/buyer-terms</a>. 정기 결제는 카드 주문에서 선택할 수 있습니다(자동 갱신 체크박스). Free 체험에는 결제 수단이 필요 없습니다.</p>`,
   },
   {
     q: "요금제가 자동으로 갱신되나요?",
-    a: `<p>아니요. 모든 요금제는 한 번만 결제하는 선불 주문이며, 기간이 끝나면 그대로 종료됩니다. 앱이 7일 전에 알려 드리므로 원할 때 갱신하면 됩니다. 같은 요금제를 갱신하면 30일(Monthly), 180일(6 Months), 365일(Yearly)이 추가되며, 요금제가 아직 유효하면 만료일부터 계산합니다.</p>`,
+    a: `<p>결제 방법에 따라 다릅니다. VietQR 주문은 한 번만 결제하는 선불 주문이며 기간이 끝나면 그대로 종료됩니다. 해외 카드로 결제하면 결제 화면에 <strong>자동 갱신</strong> 체크박스가 있고 기본으로 체크되어 있습니다. 그대로 두면 해지할 때까지 Creem이 기간마다(Monthly 30일, 6 Months 180일, Yearly 365일) 카드에 청구하며, 체크를 해제하면 한 번만 결제합니다. ‘설정 › 라이선스 › 자동 갱신 관리’에서 언제든 해지할 수 있고, 이미 결제한 기간은 만료일까지 사용할 수 있으며 이후에는 청구되지 않습니다. 자동 갱신 중인 키는 해지하기 전에는 추가 구매나 요금제 변경이 되지 않습니다. 앱이 7일 전에 알려 드립니다. 직접 같은 요금제를 갱신하면 30일(Monthly), 180일(6 Months), 365일(Yearly)이 추가되며, 요금제가 아직 유효하면 만료일부터 계산합니다.</p>`,
   },
   {
     q: "키 하나를 컴퓨터 몇 대에서 쓸 수 있나요?",
@@ -51,13 +51,13 @@ export default {
   path: "/ko/pricing/",
   title: "요금: 무료 체험과 선불 요금제 3가지",
   description:
-    "10일 무료 체험과 Monthly, 6 Months, Yearly 선불 요금제 3가지. 해외 카드(US$3.99부터, 세금 별도) 또는 VietQR로 결제하며 자동 갱신이 없습니다.",
+    "10일 무료 체험과 Monthly, 6 Months, Yearly 선불 요금제 3가지. 해외 카드(US$3.99부터, 세금 별도) 또는 VietQR로 결제하며, 카드는 자동 갱신을 선택할 수 있습니다.",
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-10-22",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
-${pageHero({ crumbs, title: "간단한 요금: 선불, 자동 갱신 없음", lead: "10일 동안 무료로 써 보고, 쓸 만하다면 Monthly, 6 Months, Yearly 중에서 고르세요. 결제는 앱 안에서 시작하며, 베트남 은행에서 베트남 동(VND)으로 VietQR 결제를 하거나 해외 카드로 미국 달러(USD) 결제를 할 수 있습니다. 카드로 결제하면 브라우저에서 결제를 마칩니다. 키는 이메일로 받습니다." })}
+${pageHero({ crumbs, title: "간단한 요금: 선불, 자동 갱신은 선택", lead: "10일 동안 무료로 써 보고, 쓸 만하다면 Monthly, 6 Months, Yearly 중에서 고르세요. 결제는 앱 안에서 시작하며, 베트남 은행에서 베트남 동(VND)으로 VietQR 결제를 하거나 해외 카드로 미국 달러(USD) 결제를 할 수 있습니다. 카드로 결제하면 브라우저에서 결제를 마칩니다. 키는 이메일로 받습니다." })}
 
 <section class="section-tight"><div class="container">
 <h2 class="sr-only">요금제 네 가지</h2>
@@ -122,7 +122,7 @@ ${steps([
 <section class="section section-alt"><div class="container">
 ${sectionHead({ eyebrow: "갱신과 요금제 변경", title: "유연하게, 하루 단위로 계산", center: true })}
 <div class="grid grid-2">
-<div class="card reveal"><h3>같은 요금제 갱신</h3><p>같은 요금제를 다시 사면 30일(Monthly), 180일(6 Months), 365일(Yearly)이 추가되며, 요금제가 아직 유효하면 만료일부터 계산합니다. 앱은 종료 7일 전과 만료 후에 알려 드립니다. 자동으로 청구되는 일은 절대 없습니다.</p></div>
+<div class="card reveal"><h3>같은 요금제 갱신</h3><p>같은 요금제를 다시 사면 30일(Monthly), 180일(6 Months), 365일(Yearly)이 추가되며, 요금제가 아직 유효하면 만료일부터 계산합니다. 앱은 종료 7일 전과 만료 후에 알려 드립니다. VietQR 주문은 자동으로 청구되지 않습니다. 카드는 자동 갱신을 선택할 수 있고(기본으로 체크됨) 언제든 해지할 수 있습니다.</p></div>
 <div class="card reveal"><h3>유효 기간 중 요금제 변경</h3><p>새 요금제는 바로 시작되고, 이전 요금제의 남은 일수는 <strong>하루당 가격</strong>으로 환산해 소수점 이하를 버립니다. 예를 들어 VND 가격으로(USD로 결제하면 두 요금제의 USD 가격으로 계산하므로 일수가 다를 수 있으며, 이 예에서는 최대 하루 차이) Monthly가 20일 남았을 때 Yearly를 사면 24일이 추가되고(Yearly는 389일이 됩니다), 6 Months를 사면 22일이 추가됩니다(6 Months는 202일이 됩니다). 환산된 일수와 새 만료일(예상)은 결제 전에 앱에 표시됩니다. 요금제 변경은 환불되지 않습니다.</p></div>
 </div>
 ${callout({ title: "요금제가 만료되면", text: "컴퓨터가 아직 10일 체험 기간 안이면 Free로 돌아갑니다. 체험 기간이 끝났다면 번역을 계속하려면 유료 요금제가 필요합니다. 유료 요금제가 없으면 Pro 기능(기록, 용어집, 내보내기)이 잠깁니다." })}

@@ -15,6 +15,7 @@ export type AlertKind =
   | "order_refund_unconfirmed"
   | "order_disputed"
   | "payment_unmatched"
+  | "subscription_review"
   | "payos_auth_failed"
   | "creem_auth_failed"
   | "order_check_failed"
@@ -66,6 +67,10 @@ const ALERT_TEXT: Record<AlertKind, string> = {
   order_disputed:
     "Khách mở tranh chấp (chargeback) cho một đơn; nếu cổng báo đã lấy lại đủ tiền thì đơn thành refunded. " +
     `${FIND_REFUND_ORDERS} Với đơn gia hạn/đổi gói dùng Rút ngắn hạn ở Web Admin, với đơn mua mới thì cân nhắc thu hồi license`,
+  subscription_review:
+    "Một sự kiện thuê bao tự gia hạn của Creem không áp được tự động (thuê bao chưa gắn với license sau nhiều lần gửi lại, hay payload không " +
+    "đọc được hạn kỳ). Tìm: lọc nhật ký ở Web Admin theo hành động subscription_unlinked hay subscription_period_unreadable, tra mã thuê bao " +
+    "(sub_…) ở dashboard Creem, rồi cấp hạn tay cho license đúng (hay gắn thuê bao) nếu khách đã bị trừ tiền",
   payment_unmatched:
     "Cổng thanh toán gửi một sự kiện thanh toán, hoàn tiền hay tranh chấp đúng chữ ký mà không khớp đơn nào của server (thường là " +
     "khách trả qua link công khai hay Storefront của sản phẩm, hay sản phẩm khác cùng tài khoản; cũng có thể là sự kiện thử gửi từ " +

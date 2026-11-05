@@ -20,7 +20,7 @@ use super::client::{Device, HttpApi};
 use super::device;
 use super::keys::PublicKeys;
 use super::manager::{License, LicenseError, LicenseView, Machine, StartBlock, Zone};
-use super::purchase::{self, CheckoutView, OrderOutcome, PlansView};
+use super::purchase::{self, CheckoutView, OrderOutcome, PlansView, SubscriptionView};
 use super::store::Vault;
 use crate::errors::{self, CommandError};
 use crate::pro::{self, ProGate};
@@ -439,8 +439,9 @@ pub fn start_checkout<R: Runtime>(
     consent: bool,
     renew: bool,
     currency: &str,
+    auto_renew: bool,
 ) -> Result<CheckoutView, CommandError> {
-    let view = purchase::start(
+    let view = purchase::start_with(
         &*license_or_error(app)?,
         plan,
         email,
@@ -448,6 +449,7 @@ pub fn start_checkout<R: Runtime>(
         renew,
         currency,
         ui_lang(app),
+        auto_renew,
     )
     .map_err(command_error)?;
     // Đơn thẻ không có mã QR để quét: mở ngay trang thanh toán của cổng bằng trình duyệt (spec 2026-10-14 §5). Mở không được
@@ -498,6 +500,18 @@ pub fn open_checkout_page<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandE
         .ok_or_else(|| CommandError::new(errors::OPEN_FAILED, None, "open_failed:no_order"))?;
     navigation::open_external(app, &order.checkout_url)
         .map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e.label()))
+}
+
+/// Trạng thái tự động gia hạn của key đang dùng (màn hình Bản quyền). Chưa kích hoạt thì `None`.
+pub fn subscription<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SubscriptionView>, CommandError> {
+    purchase::subscription(&*license_or_error(app)?).map_err(command_error)
+}
+
+/// Nút "Quản lý": xin link cổng khách hàng ở server rồi mở bằng trình duyệt. Link chỉ đi qua đây, không trả ra giao diện;
+/// `navigation::open_external` chỉ mở host trong danh sách cho phép.
+pub fn manage_subscription<R: Runtime>(app: &AppHandle<R>) -> Result<(), CommandError> {
+    let url = purchase::manage_url(&*license_or_error(app)?).map_err(command_error)?;
+    navigation::open_external(app, &url).map_err(|e| CommandError::new(errors::OPEN_FAILED, None, e.label()))
 }
 
 pub fn recover<R: Runtime>(app: &AppHandle<R>, email: &str) -> Result<(), CommandError> {

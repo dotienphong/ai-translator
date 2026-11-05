@@ -218,7 +218,7 @@ test("labels: đọc từ điển của app, nhãn trong <strong> (tách theo �
   const en = readDict("en");
   const ja = readDict("ja");
   assert.equal(en.get("nav.glossary"), "Glossary");
-  assert.equal(ja.get("settings.group.compose"), "入力翻訳");
+  assert.equal(ja.get("nav.compose"), "入力翻訳");
   assert.ok(![...en.values()].some((v) => v.includes("{")), "bỏ chuỗi có biến");
   assert.deepEqual(strongLabels('<main id="main"><p><strong>Settings › Type &amp; Translate</strong> và <strong>X</strong></p></main>'), ["Settings", "Type & Translate", "X"]);
   const got = appLabelsIn('<main id="main"><strong>Glossary</strong><strong>Monthly</strong><strong>Not an app label</strong></main>', en);

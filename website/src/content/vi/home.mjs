@@ -162,7 +162,7 @@ ${feature({ icon: "shield", title: "Máy chủ không có nội dung cuộc họ
 </div></section>
 
 <section class="section" id="gia"><div class="container">
-${sectionHead({ eyebrow: "Bảng giá", title: "Bốn gói đơn giản, trả trước bằng VietQR hoặc thẻ quốc tế", text: "Không tự động gia hạn, không thanh toán định kỳ, không tự động trừ tiền.", center: true })}
+${sectionHead({ eyebrow: "Bảng giá", title: "Bốn gói đơn giản, trả trước bằng VietQR hoặc thẻ quốc tế", text: "Đơn VietQR trả một lần, không tự gia hạn. Với thẻ quốc tế, tự động gia hạn là tùy chọn và hủy được bất cứ lúc nào.", center: true })}
 ${plansGrid("vi", { ctaLabel: "Tải xuống", freeLabel: "Cài và dùng thử miễn phí" })}
 <p class="disclaimer">Giá VND trả bằng VietQR từ ngân hàng Việt Nam; giá USD trả bằng thẻ quốc tế, chưa gồm thuế (nếu có).</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/bang-gia/">So sánh chi tiết các gói ${icon("arrow-right")}</a></p>

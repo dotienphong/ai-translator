@@ -267,6 +267,12 @@ pub enum LicenseError {
     EmailInvalid,
     #[error("không đọc được mã máy")]
     NoMachineId,
+    /// `409 subscription_active` của tạo đơn: key đang có thuê bao tự động gia hạn, mua thêm sẽ bị trừ tiền hai lần.
+    #[error("key đang tự động gia hạn")]
+    SubscriptionActive,
+    /// `409 auto_renew_unavailable` của tạo đơn: server không còn chào tự động gia hạn (bảng gói trong app đã cũ).
+    #[error("server không chào tự động gia hạn")]
+    AutoRenewUnavailable,
 }
 
 /// Mọi mã lỗi của bản quyền (test của `errors.rs` kiểm đủ câu báo lỗi).
@@ -288,6 +294,8 @@ pub const ERROR_CODES: &[&str] = &[
     "licenseConsentRequired",
     "licenseEmailInvalid",
     "licenseNoMachineId",
+    "licenseSubscriptionActive",
+    "licenseAutoRenewUnavailable",
 ];
 
 impl LicenseError {
@@ -311,6 +319,8 @@ impl LicenseError {
             Self::ConsentRequired => "licenseConsentRequired",
             Self::EmailInvalid => "licenseEmailInvalid",
             Self::NoMachineId => "licenseNoMachineId",
+            Self::SubscriptionActive => "licenseSubscriptionActive",
+            Self::AutoRenewUnavailable => "licenseAutoRenewUnavailable",
         }
     }
 }
@@ -328,6 +338,8 @@ pub(crate) fn map_api(e: ApiError) -> LicenseError {
             (_, "license_expired") => LicenseError::Expired(s.expires_at),
             (_, "activation_not_found") => LicenseError::Deactivated,
             (_, "invalid_key") => LicenseError::InvalidKey,
+            (_, "subscription_active") => LicenseError::SubscriptionActive,
+            (_, "auto_renew_unavailable") => LicenseError::AutoRenewUnavailable,
             (429, _) => LicenseError::RateLimited(s.retry_after),
             _ => LicenseError::Server(s.code),
         },
@@ -1285,7 +1297,7 @@ pub mod tests {
     use serde_json::{Value, json};
 
     use super::*;
-    use crate::license::client::{Checkout, OrderStatus, PlansReply, ServerError, TrialGrant};
+    use crate::license::client::{Checkout, OrderStatus, PlansReply, ServerError, SubscriptionInfo, TrialGrant};
     use crate::license::store::tests::FakeVault;
 
     /// 2026-10-01 00:00:00 UTC.
@@ -1372,6 +1384,8 @@ pub mod tests {
         pub trials: Mutex<VecDeque<Result<TrialGrant, ApiError>>>,
         pub deactivations: Mutex<VecDeque<Result<(), ApiError>>>,
         pub checkouts: Mutex<VecDeque<Result<Checkout, ApiError>>>,
+        /// Trạng thái tự động gia hạn trả cho `subscription()`; hết hàng đợi thì `NotConfigured`.
+        pub subscriptions: Mutex<VecDeque<Result<SubscriptionInfo, ApiError>>>,
         pub orders: Mutex<VecDeque<Result<OrderStatus, ApiError>>>,
         /// Bảng gói trả cho `plans()`; không xếp thì rỗng, không gợi ý loại tiền.
         pub plans: Mutex<Option<PlansReply>>,
@@ -1410,16 +1424,19 @@ pub mod tests {
         fn plans(&self) -> Reply<PlansReply> {
             self.calls.lock().unwrap().push("plans".into());
             Reply {
-                result: Ok(self
-                    .plans
-                    .lock()
-                    .unwrap()
-                    .clone()
-                    .unwrap_or(PlansReply { plans: Vec::new() })),
+                result: Ok(self.plans.lock().unwrap().clone().unwrap_or_default()),
                 date: *self.date.lock().unwrap(),
             }
         }
-        fn checkout(&self, plan: &str, email: &str, key: Option<&str>, currency: &str, lang: &str) -> Reply<Checkout> {
+        fn checkout(
+            &self,
+            plan: &str,
+            email: &str,
+            key: Option<&str>,
+            currency: &str,
+            lang: &str,
+            auto_renew: bool,
+        ) -> Reply<Checkout> {
             // Ghi loại tiền chỉ khi không phải VND, và ngôn ngữ chỉ khi không phải vi, để các dòng ghi của đơn VietQR từ app
             // tiếng Việt giữ nguyên.
             let currency = if currency == "VND" {
@@ -1432,8 +1449,10 @@ pub mod tests {
             } else {
                 format!(" {lang}")
             };
+            // Ghi " auto_renew" chỉ khi khách tích ô, để các dòng ghi của đơn trả một lần giữ nguyên.
+            let auto = if auto_renew { " auto_renew" } else { "" };
             self.calls.lock().unwrap().push(format!(
-                "checkout {plan} {email} {}{currency}{lang}",
+                "checkout {plan} {email} {}{currency}{lang}{auto}",
                 key.unwrap_or("-")
             ));
             Reply {
@@ -1492,6 +1511,19 @@ pub mod tests {
         fn recover(&self, _: &str, _: &str) -> Reply<()> {
             Reply {
                 result: Ok(()),
+                date: None,
+            }
+        }
+        fn subscription(&self, key: &str, manage: bool) -> Reply<SubscriptionInfo> {
+            let manage = if manage { " manage" } else { "" };
+            self.calls.lock().unwrap().push(format!("subscription {key}{manage}"));
+            Reply {
+                result: self
+                    .subscriptions
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .unwrap_or(Err(ApiError::NotConfigured)),
                 date: None,
             }
         }

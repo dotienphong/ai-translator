@@ -162,7 +162,7 @@ ${feature({ icon: "shield", title: "No meeting content on our server", text: "Ou
 </div></section>
 
 <section class="section" id="pricing"><div class="container">
-${sectionHead({ eyebrow: "Pricing", title: "Four simple plans, prepaid by VietQR or international card", text: "No auto-renewal, no recurring billing, nothing is ever charged automatically.", center: true })}
+${sectionHead({ eyebrow: "Pricing", title: "Four simple plans, prepaid by VietQR or international card", text: "VietQR orders are a single payment with no auto-renewal. With a card, auto-renewal is optional and can be cancelled any time.", center: true })}
 ${plansGrid("en", { ctaLabel: "Download", freeLabel: "Install and try free" })}
 <p class="disclaimer">VND prices are paid by VietQR from a Vietnamese bank; USD prices are paid by international card and exclude tax (if any).</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/en/pricing/">Compare the plans in detail ${icon("arrow-right")}</a></p>

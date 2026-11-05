@@ -60,7 +60,7 @@ ${docLayout({
   body: `
 ${facts([
   ["Plans", "Monthly 50,000 ₫ or $3.99 (30 days, 50 hours)<small>6 Months 269,000 ₫ or $21.99 (180 days, 100 hours per 30 days)</small><small>Yearly 500,000 ₫ or $39.99 (365 days, unlimited)</small>"],
-  ["Payment", "VietQR (Vietnamese banks, VND) or international card (USD, through Creem)<small>USD prices exclude tax · no auto-renewal</small>"],
+  ["Payment", "VietQR (Vietnamese banks, VND) or international card (USD, through Creem)<small>USD prices exclude tax · VietQR has no auto-renewal · cards can auto-renew, cancel any time</small>"],
   ["Computers", "One computer per key"],
   ["Offline", "Up to 14 days between license checks"],
   ["Refunds", "Payments are not refundable except in the cases set out in the Terms<small>Send a request within 7 days of payment</small>"],
@@ -134,7 +134,8 @@ ${callout({
 
 <h2 id="renew-change">Renew, change plan and expiry</h2>
 <ul>
-<li><strong>No auto-renewal.</strong> The app warns “Your plan ends within 7 days. Renew it to keep the Pro features.” Click <strong>Renew or change plan</strong> in Settings › License.</li>
+<li><strong>VietQR orders do not auto-renew.</strong> The app warns “Your plan ends within 7 days. Renew it to keep the Pro features.” Click <strong>Renew or change plan</strong> in Settings › License.</li>
+<li><strong>Card orders can auto-renew.</strong> The <em>Auto-renew</em> box on the payment screen is ticked by default; untick it to pay once. While it is on, Settings › License shows the next charge date, and <strong>Manage auto-renewal</strong> opens the Creem customer portal where you can cancel or change your card. After you cancel, the period you paid for stays active until it ends.</li>
 <li><strong>Renewing the same plan:</strong> adds 30 days (Monthly), 180 days (6 Months) or 365 days (Yearly), counted from the expiry date if the plan is still active.</li>
 <li><strong>Changing plan while active:</strong> the new plan starts at once with a fresh quota cycle; the days left on the old plan are converted at the price per day and rounded down: <code>converted days = days left × (old price ÷ old days) ÷ (new price ÷ new days)</code>, where the old and new price are the prices of the two plans in the currency of the plan-change order (VND or USD).</li>
 <li><strong>Expiry:</strong> the computer returns to Free if still within its 10-day trial, otherwise it cannot translate until you buy a plan. Pro features are locked.</li>

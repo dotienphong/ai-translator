@@ -215,7 +215,7 @@ ${sectionHead({ eyebrow: "한눈에 보기", title: "무료 체험과 요금", c
   ["현재 버전", RELEASE.ko],
   ["상태", "출시됨. macOS와 Windows 모두 명령 한 줄로 설치"],
   ["무료 체험", "10일, 하루 30분<small>카드도 계정도 필요 없음</small>"],
-  ["체험 후 요금", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR(VND) 또는 해외 카드(USD)로 선불, 자동 갱신 없음. Creem 목록에 있는 일부 국가에서는 카드를 사용할 수 없습니다.</small>"],
+  ["체험 후 요금", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR(VND) 또는 해외 카드(USD)로 선불. VietQR은 자동 갱신이 없고, 카드는 자동 갱신이 선택 사항(기본으로 체크됨)이며 언제든 해지할 수 있습니다. Creem 목록에 있는 일부 국가에서는 카드를 사용할 수 없습니다.</small>"],
   ["모델", "한 번만 내려받기, 1.3GB 또는 2.5GB<small>그 후에는 인식과 번역이 내 컴퓨터에서 오프라인으로 실행</small>"],
 ])}</div>
 ${callout({ kind: "ok", title: "설치 파일은 저희에게서만 받으세요", text: "AI Translator는 이 페이지의 명령, <strong>support@aitranslator.vn</strong>에서 보낸 링크, 또는 웹사이트 <strong>aitranslator.vn</strong>에서만 설치하세요. 다른 곳에서 받은 설치 파일은 가짜일 수 있습니다." })}

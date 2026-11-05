@@ -12,6 +12,11 @@ export const PLAN_NAMES: Record<PlanCode, string> = {
   yearly: "Yearly",
 };
 export const DAY_SECONDS = 86400;
+/**
+ * Ân hạn của license có thuê bao tự gia hạn (spec 2026-11-05 D7): hạn = hết kỳ Creem đã thu + số ngày này. Che độ trễ webhook và
+ * chênh giữa tháng lịch của Creem và gói 30 ngày của ta; cứ mỗi kỳ hạn được đặt lại tuyệt đối nên không cộng dồn.
+ */
+export const SUBSCRIPTION_GRACE_DAYS = 3;
 
 /**
  * Mã gói mọi bản app đều bán được (hai gói có từ trước spec 2026-10-13). Gói thêm sau đó chỉ hiện trong GET /v1/plans

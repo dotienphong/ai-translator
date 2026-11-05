@@ -160,7 +160,7 @@ ${feature({ icon: "shield", title: "服务器上没有会议内容", text: "服�
 </div></section>
 
 <section class="section" id="pricing"><div class="container">
-${sectionHead({ eyebrow: "价格", title: "四种简单的套餐，通过 VietQR 或国际银行卡预付", text: "不自动续费，不定期扣费，从不自动收费。", center: true })}
+${sectionHead({ eyebrow: "价格", title: "四种简单的套餐，通过 VietQR 或国际银行卡预付", text: "VietQR 订单是一次性付款，不自动续费；使用银行卡时，自动续费是可选项，可随时取消。", center: true })}
 ${plansGrid("zh", { ctaLabel: "下载", freeLabel: "安装并免费试用" })}
 <p class="disclaimer">VND 价格通过越南银行的 VietQR 支付；USD 价格通过国际银行卡支付，不含税（如有）。</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/zh/pricing/">详细比较各套餐 ${icon("arrow-right")}</a></p>

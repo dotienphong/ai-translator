@@ -73,6 +73,8 @@ fn main() {
                 "validate_license",
                 "get_plans",
                 "start_checkout",
+                "get_subscription",
+                "manage_subscription",
                 "get_pending_order",
                 "cancel_checkout",
                 "open_checkout_page",
