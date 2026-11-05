@@ -380,7 +380,13 @@ mod tests {
     fn external_hosts_are_exactly_the_payment_pages_and_the_website() {
         assert_eq!(
             EXTERNAL_HOSTS,
-            ["pay.payos.vn", "checkout.creem.io", "www.creem.io", "creem.io", "aitranslator.vn"]
+            [
+                "pay.payos.vn",
+                "checkout.creem.io",
+                "www.creem.io",
+                "creem.io",
+                "aitranslator.vn"
+            ]
         );
         let ok = Url::parse("https://pay.payos.vn/web/abc").unwrap();
         assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);

@@ -1424,12 +1424,7 @@ pub mod tests {
         fn plans(&self) -> Reply<PlansReply> {
             self.calls.lock().unwrap().push("plans".into());
             Reply {
-                result: Ok(self
-                    .plans
-                    .lock()
-                    .unwrap()
-                    .clone()
-                    .unwrap_or_default()),
+                result: Ok(self.plans.lock().unwrap().clone().unwrap_or_default()),
                 date: *self.date.lock().unwrap(),
             }
         }

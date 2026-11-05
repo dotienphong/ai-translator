@@ -280,7 +280,9 @@ pub fn start_with(
     } else {
         None
     };
-    let reply = license.api().checkout(plan, &email, key.as_deref(), currency, lang, auto_renew);
+    let reply = license
+        .api()
+        .checkout(plan, &email, key.as_deref(), currency, lang, auto_renew);
     license.observe_reply(&reply);
     let checkout = reply.result.map_err(super::manager::map_api)?;
     let view = checkout_view(&checkout)?;
@@ -1078,8 +1080,16 @@ mod tests {
     fn the_server_refusing_auto_renew_gets_its_own_error_codes() {
         let (api, _, l) = setup();
         for (code, error, ui) in [
-            ("auto_renew_unavailable", LicenseError::AutoRenewUnavailable, "licenseAutoRenewUnavailable"),
-            ("subscription_active", LicenseError::SubscriptionActive, "licenseSubscriptionActive"),
+            (
+                "auto_renew_unavailable",
+                LicenseError::AutoRenewUnavailable,
+                "licenseAutoRenewUnavailable",
+            ),
+            (
+                "subscription_active",
+                LicenseError::SubscriptionActive,
+                "licenseSubscriptionActive",
+            ),
         ] {
             api.checkouts
                 .lock()
@@ -1146,7 +1156,11 @@ mod tests {
         );
         for portal in [None, Some("")] {
             api.subscriptions.lock().unwrap().push_back(Ok(info(portal)));
-            assert_eq!(manage_url(&l), Err(LicenseError::Server("no_portal_url".into())), "{portal:?}");
+            assert_eq!(
+                manage_url(&l),
+                Err(LicenseError::Server("no_portal_url".into())),
+                "{portal:?}"
+            );
         }
         api.subscriptions
             .lock()

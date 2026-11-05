@@ -709,7 +709,10 @@ mod tests {
         let body = r#"{"order_code":7,"order_token":"t","checkout_url":"https://pay.payos.vn/web/x","qr_code":"000201","plan":"monthly","amount":50000,"currency":"VND","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let order = api.checkout("monthly", "a@b.vn", None, "VND", "ja", false).result.unwrap();
+        let order = api
+            .checkout("monthly", "a@b.vn", None, "VND", "ja", false)
+            .result
+            .unwrap();
         assert_eq!(order.order_code, 7);
         // Server cũ (≤ 0.1.9) không có `provider`: không đoán, để nơi dùng coi là PayOS.
         assert_eq!((order.qr_code.as_deref(), order.provider), (Some("000201"), None));
@@ -744,7 +747,10 @@ mod tests {
         let body = r#"{"order_code":8,"order_token":"t","provider":"creem","checkout_url":"https://checkout.creem.io/ch_1","qr_code":null,"plan":"monthly","amount":399,"currency":"USD","expires_at":9}"#;
         let (base, seen) = serve(vec![(201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        let order = api.checkout("monthly", "a@b.vn", None, "USD", "en", false).result.unwrap();
+        let order = api
+            .checkout("monthly", "a@b.vn", None, "USD", "en", false)
+            .result
+            .unwrap();
         assert_eq!(
             (
                 order.qr_code,
@@ -764,8 +770,12 @@ mod tests {
         let body = r#"{"order_code":8,"order_token":"t","provider":"creem","checkout_url":"https://checkout.creem.io/ch_1","qr_code":null,"plan":"monthly","amount":399,"currency":"USD","expires_at":9,"auto_renew":true}"#;
         let (base, seen) = serve(vec![(201, vec![], body), (201, vec![], body)]);
         let api = HttpApi::new(accept_base(&base, true));
-        api.checkout("monthly", "a@b.vn", None, "USD", "en", true).result.unwrap();
-        api.checkout("monthly", "a@b.vn", None, "USD", "en", false).result.unwrap();
+        api.checkout("monthly", "a@b.vn", None, "USD", "en", true)
+            .result
+            .unwrap();
+        api.checkout("monthly", "a@b.vn", None, "USD", "en", false)
+            .result
+            .unwrap();
         let reqs = seen.lock().unwrap().clone();
         assert_eq!(reqs[0].body["auto_renew"], json!(true));
         assert!(reqs[1].body.get("auto_renew").is_none(), "{}", reqs[1].body);
@@ -791,12 +801,24 @@ mod tests {
         let api = HttpApi::new(accept_base(&base, true));
         let info = api.subscription("KEY", false).result.unwrap();
         assert_eq!(
-            (info.auto_renew, info.status.as_deref(), info.plan.as_deref(), info.renews_at, info.portal_url),
+            (
+                info.auto_renew,
+                info.status.as_deref(),
+                info.plan.as_deref(),
+                info.renews_at,
+                info.portal_url
+            ),
             (true, Some("active"), Some("monthly"), Some(1_793_491_200), None)
         );
         let managed = api.subscription("KEY", true).result.unwrap();
-        assert_eq!(managed.portal_url.as_deref(), Some("https://creem.io/my-orders/login/x"));
-        assert_eq!(api.subscription("KEY", false).result.unwrap(), SubscriptionInfo::default());
+        assert_eq!(
+            managed.portal_url.as_deref(),
+            Some("https://creem.io/my-orders/login/x")
+        );
+        assert_eq!(
+            api.subscription("KEY", false).result.unwrap(),
+            SubscriptionInfo::default()
+        );
         let reqs = seen.lock().unwrap().clone();
         assert_eq!(reqs[0].path, "/v1/subscription");
         assert_eq!(reqs[0].body, json!({ "license_key": "KEY" }));

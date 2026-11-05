@@ -1844,17 +1844,27 @@ fn the_subscription_portal_link_is_opened_by_rust_and_never_reaches_the_ui() {
         .push_back(Ok(info("https://creem.io/my-orders/login/abc")));
     let status = invoke(&main, "get_subscription", json!({})).unwrap();
     assert_eq!(
-        (status["autoRenew"].as_bool(), status["status"].as_str(), status["plan"].as_str()),
+        (
+            status["autoRenew"].as_bool(),
+            status["status"].as_str(),
+            status["plan"].as_str()
+        ),
         (Some(true), Some("active"), Some("monthly"))
     );
-    assert!(!status.to_string().contains("creem.io"), "link không ra giao diện: {status}");
+    assert!(
+        !status.to_string().contains("creem.io"),
+        "link không ra giao diện: {status}"
+    );
 
     api.subscriptions
         .lock()
         .unwrap()
         .push_back(Ok(info("https://creem.io/my-orders/login/abc")));
     invoke(&main, "manage_subscription", json!({})).unwrap();
-    assert_eq!(system_calls(&app), ["open_external_url https://creem.io/my-orders/login/abc"]);
+    assert_eq!(
+        system_calls(&app),
+        ["open_external_url https://creem.io/my-orders/login/abc"]
+    );
 
     api.subscriptions
         .lock()
