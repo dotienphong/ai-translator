@@ -868,10 +868,10 @@ test("không nguồn chữ nào của site còn câu cũ về số phím tắt, 
 // Chữ của app có "&" (Type & Translate): textOf đổi thực thể HTML thành khoảng trắng, nên so cả hai phía sau khi bỏ "&".
 const plainAmp = (s) => s.replace(/&/g, " ").replace(/\s+/g, " ").trim();
 
-test("Gõ dịch: hướng dẫn trích đúng chữ trên ô soạn và ở Cài đặt › Gõ dịch của app (từ điển i18n vi và en)", async () => {
+test("Gõ dịch: hướng dẫn trích đúng chữ trên ô soạn và ở màn hình Gõ dịch của app (từ điển i18n vi và en)", async () => {
   const keys = [
     "compose.title", "compose.loading", "compose.translating", "compose.permission", "compose.permission.allow", "compose.permission.copyOnly",
-    "settings.group.compose", "settings.compose.enabled", "settings.compose.target", "settings.compose.target.hint", "settings.compose.autoPaste",
+    "nav.compose", "settings.compose.enabled", "settings.compose.target", "settings.compose.target.hint", "settings.compose.autoPaste",
     "settings.compose.permission", "settings.compose.permission.granted", "settings.compose.permission.open", "hotkeys.compose",
     "error.composeTooLong", "error.composeFailed",
   ];
@@ -1150,8 +1150,8 @@ function sectionErrors(urlPath, wants, forbids = {}) {
 test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng hàng, hai cách trả, Creem là bên bán lại (merchant of record) và đơn hoàn tiền thì rút ngắn hạn hay thu hồi", () => {
   const vi = textOf(htmlByPath.get("/dieu-khoan/"));
   const en = textOf(htmlByPath.get("/en/terms/"));
-  const viNeeds = ["Phiên bản 1.6", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
-  const enNeeds = ["Version 1.6", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
+  const viNeeds = ["Phiên bản 1.7", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
+  const enNeeds = ["Version 1.7", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/dieu-khoan/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/terms/: thiếu "${n}"`),
@@ -1231,8 +1231,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.10", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.10", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.13", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.13", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1412,13 +1412,13 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA lên 1.6 (phân biệt người nói, hiệu lực 2026-10-28); chính sách lên 1.10 (email để lại ở chat hỗ trợ báo kèm địa chỉ
-  // sang Zalo, spec ở docs/legal/README.md), hiệu lực không sớm hơn 2026-10-31. Đổi ngày phát hành thật thì sửa ở đây và ở README.
+  // EULA lên 1.7 và chính sách lên 1.13 (tự động gia hạn cho thẻ quốc tế, spec 2026-11-05, hiệu lực 2026-11-05); chính sách
+  // hiệu lực không sớm hơn 2026-10-31. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.6" || privacyHead?.version !== "1.10") errors.push("EULA 1.6 và chính sách 1.10");
-  if (eulaHead?.iso !== "2026-10-28") errors.push(`EULA 1.6 hiệu lực 2026-10-28, đang ghi ${eulaHead?.iso}`);
-  if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.10 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
+  if (eulaHead?.version !== "1.7" || privacyHead?.version !== "1.13") errors.push("EULA 1.7 và chính sách 1.13");
+  if (eulaHead?.iso !== "2026-11-05") errors.push(`EULA 1.7 hiệu lực 2026-11-05, đang ghi ${eulaHead?.iso}`);
+  if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.13 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
 });
 
@@ -1713,7 +1713,7 @@ test("Bảng giá: ô giá USD của bảng so sánh nói chưa gồm thuế, th
       lang: "vi",
       priceRow: "Giá",
       tax: "chưa gồm thuế",
-      title: "không tự gia hạn",
+      title: "tự động gia hạn là tùy chọn",
       hero: ["Bắt đầu thanh toán ngay trong app"],
       heroOld: ["Thanh toán bằng VietQR hoặc thẻ quốc tế ngay trong app"],
       grid: ["thuế (VAT, GST hay thuế bán hàng)", "trong thời hạn đã mua, trừ khi đơn đó đã được hoàn tiền"],
@@ -1734,7 +1734,7 @@ test("Bảng giá: ô giá USD của bảng so sánh nói chưa gồm thuế, th
       lang: "en",
       priceRow: "Price",
       tax: "excl. tax",
-      title: "no auto-renewal",
+      title: "with optional auto-renewal",
       hero: ["You start paying inside the app"],
       heroOld: ["You pay inside the app"],
       grid: ["tax (VAT, GST or sales tax)", "keeps its allowance for the period you bought, unless that order has been refunded"],
@@ -2825,6 +2825,38 @@ test("hướng dẫn thanh phụ đề, hỏi đáp, dữ liệu và bảo mật
     const faq = plainAmp(textOf(htmlByPath.get(pages.faq)));
     const needFaq = { vi: ["tên từng người nói", "Microsoft Teams"], en: ["names of the people speaking", "Microsoft Teams"] }[lang];
     for (const n of needFaq) if (!faq.includes(n)) errors.push(`${pages.faq}: thiếu "${n}"`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+// Tự động gia hạn cho thẻ quốc tế (spec 2026-11-05-creem-tu-dong-gia-han-design.md): website phải nói đúng việc app làm,
+// bằng đúng tên nút trong app, và không còn câu "không bao giờ tự động trừ tiền" cho mọi cách trả.
+test("Tự động gia hạn: bảng giá, hỏi đáp, hướng dẫn mua gói nói ô được tích sẵn, cách hủy bằng đúng tên nút của app, key đang gia hạn chưa mua thêm được; không còn câu 'không bao giờ trừ tiền'", async () => {
+  const errors = [];
+  const cfg = {
+    vi: { pages: ["/bang-gia/", "/cau-hoi-thuong-gap/", "/huong-dan/mua-va-kich-hoat-key/"], ticked: "được tích sẵn", stuck: "chưa mua thêm hay đổi gói được", old: ["không tự động trừ tiền", "không thanh toán định kỳ", "Không tự gia hạn: mỗi gói", "Không có tự động trừ tiền."] },
+    en: { pages: ["/en/pricing/", "/en/faq/", "/en/guide/buy-and-activate/"], ticked: "ticked by default", stuck: "cannot buy more time or change plan", old: ["never charged automatically", "no recurring billing", "No automatic renewal: each plan", "Nothing is ever charged automatically."] },
+    ja: { pages: ["/ja/pricing/", "/ja/faq/", "/ja/guide/buy-and-activate/"], ticked: "初期状態でチェック", stuck: "追加購入やプラン変更ができません", old: ["自動で課金されることは一切ありません", "定期請求もなく", "自動更新はありません。どのプラン"] },
+    zh: { pages: ["/zh/pricing/", "/zh/faq/", "/zh/guide/buy-and-activate/"], ticked: "默认已勾选", stuck: "不能追加购买或更改套餐", old: ["从不自动收费", "不定期扣费", "不会自动续费：每个套餐", "从不自动扣费。"] },
+    ko: { pages: ["/ko/pricing/", "/ko/faq/", "/ko/guide/buy-and-activate/"], ticked: "기본으로 체크", stuck: "추가 구매나 요금제 변경이 되지 않습니다", old: ["자동으로 청구되는 일은 절대 없습니다", "정기 결제도 없으며", "자동 갱신은 없습니다. 모든 요금제"] },
+  };
+  for (const [lang, c] of Object.entries(cfg)) {
+    const d = await appDict(lang);
+    const manage = d["settings.license.autoRenew.manage"];
+    const group = d["settings.group.license"];
+    if (!manage || !group) errors.push(`${lang}: app thiếu nhãn "settings.license.autoRenew.manage" hoặc "settings.group.license"`);
+    // Trang bảng giá và hỏi đáp: nói ô tích sẵn, đường hủy trong app (tên nút lấy từ app), và hạn chế của key đang gia hạn.
+    for (const p of c.pages.slice(0, 2)) {
+      const text = textOf(htmlByPath.get(p) ?? "");
+      if (!htmlByPath.has(p)) { errors.push(`${p}: không có trang`); continue; }
+      errors.push(...needsIn(p, text, [c.ticked, `${group} › ${manage}`, c.stuck, "Creem"]));
+    }
+    // Hướng dẫn mua gói: ô tích sẵn, nút quản lý, cổng khách hàng của Creem.
+    const guide = textOf(htmlByPath.get(c.pages[2]) ?? "");
+    if (!htmlByPath.has(c.pages[2])) errors.push(`${c.pages[2]}: không có trang`);
+    else errors.push(...needsIn(c.pages[2], guide, [c.ticked, manage]));
+    // Không trang nào của ngôn ngữ này còn câu cũ.
+    for (const p of pages.filter((x) => x.lang === lang)) errors.push(...forbidsIn(p.path, textOf(htmlByPath.get(p.path)), c.old));
   }
   assert.deepEqual(errors, []);
 });

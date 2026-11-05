@@ -43,7 +43,7 @@ ${sectionHead({ eyebrow: "始める前に", title: "必要なもの", center: tr
   ["プラットフォーム", "macOS 14.2 以降（Apple シリコン）と Windows 10/11 x64<small>Intel Mac と Windows ARM64：非対応</small>"],
   ["パソコン", "RAM 8 GB 以上、16 GB 推奨<small>1 回だけのモデルのダウンロード：1.3 GB（Lite）または 2.5 GB（Standard）</small>"],
   ["言語", "英語、中国語、日本語、韓国語、ベトナム語<small>アプリの表示言語：英語、ベトナム語、日本語、中国語（簡体字）、韓国語</small>"],
-  ["料金", "10 日間の無料お試し · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR または国際カード（USD）で前払い、自動更新なし。Creem の一覧により、一部の国ではカードが使えません。</small>"],
+  ["料金", "10 日間の無料お試し · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR または国際カード（USD）で前払い。VietQR は自動更新なし、カードでは自動更新は任意（初期状態でチェック済み）で、いつでも解約できます。Creem の一覧により、一部の国ではカードが使えません。</small>"],
 ])}</div>
 </div></section>
 

@@ -160,7 +160,7 @@ ${feature({ icon: "shield", title: "サーバーに会議の内容はありま�
 </div></section>
 
 <section class="section" id="pricing"><div class="container">
-${sectionHead({ eyebrow: "料金", title: "シンプルな 4 つのプラン。VietQR または国際カードで前払い", text: "自動更新も定期請求もなく、自動で課金されることは一切ありません。", center: true })}
+${sectionHead({ eyebrow: "料金", title: "シンプルな 4 つのプラン。VietQR または国際カードで前払い", text: "VietQR の注文は 1 回きりの支払いで、自動更新はありません。カードでは自動更新は任意で、いつでも解約できます。", center: true })}
 ${plansGrid("ja", { ctaLabel: "ダウンロード", freeLabel: "インストールして無料で試す" })}
 <p class="disclaimer">VND の価格はベトナムの銀行からの VietQR でのお支払い、USD の価格は国際カードでのお支払いで、税抜です（税がかかる場合）。</p>
 <p class="center-text reveal"><a class="btn btn-ghost" href="/ja/pricing/">プランを詳しく比較する ${icon("arrow-right")}</a></p>

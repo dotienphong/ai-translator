@@ -43,7 +43,7 @@ ${sectionHead({ eyebrow: "开始之前", title: "你需要什么", center: true 
   ["平台", "Apple 芯片上的 macOS 14.2 或更高版本，以及 Windows 10/11 x64<small>Intel Mac 和 Windows ARM64：不支持</small>"],
   ["电脑", "至少 8 GB 内存，建议 16 GB<small>一次性下载模型：1.3 GB（Lite）或 2.5 GB（Standard）</small>"],
   ["语言", "英语、中文、日语、韩语、越南语<small>应用界面：英语、越南语、日语、简体中文、韩语</small>"],
-  ["价格", "免费试用 10 天 · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>通过 VietQR 或国际银行卡（USD）预付，不自动续费。根据 Creem 的列表，部分国家不接受银行卡付款。</small>"],
+  ["价格", "免费试用 10 天 · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>通过 VietQR 或国际银行卡（USD）预付。VietQR 不自动续费；银行卡的自动续费为可选项（默认已勾选），可随时取消。根据 Creem 的列表，部分国家不接受银行卡付款。</small>"],
 ])}</div>
 </div></section>
 

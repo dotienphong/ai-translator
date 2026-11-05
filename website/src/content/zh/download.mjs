@@ -215,7 +215,7 @@ ${sectionHead({ eyebrow: "概览", title: "免费试用和价格", center: true 
   ["当前版本", RELEASE.zh],
   ["状态", "已发布。macOS 和 Windows 都只需一行命令即可安装"],
   ["免费试用", "10 天，每天 30 分钟<small>无需银行卡，无需账号</small>"],
-  ["之后的价格", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>通过 VietQR（VND）或国际银行卡（USD）预付，不自动续费。根据 Creem 的名单，部分国家不支持银行卡付款。</small>"],
+  ["之后的价格", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>通过 VietQR（VND）或国际银行卡（USD）预付。VietQR 不自动续费；银行卡的自动续费为可选项（默认已勾选），可随时取消。根据 Creem 的名单，部分国家不支持银行卡付款。</small>"],
   ["模型", "只需下载一次，1.3 GB 或 2.5 GB<small>之后识别和翻译都在你的电脑上离线运行</small>"],
 ])}</div>
 ${callout({ kind: "ok", title: "只从我们这里获取安装包", text: "请只用本页面上的命令，或通过 <strong>support@aitranslator.vn</strong> 发送的链接、网站 <strong>aitranslator.vn</strong> 安装 AI Translator。来自其他渠道的安装包可能是假的。" })}

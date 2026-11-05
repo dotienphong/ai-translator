@@ -60,7 +60,7 @@ ${docLayout({
   body: `
 ${facts([
   ["Gói", "Monthly 50.000 ₫ hoặc 3,99 USD (30 ngày, 50 giờ)<small>6 Months 269.000 ₫ hoặc 21,99 USD (180 ngày, 100 giờ mỗi 30 ngày)</small><small>Yearly 500.000 ₫ hoặc 39,99 USD (365 ngày, không giới hạn)</small>"],
-  ["Thanh toán", "VietQR (ngân hàng Việt Nam, VND) hoặc thẻ quốc tế (USD, qua Creem)<small>Giá USD chưa gồm thuế · không tự gia hạn</small>"],
+  ["Thanh toán", "VietQR (ngân hàng Việt Nam, VND) hoặc thẻ quốc tế (USD, qua Creem)<small>Giá USD chưa gồm thuế · VietQR không tự gia hạn · thẻ có thể tự động gia hạn, hủy bất cứ lúc nào</small>"],
   ["Số máy", "Mỗi key một máy"],
   ["Ngoại tuyến", "Tối đa 14 ngày giữa hai lần kiểm tra bản quyền"],
   ["Hoàn tiền", "Đã thanh toán thì không hoàn lại, trừ các trường hợp trong Điều khoản<small>Gửi yêu cầu trong 7 ngày kể từ ngày thanh toán</small>"],
@@ -134,7 +134,8 @@ ${callout({
 
 <h2 id="gia-han-doi-goi">Gia hạn, đổi gói và hết hạn</h2>
 <ul>
-<li><strong>Không tự gia hạn.</strong> App nhắc “Gói còn dưới 7 ngày. Gia hạn để tiếp tục dùng tính năng Pro.” Bấm <strong>Gia hạn hoặc đổi gói</strong> ở Cài đặt › Bản quyền.</li>
+<li><strong>Đơn VietQR không tự gia hạn.</strong> App nhắc “Gói còn dưới 7 ngày. Gia hạn để tiếp tục dùng tính năng Pro.” Bấm <strong>Gia hạn hoặc đổi gói</strong> ở Cài đặt › Bản quyền.</li>
+<li><strong>Đơn thẻ quốc tế có thể tự động gia hạn.</strong> Ô <em>Tự động gia hạn</em> ở màn hình thanh toán được tích sẵn; bỏ tích nếu bạn muốn trả một lần. Khi đang bật, Cài đặt › Bản quyền hiện ngày trừ tiền kế tiếp, và nút <strong>Quản lý tự động gia hạn</strong> mở cổng khách hàng của Creem để hủy hoặc đổi thẻ. Hủy xong thì kỳ đã trả vẫn dùng tới hết hạn.</li>
 <li><strong>Gia hạn cùng gói:</strong> cộng 30 ngày (Monthly), 180 ngày (6 Months) hoặc 365 ngày (Yearly), tính từ ngày hết hạn nếu gói còn hạn.</li>
 <li><strong>Đổi gói khi còn hạn:</strong> gói mới bắt đầu ngay với chu kỳ hạn mức mới; số ngày còn lại của gói cũ được quy đổi theo giá mỗi ngày và làm tròn xuống: <code>ngày quy đổi = ngày còn lại × (giá cũ ÷ ngày cũ) ÷ (giá mới ÷ ngày mới)</code>, với giá cũ và giá mới là giá của hai gói tính bằng loại tiền của đơn đổi gói (VND hoặc USD).</li>
 <li><strong>Hết hạn:</strong> máy về Free nếu còn trong 10 ngày dùng thử, nếu không thì chưa dịch được cho tới khi bạn mua gói. Tính năng Pro bị khóa.</li>

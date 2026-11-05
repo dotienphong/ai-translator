@@ -1771,3 +1771,99 @@ Vì sao thứ tự này: migration 0008 chỉ **thêm** hai bảng (`expiry_remi
    Nên tự mua một license thử rồi đặt hạn còn 2 ngày để nhận thư mẫu trước khi tin số liệu (đặt hạn bằng lệnh `UPDATE licenses SET expires_at = … WHERE id = …`, chỉ khi chủ dự án cho phép).
 
 **Tắt khẩn:** đổi `"EXPIRY_REMINDERS": "on"` thành `"off"` trong `wrangler.jsonc` rồi `pnpm exec wrangler deploy` (cron lần kế tiếp, tối đa 5 phút, không gửi gì nữa; dòng đã gửi giữ nguyên). Không cần rollback migration. Khách bấm "Ngừng nhận thư nhắc gia hạn" ghi vào `reminder_optouts` (mã băm email, không lưu email); thư key và thư giao dịch khác không bị ảnh hưởng.
+
+## 18. Đợt thêm tự động gia hạn cho thẻ quốc tế (migration D1 0009)
+
+Spec `2026-11-05-creem-tu-dong-gia-han-design.md`. Đợt này đổi **server** (Worker API, Worker admin và migration D1), **app** (ô "Tự động gia hạn" và nút "Quản lý") và **văn bản pháp lý**; **website chưa đổi** (xem 18.5). Công tắc `CREEM_AUTO_RENEW` trong `server/wrangler.jsonc` mặc định `"off"`: khi tắt, server không chào tự động gia hạn, mọi đơn thẻ vẫn là đơn trả một lần như trước. Đơn VietQR (PayOS) không đổi: vẫn trả trước một lần, vẫn có thư nhắc gia hạn (mục 17).
+
+**Vì sao thứ tự này.** Migration 0009 chỉ **thêm** bảng `subscriptions`, cột `orders.auto_renew` và hai index, không đổi dòng nào đã có, nên Worker cũ chạy đúng trên schema mới. Công tắc bật **trước khi phát hành app** để chủ dự án nghiệm thu bằng bản debug (bản debug nối production); app cũ không gửi `auto_renew` nên khi công tắc bật vẫn mua một lần, không ai khác bị ảnh hưởng. Mã chỉ được viết và kiểm thử với bản Creem giả: **chưa có phản hồi thật của Creem** (spec mục 9, U1 đến U7), nên bước nghiệm thu 18.3 là bắt buộc, không bỏ qua.
+
+**Điều kiện trước khi bắt đầu.**
+
+- `pnpm check` trong `server/` xanh trên nhánh, `cargo test` (trong `src-tauri/`) và `pnpm test` ở gốc xanh. Phần app và Rust của đợt này **chưa từng được biên dịch hay chạy** ở nơi viết mã (môi trường không có Rust, và `node_modules` gốc chỉ có bản Windows): chạy hai lệnh này trước, sửa lỗi biên dịch nếu có.
+- Chủ dự án đã đọc spec mục 8: ô tự động gia hạn **tích sẵn** có thể bị coi là chưa đủ rõ ràng ở một số thị trường (EU, UK, Mỹ). Nếu luật sư bảo không tích sẵn: đổi mặc định ô trong `UpgradeView.tsx` (`useState(false)` của `autoRenewOff` thành trạng thái ngược lại), không cần đổi server.
+- Đã đọc EULA mục 3 ("Tự động gia hạn") và chính sách mục 5, 6, 7 đã sửa trong `docs/legal/`. Dòng phiên bản và ngày hiệu lực **đã đổi** sang EULA 1.7 và chính sách 1.13 (hiệu lực 2026-11-05) cùng các test khóa của website. Nếu ngày phát hành thật khác 2026-11-05 thì đổi lại ngày theo mục "Đổi ngày hiệu lực" của `docs/legal/README.md` (và `eulaHead.iso` trong `website/test/site.test.mjs`).
+
+### 18.1. Migration và tạo ba sản phẩm thuê bao
+
+1. **Áp migration** (từ `server/`):
+
+   ```bash
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: chỉ `0009_creem_subscriptions.sql` được áp.
+
+2. **Kiểm sau khi áp (chỉ đọc):**
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE name IN ('subscriptions','orders_subscription_ref') ORDER BY name"
+   ```
+
+   Expected: hai dòng `orders_subscription_ref`, `subscriptions`.
+
+3. **Tạo ba sản phẩm thuê bao trong Creem** (khác hẳn ba sản phẩm trả một lần ở `CREEM_PRODUCT_IDS`): loại thanh toán định kỳ (`recurring`), giá catalog đúng **3,99 / 21,99 / 39,99 USD** (399 / 2199 / 3999 cent, bằng `PLANS` trong `server/src/plans.ts`; sản phẩm thuê bao **không** nhận `custom_price` nên server không chỉnh giá theo đơn được; đổi giá ở `wrangler.jsonc` thì phải đổi cả ba sản phẩm này). Chu kỳ tính tiền: chọn chu kỳ gần nhất mà dashboard Creem cho (tháng, 6 tháng, năm). Server cộng hạn license theo **ngày hết kỳ do Creem báo + 3 ngày dung sai**, không theo "30/180/365 ngày", nên chu kỳ theo lịch của Creem vẫn đúng; nhưng câu chữ trong app và EULA đang nói "mỗi 30 / 180 / 365 ngày": nếu Creem chỉ có chu kỳ theo tháng thì sửa câu `upgrade.autoRenew` (năm ngôn ngữ) và EULA mục 3 thành "mỗi tháng / 6 tháng / năm" trước khi phát hành app.
+
+> **Đã làm ngày 2026-11-05 (qua API Creem, khóa trong `.env`):** ba sản phẩm thuê bao đã được tạo trong tài khoản production, loại `recurring`, USD, thuế `exclusive`, danh mục `digital-goods-service` (giống ba sản phẩm trả một lần): Monthly `prod_2GgFvLAFZptu5fjaL2Y9F0` (399 cent, `every-month`), 6 Months `prod_2YVWwbifQtCZv3fGM7RH3N` (2199 cent, `every-six-months`), Yearly `prod_6rHlv6T6PsO1m4PZxscqhw` (3999 cent, `every-year`). Ba mã đã nằm trong `CREEM_SUBSCRIPTION_PRODUCT_IDS` của `server/wrangler.jsonc` (công tắc vẫn `off`). Bỏ qua bước 3 và 4 nếu giữ ba sản phẩm này; còn lại bước 1, 2, 5, 6, 7.
+
+4. **Ghi mã sản phẩm** vào `CREEM_SUBSCRIPTION_PRODUCT_IDS` (`monthly`, `six_months`, `yearly`) trong `server/wrangler.jsonc`: cả ba `prod_…`, khác nhau, khác ba mã trả một lần (test `wrangler-config` kiểm điều này). **Giữ `"CREEM_AUTO_RENEW": "off"`.**
+
+5. **Webhook Creem:** trong dashboard Creem, endpoint webhook hiện có phải nhận thêm các sự kiện `subscription.paid`, `subscription.active`, `subscription.update`, `subscription.trialing`, `subscription.scheduled_cancel`, `subscription.canceled`, `subscription.expired`, `subscription.past_due`, `subscription.unpaid`, `subscription.paused` (cùng `checkout.completed` và các sự kiện hoàn tiền, tranh chấp đã đăng ký từ mục 9). Secret ký không đổi (`CREEM_WEBHOOK_SECRET`).
+
+6. **Deploy hai Worker** (công tắc vẫn tắt):
+
+   ```bash
+   pnpm exec wrangler deploy
+   pnpm exec wrangler deploy -c wrangler.admin.jsonc
+   ```
+
+   Worker admin cần deploy lại để nhãn kiểm toán mới của bảng điều khiển (`Bắt đầu tự gia hạn`, `Tự gia hạn kỳ mới`…) hiện đúng tiếng Việt.
+
+7. **Kiểm công tắc tắt:** `curl -s https://api.aitranslator.vn/v1/plans` có `"auto_renew_available":false`.
+
+### 18.2. Bật công tắc để nghiệm thu (chưa phát hành app)
+
+1. Đổi `"CREEM_AUTO_RENEW": "off"` thành `"on"` trong `server/wrangler.jsonc`, `pnpm exec wrangler deploy`. `curl -s https://api.aitranslator.vn/v1/plans` phải có `"auto_renew_available":true`. (Nếu ba mã sản phẩm thuê bao còn trống, trùng nhau hay trùng mã sản phẩm trả một lần thì server coi như chưa cấu hình và `auto_renew_available` vẫn `false`.)
+2. Build bản debug của nhánh này (`pnpm tauri dev`; bản debug nối production, mục 2), mở màn Nâng cấp, chọn thẻ quốc tế: phải thấy ô "Tự động gia hạn" **tích sẵn** kèm giá, chu kỳ và cách hủy. Bỏ tích thì không thấy lời dặn về tự động gia hạn.
+
+### 18.3. Nghiệm thu bằng một đơn thật (bắt buộc)
+
+Dùng thẻ của chủ dự án, gói **Monthly**, ô tích sẵn. Theo dõi `pnpm exec wrangler tail mt-license --format json` trong suốt quá trình và **ghi lại kết quả từng mục dưới đây vào spec mục 9** (đo xong thì chuyển U-mục từ "chưa đo" sang "đã đo ngày …"):
+
+1. Trang thanh toán của Creem hiện giá 3,99 USD và nói đây là thuê bao (U1). Trả xong, app tự kích hoạt gói trong vài phút; thư key đến email.
+2. D1: `SELECT * FROM subscriptions` có đúng **một** dòng, `status = 'active'`, `paid_through` là ngày hết kỳ đầu (U2, U3: dạng ngày của Creem). `SELECT order_code, status, auto_renew, provider_ref FROM orders ORDER BY order_code DESC LIMIT 3`: đơn kỳ đầu `paid`, `auto_renew = 1`.
+3. Log không có cảnh báo `subscription_unlinked` hay `subscription_period_unreadable` (U2, U3); nếu có, đọc payload thật trong log và sửa `creem-webhook.ts` cho khớp, chạy lại bước này.
+4. Có hay không một sự kiện `subscription.paid` thứ hai ngay sau kỳ đầu (U5): server đã bỏ qua nhờ `paid_through`, chỉ ghi nhận để biết.
+5. Số tiền `last_transaction.amount_paid`, `tax_amount`, `currency` có trong sự kiện (U4); không có cảnh báo `order_payment_review`.
+6. Màn Cài đặt › Bản quyền hiện dòng "Tự động gia hạn: đang bật · trừ tiền kỳ tiếp theo khoảng …" và nút "Quản lý tự động gia hạn". Bấm nút: trình duyệt mở cổng khách hàng của Creem (`https://creem.io/my-orders/login/…`, U6). Link hết hạn nhanh hay không thì ghi lại.
+7. Thử mua lần nữa cùng key khi đang thuê bao: app báo `Key này đang tự động gia hạn…` (409 `subscription_active`).
+8. **Hủy** ở cổng khách hàng: sự kiện `subscription.canceled` hay `subscription.scheduled_cancel` (U7); dòng `subscriptions.status` đổi; màn Bản quyền đổi sang "Đã tắt. Gói dùng được tới ngày hết hạn…"; license vẫn dùng được tới hết kỳ đã trả.
+9. **Hoàn tiền** đơn thử trong dashboard Creem (EULA mục 3: người vận hành quyết định rút ngắn hay thu hồi license; mục 9 của runbook này).
+10. Kỳ gia hạn thứ hai **không thể nghiệm thu ngay** (chờ một chu kỳ). Cách kiểm sớm duy nhất là dùng chức năng thử/giả lập của Creem nếu dashboard có; nếu không, theo dõi kỳ đầu của đơn thật đầu tiên của khách: `SELECT * FROM subscriptions` và `SELECT order_code, provider_ref FROM orders WHERE auto_renew = 1` phải thêm dòng `<mã thuê bao>@<ngày hết kỳ>` đúng một lần cho mỗi kỳ, và `licenses.expires_at` = ngày hết kỳ mới + 3 ngày.
+
+Một mục sai: **tắt công tắc ngay** (`"off"`, deploy), sửa mã theo payload thật, chạy lại từ 18.2. Các thuê bao đã tạo trong lúc thử phải **hủy tay** trong dashboard Creem (tắt công tắc không dừng việc Creem trừ tiền).
+
+### 18.4. Phát hành app và văn bản
+
+Chỉ khi 18.3 đạt:
+
+1. Dòng phiên bản EULA 1.7 và chính sách 1.13 đã có trong `docs/legal/*` và `docs/legal/README.md`; **trước khi build app** chỉ cần đổi ngày hiệu lực nếu ngày phát hành khác 2026-11-05.
+2. Phát hành app theo mục 2 (có ô "Tự động gia hạn" và nút "Quản lý"). Công tắc đã `on` từ 18.2: người dùng cập nhật app sẽ thấy ô ngay.
+3. **Website** (18.5) deploy cùng ngày.
+
+### 18.5. Website (đã sửa, deploy cùng ngày với 18.4)
+
+Nội dung website đã sửa ở **cả năm ngôn ngữ** (vi/en/ja/zh/ko): đơn VietQR trả trước một lần và không tự gia hạn; đơn thẻ quốc tế có ô "Tự động gia hạn" tích sẵn, hủy bất cứ lúc nào ở Cài đặt › Bản quyền › Quản lý tự động gia hạn, key đang tự gia hạn chưa mua thêm hay đổi gói được. Đã sửa ở `website/src/content/<ngôn ngữ>/` (`pricing.mjs`, `faq.mjs`, `home.mjs`, `guide-license.mjs`, `download.mjs`, `solutions.mjs`), `website/src/strings.mjs`, `website/src/build/build.mjs` (`llms.txt`) và `website/tools/og/render.mjs` (chữ trên ảnh chia sẻ). Test khóa câu chữ ở `website/test/site.test.mjs` (tiêu đề bảng giá, ô "Thanh toán", test "Tự động gia hạn" mới lấy tên nút từ app).
+
+Còn phải làm khi phát hành:
+
+- **Không deploy website trước khi công tắc `on`**, và không để công tắc `on` quá vài ngày mà website chưa deploy: website nói thẻ có tự động gia hạn, nên chỉ đúng khi server đang chào tính năng.
+- Ảnh chia sẻ (OG) sinh lúc build từ `website/tools/og/render.mjs`; deploy website bằng quy trình thường để dựng lại.
+- Hai trang pháp lý của website sinh từ `docs/legal/` nên đã theo EULA 1.7 và chính sách 1.13.
+- Giữ quy tắc của dự án: chỉ nói điều có thật, không nêu tên công nghệ lõi (test chặn).
+
+### 18.6. Tắt khẩn và rollback
+
+- **Ngừng bán tự động gia hạn:** đổi `"CREEM_AUTO_RENEW": "on"` thành `"off"` rồi `pnpm exec wrangler deploy`. Đơn mới là đơn trả một lần. Ô trong app ẩn sau lần tải bảng gói kế tiếp. **Không** dừng các thuê bao đang chạy: Creem vẫn trừ tiền và server vẫn xử lý webhook, cộng hạn đúng như cũ; muốn dừng hẳn thì hủy từng thuê bao trong dashboard Creem.
+- Không cần rollback migration 0009 (chỉ thêm). Nếu buộc phải bỏ, bảng `subscriptions` và cột `orders.auto_renew` có thể để nguyên.
+- **Giám sát:** bảng điều khiển admin (nhật ký kiểm toán) hiện `Kỳ tự gia hạn cần xem` (đã giữ một sự kiện vì không đọc được kỳ) và `Sự kiện thuê bao chưa gắn license`; cả hai làm phát cảnh báo `subscription_review` tới người vận hành. Gặp một trong hai: đọc payload trong log của Worker và liên hệ hỗ trợ Creem nếu cần.

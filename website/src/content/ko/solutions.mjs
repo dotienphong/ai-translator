@@ -43,7 +43,7 @@ ${sectionHead({ eyebrow: "시작하기 전에", title: "필요한 것", center: 
   ["플랫폼", "Apple 실리콘의 macOS 14.2 이상과 Windows 10/11 x64<small>Intel Mac과 Windows ARM64: 지원하지 않음</small>"],
   ["컴퓨터", "RAM 최소 8GB, 16GB 권장<small>한 번만 받는 모델 다운로드: 1.3GB(Lite) 또는 2.5GB(Standard)</small>"],
   ["언어", "영어, 중국어, 일본어, 한국어, 베트남어<small>앱 인터페이스: 영어, 베트남어, 일본어, 중국어(간체), 한국어</small>"],
-  ["요금", "10일 무료 체험 · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR 또는 해외 카드(USD)로 선불 결제, 자동 갱신 없음. Creem 목록에 따라 일부 국가에서는 카드를 받지 않습니다.</small>"],
+  ["요금", "10일 무료 체험 · Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR 또는 해외 카드(USD)로 선불 결제. VietQR은 자동 갱신이 없고, 카드는 자동 갱신이 선택 사항(기본으로 체크됨)이며 언제든 해지할 수 있습니다. Creem 목록에 따라 일부 국가에서는 카드를 받지 않습니다.</small>"],
 ])}</div>
 </div></section>
 
