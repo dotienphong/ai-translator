@@ -57,6 +57,8 @@
     "allow-validate-license",
     "allow-get-plans",
     "allow-start-checkout",
+    "allow-get-subscription",
+    "allow-manage-subscription",
     "allow-get-pending-order",
     "allow-cancel-checkout",
     "allow-open-checkout-page",

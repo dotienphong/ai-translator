@@ -16,7 +16,7 @@ use qrcode::QrCode;
 use qrcode::render::svg;
 use serde::Serialize;
 
-use super::client::{Checkout, OrderStatus, PlanOffer, PlansReply};
+use super::client::{Checkout, OrderStatus, PlanOffer, PlansReply, SubscriptionInfo};
 use super::manager::{License, LicenseError};
 use super::store::{self, PendingOrder};
 
@@ -51,6 +51,22 @@ const MAX_EMAIL_LEN: usize = 254;
 #[serde(rename_all = "camelCase")]
 pub struct PlansView {
     pub plans: Vec<PlanOffer>,
+    /// Server đang chào tự động gia hạn bằng thẻ (spec 2026-11-05 D3): giao diện chỉ hiện ô "Tự động gia hạn" khi `true`.
+    pub auto_renew_available: bool,
+}
+
+/// Trạng thái tự động gia hạn của key đang dùng, cho màn hình Bản quyền (spec 2026-11-05). Không có link: link cổng khách hàng
+/// chỉ do [`manage_url`] lấy lúc khách bấm "Quản lý", và phía Rust tự mở, không đưa ra giao diện.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscriptionView {
+    /// Còn trừ tiền (đang hoạt động, quá hạn thanh toán, tạm dừng); hủy cuối kỳ, đã hủy hay đã hết là `false`.
+    pub auto_renew: bool,
+    /// Trạng thái thuê bao ở Creem (`active`, `scheduled_cancel`, `canceled`...). `None`: key chưa từng tự động gia hạn.
+    pub status: Option<String>,
+    pub plan: Option<String>,
+    /// Hết kỳ đã thu (giây Unix): kỳ sau trừ tiền vào khoảng này.
+    pub renews_at: Option<i64>,
 }
 
 /// Đơn vừa tạo, cho màn hình Nâng cấp. Không có `order_token` (chỉ phía Rust giữ).
@@ -174,13 +190,53 @@ fn provider_of(provider: Option<&str>, has_qr: bool) -> String {
 pub fn plans(license: &License) -> Result<PlansView, LicenseError> {
     let reply = license.api().plans();
     license.observe_reply(&reply);
-    let PlansReply { plans } = reply.result.map_err(super::manager::map_api)?;
-    Ok(PlansView { plans })
+    let PlansReply {
+        plans,
+        auto_renew_available,
+    } = reply.result.map_err(super::manager::map_api)?;
+    Ok(PlansView {
+        plans,
+        auto_renew_available,
+    })
 }
 
-/// Tạo đơn bằng loại tiền `currency` (`VND` hay `USD`). `renew`: gia hạn hay đổi gói key đang có (cần đã kích hoạt). `lang`: mã
-/// ngôn ngữ giao diện, để server viết thư gửi key bằng ngôn ngữ đó (spec 2026-10-23). Thiếu ô đồng ý thì từ chối, không gọi
-/// server (§10.1).
+/// Trạng thái tự động gia hạn của key đang dùng. Chưa kích hoạt key thì `None`, không gọi server.
+pub fn subscription(license: &License) -> Result<Option<SubscriptionView>, LicenseError> {
+    let Some(key) = license.license_key() else {
+        return Ok(None);
+    };
+    let reply = license.api().subscription(&key, false);
+    license.observe_reply(&reply);
+    let SubscriptionInfo {
+        auto_renew,
+        status,
+        plan,
+        renews_at,
+        ..
+    } = reply.result.map_err(super::manager::map_api)?;
+    Ok(Some(SubscriptionView {
+        auto_renew,
+        status,
+        plan,
+        renews_at,
+    }))
+}
+
+/// Link cổng khách hàng của Creem (xem và hủy tự động gia hạn) của key đang dùng. Server báo `no_subscription` khi key chưa từng
+/// tự động gia hạn. Phía Rust mở link bằng trình duyệt (`app::manage_subscription`), giao diện không bao giờ nhận link.
+pub fn manage_url(license: &License) -> Result<String, LicenseError> {
+    let key = license.license_key().ok_or(LicenseError::NotActivated)?;
+    let reply = license.api().subscription(&key, true);
+    license.observe_reply(&reply);
+    let info = reply.result.map_err(super::manager::map_api)?;
+    info.portal_url
+        .filter(|url| !url.is_empty())
+        .ok_or_else(|| LicenseError::Server("no_portal_url".into()))
+}
+
+/// Tạo đơn trả một lần bằng loại tiền `currency` (`VND` hay `USD`). `renew`: gia hạn hay đổi gói key đang có (cần đã kích hoạt).
+/// `lang`: mã ngôn ngữ giao diện, để server viết thư gửi key bằng ngôn ngữ đó (spec 2026-10-23). Thiếu ô đồng ý thì từ chối,
+/// không gọi server (§10.1). Đơn tự động gia hạn dùng [`start_with`].
 pub fn start(
     license: &License,
     plan: &str,
@@ -190,8 +246,27 @@ pub fn start(
     currency: &str,
     lang: &str,
 ) -> Result<CheckoutView, LicenseError> {
+    start_with(license, plan, email, consent, renew, currency, lang, false)
+}
+
+/// Như [`start`]; `auto_renew`: khách đã tích ô tự động gia hạn (spec 2026-11-05), chỉ với thẻ (`USD`): thanh toán bằng VietQR
+/// là trả trước một lần, nên `auto_renew` với `VND` bị từ chối ngay ở đây, không gọi server.
+#[allow(clippy::too_many_arguments)]
+pub fn start_with(
+    license: &License,
+    plan: &str,
+    email: &str,
+    consent: bool,
+    renew: bool,
+    currency: &str,
+    lang: &str,
+    auto_renew: bool,
+) -> Result<CheckoutView, LicenseError> {
     if !consent {
         return Err(LicenseError::ConsentRequired);
+    }
+    if auto_renew && currency != "USD" {
+        return Err(LicenseError::Server("auto_renew_currency".into()));
     }
     if !PLANS.contains(&plan) {
         return Err(LicenseError::Server("plan".into()));
@@ -205,7 +280,7 @@ pub fn start(
     } else {
         None
     };
-    let reply = license.api().checkout(plan, &email, key.as_deref(), currency, lang);
+    let reply = license.api().checkout(plan, &email, key.as_deref(), currency, lang, auto_renew);
     license.observe_reply(&reply);
     let checkout = reply.result.map_err(super::manager::map_api)?;
     let view = checkout_view(&checkout)?;
@@ -832,9 +907,15 @@ mod tests {
     #[test]
     fn the_plans_view_has_only_the_plans() {
         let (api, _, l) = setup();
-        *api.plans.lock().unwrap() = Some(PlansReply { plans: vec![] });
+        *api.plans.lock().unwrap() = Some(PlansReply {
+            plans: vec![],
+            ..PlansReply::default()
+        });
         let view = plans(&l).unwrap();
-        assert_eq!(serde_json::to_value(&view).unwrap(), serde_json::json!({ "plans": [] }));
+        assert_eq!(
+            serde_json::to_value(&view).unwrap(),
+            serde_json::json!({ "plans": [], "autoRenewAvailable": false })
+        );
     }
 
     #[test]
@@ -964,5 +1045,113 @@ mod tests {
                 code: "licenseLocked".into()
             })
         );
+    }
+
+    /// Tự động gia hạn (spec 2026-11-05): chỉ với thẻ. VietQR là trả trước một lần nên bị chặn trước khi gọi server; thẻ thì ô
+    /// đã tích đi tới server, ô không tích thì không (dòng gọi không có `auto_renew`).
+    #[test]
+    fn auto_renew_is_for_cards_only_and_reaches_the_server_only_when_ticked() {
+        let (api, _, l) = setup();
+        assert_eq!(
+            start_with(&l, "monthly", "a@b.vn", true, false, "VND", "vi", true),
+            Err(LicenseError::Server("auto_renew_currency".into()))
+        );
+        assert!(api.calls.lock().unwrap().is_empty(), "không gọi server");
+        api.checkouts.lock().unwrap().push_back(Ok(card_checkout(8)));
+        start_with(&l, "monthly", "a@b.vn", true, false, "USD", "en", true).unwrap();
+        api.checkouts.lock().unwrap().push_back(Ok(card_checkout(9)));
+        start_with(&l, "monthly", "a@b.vn", true, false, "USD", "en", false).unwrap();
+        api.checkouts.lock().unwrap().push_back(Ok(card_checkout(10)));
+        start(&l, "monthly", "a@b.vn", true, false, "USD", "en").unwrap();
+        assert_eq!(
+            *api.calls.lock().unwrap(),
+            [
+                "checkout monthly a@b.vn - USD en auto_renew",
+                "checkout monthly a@b.vn - USD en",
+                "checkout monthly a@b.vn - USD en",
+            ]
+        );
+    }
+
+    /// Server không còn chào tự động gia hạn, hay key đang có thuê bao: mỗi trường hợp một mã lỗi riêng cho giao diện, không lưu đơn.
+    #[test]
+    fn the_server_refusing_auto_renew_gets_its_own_error_codes() {
+        let (api, _, l) = setup();
+        for (code, error, ui) in [
+            ("auto_renew_unavailable", LicenseError::AutoRenewUnavailable, "licenseAutoRenewUnavailable"),
+            ("subscription_active", LicenseError::SubscriptionActive, "licenseSubscriptionActive"),
+        ] {
+            api.checkouts
+                .lock()
+                .unwrap()
+                .push_back(Err(crate::license::manager::tests::server(409, code)));
+            let got = start_with(&l, "monthly", "a@b.vn", true, false, "USD", "vi", true);
+            assert_eq!(got, Err(error.clone()), "{code}");
+            assert_eq!(error.code(), ui);
+        }
+        assert_eq!(pending(&l), None, "đơn bị từ chối không được lưu");
+    }
+
+    /// Trạng thái tự động gia hạn cho màn hình Bản quyền: chưa có key thì không gọi server; có key thì chỉ trạng thái, không có link.
+    #[test]
+    fn the_subscription_status_needs_a_key_and_never_carries_the_portal_link() {
+        let (api, _, l) = setup();
+        assert_eq!(subscription(&l), Ok(None));
+        assert!(api.calls.lock().unwrap().is_empty(), "chưa có key: không gọi server");
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate(KEY, T0).unwrap();
+        api.subscriptions.lock().unwrap().push_back(Ok(SubscriptionInfo {
+            auto_renew: true,
+            status: Some("active".into()),
+            plan: Some("monthly".into()),
+            renews_at: Some(T0 + 30 * 86_400),
+            portal_url: Some("https://creem.io/my-orders/login/x".into()),
+        }));
+        let view = subscription(&l).unwrap().unwrap();
+        assert_eq!(
+            serde_json::to_value(&view).unwrap(),
+            serde_json::json!({ "autoRenew": true, "status": "active", "plan": "monthly", "renewsAt": T0 + 30 * 86_400 })
+        );
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            "subscription 0123456789ABCDEFGHJKMNPQRST5"
+        );
+        api.subscriptions
+            .lock()
+            .unwrap()
+            .push_back(Err(crate::license::manager::tests::server(404, "invalid_key")));
+        assert_eq!(subscription(&l), Err(LicenseError::InvalidKey));
+    }
+
+    /// Nút "Quản lý": xin link ở server (`manage`), từ chối khi chưa có key, khi server không có link hay link rỗng.
+    #[test]
+    fn manage_url_asks_the_server_for_the_portal_link() {
+        let (api, _, l) = setup();
+        assert_eq!(manage_url(&l), Err(LicenseError::NotActivated));
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate(KEY, T0).unwrap();
+        let info = |portal: Option<&str>| SubscriptionInfo {
+            auto_renew: true,
+            portal_url: portal.map(String::from),
+            ..SubscriptionInfo::default()
+        };
+        api.subscriptions
+            .lock()
+            .unwrap()
+            .push_back(Ok(info(Some("https://creem.io/my-orders/login/x"))));
+        assert_eq!(manage_url(&l), Ok("https://creem.io/my-orders/login/x".into()));
+        assert_eq!(
+            api.calls.lock().unwrap().last().unwrap(),
+            "subscription 0123456789ABCDEFGHJKMNPQRST5 manage"
+        );
+        for portal in [None, Some("")] {
+            api.subscriptions.lock().unwrap().push_back(Ok(info(portal)));
+            assert_eq!(manage_url(&l), Err(LicenseError::Server("no_portal_url".into())), "{portal:?}");
+        }
+        api.subscriptions
+            .lock()
+            .unwrap()
+            .push_back(Err(crate::license::manager::tests::server(404, "no_subscription")));
+        assert_eq!(manage_url(&l), Err(LicenseError::Server("no_subscription".into())));
     }
 }

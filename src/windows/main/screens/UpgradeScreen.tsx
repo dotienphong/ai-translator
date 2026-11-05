@@ -16,6 +16,7 @@ export function UpgradeScreen() {
   const lang = useApp((s) => s.settings?.uiLanguage ?? fallbackLanguage);
   const view = useLicense((s) => s.view);
   const plans = useLicense((s) => s.plans);
+  const autoRenewAvailable = useLicense((s) => s.autoRenewAvailable);
   const checkout = useLicense((s) => s.checkout);
   const order = useLicense((s) => s.order);
   const error = useLicense((s) => s.error);
@@ -38,7 +39,10 @@ export function UpgradeScreen() {
       error={error}
       busy={busy}
       now={now}
-      onStart={(plan, email, consent, renew, currency) => void start(plan, email, consent, renew, currency)}
+      autoRenewAvailable={autoRenewAvailable}
+      onStart={(plan, email, consent, renew, currency, autoRenew) =>
+        void start(plan, email, consent, renew, currency, autoRenew)
+      }
       onOpenPage={() => void openPage()}
       onCancel={() => void cancel()}
     />

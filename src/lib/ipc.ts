@@ -557,6 +557,18 @@ export interface PlanOffer {
 // Bảng gói đang bán (`license::purchase::PlansView`). Giá tính theo đơn vị nhỏ nhất của từng loại tiền: đồng (VND), cent (USD).
 export interface PlansView {
   plans: PlanOffer[];
+  // Server đang chào tự động gia hạn cho đơn thẻ (USD) (spec 2026-11-05 D3). Server cũ hay đang tắt: false, ô đồng ý không hiện.
+  autoRenewAvailable: boolean;
+}
+
+// Trạng thái tự động gia hạn của key đang dùng (`license::purchase::SubscriptionView`). Không có link cổng khách hàng: link chỉ
+// đi qua phía Rust khi khách bấm "Quản lý" (`manage_subscription`).
+export interface SubscriptionView {
+  autoRenew: boolean;
+  status: string | null;
+  plan: string | null;
+  // Giây Unix của kỳ tiếp theo (ngày trừ tiền kế).
+  renewsAt: number | null;
 }
 
 export interface CheckoutView {
@@ -706,9 +718,11 @@ export interface Commands {
   validate_license: { args: undefined; result: LicenseView | null };
   get_plans: { args: undefined; result: PlansView };
   start_checkout: {
-    args: { plan: string; email: string; consent: boolean; renew: boolean; currency: string };
+    args: { plan: string; email: string; consent: boolean; renew: boolean; currency: string; autoRenew?: boolean };
     result: CheckoutView;
   };
+  get_subscription: { args: undefined; result: SubscriptionView | null };
+  manage_subscription: { args: undefined; result: null };
   get_pending_order: { args: undefined; result: CheckoutView | null };
   cancel_checkout: { args: undefined; result: null };
   open_checkout_page: { args: undefined; result: null };

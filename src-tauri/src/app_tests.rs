@@ -1794,8 +1794,10 @@ fn get_plans_returns_only_the_plans() {
             days_per_order: 30,
             prices: [("VND".to_string(), 50_000), ("USD".to_string(), 399)].into(),
         }],
+        auto_renew_available: true,
     });
     let plans = invoke(&main, "get_plans", json!({})).unwrap();
+    assert_eq!(plans["autoRenewAvailable"], true);
     assert!(plans.get("suggestedCurrency").is_none(), "{plans}");
     assert_eq!(
         (
@@ -1804,6 +1806,63 @@ fn get_plans_returns_only_the_plans() {
         ),
         (Some("monthly"), Some(399))
     );
+}
+
+/// Tự động gia hạn (spec 2026-11-05): chưa có key thì chưa có trạng thái và nút "Quản lý" không có gì để mở; có key thì giao diện
+/// chỉ nhận trạng thái (không có link), còn link cổng khách hàng do Rust mở bằng trình duyệt, và chỉ mở đúng tên miền Creem.
+#[test]
+fn the_subscription_portal_link_is_opened_by_rust_and_never_reaches_the_ui() {
+    use crate::license::client::SubscriptionInfo;
+    use crate::license::manager::tests::{DEVICE, KEY, granted};
+    use crate::test_support::system_calls;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let (api, license) = license_for(&app);
+    assert_eq!(invoke(&main, "get_subscription", json!({})).unwrap(), Value::Null);
+    assert!(invoke(&main, "manage_subscription", json!({})).is_err(), "chưa có key");
+    assert!(system_calls(&app).is_empty());
+
+    let now = crate::license::app::now();
+    let claims = json!({
+        "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
+        "device_id_hash": DEVICE, "plan": "monthly", "expires_at": now + 30 * 86_400, "cycle_anchor": now,
+        "quota_minutes_per_cycle": 3000, "quota_epoch": 0, "quota_fresh": true,
+        "issued_at": now, "refresh_before": now + 14 * 86_400,
+    });
+    api.replies.lock().unwrap().push_back(granted(&claims, true));
+    license.activate(KEY, now).unwrap();
+    let info = |portal: &str| SubscriptionInfo {
+        auto_renew: true,
+        status: Some("active".into()),
+        plan: Some("monthly".into()),
+        renews_at: Some(now + 30 * 86_400),
+        portal_url: Some(portal.into()),
+    };
+    api.subscriptions
+        .lock()
+        .unwrap()
+        .push_back(Ok(info("https://creem.io/my-orders/login/abc")));
+    let status = invoke(&main, "get_subscription", json!({})).unwrap();
+    assert_eq!(
+        (status["autoRenew"].as_bool(), status["status"].as_str(), status["plan"].as_str()),
+        (Some(true), Some("active"), Some("monthly"))
+    );
+    assert!(!status.to_string().contains("creem.io"), "link không ra giao diện: {status}");
+
+    api.subscriptions
+        .lock()
+        .unwrap()
+        .push_back(Ok(info("https://creem.io/my-orders/login/abc")));
+    invoke(&main, "manage_subscription", json!({})).unwrap();
+    assert_eq!(system_calls(&app), ["open_external_url https://creem.io/my-orders/login/abc"]);
+
+    api.subscriptions
+        .lock()
+        .unwrap()
+        .push_back(Ok(info("https://creem.io.evil.example/my-orders/login/abc")));
+    let refused = invoke(&main, "manage_subscription", json!({})).unwrap_err();
+    assert_eq!(open_error(&refused), "open_failed:not_allowed");
+    assert_eq!(system_calls(&app).len(), 1, "link lạ không được mở");
 }
 
 /// Đơn thẻ (Creem) đang chờ: không có mã QR, giao diện biết cổng; mở lại trang thanh toán chỉ với URL của Creem đã lưu.

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
 import { errorKey } from "../../../i18n";
-import { deviceName, isRenewal, isThisMachine } from "../../../lib/license";
+import { autoRenewKey, canManageSubscription, deviceName, isRenewal, isThisMachine } from "../../../lib/license";
 import { useApp, useT } from "../appStore";
 import { useLicense } from "../licenseStore";
 import { PlanName, QuotaSummary, when } from "../LicenseText";
@@ -26,11 +26,19 @@ export function LicenseSettings() {
   const deactivate = useLicense((s) => s.deactivate);
   const validate = useLicense((s) => s.validate);
   const recover = useLicense((s) => s.recover);
+  const subscription = useLicense((s) => s.subscription);
+  const loadSubscription = useLicense((s) => s.loadSubscription);
+  const manageSubscription = useLicense((s) => s.manageSubscription);
   const [key, setKey] = useState("");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [anyway, setAnyway] = useState(false);
+  // Có key thì hỏi server tình trạng tự động gia hạn mỗi lần mở nhóm này (và khi key đổi); không có key thì không có gì để hỏi.
+  const hasKey = view?.key != null;
+  useEffect(() => {
+    if (hasKey) void loadSubscription();
+  }, [hasKey, loadSubscription]);
   if (!view) return null;
   const conflict = view.standing === "conflict" ? view.conflict : null;
   return (
@@ -68,6 +76,15 @@ export function LicenseSettings() {
         <Field label={t("settings.license.quota")}>
           <QuotaSummary quota={view.quota} />
         </Field>
+        {view.key && autoRenewKey(subscription) !== null && (
+          <Field label={t("settings.license.autoRenew")}>
+            <span>
+              {t(autoRenewKey(subscription) ?? "settings.license.autoRenew.onNoDate", {
+                time: when(subscription?.renewsAt ?? null),
+              })}
+            </span>
+          </Field>
+        )}
         {view.devOverride && <p className="hint">{t("settings.license.devOverride")}</p>}
         {!view.serverConfigured && <p className="hint">{t("settings.license.notConfigured")}</p>}
         <div className="actions">
@@ -79,6 +96,12 @@ export function LicenseSettings() {
             <button disabled={busy} onClick={() => void validate()}>
               <Icon name="refresh" size={16} />
               {t("settings.license.check")}
+            </button>
+          )}
+          {view.key && canManageSubscription(subscription) && (
+            <button disabled={busy} onClick={() => void manageSubscription()}>
+              <Icon name="external" size={16} />
+              {t("settings.license.autoRenew.manage")}
             </button>
           )}
         </div>

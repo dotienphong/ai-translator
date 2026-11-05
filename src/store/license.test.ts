@@ -49,6 +49,7 @@ const cardCheckout: CheckoutView = { ...checkout, orderCode: 8, amount: 399, cur
 
 const plansView = (): PlansView => ({
   plans: [{ code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50_000, USD: 399 } }],
+  autoRenewAvailable: false,
 });
 
 describe("license store", () => {
@@ -137,6 +138,70 @@ describe("license store", () => {
     expect(store.getState().checkout?.qrSvg).toBe("<svg/>");
     await store.getState().cancelCheckout();
     expect(store.getState().checkout).toBeNull();
+  });
+
+  it("tạo đơn thẻ: chỉ gửi autoRenew khi khách tích ô; đơn trả một lần giữ nguyên lời gọi cũ", async () => {
+    const fake = fakeIpc({ start_checkout: () => checkout });
+    const store = createLicenseStore(fake.ipc);
+    expect(await store.getState().startCheckout("monthly", "a@b.vn", true, false, "USD", true)).toBe(true);
+    expect(fake.calls[0]?.args).toEqual({
+      plan: "monthly",
+      email: "a@b.vn",
+      consent: true,
+      renew: false,
+      currency: "USD",
+      autoRenew: true,
+    });
+    expect(await store.getState().startCheckout("monthly", "a@b.vn", true, false, "USD", false)).toBe(true);
+    expect(fake.calls[1]?.args).toEqual({ plan: "monthly", email: "a@b.vn", consent: true, renew: false, currency: "USD" });
+  });
+
+  it("server từ chối tự động gia hạn: hiện mã lỗi riêng, không lưu đơn", async () => {
+    for (const code of ["licenseSubscriptionActive", "licenseAutoRenewUnavailable"]) {
+      const fake = fakeIpc({
+        start_checkout: () => {
+          throw { code, field: null, message: "…" };
+        },
+      });
+      const store = createLicenseStore(fake.ipc);
+      expect(await store.getState().startCheckout("monthly", "a@b.vn", true, false, "USD", true)).toBe(false);
+      expect(store.getState().error).toEqual({ code, field: null });
+      expect(store.getState().checkout).toBeNull();
+    }
+  });
+
+  it("bảng gói mang cờ autoRenewAvailable (mặc định tắt); cờ thiếu thì coi là tắt", async () => {
+    const on = fakeIpc({ get_plans: () => ({ ...plansView(), autoRenewAvailable: true }) });
+    const store = createLicenseStore(on.ipc);
+    expect(store.getState().autoRenewAvailable).toBe(false);
+    await store.getState().loadPlans();
+    expect(store.getState().autoRenewAvailable).toBe(true);
+    // Máy chủ cũ không có khóa này: JSON thiếu `autoRenewAvailable` (phía Rust đã điền false, đây là lớp phòng thủ thứ hai).
+    const old = fakeIpc({ get_plans: () => ({ plans: plansView().plans }) as unknown as PlansView });
+    const oldStore = createLicenseStore(old.ipc);
+    await oldStore.getState().loadPlans();
+    expect(oldStore.getState().autoRenewAvailable).toBe(false);
+  });
+
+  it("trạng thái tự động gia hạn: đọc được thì lưu, lỗi thì bỏ dòng này và không báo lỗi; Quản lý gọi lệnh mở cổng", async () => {
+    const sub = { autoRenew: true, status: "active", plan: "monthly", renewsAt: 1_800_000_000 };
+    let fail = false;
+    const fake = fakeIpc({
+      get_subscription: () => {
+        if (fail) throw { code: "licenseNetwork", field: null, message: "…" };
+        return sub;
+      },
+      manage_subscription: () => null,
+    });
+    const store = createLicenseStore(fake.ipc);
+    await store.getState().loadSubscription();
+    expect(store.getState().subscription).toEqual(sub);
+    fail = true;
+    await store.getState().loadSubscription();
+    expect(store.getState().subscription).toBeNull();
+    expect(store.getState().error).toBeNull();
+    expect(await store.getState().manageSubscription()).toBeUndefined();
+    expect(fake.calls[fake.calls.length - 1]?.cmd).toBe("manage_subscription");
   });
 
   it("tải bảng gói: giá theo từng loại tiền", async () => {
