@@ -8,7 +8,7 @@
 // đúng chữ ký mà không chỉ ra đơn nào (khách trả qua link công khai hay Storefront, sản phẩm khác của tài khoản) là `unmatched`:
 // route trả 200, ghi nhật ký và cảnh báo (orders.ts, recordUnmatched), không im lặng trả 400 cho tới khi Creem bỏ.
 import { hmacSha256Hex, timingSafeEqual } from "../crypto";
-import type { WebhookEvent, WebhookRequest } from "./provider";
+import type { SubscriptionRef, SubscriptionStatus, SubscriptionTransaction, WebhookEvent, WebhookRequest } from "./provider";
 
 export const CREEM_SIGNATURE_HEADER = "creem-signature";
 
@@ -37,6 +37,70 @@ export const CHECKOUT_ID = /^[A-Za-z0-9_-]{1,128}$/;
  */
 function refOf(v: unknown): string | null {
   return typeof v === "string" && CHECKOUT_ID.test(v) ? v : null;
+}
+
+
+/** Khoảng giờ hợp lý (giây Unix): từ 2020-01-01 tới trước 2100-01-01. Ngoài khoảng là dữ liệu lạ, không dùng. */
+const TIME_MIN = 1_577_836_800;
+const TIME_MAX = 4_102_444_800;
+
+/**
+ * Mốc giờ trong payload thuê bao ra giây Unix (làm tròn xuống), hay null nếu thiếu, sai dạng hay ngoài khoảng hợp lý. Creem ghi
+ * `created_at` của sự kiện bằng mili giây (tài liệu webhook) và ngày của đối tượng bằng chuỗi ISO 8601; dạng của các trường
+ * `current_period_*` chưa đo (spec 2026-11-05 mục 9, U3) nên nhận cả chuỗi ISO có múi giờ, số giây và số mili giây.
+ */
+export function timeOf(v: unknown): number | null {
+  let seconds: number;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return null;
+    seconds = Math.floor(v >= 100_000_000_000 ? v / 1000 : v);
+  } else if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(v)) {
+    const ms = Date.parse(v);
+    if (!Number.isFinite(ms)) return null;
+    seconds = Math.floor(ms / 1000);
+  } else {
+    return null;
+  }
+  return seconds >= TIME_MIN && seconds < TIME_MAX ? seconds : null;
+}
+
+/** Thuê bao trong payload: đối tượng có `id` hợp lệ, hay chính mã dạng chuỗi. Khác thì null. `customer` là đối tượng có `id` hay chuỗi. */
+export function subscriptionRefOf(v: unknown): SubscriptionRef | null {
+  if (typeof v === "string") return refOf(v) === null ? null : { ref: v, customerRef: null, periodEnd: null };
+  if (!isRecord(v)) return null;
+  const ref = refOf(v.id);
+  if (ref === null) return null;
+  return { ref, customerRef: customerRefOf(v.customer), periodEnd: timeOf(v.current_period_end_date) };
+}
+
+function customerRefOf(v: unknown): string | null {
+  return typeof v === "string" ? refOf(v) : isRecord(v) ? refOf(v.id) : null;
+}
+
+/** Loại sự kiện thuê bao ta xử lý và trạng thái thuê bao tương ứng (spec 2026-11-05 D6). `update` lấy trạng thái trong payload. */
+const SUBSCRIPTION_STATUS: Record<string, SubscriptionStatus | "payload"> = {
+  "subscription.paid": "active",
+  "subscription.active": "active",
+  "subscription.update": "payload",
+  "subscription.trialing": "trialing",
+  "subscription.scheduled_cancel": "scheduled_cancel",
+  "subscription.canceled": "canceled",
+  "subscription.expired": "expired",
+  "subscription.past_due": "past_due",
+  "subscription.unpaid": "unpaid",
+  "subscription.paused": "paused",
+};
+const STATUSES: readonly string[] = ["active", "scheduled_cancel", "canceled", "past_due", "unpaid", "paused", "expired", "trialing"];
+
+/** Giao dịch của kỳ vừa thu (`last_transaction`); trường sai kiểu là null. null nếu payload không có giao dịch. */
+function transactionOf(object: Record<string, unknown>): SubscriptionTransaction | null {
+  const t = object.last_transaction;
+  if (!isRecord(t)) return null;
+  const status = typeof t.status === "string" ? t.status.slice(0, 64) : null;
+  const currency = typeof t.currency === "string" ? t.currency.toUpperCase().slice(0, 8) : null;
+  const d = object.discount;
+  const hasDiscount = (d !== undefined && d !== null && d !== "") || (t.discount_amount !== undefined && t.discount_amount !== null && t.discount_amount !== 0);
+  return { ref: refOf(t.id), status, currency, amountPaid: centsOf(t.amount_paid), taxAmount: centsOf(t.tax_amount), hasDiscount, paidAt: timeOf(t.created_at) };
 }
 
 /** Số tiền (cent) trong payload: số nguyên an toàn ≥ 0, khác (thiếu, null, chuỗi, âm, lẻ) thì null. */
@@ -72,6 +136,23 @@ export async function verifyCreemWebhook(secret: string, req: WebhookRequest): P
   const eventType = event.eventType;
   // Thân đã ký (chắc chắn từ Creem) mà không đọc được thành sự kiện, ví dụ Creem đổi tên trường: không im lặng trả 400.
   if (typeof eventType !== "string") return { kind: "unmatched", eventType: null, providerRef: objectId, eventId };
+  if (Object.hasOwn(SUBSCRIPTION_STATUS, eventType)) {
+    const ref = refOf(object.id);
+    if (ref === null) return { kind: "unmatched", eventType, providerRef: objectId, eventId };
+    const mapped = SUBSCRIPTION_STATUS[eventType] ?? "payload";
+    const fromPayload = typeof object.status === "string" && STATUSES.includes(object.status) ? (object.status as SubscriptionStatus) : "active";
+    return {
+      kind: "subscription",
+      eventType,
+      eventId,
+      eventAt: timeOf(event.created_at),
+      subscriptionRef: ref,
+      customerRef: customerRefOf(object.customer),
+      status: mapped === "payload" ? fromPayload : mapped,
+      periodEnd: timeOf(object.current_period_end_date),
+      transaction: eventType === "subscription.paid" ? transactionOf(object) : null,
+    };
+  }
   if (eventType !== "checkout.completed" && eventType !== "refund.created" && eventType !== "dispute.created") {
     // Sự kiện bỏ qua vẫn để lại một dòng log: thấy được khi Creem gửi loại sự kiện mới mà server chưa xử lý. Log ở đây vì kiểu
     // `ignore` không mang loại sự kiện tới route.
@@ -82,7 +163,8 @@ export async function verifyCreemWebhook(secret: string, req: WebhookRequest): P
   if (eventType === "checkout.completed") {
     const orderCode = orderCodeOf(object.request_id);
     if (orderCode === null) return unmatched;
-    return { kind: "payment", orderCode, providerRef: objectId, reportUnknownOrder: { eventType, eventId } };
+    const subscription = subscriptionRefOf(object.subscription);
+    return { kind: "payment", orderCode, providerRef: objectId, ...(subscription ? { subscription } : {}), reportUnknownOrder: { eventType, eventId } };
   }
   // Tra đơn theo id phiên (orders.provider_ref); payload của tranh chấp không có request_id (mẫu trong tài liệu). `checkout` là
   // object có `id` (mẫu của Creem) hay chính mã phiên dạng chuỗi (dạng rút gọn kiểu `product: "prod_…"` trong cùng payload):

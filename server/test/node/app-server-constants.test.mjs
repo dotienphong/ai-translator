@@ -147,6 +147,21 @@ test("mọi host trang thanh toán Creem của server (CREEM_CHECKOUT_HOST, CREE
   }
 });
 
+test("mọi host cổng khách hàng Creem của server (CREEM_PORTAL_HOSTS) có trong EXTERNAL_HOSTS của app", () => {
+  const creem = source(CREEM);
+  const hosts = externalHosts(source(NAVIGATION), NAVIGATION);
+  const m = /^\s*(?:export\s+)?const\s+CREEM_PORTAL_HOSTS\s*=\s*\[([^\]]*)\]/m.exec(creem);
+  assert.ok(m, `${CREEM}: không thấy hằng CREEM_PORTAL_HOSTS (đổi tên hay đổi dạng khai báo thì sửa test này theo)`);
+  const portal = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+  assert.ok(portal.length > 0, `${CREEM}: CREEM_PORTAL_HOSTS rỗng`);
+  for (const host of portal) {
+    assert.ok(
+      hosts.includes(host),
+      `server trả link cổng khách hàng ở ${host} nhưng EXTERNAL_HOSTS của app chỉ có ${hosts.join(", ")}: nút "Quản lý" sẽ bị chặn`,
+    );
+  }
+});
+
 test("nhịp hỏi đơn thẻ của app nằm dưới hạn mức order_poll của server ở mọi giờ đồng hồ", () => {
   const constants = readConstants();
   // Đơn thẻ của server giữ đúng `ttl`; khách tạo đơn ở giây bất kỳ của giờ. Cửa sổ hạn mức của server là cố định theo giờ đồng

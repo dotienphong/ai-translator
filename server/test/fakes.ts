@@ -202,6 +202,9 @@ export class FakeResend {
 export const TEST_CREEM_API_KEY = "ck_test_not_used_anywhere_else";
 export const TEST_CREEM_WEBHOOK_SECRET = "whsec_test_creem_not_used_anywhere_else";
 export const TEST_CREEM_PRODUCTS = { monthly: "prod_monthly", six_months: "prod_six_months", yearly: "prod_yearly" } as const;
+/** Ba sản phẩm thuê bao (billing_type recurring) và giá catalog của chúng (cent): phải bằng giá USD của PLANS (spec 2026-11-05 D2). */
+export const TEST_CREEM_SUBSCRIPTION_PRODUCTS = { monthly: "prod_sub_monthly", six_months: "prod_sub_six_months", yearly: "prod_sub_yearly" } as const;
+const SUBSCRIPTION_CATALOG_PRICE: Record<string, number> = { prod_sub_monthly: 399, prod_sub_six_months: 2199, prod_sub_yearly: 3999 };
 
 /**
  * Thân lỗi của Creem theo tài liệu (https://docs.creem.io/api-reference/introduction): `{trace_id, status, error: "<loại>",
@@ -220,6 +223,8 @@ interface FakeCreemCheckout {
   successUrl: string;
   metadata: Record<string, unknown>;
   status: "pending" | "processing" | "completed" | "expired";
+  /** Phiên của sản phẩm thuê bao: có thì khi khách trả Creem tạo thuê bao `sub_…` (`paySubscription`). */
+  subscription: { id: string; status: string; periodEnd: number } | null;
   /**
    * `amount`: giá của đơn (cent, chưa thuế, chưa giảm giá; là `sub_total`). `discountAmount`: số cent mã giảm giá trừ đi (0 nếu
    * không có); `discountId`: mã giảm giá (`order.discount`), null nếu không có. `checkoutDiscount`: phiên mang đối tượng giảm giá
@@ -269,6 +274,14 @@ export class FakeCreem {
   private seq = 0;
   /** Số thứ tự của mã sự kiện (`evt_fakeN`), khi test không đặt mã. */
   private eventSeq = 0;
+  /** Số thứ tự của mã thuê bao (`sub_fakeN`). */
+  private subSeq = 0;
+  /** Dạng `current_period_end_date` trong payload: chuỗi ISO 8601 (mặc định), giây Unix hay mili giây (chưa đo ở Creem thật, spec U3). */
+  periodFormat: "iso" | "seconds" | "millis" | "absent" = "iso";
+  /** Link cổng khách hàng mà POST /v1/customers/billing trả; test đặt giá trị lạ để thử bộ lọc tên miền. */
+  portalLink: string | null = "https://creem.io/my-orders/login/fakeportal";
+  /** Lỗi cho các lần xin link cổng kế tiếp (mã HTTP hay "network"); hết hàng đợi thì trả bình thường. */
+  portalFailures: (number | "network")[] = [];
 
   /**
    * `secret`: secret ký webhook của kênh; mặc định là secret của Worker (TEST_CREEM_WEBHOOK_SECRET). Một FakeCreem khác secret đóng
@@ -327,6 +340,103 @@ export class FakeCreem {
     return this.amountIncludesTax ? order.amount + order.tax : order.amount;
   }
 
+  /**
+   * Khách trả phiên thuê bao: như `pay`, và Creem tạo thuê bao `sub_fakeN` với hết kỳ đầu `periodEnd` (giây Unix). Chụp lại
+   * payload `checkout.completed` (có đối tượng `subscription`). Trả mã thuê bao.
+   */
+  paySubscription(checkoutId: string, periodEnd: number, tax = 0): string {
+    const c = this.must(checkoutId);
+    if (!(Object.values(TEST_CREEM_SUBSCRIPTION_PRODUCTS) as string[]).includes(c.productId)) throw new Error(`phiên ${checkoutId} không phải thuê bao`);
+    c.subscription = { id: `sub_fake${++this.subSeq}`, status: "active", periodEnd };
+    this.pay(checkoutId, tax);
+    return c.subscription.id;
+  }
+
+  subscriptionIdOf(checkoutId: string): string {
+    const sub = this.must(checkoutId).subscription;
+    if (!sub) throw new Error(`phiên ${checkoutId} chưa có thuê bao`);
+    return sub.id;
+  }
+
+  private periodValue(periodEnd: number): Record<string, unknown> {
+    switch (this.periodFormat) {
+      case "iso":
+        return { current_period_end_date: new Date(periodEnd * 1000).toISOString() };
+      case "seconds":
+        return { current_period_end_date: periodEnd };
+      case "millis":
+        return { current_period_end_date: periodEnd * 1000 };
+      case "absent":
+        return {};
+    }
+  }
+
+  /** Đối tượng `subscription` nhúng trong checkout (GET phiên, `checkout.completed`). */
+  private subscriptionObject(c: FakeCreemCheckout): Record<string, unknown> | null {
+    if (!c.subscription) return null;
+    return {
+      id: c.subscription.id,
+      object: "subscription",
+      product: c.productId,
+      customer: "cust_fake",
+      collection_method: "charge_automatically",
+      status: c.subscription.status,
+      ...this.periodValue(c.subscription.periodEnd),
+      mode: "test",
+    };
+  }
+
+  /**
+   * Webhook `subscription.*` của thuê bao `subscriptionId`. `periodEnd`: hết kỳ trong payload (giây Unix; bỏ để dùng dạng
+   * `periodFormat`; `null` thì payload không có hạn kỳ). `transaction`: ghi đè giao dịch kỳ vừa thu (`last_transaction`; mặc định
+   * trả đủ giá catalog `amount`, không thuế, `paid`, USD). `createdAt`: giờ sự kiện (giây Unix; mặc định cố định 2024 của signedEvent).
+   */
+  subscriptionWebhook(
+    subscriptionId: string,
+    eventType: string,
+    opts: {
+      periodEnd?: number | null;
+      status?: string;
+      amount?: number;
+      transaction?: Record<string, unknown> | null;
+      discount?: unknown;
+      customer?: unknown;
+      eventId?: string | null;
+      createdAt?: number;
+    } = {},
+  ) {
+    const amount = opts.amount ?? 399;
+    const transaction =
+      opts.transaction === null
+        ? undefined
+        : {
+            id: `tran_${subscriptionId}_${++this.eventSeq}`,
+            object: "transaction",
+            amount,
+            amount_paid: amount,
+            currency: "USD",
+            type: "invoice",
+            tax_amount: 0,
+            status: "paid",
+            created_at: (opts.createdAt ?? 1728734325) * 1000,
+            mode: "test",
+            ...opts.transaction,
+          };
+    const periodEnd = opts.periodEnd;
+    const object: Record<string, unknown> = {
+      id: subscriptionId,
+      object: "subscription",
+      collection_method: "charge_automatically",
+      status: opts.status ?? "active",
+      customer: opts.customer === undefined ? { id: "cust_fake", object: "customer", email: "buyer@example.com", mode: "test" } : opts.customer,
+      ...(periodEnd === null || periodEnd === undefined ? {} : this.periodValue(periodEnd)),
+      ...(transaction ? { last_transaction_id: transaction.id, last_transaction: transaction } : {}),
+      ...(opts.discount !== undefined ? { discount: opts.discount } : {}),
+      mode: "test",
+    };
+    return this.signedEvent(eventType, object, opts.eventId, opts.createdAt === undefined ? undefined : opts.createdAt * 1000);
+  }
+
   setStatus(checkoutId: string, status: FakeCreemCheckout["status"]): void {
     this.must(checkoutId).status = status;
   }
@@ -352,9 +462,10 @@ export class FakeCreem {
     eventType: string,
     object: Record<string, unknown>,
     eventId?: string | null,
+    createdAtMs = 1728734325927,
   ): Promise<{ raw: string; headers: Record<string, string> }> {
     const id = eventId === undefined ? `evt_fake${++this.eventSeq}` : eventId;
-    const raw = JSON.stringify({ ...(id === null ? {} : { id }), eventType, created_at: 1728734325927, object });
+    const raw = JSON.stringify({ ...(id === null ? {} : { id }), eventType, created_at: createdAtMs, object });
     return { raw, headers: { "creem-signature": await hmacSha256Hex(this.secret, raw) } };
   }
 
@@ -482,8 +593,9 @@ export class FakeCreem {
       ...(c.order
         ? { order: { id: c.order.id, customer: "cust_fake", product: c.productId, amount: this.reportedAmount(c.order), currency: "USD", status: c.order.status, type: "onetime", mode: "test" } }
         : {}),
-      product: { id: c.productId, name: "AI Translator", price: c.customPrice, currency: "USD", billing_type: "onetime", tax_mode: "exclusive", tax_category: "saas", status: "active", mode: "test" },
+      product: { id: c.productId, name: "AI Translator", price: c.customPrice, currency: "USD", billing_type: c.subscription ? "recurring" : "onetime", tax_mode: "exclusive", tax_category: "saas", status: "active", mode: "test" },
       customer: { id: "cust_fake", object: "customer", email: c.email, name: null, country: "NL", mode: "test" },
+      ...(c.subscription ? { subscription: this.subscriptionObject(c) } : {}),
       status: "completed",
       metadata: c.metadata,
       mode: "test",
@@ -503,6 +615,7 @@ export class FakeCreem {
       checkout_url: `https://checkout.creem.io/${c.id}`,
       success_url: c.successUrl,
       metadata: c.metadata,
+      ...(c.subscription ? { subscription: this.subscriptionObject(c) } : {}),
       // `discount` cấp phiên là đối tượng DiscountEntity (CheckoutEntity của OpenAPI), không phải mã chuỗi như `order.discount`.
       ...(c.order?.checkoutDiscount
         ? { discount: { id: c.order.discountId ?? "dis_fake", discountCode: "FAKE", name: "Giảm giá giả", type: "fixed", amount: c.order.discountAmount, duration: "once" } }
@@ -558,8 +671,14 @@ export class FakeCreem {
       const requestId = body.request_id;
       const customPrice = body.custom_price;
       const known = Object.values(TEST_CREEM_PRODUCTS) as string[];
-      if (typeof productId !== "string" || !known.includes(productId)) return creemError(400, "trace-400", "Bad Request", ["product_id lạ"]);
-      if (typeof requestId !== "string" || !Number.isInteger(customPrice) || (customPrice as number) < 100) {
+      const knownSubscriptions = Object.values(TEST_CREEM_SUBSCRIPTION_PRODUCTS) as string[];
+      if (typeof productId !== "string" || (!known.includes(productId) && !knownSubscriptions.includes(productId))) {
+        return creemError(400, "trace-400", "Bad Request", ["product_id lạ"]);
+      }
+      const isSubscription = knownSubscriptions.includes(productId);
+      // custom_price chỉ dùng được với sản phẩm một lần (tài liệu Creem): sản phẩm thuê bao dùng giá catalog.
+      if (isSubscription && customPrice !== undefined) return creemError(400, "trace-400", "Bad Request", ["custom_price không dùng được với thuê bao"]);
+      if (typeof requestId !== "string" || (!isSubscription && (!Number.isInteger(customPrice) || (customPrice as number) < 100))) {
         return creemError(400, "trace-400", "Bad Request", ["request_id hay custom_price sai"]);
       }
       const id = `ch_fake${++this.seq}`;
@@ -568,11 +687,12 @@ export class FakeCreem {
         id,
         productId,
         requestId,
-        customPrice: customPrice as number,
+        customPrice: isSubscription ? SUBSCRIPTION_CATALOG_PRICE[productId]! : (customPrice as number),
         email: customer?.email ?? null,
         successUrl: String(body.success_url ?? ""),
         metadata: (body.metadata ?? {}) as Record<string, unknown>,
         status: "pending",
+        subscription: null,
         order: null,
         paidSnapshot: null,
       };
@@ -585,11 +705,18 @@ export class FakeCreem {
         request_id: requestId,
         product: productId,
         units: 1,
-        custom_price: customPrice,
+        ...(isSubscription ? {} : { custom_price: customPrice }),
         checkout_url: `https://checkout.creem.io/${id}`,
         success_url: checkout.successUrl,
         metadata: checkout.metadata,
       });
+    }
+    if (method === "POST" && u.pathname === "/v1/customers/billing") {
+      const failure = this.portalFailures.shift();
+      if (failure === "network") throw new TypeError("fetch failed");
+      if (failure !== undefined && failure !== 200) return creemError(failure, "trace-fail", "lỗi giả", ["lỗi giả"]);
+      if (typeof body?.customer_id !== "string") return creemError(400, "trace-400", "Bad Request", ["customer_id thiếu"]);
+      return json(this.portalLink === null ? {} : { customer_portal_link: this.portalLink });
     }
     if (method === "GET" && u.pathname === "/v1/checkouts") {
       const failure = this.statusFailures.shift();

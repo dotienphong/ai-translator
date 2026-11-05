@@ -23,6 +23,7 @@ import {
   parsePlans,
 } from "./plans";
 import { failureBlock, hit, LIMITS, noteFailure } from "./ratelimit";
+import { blockingSubscription } from "./subscriptions";
 
 /** Link thanh toán của PayOS hết hạn sau 15 phút (`expiredAt` của PayOS); app hỏi trạng thái tối đa bằng thời gian này. */
 export const CHECKOUT_TTL_SECONDS = 15 * 60;
@@ -68,6 +69,15 @@ export function sellableCurrencies(deps: Pick<Deps, "payments">, plans: PlanTabl
 }
 
 /**
+ * Có chào tự động gia hạn lúc này không (spec 2026-11-05 D3): cổng Creem có đủ ba mã sản phẩm thuê bao (chỉ khi CREEM_AUTO_RENEW bật,
+ * deps.ts) và USD đang bán được. App chỉ hiện ô "Tự động gia hạn" khi `auto_renew_available` là true.
+ */
+export function autoRenewAvailable(deps: Pick<Deps, "payments">, offered: SaleCurrency[]): boolean {
+  const gateway = Object.hasOwn(deps.payments, "creem") ? deps.payments.creem : undefined;
+  return offered.includes("USD") && gateway?.subscribes === true;
+}
+
+/**
  * Loại tiền gợi ý cho màn hình Nâng cấp: VND cho khách ở Việt Nam hay khi không biết nước; USD cho khách nước khác, nếu bán
  * được USD. Chỉ là giá trị mặc định: người dùng chọn lại được. Nước lấy từ `request.cf.country` (Cloudflare điền), thiếu thì
  * từ header `CF-IPCountry` (Cloudflare chỉ thêm khi bật managed transform; chưa kiểm chứng client có giả được không, nhưng sai
@@ -103,6 +113,8 @@ export function registerCheckout(app: Hono<AppEnv>) {
     const offered = sellableCurrencies(c.get("deps"), plans);
     return c.json({
       suggested_currency: suggestedCurrency(c, offered),
+      // Chào tự động gia hạn cho đơn USD (spec 2026-11-05). App cũ bỏ qua trường này.
+      auto_renew_available: autoRenewAvailable(c.get("deps"), offered),
       plans: offeredPlanCodes(PLAN_CODES, LEGACY_PLAN_CODES, c.req.query("plans")).map((code) => ({
         code,
         name: PLAN_NAMES[code],
@@ -137,6 +149,11 @@ export function registerCheckout(app: Hono<AppEnv>) {
     if (consent !== true) return fail(c, 400, "invalid_request", { field: "consent" });
     const currency = body.currency === undefined ? "VND" : body.currency;
     if (!isCurrency(currency)) return fail(c, 400, "invalid_request", { field: "currency" });
+    // Tự động gia hạn (spec 2026-11-05 D4): chỉ boolean; thiếu là đơn một lần (app cũ). `consent` ở trên đã là đồng ý xử lý email;
+    // việc khách tích ô tự gia hạn chính là `auto_renew: true` và được ghi vào nhật ký đơn.
+    if (body.auto_renew !== undefined && typeof body.auto_renew !== "boolean") return fail(c, 400, "invalid_request", { field: "auto_renew" });
+    const autoRenew = body.auto_renew === true;
+    if (autoRenew && currency !== "USD") return fail(c, 400, "invalid_request", { field: "auto_renew" });
     // Ngôn ngữ giao diện app lúc tạo đơn (spec 2026-10-23 §3), lưu để thư gửi key viết bằng ngôn ngữ đó. Thiếu, sai kiểu hay mã lạ
     // (app sau này có thêm ngôn ngữ mà server chưa biết) thì NULL: không bao giờ chặn việc mua vì ngôn ngữ thư.
     const lang = parseLang(body.lang);
@@ -149,6 +166,9 @@ export function registerCheckout(app: Hono<AppEnv>) {
     const amount = plans[plan].prices[currency];
     const gateway = deps.payments[provider];
     if (amount === undefined || !gateway) return fail(c, 503, "pricing_not_configured");
+    // Khách đã tích tự gia hạn mà lúc này không bán được (công tắc tắt giữa chừng, thiếu mã sản phẩm): không lặng lẽ đổi thành đơn một
+    // lần, vì khách tưởng mình sẽ được gia hạn. App báo và để khách chọn lại.
+    if (autoRenew && !autoRenewAvailable(deps, sellableCurrencies(deps, plans))) return fail(c, 409, "auto_renew_unavailable");
 
     let renewLicenseId: string | null = null;
     let estimate: ReturnType<typeof computeGrant> | null = null;
@@ -169,6 +189,9 @@ export function registerCheckout(app: Hono<AppEnv>) {
         return fail(c, 404, "invalid_key");
       }
       if (lic.revoked_at !== null) return fail(c, 403, "license_revoked");
+      // License đang có thuê bao còn thu tiền (spec 2026-11-05 D11): không mua thêm, không đổi gói, không đăng ký thuê bao thứ hai
+      // (khách sẽ bị trừ tiền hai lần). Muốn đổi: hủy tự gia hạn trước (POST /v1/subscription, manage).
+      if ((await blockingSubscription(db, lic.id)) !== null) return fail(c, 409, "subscription_active");
       renewLicenseId = lic.id;
       // Ước tính theo lúc tạo đơn; số chính thức tính theo thời điểm thanh toán (QĐ33). PayOS: paymentTime() kẹp trong hạn của đơn,
       // chênh nhau tối đa 15 phút. Creem: không kẹp (phiên vẫn trả được sau hạn của ta, spike S6), chênh nhau bằng độ trễ của khách.
@@ -180,10 +203,10 @@ export function registerCheckout(app: Hono<AppEnv>) {
     const row = await db
       .prepare(
         `INSERT INTO orders (order_token_hash, provider, plan, amount, currency, email, email_consent_at,
-                             renew_license_id, lang, status, created_at, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?) RETURNING order_code`,
+                             renew_license_id, lang, auto_renew, status, created_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?) RETURNING order_code`,
       )
-      .bind(await sha256Hex(orderToken), provider, plan, amount, currency, email, now, renewLicenseId, lang, now, expiresAt)
+      .bind(await sha256Hex(orderToken), provider, plan, amount, currency, email, now, renewLicenseId, lang, autoRenew ? 1 : 0, now, expiresAt)
       .first<{ order_code: number }>();
     if (!row) throw new Error("không tạo được đơn");
     const orderCode = row.order_code;
@@ -208,6 +231,7 @@ export function registerCheckout(app: Hono<AppEnv>) {
         expiresAt,
         plan,
         email,
+        ...(autoRenew ? { autoRenew: true } : {}),
       });
     } catch (err) {
       await db.prepare("UPDATE orders SET status = 'failed' WHERE order_code = ?").bind(orderCode).run();
@@ -231,7 +255,7 @@ export function registerCheckout(app: Hono<AppEnv>) {
       action: "order_created",
       licenseId: renewLicenseId,
       orderCode,
-      detail: { plan, amount, currency },
+      detail: { plan, amount, currency, ...(autoRenew ? { auto_renew: true } : {}) },
     });
     const res: Record<string, unknown> = {
       order_code: orderCode,
@@ -244,6 +268,7 @@ export function registerCheckout(app: Hono<AppEnv>) {
       amount,
       currency,
       expires_at: expiresAt,
+      auto_renew: autoRenew,
     };
     if (estimate) {
       res.license_expires_at = estimate.expires_at;

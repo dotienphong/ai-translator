@@ -54,3 +54,17 @@ describe("audit-labels: báo cáo lỗi của app", () => {
     expect(KNOWN_ACTIONS).toContain(action);
   });
 });
+
+describe("audit-labels: tự gia hạn Creem (thuê bao)", () => {
+  it.each([
+    ["subscription_linked", "Bắt đầu tự gia hạn", "ok"],
+    ["subscription_renewed", "Tự gia hạn kỳ mới", "ok"],
+    ["subscription_status", "Đổi trạng thái tự gia hạn", "info"],
+    ["subscription_period_unreadable", "Kỳ tự gia hạn cần xem", "warn"],
+    ["subscription_unlinked", "Sự kiện thuê bao chưa gắn license", "bad"],
+  ])("%s có tên tiếng Việt, tông và là gợi ý của ô lọc hành động", (action, label, tone) => {
+    expect(actionLabel(action)).toBe(label);
+    expect(actionTone(action)).toBe(tone);
+    expect(KNOWN_ACTIONS).toContain(action);
+  });
+});

@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 const db = env.MIGRATION_DB;
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 
-it("có đúng tám migration theo thứ tự", () => {
+it("có đúng chín migration theo thứ tự", () => {
   expect(names).toEqual([
     "0001_init.sql",
     "0002_three_plans_trials.sql",
@@ -17,6 +17,7 @@ it("có đúng tám migration theo thứ tự", () => {
     "0006_order_lang.sql",
     "0007_speaker_health.sql",
     "0008_expiry_reminders.sql",
+    "0009_creem_subscriptions.sql",
   ]);
 });
 
@@ -394,7 +395,7 @@ it("0007 chỉ thêm bảng speaker_health và hai index; bảng cũ giữ nguy�
   const before = await tables();
   const indexesBefore = await indexNames();
 
-  // Chỉ 0001 đến 0007: 0008 có test riêng ở cuối file.
+  // Chỉ 0001 đến 0007: 0008 và 0009 có test riêng ở cuối file.
   await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 7));
 
   const after = await tables();
@@ -434,7 +435,8 @@ it("0008 chỉ thêm expiry_reminders, reminder_optouts và index licenses_expir
   const before = await tables();
   const indexesBefore = await indexNames();
 
-  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+  // Chỉ 0001 đến 0008: 0009 có test riêng ngay dưới.
+  await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 8));
 
   const after = await tables();
   const added = ["expiry_reminders", "reminder_optouts"];
@@ -452,5 +454,67 @@ it("0008 chỉ thêm expiry_reminders, reminder_optouts và index licenses_expir
   await expect(db.prepare("INSERT INTO reminder_optouts (email_hash, at) VALUES ('h', 1)").run()).rejects.toThrow(/UNIQUE|PRIMARY/);
   // Không có khóa ngoại tới licenses: thư nhắc không cản việc xóa hay ẩn danh license.
   expect((await db.prepare("PRAGMA foreign_key_list(expiry_reminders)").all()).results).toEqual([]);
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("0009 chỉ thêm cột orders.auto_renew (mặc định 0, chỉ 0 hay 1) và bảng subscriptions; đơn cũ giữ nguyên; mỗi kỳ thuê bao một đơn", async () => {
+  // D1 đang ở trạng thái sau 0008.
+  const tables = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name",
+        )
+        .all<{ name: string; sql: string }>()
+    ).results;
+  const indexNames = async () =>
+    (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results.map((r) => r.name);
+  const insertOrder = (code: number, ref: string | null, autoRenew?: number) =>
+    db
+      .prepare(
+        `INSERT INTO orders (order_code, order_token_hash, provider, provider_ref, plan, amount, currency, email_consent_at, status, created_at, expires_at${autoRenew === undefined ? "" : ", auto_renew"})
+         VALUES (?, 'h', 'creem', ?, 'monthly', 399, 'USD', 0, 'paid', 0, 0${autoRenew === undefined ? "" : ", ?"})`,
+      )
+      .bind(...(autoRenew === undefined ? [code, ref] : [code, ref, autoRenew]));
+  await insertOrder(9_100_001, "ch_old").run(); // đơn có từ trước 0009
+  const before = await tables();
+  const indexesBefore = await indexNames();
+
+  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+
+  const after = await tables();
+  expect(after.filter((t) => !["orders", "subscriptions"].includes(t.name))).toEqual(before.filter((t) => t.name !== "orders"));
+  expect(after.map((t) => t.name)).toContain("subscriptions");
+  // orders chỉ khác đúng một cột thêm ở cuối.
+  const ordersBefore = before.find((t) => t.name === "orders")!.sql;
+  const ordersAfter = after.find((t) => t.name === "orders")!.sql;
+  expect(ordersAfter.startsWith(ordersBefore.slice(0, -1))).toBe(true);
+  expect(ordersAfter).toContain("auto_renew INTEGER NOT NULL DEFAULT 0");
+  expect(await indexNames()).toEqual([...indexesBefore, "orders_subscription_ref", "subscriptions_license"].sort());
+
+  // Đơn cũ giữ nguyên, auto_renew = 0.
+  expect(await db.prepare("SELECT order_code, provider_ref, auto_renew FROM orders WHERE order_code = 9100001").first()).toEqual({
+    order_code: 9_100_001,
+    provider_ref: "ch_old",
+    auto_renew: 0,
+  });
+  await expect(insertOrder(9_100_002, "ch_bad", 2).run()).rejects.toThrow(/CHECK/);
+
+  // Index duy nhất một phần: chỉ ràng buộc đơn thuê bao có provider_ref; đơn một lần cùng provider_ref không bị chặn.
+  await insertOrder(9_100_003, "sub_1@100", 1).run();
+  await expect(insertOrder(9_100_004, "sub_1@100", 1).run()).rejects.toThrow(/UNIQUE/);
+  await insertOrder(9_100_005, "sub_1@200", 1).run(); // kỳ khác là đơn khác
+  await insertOrder(9_100_006, null, 1).run();
+  await insertOrder(9_100_007, null, 1).run(); // chưa có provider_ref thì không ràng buộc
+  await insertOrder(9_100_008, "ch_dup", 0).run();
+  await insertOrder(9_100_009, "ch_dup", 0).run(); // đơn một lần: không ràng buộc
+
+  const sub = db.prepare(
+    "INSERT INTO subscriptions (provider_ref, license_id, plan, status, paid_through, last_event_at, created_at, updated_at) VALUES (?, 'L1', 'monthly', 'active', 1, 1, 1, 1)",
+  );
+  await sub.bind("sub_1").run();
+  await expect(sub.bind("sub_1").run()).rejects.toThrow(/UNIQUE|PRIMARY/);
+  // Không có khóa ngoại: xóa hay ẩn danh license không bị bảng này chặn.
+  expect((await db.prepare("PRAGMA foreign_key_list(subscriptions)").all()).results).toEqual([]);
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });

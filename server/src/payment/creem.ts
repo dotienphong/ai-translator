@@ -6,7 +6,7 @@
 // Sandbox riêng (test-api.creem.io) KHÔNG bao giờ nối vào Worker: luật một môi trường (spec 2026-10-04). Test dùng
 // FakeCreem (test/fakes.ts) thay hàm fetch.
 import { PLAN_CODES, type PlanCode } from "../plans";
-import { CHECKOUT_ID, verifyCreemWebhook } from "./creem-webhook";
+import { CHECKOUT_ID, subscriptionRefOf, verifyCreemWebhook } from "./creem-webhook";
 import type { FetchFn } from "./payos";
 import {
   type CheckoutRequest,
@@ -31,6 +31,11 @@ export interface CreemConfig {
    * thì cổng chỉ xử lý đơn đã có, không bán (`sells` false).
    */
   productIds?: Record<PlanCode, string>;
+  /**
+   * Mã sản phẩm THUÊ BAO Creem của từng gói (recurring, USD, tax_mode exclusive; giá catalog = giá USD của PLANS; spec 2026-11-05 D2).
+   * Chỉ Worker API cần, và chỉ khi CREEM_AUTO_RENEW bật (deps.ts). Không có thì `subscribes` false.
+   */
+  subscriptionProductIds?: Record<PlanCode, string>;
 }
 
 const USER_AGENT = "license-server/1.0";
@@ -90,6 +95,34 @@ export function parseProductIds(raw: unknown): Record<PlanCode, string> | null {
   // Hai gói cùng một sản phẩm: trang Creem và hóa đơn ghi sai gói. Không bán còn hơn bán nhầm.
   if (new Set(Object.values(ids)).size !== PLAN_CODES.length) return null;
   return ids;
+}
+
+/**
+ * Mã sản phẩm thuê bao: cùng luật với parseProductIds, và không mã nào được trùng mã sản phẩm một lần (`oneTime`, nếu có): trùng
+ * thì khách trả một lần mà tưởng là thuê bao (hay ngược lại). Sai thì null: không chào thuê bao.
+ */
+export function parseSubscriptionProductIds(raw: unknown, oneTime: Record<PlanCode, string> | null): Record<PlanCode, string> | null {
+  const ids = parseProductIds(raw);
+  if (ids === null) return null;
+  if (oneTime !== null && Object.values(ids).some((id) => Object.values(oneTime).includes(id))) return null;
+  return ids;
+}
+
+/** Trang cổng khách hàng của Creem (spec 2026-11-05 D9): https://creem.io/my-orders/login/<mã> (tài liệu). `www.creem.io` cũng nhận, như trang thanh toán. */
+export const CREEM_PORTAL_HOSTS = ["creem.io", "www.creem.io"] as const;
+export const CREEM_PORTAL_PATH = "/my-orders/";
+
+/** Địa chỉ cổng khách hàng ở dạng chuẩn hóa, hay null nếu không đúng https://creem.io/my-orders/…, có userinfo hay cổng lạ. */
+function creemPortalUrl(value: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  const plain = url.protocol === "https:" && url.port === "" && url.username === "" && url.password === "";
+  const host = (CREEM_PORTAL_HOSTS as readonly string[]).includes(url.hostname);
+  return plain && host && url.pathname.startsWith(CREEM_PORTAL_PATH) && url.pathname.length > CREEM_PORTAL_PATH.length ? url.href : null;
 }
 
 /**
@@ -249,10 +282,18 @@ export class CreemProvider implements PaymentProvider {
     return this.cfg.productIds !== undefined;
   }
 
+  /** Bán thuê bao tự gia hạn chỉ khi có mã sản phẩm thuê bao (spec 2026-11-05). */
+  get subscribes(): boolean {
+    return this.cfg.subscriptionProductIds !== undefined;
+  }
+
   async createCheckout(req: CheckoutRequest): Promise<CheckoutResult> {
     if (req.currency !== "USD") throw new PaymentProviderError(`Creem không nhận ${req.currency}`);
-    const productId = this.cfg.productIds?.[req.plan];
-    if (!productId) throw new PaymentProviderError(`Creem chưa có sản phẩm cho gói ${req.plan}`);
+    // Đơn thuê bao dùng sản phẩm thuê bao: giá nằm ở catalog của Creem (không có `custom_price`, chỉ dùng được với sản phẩm một lần),
+    // và `fulfilOrder` so số khách trả với giá của đơn nên giá catalog lệch giá PLANS thì đơn `failed`, không cấp.
+    const subscribe = req.autoRenew === true;
+    const productId = (subscribe ? this.cfg.subscriptionProductIds : this.cfg.productIds)?.[req.plan];
+    if (!productId) throw new PaymentProviderError(`Creem chưa có sản phẩm ${subscribe ? "thuê bao " : ""}cho gói ${req.plan}`);
     if (!Number.isSafeInteger(req.amount) || req.amount < MIN_AMOUNT || req.amount > MAX_AMOUNT) {
       throw new PaymentProviderError(`Creem không nhận số tiền ${show(req.amount)} cent (chỉ ${MIN_AMOUNT} tới ${MAX_AMOUNT})`);
     }
@@ -260,10 +301,10 @@ export class CreemProvider implements PaymentProvider {
     const data = await this.call("POST", "/v1/checkouts", {
       product_id: productId,
       request_id: String(req.orderCode),
-      custom_price: req.amount,
+      ...(subscribe ? {} : { custom_price: req.amount }),
       success_url: req.returnUrl,
       customer: { email: req.email },
-      metadata: { order_code: String(req.orderCode), plan: req.plan },
+      metadata: { order_code: String(req.orderCode), plan: req.plan, ...(subscribe ? { auto_renew: "1" } : {}) },
     });
     const { id, checkout_url: checkoutUrl } = data;
     if (typeof id !== "string" || typeof checkoutUrl !== "string") {
@@ -275,12 +316,27 @@ export class CreemProvider implements PaymentProvider {
     // Creem trả lại `custom_price` (đo ở sandbox ngày 2026-10-16: đúng số đã gửi). Có mà khác số đã gửi hay sai kiểu (kể cả null):
     // trang thanh toán có thể đòi sai giá (ví dụ giá mặc định của sản phẩm), nên không đưa link cho khách, đơn lỗi. Vắng: vẫn nhận,
     // vì server chỉ cấp theo GET (paidOrderStatus so số khách trả với giá), chỉ để lại một dòng log không có dữ liệu của khách.
-    if (!("custom_price" in data)) {
+    if (subscribe) {
+      // Thuê bao: không gửi custom_price nên không có gì để so; giá đúng hay không do fulfilOrder kiểm khi khách đã trả.
+    } else if (!("custom_price" in data)) {
       console.warn(JSON.stringify({ event: "creem_checkout_no_custom_price", order_code: req.orderCode }));
     } else if (data.custom_price !== req.amount) {
       throw new PaymentProviderError(`Creem trả custom_price ${show(data.custom_price)} khác giá đã gửi (${req.amount} cent)`);
     }
     return { providerRef: id, checkoutUrl: href, qrCode: null };
+  }
+
+  /**
+   * Link cổng khách hàng của Creem (khách xem và hủy thuê bao). Tài liệu: POST /v1/customers/billing {customer_id} trả
+   * `customer_portal_link`. Chỉ trả địa chỉ đúng tên miền cổng (creemPortalUrl); khác thì lỗi, không đưa link lạ cho khách.
+   */
+  async createPortalLink(customerRef: string): Promise<string> {
+    if (!CHECKOUT_ID.test(customerRef)) throw new PaymentProviderError(`mã khách Creem không hợp lệ (${show(customerRef)})`);
+    const data = await this.call("POST", "/v1/customers/billing", { customer_id: customerRef });
+    const link = data.customer_portal_link;
+    const href = typeof link === "string" ? creemPortalUrl(link) : null;
+    if (href === null) throw new PaymentProviderError("Creem trả link cổng khách hàng ngoài tên miền cổng hoặc thiếu");
+    return href;
   }
 
   /**
@@ -315,7 +371,12 @@ export class CreemProvider implements PaymentProvider {
     // Đơn có thể đã thu tiền (`order.status` paid, partially_refunded, hay không đọc được), ở mọi trạng thái phiên: paidOrderStatus
     // cấp khi phiên completed và mọi thứ đúng, còn lại giữ đơn (underpaid, cảnh báo). Không bao giờ ném lỗi (đơn hết hạn im lặng) hay
     // trả pending/processing/expired (đối soát để đơn của khách đã trả hết hạn sau 24 giờ).
-    if (order !== null && order.status !== "pending" && order.status !== "refunded") return paidOrderStatus(orderCode, providerRef, data, order);
+    if (order !== null && order.status !== "pending" && order.status !== "refunded") {
+      const result = paidOrderStatus(orderCode, providerRef, data, order);
+      // Đơn thuê bao: phiên mang `subscription` (spec 2026-11-05 U2). Đọc được thì kèm, để đối soát (không có webhook) cũng ghi được thuê bao.
+      const subscription = subscriptionRefOf(data.subscription);
+      return subscription && result.status === "paid" ? { ...result, subscription } : result;
+    }
     // Từ đây chưa có đơn, đơn chưa thu tiền (pending) hay đã hoàn đủ (refunded). Phiên completed: refunded, hay đang xử lý (hỏi lại sau).
     const status: PaymentStatus = session === "completed" ? (order?.status === "refunded" ? "refunded" : "processing") : session;
     if (order === null) {

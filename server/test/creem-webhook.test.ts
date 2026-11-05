@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { hmacSha256Hex } from "../src/crypto";
-import { CREEM_SIGNATURE_HEADER, verifyCreemWebhook } from "../src/payment/creem-webhook";
+import { CREEM_SIGNATURE_HEADER, subscriptionRefOf, timeOf, verifyCreemWebhook } from "../src/payment/creem-webhook";
 // Thân thô thật do Creem sandbox gửi ngày 2026-10-16 (test/fixtures/creem/README.md): đúng từng byte, test tự ký bằng SECRET.
 import checkoutCompletedReal from "./fixtures/creem/checkout.completed.real.json?raw";
 import refundCreatedReal from "./fixtures/creem/refund.created.real.json?raw";
@@ -184,17 +184,17 @@ describe("Creem: chữ ký webhook", () => {
   it("sự kiện server không dùng: ignore (route trả 200, không hỏi gì thêm), kể cả khi không có object; mỗi lần một dòng log webhook_ignored", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      for (const eventType of ["subscription.paid", "subscription.active", "credits.granted"]) {
+      for (const eventType of ["credits.granted", "subscription.something_new", "customer.updated"]) {
         expect(await verifyCreemWebhook(SECRET, await hook({ ...completed("7"), eventType }))).toEqual({ kind: "ignore" });
       }
-      expect(await verifyCreemWebhook(SECRET, await hook(null, { raw: '{"eventType":"subscription.paid"}' }))).toEqual({ kind: "ignore" });
-      expect(await verifyCreemWebhook(SECRET, await hook(null, { raw: '{"eventType":"subscription.paid","object":"sub_1"}' }))).toEqual({ kind: "ignore" });
+      expect(await verifyCreemWebhook(SECRET, await hook(null, { raw: '{"eventType":"credits.granted"}' }))).toEqual({ kind: "ignore" });
+      expect(await verifyCreemWebhook(SECRET, await hook(null, { raw: '{"eventType":"credits.granted","object":"sub_1"}' }))).toEqual({ kind: "ignore" });
       expect(warn.mock.calls.map((c) => JSON.parse(String(c[0])).event_type)).toEqual([
-        "subscription.paid",
-        "subscription.active",
         "credits.granted",
-        "subscription.paid",
-        "subscription.paid",
+        "subscription.something_new",
+        "customer.updated",
+        "credits.granted",
+        "credits.granted",
       ]);
     } finally {
       warn.mockRestore();
@@ -474,5 +474,137 @@ describe("Creem: chữ ký webhook", () => {
       providerRef: null,
       eventId: "evt_r",
     });
+  });
+});
+
+// Sự kiện thuê bao (spec 2026-11-05 D6). Hình dạng theo tài liệu Creem; các trường ngày và `last_transaction` CHƯA đo ở Creem thật (U1 tới U4).
+describe("Creem: sự kiện thuê bao", () => {
+  const PERIOD_END = 1_793_491_200; // 2026-11-01T00:00:00Z
+  const subscriptionEvent = (eventType: string, object: Record<string, unknown> = {}, createdAt: unknown = 1_790_900_000_000) => ({
+    id: "evt_sub_1",
+    eventType,
+    created_at: createdAt,
+    object: {
+      id: "sub_6pC2lNB6joCRQIZ1aMrTpi",
+      object: "subscription",
+      status: "active",
+      customer: { id: "cust_1", object: "customer" },
+      current_period_end_date: new Date(PERIOD_END * 1000).toISOString(),
+      last_transaction: { id: "tran_1", amount: 399, amount_paid: 399, tax_amount: 0, currency: "usd", status: "paid", created_at: 1_790_900_000_000 },
+      ...object,
+    },
+  });
+
+  it("subscription.paid: trả cò thuê bao với mã, mã khách, hết kỳ (giây), giờ sự kiện (giây) và giao dịch của kỳ vừa thu", async () => {
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid")))).toEqual({
+      kind: "subscription",
+      eventType: "subscription.paid",
+      eventId: "evt_sub_1",
+      eventAt: 1_790_900_000,
+      subscriptionRef: "sub_6pC2lNB6joCRQIZ1aMrTpi",
+      customerRef: "cust_1",
+      status: "active",
+      periodEnd: PERIOD_END,
+      transaction: { ref: "tran_1", status: "paid", currency: "USD", amountPaid: 399, taxAmount: 0, hasDiscount: false, paidAt: 1_790_900_000 },
+    });
+  });
+
+  it.each([
+    ["subscription.active", "active"],
+    ["subscription.trialing", "trialing"],
+    ["subscription.scheduled_cancel", "scheduled_cancel"],
+    ["subscription.canceled", "canceled"],
+    ["subscription.expired", "expired"],
+    ["subscription.past_due", "past_due"],
+    ["subscription.unpaid", "unpaid"],
+    ["subscription.paused", "paused"],
+  ])("%s: trạng thái %s; chỉ subscription.paid mang giao dịch", async (eventType, status) => {
+    const event = await verifyCreemWebhook(SECRET, await hook(subscriptionEvent(eventType, { status: "x_ignored" })));
+    expect(event).toMatchObject({ kind: "subscription", eventType, status, transaction: null });
+  });
+
+  it("subscription.update lấy trạng thái trong payload; trạng thái lạ hay thiếu thì coi là active (không bao giờ ném)", async () => {
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.update", { status: "paused" })))).toMatchObject({ status: "paused" });
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.update", { status: "weird" })))).toMatchObject({ status: "active" });
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.update", { status: undefined })))).toMatchObject({ status: "active" });
+  });
+
+  it("object.id thiếu hay sai mẫu: unmatched (route trả 200 và ghi nhật ký), không bao giờ thành mã thuê bao", async () => {
+    for (const id of [undefined, "", "sub bad", 5, `sub_${"x".repeat(130)}`]) {
+      expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid", { id })))).toMatchObject({ kind: "unmatched", eventType: "subscription.paid" });
+    }
+  });
+
+  it("thiếu hạn kỳ, hạn sai dạng hay ngoài khoảng 2020 tới 2100: periodEnd null (server không đoán)", async () => {
+    for (const current_period_end_date of [undefined, null, "", "yesterday", "2026-11-01", 5, -1, 4_200_000_000, "1999-01-01T00:00:00Z", true, {}]) {
+      const event = await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid", { current_period_end_date })));
+      expect(event, String(current_period_end_date)).toMatchObject({ kind: "subscription", periodEnd: null });
+    }
+  });
+
+  it("giờ sự kiện thiếu hay sai dạng: eventAt null", async () => {
+    for (const createdAt of ["x", null, 0]) {
+      expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid", {}, createdAt)))).toMatchObject({ eventAt: null });
+    }
+    const { created_at: _omitted, ...noTime } = subscriptionEvent("subscription.paid");
+    expect(await verifyCreemWebhook(SECRET, await hook(noTime))).toMatchObject({ eventAt: null });
+  });
+
+  it("timeOf nhận chuỗi ISO có múi giờ, giây và mili giây; làm tròn xuống giây", () => {
+    expect(timeOf("2026-11-01T00:00:00Z")).toBe(PERIOD_END);
+    expect(timeOf("2026-11-01T07:00:00+07:00")).toBe(PERIOD_END);
+    expect(timeOf("2026-11-01T00:00:00.999Z")).toBe(PERIOD_END);
+    expect(timeOf(PERIOD_END)).toBe(PERIOD_END);
+    expect(timeOf(PERIOD_END * 1000 + 999)).toBe(PERIOD_END);
+    expect(timeOf(Number.NaN)).toBeNull();
+    expect(timeOf(Number.POSITIVE_INFINITY)).toBeNull();
+  });
+
+  it("giao dịch: sai kiểu thì trường đó null; giảm giá ở cấp thuê bao hay giao dịch thì hasDiscount; tiền âm, lẻ hay chuỗi là null", async () => {
+    const tx = (t: Record<string, unknown>, extra: Record<string, unknown> = {}) => hook(subscriptionEvent("subscription.paid", { last_transaction: t, ...extra }));
+    expect(await verifyCreemWebhook(SECRET, await tx({ id: "tran_1", amount_paid: "399", tax_amount: -1, currency: 5, status: null }))).toMatchObject({
+      transaction: { ref: "tran_1", amountPaid: null, taxAmount: null, currency: null, status: null, hasDiscount: false, paidAt: null },
+    });
+    expect(await verifyCreemWebhook(SECRET, await tx({ id: "tran_1", amount_paid: 399.5 }))).toMatchObject({ transaction: { amountPaid: null } });
+    expect(await verifyCreemWebhook(SECRET, await tx({ id: "tran_1", amount_paid: 300 }, { discount: "dis_1" }))).toMatchObject({ transaction: { hasDiscount: true } });
+    expect(await verifyCreemWebhook(SECRET, await tx({ id: "tran_1", amount_paid: 300, discount_amount: 99 }))).toMatchObject({ transaction: { hasDiscount: true } });
+    expect(await verifyCreemWebhook(SECRET, await tx({ id: "tran_1", amount_paid: 399, discount_amount: 0 }, { discount: null }))).toMatchObject({ transaction: { hasDiscount: false } });
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid", { last_transaction: undefined })))).toMatchObject({ transaction: null });
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid", { last_transaction: "tran_1" })))).toMatchObject({ transaction: null });
+  });
+
+  it("customer là chuỗi mã, là đối tượng, hay thiếu: customerRef là mã hoặc null", async () => {
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.active", { customer: "cust_9" })))).toMatchObject({ customerRef: "cust_9" });
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.active", { customer: { id: "bad id" } })))).toMatchObject({ customerRef: null });
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.active", { customer: undefined })))).toMatchObject({ customerRef: null });
+  });
+
+  it("checkout.completed của đơn thuê bao mang thuê bao (mã, mã khách, hết kỳ); không có hay sai mẫu thì không có trường subscription", async () => {
+    const withSub = (subscription: unknown) => {
+      const base = completed("1000042");
+      return { ...base, object: { ...base.object, subscription } };
+    };
+    expect(await verifyCreemWebhook(SECRET, await hook(withSub({ id: "sub_1", customer: "cust_1", current_period_end_date: PERIOD_END })))).toEqual({
+      kind: "payment",
+      orderCode: 1000042,
+      providerRef: CHECKOUT_ID,
+      subscription: { ref: "sub_1", customerRef: "cust_1", periodEnd: PERIOD_END },
+      reportUnknownOrder: { eventType: "checkout.completed", eventId: COMPLETED_EVENT_ID },
+    });
+    expect(await verifyCreemWebhook(SECRET, await hook(withSub("sub_2")))).toMatchObject({ subscription: { ref: "sub_2", customerRef: null, periodEnd: null } });
+    for (const bad of [undefined, null, 5, "bad id", { id: "bad id" }, {}]) {
+      expect(await verifyCreemWebhook(SECRET, await hook(withSub(bad))), String(bad)).not.toHaveProperty("subscription");
+    }
+  });
+
+  it("subscriptionRefOf: đối tượng hay chuỗi mã hợp lệ; còn lại null", () => {
+    expect(subscriptionRefOf({ id: "sub_1" })).toEqual({ ref: "sub_1", customerRef: null, periodEnd: null });
+    expect(subscriptionRefOf("sub_1")).toEqual({ ref: "sub_1", customerRef: null, periodEnd: null });
+    expect(subscriptionRefOf(null)).toBeNull();
+    expect(subscriptionRefOf([])).toBeNull();
+  });
+
+  it("sai chữ ký: null như mọi sự kiện khác (không ai ngoài Creem tạo được sự kiện thuê bao)", async () => {
+    expect(await verifyCreemWebhook(SECRET, await hook(subscriptionEvent("subscription.paid"), { secret: "whsec_khac" }))).toBeNull();
   });
 });

@@ -25,6 +25,7 @@ describe("GET /v1/plans", () => {
       headers: expect.anything(),
       body: {
         suggested_currency: "VND",
+        auto_renew_available: false,
         plans: [
           { code: "monthly", name: "Monthly", quota_minutes_per_cycle: 3000, days_per_order: 30, prices: { VND: 50000, USD: 399 } },
           { code: "yearly", name: "Yearly", quota_minutes_per_cycle: null, days_per_order: 365, prices: { VND: 500000, USD: 3999 } },
@@ -47,7 +48,7 @@ describe("GET /v1/plans", () => {
 
   it("app khai báo ?plans=monthly,six_months,yearly thì nhận ba gói theo thứ tự thời hạn", async () => {
     const res = await makeWorld().call("GET", "/v1/plans?plans=monthly,six_months,yearly");
-    expect(res).toEqual({ status: 200, headers: expect.anything(), body: { suggested_currency: "VND", plans: [monthly, sixMonths, yearly] } });
+    expect(res).toEqual({ status: 200, headers: expect.anything(), body: { suggested_currency: "VND", auto_renew_available: false, plans: [monthly, sixMonths, yearly] } });
   });
 
   it.each([

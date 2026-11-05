@@ -18,6 +18,13 @@ export interface ApiEnv {
   CREEM_BASE_URL: string;
   /** Mã sản phẩm Creem của ba gói (src/payment/creem.ts, parseProductIds); còn rỗng thì cổng Creem chỉ xử lý đơn đã có, không bán USD. */
   CREEM_PRODUCT_IDS?: unknown;
+  /**
+   * Mã sản phẩm THUÊ BAO Creem của ba gói (spec 2026-11-05; cùng dạng với CREEM_PRODUCT_IDS, mã khác hẳn). Chỉ dùng khi
+   * CREEM_AUTO_RENEW là "on".
+   */
+  CREEM_SUBSCRIPTION_PRODUCT_IDS?: unknown;
+  /** "on" thì chào tự động gia hạn cho đơn USD (spec 2026-11-05 D3); thiếu hay giá trị khác là tắt. */
+  CREEM_AUTO_RENEW?: string;
   EMAIL_FROM: string;
   /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
   EMAIL_REPLY_TO?: string;

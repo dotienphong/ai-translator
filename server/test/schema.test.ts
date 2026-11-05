@@ -22,6 +22,7 @@ it("migration tạo đủ bảng", async () => {
     "rate_limits",
     "reminder_optouts",
     "speaker_health",
+    "subscriptions",
     "support_conversations",
     "support_messages",
     "support_settings",

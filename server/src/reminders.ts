@@ -72,7 +72,8 @@ export async function enqueueExpiryReminders(db: D1Database, now: number): Promi
       `INSERT OR IGNORE INTO expiry_reminders (license_id, cycle, created_at)
        SELECT id, expires_at, ?1 FROM licenses
        WHERE revoked_at IS NULL AND email IS NOT NULL AND plan IN (?2, ?3)
-         AND expires_at > ?1 AND expires_at <= ?1 + ?4`,
+         AND expires_at > ?1 AND expires_at <= ?1 + ?4
+         AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.license_id = licenses.id AND s.status IN ('active', 'past_due'))`,
     )
     .bind(now, a, b, REMINDER_DAYS * DAY_SECONDS)
     .run();
@@ -144,6 +145,15 @@ export async function sendExpiryReminders(env: ReminderEnv, deps: { email: Email
       }
       if (!REMINDER_PLANS.includes(r.plan)) {
         await skip("plan_not_eligible");
+        continue;
+      }
+      // Thuê bao tự gia hạn còn thu tiền (spec 2026-11-05 D12): sẽ tự trừ tiền, thư "sắp hết hạn, hãy gia hạn" là sai.
+      const auto = await db
+        .prepare("SELECT 1 AS x FROM subscriptions WHERE license_id = ? AND status IN ('active', 'past_due') LIMIT 1")
+        .bind(r.license_id)
+        .first();
+      if (auto) {
+        await skip("auto_renew");
         continue;
       }
       if (r.expires_at !== r.cycle) {

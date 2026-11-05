@@ -31,6 +31,10 @@ export type ErrorCode =
   | "conversation_closed"
   | "support_busy"
   | "support_disabled"
+  // Tự động gia hạn (spec 2026-11-05): license đang có thuê bao còn thu tiền; công tắc tắt/thiếu sản phẩm thuê bao; license chưa có thuê bao.
+  | "subscription_active"
+  | "auto_renew_unavailable"
+  | "no_subscription"
   | "internal";
 
 export function fail(c: Context, status: ContentfulStatusCode, error: ErrorCode, extra: Record<string, unknown> = {}) {
