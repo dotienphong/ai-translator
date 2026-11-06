@@ -580,9 +580,29 @@ fieldset {
 }
 
 .nav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   margin-top: auto;
-  padding: 0.75rem 0.5rem 0;
+  padding: 0.65rem 0.25rem 0;
   border-top: 1px solid var(--border);
+}
+
+.nav button.nav-account {
+  min-height: 2.1rem;
+  padding: 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.nav button.nav-account span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-meta {
+  padding: 0 0.5rem;
   color: var(--accent-fg);
   font-size: 0.88rem;
   font-weight: 500;

@@ -53,8 +53,11 @@ export function Shell() {
   const screens = visibleScreens(platform ?? "macos");
   const plan = useLicense((s) => s.view?.plan ?? null);
   const unread = useSupport((s) => s.view?.unread ?? false);
+  const settingsGroup = useApp((s) => s.settingsGroup);
   const Body = BODIES[screen];
   const account = useAccount((s) => s.view);
+  const accountLabel = account?.state === "signedIn" && account.email ? account.email : t("settings.group.account");
+  const accountActive = screen === "settings" && settingsGroup === "account";
   const sessionActive = useApp((s) => isSessionActive(s.status));
   const gated = gateBlocks(screen, account, sessionActive);
   const title = useRef<HTMLHeadingElement>(null);
@@ -92,9 +95,22 @@ export function Shell() {
           );
         })}
         <div className="nav-foot">
-          {plan && <PlanName plan={plan} />}
-          {plan && version && " · "}
-          {version && `v${version}`}
+          <button
+            type="button"
+            className="nav-account"
+            aria-current={accountActive ? "page" : undefined}
+            aria-label={accountLabel}
+            title={accountLabel}
+            onClick={() => navigate("settings", "account")}
+          >
+            <Icon name="user" size={16} />
+            <span>{accountLabel}</span>
+          </button>
+          <div className="nav-meta">
+            {plan && <PlanName plan={plan} />}
+            {plan && version && " · "}
+            {version && `v${version}`}
+          </div>
         </div>
       </nav>
       <main className="content" ref={content}>
