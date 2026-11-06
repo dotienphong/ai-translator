@@ -137,6 +137,6 @@ ${linkCard({ href: "/ja/solutions/webinar-and-video-translation/", icon: "play",
 </div>
 </div></section>
 
-${ctaBand({ title: "ご自身の通話で試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/guide/quick-start/", label: "クイックスタートガイド" } })}
+${ctaBand({ title: "ご自身の通話で試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/guide/quick-start/", label: "クイックスタートガイド" } })}
 `,
 };

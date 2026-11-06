@@ -27,7 +27,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Có cách dịch phụ đề họp sang tiếng Việt miễn phí không?",
-    a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Đó là dùng thử, không phải miễn phí vĩnh viễn; sau đó cần gói trả trước: Monthly 50.000 ₫, 6 Months 269.000 ₫ hoặc Yearly 500.000 ₫.</p>`,
+    a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ; dùng thử cần đăng nhập bằng Google (gói trả phí không cần đăng nhập). Đó là dùng thử, không phải miễn phí vĩnh viễn; sau đó cần gói trả trước: Monthly 50.000 ₫, 6 Months 269.000 ₫ hoặc Yearly 500.000 ₫.</p>`,
   },
   {
     q: "Tôi ở ngoài Việt Nam có mua được không?",
@@ -63,7 +63,7 @@ export default {
 <ul class="trust reveal">
 <li>${icon("check")} AI chạy 100% trên máy</li>
 <li>${icon("check")} Dữ liệu cuộc họp không lên cloud</li>
-<li>${icon("check")} Không bot, không tài khoản</li>
+<li>${icon("check")} Không bot, không plugin</li>
 </ul>
 </div>
 <div class="reveal">
@@ -157,7 +157,7 @@ ${dataFlow("vi")}
 ${feature({ icon: "lock", title: "Âm thanh không rời máy", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng (chúng tôi đã kiểm tra bằng proxy trên macOS). Mất mạng thì app vẫn dịch.", accent: true })}
 ${feature({ icon: "shield", title: "Máy chủ không có nội dung cuộc họp", text: "Máy chủ chỉ lưu dữ liệu để bán gói, kích hoạt máy và hỗ trợ bạn (chi tiết bên dưới), không có nội dung cuộc họp." })}
 </div>
-<details class="more-details reveal"><summary>Máy chủ lưu chính xác những gì?</summary><p>Máy chủ của chúng tôi chỉ lưu email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy), nhật ký thay đổi license, báo cáo lỗi đã che dữ liệu cá nhân (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), không có nội dung cuộc họp.</p></details>
+<details class="more-details reveal"><summary>Máy chủ lưu chính xác những gì?</summary><p>Máy chủ của chúng tôi chỉ lưu email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), email Google khi bạn đăng nhập, đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy), nhật ký thay đổi license, báo cáo lỗi đã che dữ liệu cá nhân (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), không có nội dung cuộc họp.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/bao-mat-du-lieu/">Xem chính xác dữ liệu nào đi đâu ${icon("arrow-right")}</a></p>
 </div></section>
 

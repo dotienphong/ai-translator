@@ -28,7 +28,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["适用于", "电脑上任何会发出声音的内容<small>浏览器、媒体播放器、课程平台、网络研讨会工具</small>"],
-  ["额外安装", "除了应用本身，什么都不需要<small>不需要浏览器扩展、插件或登录账户</small>"],
+  ["额外安装", "除了应用本身，什么都不需要<small>不需要浏览器扩展或插件；Free 试用需使用 Google 账号登录</small>"],
   ["语言", "英语、中文、日语、韩语、越南语<small>你可以选择想要阅读的语言</small>"],
   ["长时间会话", "连续运行 5 小时 23 分钟，没有出错<small>Mac M4 Pro、macOS、临时签名的正式版，测试一次</small>"],
 ])}</div>
@@ -127,6 +127,6 @@ ${linkCard({ href: "/zh/features/", icon: "sliders", title: "功能", text: "全
 <p class="center-text reveal">想知道你观看的内容去了哪里？请阅读<a href="/zh/data-security/">数据与安全</a>。</p>
 </div></section>
 
-${ctaBand({ title: "用你自己的视频试试", text: "从 10 天免费试用开始，每天 30 分钟。无需银行卡，无需账户。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/pricing/", label: "查看价格" } })}
+${ctaBand({ title: "用你自己的视频试试", text: "从 10 天免费试用开始，每天 30 分钟。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/pricing/", label: "查看价格" } })}
 `,
 };

@@ -20,7 +20,7 @@ use crate::system;
 
 /// Tên miền được mở bằng trình duyệt. Kế hoạch 06 thêm trang thanh toán của PayOS, kế hoạch 07 thêm
 /// website của sản phẩm (tên miền `aitranslator.vn` từ spec 2026-10-23-ten-mien-aitranslator-vn), spec 2026-10-14 thêm trang thanh toán của
-/// Creem. Chỉ so khớp đúng cả tên miền, không nhận tên miền con.
+/// Creem, spec 2026-11-05 thêm trang đăng nhập Google. Chỉ so khớp đúng cả tên miền, không nhận tên miền con.
 pub const EXTERNAL_HOSTS: &[&str] = &[
     // Trang thanh toán của PayOS (`checkout_url` của đơn, kế hoạch 06; spec §6.8 "Mua ngay trong app" bước 2).
     "pay.payos.vn",
@@ -35,6 +35,9 @@ pub const EXTERNAL_HOSTS: &[&str] = &[
     "creem.io",
     // Website của sản phẩm (trang chính sách quyền riêng tư, hỗ trợ, tải bản mới); website có spec riêng.
     "aitranslator.vn",
+    // Trang đăng nhập Google (spec 2026-11-05-dang-nhap-google §6.1): `login_url` do server trả, chỉ Rust mở khi người dùng bấm
+    // "Đăng nhập bằng Google" (`license::app::account_sign_in`), sau khi `account::is_google_login_url` kiểm cả host lẫn đường dẫn.
+    "accounts.google.com",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -385,7 +388,8 @@ mod tests {
                 "checkout.creem.io",
                 "www.creem.io",
                 "creem.io",
-                "aitranslator.vn"
+                "aitranslator.vn",
+                "accounts.google.com"
             ]
         );
         let ok = Url::parse("https://pay.payos.vn/web/abc").unwrap();
@@ -427,5 +431,46 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    /// Trang đăng nhập Google (spec 2026-11-05-dang-nhap-google §6.1) mở bằng trình duyệt: đúng tên miền `accounts.google.com`;
+    /// tên miền con, tên miền cha, tên miền gần giống, `http`, cổng khác hay thông tin đăng nhập thì chặn.
+    #[test]
+    fn the_google_sign_in_page_opens_in_the_browser_and_lookalikes_do_not() {
+        let ok = Url::parse("https://accounts.google.com/o/oauth2/v2/auth?client_id=c&state=s").unwrap();
+        assert_eq!(decide(&ok, Os::MacOs, None, EXTERNAL_HOSTS), Decision::OpenExternal);
+        assert_eq!(decide(&ok, Os::Windows, None, EXTERNAL_HOSTS), Decision::OpenExternal);
+        for bad in [
+            "https://evil.accounts.google.com/o/oauth2/v2/auth",
+            "https://google.com/",
+            "https://www.google.com/",
+            "https://accounts.google.com.evil.com/o/oauth2/v2/auth",
+            "http://accounts.google.com/o/oauth2/v2/auth",
+            "https://accounts.google.com:8443/o/oauth2/v2/auth",
+            "https://user@accounts.google.com/o/oauth2/v2/auth",
+        ] {
+            assert_eq!(
+                decide(&Url::parse(bad).unwrap(), Os::MacOs, None, EXTERNAL_HOSTS),
+                Decision::Block,
+                "{bad}"
+            );
+        }
+    }
+
+    /// `open_external` (lối Rust mở link do mình giữ) mở trang Google qua `SystemOpener` giả, chặn tên miền gần giống.
+    #[test]
+    fn open_external_reaches_the_opener_only_for_the_real_google_host() {
+        let app = mock_app();
+        let handle = app.handle();
+        let ok = "https://accounts.google.com/o/oauth2/v2/auth?state=s";
+        assert_eq!(open_external(handle, ok), Ok(()));
+        for bad in [
+            "https://evil.accounts.google.com/o/oauth2/v2/auth",
+            "https://google.com/",
+            "https://accounts.google.com.evil.com/",
+        ] {
+            assert_eq!(open_external(handle, bad), Err(OpenError::NotAllowed), "{bad}");
+        }
+        assert_eq!(system_calls(&app), [format!("open_external_url {ok}")]);
     }
 }

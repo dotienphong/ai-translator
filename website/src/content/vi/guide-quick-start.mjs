@@ -19,7 +19,7 @@ const toc = [
 const HOWTO_STEPS = [
   { name: "Cài app và mở lần đầu", text: "Trên macOS, dán dòng lệnh cài (curl -fsSL https://aitranslator.vn/install.sh | bash) vào Terminal: app được tải, kiểm tra và mở thẳng, không cần Open Anyway. Trên Windows, dán lệnh cài (irm https://aitranslator.vn/install.ps1 | iex) vào PowerShell; nếu bạn dùng file .exe tải bằng trình duyệt và SmartScreen cảnh báo, bấm More info rồi Run anyway." },
   { name: "Chọn ngôn ngữ giao diện", text: "Ô chọn sẵn ngôn ngữ của máy bạn; đổi nếu muốn rồi bấm Tiếp. Lựa chọn này cũng đặt ngôn ngữ đích mặc định." },
-  { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Cần mạng một lần để bắt đầu dùng thử Free." },
+  { name: "Đồng ý điều khoản", text: "Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, tick ô đồng ý rồi bấm Tiếp. Ngay sau đó, đăng nhập bằng Google để bắt đầu dùng thử Free (cần mạng một lần; máy có gói trả phí không cần đăng nhập)." },
   { name: "Chọn và tải model", text: "Chọn gói model Chuẩn (khoảng 2,5 GB) hoặc gói model Nhẹ (khoảng 1,3 GB) theo đề xuất của app và chờ tải xong." },
   { name: "Cho phép ghi âm thanh hệ thống (chỉ macOS)", text: "Khi macOS hỏi quyền Ghi âm thanh hệ thống, chọn cho phép. Máy cài mới chọn sẵn nguồn Âm thanh máy + Micro nên macOS cũng hỏi quyền Micro ở lần đầu bạn bấm Bắt đầu. Trên Windows không có bước này." },
   { name: "Chọn ngôn ngữ", text: "Chọn ngôn ngữ muốn đọc ở ô Dịch sang và các ngôn ngữ có thể được nói trong cuộc họp." },
@@ -91,14 +91,14 @@ ${callout({ title: "Dùng Windows?", text: "Các bước dưới đây giống n
 <p>Chi tiết, gồm cách kiểm SHA-256: <a href="/huong-dan/cai-dat-macos/">hướng dẫn cài đặt trên macOS</a> và <a href="/huong-dan/cai-dat-windows/">hướng dẫn cài đặt trên Windows</a>.</p>
 
 <h2 id="thiet-lap">Thiết lập lần đầu: bảy bước</h2>
-<p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình trong một thẻ ở giữa cửa sổ: đầu thẻ có logo, dòng “Bước 1/9” và thanh tiến trình, chân thẻ có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>. Bài này gộp thành bảy bước. Trên Windows không có màn hình quyền ghi âm nên trình hướng dẫn có 8 màn hình; số bước ghi dưới các ảnh chụp là theo macOS.</p>
+<p>Lần đầu mở, app hiện trình hướng dẫn 9 màn hình trong một thẻ ở giữa cửa sổ: đầu thẻ có logo, dòng “Bước 1/9” và thanh tiến trình, chân thẻ có nút <strong>Quay lại</strong> và <strong>Tiếp</strong>. Bài này gộp thành bảy bước. Trên Windows không có màn hình quyền ghi âm nên trình hướng dẫn có 8 màn hình; số bước ghi dưới các ảnh chụp là theo macOS. Ảnh dưới đây chụp trước khi có màn hình Đăng nhập bằng tài khoản Google (ngay sau bước Điều khoản), nên app hiện nay có nhiều hơn ảnh một màn hình.</p>
 
 <h3>Bước 1. Chọn ngôn ngữ giao diện</h3>
 <p>Ô chọn sẵn ngôn ngữ của máy bạn: <strong>Tiếng Việt</strong>, <strong>English</strong>, <strong>日本語</strong>, <strong>中文</strong> (chữ giản thể) hoặc <strong>한국어</strong>; máy dùng ngôn ngữ khác thì chọn sẵn English. Đổi nếu muốn rồi bấm Tiếp. Lựa chọn này cũng đặt luôn ngôn ngữ bạn muốn đọc phụ đề; bạn đổi lại được ở bước 5.</p>
 ${appShot({ slug: "app-onboarding-1", lang: "vi", alt: "Màn hình đầu tiên của trình hướng dẫn: năm lựa chọn ngôn ngữ giao diện (Tiếng Việt, English, 日本語, 中文, 한국어)", caption: "Bước 1/9: ngôn ngữ giao diện." })}
 
 <h3>Bước 2. Đồng ý điều khoản</h3>
-<p>Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, rồi tick ô “Tôi đã đọc và đồng ý…”. Chưa tick thì nút Tiếp bị khóa. Hai văn bản này có bản tiếng Việt và English; nếu giao diện là 日本語, 中文 hay 한국어 thì app hiện bản English, kèm một dòng báo. Ở cùng màn hình có một ô tùy chọn đã tích sẵn cho việc gửi báo cáo lỗi tự động khi app gặp lỗi (không có âm thanh hay nội dung chép lời); bỏ tích nếu bạn không muốn, và đổi lại được ở Cài đặt › Quyền riêng tư. Khi bạn bấm Tiếp, app đăng ký dùng thử Free của máy với máy chủ, nên cần có mạng một lần.</p>
+<p>Đọc Thỏa thuận cấp phép (EULA) và Chính sách quyền riêng tư, rồi tick ô “Tôi đã đọc và đồng ý…”. Chưa tick thì nút Tiếp bị khóa. Hai văn bản này có bản tiếng Việt và English; nếu giao diện là 日本語, 中文 hay 한국어 thì app hiện bản English, kèm một dòng báo. Ở cùng màn hình có một ô tùy chọn đã tích sẵn cho việc gửi báo cáo lỗi tự động khi app gặp lỗi (không có âm thanh hay nội dung chép lời); bỏ tích nếu bạn không muốn, và đổi lại được ở Cài đặt › Quyền riêng tư. Màn hình kế tiếp là <strong>Đăng nhập bằng tài khoản Google</strong>: bạn đăng nhập bằng Google trên trình duyệt rồi quay lại app. App chỉ đăng ký dùng thử Free của máy với máy chủ sau khi bạn đăng nhập, nên cần có mạng một lần. Bạn bấm <strong>Để sau</strong> được, nhưng gói Free chỉ dịch được sau khi đăng nhập. Máy có gói trả phí không cần đăng nhập.</p>
 ${appShot({ slug: "app-onboarding-2", lang: "vi", alt: "Bước Điều khoản sử dụng với hai văn bản gập được, ô tick đồng ý bắt buộc và ô tùy chọn gửi báo cáo lỗi tự động đã tích sẵn", caption: "Bước 2/9: điều khoản sử dụng." })}
 
 <h3>Bước 3. Chọn và tải model</h3>

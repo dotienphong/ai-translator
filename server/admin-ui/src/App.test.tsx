@@ -87,6 +87,7 @@ describe("App", () => {
       "Đơn hàng",
       "License",
       "Máy & dùng thử",
+      "Tài khoản",
       "Báo cáo lỗi",
       "Nhật ký",
       "Hệ thống",
@@ -103,6 +104,25 @@ describe("App", () => {
     expect(nav.getByRole("link", { name: "Hệ thống" }).className).toContain("active");
     expect(nav.getByRole("link", { name: "Hệ thống" }).getAttribute("aria-current")).toBe("page");
     expect(nav.getByRole("link", { name: "Việc cần xử lý" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("mục Tài khoản: bấm thì sang /accounts, mở trang danh sách tài khoản, đặt tiêu đề tab", async () => {
+    responses["/admin/accounts"] = { items: [], next_cursor: null };
+    try {
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByRole("heading", { name: "Việc cần xử lý" });
+      const link = screen.getByRole("link", { name: "Tài khoản" });
+      expect(link.getAttribute("href")).toBe("/accounts");
+      await user.click(link);
+      expect(window.location.pathname).toBe("/accounts");
+      expect(await screen.findByRole("heading", { level: 1, name: "Tài khoản" })).toBeTruthy();
+      expect(await screen.findByText("Chưa có tài khoản nào")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Tài khoản" }).className).toContain("active");
+      expect(document.title).toBe("Tài khoản · AI Translator Admin");
+    } finally {
+      delete responses["/admin/accounts"];
+    }
   });
 
   it("phiên Access hết hạn: hiện thanh báo có nút tải lại", async () => {

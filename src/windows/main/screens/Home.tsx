@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
+import { SafeBoundary } from "../../../components/SafeBoundary";
 import { errorKey, type MessageKey } from "../../../i18n";
 import { bothLabel, micLabel, sourceLabel } from "../../../lib/audioSource";
 import type { SessionStatus } from "../../../lib/ipc";
@@ -11,6 +12,7 @@ import { trialKey } from "../../../lib/license";
 import { useLicense } from "../licenseStore";
 import { QuotaSummary, when } from "../LicenseText";
 import { LanguagePicker } from "../LanguagePicker";
+import { LinkAccountBanner } from "../LinkAccountBanner";
 import { DownloadPanel } from "../models/DownloadPanel";
 import { UpdateNotice } from "../models/UpdateNotice";
 
@@ -249,6 +251,11 @@ export function Home() {
           </button>
         </Field>
       </div>
+      {/* Lời mời liên kết Google cho máy gói trả phí (spec 2026-11-05-dang-nhap-google §6.3): cuối màn hình, trong luồng bình thường,
+          nên không đẩy hay phủ nút Bắt đầu/Dừng; lỗi vẽ của nó không làm trống Màn hình chính. */}
+      <SafeBoundary message={t("common.renderFailed")} retry={t("common.retry")}>
+        <LinkAccountBanner />
+      </SafeBoundary>
     </>
   );
 }

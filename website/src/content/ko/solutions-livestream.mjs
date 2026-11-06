@@ -30,7 +30,7 @@ const FAQ = [
   },
   {
     q: "라이브 번역은 무료인가요?",
-    a: `<p>Free 요금제는 하루 최대 30분까지 번역할 수 있는 10일 체험이며, 카드도 계정도 필요 없습니다. 그 후에는 선불 요금제가 필요합니다. <a href="/ko/pricing/">요금</a>을 참고하세요. Free는 체험판이며 계속 무료로 쓰는 요금제가 아닙니다.</p>`,
+    a: `<p>Free 요금제는 하루 최대 30분까지 번역할 수 있는 10일 체험이며, 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다. 그 후에는 선불 요금제가 필요합니다. <a href="/ko/pricing/">요금</a>을 참고하세요. Free는 체험판이며 계속 무료로 쓰는 요금제가 아닙니다.</p>`,
   },
 ];
 
@@ -141,6 +141,6 @@ ${linkCard({ href: "/ko/guide/quick-start/", icon: "zap", title: "빠른 시작"
 <p class="disclaimer">TikTok, YouTube, Facebook 및 기타 제품 이름은 각 소유자의 자산이며, AI Translator는 이들과 제휴 관계가 없습니다.</p>
 </div></section>
 
-${ctaBand({ title: "다음 라이브 방송에서 써 보세요", text: "명령 한 줄로 설치하고 10일 동안 하루 30분씩 Free로 써 보세요. 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/pricing/", label: "요금 보기" } })}
+${ctaBand({ title: "다음 라이브 방송에서 써 보세요", text: "명령 한 줄로 설치하고 10일 동안 하루 30분씩 Free로 써 보세요. 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/pricing/", label: "요금 보기" } })}
 `,
 };

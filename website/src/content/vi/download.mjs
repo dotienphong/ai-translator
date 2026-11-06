@@ -215,7 +215,7 @@ ${sectionHead({ eyebrow: "Thông tin nhanh", title: "Dùng thử và giá", cent
 <div class="reveal">${facts([
   ["Phiên bản hiện tại", RELEASE.vi],
   ["Trạng thái", "Đã phát hành. macOS và Windows đều cài bằng một dòng lệnh"],
-  ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ, không cần tài khoản</small>"],
+  ["Dùng thử", "Free 10 ngày, 30 phút mỗi ngày<small>Không cần thẻ; cần đăng nhập bằng Google</small>"],
   ["Giá sau đó", "Monthly 50.000 ₫ · 6 Months 269.000 ₫ · Yearly 500.000 ₫<small>Trả trước bằng VietQR (VND) hoặc thẻ quốc tế (USD). VietQR không tự gia hạn; với thẻ, tự động gia hạn là tùy chọn (ô được tích sẵn) và hủy được bất cứ lúc nào. Thẻ không nhận được ở một số nước, theo danh sách của Creem.</small>"],
   ["Model", "Tải một lần, 1,3 hoặc 2,5 GB<small>Sau đó nhận dạng và dịch chạy offline trên máy bạn</small>"],
 ])}</div>

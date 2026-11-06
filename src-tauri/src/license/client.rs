@@ -199,6 +199,12 @@ pub trait LicenseApi: Send + Sync {
     fn recover(&self, email: &str, lang: &str) -> Reply<()>;
     /// Đăng ký dùng thử của máy này, hay lấy lại token của lần đăng ký trước (spec 2026-10-07 §3.1).
     fn trial(&self, device_id_hash: &str) -> Reply<TrialGrant>;
+    /// Như [`LicenseApi::trial`], kèm token tài khoản (`Authorization: Bearer`, spec 2026-11-05 §5.3) khi đã đăng nhập.
+    /// Cài mặc định bỏ qua token, nên các server giả cũ không phải sửa.
+    fn trial_with_account(&self, device_id_hash: &str, account_token: Option<&str>) -> Reply<TrialGrant> {
+        let _ = account_token;
+        self.trial(device_id_hash)
+    }
     /// Trạng thái tự động gia hạn của key (`POST /v1/subscription`, spec 2026-11-05). `manage`: xin thêm link cổng khách hàng.
     fn subscription(&self, license_key: &str, manage: bool) -> Reply<SubscriptionInfo>;
 }
@@ -243,7 +249,8 @@ impl HttpApi {
         self.base.is_some()
     }
 
-    fn call<T: for<'de> Deserialize<'de>>(
+    /// Dùng chung với client tài khoản ([`crate::account::client`]): cùng cách dựng request và đọc lỗi.
+    pub(crate) fn call<T: for<'de> Deserialize<'de>>(
         &self,
         method: &str,
         path: &str,
@@ -416,6 +423,16 @@ impl LicenseApi for HttpApi {
         )
     }
 
+    /// Như `trial`, thêm `Authorization: Bearer` khi có token tài khoản (spec 2026-11-05 §5.3); không có thì y như `trial`.
+    fn trial_with_account(&self, device_id_hash: &str, account_token: Option<&str>) -> Reply<TrialGrant> {
+        self.call(
+            "POST",
+            "/v1/trial",
+            Some(json!({ "device_id_hash": device_id_hash })),
+            account_token,
+        )
+    }
+
     fn subscription(&self, license_key: &str, manage: bool) -> Reply<SubscriptionInfo> {
         let mut body = json!({ "license_key": license_key });
         if manage {
@@ -426,7 +443,7 @@ impl LicenseApi for HttpApi {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::io::{BufRead, BufReader, Read, Write};
     use std::net::TcpListener;
     use std::sync::{Arc, Mutex};
@@ -435,18 +452,18 @@ mod tests {
 
     /// Một request server giả nhận được.
     #[derive(Clone, Debug, Default)]
-    struct Seen {
-        method: String,
-        path: String,
-        authorization: Option<String>,
-        body: Value,
+    pub(crate) struct Seen {
+        pub(crate) method: String,
+        pub(crate) path: String,
+        pub(crate) authorization: Option<String>,
+        pub(crate) body: Value,
     }
 
     /// Một response của server giả: mã, header thêm, body.
-    type Canned = (u16, Vec<(&'static str, &'static str)>, &'static str);
+    pub(crate) type Canned = (u16, Vec<(&'static str, &'static str)>, &'static str);
 
     /// Server HTTP giả: trả lần lượt các response cho các request tới.
-    fn serve(responses: Vec<Canned>) -> (String, Arc<Mutex<Vec<Seen>>>) {
+    pub(crate) fn serve(responses: Vec<Canned>) -> (String, Arc<Mutex<Vec<Seen>>>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let base = format!("http://{}", listener.local_addr().unwrap());
         let seen = Arc::new(Mutex::new(Vec::new()));
@@ -855,5 +872,23 @@ mod tests {
     fn http_dates_parse_and_bad_ones_are_ignored() {
         assert_eq!(parse_http_date("Thu, 01 Oct 2026 00:00:00 GMT"), Some(1_790_812_800));
         assert_eq!(parse_http_date("hôm qua"), None);
+    }
+
+    /// Đăng ký dùng thử kèm token tài khoản (spec 2026-11-05 §5.3): token đi trong header `Authorization`, thân request
+    /// giữ đúng như cũ; không có token thì request y như `trial` (không header).
+    #[test]
+    fn trial_with_account_sends_the_bearer_only_when_there_is_one() {
+        let ok = r#"{"token":"v1.t.s","started_at":10,"ends_at":20,"issued_at":11}"#;
+        let (base, seen) = serve(vec![(200, vec![], ok), (200, vec![], ok)]);
+        let api = HttpApi::new(accept_base(&base, true));
+        assert!(api.trial_with_account("ab12", Some("acc-tok")).result.is_ok());
+        assert!(api.trial_with_account("ab12", None).result.is_ok());
+        let seen = seen.lock().unwrap().clone();
+        assert_eq!(seen.len(), 2);
+        assert_eq!(seen[0].authorization.as_deref(), Some("Bearer acc-tok"));
+        assert_eq!((seen[0].method.as_str(), seen[0].path.as_str()), ("POST", "/v1/trial"));
+        assert_eq!(seen[0].body, json!({ "device_id_hash": "ab12" }));
+        assert_eq!(seen[1].authorization, None);
+        assert_eq!(seen[1].body, json!({ "device_id_hash": "ab12" }));
     }
 }

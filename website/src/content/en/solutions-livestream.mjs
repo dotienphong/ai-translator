@@ -30,7 +30,7 @@ const FAQ = [
   },
   {
     q: "Is live translation free?",
-    a: `<p>The Free plan is a 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan; see <a href="/en/pricing/">pricing</a>. Free is a trial, not a permanent free plan.</p>`,
+    a: `<p>The Free plan is a 10-day trial with up to 30 minutes of translation a day, no card needed; the trial needs you to sign in with Google (paid plans need no sign-in). After that you need a prepaid plan; see <a href="/en/pricing/">pricing</a>. Free is a trial, not a permanent free plan.</p>`,
   },
 ];
 
@@ -143,6 +143,6 @@ ${linkCard({ href: "/en/guide/quick-start/", icon: "zap", title: "Quick start", 
 <p class="disclaimer">TikTok, YouTube, Facebook and other product names belong to their respective owners; AI Translator is not affiliated with them.</p>
 </div></section>
 
-${ctaBand({ title: "Try it on your next livestream", text: "Install with one command and try Free for 10 days at 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
+${ctaBand({ title: "Try it on your next livestream", text: "Install with one command and try Free for 10 days at 30 minutes a day. No card needed; the trial needs you to sign in with Google.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
 `,
 };

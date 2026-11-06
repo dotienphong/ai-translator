@@ -63,6 +63,32 @@ const CASES: Case[] = [
     url: "/admin/audit?actor=admin&action=license_revoked&order_code=1000012&from=2026-10-01&to=2026-10-07&include_views=1&cursor=9",
   },
   { fn: "audit", run: () => api.audit({}), method: "GET", url: "/admin/audit" },
+  // Tài khoản Google (admin-accounts.ts): email chỉ đi trong tham số `q` của API, id mã hóa trong đường dẫn.
+  { fn: "accounts", run: () => api.accounts({}), method: "GET", url: "/admin/accounts" },
+  {
+    fn: "accounts",
+    run: () => api.accounts({ q: "khach@example.com", filter: "trial_active", cursor: `1790812800_${LIC}` }),
+    method: "GET",
+    url: `/admin/accounts?q=khach%40example.com&filter=trial_active&cursor=1790812800_${LIC}`,
+  },
+  { fn: "account", run: () => api.account(LIC), method: "GET", url: `/admin/accounts/${LIC}` },
+  { fn: "account", run: () => api.account(ODD), method: "GET", url: `/admin/accounts/${ODD_ENCODED}` },
+  {
+    fn: "unlinkAccountLicense",
+    run: () => api.unlinkAccountLicense(LIC, ACT),
+    method: "POST",
+    url: `/admin/accounts/${LIC}/unlink-license`,
+    body: { license_id: ACT },
+  },
+  {
+    fn: "unlinkAccountLicense",
+    run: () => api.unlinkAccountLicense(ODD, ACT, "đăng nhập nhầm"),
+    method: "POST",
+    url: `/admin/accounts/${ODD_ENCODED}/unlink-license`,
+    body: { license_id: ACT, note: "đăng nhập nhầm" },
+  },
+  { fn: "anonymizeAccount", run: () => api.anonymizeAccount(LIC, "yêu cầu xóa"), method: "POST", url: `/admin/accounts/${LIC}/anonymize`, body: { note: "yêu cầu xóa" } },
+  { fn: "anonymizeAccount", run: () => api.anonymizeAccount(ODD, "x"), method: "POST", url: `/admin/accounts/${ODD_ENCODED}/anonymize`, body: { note: "x" } },
   { fn: "errorGroups", run: () => api.errorGroups({}), method: "GET", url: "/admin/error-groups" },
   {
     fn: "errorGroups",
@@ -179,6 +205,6 @@ describe("api: method, URL và body gửi lên", () => {
 
   it("có test cho đủ mọi hàm của api", () => {
     expect(new Set(CASES.map((c) => c.fn))).toEqual(new Set(Object.keys(api)));
-    expect(Object.keys(api)).toHaveLength(31);
+    expect(Object.keys(api)).toHaveLength(35);
   });
 });

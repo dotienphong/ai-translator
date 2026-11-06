@@ -1,6 +1,8 @@
 // Một hàm có kiểu cho mỗi route của Worker admin.
 import { call } from "./client";
 import type {
+  AccountDetail,
+  AccountRow,
   AlertsResponse,
   AuditRow,
   DeletedReports,
@@ -33,6 +35,16 @@ export type LookupQuery =
   | { license_key: string }
   | { license_id: string }
   | { device_id_hash: string };
+
+/** Bộ lọc của /admin/accounts: `q` là một phần email (chỉ để lọc, không vào địa chỉ trang), `filter` là nhóm trạng thái. */
+export type AccountFilters = {
+  q?: string;
+  filter?: "paid" | "trial_active" | "trial_ended" | "deleted";
+  cursor?: string;
+};
+
+/** Tải CSV tài khoản: liên kết cùng origin (server trả Content-Disposition: attachment), không đi qua fetch. */
+export const ACCOUNTS_EXPORT_URL = "/admin/accounts/export.csv";
 
 export type Filters = Record<string, string | undefined>;
 
@@ -85,6 +97,13 @@ export const api = {
   orders: (f: Filters) => call<Page<OrderRow>>("GET", `/admin/orders${queryString(f)}`),
   licenses: (f: Filters) => call<Page<LicenseRow>>("GET", `/admin/licenses${queryString(f)}`),
   trials: (f: Filters) => call<Page<TrialRow>>("GET", `/admin/trials${queryString(f)}`),
+  accounts: (f: AccountFilters) => call<Page<AccountRow>>("GET", `/admin/accounts${queryString(f)}`),
+  account: (id: string) => call<AccountDetail>("GET", `/admin/accounts/${seg(id)}`),
+  /** Gỡ gắn một license khỏi tài khoản. `note` tùy chọn: không có thì body không mang khóa này. */
+  unlinkAccountLicense: (id: string, licenseId: string, note?: string) =>
+    call<{ ok: true }>("POST", `/admin/accounts/${seg(id)}/unlink-license`, { license_id: licenseId, ...(note === undefined ? {} : { note }) }),
+  /** Xóa/ẩn danh tài khoản (`note` bắt buộc). `changed` false: tài khoản đã xóa từ trước, không đổi gì. */
+  anonymizeAccount: (id: string, note: string) => call<{ ok: true; changed: boolean }>("POST", `/admin/accounts/${seg(id)}/anonymize`, { note }),
   audit: (f: AuditFilters) => call<Page<AuditRow>>("GET", `/admin/audit${queryString(f)}`),
   errorGroups: (f: ErrorGroupFilters) => call<Page<ErrorGroup>>("GET", `/admin/error-groups${queryString(f)}`),
   errorReports: (f: ErrorReportFilters) => call<Page<ErrorReport>>("GET", `/admin/error-reports${queryString(f)}`),

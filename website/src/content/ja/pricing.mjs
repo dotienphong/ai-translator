@@ -133,6 +133,6 @@ ${sectionHead({ eyebrow: "料金についての質問", title: "購入前に聞�
 ${faq(PRICING_FAQ)}
 </div></section>
 
-${ctaBand({ title: "まずは 10 日間のお試しから", text: "1 日 30 分あれば、実際の会議で試すには十分です。カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/faq/", label: "よくある質問を読む" } })}
+${ctaBand({ title: "まずは 10 日間のお試しから", text: "1 日 30 分あれば、実際の会議で試すには十分です。カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/faq/", label: "よくある質問を読む" } })}
 `,
 };

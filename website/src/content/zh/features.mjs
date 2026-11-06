@@ -312,6 +312,6 @@ ${sectionHead({ eyebrow: "按套餐", title: "各功能包含在哪些套餐中"
 <p class="center-text reveal"><a class="btn btn-primary" href="/zh/pricing/">查看完整价格详情 ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "在真实会议中试试看", text: "免费试用 10 天，每天 30 分钟。无需银行卡，无需账号。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/guide/quick-start/", label: "阅读快速入门指南" } })}
+${ctaBand({ title: "在真实会议中试试看", text: "免费试用 10 天，每天 30 分钟。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/guide/quick-start/", label: "阅读快速入门指南" } })}
 `,
 };

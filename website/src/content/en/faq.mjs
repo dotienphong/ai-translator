@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Can I get translated meeting subtitles for free?",
-        a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days), 6 Months 269,000 ₫ (100 hours per 30 days, for 180 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>`,
+        a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card needed; the trial needs you to sign in with Google (paid plans need no sign-in). After that you need a prepaid plan: Monthly 50,000 ₫ (50 hours per 30 days), 6 Months 269,000 ₫ (100 hours per 30 days, for 180 days) or Yearly 500,000 ₫ (unlimited for 365 days). Free is a trial, not a permanent free plan.</p>`,
       },
       {
         q: "Does it show bilingual subtitles (original and translation)?",
@@ -54,7 +54,7 @@ const GROUPS = [
       },
       {
         q: "Do I need a bot, a plugin or an account?",
-        a: `<p>None of the three. No bot joins your meeting, no plugin goes into your meeting app, and there is no sign-in. The Free plan only needs you to accept the terms; paid plans are activated with a license key sent by email.</p>`,
+        a: `<p>No bot and no plugin: no bot joins your meeting and no plugin goes into your meeting app. Whether you need an account depends on the plan. The Free plan (trial) needs you to accept the terms and sign in with Google; the app stores your Google email for the account, currently not used for marketing. Paid plans need no sign-in: they are activated with a license key sent by email.</p>`,
       },
       {
         q: "Where do I download AI Translator? Is there a Windows version?",
@@ -106,7 +106,7 @@ const GROUPS = [
       },
       {
         q: "Where is the data from my conversations stored?",
-        a: `<p>Entirely on your computer. Audio exists only in RAM while translating; the transcript and translation appear on your screen and live in the session's memory; history is off by default, and if you turn it on it is stored encrypted on your machine. Our server holds no conversation data, only your email (when you buy), orders, licenses and device-activation details (a hashed machine ID and device name). See <a href="/en/data-security/">Data and security</a>.</p>`,
+        a: `<p>Entirely on your computer. Audio exists only in RAM while translating; the transcript and translation appear on your screen and live in the session's memory; history is off by default, and if you turn it on it is stored encrypted on your machine. Our server holds no conversation data, only your email (when you buy), your Google email (when you sign in), orders, licenses and device-activation details (a hashed machine ID and device name). See <a href="/en/data-security/">Data and security</a>.</p>`,
       },
       {
         q: "Does AI Translator work offline?",
@@ -118,7 +118,7 @@ const GROUPS = [
       },
       {
         q: "Are there ads or data collection?",
-        a: `<p>The app has no ads and no analytics. The website measures visits with Google Analytics only if you click Accept on the notice bar; if you decline, no measurement cookies are set (see the <a href="/en/privacy/">Privacy Policy</a>, section 14). When the app hits an error, it automatically sends an error report with personal data scrubbed out (no audio, no transcript text, no keys and no email); you can turn it off in Settings › Privacy. Our servers store only your email (when you buy, or when you choose to leave it in the support chat), orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates, a license change log, error reports (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), so we can issue keys, keep to one device per key and one trial per device, fix bugs and reply to you. We do not sell your data or share it for advertising. Details are on <a href="/en/data-security/#error-reports">Data and security</a>.</p>`,
+        a: `<p>The app has no ads and no analytics. The website measures visits with Google Analytics only if you click Accept on the notice bar; if you decline, no measurement cookies are set (see the <a href="/en/privacy/">Privacy Policy</a>, section 14). When the app hits an error, it automatically sends an error report with personal data scrubbed out (no audio, no transcript text, no keys and no email); you can turn it off in Settings › Privacy. Our servers store only your email (when you buy, or when you choose to leave it in the support chat), your Google email when you sign in, orders, licenses, a hashed machine ID, the device name (when you activate a key), the Free trial dates, a license change log, error reports (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), so we can issue keys, keep to one device per key and one trial per device, fix bugs and reply to you. We do not sell your data or share it for advertising. Details are on <a href="/en/data-security/#error-reports">Data and security</a>.</p>`,
       },
       {
         q: "Are transcripts saved?",

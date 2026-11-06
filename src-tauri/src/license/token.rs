@@ -93,8 +93,8 @@ pub fn decode(token: &str, keys: &PublicKeys) -> Result<Claims, VerifyError> {
 }
 
 /// Tách token `v1` thành JSON của payload, đoạn payload còn mã hóa (phần được ký) và chữ ký 64 byte. Sai ở bước nào cũng
-/// là `Malformed`. Dùng chung với token dùng thử ([`super::trial`]).
-pub(super) fn open(token: &str) -> Result<(Value, &str, [u8; 64]), VerifyError> {
+/// là `Malformed`. Dùng chung với token dùng thử ([`super::trial`]) và token tài khoản ([`crate::account::token`]).
+pub(crate) fn open(token: &str) -> Result<(Value, &str, [u8; 64]), VerifyError> {
     let mut parts = token.split('.');
     let (Some(version), Some(payload), Some(sig), None) = (parts.next(), parts.next(), parts.next(), parts.next())
     else {
@@ -114,7 +114,7 @@ pub(super) fn open(token: &str) -> Result<(Value, &str, [u8; 64]), VerifyError> 
 }
 
 /// Tra `kid` rồi kiểm chữ ký Ed25519 (chặt) trên chuỗi ASCII `v1.<payload>`.
-pub(super) fn check_signature(kid: &str, payload: &str, sig: &[u8; 64], keys: &PublicKeys) -> Result<(), VerifyError> {
+pub(crate) fn check_signature(kid: &str, payload: &str, sig: &[u8; 64], keys: &PublicKeys) -> Result<(), VerifyError> {
     let key = keys.get(kid).ok_or(VerifyError::UnknownKid)?;
     let key = VerifyingKey::from_bytes(key).map_err(|_| VerifyError::BadSignature)?;
     let signing_input = format!("{VERSION}.{payload}");
@@ -143,12 +143,12 @@ pub fn verify(token: &str, keys: &PublicKeys, now: i64, device_id_hash: &str) ->
     Ok(claims)
 }
 
-pub(super) fn int(c: &Map<String, Value>, key: &str) -> Option<i64> {
+pub(crate) fn int(c: &Map<String, Value>, key: &str) -> Option<i64> {
     let n = c.get(key)?.as_i64()?;
     (-MAX_SAFE..=MAX_SAFE).contains(&n).then_some(n)
 }
 
-pub(super) fn string(c: &Map<String, Value>, key: &str) -> Option<String> {
+pub(crate) fn string(c: &Map<String, Value>, key: &str) -> Option<String> {
     c.get(key)?.as_str().map(String::from)
 }
 

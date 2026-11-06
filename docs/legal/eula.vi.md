@@ -1,6 +1,6 @@
 # Thỏa thuận cấp phép người dùng cuối (EULA) của AI Translator
 
-**Phiên bản 1.7, hiệu lực từ 05/11/2026.**
+**Phiên bản 1.8, hiệu lực từ 06/11/2026.**
 
 Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("chúng tôi") về việc dùng ứng dụng **AI Translator** ("ứng dụng"). Bằng việc cài đặt hoặc dùng ứng dụng, bạn đồng ý với thỏa thuận này. Nếu không đồng ý, xin đừng cài đặt hay dùng.
 
@@ -16,14 +16,15 @@ Chúng tôi cấp cho bạn quyền **cá nhân, không độc quyền, không c
 
 | Gói | Hạn mức, mỗi máy | Thời hạn | Giá |
 |---|---|---|---|
-| Free | 30 phút mỗi ngày | dùng thử 10 ngày, mỗi máy một lần | 0 đ |
+| Free | 30 phút mỗi ngày | dùng thử 10 ngày, mỗi máy và mỗi tài khoản Google một lần | 0 đ |
 | Monthly | 50 giờ mỗi chu kỳ 30 ngày | 30 ngày mỗi đơn | 50.000 đ hoặc 3,99 USD |
 | 6 Months | 100 giờ mỗi chu kỳ 30 ngày | 180 ngày mỗi đơn | 269.000 đ hoặc 21,99 USD |
 | Yearly | không giới hạn | 365 ngày mỗi đơn | 500.000 đ hoặc 39,99 USD |
 
 (Giá bằng đồng áp dụng khi trả bằng VietQR; giá bằng USD áp dụng khi trả bằng thẻ quốc tế và **chưa gồm thuế**: nếu nước của bạn có thu thuế (VAT, GST hay thuế bán hàng), Creem tính thêm ở trang thanh toán. Giá và hạn mức hiện hành do ứng dụng hiển thị khi bạn mua; chúng tôi có thể bán thêm gói mới. Chúng tôi không hạ hạn mức của gói bạn đã trả tiền trong thời hạn đã mua, trừ khi đơn đó đã được hoàn tiền: xem phần Hoàn tiền ở dưới.)
 
-- **Free là gói dùng thử:** dùng được trong **10 ngày**, tính từ lần đầu ứng dụng đăng ký dùng thử với máy chủ của chúng tôi (thường là lần đầu mở ứng dụng có mạng). **Mỗi máy chỉ dùng thử một lần**: gỡ rồi cài lại ứng dụng, hay xóa dữ liệu, không mở lại thời gian dùng thử. Hết dùng thử thì bạn cần mua gói trả phí để tiếp tục dịch.
+- **Free là gói dùng thử:** dùng được trong **10 ngày**, tính từ lần đầu ứng dụng đăng ký dùng thử với máy chủ của chúng tôi (với máy mới, ngay sau khi bạn đăng nhập bằng tài khoản Google lần đầu). **Mỗi máy chỉ dùng thử một lần, và mỗi tài khoản Google cũng chỉ dùng thử một lần**: gỡ rồi cài lại ứng dụng, xóa dữ liệu, xóa rồi tạo lại tài khoản, hay đăng nhập cùng tài khoản Google trên máy khác, không mở lại thời gian dùng thử (máy khác dùng tiếp đúng thời gian dùng thử của tài khoản đó, kể cả khi đã hết). Hết dùng thử thì bạn cần mua gói trả phí để tiếp tục dịch.
+- **Tài khoản Google:** gói Free cần đăng nhập bằng tài khoản Google; máy chưa đăng nhập thì không dịch được bằng gói Free. Gói trả phí còn hiệu lực **không cần đăng nhập**; bạn có thể liên kết một tài khoản Google với license của máy nếu muốn. Bạn đăng nhập trên trang của Google và giữ an toàn tài khoản Google của mình. Bạn đăng xuất hay xóa tài khoản ở Cài đặt › Tài khoản; xóa tài khoản không xóa license hay gói trả phí và không mở lại thời gian dùng thử. Dữ liệu của tài khoản được xử lý theo chính sách quyền riêng tư (mục 15).
 - Ba gói trả phí cùng có các tính năng Pro (từ điển thuật ngữ, lưu lịch sử, xuất bản chép lời), khác hạn mức và thời hạn.
 - Gói trả phí là **đơn trả trước** (Monthly 30 ngày, 6 Months 180 ngày, Yearly 365 ngày), trả bằng **một trong hai cách** (khi cách đó đang được bán): chuyển khoản VietQR bằng VND (qua PayOS) hoặc thẻ quốc tế bằng USD (qua Creem). **Đơn trả bằng VietQR không tự gia hạn.** Đơn trả bằng thẻ quốc tế chỉ tự gia hạn khi bạn chọn (xem "Tự động gia hạn" ngay dưới); đơn trả một lần hết hạn thì ứng dụng quay về gói Free nếu máy còn trong thời gian dùng thử; hết dùng thử thì không dịch được cho tới khi bạn mua tiếp.
 - **Thanh toán bằng thẻ quốc tế do Creem bán lại.** Creem (Armitage Labs OÜ, Estonia) là bên bán lại (merchant of record) của đơn trả bằng thẻ và xử lý thanh toán, thuế (VAT, GST hay thuế bán hàng, nếu có) của khoản đó; sao kê thẻ thường ghi "CREEM.IO* STORE" và Creem gửi biên lai tới email bạn nhập. Điều khoản người mua của Creem (https://www.creem.io/buyer-terms) và chính sách quyền riêng tư của Creem (https://www.creem.io/privacy) áp dụng cho giao dịch mua bằng thẻ đó; điểm nào điều khoản người mua của Creem khác thỏa thuận này thì điều khoản của Creem được ưu tiên với giao dịch đó. Chúng tôi không nhận số thẻ của bạn.

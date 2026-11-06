@@ -3,7 +3,7 @@
 // Test (vitest) đọc file này nhưng ghi đè ENVIRONMENT thành "test" và mọi secret thành giá trị giả (vitest.config.ts).
 // Secret nhập bằng `wrangler secret put`, không bao giờ ghi vào file này (test Node quét cả chú thích): bắt buộc là đúng danh
 // sách `secrets.required` ở cuối file (ba secret PayOS, khóa API và secret webhook của Creem, Resend, hai ô khóa ký, pepper, ba
-// secret Zalo Bot của chat hỗ trợ: token, secret webhook, chat_id của chủ dự án);
+// secret Zalo Bot của chat hỗ trợ: token, secret webhook, chat_id của chủ dự án; client secret OAuth của Google);
 // OPERATOR_EMAIL (email người vận hành nhận cảnh báo) là secret tùy chọn.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -61,10 +61,20 @@
     "TRIAL_DAYS": 10,
     // Ô khóa đang ký token: secret TOKEN_SIGNING_KEY_A hay _B (QĐ29). Ô kia là khóa dự phòng.
     // Đổi khóa: đặt sang ô kia rồi deploy (Phụ lục A); giá trị khóa không đi qua máy người vận hành.
-    "TOKEN_SIGNING_SLOT": "a"
+    "TOKEN_SIGNING_SLOT": "a",
+    // Đăng nhập bằng Google (spec 2026-11-05). GOOGLE_OAUTH_CLIENT_ID: ID của client OAuth loại "Web application" (không bí mật; dạng
+    // <số>-<chuỗi>.apps.googleusercontent.com). **ĐỂ TRỐNG cho tới lúc phát hành: người vận hành điền ID thật** (docs/release/phat-hanh.md).
+    // Rỗng (hay thiếu secret GOOGLE_OAUTH_CLIENT_SECRET) thì đăng nhập Google tắt: /v1/auth/status báo "off", app mở cổng, không ai bị khóa.
+    // Client secret chỉ nằm ở secret của Worker, không bao giờ ở đây.
+    "GOOGLE_OAUTH_CLIENT_ID": "",
+    // Công tắc khẩn cấp (spec §5.4b): "off" thì /v1/auth/status báo off và app mở cổng đăng nhập cho mọi người; deploy lại là có hiệu lực.
+    "LOGIN_GATE": "on",
+    // "on" thì POST /v1/trial đòi token tài khoản cho máy chưa có dòng trong `trials` (spec §5.4). Đặt "on" SAU khi bản app có đăng nhập
+    // đã phát hành và kiểm chạy thật; máy đã có dòng trong `trials` (bản app ≤ 0.6.8) vẫn nhận token như cũ.
+    "ACCOUNT_REQUIRED": "off"
   },
   "secrets": {
-    "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "CREEM_API_KEY", "CREEM_WEBHOOK_SECRET", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER", "ZALO_BOT_TOKEN", "ZALO_WEBHOOK_SECRET", "ZALO_OWNER_CHAT_ID"]
+    "required": ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY", "CREEM_API_KEY", "CREEM_WEBHOOK_SECRET", "RESEND_API_KEY", "TOKEN_SIGNING_KEY_A", "TOKEN_SIGNING_KEY_B", "RATE_LIMIT_PEPPER", "ZALO_BOT_TOKEN", "ZALO_WEBHOOK_SECRET", "ZALO_OWNER_CHAT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"]
   },
   "d1_databases": [
     // database_id: thay bằng ID do `wrangler d1 create mt-license-production` in ra (Task 21).
@@ -73,6 +83,11 @@
   // Chat hỗ trợ (spec 2026-10-22 §2.2): chặn hỏi tin mới quá nhanh mà không ghi D1 (bảng rate_limits tốn một lần ghi mỗi request).
   // Khóa là id cuộc chat; khách hỏi mỗi 3 giây nên 60 lần mỗi 60 giây còn dư cho vài tab. namespace_id là số tự chọn, duy nhất
   // trong tài khoản Cloudflare (tài khoản dùng chung với dự án khác: đừng đổi sang số nhỏ dễ trùng).
-  "ratelimits": [{ "name": "SUPPORT_POLL_LIMITER", "namespace_id": "20261022", "simple": { "limit": 60, "period": 60 } }],
+  // Đăng nhập Google (spec 2026-11-05 §5.6): cùng kiểu cho việc app hỏi kết quả đăng nhập mỗi 3 giây (POST /v1/auth/poll), khóa là login_id.
+  // namespace_id cũng là số tự chọn, duy nhất trong tài khoản Cloudflare.
+  "ratelimits": [
+    { "name": "SUPPORT_POLL_LIMITER", "namespace_id": "20261022", "simple": { "limit": 60, "period": 60 } },
+    { "name": "AUTH_POLL_LIMITER", "namespace_id": "20261105", "simple": { "limit": 60, "period": 60 } }
+  ],
   "triggers": { "crons": ["*/5 * * * *"] }
 }

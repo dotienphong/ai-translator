@@ -2,7 +2,7 @@
 
 **Phần mềm dịch phụ đề cuộc họp trực tiếp, chạy offline trên máy tính (macOS và Windows).**
 
-AI Translator hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy: cuộc họp Zoom, Microsoft Teams, Google Meet, Zalo, webinar, video. Nhận dạng giọng nói và dịch đều chạy ngay trên máy bạn nên âm thanh không bị gửi lên cloud. Không cần bot, không cần tài khoản, không quảng cáo.
+AI Translator hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy: cuộc họp Zoom, Microsoft Teams, Google Meet, Zalo, webinar, video. Nhận dạng giọng nói và dịch đều chạy ngay trên máy bạn nên âm thanh không bị gửi lên cloud. Không cần bot, không quảng cáo. Dùng thử Free cần đăng nhập bằng Google (app lưu email Google cho tài khoản); gói trả phí không cần đăng nhập.
 
 🌐 **Website:** [aitranslator.vn](https://aitranslator.vn/) · [English](https://aitranslator.vn/en/)
 
@@ -19,7 +19,7 @@ AI Translator hiện phụ đề dịch trực tiếp cho mọi âm thanh đang 
 
 - macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64).
 - Tải và cài đặt: [Tải xuống](https://aitranslator.vn/tai-xuong/), kèm hướng dẫn cho [macOS](https://aitranslator.vn/huong-dan/cai-dat-macos/) và [Windows](https://aitranslator.vn/huong-dan/cai-dat-windows/).
-- Có gói Free dùng thử; các gói trả phí ở trang [Bảng giá](https://aitranslator.vn/bang-gia/).
+- Có gói Free dùng thử (cần đăng nhập bằng Google); các gói trả phí ở trang [Bảng giá](https://aitranslator.vn/bang-gia/).
 
 ## Tìm hiểu thêm
 
@@ -38,7 +38,7 @@ Zoom, Microsoft Teams, Google Meet, Zalo và các tên sản phẩm khác thuộ
 
 ## English
 
-**AI Translator** is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer: Zoom, Microsoft Teams, Google Meet, webinars and videos. Speech recognition and translation run on your own machine, so your audio is not sent to the cloud. No bot, no account, no ads.
+**AI Translator** is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer: Zoom, Microsoft Teams, Google Meet, webinars and videos. Speech recognition and translation run on your own machine, so your audio is not sent to the cloud. No bot, no ads. The Free trial needs you to sign in with Google (the app stores your Google email for the account); paid plans need no sign-in.
 
 - Five languages: English, Chinese, Japanese, Korean and Vietnamese.
 - Requires macOS 14.2 or later (Apple Silicon) or Windows 10/11 64-bit (x64).

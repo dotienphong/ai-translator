@@ -46,6 +46,8 @@ export interface TokenClaims {
 export interface SigningKey {
   kid: string;
   key: CryptoKey;
+  /** Khóa công khai tương ứng (`x` của JWK: 32 byte, base64url), để server tự kiểm token do chính nó ký (token tài khoản, spec 2026-11-05 §5.2). */
+  publicKey: string;
 }
 
 /** Kết quả "ký thử bằng khóa dự phòng" (QĐ31): ô khóa, kid và token không dùng được làm bản quyền. */
@@ -78,6 +80,21 @@ export interface TrialClaims {
 export type TrialVerifyError = "malformed" | "unknown_kid" | "bad_signature" | "wrong_device";
 export type TrialVerifyResult = { ok: true; claims: TrialClaims } | { ok: false; error: TrialVerifyError };
 
+/**
+ * Token tài khoản (spec 2026-11-05 §5.2): cùng định dạng v1, cùng khóa và kid với token bản quyền và dùng thử; gắn với
+ * máy; không có hạn dùng (hiệu lực kết thúc khi tài khoản bị xóa hoặc người dùng đăng xuất).
+ */
+export interface AccountClaims {
+  typ: "account";
+  kid: string;
+  account_id: string;
+  device_id_hash: string;
+  issued_at: number;
+}
+
+export type AccountVerifyError = "malformed" | "unknown_kid" | "bad_signature" | "wrong_device";
+export type AccountVerifyResult = { ok: true; claims: AccountClaims } | { ok: false; error: AccountVerifyError };
+
 /** Đọc secret TOKEN_SIGNING_KEY_A hoặc _B: JWK Ed25519 có `d`, `x` và `kid`. */
 export async function importSigningKey(jwkJson: string): Promise<SigningKey> {
   let jwk: Record<string, unknown>;
@@ -92,7 +109,7 @@ export async function importSigningKey(jwkJson: string): Promise<SigningKey> {
   }
   if (typeof kid !== "string" || !KID_PATTERN.test(kid)) throw new Error("khóa ký thiếu kid hợp lệ");
   const key = await crypto.subtle.importKey("jwk", { kty, crv, d, x }, { name: "Ed25519" }, false, ["sign"]);
-  return { kid, key };
+  return { kid, key, publicKey: x };
 }
 
 async function signClaims(signingKey: SigningKey, ordered: object): Promise<string> {
@@ -134,6 +151,18 @@ export async function signTrialToken(signingKey: SigningKey, claims: TrialClaims
   return signClaims(signingKey, ordered);
 }
 
+export async function signAccountToken(signingKey: SigningKey, claims: AccountClaims): Promise<string> {
+  // Thứ tự trường cố định, như signToken.
+  const ordered: AccountClaims = {
+    typ: "account",
+    kid: claims.kid,
+    account_id: claims.account_id,
+    device_id_hash: claims.device_id_hash,
+    issued_at: claims.issued_at,
+  };
+  return signClaims(signingKey, ordered);
+}
+
 function parseClaims(json: unknown): TokenClaims | null {
   if (typeof json !== "object" || json === null) return null;
   const c = json as Record<string, unknown>;
@@ -153,7 +182,7 @@ function parseClaims(json: unknown): TokenClaims | null {
 
 type Checked<T> = { ok: true; claims: T } | { ok: false; error: "malformed" | "unknown_kid" | "bad_signature" };
 
-/** Phần chung của hai bộ kiểm: định dạng (theo `parse`), kid, rồi chữ ký. */
+/** Phần chung của các bộ kiểm: định dạng (theo `parse`), kid, rồi chữ ký. */
 async function checkSigned<T extends { kid: string }>(
   token: string,
   publicKeys: Record<string, string>,
@@ -223,6 +252,30 @@ export async function verifyTrialToken(
   opts: { deviceIdHash: string },
 ): Promise<TrialVerifyResult> {
   const checked = await checkSigned(token, publicKeys, parseTrialClaims);
+  if (!checked.ok) return checked;
+  if (checked.claims.device_id_hash !== opts.deviceIdHash) return { ok: false, error: "wrong_device" };
+  return checked;
+}
+
+function parseAccountClaims(json: unknown): AccountClaims | null {
+  if (typeof json !== "object" || json === null) return null;
+  const c = json as Record<string, unknown>;
+  if (c.typ !== "account") return null;
+  if (typeof c.kid !== "string" || typeof c.account_id !== "string" || typeof c.device_id_hash !== "string") return null;
+  if (!Number.isSafeInteger(c.issued_at)) return null;
+  return c as unknown as AccountClaims;
+}
+
+/**
+ * Kiểm token tài khoản, theo thứ tự: định dạng (`typ` là "account", đủ trường, đúng kiểu), kid, chữ ký, máy.
+ * Không có hạn dùng để kiểm; server còn phải kiểm tài khoản chưa bị xóa ở mọi endpoint nhận token (spec §5.2).
+ */
+export async function verifyAccountToken(
+  token: string,
+  publicKeys: Record<string, string>,
+  opts: { deviceIdHash: string },
+): Promise<AccountVerifyResult> {
+  const checked = await checkSigned(token, publicKeys, parseAccountClaims);
   if (!checked.ok) return checked;
   if (checked.claims.device_id_hash !== opts.deviceIdHash) return { ok: false, error: "wrong_device" };
   return checked;

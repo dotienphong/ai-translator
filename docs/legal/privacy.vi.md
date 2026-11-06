@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.13, hiệu lực từ 05/11/2026.**
+**Phiên bản 1.14, hiệu lực từ 06/11/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -12,11 +12,12 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 - Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
 - **Gợi ý bật dịch khi có cuộc họp** (Windows; bật mặc định, tắt ở Cài đặt › Chung): ứng dụng kiểm tra **ngay trên máy bạn** xem Teams, Zoom hoặc Google Meet có đang họp và có tiếng không để hiện gợi ý "Bật dịch?". Không lưu, không ghi vào log, không gửi gì đi, và không tự bật dịch khi bạn chưa bấm.
 - **Phân biệt người nói** (hiện chỉ có trên macOS, Windows chưa có tính năng này; bật mặc định, tắt được ở Cài đặt › Phụ đề › Người nói): ứng dụng tạm thời phân tích đặc điểm giọng ngay trên máy để biết câu nào do cùng một người nói và hiện nhãn "Người 1", "Người 2". Đặc điểm giọng **chỉ nằm trong bộ nhớ RAM, tự xóa khi hết phiên, không ghi xuống đĩa, không gửi đi**, và ứng dụng không dùng nó để xác định danh tính ai (mục 3). Trên macOS, ứng dụng còn đọc **tên người tham dự hiển thị trên cửa sổ cuộc họp Microsoft Teams bản cài** để gắn tên vào phụ đề (mục 3).
-- Ứng dụng **không có tài khoản đăng nhập, không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
+- **Gói Free (dùng thử) cần Đăng nhập bằng Google**; gói trả phí còn hạn không cần đăng nhập. Khi bạn đăng nhập, máy chủ của chúng tôi lưu **email Google** và **mã định danh tài khoản Google** của bạn để quản lý tài khoản, key, dùng thử và liên hệ về dịch vụ; hiện email này không được dùng để quảng bá. Bạn đăng xuất hay xóa tài khoản ở Cài đặt › Tài khoản (mục 15).
+- Ứng dụng **không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
 - **Website** aitranslator.vn chỉ đo lượt truy cập bằng Google Analytics **khi bạn bấm "Đồng ý"** ở thanh thông báo. Không đồng ý thì website không tải Google Analytics và không đặt cookie đo lường (mục 14). Ứng dụng không dùng Google Analytics.
 - Nếu bạn nhắn ở **chat hỗ trợ** (trên website hay trong ứng dụng), tin nhắn được lưu trên máy chủ của chúng tôi, chuyển tới tài khoản Zalo của người vận hành để trả lời, và **tự xóa sau 90 ngày** kể từ tin cuối; bạn tự xóa được sớm hơn (mục 11).
-- Máy chủ của chúng tôi chỉ lưu **email** (khi bạn mua gói, hoặc khi bạn tự để lại trong chat hỗ trợ), thông tin đơn hàng, license, mã nhận diện máy đã băm, báo cáo lỗi (giữ 30 ngày), báo cáo tình trạng của bộ đọc tên (giữ 60 ngày, không có tên người) và tin nhắn chat hỗ trợ (giữ 90 ngày), để cấp key, kiểm tra bản quyền, bảo đảm mỗi máy chỉ dùng thử gói Free một lần, sửa lỗi và trả lời bạn.
-- Dữ liệu cá nhân trên máy chủ được **giữ cho tới khi bạn yêu cầu xóa** (mục 7), trừ báo cáo lỗi tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày (mục 10) và tin nhắn chat hỗ trợ tự xóa sau 90 ngày kể từ tin cuối (mục 11).
+- Máy chủ của chúng tôi chỉ lưu **email** (khi bạn mua gói, hoặc khi bạn tự để lại trong chat hỗ trợ), **email Google và mã định danh tài khoản Google** (khi bạn đăng nhập, mục 15), thông tin đơn hàng, license, mã nhận diện máy đã băm, báo cáo lỗi (giữ 30 ngày), báo cáo tình trạng của bộ đọc tên (giữ 60 ngày, không có tên người) và tin nhắn chat hỗ trợ (giữ 90 ngày), để cấp key, kiểm tra bản quyền, bảo đảm mỗi máy và mỗi tài khoản Google chỉ dùng thử gói Free một lần, sửa lỗi và trả lời bạn.
+- Dữ liệu cá nhân trên máy chủ được **giữ cho tới khi bạn yêu cầu xóa** (mục 7) hoặc tự xóa tài khoản Google trong ứng dụng (mục 15), trừ báo cáo lỗi tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày (mục 10) và tin nhắn chat hỗ trợ tự xóa sau 90 ngày kể từ tin cuối (mục 11).
 
 ## 3. Dữ liệu ở lại trên máy bạn
 
@@ -27,7 +28,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 | Bản chép lời và bản dịch | Hiện trên màn hình. **Lịch sử mặc định tắt.** Bật thì lưu trên máy bạn, mã hóa, và xóa toàn bộ được bằng một nút |
 | Chữ bạn gõ ở Gõ dịch và bản dịch của nó | Chỉ nằm trong bộ nhớ RAM tới khi bạn dán hoặc thoát ứng dụng; không ghi xuống đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Ứng dụng chép bản dịch vào clipboard của hệ điều hành để dán; bản dịch ở lại đó tới khi bạn chép thứ khác |
 | Từ điển thuật ngữ, cài đặt | Lưu trên máy bạn |
-| Khóa mã hóa lịch sử, token bản quyền, token dùng thử, bộ đếm hạn mức | Lưu trong kho khóa của hệ điều hành (Keychain của macOS, Credential Manager của Windows) |
+| Khóa mã hóa lịch sử, token bản quyền, token dùng thử, bộ đếm hạn mức, và (khi bạn đăng nhập) token tài khoản cùng email Google | Lưu trong kho khóa của hệ điều hành (Keychain của macOS, Credential Manager của Windows) |
 | Nhật ký hoạt động (log) | Lưu trên máy bạn, không chứa nội dung chép lời. Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân (mục 10); bạn cũng có thể gửi log cho hỗ trợ bằng nút trong ứng dụng |
 | Model nhận dạng và dịch | Tải về một lần, chạy hoàn toàn trên máy bạn |
 | Model nhận giọng người nói (khi tính năng bật) | Tải về một lần (khoảng 26 MB), chạy hoàn toàn trên máy bạn |
@@ -49,7 +50,7 @@ Cũng trên macOS, việc hiện tên người nói dùng quyền **Trợ năng*
 Ứng dụng chỉ kết nối mạng để:
 1. **Tải model** (gồm model nhận giọng người nói, khoảng 26 MB, khi tính năng bật) và kiểm tra bản mới của model, và **tải công thức đọc tên** (một tệp mô tả nhỏ có chữ ký số; lúc mở ứng dụng và mỗi 6 giờ, chỉ khi tính năng bật), đều từ `releases.aitranslator.vn`. Đây chỉ là yêu cầu tải tệp, không gửi dữ liệu nào của bạn.
 2. **Kiểm tra bản cập nhật** của ứng dụng (từ `releases.aitranslator.vn`).
-3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi đăng ký dùng thử Free (lần đầu mở ứng dụng, ngay sau khi bạn đồng ý điều khoản; gửi mã băm của ID máy), khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10), gửi báo cáo tình trạng của bộ đọc tên (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
+3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi bạn **Đăng nhập bằng Google** (mục 15), khi đăng ký dùng thử Free (ngay sau khi bạn đăng nhập; gửi mã băm của ID máy kèm token tài khoản), khi liên kết license của máy với tài khoản Google, khi đăng xuất hay xóa tài khoản, khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10), gửi báo cáo tình trạng của bộ đọc tên (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn đăng nhập, ứng dụng nhờ máy chủ này tạo một lượt đăng nhập rồi mở trang đăng nhập của Google (`accounts.google.com`) bằng trình duyệt của bạn; trình duyệt, không phải ứng dụng, kết nối tới Google. Ứng dụng không gửi yêu cầu nào về đăng nhập hay tài khoản trong lúc đang dịch. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
 4. **Trang thanh toán** do PayOS (chuyển khoản VietQR) hoặc Creem (thẻ quốc tế) cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
 5. **Website** `aitranslator.vn` của chúng tôi, mở bằng trình duyệt của bạn khi bạn bấm liên kết trong ứng dụng.
 
@@ -59,22 +60,23 @@ Không có kết nối nào khác, và không có kết nối nào mang âm than
 
 ## 5. Dữ liệu chúng tôi lưu trên máy chủ
 
-Máy chủ lưu các dữ liệu dưới đây. Dòng "Dùng thử Free" áp cho mọi máy đã mở ứng dụng có mạng; các dòng còn lại chỉ khi bạn mua gói hay kích hoạt key, trừ dòng "Báo cáo lỗi", áp cho mọi máy mà ứng dụng gửi báo cáo, và dòng "Chat hỗ trợ", áp cho mọi người đã nhắn ở chat hỗ trợ trên website hay trong ứng dụng:
+Máy chủ lưu các dữ liệu dưới đây. Dòng "Dùng thử Free" áp cho mọi máy đã đăng ký dùng thử; dòng "Tài khoản Google" áp khi bạn đăng nhập bằng Google; các dòng còn lại chỉ khi bạn mua gói hay kích hoạt key, trừ dòng "Báo cáo lỗi", áp cho mọi máy mà ứng dụng gửi báo cáo, và dòng "Chat hỗ trợ", áp cho mọi người đã nhắn ở chat hỗ trợ trên website hay trong ứng dụng:
 
 | Dữ liệu | Mục đích |
 |---|---|
 | Email bạn nhập khi mua | Gửi key, khôi phục key khi bạn mất, và, với đơn thẻ, điền sẵn trang thanh toán của Creem |
 | Thời điểm bạn đồng ý xử lý email | Làm bằng chứng đã có sự đồng ý |
 | Đơn hàng: mã đơn, gói, số tiền và loại tiền, thời điểm thanh toán, trạng thái, mã phiên thanh toán của cổng (PayOS hay Creem), ngôn ngữ giao diện của ứng dụng lúc mua; với đơn tự động gia hạn: mã thuê bao của Creem, trạng thái thuê bao và ngày hết kỳ đã thu | Cấp và gia hạn license; đối soát; nghĩa vụ kế toán; gửi thư bằng ngôn ngữ của bạn |
-| License: key, gói, ngày hết hạn, chu kỳ hạn mức | Cấp quyền dùng gói trả phí |
-| Dùng thử Free: **mã băm** của ID máy, lúc bắt đầu và lúc hết dùng thử, lần ứng dụng gọi gần nhất | Mỗi máy chỉ dùng thử 10 ngày một lần, kể cả khi cài lại ứng dụng |
+| License: key, gói, ngày hết hạn, chu kỳ hạn mức, tài khoản Google đã liên kết (nếu có) | Cấp quyền dùng gói trả phí |
+| Tài khoản Google (mục 15): email Google, mã định danh tài khoản Google, thời điểm bạn đồng ý ở màn hình đăng nhập, ngôn ngữ giao diện, ngày tạo, lần đăng nhập gần nhất, mốc dùng thử của tài khoản; thời điểm xóa nếu bạn xóa tài khoản | Quản lý tài khoản, key và dùng thử; mỗi tài khoản Google chỉ dùng thử 10 ngày một lần; liên hệ với bạn về dịch vụ (key, hạn dùng, hỗ trợ). Hiện không được dùng để quảng bá |
+| Dùng thử Free: **mã băm** của ID máy, lúc bắt đầu và lúc hết dùng thử, lần ứng dụng gọi gần nhất, tài khoản Google đã gắn (nếu có) | Mỗi máy và mỗi tài khoản Google chỉ dùng thử 10 ngày một lần, kể cả khi cài lại ứng dụng |
 | Máy đã kích hoạt: **mã băm** của ID máy, tên máy (`device_label`) và lần kiểm tra bản quyền gần nhất | Mỗi key chỉ dùng trên một máy, chống lạm dụng, giúp bạn nhận ra máy khi cần gỡ |
 | Nhật ký thay đổi license (ai làm gì, lúc nào) | Hỗ trợ, chống gian lận, tra soát sự cố |
 | Bộ đếm giới hạn tần suất (chỉ lưu giá trị băm HMAC của IP, key, email, cuộc chat; tự hết hạn sau khoảng 3 giờ) | Chặn dò key và spam |
 | Báo cáo lỗi (mục 10): loại và mã lỗi, thông tin máy, **mã băm** của ID máy và phần log liên quan; không có email, tên máy hay nội dung cuộc họp | Tìm và sửa lỗi; tự xóa sau 30 ngày |
 | Chat hỗ trợ (mục 11): nội dung tin của bạn và câu trả lời, thời điểm, nguồn (website hay ứng dụng), ngôn ngữ, trang bạn đang xem lúc mở chat (website), dòng thông tin máy nếu bạn để tích (ứng dụng), email nếu bạn tự để lại, **mã băm** của mã bí mật của cuộc chat; không lưu địa chỉ IP cùng cuộc chat | Trả lời bạn, và gửi câu trả lời qua email nếu bạn để lại email; tự xóa sau 90 ngày kể từ tin cuối |
 
-Chúng tôi **không** nhận số tài khoản ngân hàng, số thẻ hay thông tin tài chính của bạn (việc chuyển khoản do ngân hàng của bạn và PayOS xử lý; việc trả bằng thẻ do Creem xử lý ngay trên trang thanh toán của Creem). Với VietQR, chúng tôi **không** gửi email của bạn sang PayOS. Với thẻ quốc tế, chúng tôi gửi email bạn nhập trong ứng dụng cho Creem để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Máy chủ đoán nước của bạn từ địa chỉ IP (qua Cloudflare) chỉ để chọn sẵn cách trả ở màn hình Nâng cấp; nước đoán được không được lưu. Dùng gói Free mà không mua và không kích hoạt key thì chúng tôi chỉ lưu dòng "Dùng thử Free" ở trên, các báo cáo lỗi nếu ứng dụng gửi, và cuộc chat hỗ trợ nếu bạn nhắn: không có email (trừ email bạn tự để lại trong chat), tên máy hay thông tin nào khác của bạn.
+Chúng tôi **không** nhận số tài khoản ngân hàng, số thẻ hay thông tin tài chính của bạn (việc chuyển khoản do ngân hàng của bạn và PayOS xử lý; việc trả bằng thẻ do Creem xử lý ngay trên trang thanh toán của Creem). Với VietQR, chúng tôi **không** gửi email của bạn sang PayOS. Với thẻ quốc tế, chúng tôi gửi email bạn nhập trong ứng dụng cho Creem để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Máy chủ đoán nước của bạn từ địa chỉ IP (qua Cloudflare) chỉ để chọn sẵn cách trả ở màn hình Nâng cấp; nước đoán được không được lưu. Dùng gói Free mà không mua và không kích hoạt key thì chúng tôi chỉ lưu dòng "Dùng thử Free" ở trên, dòng "Tài khoản Google" (có email Google của bạn) khi bạn đăng nhập, các báo cáo lỗi nếu ứng dụng gửi, và cuộc chat hỗ trợ nếu bạn nhắn: không có email nào khác (trừ email bạn tự để lại trong chat), tên máy hay thông tin nào khác của bạn.
 
 Máy chủ cũng lưu **báo cáo tình trạng của bộ đọc tên** (mục 10; giữ 60 ngày rồi tự xóa): ngày của số liệu, phiên bản ứng dụng, loại bản dựng, hệ điều hành và kiến trúc CPU, ứng dụng họp và phiên bản, phiên bản công thức, trạng thái, số phút, số mẫu chỉ báo ứng dụng tự học, mô tả loại phần tử giao diện của các chỉ báo đó, cờ kiểm tra tự động, thời điểm máy chủ nhận và mã băm ID máy; **không có tên người, không có chữ trong cuộc họp**.
 
@@ -84,22 +86,24 @@ Máy chủ cũng lưu **báo cáo tình trạng của bộ đọc tên** (mục 
 |---|---|---|
 | **PayOS** (Việt Nam) | Xử lý thanh toán chuyển khoản VietQR | Mã đơn, số tiền, mô tả đơn. Không có email của bạn |
 | **Creem** (Armitage Labs OÜ, Estonia) | Bên bán lại (merchant of record) của đơn thẻ: xử lý thanh toán, thuế và biên lai | Chúng tôi gửi mã đơn, gói, số tiền, loại tiền và email bạn nhập, ngay khi bạn bấm thanh toán bằng thẻ (kể cả khi bạn không trả), để điền sẵn trang thanh toán và để Creem gửi biên lai. Ở trang thanh toán, Creem tự thu số thẻ, tên, địa chỉ thanh toán và nước (để tính thuế), địa chỉ IP (chống gian lận); chúng tôi không nhận số thẻ. Creem xử lý các dữ liệu đó theo chính sách riêng (https://www.creem.io/privacy). Với đơn tự động gia hạn, Creem giữ thẻ của bạn để trừ các kỳ sau và gửi máy chủ của chúng tôi thông báo mỗi lần trừ tiền, đổi trạng thái hay hủy thuê bao (mã thuê bao, trạng thái, kỳ thanh toán). Thông báo thanh toán Creem gửi máy chủ của chúng tôi có tên và nước người mua; chúng tôi không lưu hai thông tin này |
-| **Cloudflare** | Máy chủ chạy license server, cơ sở dữ liệu, lưu trữ và phân phối bản cập nhật, model | Dữ liệu ở mục 5, kể cả báo cáo lỗi (mục 10) và chat hỗ trợ (mục 11); nhật ký kỹ thuật tự hết hạn |
+| **Cloudflare** | Máy chủ chạy license server, cơ sở dữ liệu, lưu trữ và phân phối bản cập nhật, model | Dữ liệu ở mục 5, kể cả tài khoản Google (mục 15), báo cáo lỗi (mục 10) và chat hỗ trợ (mục 11); nhật ký kỹ thuật tự hết hạn |
+| **Google** (đăng nhập) | Đăng nhập bằng Google cho ứng dụng (mục 15): trang đăng nhập `accounts.google.com` mở trong trình duyệt của bạn | Google xác thực tài khoản Google của bạn trên trang của Google và gửi cho máy chủ của chúng tôi email và mã định danh tài khoản Google. Chúng tôi không nhận mật khẩu Google của bạn. Google xử lý việc đăng nhập theo điều khoản và chính sách riêng của Google |
 | **Resend** | Gửi email chứa key, và email chứa câu trả lời chat hỗ trợ khi bạn để lại email | Email bạn, nội dung thư (có key, hay câu trả lời chat); theo chính sách lưu của Resend |
 | **Google** (Google LLC, Hoa Kỳ; Google Ireland Limited với người dùng ở châu Âu) | Google Analytics 4 cho website, chỉ khi bạn bấm "Đồng ý" ở thanh thông báo (mục 14) | Trang bạn xem, trang giới thiệu, loại trình duyệt và thiết bị, ngôn ngữ, vị trí gần đúng, thời gian xem, mã nhận diện trong cookie. Không có email, license hay nội dung chat của bạn |
 | **Zalo** (Công ty Cổ phần VNG, Việt Nam; máy chủ ở Việt Nam) | Chuyển tin nhắn chat hỗ trợ của bạn tới tài khoản Zalo của người vận hành, và chuyển câu trả lời của người vận hành về máy chủ của chúng tôi | Nội dung tin, mã cuộc chat (3 ký tự), nguồn (website hay ứng dụng), ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email (kèm địa chỉ email) hay đã xóa cuộc chat. Không có địa chỉ IP của bạn. Zalo xử lý các dữ liệu đó theo điều khoản và chính sách riêng của Zalo |
 
-Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5, mục 10 và mục 11 có thể được xử lý ở nước ngoài; Google đặt máy chủ ở nhiều nước, nên dữ liệu đo lường ở mục 14 cũng có thể được xử lý ở nước ngoài; Zalo đặt máy chủ ở Việt Nam. Bằng việc mua gói và đồng ý xử lý email, hoặc gửi tin ở chat hỗ trợ, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
+Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5, mục 10 và mục 11 có thể được xử lý ở nước ngoài; Google đặt máy chủ ở nhiều nước, nên dữ liệu đo lường ở mục 14 và việc đăng nhập bằng Google (mục 15) cũng có thể được xử lý ở nước ngoài; Zalo đặt máy chủ ở Việt Nam. Bằng việc mua gói và đồng ý xử lý email, đăng nhập bằng Google sau khi tick ô đồng ý ở màn hình đăng nhập, hoặc gửi tin ở chat hỗ trợ, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
 
 ## 7. Thời gian lưu và quyền của bạn
 
-**Dữ liệu cá nhân trên máy chủ được giữ cho tới khi bạn yêu cầu xóa.** Chúng tôi không tự xóa, trừ báo cáo lỗi (tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày, mục 10) và cuộc chat hỗ trợ (tự xóa sau 90 ngày kể từ tin cuối, mục 11).
+**Dữ liệu cá nhân trên máy chủ được giữ cho tới khi bạn yêu cầu xóa.** Bạn cũng tự xóa tài khoản Google trong ứng dụng được (mục 15). Chúng tôi không tự xóa, trừ báo cáo lỗi (tự xóa sau 30 ngày và báo cáo tình trạng của bộ đọc tên tự xóa sau 60 ngày, mục 10) và cuộc chat hỗ trợ (tự xóa sau 90 ngày kể từ tin cuối, mục 11).
 
-Bạn có quyền: biết dữ liệu nào đang được lưu, yêu cầu **xóa** hoặc **ẩn danh**, rút lại sự đồng ý, và khiếu nại theo quy định của **Luật Bảo vệ dữ liệu cá nhân** của Việt Nam. Gửi yêu cầu tới **support@aitranslator.vn** từ email đã dùng khi mua, hay email bạn đã để lại trong chat hỗ trợ (để chúng tôi xác nhận là bạn). Chúng tôi xử lý trong thời hạn pháp luật quy định.
+Bạn có quyền: biết dữ liệu nào đang được lưu, yêu cầu **xóa** hoặc **ẩn danh**, rút lại sự đồng ý, và khiếu nại theo quy định của **Luật Bảo vệ dữ liệu cá nhân** của Việt Nam. Gửi yêu cầu tới **support@aitranslator.vn** từ email đã dùng khi mua, email Google bạn dùng để đăng nhập, hay email bạn đã để lại trong chat hỗ trợ (để chúng tôi xác nhận là bạn). Chúng tôi xử lý trong thời hạn pháp luật quy định.
 
 Khi bạn yêu cầu xóa, chúng tôi sẽ:
 - **bỏ** email và tên máy của bạn, cùng ngôn ngữ giao diện lưu trên đơn hàng;
 - **xóa** các báo cáo lỗi của những máy từng kích hoạt key của email đó (mục 10), và các báo cáo tình trạng của bộ đọc tên của chính những máy đó;
+- **bỏ** email đó khỏi tài khoản Google đăng nhập bằng email đó và gỡ liên kết tài khoản với license và dùng thử, như khi bạn tự xóa tài khoản (mục 15; những gì máy chủ giữ lại nêu ở đó);
 - **xóa** các cuộc chat hỗ trợ mà bạn đã để lại email đó, cả trên máy chủ của chúng tôi lẫn bản đã chuyển vào cuộc trò chuyện Zalo của người vận hành (mục 11);
 - **giữ lại** mã băm của ID máy (dữ liệu bí danh, chỉ để chống lạm dụng: mỗi key một máy, khóa tạm khi đổi máy quá nhiều, dùng lại đúng kích hoạt khi bạn kích hoạt lại cùng máy, mỗi máy chỉ dùng thử Free một lần);
 - **giữ lại** thời điểm bạn đồng ý xử lý email (bằng chứng đã có sự đồng ý trước đó);
@@ -138,7 +142,7 @@ Khi ứng dụng gặp lỗi, nó **tự gửi một báo cáo lỗi** cho chún
 
 ## 11. Chat hỗ trợ
 
-Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở góc mỗi trang của website `aitranslator.vn`, hoặc màn hình **Hỗ trợ** trong ứng dụng. Không cần tài khoản, và mọi người dùng đều chat được, kể cả gói Free. Người trả lời là người vận hành ứng dụng, không phải bot. Tin của bạn đi qua máy chủ của chúng tôi (`api.aitranslator.vn`) tới tài khoản Zalo của người vận hành; người vận hành trả lời trong Zalo và câu trả lời hiện trong khung chat của bạn. Bạn không cần có Zalo.
+Bạn có thể nhắn cho chúng tôi ở **chat hỗ trợ**: nút chat ở góc mỗi trang của website `aitranslator.vn`, hoặc màn hình **Hỗ trợ** trong ứng dụng. Không cần Đăng nhập bằng Google để chat, và mọi người dùng đều chat được, kể cả gói Free. Người trả lời là người vận hành ứng dụng, không phải bot. Tin của bạn đi qua máy chủ của chúng tôi (`api.aitranslator.vn`) tới tài khoản Zalo của người vận hành; người vận hành trả lời trong Zalo và câu trả lời hiện trong khung chat của bạn. Bạn không cần có Zalo.
 
 | Nội dung | Chi tiết |
 |---|---|
@@ -175,3 +179,23 @@ Mục này chỉ nói về website aitranslator.vn. Ứng dụng không có anal
 - Bạn đổi ý bất cứ lúc nào bằng nút **"Cài đặt cookie"** ở chân trang. Khi bạn từ chối hoặc rút lại, website xóa cookie đo lường và ngừng gửi dữ liệu cho Google.
 - Lựa chọn của bạn được lưu trong bộ nhớ của trình duyệt (không gửi lên máy chủ của chúng tôi). Xóa dữ liệu trình duyệt thì website sẽ hỏi lại.
 - Chat hỗ trợ trên website không dùng Google Analytics.
+
+## 15. Tài khoản Google
+
+**Gói Free (dùng thử) cần đăng nhập bằng tài khoản Google**: máy dùng gói Free mà chưa đăng nhập thì không dùng được Màn hình chính, Gõ dịch và Giọng đọc (Lịch sử, Bản chép lời, Từ điển thuật ngữ, Cài đặt, Nâng cấp Pro, Hỗ trợ và Giới thiệu vẫn dùng được). Phiên dịch đang chạy không bị ngắt. Máy đang có gói trả phí còn hiệu lực **không cần đăng nhập**; nếu muốn, bạn liên kết một tài khoản Google với license của máy. Hiện ứng dụng chỉ có đăng nhập bằng Google. Chúng tôi có thể tạm tắt yêu cầu đăng nhập; khi đó gói Free dùng được như khi chưa có yêu cầu này.
+
+| Nội dung | Chi tiết |
+|---|---|
+| Cách đăng nhập | Ở màn hình đăng nhập, bạn tick ô đồng ý rồi bấm **Đăng nhập bằng Google**. Ứng dụng nhờ máy chủ của chúng tôi (`api.aitranslator.vn`) tạo một lượt đăng nhập rồi mở trang đăng nhập của Google (`accounts.google.com`) bằng trình duyệt của bạn; bạn đăng nhập trên trang của Google. Ứng dụng và máy chủ của chúng tôi **không nhận mật khẩu Google** của bạn. Chúng tôi chỉ xin Google địa chỉ email và mã định danh tài khoản (không xin tên hay ảnh), và không lưu token nào của Google |
+| Dữ liệu nhận từ Google | Địa chỉ email Google (Google đã xác minh) và **mã định danh tài khoản Google** (một mã cố định Google gán cho tài khoản của bạn) |
+| Ô đồng ý | Nguyên văn trong ứng dụng: "Tôi đồng ý để AI Translator lưu email Google của tôi để quản lý tài khoản, key, dùng thử và liên hệ về dịch vụ. Hiện email không được dùng để quảng bá." Phải tick ô này mới đăng nhập được. Máy chủ lưu thời điểm bạn đồng ý |
+| Máy chủ lưu | Như dòng "Tài khoản Google" ở mục 5: email Google, mã định danh tài khoản Google, thời điểm bạn đồng ý, ngôn ngữ giao diện lúc đăng nhập, ngày tạo, lần đăng nhập gần nhất, mốc dùng thử của tài khoản; và liên kết giữa tài khoản với dòng dùng thử của máy và (nếu có) license của máy. Trong lúc đăng nhập, máy chủ giữ tạm một bản ghi lượt đăng nhập (mã băm ID máy, thời điểm đồng ý, ngôn ngữ; không có email), xóa sau khoảng 1 ngày. Máy chủ không lưu tên, ảnh hay mật khẩu Google |
+| Mục đích | Quản lý tài khoản, key và dùng thử: mỗi tài khoản Google chỉ có một lần dùng thử 10 ngày, kể cả khi đăng nhập trên máy khác (máy mới dùng tiếp đúng thời gian dùng thử của tài khoản, kể cả khi đã hết); liên hệ với bạn về dịch vụ (key, hạn dùng, hỗ trợ). **Hiện email Google không được dùng để quảng bá** |
+| Trên máy bạn | Token tài khoản (do máy chủ của chúng tôi ký, chỉ dùng được trên máy này) và email Google, lưu trong kho khóa của hệ điều hành (mục 3). Nút "Xóa toàn bộ dữ liệu" ở Cài đặt › Quyền riêng tư không xóa thông tin đăng nhập này |
+| Bên xử lý | **Google** (đăng nhập, trên trang của Google) và **Cloudflare** (máy chủ, cơ sở dữ liệu); xem mục 6 |
+| Khi nào kết nối | Chỉ khi bạn ở màn hình đăng nhập, vừa đăng nhập (đăng ký hay gắn dùng thử, liên kết license), đăng xuất hay xóa tài khoản; ứng dụng không gửi yêu cầu nào về tài khoản trong lúc đang dịch (mục 4) |
+| Giữ bao lâu | Như mục 7: cho tới khi bạn xóa tài khoản hoặc yêu cầu xóa |
+
+**Đăng xuất** (Cài đặt › Tài khoản › Đăng xuất) xóa thông tin đăng nhập khỏi máy này, không xóa tài khoản trên máy chủ. Máy dùng thử Free phải đăng nhập lại mới dịch tiếp được; máy có gói trả phí không bị ảnh hưởng.
+
+**Xóa tài khoản** (Cài đặt › Tài khoản › Xóa tài khoản; không làm được khi đang dịch): Xóa tài khoản chỉ xóa email Google khỏi bản ghi tài khoản và gỡ liên kết với license và bản dùng thử. Để mỗi tài khoản Google chỉ có một lần dùng thử, máy chủ vẫn giữ mã định danh tài khoản Google, ngày tạo, lần đăng nhập gần nhất, thời điểm bạn đồng ý, ngôn ngữ giao diện, mốc dùng thử và thời điểm xóa (không kèm email); dòng dùng thử của máy (mã băm ID máy, mốc dùng thử) cũng được giữ như mục 7. License key và gói trả phí không bị xóa. Email bạn dùng để mua gói vẫn nằm trong license và đơn hàng đó; muốn xóa thì hãy nhắn Hỗ trợ hoặc yêu cầu xóa theo mục 7. Sau khi xóa, máy có gói trả phí vẫn dùng bình thường; máy dùng thử Free phải đăng nhập lại mới dịch tiếp được và không có thêm ngày dùng thử. Đăng nhập lại bằng cùng tài khoản Google thì tài khoản cũ được khôi phục với mốc dùng thử cũ, và email cùng thời điểm đồng ý được ghi lại.

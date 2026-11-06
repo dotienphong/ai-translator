@@ -312,6 +312,6 @@ ${sectionHead({ eyebrow: "요금제별", title: "어떤 기능이 어떤 요금�
 <p class="center-text reveal"><a class="btn btn-primary" href="/ko/pricing/">전체 요금 상세 보기 ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "실제 회의에서 써 보세요", text: "하루 30분, 10일 무료 체험. 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/guide/quick-start/", label: "빠른 시작 가이드 읽기" } })}
+${ctaBand({ title: "실제 회의에서 써 보세요", text: "하루 30분, 10일 무료 체험. 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/guide/quick-start/", label: "빠른 시작 가이드 읽기" } })}
 `,
 };

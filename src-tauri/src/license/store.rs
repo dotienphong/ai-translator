@@ -6,6 +6,7 @@
 //! - `license-order`: đơn đang chờ thanh toán (`order_code`, `order_token`), để mở lại app vẫn hỏi tiếp (§6.8 bước 5);
 //! - `license-seen`: giờ máy lớn nhất từng thấy và header `Date` mới nhất của server ([`Seen`]);
 //! - `license-trial`: token dùng thử của máy này ([`TrialRecord`], spec 2026-10-07 §3.2);
+//! - `account-session`: phiên đăng nhập Google của máy này ([`AccountRecord`], spec 2026-11-05 §6);
 //! - `quota-free`: bộ đếm Free của ngày;
 //! - `quota-paid-<băm>`: bộ đếm của một khóa (`license_id`, `activation_id`, mốc đầu chu kỳ, `quota_epoch`);
 //! - `quota-mark-<băm>`: bản ghi đánh dấu của một activation (`license_id`, `activation_id`).
@@ -29,6 +30,7 @@ pub const LICENSE: &str = "license";
 pub const ORDER: &str = "license-order";
 pub const SEEN: &str = "license-seen";
 pub const TRIAL: &str = "license-trial";
+pub const ACCOUNT: &str = "account-session";
 pub const FREE: &str = "quota-free";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -94,6 +96,14 @@ pub enum Verdict {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub struct TrialRecord {
     pub token: String,
+}
+
+/// Phiên đăng nhập Google của máy này (spec 2026-11-05 §6): token tài khoản của server và email để hiện trên giao diện.
+/// Giữ khi người dùng xóa dữ liệu, như bản ghi license và token dùng thử.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
+pub struct AccountRecord {
+    pub token: String,
+    pub email: String,
 }
 
 /// Đơn đang chờ thanh toán.
@@ -395,7 +405,16 @@ pub mod tests {
         let db = crate::db::DataStore::new(dir.clone(), Ok(Keystore::with_store(service, keys)));
         db.with(|_| Ok::<_, crate::db::DbError>(())).unwrap();
         assert!(ks.get(crate::db::KEY_NAME).unwrap().is_some());
-        let names = [LICENSE, ORDER, SEEN, TRIAL, FREE, "quota-paid-0123", "quota-mark-0123"];
+        let names = [
+            LICENSE,
+            ORDER,
+            SEEN,
+            TRIAL,
+            ACCOUNT,
+            FREE,
+            "quota-paid-0123",
+            "quota-mark-0123",
+        ];
         for name in names {
             ks.set(name, b"{}").unwrap();
         }
@@ -496,5 +515,58 @@ pub mod tests {
         };
         write(&ks, LICENSE, &record).unwrap();
         assert_eq!(read::<LicenseRecord>(&ks, LICENSE).unwrap(), Some(record));
+    }
+
+    /// Bản ghi tài khoản (token và email) ghi rồi đọc lại qua kho; chưa có thì là `None`.
+    #[test]
+    fn an_account_record_round_trips_through_the_vault() {
+        let vault = FakeVault::default();
+        assert_eq!(read::<AccountRecord>(&vault, ACCOUNT).unwrap(), None);
+        let record = AccountRecord {
+            token: "v1.payload.sig".into(),
+            email: "nguoi.dung@example.com".into(),
+        };
+        write(&vault, ACCOUNT, &record).unwrap();
+        assert_eq!(*vault.writes.lock().unwrap(), [ACCOUNT]);
+        assert_eq!(read::<AccountRecord>(&vault, ACCOUNT).unwrap(), Some(record));
+        delete(&vault, ACCOUNT).unwrap();
+        assert_eq!(read::<AccountRecord>(&vault, ACCOUNT).unwrap(), None);
+    }
+
+    /// Mục tài khoản hỏng (không phải JSON, hay thiếu trường) là `Corrupt`, không phải "chưa có"; kho khóa từ chối là
+    /// `Keystore`. Nơi gọi coi cả hai là chưa đăng nhập, không bao giờ panic.
+    #[test]
+    fn a_corrupt_account_item_is_corrupt_not_missing() {
+        let vault = FakeVault::default();
+        for raw in [&b"{"[..], &b"{}"[..], &br#"{"token":"t"}"#[..], &b"[]"[..]] {
+            vault.items.lock().unwrap().insert(ACCOUNT.into(), raw.to_vec());
+            assert_eq!(
+                read::<AccountRecord>(&vault, ACCOUNT),
+                Err(StoreError::Corrupt(ACCOUNT.into())),
+                "{}",
+                String::from_utf8_lossy(raw)
+            );
+        }
+        *vault.fail_reads.lock().unwrap() = true;
+        assert!(matches!(
+            read::<AccountRecord>(&vault, ACCOUNT),
+            Err(StoreError::Keystore(_))
+        ));
+    }
+
+    /// Với kho khóa trong bộ nhớ của `keyring-core`: bản ghi tài khoản có token thật và email dài nhất (254 ký tự) vừa giới
+    /// hạn 2048 byte.
+    #[test]
+    fn an_account_record_with_a_real_token_fits_the_keystore() {
+        let ks = Keystore::mock("com.aitranslator.desktop.test");
+        let vectors: serde_json::Value =
+            serde_json::from_str(include_str!("../../../server/test/vectors/token-account-v1.json")).unwrap();
+        let record = AccountRecord {
+            token: vectors["tokens"][0]["token"].as_str().unwrap().into(),
+            email: format!("{}@example.com", "a".repeat(254 - "@example.com".len())),
+        };
+        assert_eq!(record.email.len(), 254);
+        write(&ks, ACCOUNT, &record).unwrap();
+        assert_eq!(read::<AccountRecord>(&ks, ACCOUNT).unwrap(), Some(record));
     }
 }

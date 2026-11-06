@@ -52,20 +52,20 @@ ${facts([
   ["Dữ liệu cuộc họp", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
   ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh, chữ chép lời hay chữ bạn gõ ở Gõ dịch"],
-  ["Máy chủ lưu", "Email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
+  ["Máy chủ lưu", "Email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), email Google khi bạn đăng nhập, đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
   ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày; chat hỗ trợ 90 ngày"],
   ["Đã kiểm", "Proxy và nettop trên macOS"],
   ["Ký số", "macOS ký ad-hoc, chưa notarize; Windows chưa ký"],
 ])}
 <h2 id="tren-may">Dữ liệu nào ở lại trên máy bạn?</h2>
-<p>Âm thanh, bản chép lời, bản dịch và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy. App cũng không có tài khoản đăng nhập, không quảng cáo và không analytics. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
+<p>Âm thanh, bản chép lời, bản dịch và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy. App không có quảng cáo và không có analytics. Dùng thử Free cần đăng nhập bằng Google, nên máy chủ lưu email Google của bạn cho tài khoản (xem <a href="#may-chu">Máy chủ lưu gì</a>). Gói trả phí không cần đăng nhập. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
 <div class="table-wrap" role="region" aria-label="Dữ liệu ở lại trên máy bạn" tabindex="0"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Cách xử lý</th></tr></thead>
 <tbody>
 <tr><th scope="row">Âm thanh đang thu (âm thanh máy và, nếu bạn chọn, micro)</th><td>Chỉ nằm trong RAM khi dịch. Không ghi đĩa, không gửi qua mạng. AI Translator cũng không ghi âm cuộc họp thành file. Khi bạn chọn nguồn có micro, app thu micro suốt phiên dịch, kể cả khi bạn đã tắt micro trong app họp.</td></tr>
 <tr><th scope="row">Bản chép lời và bản dịch</th><td>Hiện trên màn hình và nằm trong bộ nhớ theo phiên. Lịch sử mặc định tắt; nếu bạn bật (tính năng Pro), lịch sử lưu trên máy, được mã hóa.</td></tr>
 <tr><th scope="row">Chữ bạn gõ ở Gõ dịch và bản dịch của nó</th><td>Chỉ nằm trong bộ nhớ của app tới khi bạn dán hay thoát app. Không ghi đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Bản dịch được chép vào clipboard để dán và ở lại đó tới khi bạn chép thứ khác.</td></tr>
-<tr><th scope="row">Khóa, token, bộ đếm hạn mức</th><td>Khóa mã hóa lịch sử, token bản quyền, token dùng thử và bộ đếm hạn mức nằm trong Keychain (macOS) hoặc Credential Manager (Windows).</td></tr>
+<tr><th scope="row">Khóa, token, bộ đếm hạn mức</th><td>Khóa mã hóa lịch sử, token bản quyền, token dùng thử và bộ đếm hạn mức nằm trong Keychain (macOS) hoặc Credential Manager (Windows). Khi bạn đăng nhập, token tài khoản và email Google cũng nằm ở đó.</td></tr>
 <tr><th scope="row">Log</th><td>Nằm trên máy bạn, không chứa nội dung chép lời. Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>).</td></tr>
 <tr><th scope="row">Từ điển, cài đặt, model</th><td>Lưu trên máy bạn. Model tải một lần rồi chạy hoàn toàn trên máy.</td></tr>
 <tr><th scope="row">Chữ được đọc thành tiếng (nút Nghe, Nghe dịch)</th><td>Đọc ngay trên máy bằng gói giọng đọc đã tải. Chữ cần đọc và âm thanh giọng đọc không gửi qua mạng. Gói giọng đọc (khoảng 520 MB) tải một lần từ máy chủ phát hành, như các model khác.</td></tr>
@@ -90,7 +90,7 @@ ${facts([
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
-<tr><th scope="row">api.aitranslator.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi, chat hỗ trợ; thỉnh thoảng hỏi giờ máy chủ</td><td>Mã băm ID máy, tên máy, key; thêm email và ngôn ngữ giao diện của app khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch); tin chat hỗ trợ bạn gửi, kèm dòng thông tin máy nếu bạn để tích và email nếu bạn tự để lại (chỉ khi bạn dùng chat)</td></tr>
+<tr><th scope="row">api.aitranslator.vn</th><td>Máy chủ bản quyền: đăng ký dùng thử Free, mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền, nhận báo cáo lỗi, chat hỗ trợ; thỉnh thoảng hỏi giờ máy chủ, đăng nhập bằng Google (trang đăng nhập của Google mở bằng trình duyệt của bạn, không phải trong app), đăng xuất, xóa tài khoản</td><td>Mã băm ID máy, tên máy, key; thêm email và ngôn ngữ giao diện của app khi bạn mua hoặc khôi phục key; báo cáo lỗi đã che dữ liệu cá nhân (chỉ khi app không đang dịch); tin chat hỗ trợ bạn gửi, kèm dòng thông tin máy nếu bạn để tích và email nếu bạn tự để lại (chỉ khi bạn dùng chat); token tài khoản khi bạn đã đăng nhập (không bao giờ gửi trong lúc đang dịch)</td></tr>
 <tr><th scope="row">releases.aitranslator.vn</th><td>Tải model (gồm model nhận giọng, khoảng 26 MB, khi tính năng bật) và kiểm tra, tải bản cập nhật, và tải công thức đọc tên</td><td>Chỉ yêu cầu tải file</td></tr>
 <tr><th scope="row">Trang thanh toán PayOS (pay.payos.vn)</th><td>Thanh toán VietQR khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
 <tr><th scope="row">Trang thanh toán Creem (www.creem.io)</th><td>Thanh toán bằng thẻ quốc tế khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app. Email bạn nhập đi từ máy chủ của chúng tôi sang Creem, không đi từ app (xem bảng “Bên nào khác xử lý dữ liệu?”)</td></tr>
@@ -117,13 +117,14 @@ ${callout({ kind: "warn", title: "Giới hạn của phép đo", text: "Chỉ đ
 <tr><th scope="row">Đơn hàng: mã đơn, gói, số tiền và loại tiền, thời điểm, trạng thái, mã phiên thanh toán của cổng (PayOS hay Creem), ngôn ngữ giao diện của app lúc mua</th><td>Cấp và gia hạn license, đối soát, kế toán, gửi thư bằng ngôn ngữ của bạn</td></tr>
 <tr><th scope="row">License: key, gói, hạn, chu kỳ hạn mức</th><td>Cấp quyền dùng gói trả phí</td></tr>
 <tr><th scope="row">Máy đã kích hoạt: mã băm ID máy, tên máy, lần kiểm tra</th><td>Mỗi key một máy, chống lạm dụng</td></tr>
-<tr><th scope="row">Dùng thử Free: mã băm ID máy, mốc bắt đầu và hết, lần app gọi gần nhất</th><td>Mỗi máy dùng thử một lần. Không có email hay tên máy.</td></tr>
+<tr><th scope="row">Tài khoản Google (khi bạn đăng nhập): email Google, mã định danh tài khoản Google, thời điểm bạn đồng ý, ngôn ngữ giao diện, ngày tạo, lần đăng nhập gần nhất, mốc dùng thử của tài khoản</th><td>Quản lý tài khoản, key và dùng thử (mỗi tài khoản Google dùng thử một lần), liên hệ về dịch vụ; hiện không dùng để quảng bá</td></tr>
+<tr><th scope="row">Dùng thử Free: mã băm ID máy, mốc bắt đầu và hết, lần app gọi gần nhất</th><td>Mỗi máy và mỗi tài khoản Google dùng thử một lần. Không có tên máy.</td></tr>
 <tr><th scope="row">Nhật ký thay đổi license</th><td>Hỗ trợ và tra soát sự cố</td></tr>
 <tr><th scope="row">Bộ đếm giới hạn tần suất (chỉ giá trị băm, tự hết hạn sau khoảng 3 giờ)</th><td>Chặn dò key và spam</td></tr>
 <tr><th scope="row">Báo cáo lỗi: loại và mã lỗi, thông tin máy, mã băm ID máy, phần log liên quan</th><td>Tìm và sửa lỗi; tự xóa sau 30 ngày (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>)</td></tr>
 <tr><th scope="row">Chat hỗ trợ: tin nhắn của bạn và câu trả lời, nguồn, ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (app), email nếu bạn tự để lại</th><td>Trả lời bạn; tự xóa sau 90 ngày kể từ tin cuối (xem <a href="#chat-ho-tro">Chat hỗ trợ</a>)</td></tr>
 </tbody></table></div>
-<p><strong>Giữ bao lâu:</strong> cho tới khi bạn yêu cầu xóa; chúng tôi không tự xóa (trừ báo cáo lỗi, tự xóa sau 30 ngày, và chat hỗ trợ, tự xóa sau 90 ngày kể từ tin cuối). Chúng tôi không nhận số thẻ hay số tài khoản ngân hàng của bạn. Với VietQR, chúng tôi không gửi email của bạn sang PayOS; với thẻ quốc tế, chúng tôi gửi email bạn nhập ở màn hình Nâng cấp cho Creem, để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Nếu chỉ dùng Free, máy chủ không có email hay tên máy của bạn, trừ email bạn tự để lại trong chat hỗ trợ.</p>
+<p><strong>Giữ bao lâu:</strong> cho tới khi bạn yêu cầu xóa; chúng tôi không tự xóa (trừ báo cáo lỗi, tự xóa sau 30 ngày, và chat hỗ trợ, tự xóa sau 90 ngày kể từ tin cuối). Chúng tôi không nhận số thẻ hay số tài khoản ngân hàng của bạn. Với VietQR, chúng tôi không gửi email của bạn sang PayOS; với thẻ quốc tế, chúng tôi gửi email bạn nhập ở màn hình Nâng cấp cho Creem, để điền sẵn trang thanh toán và để Creem gửi biên lai cho bạn. Nếu chỉ dùng Free, máy chủ có email Google bạn dùng để đăng nhập, không có tên máy của bạn, và không có email nào khác trừ email bạn tự để lại trong chat hỗ trợ.</p>
 
 <h2 id="bao-cao-loi">Báo cáo lỗi: app gửi gì khi gặp lỗi?</h2>
 <p>Khi app gặp lỗi, nó tự gửi một báo cáo lỗi cho chúng tôi để chúng tôi biết và sửa. Tính năng này bật mặc định (kể cả sau khi bạn cập nhật từ bản cũ hơn); bạn tắt hay bật lại ở <strong>Cài đặt › Quyền riêng tư</strong>, và bỏ tích được ngay ở bước Điều khoản khi mở app lần đầu. Ở màn hình <strong>Giới thiệu</strong>, nút <strong>Gửi log cho hỗ trợ</strong> gửi ngay một báo cáo (kể cả khi bạn đã tắt gửi tự động) và cho bạn <strong>mã báo cáo</strong> để ghi vào thư gửi hỗ trợ.</p>
@@ -157,6 +158,7 @@ ${steps(
   ],
   true,
 )}
+<p><strong>Xóa tài khoản Google:</strong> bạn tự xóa ở <strong>Cài đặt › Tài khoản › Xóa tài khoản</strong>. Việc này chỉ xóa email Google khỏi bản ghi tài khoản và gỡ liên kết với license và bản dùng thử. Để mỗi tài khoản Google chỉ có một lần dùng thử, máy chủ vẫn giữ mã định danh tài khoản Google, ngày tạo, lần đăng nhập gần nhất, thời điểm bạn đồng ý, ngôn ngữ giao diện, mốc dùng thử và thời điểm xóa (không kèm email). License key, gói trả phí và email bạn dùng để mua gói không bị xóa theo; muốn bỏ email mua gói, hãy yêu cầu như ở trên. Chi tiết ở mục 15 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>
 <p><strong>Sau khi xóa, chúng tôi vẫn giữ:</strong> mã băm ID máy (chỉ để chống lạm dụng: mỗi key một máy, mỗi máy dùng thử Free một lần), thời điểm bạn từng đồng ý xử lý email, và dòng đơn hàng ở mức kế toán (mã đơn, ngày, số tiền và loại tiền, mã phiên thanh toán của cổng). Nhật ký kỹ thuật tự hết hạn và nhật ký thư của Resend nằm ngoài yêu cầu xóa, theo chính sách của các bên đó. Dữ liệu bạn nhập ở trang Creem và hồ sơ giao dịch do Creem giữ (bên bán lại phải giữ chứng từ thuế) nằm ngoài yêu cầu xóa gửi chúng tôi; muốn xóa ở Creem, hãy liên hệ Creem. Báo cáo lỗi của máy chưa từng kích hoạt key không gắn với email nên không xóa theo email được; chúng tự xóa sau 30 ngày.</p>
 
 <h2 id="ben-xu-ly">Bên nào khác xử lý dữ liệu?</h2>
@@ -166,6 +168,7 @@ ${steps(
 <tr><th scope="row">PayOS (Việt Nam)</th><td>Xử lý thanh toán VietQR</td><td>Mã đơn, số tiền, mô tả đơn. Không có email của bạn.</td></tr>
 <tr><th scope="row">Creem (Armitage Labs OÜ, Estonia)</th><td>Bên bán lại (merchant of record) của đơn thẻ: xử lý thanh toán, thuế và biên lai</td><td>Chúng tôi gửi mã đơn, gói, số tiền, loại tiền và email bạn nhập, ngay khi bạn bấm thanh toán bằng thẻ (kể cả khi bạn không trả), để điền sẵn trang thanh toán và để Creem gửi biên lai. Ở trang thanh toán, Creem tự thu số thẻ, tên, địa chỉ thanh toán và nước (để tính thuế), địa chỉ IP (chống gian lận); chúng tôi không nhận số thẻ. Creem xử lý các dữ liệu đó theo chính sách riêng (https://www.creem.io/privacy). Thông báo thanh toán Creem gửi máy chủ của chúng tôi có tên và nước người mua; chúng tôi không lưu hai thông tin này.</td></tr>
 <tr><th scope="row">Cloudflare</th><td>Chạy máy chủ bản quyền, cơ sở dữ liệu; lưu và phân phối model, bản cập nhật</td><td>Dữ liệu ở bảng trên, kể cả báo cáo lỗi và chat hỗ trợ; nhật ký kỹ thuật tự hết hạn</td></tr>
+<tr><th scope="row">Google</th><td>Đăng nhập bằng Google (trang đăng nhập mở trong trình duyệt của bạn)</td><td>Khi bạn đăng nhập, Google gửi cho máy chủ của chúng tôi email Google và mã định danh tài khoản Google. Chúng tôi không nhận mật khẩu Google của bạn.</td></tr>
 <tr><th scope="row">Resend</th><td>Gửi email chứa key, và câu trả lời chat hỗ trợ khi bạn để lại email</td><td>Email của bạn và nội dung thư (có key, hay câu trả lời chat); nhật ký thư theo chính sách lưu của Resend</td></tr>
 </tbody></table></div>
 <p>Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu có thể được xử lý ở nước ngoài. Tin nhắn chat hỗ trợ còn đi qua một dịch vụ nhắn tin đặt máy chủ ở Việt Nam để tới người trả lời (không kèm email của bạn); tên bên này và dữ liệu họ nhận có ở mục 6 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.</p>
@@ -206,6 +209,6 @@ ${docNav(
 )}
 </div></section>
 
-${ctaBand({ title: "Thử với quyền kiểm soát trong tay bạn", text: "Dịch ngay trên máy, âm thanh không rời khỏi máy. Dùng thử Free 10 ngày, không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/lien-he/", label: "Hỏi chúng tôi" } })}
+${ctaBand({ title: "Thử với quyền kiểm soát trong tay bạn", text: "Dịch ngay trên máy, âm thanh không rời khỏi máy. Dùng thử Free 10 ngày, không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/lien-he/", label: "Hỏi chúng tôi" } })}
 `,
 };

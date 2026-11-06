@@ -27,6 +27,7 @@ export type AlertKind =
   | "support_zalo_failed"
   | "support_flood"
   | "checkout_flood"
+  | "auth_flood"
   | "order_code_near_limit";
 
 /** Loại cảnh báo khi cổng (`orders.provider`) từ chối khóa API: mỗi cổng một loại, để thư chỉ đúng khóa cần thay. */
@@ -125,6 +126,11 @@ const ALERT_TEXT: Record<AlertKind, string> = {
     "(mỗi đơn dùng một số order_code, không hoàn lại được). Yêu cầu tạo đơn bị từ chối (429) tới hết giờ, nên khách thật cũng có thể " +
     "bị từ chối tạm trong giờ đó. Mở Web Admin, trang Đơn hàng để xem các đơn mới tạo liên tiếp (cùng email, cùng gói hay cùng thời " +
     "điểm); trang Nhật ký lọc theo hành động order_created. Lưu lượng thật chỉ vài chục đơn mỗi giờ.",
+  auth_flood:
+    "Đăng nhập Google (POST /v1/auth/google/start) chạm trần toàn hệ thống (600 yêu cầu mỗi giờ): có vẻ đang bị gọi tràn. Yêu cầu bị từ chối " +
+    "(429) tới hết giờ, nên người dùng thật cũng có thể bị từ chối tạm trong giờ đó (app báo lỗi, bấm đăng nhập lại sau). Xem lưu lượng ở " +
+    "Workers Logs của Worker API. Cần cho mọi người dùng không cần đăng nhập ngay thì đặt LOGIN_GATE=\"off\" ở wrangler.jsonc rồi deploy. " +
+    "Thư này chỉ có số lượng, không chứa IP hay dữ liệu đăng nhập.",
   order_code_near_limit:
     "Mã đơn đã tới 80% giới hạn 9.999.999 của mô tả chuyển khoản \"AT\" + 7 chữ số. Quá giới hạn thì mọi đơn mới bị từ chối " +
     "(503 order_code_exhausted). Cần đổi định dạng mã hay mô tả chuyển khoản (kiểm giới hạn ký tự của các ngân hàng), hay xử lý " +

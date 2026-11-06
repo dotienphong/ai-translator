@@ -24,8 +24,8 @@
 //!   nền sau khi người dùng đồng ý điều khoản ([`License::trial_due`]). Phiên đang chạy mà qua `ends_at` thì chạy hết.
 
 use std::ops::ControlFlow;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex};
 
 use chrono::{FixedOffset, Local};
 use serde::Serialize;
@@ -146,6 +146,19 @@ pub struct TrialView {
     pub days_left: i64,
 }
 
+/// Kết quả của [`License::attach_trial_to_account`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TrialAttach {
+    /// Không có gì để gắn: chưa có hook, hook không có token tài khoản, chưa có dùng thử hay không đọc được mã máy. Không gọi server.
+    Skipped,
+    /// Server đã nhận (dùng thử của máy này gắn vào tài khoản, hay đã gắn từ trước).
+    Attached,
+    /// Lỗi tạm thời (mạng, `429`, `5xx`, response sai dạng): thử lại sau.
+    Retry,
+    /// Lỗi cuối (`4xx` khác `429`, chưa cấu hình server): không thử lại.
+    Final,
+}
+
 /// Vì sao chưa bắt đầu được phiên ([`License::start_block`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StartBlock {
@@ -169,6 +182,30 @@ pub enum StartBlock {
     LicenseRevoked,
     /// License đã hết hạn.
     LicenseExpired,
+    /// Free mà chưa đăng nhập tài khoản Google (cổng đăng nhập, spec 2026-11-05 §6.2): đăng nhập rồi thử lại. Chỉ trả cho
+    /// máy không có bản ghi license nào; máy có bản ghi license ở bất kỳ trạng thái nào (khách đã mua, kể cả hết hạn, bị
+    /// thu hồi, xung đột) không bao giờ nhận (L5).
+    LoginRequired,
+}
+
+/// Cổng đăng nhập do [`AccountHook`] báo (spec 2026-11-05 §6.2). Chưa đặt hook thì coi như `Open`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AccountGate {
+    /// Không đòi đăng nhập: chạy như trước khi có tính năng đăng nhập.
+    Open,
+    /// Máy Free phải đăng nhập trước khi dùng thử.
+    LoginRequired,
+}
+
+/// Phần tài khoản mà `License` cần (Task 10 cài bằng `AccountService`, Task 11 đặt vào). Luật: hook không bao giờ được
+/// gọi khi `License` đang giữ một khóa của mình (`inner`, `trial_gate`, `hook`), và hook không được chặn (không chờ mạng,
+/// không chờ việc dài); hai hàm cũng không panic và không gọi ngược vào `License`. Nhờ vậy `AccountService` giữ khóa riêng
+/// mà gọi vào `License` (ví dụ đăng ký dùng thử sau khi đăng nhập) không đảo thứ tự khóa.
+pub trait AccountHook: Send + Sync {
+    /// Cổng đăng nhập lúc này.
+    fn gate(&self) -> AccountGate;
+    /// Token tài khoản đang giữ, gửi kèm `POST /v1/trial` (`Authorization: Bearer`); `None` khi chưa đăng nhập.
+    fn bearer(&self) -> Option<String>;
 }
 
 /// Mốc reset hạn mức hiển thị (§4.2 bước 2).
@@ -403,6 +440,8 @@ pub struct License {
     /// Mỗi lúc chỉ một việc ghi hay xóa mục `license-order` (tạo đơn, hủy đơn, quên đơn vừa xong): việc "đọc, đúng đơn thì
     /// xóa" của luồng hỏi không chen được lần ghi đơn mới vào giữa.
     order_gate: Mutex<()>,
+    /// Hook tài khoản ([`License::set_account_hook`]); `None` (mặc định) là cổng mở, không có token tài khoản.
+    hook: Mutex<Option<Arc<dyn AccountHook>>>,
     inner: Mutex<Inner>,
 }
 
@@ -437,6 +476,7 @@ impl License {
             genuine: AtomicU8::new(GENUINE_UNKNOWN),
             trial_gate: Mutex::new(()),
             order_gate: Mutex::new(()),
+            hook: Mutex::new(None),
             inner: Mutex::new(Inner {
                 has_prior_data,
                 ..Inner::default()
@@ -448,6 +488,19 @@ impl License {
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Đặt hook tài khoản (cổng đăng nhập, token gửi kèm đăng ký dùng thử). Chưa gọi thì cổng mở và mọi thứ chạy như cũ.
+    pub fn set_account_hook(&self, hook: Arc<dyn AccountHook>) {
+        match self.hook.lock() {
+            Ok(mut slot) => *slot = Some(hook),
+            Err(_) => log::warn!("khóa hook tài khoản bị hỏng: cổng đăng nhập giữ mở"),
+        }
+    }
+
+    /// Hook tài khoản đang đặt; khóa bị hỏng thì coi như chưa đặt (cổng mở). Chỉ chép `Arc` ra rồi nhả khóa ngay.
+    fn account_hook(&self) -> Option<Arc<dyn AccountHook>> {
+        self.hook.lock().ok().and_then(|slot| slot.clone())
     }
 
     /// Đọc kho khóa lúc khởi động.
@@ -936,9 +989,15 @@ impl License {
     }
 
     /// Ticker có nên gọi `POST /v1/trial` lúc `now` không: đã được phép, có server, chưa có token dùng thử, lần thử trước
-    /// đã quá 1 giờ, và không đang chờ `Retry-After`.
+    /// đã quá 1 giờ, và không đang chờ `Retry-After`. Cổng đăng nhập đóng thì máy không có bản ghi license chờ đăng nhập
+    /// (spec 2026-11-05 §6.2); máy có bản ghi license chạy như cũ.
     pub fn trial_due(&self, now: i64) -> bool {
+        // Hỏi hook trước khi giữ khóa `inner`.
+        let gated = self.login_required();
         let inner = self.lock();
+        if gated && inner.record.is_none() {
+            return false;
+        }
         self.server_configured
             && !self.machine.id_hash.is_empty()
             && inner.trial_allowed
@@ -963,6 +1022,9 @@ impl License {
             }
             return Err(LicenseError::NoMachineId);
         }
+        // Đã đăng nhập thì gửi kèm token tài khoản (spec 2026-11-05 §5.3); không hook thì như cũ, không header. Lấy trước
+        // khi giữ `trial_gate` (khóa này giữ suốt lần gọi server): hook không bao giờ chạy khi `License` đang giữ khóa.
+        let bearer = self.account_hook().and_then(|hook| hook.bearer());
         let _one_at_a_time = self.trial_gate.lock().unwrap_or_else(|e| e.into_inner());
         {
             let mut inner = self.lock();
@@ -974,7 +1036,7 @@ impl License {
             }
             inner.trial_attempt = Some(now);
         }
-        let reply = self.api.trial(&self.machine.id_hash);
+        let reply = self.api.trial_with_account(&self.machine.id_hash, bearer.as_deref());
         self.observe(&reply);
         let grant = reply.result.map_err(map_api).inspect_err(|e| {
             if let LicenseError::RateLimited(after) = e {
@@ -993,6 +1055,46 @@ impl License {
         })
     }
 
+    /// Gắn dùng thử sẵn có của máy này vào tài khoản vừa đăng nhập (spec 2026-11-05 §6.2, §5.3 nhánh 2): gọi `POST /v1/trial`
+    /// một lần kèm Bearer; server giữ nguyên `started_at`, `ends_at` của máy và chỉ đặt `account_id`.
+    /// - Không hook, hook không có token, không đọc được mã máy hay chưa có dùng thử (việc đăng ký đi đường cũ, đã kèm Bearer):
+    ///   [`TrialAttach::Skipped`], không gọi server; máy không có hook chạy y như trước.
+    /// - Không đổi gì của dùng thử đang giữ hay lịch đăng ký cũ (`trial_attempt`, `trial_blocked_until`); token trả về không lưu
+    ///   (đã có token của máy, cùng mốc).
+    /// - Hook được hỏi trước khi giữ bất kỳ khóa nào của `License`; `trial_gate` giữ suốt lần gọi server như `register_trial`.
+    pub fn attach_trial_to_account(&self, now: i64) -> TrialAttach {
+        let _ = now;
+        let Some(bearer) = self.account_hook().and_then(|hook| hook.bearer()) else {
+            return TrialAttach::Skipped;
+        };
+        if self.machine.id_hash.is_empty() || self.lock().trial.is_none() {
+            return TrialAttach::Skipped;
+        }
+        let _one_at_a_time = self.trial_gate.lock().unwrap_or_else(|e| e.into_inner());
+        let reply = self.api.trial_with_account(&self.machine.id_hash, Some(&bearer));
+        self.observe(&reply);
+        match reply.result {
+            Ok(_) => TrialAttach::Attached,
+            Err(e) => {
+                let outcome = match &e {
+                    ApiError::Network(_) | ApiError::Decode(_) => TrialAttach::Retry,
+                    ApiError::Server(s) if s.status == 429 || s.status >= 500 => TrialAttach::Retry,
+                    ApiError::Server(_) | ApiError::NotConfigured => TrialAttach::Final,
+                };
+                log::info!(
+                    "chưa gắn được dùng thử vào tài khoản: {} ({})",
+                    map_api(e).code(),
+                    if outcome == TrialAttach::Retry {
+                        "thử lại sau"
+                    } else {
+                        "bỏ"
+                    }
+                );
+                outcome
+            }
+        }
+    }
+
     /// Lý do của gói trả phí khiến máy phải chạy Free, khi khách đã có license mà gói không dùng được lúc này; `None` khi
     /// chưa từng có license (hay bản cài không chính hãng: chỉ chạy Free).
     fn license_block_locked(&self, inner: &Inner, now: i64) -> Option<StartBlock> {
@@ -1004,6 +1106,24 @@ impl License {
             Standing::Expired => Some(StartBlock::LicenseExpired),
             Standing::Free | Standing::Active | Standing::NotGenuine => None,
         }
+    }
+
+    /// Cổng đăng nhập có đang đóng không (hook báo `LoginRequired`); chưa đặt hook hay khóa hỏng thì mở. Không gọi khi
+    /// đang giữ khóa `inner` (hook có khóa riêng).
+    fn login_required(&self) -> bool {
+        self.account_hook()
+            .is_some_and(|hook| hook.gate() == AccountGate::LoginRequired)
+    }
+
+    /// Lý do chặn của nhánh Free khi cổng đăng nhập đóng (spec 2026-11-05 §6.2): `LoginRequired`, đứng trước `TrialEnded`,
+    /// `TrialMissing` và giờ lùi của dùng thử; không gọi server, nên trả trước mọi bước đăng ký dùng thử. `None` khi cổng mở,
+    /// hay khi máy có bản ghi license ở bất kỳ trạng thái nào (L5, phán quyết vòng sửa 1 của Task 9b): khách đã mua giữ đúng
+    /// hành vi cũ (lý do của gói, hay dùng thử). Gọi khi không giữ khóa nào của `License`.
+    fn login_block(&self) -> Option<StartBlock> {
+        if !self.login_required() {
+            return None;
+        }
+        self.lock().record.is_none().then_some(StartBlock::LoginRequired)
     }
 
     /// Vì sao chưa bắt đầu được phiên lúc `now`; `None` là bắt đầu được (spec 2026-10-07 §3.2, §6). Ở Free mà chưa có token
@@ -1021,6 +1141,9 @@ impl License {
             self.quota_claims(&inner, now).is_none()
         };
         if free {
+            if let Some(block) = self.login_block() {
+                return Some(block);
+            }
             let mut registration = None;
             let missing = self.lock().trial.is_none();
             if missing
@@ -1065,6 +1188,16 @@ impl License {
         if self.quota_claims(&inner, now).is_some() {
             return None;
         }
+        // Cổng đăng nhập: chỉ khi đã đặt hook mới nhả khóa để hỏi (không hook thì đi tiếp như cũ, không nhả khóa).
+        let inner = if self.account_hook().is_some() {
+            drop(inner);
+            if let Some(block) = self.login_block() {
+                return Some(block);
+            }
+            self.lock()
+        } else {
+            inner
+        };
         let trial = self.trial_state_locked(&inner, now);
         if matches!(trial, TrialState::Active) {
             return None;
@@ -1247,6 +1380,16 @@ impl License {
 
     pub fn api(&self) -> &dyn LicenseApi {
         self.api.as_ref()
+    }
+
+    /// Key (dạng lưu trữ) và `activation_id` của bản ghi license đang lưu, ở bất kỳ trạng thái nào; `None` khi máy chưa có
+    /// license. Để gắn license vào tài khoản sau đăng nhập (spec 2026-11-05 §6.2). Chỉ chép trong bộ nhớ dưới khóa ngắn: không
+    /// I/O, không gọi server.
+    pub fn saved_activation(&self) -> Option<(String, String)> {
+        self.lock()
+            .record
+            .as_ref()
+            .map(|r| (r.key.clone(), r.activation_id.clone()))
     }
 
     /// Key đã kích hoạt (dạng lưu trữ), cho đơn gia hạn hay đổi gói.
@@ -3017,5 +3160,605 @@ pub mod tests {
         let _ = license(&api, &vault, T0);
         let new = logs_of_this_thread().split_off(before);
         assert!(new.iter().any(|m| m.contains("token đã lưu không đọc được")), "{new:?}");
+    }
+}
+
+/// Cổng đăng nhập (spec 2026-11-05 §6.2, quyết định L3–L5): test mới, không đụng tới các test cũ ở [`tests`]. Các test cũ
+/// chạy không sửa (không đặt hook) là bằng chứng hành vi cũ giữ nguyên.
+#[cfg(test)]
+mod account_gate_tests {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::{Arc, Mutex, Weak};
+
+    use serde_json::json;
+
+    use super::tests::{DAY, DEVICE as DEVICE_HASH, FakeApi, KEY, T0, claims, granted, license, server, trial_grant};
+    use super::*;
+    use crate::license::client::{
+        Checkout, Device, OrderStatus, PlansReply, ServerError, SubscriptionInfo, TrialGrant,
+    };
+    use crate::license::store::tests::FakeVault;
+
+    const TRIAL_END: i64 = T0 + 10 * DAY;
+
+    /// Hook giả: cổng đổi được giữa chừng, token tài khoản cố định.
+    struct Hook {
+        gate: Mutex<AccountGate>,
+        bearer: Option<String>,
+    }
+
+    impl AccountHook for Hook {
+        fn gate(&self) -> AccountGate {
+            *self.gate.lock().unwrap()
+        }
+        fn bearer(&self) -> Option<String> {
+            self.bearer.clone()
+        }
+    }
+
+    fn hook(gate: AccountGate, bearer: Option<&str>) -> Arc<Hook> {
+        Arc::new(Hook {
+            gate: Mutex::new(gate),
+            bearer: bearer.map(String::from),
+        })
+    }
+
+    fn fresh() -> (Arc<FakeApi>, Arc<FakeVault>) {
+        (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()))
+    }
+
+    /// Server giả trả dùng thử bắt đầu `T0`, hết `TRIAL_END`.
+    fn with_trial(api: &Arc<FakeApi>) {
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(trial_grant(DEVICE_HASH, T0, TRIAL_END, T0));
+    }
+
+    fn calls(api: &Arc<FakeApi>) -> Vec<String> {
+        api.calls.lock().unwrap().clone()
+    }
+
+    /// Free chưa đăng nhập: `start_block` và `compose_block` trả `LoginRequired`, đứng trước `TrialMissing` (chưa có token
+    /// dùng thử) và `TrialEnded` (dùng thử đã hết).
+    #[test]
+    fn free_without_login_is_blocked_before_trial_missing_and_trial_ended() {
+        // Chưa có token dùng thử (hôm nay sẽ là TrialMissing khi mất mạng).
+        let (api, vault) = fresh();
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        let l = license(&api, &vault, T0);
+        l.set_account_hook(hook(AccountGate::LoginRequired, None));
+        assert_eq!(l.start_block(T0), Some(StartBlock::LoginRequired));
+        assert_eq!(l.compose_block(T0), Some(StartBlock::LoginRequired));
+        assert!(!l.can_start(T0));
+        // Dùng thử đã hết: vẫn đăng nhập trước, rồi mới thấy TrialEnded.
+        let (api, vault) = fresh();
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.register_trial(T0).unwrap();
+        let gate = hook(AccountGate::LoginRequired, None);
+        l.set_account_hook(gate.clone());
+        assert_eq!(l.start_block(TRIAL_END), Some(StartBlock::LoginRequired));
+        assert_eq!(l.compose_block(TRIAL_END), Some(StartBlock::LoginRequired));
+        *gate.gate.lock().unwrap() = AccountGate::Open;
+        assert_eq!(l.start_block(TRIAL_END), Some(StartBlock::TrialEnded));
+        assert_eq!(l.compose_block(TRIAL_END), Some(StartBlock::TrialEnded));
+    }
+
+    /// Chính sách B (L4): máy Free đã có token dùng thử còn hiệu lực vẫn phải đăng nhập để dùng tiếp; đăng nhập xong (cổng
+    /// mở) thì chạy tiếp với đúng các ngày còn lại, không đăng ký lại.
+    #[test]
+    fn an_existing_free_user_with_a_valid_trial_must_log_in_to_continue() {
+        let (api, vault) = fresh();
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.register_trial(T0).unwrap();
+        let before = calls(&api).len();
+        let gate = hook(AccountGate::LoginRequired, None);
+        l.set_account_hook(gate.clone());
+        assert_eq!(l.start_block(T0 + DAY), Some(StartBlock::LoginRequired));
+        assert_eq!(l.compose_block(T0 + DAY), Some(StartBlock::LoginRequired));
+        *gate.gate.lock().unwrap() = AccountGate::Open;
+        assert_eq!(l.start_block(T0 + DAY), None);
+        assert_eq!(l.compose_block(T0 + DAY), None);
+        assert_eq!(l.view(T0 + DAY).trial.ends_at, Some(TRIAL_END), "số ngày không đổi");
+        assert_eq!(calls(&api).len(), before, "đã có token dùng thử: không gọi server");
+    }
+
+    /// Gói trả phí còn hiệu lực (kể cả trong lúc chờ `validate` sau `expires_at`): không bao giờ `LoginRequired`.
+    #[test]
+    fn a_valid_paid_plan_is_never_asked_to_log_in() {
+        let (api, vault) = fresh();
+        let l = license(&api, &vault, T0);
+        l.set_account_hook(hook(AccountGate::LoginRequired, None));
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate(KEY, T0).unwrap();
+        assert_eq!(l.start_block(T0 + 60), None);
+        assert_eq!(l.compose_block(T0 + 60), None);
+        assert!(!calls(&api).iter().any(|c| c.starts_with("trial")));
+        // Vừa qua `expires_at`, chưa thử `validate`: vẫn là gói trả phí (định nghĩa sẵn có), không bị chặn.
+        let (api, vault) = fresh();
+        let l = license(&api, &vault, T0);
+        let mut c = claims(T0);
+        c["expires_at"] = json!(T0 + 3600);
+        api.replies.lock().unwrap().push_back(granted(&c, true));
+        l.activate(KEY, T0).unwrap();
+        l.set_account_hook(hook(AccountGate::LoginRequired, None));
+        assert!(l.has_paid_plan(T0 + 3600 + 60));
+        assert_eq!(l.start_block(T0 + 3600 + 60), None);
+        assert_eq!(l.compose_block(T0 + 3600 + 60), None);
+    }
+
+    /// Cổng đóng: không gọi server (FakeApi đếm 0 lần), dù chưa có token dùng thử.
+    #[test]
+    fn login_required_never_calls_the_server() {
+        let (api, vault) = fresh();
+        let l = license(&api, &vault, T0);
+        l.allow_trial();
+        l.set_account_hook(hook(AccountGate::LoginRequired, Some("acc")));
+        assert_eq!(l.start_block(T0), Some(StartBlock::LoginRequired));
+        assert_eq!(l.start_block(T0 + 2 * 3600), Some(StartBlock::LoginRequired));
+        assert_eq!(l.compose_block(T0), Some(StartBlock::LoginRequired));
+        assert!(calls(&api).is_empty(), "{:?}", calls(&api));
+    }
+
+    /// Bản debug không giới hạn bỏ qua cổng.
+    #[test]
+    fn dev_unlimited_skips_the_gate() {
+        let (api, vault) = fresh();
+        let l = License::new(
+            Box::new(api.clone()),
+            Box::new(vault.clone()),
+            super::tests::test_keys(),
+            Machine {
+                id_hash: DEVICE_HASH.into(),
+                label: None,
+            },
+            super::tests::vn(),
+            false,
+            true,
+            false,
+            T0,
+        );
+        l.set_account_hook(hook(AccountGate::LoginRequired, None));
+        assert_eq!(l.start_block(T0), None);
+        assert_eq!(l.compose_block(T0), None);
+    }
+
+    /// Ticker không đăng ký dùng thử khi cổng đóng; mở cổng thì tới lịch như cũ.
+    #[test]
+    fn trial_due_is_false_while_login_is_required() {
+        let (api, vault) = fresh();
+        let l = license(&api, &vault, T0);
+        l.allow_trial();
+        assert!(l.trial_due(T0), "đối chứng: không hook thì tới lịch");
+        let gate = hook(AccountGate::LoginRequired, None);
+        l.set_account_hook(gate.clone());
+        assert!(!l.trial_due(T0));
+        *gate.gate.lock().unwrap() = AccountGate::Open;
+        assert!(l.trial_due(T0));
+    }
+
+    /// Server giả ghi lại token tài khoản gửi kèm `trial_with_account`; các lệnh khác chuyển cho [`FakeApi`].
+    struct BearerApi {
+        api: Arc<FakeApi>,
+        bearers: Mutex<Vec<Option<String>>>,
+    }
+
+    impl LicenseApi for Arc<BearerApi> {
+        fn plans(&self) -> Reply<PlansReply> {
+            self.api.plans()
+        }
+        fn checkout(
+            &self,
+            plan: &str,
+            email: &str,
+            key: Option<&str>,
+            currency: &str,
+            lang: &str,
+            auto_renew: bool,
+        ) -> Reply<Checkout> {
+            self.api.checkout(plan, email, key, currency, lang, auto_renew)
+        }
+        fn order(&self, code: i64, token: &str) -> Reply<OrderStatus> {
+            self.api.order(code, token)
+        }
+        fn activate(&self, key: &str, device: &str, label: Option<&str>, allow_conflict: bool) -> Reply<Granted> {
+            self.api.activate(key, device, label, allow_conflict)
+        }
+        fn validate(&self, key: &str, activation_id: &str) -> Reply<Granted> {
+            self.api.validate(key, activation_id)
+        }
+        fn deactivate(&self, key: &str, activation_id: &str) -> Reply<()> {
+            self.api.deactivate(key, activation_id)
+        }
+        fn recover(&self, email: &str, lang: &str) -> Reply<()> {
+            self.api.recover(email, lang)
+        }
+        fn trial(&self, device: &str) -> Reply<TrialGrant> {
+            self.api.trial(device)
+        }
+        fn trial_with_account(&self, device: &str, account_token: Option<&str>) -> Reply<TrialGrant> {
+            self.bearers.lock().unwrap().push(account_token.map(String::from));
+            self.api.trial(device)
+        }
+        fn subscription(&self, key: &str, manage: bool) -> Reply<SubscriptionInfo> {
+            self.api.subscription(key, manage)
+        }
+    }
+
+    fn bearer_license(bearer_api: &Arc<BearerApi>, vault: &Arc<FakeVault>) -> License {
+        let l = License::new(
+            Box::new(bearer_api.clone()),
+            Box::new(vault.clone()),
+            super::tests::test_keys(),
+            Machine {
+                id_hash: DEVICE_HASH.into(),
+                label: None,
+            },
+            super::tests::vn(),
+            true,
+            false,
+            false,
+            T0,
+        );
+        l.set_genuine(true);
+        l
+    }
+
+    /// `register_trial` gửi token tài khoản của hook; không hook thì không gửi gì (như cũ).
+    #[test]
+    fn register_trial_sends_the_bearer_of_the_hook() {
+        let (api, vault) = fresh();
+        let bearer_api = Arc::new(BearerApi {
+            api: api.clone(),
+            bearers: Mutex::new(Vec::new()),
+        });
+        let l = bearer_license(&bearer_api, &vault);
+        l.set_account_hook(hook(AccountGate::Open, Some("acc-tok")));
+        l.register_trial(T0).unwrap();
+        assert_eq!(*bearer_api.bearers.lock().unwrap(), [Some("acc-tok".to_string())]);
+        // Không hook: `trial_with_account` với `None`.
+        let vault = Arc::new(FakeVault::default());
+        let bearer_api = Arc::new(BearerApi {
+            api: Arc::new(FakeApi::default()),
+            bearers: Mutex::new(Vec::new()),
+        });
+        let l = bearer_license(&bearer_api, &vault);
+        l.register_trial(T0).unwrap();
+        assert_eq!(*bearer_api.bearers.lock().unwrap(), [None]);
+    }
+
+    /// Hook trả `Open`: hành vi cũ (đăng ký dùng thử khi bấm Bắt đầu, TrialEnded khi hết, TrialMissing khi mất mạng).
+    #[test]
+    fn an_open_gate_behaves_as_before() {
+        let (api, vault) = fresh();
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.set_account_hook(hook(AccountGate::Open, None));
+        assert_eq!(l.compose_block(T0), Some(StartBlock::TrialMissing));
+        assert_eq!(l.start_block(T0), None);
+        assert_eq!(calls(&api), [format!("trial {DEVICE_HASH}")]);
+        assert_eq!(l.compose_block(T0), None);
+        assert_eq!(l.start_block(TRIAL_END), Some(StartBlock::TrialEnded));
+        assert_eq!(l.compose_block(TRIAL_END), Some(StartBlock::TrialEnded));
+        let (api, vault) = fresh();
+        api.trials
+            .lock()
+            .unwrap()
+            .push_back(Err(ApiError::Network("tắt mạng".into())));
+        let l = license(&api, &vault, T0);
+        l.set_account_hook(hook(AccountGate::Open, None));
+        assert_eq!(l.start_block(T0), Some(StartBlock::TrialMissing));
+    }
+
+    /// Trạng thái bản ghi license dựng cho bảng test của phán quyết "máy có bản ghi license không bao giờ bị cổng".
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum Rec {
+        Valid,
+        Expired,
+        Revoked,
+        Conflict,
+        Unverified,
+        NeedsRefresh,
+    }
+
+    /// Máy có bản ghi license ở trạng thái `rec`, có hay không có dùng thử đang chạy, đã đồng ý điều khoản; `gate` là cổng
+    /// của hook (`None`: không đặt hook). Trả server giả, `License` và giờ để xét. Dựng y hệt nhau cho bản có hook và bản
+    /// không hook, để so kết quả.
+    fn buyer(rec: Rec, running_trial: bool, gate: Option<AccountGate>) -> (Arc<FakeApi>, License, i64) {
+        let (api, vault) = fresh();
+        if rec == Rec::Unverified {
+            let record = LicenseRecord {
+                key: "0123456789ABCDEFGHJKMNPQRST5".into(),
+                activation_id: "act".into(),
+                token: "v1.x.y".into(),
+                validated_at: T0,
+                verdict: None,
+                devices: Vec::new(),
+            };
+            store::write(vault.as_ref(), store::LICENSE, &record).unwrap();
+        }
+        let l = license(&api, &vault, T0);
+        if running_trial {
+            api.trials
+                .lock()
+                .unwrap()
+                .push_back(trial_grant(DEVICE_HASH, T0, T0 + 40 * DAY, T0));
+            l.register_trial(T0).unwrap();
+        }
+        let t = if rec == Rec::Unverified {
+            T0 + DAY
+        } else {
+            api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+            l.activate(KEY, T0).unwrap();
+            let refusal = match rec {
+                Rec::Expired => Some(server(403, "license_expired")),
+                Rec::Revoked => Some(server(403, "license_revoked")),
+                Rec::Conflict => Some(ApiError::Server(Box::new(ServerError {
+                    status: 409,
+                    code: "license_conflict".into(),
+                    devices: ["act", "other"]
+                        .iter()
+                        .map(|id| Device {
+                            activation_id: (*id).into(),
+                            device_label: None,
+                            last_validated_at: Some(T0),
+                        })
+                        .collect(),
+                    ..ServerError::default()
+                }))),
+                Rec::Valid | Rec::Unverified | Rec::NeedsRefresh => None,
+            };
+            match (rec, refusal) {
+                (_, Some(refusal)) => {
+                    api.replies.lock().unwrap().push_back(Err(refusal));
+                    let _ = l.validate(T0 + 10 * DAY);
+                    T0 + 10 * DAY + 60
+                }
+                // Quá `refresh_before` (14 ngày sau `issued_at`) mà chưa tới `expires_at`.
+                (Rec::NeedsRefresh, None) => T0 + 15 * DAY,
+                _ => T0 + DAY,
+            }
+        };
+        l.allow_trial();
+        if let Some(gate) = gate {
+            l.set_account_hook(hook(gate, None));
+        }
+        (api, l, t)
+    }
+
+    /// Phán quyết của điều phối (vòng sửa 1, spec L5): máy có bản ghi license ở bất kỳ trạng thái nào (còn hiệu lực, hết
+    /// hạn, bị thu hồi, xung đột, chưa kiểm được, cần làm mới), có hay không có dùng thử đang chạy, không bao giờ bị cổng:
+    /// cổng đóng mà kết quả `compose_block`, `trial_due`, `start_block` và các lần gọi server y hệt máy không đặt hook.
+    #[test]
+    fn a_machine_with_a_license_record_in_any_state_is_never_gated() {
+        let table = [
+            (Rec::Valid, Standing::Active),
+            (Rec::Expired, Standing::Expired),
+            (Rec::Revoked, Standing::Revoked),
+            (Rec::Conflict, Standing::Conflict),
+            (Rec::Unverified, Standing::Unverified),
+            (Rec::NeedsRefresh, Standing::RefreshNeeded),
+        ];
+        for (rec, standing) in table {
+            for running_trial in [false, true] {
+                let case = format!("{rec:?}, dùng thử đang chạy: {running_trial}");
+                let (plain_api, plain, t) = buyer(rec, running_trial, None);
+                let (gated_api, gated, gated_t) = buyer(rec, running_trial, Some(AccountGate::LoginRequired));
+                assert_eq!(t, gated_t);
+                assert_eq!(plain.view(t).standing, standing, "{case}: dựng sai trạng thái");
+                assert_eq!(gated.view(t).standing, standing, "{case}: dựng sai trạng thái");
+                assert_eq!(gated.compose_block(t), plain.compose_block(t), "{case}: compose_block");
+                assert_eq!(gated.trial_due(t), plain.trial_due(t), "{case}: trial_due");
+                let block = plain.start_block(t);
+                assert_ne!(block, Some(StartBlock::LoginRequired), "{case}");
+                assert_eq!(gated.start_block(t), block, "{case}: start_block");
+                assert_eq!(
+                    gated.compose_block(t),
+                    plain.compose_block(t),
+                    "{case}: compose_block sau"
+                );
+                assert_eq!(
+                    calls(&gated_api),
+                    calls(&plain_api),
+                    "{case}: không gọi server thêm hay bớt"
+                );
+            }
+        }
+    }
+
+    /// Hook ghi lại mọi lần nó được gọi trong lúc `License` đang giữ một khóa của mình (`inner`, `trial_gate`, `hook`).
+    /// `try_lock` không chờ, nên test tất định: khóa đang bị chính luồng này giữ thì `try_lock` trả lỗi ngay.
+    struct Probe {
+        license: Mutex<Weak<License>>,
+        gate: Mutex<AccountGate>,
+        bearer_calls: AtomicUsize,
+        held: Mutex<Vec<String>>,
+    }
+
+    impl Probe {
+        fn check(&self, what: &str) {
+            let Some(l) = self.license.lock().unwrap().upgrade() else {
+                return;
+            };
+            let mut held = self.held.lock().unwrap();
+            if l.inner.try_lock().is_err() {
+                held.push(format!("{what}: inner"));
+            }
+            if l.trial_gate.try_lock().is_err() {
+                held.push(format!("{what}: trial_gate"));
+            }
+            if l.hook.try_lock().is_err() {
+                held.push(format!("{what}: hook"));
+            }
+        }
+    }
+
+    impl AccountHook for Probe {
+        fn gate(&self) -> AccountGate {
+            self.check("gate");
+            *self.gate.lock().unwrap()
+        }
+        fn bearer(&self) -> Option<String> {
+            self.bearer_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.check("bearer");
+            Some("acc".into())
+        }
+    }
+
+    /// Hook không bao giờ được gọi khi `License` đang giữ khóa của mình (vòng sửa 1, mục 1): tránh đảo thứ tự khóa với
+    /// khóa riêng của `AccountService` (Task 10).
+    #[test]
+    fn the_hook_is_never_called_while_a_license_lock_is_held() {
+        let (api, vault) = fresh();
+        let l = Arc::new(license(&api, &vault, T0));
+        let probe = Arc::new(Probe {
+            license: Mutex::new(Weak::new()),
+            gate: Mutex::new(AccountGate::LoginRequired),
+            bearer_calls: AtomicUsize::new(0),
+            held: Mutex::new(Vec::new()),
+        });
+        *probe.license.lock().unwrap() = Arc::downgrade(&l);
+        l.set_account_hook(probe.clone());
+        l.allow_trial();
+        assert_eq!(l.start_block(T0), Some(StartBlock::LoginRequired));
+        assert_eq!(l.compose_block(T0), Some(StartBlock::LoginRequired));
+        assert!(!l.trial_due(T0));
+        *probe.gate.lock().unwrap() = AccountGate::Open;
+        assert!(l.trial_due(T0));
+        assert_eq!(l.compose_block(T0), Some(StartBlock::TrialMissing));
+        assert_eq!(l.start_block(T0), None, "cổng mở: đăng ký dùng thử");
+        l.register_trial(T0).unwrap();
+        assert!(probe.bearer_calls.load(std::sync::atomic::Ordering::SeqCst) >= 1);
+        assert_eq!(*probe.held.lock().unwrap(), Vec::<String>::new());
+    }
+
+    /// Máy đã có dùng thử (đăng ký khi chưa đăng nhập), đăng nhập xong (hook có token).
+    fn signed_in_with_a_trial() -> (Arc<FakeApi>, Arc<BearerApi>, License) {
+        let (api, vault) = fresh();
+        with_trial(&api);
+        let bearer_api = Arc::new(BearerApi {
+            api: api.clone(),
+            bearers: Mutex::new(Vec::new()),
+        });
+        let l = bearer_license(&bearer_api, &vault);
+        l.register_trial(T0).unwrap();
+        l.set_account_hook(hook(AccountGate::Open, Some("acc-tok")));
+        bearer_api.bearers.lock().unwrap().clear();
+        (api, bearer_api, l)
+    }
+
+    /// Dùng thử đang giữ (claims, lần thử gần nhất) để so trước và sau.
+    fn trial_state(l: &License) -> (Option<i64>, Option<i64>, Option<i64>) {
+        let inner = l.lock();
+        (
+            inner.trial.as_ref().map(|t| t.ends_at),
+            inner.trial_attempt,
+            inner.trial_blocked_until,
+        )
+    }
+
+    /// Spec 2026-11-05 §6.2, §5.3 nhánh 2: máy đã có dùng thử gọi `POST /v1/trial` một lần kèm Bearer để gắn `account_id`; dùng
+    /// thử đang giữ không đổi.
+    #[test]
+    fn attach_trial_sends_the_bearer_when_a_trial_already_exists() {
+        let (api, bearer_api, l) = signed_in_with_a_trial();
+        let before = trial_state(&l);
+        assert!(before.0.is_some());
+        assert_eq!(l.attach_trial_to_account(T0 + 60), TrialAttach::Attached);
+        assert_eq!(*bearer_api.bearers.lock().unwrap(), [Some("acc-tok".to_string())]);
+        assert_eq!(calls(&api).len(), 2, "một lần đăng ký cũ, một lần gắn");
+        assert_eq!(trial_state(&l), before, "dùng thử giữ nguyên");
+    }
+
+    /// Không hook, hook không có token, hay chưa có dùng thử: không gọi server, như trước.
+    #[test]
+    fn attach_trial_sends_nothing_without_a_hook_a_bearer_or_a_trial() {
+        let (api, vault) = fresh();
+        with_trial(&api);
+        let l = license(&api, &vault, T0);
+        l.register_trial(T0).unwrap();
+        assert_eq!(l.attach_trial_to_account(T0), TrialAttach::Skipped, "không hook");
+        l.set_account_hook(hook(AccountGate::Open, None));
+        assert_eq!(l.attach_trial_to_account(T0), TrialAttach::Skipped, "không token");
+        assert_eq!(calls(&api).len(), 1, "chỉ lần đăng ký cũ");
+        let (api, vault) = fresh();
+        let l = license(&api, &vault, T0);
+        l.set_account_hook(hook(AccountGate::Open, Some("acc-tok")));
+        assert_eq!(l.attach_trial_to_account(T0), TrialAttach::Skipped, "chưa có dùng thử");
+        assert!(calls(&api).is_empty());
+    }
+
+    /// Lỗi không bao giờ đụng tới dùng thử đang giữ hay lịch đăng ký cũ. `4xx` (trừ `429`) là lỗi cuối; mạng, `429`, `5xx` thử lại.
+    #[test]
+    fn attach_trial_errors_leave_the_trial_untouched_and_say_whether_to_retry() {
+        for (error, expected) in [
+            (ApiError::Network("mất mạng".into()), TrialAttach::Retry),
+            (server(500, "internal"), TrialAttach::Retry),
+            (server(503, "unavailable"), TrialAttach::Retry),
+            (server(429, "rate_limited"), TrialAttach::Retry),
+            (server(401, "invalid_token"), TrialAttach::Final),
+            (server(409, "conflict"), TrialAttach::Final),
+            (server(400, "invalid_request"), TrialAttach::Final),
+        ] {
+            let (api, _, l) = signed_in_with_a_trial();
+            let before = trial_state(&l);
+            let label = format!("{error:?}");
+            api.trials.lock().unwrap().push_back(Err(error));
+            assert_eq!(l.attach_trial_to_account(T0 + 60), expected, "{label}");
+            assert_eq!(trial_state(&l), before, "{label}: dùng thử giữ nguyên");
+            assert!(l.lock().trial.is_some(), "{label}");
+        }
+    }
+
+    /// Như `the_hook_is_never_called_while_a_license_lock_is_held`, cho `attach_trial_to_account`.
+    #[test]
+    fn attach_trial_never_calls_the_hook_while_a_license_lock_is_held() {
+        let (api, vault) = fresh();
+        with_trial(&api);
+        let l = Arc::new(license(&api, &vault, T0));
+        l.register_trial(T0).unwrap();
+        let probe = Arc::new(Probe {
+            license: Mutex::new(Weak::new()),
+            gate: Mutex::new(AccountGate::Open),
+            bearer_calls: AtomicUsize::new(0),
+            held: Mutex::new(Vec::new()),
+        });
+        *probe.license.lock().unwrap() = Arc::downgrade(&l);
+        l.set_account_hook(probe.clone());
+        assert_eq!(l.attach_trial_to_account(T0), TrialAttach::Attached);
+        assert!(probe.bearer_calls.load(std::sync::atomic::Ordering::SeqCst) >= 1);
+        assert_eq!(*probe.held.lock().unwrap(), Vec::<String>::new());
+    }
+}
+
+/// `License::saved_activation` (spec 2026-11-05 §6.2, gắn license vào tài khoản sau đăng nhập): test mới, không đụng test cũ.
+#[cfg(test)]
+mod saved_activation_tests {
+    use std::sync::Arc;
+
+    use super::tests::{FakeApi, KEY, T0, claims, granted, license};
+    use crate::license::store::tests::FakeVault;
+
+    #[test]
+    fn saved_activation_is_the_stored_key_and_activation_without_io() {
+        let (api, vault) = (Arc::new(FakeApi::default()), Arc::new(FakeVault::default()));
+        let l = license(&api, &vault, T0);
+        assert_eq!(l.saved_activation(), None, "chưa kích hoạt");
+        api.replies.lock().unwrap().push_back(granted(&claims(T0), true));
+        l.activate(KEY, T0).unwrap();
+        let calls = api.calls.lock().unwrap().len();
+        let writes = vault.writes.lock().unwrap().len();
+        let saved = l.saved_activation();
+        assert_eq!(saved, Some((l.license_key().unwrap(), "act".to_string())));
+        assert_eq!(api.calls.lock().unwrap().len(), calls, "không gọi server");
+        assert_eq!(vault.writes.lock().unwrap().len(), writes, "không ghi kho khóa");
+        // Gỡ kích hoạt (bản ghi bị xóa): không còn gì để gắn.
+        l.deactivate(None).unwrap();
+        assert_eq!(l.saved_activation(), None);
     }
 }

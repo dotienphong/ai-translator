@@ -30,7 +30,7 @@ const FAQ = [
   },
   {
     q: "ライブ翻訳は無料ですか？",
-    a: `<p>Free プランは 10 日間のお試しで、1 日最大 30 分まで翻訳でき、カードもアカウントも不要です。その後は前払いのプランが必要です。<a href="/ja/pricing/">料金</a>をご覧ください。Free はお試しであり、ずっと無料で使えるプランではありません。</p>`,
+    a: `<p>Free プランは 10 日間のお試しで、1 日最大 30 分まで翻訳でき、カードは不要です。お試しには Google でログインが必要です。その後は前払いのプランが必要です。<a href="/ja/pricing/">料金</a>をご覧ください。Free はお試しであり、ずっと無料で使えるプランではありません。</p>`,
   },
 ];
 
@@ -141,6 +141,6 @@ ${linkCard({ href: "/ja/guide/quick-start/", icon: "zap", title: "クイック�
 <p class="disclaimer">TikTok、YouTube、Facebook などの製品名は各所有者に帰属します。AI Translator はこれらの企業と提携していません。</p>
 </div></section>
 
-${ctaBand({ title: "次のライブ配信で試してみてください", text: "コマンド 1 つでインストールし、10 日間、1 日 30 分まで Free で試せます。カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/pricing/", label: "料金を見る" } })}
+${ctaBand({ title: "次のライブ配信で試してみてください", text: "コマンド 1 つでインストールし、10 日間、1 日 30 分まで Free で試せます。カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/pricing/", label: "料金を見る" } })}
 `,
 };

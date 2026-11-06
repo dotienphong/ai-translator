@@ -9,6 +9,8 @@ import { IconWarning } from "./components/icons";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { useLoad } from "./hooks";
+import { AccountPage } from "./pages/AccountPage";
+import { AccountsPage } from "./pages/AccountsPage";
 import { AuditPage } from "./pages/AuditPage";
 import { DevicePage } from "./pages/DevicePage";
 import { ErrorGroupPage } from "./pages/ErrorGroupPage";
@@ -73,6 +75,10 @@ export function routeTitle(route: Route): string {
       return "Chi tiết máy";
     case "trials":
       return "Máy & dùng thử";
+    case "accounts":
+      return "Tài khoản";
+    case "account":
+      return "Chi tiết tài khoản";
     case "errors":
       return "Báo cáo lỗi";
     case "error_group":
@@ -116,6 +122,10 @@ function Page({ route }: { route: Route }) {
       return <DevicePage key={p} hash={p} />;
     case "trials":
       return <TrialsPage />;
+    case "accounts":
+      return <AccountsPage />;
+    case "account":
+      return <AccountPage key={p} id={p} />;
     case "errors":
       return <ErrorsPage />;
     case "error_group":

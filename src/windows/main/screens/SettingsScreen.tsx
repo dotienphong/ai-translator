@@ -1,7 +1,9 @@
 import { useRef } from "react";
+import { SafeBoundary } from "../../../components/SafeBoundary";
 import type { MessageKey } from "../../../i18n";
 import type { SettingsGroup } from "../../../lib/ipc";
 import { useApp, useT } from "../appStore";
+import { AccountSettings } from "../settings/AccountSettings";
 import { AudioSettings } from "../settings/AudioSettings";
 import { GeneralSettings } from "../settings/GeneralSettings";
 import { HotkeySettings } from "../settings/HotkeySettings";
@@ -17,6 +19,7 @@ const GROUPS: readonly SettingsGroup[] = [
   "model",
   "hotkeys",
   "license",
+  "account",
   "privacy",
 ];
 
@@ -79,6 +82,11 @@ export function SettingsScreen() {
         {group === "hotkeys" && <HotkeySettings />}
         {group === "model" && <ModelSettings />}
         {group === "license" && <LicenseSettings />}
+        {group === "account" && (
+          <SafeBoundary key="account" message={t("common.renderFailed")} retry={t("common.retry")}>
+            <AccountSettings />
+          </SafeBoundary>
+        )}
         {description && (
           <div className="card">
             <p>{t(description)}</p>

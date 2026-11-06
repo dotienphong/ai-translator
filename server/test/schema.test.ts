@@ -9,6 +9,7 @@ it("migration tạo đủ bảng", async () => {
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name",
   ).all<{ name: string }>();
   expect(results.map((r) => r.name)).toEqual([
+    "accounts",
     "activations",
     "audit_log",
     "d1_migrations",
@@ -17,6 +18,7 @@ it("migration tạo đủ bảng", async () => {
     "error_reports",
     "expiry_reminders",
     "licenses",
+    "login_attempts",
     "ops_alerts",
     "orders",
     "rate_limits",

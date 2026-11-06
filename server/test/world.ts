@@ -12,6 +12,7 @@ import { HttpZaloBot } from "../src/support/zalo";
 import { importSigningKey } from "../src/token";
 import {
   FakeCreem,
+  FakeGoogleAuth,
   FakePayOS,
   FakeResend,
   FakeZalo,
@@ -40,6 +41,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
   const creem = new FakeCreem();
   const resend = new FakeResend();
   const zalo = new FakeZalo();
+  const google = new FakeGoogleAuth();
   const deps: Deps = {
     now: () => clock.now,
     payments: {
@@ -60,6 +62,7 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     email: new ResendEmailProvider({ apiKey: "re_test", from: "AI Translator <noreply@mt.test>" }, resend.fetch),
     signingKey: async () => importSigningKey(await testSigningJwk("test-1")),
     zalo: new HttpZaloBot(TEST_ZALO_TOKEN, TEST_ZALO_OWNER, zalo.fetch),
+    google,
   };
   const app = createApp(() => deps);
   const testEnv: ApiEnv = { ...env, ...envOverride };
@@ -185,5 +188,5 @@ export function makeWorld(envOverride: Partial<ApiEnv> = {}) {
     };
   }
 
-  return { clock, payos, creem, resend, zalo, deps, app, env: testEnv, call, buy, buyCreem, getOrder, customerB };
+  return { clock, payos, creem, resend, zalo, google, deps, app, env: testEnv, call, buy, buyCreem, getOrder, customerB };
 }

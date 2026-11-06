@@ -83,6 +83,6 @@ ${linkCard({ href: "/ja/pricing/", icon: "wallet", title: "料金", text: "10 �
 </div>
 </div></section>
 
-${ctaBand({ title: "ご自身の通話や動画で試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/pricing/", label: "料金を見る" } })}
+${ctaBand({ title: "ご自身の通話や動画で試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/pricing/", label: "料金を見る" } })}
 `,
 };

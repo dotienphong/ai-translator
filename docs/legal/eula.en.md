@@ -1,6 +1,6 @@
 # AI Translator End User License Agreement (EULA)
 
-**Version 1.7, effective 5 November 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.8, effective 6 November 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 This is an agreement between you and **Do Tien Phong** ("we", "us") for your use of the **AI Translator** application (the "app"). By installing or using the app you agree to it. If you do not agree, please do not install or use the app.
 
@@ -16,14 +16,15 @@ We grant you a **personal, non-exclusive, non-transferable, revocable** right to
 
 | Plan | Quota, per machine | Term | Price |
 |---|---|---|---|
-| Free | 30 minutes per day | 10-day trial, once per machine | 0 VND |
+| Free | 30 minutes per day | 10-day trial, once per machine and once per Google account | 0 VND |
 | Monthly | 50 hours per 30-day cycle | 30 days per order | 50,000 VND or $3.99 |
 | 6 Months | 100 hours per 30-day cycle | 180 days per order | 269,000 VND or $21.99 |
 | Yearly | unlimited | 365 days per order | 500,000 VND or $39.99 |
 
 (VND prices apply when you pay by VietQR; USD prices apply when you pay by international card and **exclude tax**: if your country charges tax (VAT, GST or sales tax), Creem adds it on the payment page. Current prices and quotas are shown in the app when you buy; we may add new plans. We do not reduce the quota of a plan you have already paid for during the period you bought, unless that order has been refunded: see Refunds below.)
 
-- **Free is a trial plan:** it can be used for **10 days**, counted from the first time the app registers the trial with our server (usually the first time you open the app with a network connection). **Each machine gets one trial only**: uninstalling and reinstalling the app, or deleting its data, does not restart the trial. When the trial ends you need a paid plan to keep translating.
+- **Free is a trial plan:** it can be used for **10 days**, counted from the first time the app registers the trial with our server (on a new machine, right after you first sign in with a Google account). **Each machine gets one trial only, and each Google account also gets one trial only**: uninstalling and reinstalling the app, deleting its data, deleting and recreating the account, or signing in with the same Google account on another machine does not restart the trial (the other machine continues that account's trial period, even if it has ended). When the trial ends you need a paid plan to keep translating.
+- **Google account:** the Free plan requires signing in with a Google account; a machine that is not signed in cannot translate on the Free plan. With a valid paid plan you **do not need to sign in**; you can link a Google account to the machine's license if you like. You sign in on Google's page and are responsible for keeping your Google account secure. You sign out or delete the account in Settings › Account; deleting the account does not delete your license or paid plan and does not restart the trial. Account data is handled under the privacy policy (section 15).
 - All three paid plans have the same Pro features (glossary, history, transcript export) and differ in quota and term.
 - A paid plan is an **order paid in advance** (Monthly 30 days, 6 Months 180 days, Yearly 365 days), paid in **one of two ways** (when that method is offered): VietQR bank transfer in VND (through PayOS) or international card in USD (through Creem). **Orders paid by VietQR do not renew automatically.** Orders paid by international card renew automatically only if you choose that (see "Auto-renewal" just below); a one-time order, when it expires, the app returns to the Free plan if the machine is still within its trial; after the trial you cannot translate until you buy again.
 - **Orders paid by international card are resold by Creem.** Creem (Armitage Labs OÜ, Estonia) is the merchant of record (reseller) for orders paid by card and handles the payment and the tax (VAT, GST or sales tax, if any) on it; your card statement usually shows "CREEM.IO* STORE" and Creem emails a receipt to the address you entered. Creem's Buyer Terms (https://www.creem.io/buyer-terms) and Creem's Privacy Notice (https://www.creem.io/privacy) apply to that card purchase; where Creem's Buyer Terms differ from this agreement, Creem's terms prevail for that purchase. We do not receive your card number.

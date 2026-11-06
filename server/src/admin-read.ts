@@ -22,7 +22,7 @@ export const DAY = 86400;
 export const VN_OFFSET = 7 * 3600;
 
 /** Các action xem và tra cứu: /admin/audit ẩn mặc định (spec §3.2), trừ khi lọc đúng một action trong nhóm này. */
-export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed", "error_report_viewed"] as const;
+export const VIEW_ACTIONS = ["lookup", "list_viewed", "queue_viewed", "summary_viewed", "stats_viewed", "payment_status_viewed", "alerts_viewed", "releases_viewed", "error_report_viewed", "account_viewed"] as const;
 
 export const ORDER_STATUSES = [
   "pending",
@@ -156,7 +156,8 @@ export interface ListSpec {
   cursor(raw: string): [string, ...Bind[]] | null;
   /** Con trỏ của dòng cuối trang (dòng chưa qua `map`). */
   next(row: Row): string;
-  map?(row: Row): Row;
+  /** Biến đổi từng dòng; `now` là đồng hồ của request (cho trạng thái phụ thuộc thời gian, vd. tài khoản đã mua hay chưa). */
+  map?(row: Row, now: number): Row;
 }
 
 export function listRoute(app: Hono<AdminAppEnv>, path: string, spec: ListSpec): void {
@@ -179,7 +180,8 @@ export function listRoute(app: Hono<AdminAppEnv>, path: string, spec: ListSpec):
     const rows = results.slice(0, PAGE);
     const last = rows[rows.length - 1];
     const nextCursor = results.length > PAGE && last ? spec.next(last) : null;
-    const items = spec.map ? rows.map(spec.map) : rows;
+    const map = spec.map;
+    const items = map ? rows.map((r) => map(r, now)) : rows;
     await audit(c.env.DB, {
       at: now,
       actor: c.get("actor"),

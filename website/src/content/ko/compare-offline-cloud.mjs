@@ -125,6 +125,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "내 회의에서 오프라인 번역을 써 보세요", text: "10일 무료 체험으로 시작하세요. 하루 30분, 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/data-security/", label: "데이터 처리 방식" } })}
+${ctaBand({ title: "내 회의에서 오프라인 번역을 써 보세요", text: "10일 무료 체험으로 시작하세요. 하루 30분, 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/data-security/", label: "데이터 처리 방식" } })}
 `,
 };

@@ -6,7 +6,8 @@ import { build } from "vite";
 import { describe, expect, it } from "vitest";
 import { GALLERY_MARKER } from "./Gallery";
 
-const ROOT = new URL("../..", import.meta.url).pathname;
+// Trên Windows, `URL.pathname` bắt đầu bằng `/D:/…`; bỏ dấu `/` đầu trước ký tự ổ đĩa để Vite/Rolldown mở được đường dẫn.
+const ROOT = new URL("../..", import.meta.url).pathname.replace(/^\/([A-Za-z]:\/)/, "$1");
 // Không dùng kiểu của Node (dự án không cài @types/node): chỉ cần biến môi trường NODE_ENV.
 const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
 

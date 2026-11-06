@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Works with", "Anything that plays sound on your computer<small>Browsers, media players, course platforms, webinar tools</small>"],
-  ["Extra installs", "None besides the app itself<small>No browser extension, no plugin, no sign-in account</small>"],
+  ["Extra installs", "None besides the app itself<small>No browser extension, no plugin; the Free trial needs you to sign in with Google</small>"],
   ["Languages", "English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt)<small>You choose the language you want to read</small>"],
   ["Long sessions", "Ran for 5 hours 23 minutes without an error<small>Mac M4 Pro, macOS, ad-hoc signed release build, tested once</small>"],
 ])}</div>
@@ -129,6 +129,6 @@ ${linkCard({ href: "/en/features/", icon: "sliders", title: "Features", text: "E
 <p class="center-text reveal">Wondering where your content goes? Read <a href="/en/data-security/">data and security</a>.</p>
 </div></section>
 
-${ctaBand({ title: "Try it on a video of your own", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
+${ctaBand({ title: "Try it on a video of your own", text: "Start with the free 10-day trial, 30 minutes a day. No card needed; the trial needs you to sign in with Google.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/pricing/", label: "See pricing" } })}
 `,
 };

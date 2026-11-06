@@ -1046,3 +1046,240 @@ pub fn install_support(app: &tauri::App<MockRuntime>) -> SupportRig {
     app.manage(chat);
     SupportRig { api }
 }
+
+// ---- Tài khoản Google (spec 2026-11-05-dang-nhap-google §6.1) ----
+
+/// Trang đăng nhập Google mà server giả trả về (`login_url`).
+pub const ACCOUNT_GOOGLE_URL: &str =
+    "https://accounts.google.com/o/oauth2/v2/auth?client_id=c&scope=openid%20email&state=s";
+/// Email của token tài khoản giả.
+pub const ACCOUNT_EMAIL: &str = "nguoi.dung@example.com";
+
+fn account_vectors() -> Value {
+    serde_json::from_str(include_str!("../../server/test/vectors/token-account-v1.json")).unwrap()
+}
+
+/// Khóa công khai của bộ vector token tài khoản.
+pub fn account_keys() -> crate::license::keys::PublicKeys {
+    let v = account_vectors();
+    let pairs = v["public_keys"].as_object().unwrap().clone();
+    crate::license::keys::PublicKeys::from_pairs(pairs.iter().map(|(k, x)| (k.as_str(), x.as_str().unwrap()))).unwrap()
+}
+
+/// Token tài khoản hợp lệ (vector `valid`) và `device_id_hash` của nó.
+pub fn account_token() -> (String, String) {
+    let v = account_vectors();
+    let t = v["tokens"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "valid")
+        .unwrap()
+        .clone();
+    (
+        t["token"].as_str().unwrap().into(),
+        t["device_id_hash"].as_str().unwrap().into(),
+    )
+}
+
+/// Server tài khoản giả: ghi lại từng lần gọi (`status`, `start <lang>`, `poll`, `link <key> <activation_id>`, `delete`), không
+/// ghi token. `status` trả `login_on` đã đặt (`None`: lỗi mạng); `start` trả `login_url` đã đặt (mặc định trang Google); `poll`
+/// trả ngay token hợp lệ.
+#[derive(Default)]
+pub struct FakeAccountApi {
+    pub calls: Mutex<Vec<String>>,
+    pub login_url: Mutex<Option<String>>,
+    pub login_on: Mutex<Option<bool>>,
+    /// Kết quả lần lượt của `link_license`; hết thì thành công.
+    pub link_results: Mutex<VecDeque<Result<(), crate::license::client::ApiError>>>,
+}
+
+impl FakeAccountApi {
+    pub fn calls(&self) -> Vec<String> {
+        self.calls.lock().unwrap().clone()
+    }
+
+    fn push(&self, call: String) {
+        self.calls.lock().unwrap().push(call);
+    }
+}
+
+fn account_reply<T>(result: Result<T, crate::license::client::ApiError>) -> crate::license::client::Reply<T> {
+    crate::license::client::Reply { result, date: None }
+}
+
+impl crate::account::client::AccountApi for Arc<FakeAccountApi> {
+    fn status(&self) -> crate::license::client::Reply<crate::account::client::LoginStatus> {
+        self.push("status".into());
+        let on = *self.login_on.lock().unwrap();
+        account_reply(match on {
+            Some(login_on) => Ok(crate::account::client::LoginStatus { login_on }),
+            None => Err(crate::license::client::ApiError::Network("mất mạng".into())),
+        })
+    }
+
+    fn start(
+        &self,
+        _device_id_hash: &str,
+        _challenge: &str,
+        lang: &str,
+    ) -> crate::license::client::Reply<crate::account::client::LoginStart> {
+        self.push(format!("start {lang}"));
+        let url = self.login_url.lock().unwrap().clone();
+        account_reply(Ok(crate::account::client::LoginStart {
+            login_id: "login-1".into(),
+            login_url: url.unwrap_or_else(|| ACCOUNT_GOOGLE_URL.into()),
+            expires_at: 1,
+        }))
+    }
+
+    fn poll(
+        &self,
+        _login_id: &str,
+        _verifier: &str,
+    ) -> crate::license::client::Reply<crate::account::client::LoginPoll> {
+        self.push("poll".into());
+        account_reply(Ok(crate::account::client::LoginPoll::Done {
+            token: account_token().0,
+            email: ACCOUNT_EMAIL.into(),
+        }))
+    }
+
+    fn link_license(&self, _token: &str, key: &str, activation_id: &str) -> crate::license::client::Reply<()> {
+        self.push(format!("link {key} {activation_id}"));
+        let next = self.link_results.lock().unwrap().pop_front();
+        account_reply(next.unwrap_or(Ok(())))
+    }
+
+    fn delete(&self, _token: &str) -> crate::license::client::Reply<()> {
+        self.push("delete".into());
+        account_reply(Ok(()))
+    }
+}
+
+/// Dịch vụ tài khoản với server giả, kho khóa giả trong bộ nhớ, khóa và máy của bộ vector; hỏi kết quả mỗi 2 ms.
+pub fn account_service(api: &Arc<FakeAccountApi>) -> crate::account::AccountService {
+    crate::account::AccountService::new(
+        Box::new(api.clone()),
+        Arc::new(crate::license::store::tests::FakeVault::default()),
+        account_keys(),
+        account_token().1,
+        crate::account::Timing {
+            poll_every: Duration::from_millis(2),
+            timeout: Duration::from_secs(5),
+        },
+    )
+}
+
+/// Bản quyền và tài khoản đã cài vào app giả (như `license::app::install` ở app thật, không có ticker).
+pub struct AccountRig {
+    pub license_api: Arc<crate::license::manager::tests::FakeApi>,
+    /// Token tài khoản kèm theo từng lần `POST /v1/trial` (`None`: không có header `Authorization`).
+    pub trial_bearers: Arc<Mutex<Vec<Option<String>>>>,
+    pub api: Arc<FakeAccountApi>,
+    pub license: Arc<crate::license::manager::License>,
+}
+
+/// Server bản quyền giả của `license::manager::tests`, ghi thêm Bearer của từng lần `trial_with_account`.
+struct BearerRecorder {
+    api: Arc<crate::license::manager::tests::FakeApi>,
+    bearers: Arc<Mutex<Vec<Option<String>>>>,
+}
+
+impl crate::license::client::LicenseApi for BearerRecorder {
+    fn plans(&self) -> crate::license::client::Reply<crate::license::client::PlansReply> {
+        self.api.plans()
+    }
+    fn checkout(
+        &self,
+        plan: &str,
+        email: &str,
+        key: Option<&str>,
+        currency: &str,
+        lang: &str,
+        auto_renew: bool,
+    ) -> crate::license::client::Reply<crate::license::client::Checkout> {
+        self.api.checkout(plan, email, key, currency, lang, auto_renew)
+    }
+    fn order(&self, code: i64, token: &str) -> crate::license::client::Reply<crate::license::client::OrderStatus> {
+        self.api.order(code, token)
+    }
+    fn activate(
+        &self,
+        key: &str,
+        device: &str,
+        label: Option<&str>,
+        allow_conflict: bool,
+    ) -> crate::license::client::Reply<crate::license::client::Granted> {
+        self.api.activate(key, device, label, allow_conflict)
+    }
+    fn validate(
+        &self,
+        key: &str,
+        activation_id: &str,
+    ) -> crate::license::client::Reply<crate::license::client::Granted> {
+        self.api.validate(key, activation_id)
+    }
+    fn deactivate(&self, key: &str, activation_id: &str) -> crate::license::client::Reply<()> {
+        self.api.deactivate(key, activation_id)
+    }
+    fn recover(&self, email: &str, lang: &str) -> crate::license::client::Reply<()> {
+        self.api.recover(email, lang)
+    }
+    fn trial(&self, device: &str) -> crate::license::client::Reply<crate::license::client::TrialGrant> {
+        self.bearers.lock().unwrap().push(None);
+        self.api.trial(device)
+    }
+    fn trial_with_account(
+        &self,
+        device: &str,
+        account_token: Option<&str>,
+    ) -> crate::license::client::Reply<crate::license::client::TrialGrant> {
+        self.bearers.lock().unwrap().push(account_token.map(String::from));
+        self.api.trial(device)
+    }
+    fn subscription(
+        &self,
+        key: &str,
+        manage: bool,
+    ) -> crate::license::client::Reply<crate::license::client::SubscriptionInfo> {
+        self.api.subscription(key, manage)
+    }
+}
+
+/// Cài bản quyền (server và kho khóa giả của `license::manager::tests`, giờ thật) cùng dịch vụ tài khoản giả. `account`:
+/// `false` thì không có dịch vụ tài khoản (không dựng được), như app thật khi thiếu mã máy hay kho khóa.
+pub fn install_account(app: &tauri::App<MockRuntime>, account: bool) -> AccountRig {
+    use crate::license::manager::tests::{DEVICE, FakeApi, test_keys, vn};
+    use crate::license::manager::{License, Machine};
+    let license_api = Arc::new(FakeApi::default());
+    let trial_bearers = Arc::new(Mutex::new(Vec::new()));
+    let license = License::new(
+        Box::new(BearerRecorder {
+            api: license_api.clone(),
+            bearers: trial_bearers.clone(),
+        }),
+        Box::new(Arc::new(crate::license::store::tests::FakeVault::default())),
+        test_keys(),
+        Machine {
+            id_hash: DEVICE.into(),
+            label: None,
+        },
+        vn(),
+        true,
+        false,
+        false,
+        crate::license::app::now(),
+    );
+    license.set_genuine(true);
+    let api = Arc::new(FakeAccountApi::default());
+    let service = account.then(|| account_service(&api));
+    crate::license::app::install_with_account(app.handle(), license, service);
+    let license = app.state::<crate::license::app::Licensing>().0.clone();
+    AccountRig {
+        license_api,
+        trial_bearers,
+        api,
+        license,
+    }
+}

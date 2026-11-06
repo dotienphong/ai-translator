@@ -314,6 +314,6 @@ ${sectionHead({ eyebrow: "By plan", title: "Which feature is in which plan", cen
 <p class="center-text reveal"><a class="btn btn-primary" href="/en/pricing/">See the full pricing details ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "Try it on your real meetings", text: "A free 10-day trial with 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
+${ctaBand({ title: "Try it on your real meetings", text: "A free 10-day trial with 30 minutes a day. No card needed; the trial needs you to sign in with Google.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Read the quick-start guide" } })}
 `,
 };

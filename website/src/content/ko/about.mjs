@@ -56,7 +56,7 @@ ${feature({ icon: "shield", title: "설계부터 개인정보 보호", text: "�
 ${feature({ icon: "wifi-off", title: "번역 중에는 오프라인", text: "음성 인식과 번역은 내 컴퓨터에서 실행됩니다. 인터넷은 모델 다운로드, 체험 등록, 라이선스 구매와 확인, 앱 업데이트에만 필요합니다." })}
 ${feature({ icon: "info", title: "상태를 솔직하게", text: "아직 못 한 일은 아직이라고 말합니다. macOS는 아직 공증을 받지 않았고, Windows는 아직 코드 서명이 없으며, 측정하지 않은 기기도 있습니다. 웹사이트와 앱에서 있는 그대로 말씀드립니다." })}
 ${feature({ icon: "lock", title: "광고 없음, 사용 분석 없음", text: "앱에는 광고도 사용 분석도 없습니다. 오류가 생기면 문제를 고치기 위해 개인 정보를 지운 오류 보고서(음성과 회의 내용 없음)를 보내며, 설정에서 끌 수 있습니다. 저희 수입은 여러분의 데이터가 아니라 유료 요금제에서 나옵니다." })}
-${feature({ icon: "video", title: "봇 없음, 계정 없음", text: "회의에 봇이 참가하지 않고, 설치할 플러그인도, 로그인도 없습니다. 유료 요금제는 이메일로 받는 라이선스 키로 활성화합니다." })}
+${feature({ icon: "video", title: "봇 없음, 플러그인 없음", text: "회의에 봇이 참가하지 않고, 회의 앱에 플러그인을 설치하지도 않습니다. Free 체험은 Google 계정으로 로그인해야 하며, 유료 요금제는 이메일로 받는 라이선스 키로 활성화하고 로그인이 필요 없습니다." })}
 ${feature({ icon: "gauge", title: "숫자에는 조건을 함께", text: "이 웹사이트의 모든 속도나 품질 수치에는 측정한 기기와 조건을 함께 적습니다. 측정하지 않은 것은 측정하지 않았다고 말합니다. <a href=\"/ko/features/#performance\">기능과 성능</a>을 참조하세요." })}
 </div>
 </div></section>
@@ -127,6 +127,6 @@ ${linkCard({ href: "/ko/pricing/", icon: "wallet", title: "요금", text: "10일
 </div>
 </div></section>
 
-${ctaBand({ title: "실제 회의에서 써 보세요", text: "macOS나 Windows에 명령 한 줄로 설치하고 10일 Free 체험을 쓰세요. 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/contact/", label: "문의하기" } })}
+${ctaBand({ title: "실제 회의에서 써 보세요", text: "macOS나 Windows에 명령 한 줄로 설치하고 10일 Free 체험을 쓰세요. 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/contact/", label: "문의하기" } })}
 `,
 };

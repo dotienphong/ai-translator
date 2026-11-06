@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import logo from "../../../app-icon.svg";
 import { Icon } from "../../components/Icon";
+import { SafeBoundary } from "../../components/SafeBoundary";
 import type { Screen } from "../../lib/ipc";
+import { useAccount } from "./accountStore";
 import { useApp, useT } from "./appStore";
 import { useLicense } from "./licenseStore";
 import { PlanName } from "./LicenseText";
@@ -13,6 +15,7 @@ import { ComposeScreen } from "./screens/ComposeScreen";
 import { Home } from "./screens/Home";
 import { GlossaryScreen } from "./screens/GlossaryScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
+import { gateBlocks, isSessionActive, LoginGate } from "./screens/LoginGate";
 import { UpgradeScreen } from "./screens/UpgradeScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { SupportScreen } from "./screens/SupportScreen";
@@ -37,7 +40,9 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
 // thì đưa focus về tiêu đề của màn hình mới, để người dùng bàn phím và trình đọc màn hình biết đã sang chỗ khác.
 // Cửa sổ hẹp thì thanh điều hướng chỉ còn biểu tượng; tên màn hình vẫn là nhãn của nút (`aria-label`, `title`). Mục Hỗ trợ có chấm
 // đỏ khi có câu trả lời mới chưa xem (spec 2026-10-22-chat-ho-tro-zalo §4); nhãn của nút nói điều đó cho trình đọc màn hình.
-// Mục Giọng đọc chỉ hiện trên Windows (spec 2026-11-04-giong-doc §7).
+// Mục Giọng đọc chỉ hiện trên Windows (spec 2026-11-04-giong-doc §7). Cổng đăng nhập (spec 2026-11-05-dang-nhap-google §6.3) chỉ
+// thay thân của Màn hình chính, Gõ dịch, Giọng đọc (`gateBlocks`), trong `SafeBoundary`: thanh điều hướng, tiêu đề, thanh báo,
+// hộp cập nhật và các màn khác giữ nguyên.
 export function Shell() {
   const t = useT();
   const screen = useApp((s) => s.screen);
@@ -49,6 +54,9 @@ export function Shell() {
   const plan = useLicense((s) => s.view?.plan ?? null);
   const unread = useSupport((s) => s.view?.unread ?? false);
   const Body = BODIES[screen];
+  const account = useAccount((s) => s.view);
+  const sessionActive = useApp((s) => isSessionActive(s.status));
+  const gated = gateBlocks(screen, account, sessionActive);
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef(screen);
   const content = useRef<HTMLElement>(null);
@@ -95,7 +103,13 @@ export function Shell() {
             {t(`nav.${screen}`)}
           </h1>
           <Notice />
-          <Body />
+          {gated ? (
+            <SafeBoundary key={screen} message={t("common.renderFailed")} retry={t("common.retry")}>
+              <LoginGate />
+            </SafeBoundary>
+          ) : (
+            <Body />
+          )}
         </div>
       </main>
       <UpdateModal />

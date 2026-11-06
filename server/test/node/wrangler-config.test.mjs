@@ -225,6 +225,7 @@ test("secret bắt buộc có đủ và không nằm trong vars", () => {
     "ZALO_BOT_TOKEN",
     "ZALO_WEBHOOK_SECRET",
     "ZALO_OWNER_CHAT_ID",
+    "GOOGLE_OAUTH_CLIENT_SECRET",
   ]);
   for (const name of api.secrets.required) assert.equal(name in api.vars, false, name);
   // Worker admin có khóa API Creem để xem trạng thái đơn, nhưng không có secret webhook (không nhận webhook).
@@ -400,8 +401,36 @@ test("package.json: ui:build và ui:check báo lỗi khi tên package sai, và c
 });
 
 test("chat hỗ trợ (spec 2026-10-22 §2.2): Worker API có binding Rate Limiting cho việc hỏi tin mới, 60 lần mỗi 60 giây; Worker admin không có", () => {
-  assert.deepEqual(api.ratelimits, [{ name: "SUPPORT_POLL_LIMITER", namespace_id: "20261022", simple: { limit: 60, period: 60 } }]);
+  assert.deepEqual(api.ratelimits.find((r) => r.name === "SUPPORT_POLL_LIMITER"), {
+    name: "SUPPORT_POLL_LIMITER",
+    namespace_id: "20261022",
+    simple: { limit: 60, period: 60 },
+  });
   assert.equal("ratelimits" in admin, false);
   assert.equal("ZALO_BOT_TOKEN" in (admin.vars ?? {}), false);
   assert.equal((admin.secrets?.required ?? []).some((n) => n.startsWith("ZALO_")), false);
+});
+
+test("đăng nhập Google (spec 2026-11-05 §5.4, §5.4b, §5.6, §5.7): secret, biến, công tắc khẩn cấp và binding hỏi kết quả", () => {
+  // Client secret chỉ là secret của Worker API: không nằm trong vars, không ở Worker admin (admin không đăng nhập Google).
+  assert.ok(api.secrets.required.includes("GOOGLE_OAUTH_CLIENT_SECRET"));
+  assert.equal("GOOGLE_OAUTH_CLIENT_SECRET" in api.vars, false);
+  assert.equal(JSON.stringify(admin).includes("GOOGLE_OAUTH"), false, "Worker admin không có cấu hình Google");
+  assert.doesNotMatch(raw("wrangler.jsonc"), /GOCSPX-/, "client secret Google (GOCSPX-…) không bao giờ nằm trong file cấu hình");
+  // Công tắc khẩn cấp mặc định bật đăng nhập; cờ bắt buộc đăng nhập mặc định tắt cho tới khi bản app có đăng nhập đã phát hành.
+  assert.equal(api.vars.LOGIN_GATE, "on");
+  assert.equal(api.vars.ACCOUNT_REQUIRED, "off");
+  // Client ID không bí mật. Rỗng (chưa điền, đăng nhập Google tắt: server báo login off) hay đúng dạng ID của Google; không có chuỗi giữ chỗ
+  // nửa vời, vì ID sai mà secret có thì đăng nhập vẫn "bật" nhưng mọi lần đăng nhập đều hỏng.
+  assert.equal(typeof api.vars.GOOGLE_OAUTH_CLIENT_ID, "string");
+  assert.match(api.vars.GOOGLE_OAUTH_CLIENT_ID, /^$|^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
+  // Hỏi kết quả đăng nhập: binding Rate Limiting như SUPPORT_POLL_LIMITER (không ghi D1 mỗi lần hỏi), 60 lần mỗi 60 giây theo login_id.
+  assert.deepEqual(api.ratelimits.find((r) => r.name === "AUTH_POLL_LIMITER"), {
+    name: "AUTH_POLL_LIMITER",
+    namespace_id: "20261105",
+    simple: { limit: 60, period: 60 },
+  });
+  const ids = api.ratelimits.map((r) => r.namespace_id);
+  assert.equal(new Set(ids).size, ids.length, "namespace_id của các binding Rate Limiting phải khác nhau");
+  assert.equal(api.ratelimits.length, 2);
 });

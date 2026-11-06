@@ -100,6 +100,6 @@ ${linkCard({ href: "/en/pricing/", icon: "wallet", title: "Pricing", text: "A 10
 <p class="disclaimer">TikTok is a trademark of its respective owner; AI Translator is not affiliated with TikTok.</p>
 </div></section>
 
-${ctaBand({ title: "Try it on the next TikTok Live you watch", text: "Install with one command and try Free for 10 days at 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Open the guide" } })}
+${ctaBand({ title: "Try it on the next TikTok Live you watch", text: "Install with one command and try Free for 10 days at 30 minutes a day. No card needed; the trial needs you to sign in with Google.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/guide/quick-start/", label: "Open the guide" } })}
 `,
 };

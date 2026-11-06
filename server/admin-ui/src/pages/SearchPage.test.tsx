@@ -224,3 +224,50 @@ describe("SearchPage: máy dùng license đã thu hồi", () => {
     expect(within(r).getByText("License đã thu hồi").className).toContain("badge-bad");
   });
 });
+
+// Tra theo email: server thêm mảng `accounts` khi có tài khoản Google khớp (spec đăng nhập Google §7).
+describe("tài khoản Google trong kết quả", () => {
+  const ACC_1 = "5f3a7c1e-0b9e-4c1d-9a7e-b5a692f1d3c4";
+  const ACC_2 = "3a5f0b9e-7c1e-4d1c-8a9e-4c3b6a961f2d";
+  const accountOf = (id: string, status: string) => ({ id, email: "khach@example.com", created_at: NOW - 86400 * 9, last_login_at: NOW - 600, status });
+
+  it("hiện nhóm Tài khoản với link tới /accounts/:id và nhóm bằng tiếng Việt; số lượng ở đầu trang", async () => {
+    serve({ licenses: [licenseOf(ID_A, KEY_A), licenseOf(ID_B, KEY_B)], orders: [], accounts: [accountOf(ACC_1, "paid"), accountOf(ACC_2, "trial_ended")] });
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    expect(await screen.findByRole("heading", { name: "Tài khoản" })).toBeTruthy();
+    const links = screen.getAllByRole("link", { name: "khach@example.com" });
+    expect(links.map((a) => a.getAttribute("href"))).toEqual([`/accounts/${ACC_1}`, `/accounts/${ACC_2}`]);
+    const table = within(screen.getByRole("table", { name: "Tài khoản tìm được" }));
+    expect(table.getByText("Đã mua")).toBeTruthy();
+    expect(table.getByText("Hết dùng thử")).toBeTruthy();
+    expect(document.body.textContent).toContain("2 tài khoản");
+    // Phần license giữ nguyên.
+    expect(screen.getByRole("link", { name: "K7Q2-…-9XMB" }).getAttribute("href")).toBe(`/licenses/${ID_A}`);
+  });
+
+  it("một license duy nhất mà có tài khoản: không chuyển thẳng sang license (để thấy tài khoản)", async () => {
+    serve({ licenses: [licenseOf(ID_A, KEY_A)], orders: [orderOf(1000001, ID_A)], accounts: [accountOf(ACC_1, "paid")] });
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    expect(await screen.findByRole("link", { name: "khach@example.com" })).toBeTruthy();
+    expect(window.location.pathname).toBe("/search");
+  });
+
+  it("chỉ có tài khoản (không license, không đơn): không báo 'Không tìm thấy gì'", async () => {
+    serve({ licenses: [], orders: [], accounts: [accountOf(ACC_1, "trial_active")] });
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    expect(await screen.findByRole("link", { name: "khach@example.com" })).toBeTruthy();
+    expect(screen.queryByText("Không tìm thấy gì.")).toBeNull();
+    expect(screen.getByText("Đang dùng thử")).toBeTruthy();
+  });
+
+  it("không có mảng accounts (phản hồi cũ): không có nhóm Tài khoản", async () => {
+    serve({ licenses: [licenseOf(ID_A, KEY_A), licenseOf(ID_B, KEY_B)], orders: [] });
+    setSearch({ email: "khach@example.com" });
+    render(<SearchPage />);
+    await screen.findByRole("heading", { name: "License" });
+    expect(screen.queryByRole("heading", { name: "Tài khoản" })).toBeNull();
+  });
+});

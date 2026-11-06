@@ -133,6 +133,6 @@ ${sectionHead({ eyebrow: "价格问题", title: "购买前你可能想问的问�
 ${faq(PRICING_FAQ)}
 </div></section>
 
-${ctaBand({ title: "从 10 天试用开始", text: "每天 30 分钟，足够在真实会议中测试。无需银行卡，无需账号。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/faq/", label: "阅读常见问题" } })}
+${ctaBand({ title: "从 10 天试用开始", text: "每天 30 分钟，足够在真实会议中测试。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/faq/", label: "阅读常见问题" } })}
 `,
 };

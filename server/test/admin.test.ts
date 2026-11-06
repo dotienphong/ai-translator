@@ -8,6 +8,7 @@ import { insertReportStatements } from "../src/error-reports";
 import { formatLicenseKey, generateLicenseKey } from "../src/license-key";
 import { verifyToken } from "../src/token";
 import { AUD, corruptSignature, type Issuer, makeIssuer, TEAM } from "./access-jwt-helper";
+import { makeAccount } from "./account-helpers";
 import { ADMIN, type AdminCall, API_ORIGIN, apiKeyEnv, auditCount, lastAudit, licenseRow, makeAdmin } from "./admin-harness";
 import { resetDb, withFailingInsert } from "./db";
 import { TEST_CREEM_API_KEY } from "./fakes";
@@ -354,6 +355,48 @@ describe("tra cứu, gửi lại key", () => {
     expect((byOrder.body.licenses as unknown[]).length).toBe(1);
     expect(await lastAudit()).toMatchObject({ action: "lookup", order_code: orderCode });
     expect((await adminCall("/admin/lookup", { body: {} })).status).toBe(400);
+  });
+
+  describe("tài khoản Google (spec 2026-11-05 §7: Tra cứu mở rộng sang accounts.email)", () => {
+    it("tra theo email trả thêm `accounts` khớp đúng email (gõ hoa thường lẫn lộn vẫn khớp), kèm trạng thái; tài khoản khác không lọt vào", async () => {
+      const { w, adminCall } = makeAdmin();
+      const d1 = await sha256Hex("d1");
+      const d2 = await sha256Hex("d2");
+      const mine = await makeAccount(w, d1, { email: "buyer@example.com", trialStartedAt: T0 - DAY, trialEndsAt: T0 + 9 * DAY });
+      await makeAccount(w, d2, { email: "khac@example.com" });
+      const { licenseKey } = await w.buy({ email: "buyer@example.com" });
+      const res = await adminCall("/admin/lookup", { body: { email: "Buyer@Example.COM" } });
+      expect(res.status).toBe(200);
+      expect(res.body.accounts).toEqual([{ id: mine.accountId, email: "buyer@example.com", created_at: T0, last_login_at: T0, status: "trial_active" }]);
+      // Phần cũ của phản hồi không đổi.
+      expect((res.body.licenses as { license_key: string }[]).map((l) => l.license_key)).toEqual([licenseKey]);
+      expect(res.body.orders).toHaveLength(1);
+      // Khớp nguyên email như license và đơn, không khớp một phần.
+      expect((await adminCall("/admin/lookup", { body: { email: "buyer@example.co" } })).body).toEqual({ licenses: [], orders: [] });
+      // License đang hiệu lực gắn tài khoản thì trạng thái là paid.
+      await env.DB.prepare("UPDATE licenses SET account_id = ?").bind(mine.accountId).run();
+      const paid = await adminCall("/admin/lookup", { body: { email: "buyer@example.com" } });
+      expect((paid.body.accounts as { status: string }[])[0]?.status).toBe("paid");
+    });
+
+    it("nhật ký lookup có thêm số tài khoản, vẫn không có email", async () => {
+      const { w, adminCall } = makeAdmin();
+      await makeAccount(w, await sha256Hex("d1"), { email: "buyer@example.com" });
+      await adminCall("/admin/lookup", { body: { email: "buyer@example.com" } });
+      const log = (await lastAudit()) as { action: string; detail: string };
+      expect(log.action).toBe("lookup");
+      expect(JSON.parse(log.detail)).toEqual({ by: "email", licenses: 0, orders: 0, accounts: 1 });
+      expect(log.detail).not.toContain("buyer@");
+    });
+
+    it("tài khoản đã xóa (email NULL) không bao giờ khớp; không có tài khoản nào thì phản hồi và nhật ký giữ nguyên dạng cũ", async () => {
+      const { w, adminCall } = makeAdmin();
+      const acc = await makeAccount(w, await sha256Hex("d1"), { email: "buyer@example.com" });
+      await env.DB.prepare("UPDATE accounts SET email = NULL, deleted_at = ? WHERE id = ?").bind(T0, acc.accountId).run();
+      const res = await adminCall("/admin/lookup", { body: { email: "buyer@example.com" } });
+      expect(res).toEqual({ status: 200, body: { licenses: [], orders: [] } });
+      expect(JSON.parse(((await lastAudit()) as { detail: string }).detail)).toEqual({ by: "email", licenses: 0, orders: 0 });
+    });
   });
 
   it("tra theo máy (device_id_hash): dùng thử của máy và các license từng kích hoạt trên máy, kèm trạng thái xung đột", async () => {
@@ -1197,6 +1240,79 @@ describe("Q9: xóa dữ liệu cá nhân theo email", () => {
     expect(res.status).toBe(500);
     expect(await env.DB.prepare("SELECT email FROM licenses").first()).toEqual({ email: "erase@example.com" });
     expect(await env.DB.prepare("SELECT email FROM orders").first()).toEqual({ email: "erase@example.com" });
+  });
+
+  describe("tài khoản Google (spec 2026-11-05 §5.5, §7)", () => {
+    it("xóa theo email cũng ẩn danh accounts cùng email (gõ hoa thường lẫn lộn vẫn khớp), áp luật 5.5, tài khoản khác không bị chạm", async () => {
+      const { w, adminCall } = makeAdmin();
+      const d1 = await sha256Hex("d1");
+      const d2 = await sha256Hex("d2");
+      const acc = await makeAccount(w, d1, { email: "erase@example.com", trialStartedAt: T0 - 2 * DAY, trialEndsAt: T0 + 8 * DAY });
+      const other = await makeAccount(w, d2, { email: "keep@example.com" });
+      const { licenseKey } = await w.buy({ email: "erase@example.com" });
+      await w.buy({ email: "keep@example.com" });
+      const link = await w.call("POST", "/v1/licenses/activate", { key: licenseKey, device_id_hash: d1, device_label: "Máy An" });
+      expect(link.status).toBe(200);
+      await env.DB.prepare("UPDATE licenses SET account_id = ? WHERE email = 'erase@example.com'").bind(acc.accountId).run();
+      await env.DB.prepare("UPDATE licenses SET account_id = ? WHERE email = 'keep@example.com'").bind(other.accountId).run();
+      await env.DB.prepare("INSERT INTO trials (device_id_hash, started_at, ends_at, last_seen_at, account_id) VALUES (?, ?, ?, ?, ?)")
+        .bind(d1, T0 - 2 * DAY, T0 + 8 * DAY, T0, acc.accountId)
+        .run();
+      const before = await env.DB.prepare("SELECT google_sub, trial_started_at, trial_ends_at, created_at FROM accounts WHERE id = ?").bind(acc.accountId).first();
+
+      const res = await adminCall("/admin/erase", { body: { email: "Erase@Example.COM", note: "yêu cầu xóa" } });
+      expect(res.body).toEqual({ activations: 1, licenses: 1, orders: 1, accounts: 1 });
+
+      expect(await env.DB.prepare("SELECT * FROM accounts WHERE id = ?").bind(acc.accountId).first()).toMatchObject({ email: null, deleted_at: T0, ...before });
+      expect(await env.DB.prepare("SELECT email, deleted_at FROM accounts WHERE id = ?").bind(other.accountId).first()).toEqual({ email: "keep@example.com", deleted_at: null });
+      expect(await env.DB.prepare("SELECT email, account_id FROM licenses ORDER BY email").all()).toMatchObject({
+        // Email của license bị xóa là NULL nên đứng trước (SQLite xếp NULL đầu tiên).
+        results: [{ email: null, account_id: null }, { email: "keep@example.com", account_id: other.accountId }],
+      });
+      expect(await env.DB.prepare("SELECT started_at, ends_at, account_id FROM trials").first()).toEqual({ started_at: T0 - 2 * DAY, ends_at: T0 + 8 * DAY, account_id: null });
+
+      const logs = (await env.DB.prepare("SELECT action, detail FROM audit_log WHERE action IN ('personal_data_erased', 'account_anonymized') ORDER BY id").all<{ action: string; detail: string }>()).results;
+      expect(logs.map((l) => l.action)).toEqual(["personal_data_erased", "account_anonymized"]);
+      expect(JSON.parse(logs[1]!.detail)).toEqual({ via: "erase", accounts: 1 });
+      expect(JSON.stringify(logs)).not.toContain("erase@example.com");
+    });
+
+    it("không có tài khoản nào khớp thì không ghi account_anonymized và phản hồi giữ nguyên ba trường", async () => {
+      const { w, adminCall } = makeAdmin();
+      await w.buy({ email: "erase@example.com" });
+      const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+      expect(res.body).toEqual({ activations: 0, licenses: 1, orders: 1 });
+      expect(await auditCount("account_anonymized")).toBe(0);
+    });
+
+    it("tài khoản đã ẩn danh từ trang tài khoản thì xóa theo email không đếm lại và không ghi account_anonymized lần hai", async () => {
+      const { w, adminCall } = makeAdmin();
+      const acc = await makeAccount(w, await sha256Hex("d1"), { email: "erase@example.com" });
+      await w.buy({ email: "erase@example.com" });
+      expect(await adminCall(`/admin/accounts/${acc.accountId}/anonymize`, { body: { note: "khách yêu cầu" } })).toMatchObject({ status: 200, body: { changed: true } });
+      expect(await auditCount("account_anonymized")).toBe(1);
+      const res = await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } });
+      expect(res.body).toEqual({ activations: 0, licenses: 1, orders: 1 });
+      expect(await auditCount("account_anonymized")).toBe(1);
+      // Mốc xóa của lần ẩn danh đầu không bị dời.
+      expect((await env.DB.prepare("SELECT deleted_at FROM accounts WHERE id = ?").bind(acc.accountId).first())?.deleted_at).toBe(T0);
+    });
+
+    it("tài khoản đã xóa (email NULL) không bị tính lại; ghi nhật ký account_anonymized hỏng thì không xóa gì", async () => {
+      const { w, adminCall } = makeAdmin();
+      const acc = await makeAccount(w, await sha256Hex("d1"), { email: "erase@example.com" });
+      await w.buy({ email: "erase@example.com" });
+      const res = await withFailingInsert("audit_log", "NEW.action = 'account_anonymized'", () =>
+        adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } }),
+      );
+      expect(res.status).toBe(500);
+      expect(await env.DB.prepare("SELECT email, deleted_at FROM accounts WHERE id = ?").bind(acc.accountId).first()).toEqual({ email: "erase@example.com", deleted_at: null });
+      expect(await env.DB.prepare("SELECT email FROM licenses").first()).toEqual({ email: "erase@example.com" });
+      // Làm lại bình thường rồi làm lần nữa: lần hai không còn tài khoản nào.
+      expect((await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } })).body).toMatchObject({ accounts: 1 });
+      expect((await adminCall("/admin/erase", { body: { email: "erase@example.com", note: "yêu cầu xóa" } })).body).toEqual({ activations: 0, licenses: 0, orders: 0 });
+      expect(await auditCount("account_anonymized")).toBe(1);
+    });
   });
 });
 

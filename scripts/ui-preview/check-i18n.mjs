@@ -19,6 +19,10 @@
 // SRT, Lịch sử chỉ đọc, nhóm Cài đặt "Người nói" (macOS, chưa cấp
 // quyền, Windows, tắt, đang tải), ghi chú ở Cài đặt › Model, thanh phụ đề có tên và vạch màu, dòng mời cấp quyền (bấm thật, không đè
 // lời nhắc), dòng đang nói nối tiếp; bản không có tính năng thì không có gì mới.
+// Đăng nhập Google (spec 2026-11-05-dang-nhap-google §6.3): màn đăng nhập thay thân của Màn hình chính, Gõ dịch, Giọng đọc (sáng, tối),
+// không chặn Lịch sử, Cài đặt hay phiên đang dịch; ô đồng ý bắt buộc, bấm thật: đăng nhập gửi đúng ngôn ngữ, đang chờ có câu chờ và
+// nút Hủy, Hủy thì không báo lỗi, lỗi hiện đúng câu theo mã, liên kết Nâng cấp và Hỗ trợ mở đúng màn; bước Đăng nhập của onboarding
+// (cổng đóng khóa nút Tiếp, đăng nhập xong thì Tiếp đăng ký dùng thử; qua Điều khoản không còn đăng ký dùng thử).
 // Ảnh PNG cho người kiểm xem ở
 // target/ui-preview/ui-ja-zh-ko/ (không commit). Điều kiện nào sai
 // thì in ra và thoát mã 1; không mở được trang thì báo ngay và thoát mã 1. Chrome luôn đóng (xóa thư mục hồ sơ tạm) khi xong.
@@ -359,6 +363,8 @@ const reportsConsent = (optOut) => async (page, ck) => {
     `(() => { const c = ${reportSettingCalls}; return c.length === 1 && c[0].args.patch.sendErrorReports === ${!optOut}; })()`,
     `bấm Tiếp lưu đúng một lần sendErrorReports = ${!optOut}`,
   );
+  // Spec 2026-11-05-dang-nhap-google §6.3: dùng thử đăng ký sau bước Đăng nhập, không còn ngay sau Điều khoản.
+  await ck(`window.__ipcCalls.every((c) => c.cmd !== "start_trial")`, "qua Điều khoản không gọi start_trial");
 };
 
 // Cài đặt › Quyền riêng tư: bấm công tắc báo cáo lỗi thì lưu giá trị mới; bấm lần nữa thì lưu lại giá trị cũ.
@@ -603,6 +609,350 @@ const openSpeakerMenu = (chip, { noScrollIntoView = false, nearBottom = false, m
   }
 })()`;
 
+// ---------------------------------------------------------------- đăng nhập Google (spec 2026-11-05-dang-nhap-google §6.3)
+
+const GATE = ".login-gate";
+const SIGN_IN = ".login-gate button.google-signin";
+const gateShown = (on) => [`${on ? "!!" : "!"}document.querySelector(${JSON.stringify(GATE)})`, on ? "có màn đăng nhập" : "không có màn đăng nhập"];
+const signInDisabled = (on) => [`document.querySelector(${JSON.stringify(SIGN_IN)})?.disabled === ${on}`, `nút đăng nhập ${on ? "bị khóa" : "bấm được"}`];
+
+// Màn đăng nhập ở trạng thái đầu: chữ đúng ngôn ngữ, ô đồng ý bỏ tick, nút khóa; `links`: có hai liên kết Nâng cấp, Hỗ trợ.
+const gateForm = (lang, links) => [
+  gateShown(true),
+  [
+    inPage(
+      lang,
+      `const g = document.querySelector(${JSON.stringify(GATE)}); return g.textContent.includes(t("account.gate.body")) && g.querySelector(".consent").textContent === t("account.gate.consent") && document.querySelector(${JSON.stringify(SIGN_IN)}).textContent === t("account.gate.signIn");`,
+    ),
+    "chữ account.gate.body, account.gate.consent, nút account.gate.signIn",
+  ],
+  [`document.querySelector(".login-gate .consent input").checked === false`, "ô đồng ý bỏ tick sẵn"],
+  signInDisabled(true),
+  [`!document.querySelector(".login-gate [role=alert]")`, "chưa có lỗi"],
+  [
+    inPage(
+      lang,
+      links
+        ? `const b = [...document.querySelectorAll(".login-gate-links button")]; return b.length === 2 && b[0].textContent === t("account.gate.upgrade") && b[1].textContent === t("account.gate.support");`
+        : `return !document.querySelector(".login-gate-links");`,
+    ),
+    links ? "hai liên kết account.gate.upgrade, account.gate.support" : "không có liên kết Nâng cấp, Hỗ trợ",
+  ],
+];
+
+// Trong Shell: tiêu đề màn, thanh điều hướng vẫn đủ (cổng chỉ thay thân).
+const gateInShell = (lang, screen) => [
+  ...gateForm(lang, true),
+  [inPage(lang, `return document.querySelector("#login-gate-title").textContent === t("account.gate.title") && document.querySelector("main.content h1").textContent === t("nav.${screen}");`), "tiêu đề account.gate.title dưới tiêu đề màn"],
+  [`document.querySelectorAll(".nav button").length >= 8 && [...document.querySelectorAll(".nav button")].every((b) => !b.disabled)`, "thanh điều hướng đủ, bấm được"],
+];
+
+// Bấm thật: tick đồng ý thì nút bấm được; bấm thì gọi account_sign_in đúng một lần với ngôn ngữ giao diện.
+async function gateSignIn(page, ck, lang) {
+  await page.click(".login-gate .consent");
+  await ck(...signInDisabled(false));
+  await page.click(SIGN_IN);
+  await sleep(150);
+  await ck(
+    `(() => { const c = ${callsOf("account_sign_in")}; return c.length === 1 && c[0].args.lang === ${JSON.stringify(lang)}; })()`,
+    `bấm đăng nhập gọi đúng một account_sign_in với lang ${lang}`,
+  );
+}
+
+// Đang chờ trình duyệt: câu chờ (role=status) và nút Hủy, không còn nút đăng nhập.
+const gateWaiting = (lang) => [
+  [
+    inPage(
+      lang,
+      `const w = document.querySelector(".login-gate-waiting"); return !!w && w.getAttribute("role") === "status" && w.querySelector("p").textContent === t("account.gate.waiting") && w.querySelector("button").textContent === t("account.gate.cancel");`,
+    ),
+    "đang chờ: câu account.gate.waiting và nút account.gate.cancel",
+  ],
+  [`!document.querySelector(${JSON.stringify(SIGN_IN)})`, "đang chờ: không còn nút đăng nhập"],
+];
+
+async function gateWait(page, ck, lang) {
+  await gateSignIn(page, ck, lang);
+  for (const check of gateWaiting(lang)) await ck(...check);
+}
+
+// Hủy: gọi account_cancel_sign_in, về lại nút đăng nhập, không hiện lỗi nào.
+async function gateCancel(page, ck, lang) {
+  await gateWait(page, ck, lang);
+  await page.click(".login-gate-waiting button");
+  await sleep(300);
+  await ck(`${callsOf("account_cancel_sign_in")}.length === 1`, "Hủy gọi đúng một account_cancel_sign_in");
+  await ck(`!document.querySelector(".login-gate-waiting") && !!document.querySelector(${JSON.stringify(SIGN_IN)})`, "Hủy xong: hết câu chờ, nút đăng nhập trở lại");
+  await ck(`!document.querySelector(".login-gate [role=alert]") && !document.querySelector(".notice.error")`, "Hủy không phải lỗi: không hiện lỗi nào");
+}
+
+// Lỗi theo mã (`signin=<mã>` của IPC giả): câu đúng mã, nút đăng nhập trở lại.
+const gateError = (code) => async (page, ck, lang) => {
+  await gateSignIn(page, ck, lang);
+  await sleep(800);
+  await ck(
+    inPage(lang, `const n = document.querySelector(".login-gate .note.error"); return !!n && n.getAttribute("role") === "alert" && n.textContent === t("error.${code}");`),
+    `lỗi hiện đúng câu error.${code}`,
+  );
+  await ck(...signInDisabled(false));
+};
+
+// Đăng nhập xong (`signin=ok`): cổng mở, thân Màn hình chính trở lại.
+async function gateSuccess(page, ck, lang) {
+  await gateSignIn(page, ck, lang);
+  await sleep(900);
+  await ck(...gateShown(false));
+  await ck(`!!document.querySelector("main.content .page > :not(h1):not(.notice)")`, "thân Màn hình chính hiện lại");
+}
+
+// Liên kết Nâng cấp / Hỗ trợ mở đúng màn (mua gói không cần đăng nhập).
+const gateLink = (index, screen) => async (page, ck, lang) => {
+  await page.click(`.login-gate-links button:nth-child(${index + 1})`);
+  await sleep(500);
+  await ck(
+    inPage(lang, `const b = [...document.querySelectorAll(".nav button")].find((x) => x.getAttribute("aria-current") === "page"); return !!b && b.textContent === t("nav.${screen}");`),
+    `bấm liên kết thì sang màn ${screen}`,
+  );
+  await ck(...gateShown(false));
+};
+
+// Bước Đăng nhập của onboarding, cổng đóng: đăng nhập xong thì báo email, Tiếp bấm được và đăng ký dùng thử đúng một lần.
+async function onboardingSignIn(page, ck, lang) {
+  await ck(`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === true`, "cổng đóng, chưa đăng nhập: chưa bấm được Tiếp");
+  await gateSignIn(page, ck, lang);
+  await sleep(900);
+  await ck(
+    inPage(lang, `return document.querySelector(".onboarding-body").textContent === t("onboarding.account.signedIn", { email: "an.nguyen@example.com" });`),
+    "đăng nhập xong: báo onboarding.account.signedIn",
+  );
+  await ck(`${callsOf("start_trial")}.length === 0`, "chưa bấm Tiếp: chưa đăng ký dùng thử");
+  await ck(`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === false`, "đăng nhập xong: bấm được Tiếp");
+  await page.click(NEXT_BUTTON);
+  await sleep(300);
+  await ck(`${callsOf("start_trial")}.length === 1`, "bấm Tiếp sau khi đăng nhập: đăng ký dùng thử đúng một lần");
+}
+
+// Bước Đăng nhập, cổng mở (gói trả phí, server tắt đăng nhập): báo chưa cần đăng nhập, Tiếp bấm được và đăng ký dùng thử.
+async function onboardingSkip(page, ck) {
+  await page.click(NEXT_BUTTON);
+  await sleep(300);
+  await ck(`${callsOf("start_trial")}.length === 1`, "cổng mở: bấm Tiếp đăng ký dùng thử đúng một lần");
+}
+
+// Bước Đăng nhập, cổng đóng, chưa đăng nhập (Fix round 1 của Task 13): nút "Để sau" và lời giải thích; nút Quay lại bấm được.
+const LATER = ".account-later button";
+const onboardingLater = (lang) => [
+  [
+    inPage(
+      lang,
+      `const b = document.querySelector(${JSON.stringify(LATER)}); return !!b && !b.disabled && b.textContent === t("onboarding.account.later") && document.querySelector("#account-later-hint").textContent === t("onboarding.account.laterHint") && b.getAttribute("aria-describedby") === "account-later-hint";`,
+    ),
+    "nút onboarding.account.later bấm được, kèm onboarding.account.laterHint",
+  ],
+  [`document.querySelector(".onboarding-actions button:not(.primary)").disabled === false`, "bước Đăng nhập: nút Quay lại bấm được"],
+];
+
+// Bấm thật "Để sau": sang bước sau, gọi start_trial một lần (phía Rust từ chối khi cổng đóng); quay lại thì bước Đăng nhập vẫn là màn
+// đăng nhập và Tiếp bấm được (đã Để sau).
+async function onboardingDefer(page, ck, lang) {
+  await page.click(LATER);
+  await sleep(300);
+  await ck(inPage(lang, `return document.querySelector("#onboarding-title").textContent === t("onboarding.model.title");`), "Để sau: sang bước chọn model");
+  await ck(`${callsOf("start_trial")}.length === 1`, "Để sau: gọi start_trial đúng một lần khi rời bước");
+  await ck(`${callsOf("account_sign_in")}.length === 0`, "Để sau: không gọi đăng nhập");
+  await page.click(".onboarding-actions button:not(.primary)");
+  await sleep(300);
+  await ck(...gateShown(true));
+  await ck(`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === false`, "quay lại bước Đăng nhập: Tiếp bấm được (đã Để sau)");
+}
+
+// ---------------------------------------------------------------- Cài đặt › Tài khoản và banner liên kết (spec 2026-11-05-dang-nhap-google §6.3)
+
+const PANEL = "#settings-panel";
+const LINK = ".link-account";
+// Nút theo nhãn (khóa i18n) trong `root`; trả biểu thức JS (cần `t` của `inPage`).
+const buttonByKey = (root, key) => `[...document.querySelectorAll(${JSON.stringify(root + " button")})].find((b) => b.textContent === t(${JSON.stringify(key)}))`;
+
+// Cài đặt › Tài khoản, đã đăng nhập: tab đang chọn, email, Đăng xuất (luôn bấm được), Xóa tài khoản (khóa khi đang dịch), lời giải thích
+// nói rõ xóa gì, không có khối liên kết.
+const accountSettingsSignedIn = (lang, running) => [
+  [inPage(lang, `return document.querySelector('[role=tab][aria-selected=true]').textContent === t("settings.group.account");`), "tab Tài khoản đang chọn"],
+  [
+    inPage(
+      lang,
+      `const p = document.querySelector(${JSON.stringify(PANEL)}); return p.textContent.includes("an.nguyen@example.com") && p.textContent.includes(t("account.settings.email")) && p.textContent.includes(t("account.settings.signOut.hint")) && p.textContent.includes(t("account.settings.delete.hint")) && p.textContent.includes(t("account.settings.delete.hint.license"));`,
+    ),
+    "email, account.settings.email, ba lời giải thích (đăng xuất, xóa, email mua gói)",
+  ],
+  [inPage(lang, `const b = ${buttonByKey(PANEL, "account.settings.signOut")}; return !!b && b.disabled === false;`), "nút Đăng xuất bấm được (kể cả khi đang dịch)"],
+  [inPage(lang, `const b = ${buttonByKey(PANEL, "account.settings.delete")}; return !!b && b.disabled === ${running};`), running ? "đang dịch: nút Xóa tài khoản bị khóa" : "nút Xóa tài khoản bấm được"],
+  [inPage(lang, `return document.querySelector(${JSON.stringify(PANEL)}).textContent.includes(t("account.settings.translating")) === ${running};`), running ? "đang dịch: có câu giải thích account.settings.translating" : "không có câu đang dịch"],
+  [`!document.querySelector(${JSON.stringify(PANEL + " .confirm")}) && !document.querySelector(${JSON.stringify(LINK)})`, "chưa có hộp xác nhận, không có khối liên kết"],
+];
+
+// Chưa đăng nhập: một dòng báo; máy gói trả phí có thêm khối liên kết (không có nút Để sau), không có Đăng xuất hay Xóa tài khoản.
+const accountSettingsOut = (lang, paid) => [
+  [inPage(lang, `return document.querySelector(${JSON.stringify(PANEL)}).textContent.includes(t("account.settings.notSignedIn"));`), "câu account.settings.notSignedIn"],
+  [inPage(lang, `return !${buttonByKey(PANEL, "account.settings.signOut")} && !${buttonByKey(PANEL, "account.settings.delete")};`), "không có Đăng xuất, Xóa tài khoản"],
+  paid
+    ? [inPage(lang, `const b = document.querySelector(${JSON.stringify(LINK)}); return !!b && b.textContent.includes(t("account.link.body")) && !${buttonByKey(LINK, "account.link.later")} && !!${buttonByKey(LINK, "account.link.button")};`), "khối liên kết: lời mời, nút liên kết, không có Để sau"]
+    : [`!document.querySelector(${JSON.stringify(LINK)})`, "máy Free: không có khối liên kết"],
+];
+
+const askDeleteStep = async (page, ck, lang) => {
+  await page.eval(inPage(lang, `${buttonByKey(PANEL, "account.settings.delete")}.click();`));
+  await sleep(200);
+  await ck(
+    inPage(lang, `const c = document.querySelector(${JSON.stringify(PANEL + " .confirm")}); return !!c && c.getAttribute("role") === "alert" && c.querySelector("span").textContent === t("account.settings.delete.ask") && c.querySelector("button.danger").textContent === t("account.settings.delete.confirm");`),
+    "hộp xác nhận: câu account.settings.delete.ask, nút account.settings.delete.confirm",
+  );
+  await ck(`${callsOf("account_delete")}.length === 0`, "mới hỏi: chưa gọi account_delete");
+  // Nhãn nút xác nhận trùng nhãn nút mở đầu: chỉ tính nút nằm ngoài hộp xác nhận.
+  await ck(
+    inPage(lang, `return ![...document.querySelectorAll(${JSON.stringify(PANEL + " button")})].some((b) => !b.closest(".confirm") && b.textContent === t("account.settings.delete"));`),
+    "đang hỏi: nút Xóa tài khoản mở đầu ẩn đi",
+  );
+};
+async function accountAskDelete(page, ck, lang) {
+  await askDeleteStep(page, ck, lang);
+}
+async function accountCancelDelete(page, ck, lang) {
+  await askDeleteStep(page, ck, lang);
+  await page.eval(`document.querySelector(${JSON.stringify(PANEL + " .confirm button:not(.danger)")}).click()`);
+  await sleep(200);
+  await ck(`!document.querySelector(${JSON.stringify(PANEL + " .confirm")})`, "Hủy: hộp xác nhận đóng");
+  await ck(`${callsOf("account_delete")}.length === 0`, "Hủy: không gọi account_delete");
+  await ck(`document.querySelector(${JSON.stringify(PANEL)}).textContent.includes("an.nguyen@example.com")`, "Hủy: vẫn đăng nhập");
+}
+async function accountConfirmDelete(page, ck, lang) {
+  await askDeleteStep(page, ck, lang);
+  await page.eval(`document.querySelector(${JSON.stringify(PANEL + " .confirm button.danger")}).click()`);
+  await sleep(900);
+  await ck(`${callsOf("account_delete")}.length === 1`, "xác nhận: gọi đúng một account_delete");
+  for (const c of accountSettingsOut(lang, true)) await ck(...c);
+}
+const accountDeleteError = (key) => async (page, ck, lang) => {
+  await askDeleteStep(page, ck, lang);
+  await page.eval(`document.querySelector(${JSON.stringify(PANEL + " .confirm button.danger")}).click()`);
+  await sleep(900);
+  await ck(`${callsOf("account_delete")}.length === 1`, "gọi account_delete một lần");
+  await ck(
+    inPage(lang, `const n = document.querySelector(${JSON.stringify(PANEL + " .note.error")}); return !!n && n.getAttribute("role") === "alert" && n.textContent === t("${key}");`),
+    `xóa lỗi: hiện đúng câu ${key}`,
+  );
+  await ck(`document.querySelector(${JSON.stringify(PANEL)}).textContent.includes("an.nguyen@example.com")`, "xóa lỗi: vẫn đăng nhập, vẫn thấy email");
+  await ck(`!document.querySelector(${JSON.stringify(PANEL + " .confirm")})`, "xóa lỗi: hộp xác nhận đóng");
+  await ck(inPage(lang, `const b = ${buttonByKey(PANEL, "account.settings.delete")}; return !!b && b.disabled === false;`), "xóa lỗi: thử lại được");
+};
+async function accountSignOut(page, ck, lang) {
+  await page.eval(inPage(lang, `${buttonByKey(PANEL, "account.settings.signOut")}.click();`));
+  await sleep(700);
+  await ck(`${callsOf("account_sign_out")}.length === 1 && ${callsOf("account_delete")}.length === 0`, "Đăng xuất gọi đúng một account_sign_out, không gọi account_delete");
+  for (const c of accountSettingsOut(lang, true)) await ck(...c);
+}
+async function accountSignOutRunning(page, ck, lang) {
+  await accountSignOut(page, ck, lang);
+}
+const accountSignOutError = (key) => async (page, ck, lang) => {
+  await page.eval(inPage(lang, `${buttonByKey(PANEL, "account.settings.signOut")}.click();`));
+  await sleep(700);
+  await ck(
+    inPage(lang, `const n = document.querySelector(${JSON.stringify(PANEL + " .note.error")}); return !!n && n.getAttribute("role") === "alert" && n.textContent === t("${key}");`),
+    `đăng xuất lỗi: hiện đúng câu ${key}`,
+  );
+  await ck(`document.querySelector(${JSON.stringify(PANEL)}).textContent.includes("an.nguyen@example.com")`, "đăng xuất lỗi: vẫn đăng nhập");
+};
+
+// Khối liên kết (banner ở Màn hình chính, hay trong Cài đặt): chữ đúng, ô đồng ý bỏ tick, nút Liên kết khóa tới khi tick.
+const linkBlock = (lang, withLater) => [
+  [
+    inPage(
+      lang,
+      `const b = document.querySelector(${JSON.stringify(LINK)}); return !!b && b.querySelector("p").textContent === t("account.link.body") && b.querySelector(".consent").textContent === t("account.gate.consent") && !!${buttonByKey(LINK, "account.link.button")};`,
+    ),
+    "khối liên kết: account.link.body, account.gate.consent, nút account.link.button",
+  ],
+  [`document.querySelector(${JSON.stringify(LINK + " .consent input")}).checked === false`, "ô đồng ý bỏ tick sẵn"],
+  [inPage(lang, `return ${buttonByKey(LINK, "account.link.button")}.disabled === true;`), "chưa tick: nút Liên kết bị khóa"],
+  withLater
+    ? [inPage(lang, `const b = ${buttonByKey(LINK, "account.link.later")}; return !!b && b.disabled === false;`), "nút Để sau bấm được"]
+    : [inPage(lang, `return !${buttonByKey(LINK, "account.link.later")};`), "không có nút Để sau"],
+];
+
+// Banner ở Màn hình chính: nằm sau thẻ chính, trong luồng bình thường (không phủ, không cố định), nút Bắt đầu/Dừng không bị che.
+const bannerInFlow = (lang, cover = true) => [
+  ...linkBlock(lang, true),
+  [`getComputedStyle(document.querySelector(${JSON.stringify(LINK)})).position === "static"`, "banner trong luồng thường (position static)"],
+  [`(document.querySelector(".hero").compareDocumentPosition(document.querySelector(${JSON.stringify(LINK)})) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0`, "banner nằm sau thẻ Bắt đầu/Dừng"],
+  ...(cover
+    ? [[`(() => { const b = document.querySelector(".hero button.lg"); const r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!e && b.contains(e); })()`, "nút Bắt đầu/Dừng không bị che"]]
+    : []),
+  [`!document.querySelector("[role=dialog], [aria-modal=true], .modal")`, "không có hộp thoại nào chặn màn hình"],
+];
+const noBanner = [[`!document.querySelector(${JSON.stringify(LINK)})`, "không có banner liên kết"]];
+const scrollToBanner = `document.querySelector(${JSON.stringify(LINK)})?.scrollIntoView({ block: "end" })`;
+
+async function linkTick(page, ck, lang) {
+  await page.click(LINK + " .consent");
+  await ck(inPage(lang, `return ${buttonByKey(LINK, "account.link.button")}.disabled === false;`), "tick đồng ý: nút Liên kết bấm được");
+}
+// Bấm Liên kết (sau khi tick): gọi account_sign_in đúng một lần với ngôn ngữ giao diện.
+async function linkSignIn(page, ck, lang) {
+  await linkTick(page, ck, lang);
+  await page.eval(inPage(lang, `${buttonByKey(LINK, "account.link.button")}.click();`));
+  await sleep(150);
+  await ck(
+    `(() => { const c = ${callsOf("account_sign_in")}; return c.length === 1 && c[0].args.lang === ${JSON.stringify(lang)}; })()`,
+    `bấm Liên kết gọi đúng một account_sign_in với lang ${lang}`,
+  );
+}
+async function linkWait(page, ck, lang) {
+  await linkSignIn(page, ck, lang);
+  await ck(
+    inPage(lang, `const w = document.querySelector(".link-account-waiting"); return !!w && w.getAttribute("role") === "status" && w.querySelector("p").textContent === t("account.gate.waiting") && w.querySelector("button").textContent === t("account.gate.cancel") && !${buttonByKey(LINK, "account.link.button")} && !${buttonByKey(LINK, "account.link.later")};`),
+    "đang chờ: câu account.gate.waiting và nút Hủy, không còn nút Liên kết và Để sau",
+  );
+}
+async function linkCancel(page, ck, lang) {
+  await linkWait(page, ck, lang);
+  await page.eval(`document.querySelector(".link-account-waiting button").click()`);
+  await sleep(400);
+  await ck(`${callsOf("account_cancel_sign_in")}.length === 1`, "Hủy gọi đúng một account_cancel_sign_in");
+  await ck(inPage(lang, `return !document.querySelector(".link-account-waiting") && !!${buttonByKey(LINK, "account.link.button")};`), "Hủy xong: nút Liên kết trở lại");
+  await ck(`!document.querySelector(".link-account [role=alert]")`, "Hủy không phải lỗi: không hiện lỗi");
+}
+async function linkSuccess(page, ck) {
+  await sleep(900);
+  await ck(`!document.querySelector(${JSON.stringify(LINK)})`, "liên kết xong: banner biến mất");
+  await ck(`!!document.querySelector(".hero button.lg")`, "Màn hình chính vẫn nguyên");
+}
+const linkError = (code) => async (page, ck, lang) => {
+  await linkSignIn(page, ck, lang);
+  await sleep(900);
+  await ck(
+    inPage(lang, `const n = document.querySelector(".link-account .note.error"); return !!n && n.getAttribute("role") === "alert" && n.textContent === t("error.${code}");`),
+    `lỗi hiện đúng câu error.${code}`,
+  );
+  await ck(inPage(lang, `const b = ${buttonByKey(LINK, "account.link.later")}; return !!b && b.disabled === false;`), "lỗi không khóa nút Để sau (không chặn gì)");
+};
+// Để sau: banner biến mất, vị trí nút Bắt đầu/Dừng không đổi, không gọi account_* và không lưu cài đặt.
+async function linkLater(page, ck, lang) {
+  const before = await page.eval(`(() => { const r = document.querySelector(".hero button.lg").getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join(","); })()`);
+  await page.eval(inPage(lang, `${buttonByKey(LINK, "account.link.later")}.click();`));
+  await sleep(300);
+  await ck(`!document.querySelector(${JSON.stringify(LINK)})`, "Để sau: banner biến mất");
+  await ck(`window.__ipcCalls.filter((c) => c.cmd.startsWith("account_") || c.cmd === "update_settings").length === 0`, "Để sau: không gọi account_* và không lưu cài đặt");
+  await ck(`(() => { const r = document.querySelector(".hero button.lg").getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join(",") === ${JSON.stringify(before)}; })()`, "Để sau: nút Bắt đầu/Dừng không nhúc nhích");
+}
+// Đang dịch: tick rồi vẫn khóa cả hai nút; nút Dừng vẫn bấm được và gọi toggle_session (banner không chặn gì).
+async function linkRunning(page, ck, lang) {
+  await page.click(LINK + " .consent");
+  await ck(inPage(lang, `return ${buttonByKey(LINK, "account.link.button")}.disabled === true && ${buttonByKey(LINK, "account.link.later")}.disabled === true;`), "đang dịch: đã tick vẫn khóa cả Liên kết lẫn Để sau");
+  await page.eval(`document.querySelector(".hero button.lg").click()`);
+  await sleep(500);
+  await ck(`${callsOf("toggle_session")}.length === 1`, "đang dịch: bấm Dừng vẫn gọi toggle_session");
+}
+
 // [tên, tham số URL, tùy chọn { prepare: biểu thức chạy trước khi kiểm, wait: ms, interact: async (page, ck, lang) bấm thật }]
 const SCREENS = [
   ["home", "screen=home"],
@@ -758,7 +1108,62 @@ const SCREENS = [
   // Bước điều khoản, bấm thật (spec 2026-10-17 §5): giữ ô báo cáo lỗi tích sẵn rồi Tiếp (lưu true), hay bỏ tích rồi Tiếp (lưu false).
   ["onboarding-2-reports-on", "onboarding=2", { interact: reportsConsent(false) }],
   ["onboarding-2-reports-off", "onboarding=2", { interact: reportsConsent(true) }],
-  ...Array.from({ length: 7 }, (_, i) => [`onboarding-${i + 3}`, `onboarding=${i + 3}${i === 1 ? "&download=1" : ""}`]),
+  // Bước 3 là Đăng nhập (spec 2026-11-05-dang-nhap-google §6.3), bước 5 là tải model.
+  ...Array.from({ length: 8 }, (_, i) => [`onboarding-${i + 3}`, `onboarding=${i + 3}${i === 2 ? "&download=1" : ""}`]),
+  // Bước Đăng nhập, cổng đóng: màn đăng nhập không có liên kết Nâng cấp, Hỗ trợ; bấm thật đăng nhập rồi Tiếp. Cổng mở: Tiếp.
+  ["onboarding-3-gate", "onboarding=3&account=gate"],
+  ["onboarding-3-gate-dark", "onboarding=3&account=gate&theme=dark"],
+  ["onboarding-3-signin", "onboarding=3&account=gate", { interact: onboardingSignIn }],
+  ["onboarding-3-skip", "onboarding=3", { interact: onboardingSkip }],
+  ["onboarding-3-later", "onboarding=3&account=gate", { interact: onboardingDefer }],
+  // Màn đăng nhập (spec 2026-11-05-dang-nhap-google §6.3).
+  ["login-gate", "screen=home&account=gate"],
+  ["login-gate-dark", "screen=home&account=gate&theme=dark"],
+  ["login-gate-compose", "screen=compose&account=gate"],
+  ["login-gate-voice", "screen=voice&platform=windows&account=gate"],
+  ["login-gate-history", "screen=history&account=gate"],
+  ["login-gate-settings", "screen=settings&group=general&account=gate"],
+  ["login-gate-running", "screen=home&account=gate&session=running"],
+  ["login-gate-waiting", "screen=home&account=gate&signin=wait", { interact: gateWait }],
+  ["login-gate-waiting-dark", "screen=home&account=gate&signin=wait&theme=dark", { interact: gateWait }],
+  ["login-gate-cancel", "screen=home&account=gate&signin=wait", { interact: gateCancel }],
+  ["login-gate-error", "screen=home&account=gate&signin=accountNetwork", { interact: gateError("accountNetwork") }],
+  ["login-gate-error-denied", "screen=home&account=gate&signin=accountDenied", { interact: gateError("accountDenied") }],
+  ["login-gate-error-dark", "screen=home&account=gate&signin=accountStorage&theme=dark", { interact: gateError("accountStorage") }],
+  ["login-gate-success", "screen=home&account=gate&signin=ok", { interact: gateSuccess }],
+  ["login-gate-upgrade", "screen=home&account=gate", { interact: gateLink(0, "upgrade") }],
+  ["login-gate-support", "screen=home&account=gate", { interact: gateLink(1, "support") }],
+  // Cài đặt › Tài khoản (spec 2026-11-05-dang-nhap-google §6.3).
+  ["account-settings", "screen=settings&group=account&account=signedIn&plan=monthly"],
+  ["account-settings-dark", "screen=settings&group=account&account=signedIn&plan=monthly&theme=dark"],
+  ["account-settings-running", "screen=settings&group=account&account=signedIn&plan=monthly&session=running"],
+  ["account-settings-out", "screen=settings&group=account&plan=monthly"],
+  ["account-settings-out-free", "screen=settings&group=account&plan=free"],
+  ["account-settings-ask", "screen=settings&group=account&account=signedIn&plan=monthly", { interact: accountAskDelete }],
+  ["account-settings-ask-dark", "screen=settings&group=account&account=signedIn&plan=monthly&theme=dark", { interact: accountAskDelete }],
+  ["account-settings-cancel", "screen=settings&group=account&account=signedIn&plan=monthly", { interact: accountCancelDelete }],
+  ["account-settings-delete", "screen=settings&group=account&account=signedIn&plan=monthly", { interact: accountConfirmDelete }],
+  ["account-settings-delete-error", "screen=settings&group=account&account=signedIn&plan=monthly&accountfail=accountNetwork", { interact: accountDeleteError("error.accountNetwork") }],
+  ["account-settings-delete-error-dark", "screen=settings&group=account&account=signedIn&plan=monthly&accountfail=accountUnavailable&theme=dark", { interact: accountDeleteError("account.settings.error.deleteFailed") }],
+  ["account-settings-signout", "screen=settings&group=account&account=signedIn&plan=monthly", { interact: accountSignOut }],
+  ["account-settings-signout-running", "screen=settings&group=account&account=signedIn&plan=monthly&session=running", { interact: accountSignOutRunning }],
+  ["account-settings-signout-error", "screen=settings&group=account&account=signedIn&plan=monthly&accountfail=accountStorage", { interact: accountSignOutError("account.settings.error.signOutStorage") }],
+  ["account-settings-link", "screen=settings&group=account&plan=monthly", { interact: linkSignIn }],
+  // Banner liên kết ở Màn hình chính (máy gói trả phí chưa đăng nhập); cuộn tới cuối để ảnh chụp thấy banner.
+  ["link-banner", "screen=home&plan=monthly", { prepare: scrollToBanner }],
+  ["link-banner-dark", "screen=home&plan=monthly&theme=dark", { prepare: scrollToBanner }],
+  ["link-banner-top", "screen=home&plan=monthly"],
+  ["link-banner-running", "screen=home&plan=monthly&session=running", { prepare: scrollToBanner, interact: linkRunning }],
+  ["link-banner-signedin", "screen=home&plan=monthly&account=signedIn"],
+  ["link-banner-free", "screen=home&plan=free"],
+  ["link-banner-gate", "screen=home&plan=free&account=gate"],
+  ["link-banner-wait", "screen=home&plan=monthly&signin=wait", { prepare: scrollToBanner, interact: linkWait }],
+  ["link-banner-cancel", "screen=home&plan=monthly&signin=wait", { prepare: scrollToBanner, interact: linkCancel }],
+  ["link-banner-error", "screen=home&plan=monthly&signin=accountUnavailable", { prepare: scrollToBanner, interact: linkError("accountUnavailable") }],
+  ["link-banner-error-dark", "screen=home&plan=monthly&signin=accountNetwork&theme=dark", { prepare: scrollToBanner, interact: linkError("accountNetwork") }],
+  ["link-banner-success", "screen=home&plan=monthly&signin=ok", { prepare: scrollToBanner, interact: async (page, ck, lang) => { await linkSignIn(page, ck, lang); await linkSuccess(page, ck); } }],
+  // Không cuộn trước: so vị trí nút Bắt đầu/Dừng trước và sau khi banner biến mất.
+  ["link-banner-later", "screen=home&plan=monthly", { interact: linkLater }],
 ];
 // Ô soạn Gõ dịch (compose.html): [tên, tham số URL, điều kiện riêng]. Trang tự gõ chữ mẫu (trừ `empty`) rồi chờ dịch như thật,
 // nên chờ thêm trước khi kiểm.
@@ -905,6 +1310,39 @@ const mergeFits = (lang) => [
   ...menuFits(lang),
 ];
 const EXTRA = {
+  "account-settings": (lang) => accountSettingsSignedIn(lang, false),
+  "account-settings-dark": (lang) => [...accountSettingsSignedIn(lang, false), [`document.documentElement.dataset.theme === "dark"`, "giao diện tối"]],
+  "account-settings-running": (lang) => accountSettingsSignedIn(lang, true),
+  "account-settings-out": (lang) => [...accountSettingsOut(lang, true), ...linkBlock(lang, false)],
+  "account-settings-out-free": (lang) => accountSettingsOut(lang, false),
+  "account-settings-link": (lang) => accountSettingsOut(lang, true),
+  "link-banner": (lang) => bannerInFlow(lang, false),
+  "link-banner-dark": (lang) => [...bannerInFlow(lang, false), [`document.documentElement.dataset.theme === "dark"`, "giao diện tối"]],
+  "link-banner-top": (lang) => bannerInFlow(lang),
+  "link-banner-running": () => [[`!!document.querySelector(${JSON.stringify(LINK)})`, "máy đang dịch vẫn thấy banner (không chặn, chỉ khóa nút)"]],
+  "link-banner-signedin": () => noBanner,
+  "link-banner-free": () => noBanner,
+  "link-banner-gate": () => [...noBanner, gateShown(true)],
+  "login-gate": (lang) => gateInShell(lang, "home"),
+  "login-gate-dark": (lang) => [...gateInShell(lang, "home"), [`document.documentElement.dataset.theme === "dark"`, "giao diện tối"]],
+  "login-gate-compose": (lang) => gateInShell(lang, "compose"),
+  "login-gate-voice": (lang) => gateInShell(lang, "voice"),
+  "login-gate-history": () => [gateShown(false)],
+  "login-gate-settings": () => [gateShown(false), has("#ui-language", "Cài đặt › Chung vẫn dùng được")],
+  "login-gate-running": () => [gateShown(false)],
+  "onboarding-3": (lang) => [
+    [inPage(lang, `return document.querySelector(".onboarding-body").textContent === t("onboarding.account.notNeeded") && document.querySelector("#onboarding-title").textContent === t("onboarding.account.title");`), "cổng mở: tiêu đề onboarding.account.title, câu onboarding.account.notNeeded"],
+    [`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === false`, "cổng mở: bấm được Tiếp"],
+  ],
+  "onboarding-3-gate": (lang) => [
+    ...gateForm(lang, false),
+    [`!document.querySelector("#login-gate-title")`, "không lặp tiêu đề (bước đã có tiêu đề riêng)"],
+    [`document.querySelector(${JSON.stringify(NEXT_BUTTON)}).disabled === true`, "cổng đóng: chưa bấm được Tiếp"],
+    ...onboardingLater(lang),
+  ],
+  "onboarding-3-gate-dark": (lang) => [...gateForm(lang, false), ...onboardingLater(lang)],
+  // Cổng mở (gói trả phí, server tắt đăng nhập): không có nút Để sau.
+  "onboarding-3-skip": () => [[`!document.querySelector(${JSON.stringify(LATER)})`, "cổng mở: không có nút Để sau"]],
   // Phân biệt người nói (kế hoạch 03).
   "transcript-speakers": () => speakerTranscript(true),
   "transcript-speakers-dark": () => speakerTranscript(true),
@@ -1171,7 +1609,7 @@ const EXTRA = {
     [
       inPage(
         lang,
-        `const b = [...document.querySelectorAll(".nav button")]; return b.length === 8 && b[5].textContent === t("nav.upgrade") && b[6].textContent === t("nav.support") && b[6].getAttribute("aria-current") === "page" && b[7].textContent === t("nav.about");`,
+        `const b = [...document.querySelectorAll(".nav button")]; const i = b.findIndex((x) => x.textContent === t("nav.support")); return i > 0 && b[i - 1].textContent === t("nav.upgrade") && b[i].getAttribute("aria-current") === "page" && b[i + 1]?.textContent === t("nav.about") && i + 2 === b.length;`,
       ),
       "mục Hỗ trợ nằm giữa Nâng cấp và Giới thiệu",
     ],
@@ -1190,7 +1628,7 @@ const EXTRA = {
   // Câu trả lời chưa xem: chấm đỏ ở mục Hỗ trợ, nhãn của nút nói có câu trả lời mới.
   "support-unread": (lang) => [
     [
-      inPage(lang, `const b = [...document.querySelectorAll(".nav button")][6]; return !!b.querySelector(".nav-dot") && b.getAttribute("aria-label") === t("support.unread");`),
+      inPage(lang, `const b = [...document.querySelectorAll(".nav button")].find((x) => x.querySelector("span")?.textContent === t("nav.support")); return !!b && !!b.querySelector(".nav-dot") && b.getAttribute("aria-label") === t("support.unread");`),
       "mục Hỗ trợ có chấm đỏ và nhãn support.unread",
     ],
   ],

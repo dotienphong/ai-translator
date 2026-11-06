@@ -2,6 +2,7 @@
 
 **Ngày:** 2026-10-07
 **Trạng thái:** Chủ dự án đã duyệt thiết kế qua hội thoại ngày 2026-10-07 (bố cục A và trang chi tiết license duyệt qua mockup).
+**Sửa ngày 2026-11-05:** thêm trang **Tài khoản** (tài khoản Google) theo spec `2026-11-05-dang-nhap-google-design.md` §7: API ở §3.2, route và thanh bên ở §4.1, §4.2.
 **Quan hệ với spec gốc:** bổ sung "Công cụ hỗ trợ" của `2026-09-29-desktop-meeting-translator-design.md` §6.8 và trả lời câu hỏi mở **P05-4** ("có cần một trang giao diện nhỏ không?") của kế hoạch 05: có. Mọi luật của Worker admin trong spec gốc giữ nguyên (Cloudflare Access, tự kiểm lại danh tính, chống CSRF, nhật ký mọi thao tác, không giữ khóa). Spec chỉ có một môi trường, production (`2026-10-04-single-production-environment-design.md`).
 
 ---
@@ -81,6 +82,7 @@ Phân trang theo con trỏ (keyset): tham số `cursor` (giá trị trả về �
 | `GET /admin/orders` | Danh sách đơn theo `order_code` giảm dần | `status`, `plan`, `from`, `to` (ngày tạo, `YYYY-MM-DD` theo GMT+7) |
 | `GET /admin/licenses` | Danh sách license theo `created_at` giảm dần, kèm số activation đang kích hoạt | `state` = `active` \| `expired` \| `revoked` \| `locked` \| `conflict`; `plan` |
 | `GET /admin/trials` | Máy dùng thử theo `started_at` giảm dần, kèm cờ `purchased` (máy có ít nhất một activation) | `state` = `active` \| `ended` |
+| `GET /admin/accounts` (thêm 2026-11-05) | Tài khoản Google theo ngày tạo, mỗi dòng: email, ngày tạo, lần đăng nhập gần nhất, số license, số máy, trạng thái dùng thử. Chi tiết `GET /admin/accounts/:id` (license đã gắn, máy, dòng `trials`; ghi `account_viewed`); thao tác `POST /admin/accounts/:id/unlink-license` (gỡ gắn license, khi app báo `409 license_linked_other_account`) và `POST /admin/accounts/:id/anonymize` (xóa/ẩn danh theo luật §5.5 của spec đăng nhập: email về NULL, gỡ liên kết, giữ `google_sub` và các mốc). `GET /admin/accounts/export.csv` xuất `email, created_at, last_login_at, plan, trial_ends_at` (ô bắt đầu bằng `=`, `+`, `-`, `@` được vô hiệu hóa để không thành công thức), ghi `accounts_exported`. Email không bao giờ vào URL hay `detail` của nhật ký. Thao tác **Ẩn danh theo email** (§4.2 `/tools`) và tra cứu theo email tìm cả `accounts.email` | `q` (một phần email, chỉ để lọc, không ghi lại), `filter` = `paid` \| `trial_active` \| `trial_ended` \| `deleted` |
 | `GET /admin/audit` | Nhật ký toàn hệ thống theo `id` giảm dần | `actor`, `action`, `from`, `to`; `include_views=1` để hiện cả các dòng xem và tra cứu (mặc định ẩn `lookup`, `list_viewed`, `queue_viewed`, `summary_viewed`, `payment_status_viewed`) |
 
 - **Che key trong danh sách:** danh sách và hàng đợi trả key dạng che (`K7Q2-…-9XMB`, 4 ký tự đầu và 4 ký tự cuối). Key đầy đủ chỉ có trong kết quả `lookup`, vốn đã ghi nhật ký.
@@ -99,7 +101,7 @@ Phân trang theo con trỏ (keyset): tham số `cursor` (giá trị trả về �
 
 ### 4.1 Bố cục (đã duyệt: phương án A)
 - Thanh trên: tên "AI Translator Admin", **ô tra cứu luôn hiện**, email người vận hành (từ `/admin/whoami`).
-- Thanh bên trái: Việc cần xử lý, Tổng quan (ghi "sắp có", không bấm được), Đơn hàng, License, Máy & dùng thử, Nhật ký, Công cụ. Trên màn hình hẹp gập thành nút ☰.
+- Thanh bên trái: Việc cần xử lý, Tổng quan (ghi "sắp có", không bấm được), Đơn hàng, License, Máy & dùng thử, Tài khoản (thêm 2026-11-05), Nhật ký, Công cụ. Trên màn hình hẹp gập thành nút ☰.
 
 ### 4.2 Route
 
@@ -113,6 +115,8 @@ Phân trang theo con trỏ (keyset): tham số `cursor` (giá trị trả về �
 | `/licenses/:id` | Chi tiết license (mockup đã duyệt): key che + nút Hiện/Chép, nhãn gói và trạng thái, email, hạn (kèm "còn N ngày"); nút **Gia hạn…**, **Gửi lại email**, **Mở khóa** (chỉ khi đang khóa), **Thu hồi…**; bảng máy với **Reset hạn mức** và **Gỡ** cho từng máy, nhãn xung đột khi từ 2 máy đang kích hoạt; các đơn liên quan; 50 dòng nhật ký |
 | `/devices/:hash` | Máy: dùng thử (bắt đầu, kết thúc, lần gọi cuối) và các license từng kích hoạt |
 | `/trials` | Danh sách máy dùng thử có bộ lọc |
+| `/accounts` (thêm 2026-11-05) | Danh sách tài khoản Google: ô tìm theo email, bộ lọc trạng thái (đã mua, đang dùng thử, hết dùng thử, đã xóa), nút **Xuất CSV** |
+| `/accounts/:id` | Chi tiết tài khoản: email, ngày tạo, lần đăng nhập gần nhất, license đã gắn (nút **Gỡ gắn**), máy và dòng dùng thử; thao tác ẩn danh (xóa email, gỡ license và máy dùng thử khỏi tài khoản, giữ mốc dùng thử) qua hộp xác nhận có lý do (§4.4) |
 | `/audit` | Nhật ký toàn hệ thống có bộ lọc và công tắc "hiện cả lượt xem" |
 | `/tools` | **Ký thử khóa dự phòng** (hiện token để kiểm bằng `scripts/verify-token.mjs`), **Xác nhận webhook PayOS** (URL), **Ẩn danh theo email** |
 

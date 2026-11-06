@@ -137,6 +137,6 @@ ${sectionHead({ eyebrow: "Pricing questions", title: "What you may want to ask b
 ${faq(PRICING_FAQ)}
 </div></section>
 
-${ctaBand({ title: "Start with the 10-day trial", text: "30 minutes a day is enough to test it on a real meeting. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/faq/", label: "Read the FAQ" } })}
+${ctaBand({ title: "Start with the 10-day trial", text: "30 minutes a day is enough to test it on a real meeting. No card needed; the trial needs you to sign in with Google.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/faq/", label: "Read the FAQ" } })}
 `,
 };

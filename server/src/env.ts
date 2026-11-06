@@ -5,6 +5,8 @@ export interface ApiEnv {
   DB: D1Database;
   /** Binding Rate Limiting cho việc hỏi tin mới của chat hỗ trợ (60 lần mỗi 60 giây mỗi cuộc chat). Thiếu thì không chặn. */
   SUPPORT_POLL_LIMITER?: RateLimit;
+  /** Binding Rate Limiting cho POST /v1/auth/poll của đăng nhập Google (spec 2026-11-05 §5.6). Thiếu thì không chặn. */
+  AUTH_POLL_LIMITER?: RateLimit;
   /** "production" (cố định trong wrangler.jsonc) | "test" (chỉ vitest.config.ts) */
   ENVIRONMENT: string;
   /** Bảng gói trả phí (src/plans.ts): hạn mức, số ngày mỗi đơn, giá theo loại tiền. Đọc bằng parsePlans. */
@@ -28,6 +30,12 @@ export interface ApiEnv {
   EMAIL_FROM: string;
   /** Địa chỉ nhận trả lời của thư gửi khách (Reply-To). Không bắt buộc. */
   EMAIL_REPLY_TO?: string;
+  /** Client ID OAuth của Google (không bí mật; spec 2026-11-05 §5.7). Thiếu (hay thiếu secret) thì đăng nhập Google tắt. */
+  GOOGLE_OAUTH_CLIENT_ID?: string;
+  /** "off" là công tắc khẩn cấp: server báo app mở cổng đăng nhập (spec 2026-11-05 §5.4b); thiếu hay giá trị khác là bình thường. */
+  LOGIN_GATE?: string;
+  /** "on" thì POST /v1/trial đòi token tài khoản cho máy chưa có dòng trong `trials` (spec 2026-11-05 §5.4); thiếu hay giá trị khác là tắt. */
+  ACCOUNT_REQUIRED?: string;
   /** "on" thì cron gửi thư nhắc gia hạn trước 3 ngày (src/reminders.ts); thiếu hay giá trị khác thì tắt. */
   EXPIRY_REMINDERS?: string;
   // Secret
@@ -37,6 +45,8 @@ export interface ApiEnv {
   CREEM_API_KEY: string;
   CREEM_WEBHOOK_SECRET: string;
   RESEND_API_KEY: string;
+  /** Client secret OAuth của Google; chỉ ở secret của Worker, không bao giờ vào app, log hay lỗi (spec 2026-11-05 §5.7). */
+  GOOGLE_OAUTH_CLIENT_SECRET?: string;
   /** JWK Ed25519 khóa riêng, có `kid` (scripts/gen-token-key.mjs), ở hai ô A và B. */
   TOKEN_SIGNING_KEY_A: string;
   TOKEN_SIGNING_KEY_B: string;

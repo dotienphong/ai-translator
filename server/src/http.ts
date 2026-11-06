@@ -35,6 +35,14 @@ export type ErrorCode =
   | "subscription_active"
   | "auto_renew_unavailable"
   | "no_subscription"
+  // Đăng nhập Google (spec 2026-11-05): đăng nhập tắt (thiếu cấu hình Google hay LOGIN_GATE=off); máy mới cần token tài khoản khi
+  // ACCOUNT_REQUIRED=on; license đã gắn tài khoản khác.
+  | "login_unavailable"
+  | "account_required"
+  | "license_linked_other_account"
+  // Web Admin, trang tài khoản (spec 2026-11-05 §7): không có tài khoản đó; license không gắn vào tài khoản đó.
+  | "account_not_found"
+  | "license_not_linked"
   | "internal";
 
 export function fail(c: Context, status: ContentfulStatusCode, error: ErrorCode, extra: Record<string, unknown> = {}) {

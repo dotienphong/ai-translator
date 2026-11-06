@@ -2801,3 +2801,78 @@ ul.points .icon {
   justify-content: flex-end;
   gap: 0.6rem;
 }
+
+/* Màn đăng nhập Google (LoginGate, spec 2026-11-05-dang-nhap-google §6.3): thẻ thay thân của Màn hình chính, Gõ dịch, Giọng đọc. */
+.login-gate {
+  max-width: 34rem;
+}
+
+.login-gate > p {
+  margin: 0 0 0.25rem;
+}
+
+.login-gate-waiting p {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+}
+
+.login-gate > .login-gate-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin: 1rem 0 0;
+  font-size: 0.93rem;
+}
+
+.login-gate-links button.link {
+  font-size: inherit;
+  text-align: start;
+}
+
+/* Nút đăng nhập: chữ, kèm biểu tượng "G" chính thức khi người vận hành đã đặt tệp ở src/assets/google/ (không tự vẽ). */
+button.google-signin {
+  gap: 0.6rem;
+  max-width: 100%;
+  white-space: normal;
+}
+
+button.google-signin img {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* Câu báo của SafeBoundary khi phần con không vẽ được. */
+.safe-boundary .note {
+  margin-top: 0;
+}
+
+/* Bước Đăng nhập của onboarding: "Để sau" cho người không đăng nhập được (Fix round 1 của Task 13). */
+.account-later {
+  max-width: 34rem;
+  margin-top: 1rem;
+}
+
+.account-later .hint {
+  margin: 0;
+}
+
+/* Banner "Liên kết tài khoản Google" (LinkAccountBanner, spec 2026-11-05-dang-nhap-google §6.3) và khối cùng loại ở Cài đặt ›
+   Tài khoản: thẻ thường trong luồng của trang, ở cuối Màn hình chính; không fixed, absolute hay sticky nên không phủ nút nào. */
+.link-account > p {
+  margin: 0 0 0.25rem;
+}
+
+.link-account-waiting p {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+}
+
+.link-account > .note {
+  margin-bottom: 0;
+}
+
+/* Hộp xác nhận xóa tài khoản: câu hỏi dài (nói rõ máy dùng được ra sao sau khi xóa) chiếm cả dòng, hai nút xuống dòng dưới. */
+.account-delete .confirm > span {
+  flex-basis: 100%;
+}

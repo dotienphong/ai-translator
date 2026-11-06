@@ -20,9 +20,9 @@ export const SITE = {
   // Chỉ có khi deploy (`--deploy`): SHA-256 hai bộ cài của `version`, build ghim vào install.sh và install.ps1 (build/pin-installers.mjs).
   pins: release.pins ?? null,
   llmSummaryEn:
-    "AI Translator is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no account, no ads. It supports five languages today; more are planned for the future.",
+    "AI Translator is a desktop app (macOS and Windows) that shows live translated subtitles for any audio playing on your computer — Zoom, Microsoft Teams, Google Meet, webinars, videos — and processes everything on your computer with AI models that run on-device: low latency, no audio or conversation data sent to the cloud, no cloud AI service used, no bot, no ads; the Free trial needs you to sign in with Google. It supports five languages today; more are planned for the future.",
   llmSummaryVi:
-    "AI Translator là app desktop (macOS và Windows) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ: độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không cần tài khoản, không quảng cáo. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
+    "AI Translator là app desktop (macOS và Windows) hiện phụ đề dịch trực tiếp cho mọi âm thanh đang phát trên máy tính — Zoom, Microsoft Teams, Google Meet, webinar, video — và xử lý mọi thứ ngay trên máy bằng model AI chạy tại chỗ: độ trễ thấp, không gửi âm thanh hay dữ liệu cuộc hội thoại lên cloud, không dùng dịch vụ AI trên cloud, không cần bot, không quảng cáo; dùng thử Free cần đăng nhập bằng Google. Hiện hỗ trợ năm ngôn ngữ; dự định bổ sung thêm trong tương lai.",
   featureListVi: [
     "Phụ đề dịch trực tiếp cho âm thanh hệ thống, năm ngôn ngữ (tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt)",
     "Nhận dạng giọng nói và dịch chạy trên máy, âm thanh không rời khỏi máy",
@@ -52,7 +52,7 @@ export const T = {
     cta: { label: "Tải xuống", href: "/tai-xuong/" },
     ogAlt: "AI Translator — phụ đề dịch trực tiếp cho cuộc họp, chạy offline trên máy tính",
     footerAbout:
-      "Phụ đề dịch bằng AI chạy trên máy bạn, không gửi dữ liệu cuộc họp lên cloud. Không bot, không tài khoản, không quảng cáo.",
+      "Phụ đề dịch bằng AI chạy trên máy bạn, không gửi dữ liệu cuộc họp lên cloud. Không bot, không quảng cáo.",
     provider: "Bên cung cấp",
     updated: "Cập nhật",
     trademark:
@@ -68,7 +68,7 @@ export const T = {
     cta: { label: "Download", href: "/en/download/" },
     ogAlt: "AI Translator — live translated subtitles for meetings, running on your computer",
     footerAbout:
-      "AI-translated subtitles that run on your computer, with no meeting data sent to the cloud. No bot, no account, no ads.",
+      "AI-translated subtitles that run on your computer, with no meeting data sent to the cloud. No bot, no ads.",
     provider: "Provider",
     updated: "Updated",
     trademark:
@@ -83,7 +83,7 @@ export const T = {
     skip: "本文へスキップ",
     cta: { label: "ダウンロード", href: "/ja/download/" },
     ogAlt: "AI Translator — 会議の音声をリアルタイムで翻訳字幕に。パソコン上で動作",
-    footerAbout: "AI による翻訳字幕をあなたのパソコン上で生成します。会議のデータはクラウドに送りません。ボットもアカウントも広告もありません。",
+    footerAbout: "AI による翻訳字幕をあなたのパソコン上で生成します。会議のデータはクラウドに送りません。ボットも広告もありません。",
     provider: "提供者",
     colon: "：",
     updated: "更新日",
@@ -98,7 +98,7 @@ export const T = {
     skip: "跳到主要内容",
     cta: { label: "下载", href: "/zh/download/" },
     ogAlt: "AI Translator — 在你的电脑上运行的会议实时翻译字幕",
-    footerAbout: "由在你电脑上运行的 AI 生成翻译字幕，会议数据不会发送到云端。无需机器人，无需账号，没有广告。",
+    footerAbout: "由在你电脑上运行的 AI 生成翻译字幕，会议数据不会发送到云端。无需机器人，没有广告。",
     provider: "提供方",
     colon: "：",
     updated: "更新于",
@@ -113,7 +113,7 @@ export const T = {
     skip: "본문으로 건너뛰기",
     cta: { label: "다운로드", href: "/ko/download/" },
     ogAlt: "AI Translator — 내 컴퓨터에서 실행되는 회의 실시간 번역 자막",
-    footerAbout: "내 컴퓨터에서 실행되는 AI로 번역 자막을 만듭니다. 회의 데이터는 클라우드로 보내지 않습니다. 봇, 계정, 광고가 없습니다.",
+    footerAbout: "내 컴퓨터에서 실행되는 AI로 번역 자막을 만듭니다. 회의 데이터는 클라우드로 보내지 않습니다. 봇도 광고도 없습니다.",
     provider: "제공자",
     updated: "업데이트",
     trademark: "Zoom, Microsoft Teams, Google Meet, Zalo, TikTok, YouTube, Facebook 및 기타 제품 이름은 각 소유자의 자산이며, AI Translator는 이들과 제휴 관계가 없습니다.",

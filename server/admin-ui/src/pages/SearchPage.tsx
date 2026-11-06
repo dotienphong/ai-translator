@@ -3,7 +3,7 @@
 // mỗi nhóm một thẻ có số lượng; nhóm rỗng không hiện. Một license duy nhất (mọi đơn thuộc nó) thì mở thẳng trang license.
 import { type ReactNode, useEffect } from "react";
 import type { LookupQuery } from "../api/endpoints";
-import type { Activation, LookupResult } from "../api/types";
+import type { Activation, LookupAccount, LookupResult } from "../api/types";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -11,7 +11,7 @@ import { Cell2, licenseColumns, orderColumns } from "../components/columns";
 import { type Column, DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/Feedback";
-import { IconCart, IconKey, IconMonitor, IconSearch } from "../components/icons";
+import { IconCart, IconKey, IconMonitor, IconSearch, IconUser } from "../components/icons";
 import { PageHeader } from "../components/PageHeader";
 import { RelTime } from "../components/RelTime";
 import { focusSearch } from "../components/SearchBox";
@@ -21,6 +21,7 @@ import { api } from "../api/endpoints";
 import { useLoad } from "../hooks";
 import { Link, navigate } from "../router";
 import { singleTarget, useSearch } from "../search";
+import { AccountStatusBadge, DELETED_EMAIL } from "./AccountsPage";
 
 /** Loại từ khóa (tóm tắt đầu trang): "email", "license key"… và giá trị hiện ra. */
 function describe(q: LookupQuery): [string, string] {
@@ -116,6 +117,23 @@ function deviceColumns(now: number): Column<DeviceHit>[] {
   ];
 }
 
+/** Tài khoản Google khớp email tra cứu (server thêm mảng `accounts` khi có): link tới trang tài khoản. */
+function accountColumns(now: number): Column<LookupAccount>[] {
+  return [
+    {
+      header: "Email",
+      cell: (a) => (
+        <Link to={`/accounts/${a.id}`} className="row-id">
+          {a.email ?? DELETED_EMAIL}
+        </Link>
+      ),
+    },
+    { header: "Ngày tạo", nowrap: true, cell: (a) => <Cell2 main={<RelTime sec={a.created_at} now={now} />} sub={fmtDateTime(a.created_at)} /> },
+    { header: "Đăng nhập gần nhất", nowrap: true, cell: (a) => <Cell2 main={<RelTime sec={a.last_login_at} now={now} />} sub={fmtDateTime(a.last_login_at)} /> },
+    { header: "Nhóm", aside: true, cell: (a) => <AccountStatusBadge status={a.status} /> },
+  ];
+}
+
 function Group({ title, icon, count, unit, children }: { title: string; icon: ReactNode; count: number; unit: string; children: ReactNode }) {
   return (
     <Card title={title} icon={icon} flush actions={<Badge dot={false} outline>{`${count} ${unit}`}</Badge>}>
@@ -158,6 +176,7 @@ export function SearchPage() {
   const [kind, value] = describe(s.query);
   const r = res.data;
   const devices = r ? devicesOf(r) : [];
+  const accounts = r?.accounts ?? [];
   const badInput = res.error?.code === "invalid_request";
   return (
     <>
@@ -169,7 +188,7 @@ export function SearchPage() {
               Tìm theo {kind}: <strong className="search-term">{value}</strong>
             </span>
             {r && !res.loading && (
-              <span>{`${r.licenses.length} license · ${r.orders.length} đơn · ${devices.length} máy`}</span>
+              <span>{`${r.licenses.length} license · ${r.orders.length} đơn · ${devices.length} máy${accounts.length > 0 ? ` · ${accounts.length} tài khoản` : ""}`}</span>
             )}
           </p>
         }
@@ -201,7 +220,7 @@ export function SearchPage() {
       )}
       {r && !res.loading && (
         <div className="search-groups">
-          {r.licenses.length === 0 && r.orders.length === 0 && (
+          {r.licenses.length === 0 && r.orders.length === 0 && accounts.length === 0 && (
             <Card aria-label="Không có kết quả">
               <EmptyState
                 variant="no-results"
@@ -215,6 +234,11 @@ export function SearchPage() {
                 action={<OpenSearch label="Tra cứu khác" />}
               />
             </Card>
+          )}
+          {accounts.length > 0 && (
+            <Group title="Tài khoản" icon={<IconUser size={18} />} count={accounts.length} unit="tài khoản">
+              <DataTable flush caption="Tài khoản tìm được" columns={accountColumns(now)} rows={accounts} rowKey={(a) => a.id} rowHref={(a) => `/accounts/${a.id}`} empty="" />
+            </Group>
           )}
           {r.licenses.length > 0 && (
             <Group title="License" icon={<IconKey size={18} />} count={r.licenses.length} unit="license">

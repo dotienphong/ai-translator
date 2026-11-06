@@ -58,6 +58,10 @@ const LABELS: Record<string, readonly [string, Tone?]> = {
   payos_webhook_confirm_failed: ["Xác nhận webhook lỗi", "bad"],
   // Báo cáo lỗi của app (server/src/admin-reports.ts): xóa là thao tác tay của người vận hành, không phải xóa dữ liệu khách hàng
   error_reports_deleted: ["Xóa báo cáo lỗi", "info"],
+  // Tài khoản Google (server/src/admin-accounts.ts). account_anonymized cũng do /admin/erase ghi (detail có via: "erase"): cùng luật xóa tài khoản.
+  account_license_unlinked: ["Gỡ gắn license khỏi tài khoản", "info"],
+  account_anonymized: ["Ẩn danh tài khoản", "bad"],
+  accounts_exported: ["Xuất CSV tài khoản", "info"],
   // Lượt xem và tra cứu (ẩn mặc định, server: VIEW_ACTIONS)
   lookup: ["Tra cứu"],
   list_viewed: ["Xem danh sách"],
@@ -68,6 +72,7 @@ const LABELS: Record<string, readonly [string, Tone?]> = {
   alerts_viewed: ["Xem cảnh báo"],
   releases_viewed: ["Xem phát hành"],
   error_report_viewed: ["Xem báo cáo lỗi"],
+  account_viewed: ["Xem tài khoản"],
 };
 
 export function actionLabel(action: string): string | undefined {

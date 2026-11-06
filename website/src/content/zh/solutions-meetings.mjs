@@ -137,6 +137,6 @@ ${linkCard({ href: "/zh/solutions/webinar-and-video-translation/", icon: "play",
 </div>
 </div></section>
 
-${ctaBand({ title: "在你自己的通话上试试", text: "从 10 天免费试用开始，每天 30 分钟。无需银行卡，无需账户。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/guide/quick-start/", label: "快速入门指南" } })}
+${ctaBand({ title: "在你自己的通话上试试", text: "从 10 天免费试用开始，每天 30 分钟。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/guide/quick-start/", label: "快速入门指南" } })}
 `,
 };

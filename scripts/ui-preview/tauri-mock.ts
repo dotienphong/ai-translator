@@ -5,7 +5,7 @@
 //
 // Tham số URL (đều không bắt buộc):
 //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
-//   screen=home|compose|voice|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|privacy
+//   screen=home|compose|voice|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|account|privacy
 //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
 //   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
@@ -41,6 +41,11 @@
 //     mặc định ready khi speakers=1)  diarization=0, names=0 (tắt hai công tắc)  longnames=1 (tên dài 40 ký tự: giọng 2 tên Latin,
 //     thêm một người tham dự tên chữ Hán, để kiểm tràn chữ). Tên trong mẫu là tên giả, như mẫu đã duyệt. Cả cửa sổ chính lẫn thanh
 //     phụ đề nhận bảng người nói giả qua sự kiện `speaker://roster` lúc mở trang (danh sách người tham dự chỉ đi qua sự kiện).
+//   tài khoản Google (spec 2026-11-05-dang-nhap-google §6.3): account=gate|signedIn (mặc định: chưa đăng nhập, cổng mở, như máy có
+//     gói trả phí hay server tắt đăng nhập; gate: chưa đăng nhập và cổng đóng, màn đăng nhập thay Màn hình chính, Gõ dịch, Giọng
+//     đọc)  signin=ok|wait|<mã lỗi account…> (kết quả nút đăng nhập: ok đăng nhập xong sau 0,6 giây; wait chờ trình duyệt tới khi bấm
+//     Hủy; mã lỗi như accountNetwork thì báo lỗi đó sau 0,6 giây)  accountfail=<mã lỗi account…> (Đăng xuất và Xóa tài khoản báo lỗi
+//     đó, vẫn đăng nhập; Cài đặt › Tài khoản, banner liên kết ở Màn hình chính của máy gói trả phí chưa đăng nhập: plan khác free)
 import conf from "../../src-tauri/tauri.conf.json";
 import type {
   AppInfo,
@@ -58,6 +63,7 @@ import type {
   SpeakerRoster,
   Subtitle,
   SubscriptionView,
+  AccountView,
   SupportView,
 } from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
@@ -619,6 +625,43 @@ function machineLine(): string {
   return `${info.name} ${info.version} · ${os} · ${PLAN_NAMES[plan]} · ${lang === "vi" ? "Chuẩn" : "Standard"} · UI ${lang}`;
 }
 
+// ---------------------------------------------------------------- tài khoản Google (spec 2026-11-05-dang-nhap-google)
+
+const accountParam = param("account");
+const ANONYMOUS: AccountView = { state: "anonymous", email: null, gate: accountParam === "gate" };
+let accountView: AccountView =
+  accountParam === "signedIn" ? { state: "signedIn", email: "an.nguyen@example.com", gate: false } : ANONYMOUS;
+// Đăng xuất hay xóa xong: máy Free bị đòi đăng nhập (cổng đóng), máy gói trả phí thì không.
+const LEFT: AccountView = { state: "anonymous", email: null, gate: plan === "free" };
+// Hủy lượt đăng nhập đang chờ (`account_cancel_sign_in`).
+let cancelSignIn: (() => void) | null = null;
+
+// Như phía Rust: mọi lần đổi trạng thái đều báo `account://changed`.
+function changeAccount(next: AccountView): AccountView {
+  accountView = next;
+  emit("account://changed", accountView);
+  return accountView;
+}
+
+async function signInMock(): Promise<AccountView> {
+  changeAccount({ ...accountView, state: "signingIn" });
+  const outcome = param("signin", "ok");
+  const cancelled = new Promise<"cancelled">((resolve) => {
+    cancelSignIn = () => resolve("cancelled");
+  });
+  const result = await Promise.race([cancelled, wait(outcome === "wait" ? 1_000_000_000 : 600).then(() => "done" as const)]);
+  cancelSignIn = null;
+  if (result === "cancelled") {
+    changeAccount(ANONYMOUS);
+    throw { code: "accountCancelled", field: null, message: "…" };
+  }
+  if (outcome.startsWith("account")) {
+    changeAccount(ANONYMOUS);
+    throw { code: outcome, field: null, message: "…" };
+  }
+  return changeAccount({ state: "signedIn", email: "an.nguyen@example.com", gate: false });
+}
+
 // ---------------------------------------------------------------- sự kiện
 
 const listeners = new Map<string, Set<(e: { payload: unknown }) => void>>();
@@ -899,6 +942,24 @@ const handlers = {
     return null;
   },
   support_delete: () => changeSupport({ hasConversation: false, messages: [], unread: false }),
+  get_account: () => accountView,
+  account_sign_in: () => signInMock(),
+  account_cancel_sign_in: () => {
+    cancelSignIn?.();
+    return null;
+  },
+  account_sign_out: async () => {
+    await wait(200);
+    const fail = param("accountfail");
+    if (fail) throw { code: fail, field: null, message: "…" };
+    return changeAccount(LEFT);
+  },
+  account_delete: async () => {
+    await wait(400);
+    const fail = param("accountfail");
+    if (fail) throw { code: fail, field: null, message: "…" };
+    return changeAccount(LEFT);
+  },
   check_for_updates: async () => {
     changeStatus({ updateCheck: "checking" });
     await wait(700);
@@ -914,6 +975,13 @@ const handlers = {
   delete_models_and_data: () => models,
   select_model_pack: ({ pack: id }) => changeSettings({ ...settings, modelTier: id }),
 } satisfies Handlers;
+
+// `Channel` của `@tauri-apps/api/core` (giọng đọc, spec 2026-11-04-giong-doc): `dataStores.ts` và thanh phụ đề dựng nó lúc nạp
+// module, nên thiếu bản giả này thì cả trang xem trước không nạp được. Trang xem trước không phát âm thanh: kênh không nhận gì.
+export class Channel<T = unknown> {
+  id = 0;
+  onmessage: (response: T) => void = () => {};
+}
 
 // Nhật ký lệnh đã gọi, cho script kiểm đọc (`window.__ipcCalls`).
 const ipcCalls: { cmd: string; args: unknown }[] = [];

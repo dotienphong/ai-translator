@@ -1150,8 +1150,8 @@ function sectionErrors(urlPath, wants, forbids = {}) {
 test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng hàng, hai cách trả, Creem là bên bán lại (merchant of record) và đơn hoàn tiền thì rút ngắn hạn hay thu hồi", () => {
   const vi = textOf(htmlByPath.get("/dieu-khoan/"));
   const en = textOf(htmlByPath.get("/en/terms/"));
-  const viNeeds = ["Phiên bản 1.7", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
-  const enNeeds = ["Version 1.7", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
+  const viNeeds = ["Phiên bản 1.8", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
+  const enNeeds = ["Version 1.8", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/dieu-khoan/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/terms/: thiếu "${n}"`),
@@ -1231,8 +1231,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.13", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.13", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.14", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.14", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1396,7 +1396,7 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
           paragraphs: lines.filter((l) => !/^(- |\d+\. |\||#)/.test(l)).length,
         };
       });
-  for (const [name, count] of [["eula", 16], ["privacy", 14]]) {
+  for (const [name, count] of [["eula", 16], ["privacy", 15]]) {
     const vi = skeleton(docs[`${name}.vi.md`]);
     const en = skeleton(docs[`${name}.en.md`]);
     if (vi.length !== count) errors.push(`${name}.vi.md: ${vi.length} mục (giữ ${count} mục)`);
@@ -1412,13 +1412,13 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA lên 1.7 và chính sách lên 1.13 (tự động gia hạn cho thẻ quốc tế, spec 2026-11-05, hiệu lực 2026-11-05); chính sách
+  // EULA lên 1.8 và chính sách lên 1.14 (đăng nhập bằng Google, spec 2026-11-05-dang-nhap-google, hiệu lực 2026-11-06); chính sách
   // hiệu lực không sớm hơn 2026-10-31. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.7" || privacyHead?.version !== "1.13") errors.push("EULA 1.7 và chính sách 1.13");
-  if (eulaHead?.iso !== "2026-11-05") errors.push(`EULA 1.7 hiệu lực 2026-11-05, đang ghi ${eulaHead?.iso}`);
-  if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.13 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
+  if (eulaHead?.version !== "1.8" || privacyHead?.version !== "1.14") errors.push("EULA 1.8 và chính sách 1.14");
+  if (eulaHead?.iso !== "2026-11-06") errors.push(`EULA 1.8 hiệu lực 2026-11-06, đang ghi ${eulaHead?.iso}`);
+  if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.14 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
 });
 
@@ -2857,6 +2857,157 @@ test("Tự động gia hạn: bảng giá, hỏi đáp, hướng dẫn mua gói 
     else errors.push(...needsIn(c.pages[2], guide, [c.ticked, manage]));
     // Không trang nào của ngôn ngữ này còn câu cũ.
     for (const p of pages.filter((x) => x.lang === lang)) errors.push(...forbidsIn(p.path, textOf(htmlByPath.get(p.path)), c.old));
+  }
+  assert.deepEqual(errors, []);
+});
+
+// ---- Đăng nhập bằng Google (spec 2026-11-05-dang-nhap-google-design.md §10): gói Free cần đăng nhập bằng Google, gói trả phí không cần ----
+// Website không được còn nói chính AI Translator "không cần tài khoản", "không có đăng nhập". Câu về tài khoản của nền tảng (Teams, Zoom,
+// TikTok, nền tảng họp hay video), tài khoản ngân hàng, tài khoản hệ điều hành thì vẫn đúng và phải giữ (STALE_ACCOUNT_MUST_KEEP).
+// Câu tiếng Nhật, Trung, Hàn kết thúc bằng 。！？ nên tách câu riêng (sentencesOf chỉ tách câu kiểu Latin).
+const STALE_ACCOUNT = [
+  {
+    id: "vi: không cần tài khoản / không có đăng nhập",
+    re: /không\s+(?:cần\s+|có\s+)?(?:thẻ\s+(?:hay|và)\s+)?(?:tài\s+khoản|đăng\s+nhập)(?![\p{L}])|không\s+bot,\s*không\s+tài\s+khoản/iu,
+    unless: /ngân\s+hàng|nền\s+tảng|TikTok|hệ\s+điều\s+hành|Google|trả\s+phí|tài\s+khoản\s+đó/iu,
+  },
+  {
+    id: "en: no account / no sign-in",
+    re: /\bno\s+(?:card,?\s+(?:and\s+)?no\s+)?(?:sign-?in(?:\s+accounts?)?|account(?!\s+name)|login)\b|\bthere\s+is\s+no\s+sign-?in\b|\bwithout\s+(?:an\s+)?account\b|\bno\s+bot,\s+no\s+account\b/i,
+    unless: /bank|platform|TikTok|operating\s+system|Google|paid\s+plan|no\s+such\s+account|right\s+now|buy\s+a\s+plan/i,
+  },
+  {
+    id: "ja: アカウント不要・サインインなし",
+    re: /アカウント(?:も|は)?(?:不要|なし|必要ありません)|(?:サインイン|ログイン)(?:も|は)?(?:不要|なし|ありません)|(?:サインイン|ログイン)も[^。]{0,30}?ありません|サインイン用のアカウントも不要|ボットもアカウントも/u,
+    unless: /プラットフォーム|TikTok|Google|有料プラン|銀行/u,
+  },
+  { id: "zh: 无需账号 / 没有登录", re: /无需账[号户]|(?:也)?没有登录|无需登录|不需要[^。]{0,20}登录账[号户]/u, unless: /平台|TikTok|Google|付费/u },
+  {
+    id: "ko: 계정 필요 없음 / 로그인 없음",
+    re: /계정(?:도|이)?\s*(?:필요\s*없|없음|없습니다)|로그인(?:도|이)?\s*(?:없|필요\s*없)|봇,\s*계정,\s*광고가\s*없/u,
+    unless: /플랫폼|TikTok|Google|유료|은행/u,
+  },
+];
+const accountSentences = (text) => text.replace(/[  ]/g, " ").split(/(?<=[。！？])|(?<=[.!?…])\s+(?=[\p{Lu}“"(])|\n+/u).map((s) => s.trim()).filter(Boolean);
+/** Các câu của `text` nói chính AI Translator không cần tài khoản hay không có đăng nhập. Hàm thuần: ca âm cố định ở test dưới. */
+function staleAccountHits(text) {
+  const hits = [];
+  for (const sentence of accountSentences(text)) {
+    for (const rule of STALE_ACCOUNT) {
+      if (rule.re.test(sentence) && !rule.unless.test(sentence)) hits.push({ id: rule.id, sentence: sentence.length > 120 ? `${sentence.slice(0, 120)}…` : sentence });
+    }
+  }
+  return hits;
+}
+
+// Câu cũ (nguyên văn từ website và chính sách 1.13 trước khi có đăng nhập bằng Google) mà luật phải bắt.
+const STALE_ACCOUNT_MUST_CATCH = [
+  "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.",
+  "Gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản.",
+  "Không có bot tham gia cuộc họp, không cài plugin vào app họp và không có đăng nhập.",
+  "Không mời bot vào cuộc họp, không cài plugin, không đăng nhập.",
+  "Không bot, không tài khoản",
+  "App cũng không có tài khoản đăng nhập, không quảng cáo và không analytics.",
+  "Ứng dụng không có tài khoản đăng nhập, không có quảng cáo, không có analytics.",
+  "Không tiện ích trình duyệt, không plugin, không tài khoản đăng nhập",
+  "No card, no account.",
+  "AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account.",
+  "No bot joins your meeting, no plugin goes into your meeting app, and there is no sign-in.",
+  "No bot joins your meeting, no plugin to install, no sign-in.",
+  "No bot, no account",
+  "The app also has no sign-in, no ads and no analytics.",
+  "The app has no sign-in accounts, no advertising and no analytics.",
+  "No browser extension, no plugin, no sign-in account",
+  "- Privacy: no bot, no account, no ads, no analytics or cookies on the website.",
+  "カードもアカウントも不要です。",
+  "会議にボットが参加することも、インストールするプラグインも、サインインもありません。",
+  "アプリにはサインインも広告もアクセス解析もありません。",
+  "ボットもアカウントも広告もありません。",
+  "ブラウザーの拡張機能も、プラグインも、サインイン用のアカウントも不要",
+  "无需银行卡，无需账号。",
+  "不会有机器人加入你的会议，没有要安装的插件，也没有登录。",
+  "无需机器人，无需账号，没有广告。",
+  "不需要浏览器扩展、插件或登录账户",
+  "카드도 계정도 필요 없습니다.",
+  "봇 없음, 계정 없음",
+  "회의에 봇이 참가하지 않고, 설치할 플러그인도, 로그인도 없습니다.",
+  "봇, 계정, 광고가 없습니다.",
+  "브라우저 확장 프로그램도, 플러그인도, 로그인 계정도 필요 없음",
+];
+// Câu đúng (về nền tảng khác, ngân hàng, hay câu mới nói có đăng nhập bằng Google) mà luật KHÔNG được bắt.
+const STALE_ACCOUNT_MUST_KEEP = [
+  "Không cần bot, plugin hay tài khoản trên nền tảng.",
+  "Không có tài khoản ngân hàng Việt Nam?",
+  "VietQR chỉ dùng được với tài khoản ngân hàng Việt Nam, bằng VND, qua PayOS; nếu thẻ quốc tế chưa được bán lúc này mà bạn không có tài khoản đó, hãy liên hệ hỗ trợ.",
+  "Không cần tiện ích trình duyệt và app không cần kết nối tài khoản nền tảng; thanh phụ đề không lấy focus của cửa sổ bạn đang xem.",
+  "Gói trả phí không cần đăng nhập.",
+  "Không cần thẻ; dùng thử cần đăng nhập bằng Google.",
+  "No bot, no plugin and no account on the meeting or video platform.",
+  "The report body was 49.8 KB and contained no account name, personal folder path, email address or marker words.",
+  "if card payment is not available right now and you have no such account, contact support.",
+  "Paid plans need no sign-in.",
+  "No sign-in is needed right now. Click Next to continue.",
+  "Buy a plan (no sign-in needed)",
+  "No card needed; the trial needs you to sign in with Google.",
+  "ボットもプラグインも、会議や動画のプラットフォームのアカウントも不要です。",
+  "有料プランはログイン不要です。",
+  "봇도, 플러그인도, 회의나 동영상 플랫폼의 계정도 필요 없습니다.",
+  "유료 요금제는 로그인이 필요 없습니다.",
+  "付费套餐无需登录。",
+];
+
+test("luật câu cũ về tài khoản (STALE_ACCOUNT) bắt các câu cũ nói AI Translator không cần tài khoản và không bắt câu về nền tảng khác hay câu mới", () => {
+  assert.ok(STALE_ACCOUNT_MUST_CATCH.length >= 25 && STALE_ACCOUNT_MUST_KEEP.length >= 12);
+  const missed = STALE_ACCOUNT_MUST_CATCH.filter((s) => staleAccountHits(s).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_ACCOUNT_MUST_KEEP.filter((s) => staleAccountHits(s).length > 0).map((s) => `${s} → ${staleAccountHits(s).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site (năm ngôn ngữ, kể cả chính sách dựng từ docs/legal và ba file llms) và không chuỗi giao diện nào của app (vi, en) còn câu nói AI Translator không cần tài khoản hay không có đăng nhập", async () => {
+  const errors = [...(await siteTexts())].flatMap(([where, text]) => staleAccountHits(text).map((h) => `${where}: còn câu cũ [${h.id}] "${h.sentence}"`));
+  for (const lang of ["vi", "en"]) {
+    const d = await appDict(lang);
+    for (const [k, v] of Object.entries(d)) for (const h of staleAccountHits(v)) errors.push(`app ${lang} ${k}: [${h.id}] "${h.sentence}"`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("đăng nhập bằng Google (năm ngôn ngữ): Hỏi đáp, Tải xuống, Bảng giá và Dữ liệu và bảo mật nói gói Free cần đăng nhập bằng Google, gói trả phí không cần, và máy chủ lưu email Google", () => {
+  const sign = { vi: "đăng nhập bằng Google", en: "sign in with Google", ja: "Google でログイン", zh: "Google 账号登录", ko: "Google 계정으로 로그인" };
+  const paid = { vi: "Gói trả phí không cần đăng nhập", en: "Paid plans need no sign-in", ja: "有料プランはログイン不要", zh: "付费套餐无需登录", ko: "유료 요금제는 로그인이 필요 없습니다" };
+  const email = { vi: "email Google", en: "Google email", ja: "Google のメールアドレス", zh: "Google 邮箱", ko: "Google 이메일" };
+  const paths = {
+    vi: { faq: "/cau-hoi-thuong-gap/", download: "/tai-xuong/", pricing: "/bang-gia/", data: "/bao-mat-du-lieu/" },
+    en: { faq: "/en/faq/", download: "/en/download/", pricing: "/en/pricing/", data: "/en/data-security/" },
+    ja: { faq: "/ja/faq/", download: "/ja/download/", pricing: "/ja/pricing/", data: "/ja/data-security/" },
+    zh: { faq: "/zh/faq/", download: "/zh/download/", pricing: "/zh/pricing/", data: "/zh/data-security/" },
+    ko: { faq: "/ko/faq/", download: "/ko/download/", pricing: "/ko/pricing/", data: "/ko/data-security/" },
+  };
+  const errors = [];
+  for (const [lang, p] of Object.entries(paths)) {
+    for (const where of [p.faq, p.download, p.pricing, p.data]) errors.push(...needsIn(where, textOf(htmlByPath.get(where) ?? ""), [sign[lang]]));
+    errors.push(...needsIn(p.faq, textOf(htmlByPath.get(p.faq) ?? ""), [paid[lang], email[lang]]));
+    errors.push(...needsIn(p.data, textOf(htmlByPath.get(p.data) ?? ""), [paid[lang], email[lang]]));
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("Chính sách quyền riêng tư (vi, en) trên website nêu đăng nhập bằng Google, những gì máy chủ giữ sau khi xóa tài khoản và hai bên xử lý Google, Cloudflare", () => {
+  const need = {
+    "/chinh-sach-quyen-rieng-tu/": [
+      "Đăng nhập bằng Google", "accounts.google.com", "mã định danh tài khoản Google", "Cài đặt › Tài khoản", "Xóa tài khoản", "không được dùng để quảng bá",
+      "ngày tạo", "lần đăng nhập gần nhất", "thời điểm bạn đồng ý", "ngôn ngữ giao diện", "mốc dùng thử", "thời điểm xóa", "Cloudflare",
+    ],
+    "/en/privacy/": [
+      "Sign in with Google", "accounts.google.com", "Google account identifier", "Settings › Account", "Delete account", "not used for marketing",
+      "creation date", "last sign-in time", "when you gave consent", "interface language", "trial dates", "time of deletion", "Cloudflare",
+    ],
+  };
+  const errors = Object.entries(need).flatMap(([p, needles]) => needsIn(p, textOf(htmlByPath.get(p) ?? ""), needles));
+  // Mục 6 (bên xử lý) nêu Google cho việc đăng nhập, cạnh Cloudflare.
+  for (const [p, needles] of [["/chinh-sach-quyen-rieng-tu/", ["Google", "Đăng nhập bằng Google", "Cloudflare"]], ["/en/privacy/", ["Google", "Sign in with Google", "Cloudflare"]]]) {
+    errors.push(...needsIn(`${p} mục 6`, textOf(legalSections(p).get("6")?.html ?? ""), needles));
   }
   assert.deepEqual(errors, []);
 });

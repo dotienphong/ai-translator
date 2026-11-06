@@ -125,6 +125,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "ご自身の会議でオフライン翻訳を試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/data-security/", label: "データの扱い方" } })}
+${ctaBand({ title: "ご自身の会議でオフライン翻訳を試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/data-security/", label: "データの扱い方" } })}
 `,
 };

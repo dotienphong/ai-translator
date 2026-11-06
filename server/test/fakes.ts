@@ -1,6 +1,7 @@
 // Bản giả lập PayOS và Resend ở mức HTTP: route chạy đúng code PayOSProvider và ResendEmailProvider,
 // chỉ thay hàm fetch. Không test nào gọi mạng thật.
 import { hmacSha256Hex } from "../src/crypto";
+import { GOOGLE_REDIRECT_URI, type GoogleAuth, GoogleAuthError, type GoogleAuthFailure, type GoogleIdentity, RealGoogleAuth } from "../src/google-auth";
 import { objectSignatureData, paymentRequestSignatureData } from "../src/payment/payos";
 import type { CheckoutResult, PaymentProvider, PaymentStatusResult, WebhookEvent, WebhookRequest } from "../src/payment/provider";
 
@@ -799,5 +800,40 @@ export class FakeZalo {
   /** Văn bản các tin đã gửi thành công, theo thứ tự. */
   texts(): string[] {
     return this.sent.map((s) => s.text);
+  }
+}
+
+/** Client ID giả của Google; chỉ có trong URL xin quyền do FakeGoogleAuth dựng. */
+export const TEST_GOOGLE_CLIENT_ID = "test-client-id.apps.googleusercontent.com";
+
+/**
+ * Google giả ở mức GoogleAuth (đủ cho route /v1/auth/*; kiểm id_token thật đã có test riêng ở google-auth.test.ts). `authUrl`
+ * dựng đúng URL như bản thật. `exchange` trả `identity` (hoặc ném `GoogleAuthError(failure)`); `byCode` đặt kết quả riêng cho
+ * từng `code` (hai người dùng khác nhau trong một test) và thắng `identity`/`failure`. Ghi lại mọi lần gọi để test kiểm.
+ */
+export class FakeGoogleAuth implements GoogleAuth {
+  readonly authUrls: { state: string; nonce: string; codeChallenge: string }[] = [];
+  readonly exchanges: { code: string; codeVerifier: string; nonceHash: string }[] = [];
+  identity: GoogleIdentity = { sub: "google-sub-test-1", email: "nguoi.dung@example.com" };
+  failure: GoogleAuthFailure | null = null;
+  readonly byCode = new Map<string, GoogleIdentity | GoogleAuthFailure>();
+  private readonly real = new RealGoogleAuth({
+    clientId: TEST_GOOGLE_CLIENT_ID,
+    clientSecret: "test-google-secret-khong-dung-o-dau-khac",
+    redirectUri: GOOGLE_REDIRECT_URI,
+  });
+
+  authUrl(p: { state: string; nonce: string; codeChallenge: string }): string {
+    this.authUrls.push(p);
+    return this.real.authUrl(p);
+  }
+
+  async exchange(p: { code: string; codeVerifier: string; nonceHash: string }): Promise<GoogleIdentity> {
+    this.exchanges.push(p);
+    const scripted = this.byCode.get(p.code);
+    if (typeof scripted === "string") throw new GoogleAuthError(scripted);
+    if (scripted) return scripted;
+    if (this.failure) throw new GoogleAuthError(this.failure);
+    return this.identity;
   }
 }

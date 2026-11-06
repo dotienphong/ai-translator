@@ -30,7 +30,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["Dùng với", "Bất cứ thứ gì phát tiếng trên máy<small>Trình duyệt, app trình phát, nền tảng khóa học, webinar</small>"],
-  ["Cần cài thêm", "Không gì ngoài chính app<small>Không tiện ích trình duyệt, không plugin, không tài khoản đăng nhập</small>"],
+  ["Cần cài thêm", "Không gì ngoài chính app<small>Không tiện ích trình duyệt, không plugin; dùng thử Free cần đăng nhập bằng Google</small>"],
   ["Ngôn ngữ", "tiếng Anh, tiếng Trung (中文), tiếng Nhật (日本語), tiếng Hàn (한국어), tiếng Việt<small>Chọn ngôn ngữ bạn muốn đọc</small>"],
   ["Phiên dài", "Đã chạy liên tục 5 giờ 23 phút không lỗi<small>Mac M4 Pro, macOS, bản release ký ad-hoc, một lần thử</small>"],
 ])}</div>
@@ -129,6 +129,6 @@ ${linkCard({ href: "/tinh-nang/", icon: "sliders", title: "Tính năng", text: "
 <p class="center-text reveal">Cần biết nội dung của bạn có bị gửi đi đâu không? Xem <a href="/bao-mat-du-lieu/">dữ liệu và bảo mật</a>.</p>
 </div></section>
 
-${ctaBand({ title: "Xem thử một video của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
+${ctaBand({ title: "Xem thử một video của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
 `,
 };

@@ -32,6 +32,9 @@ export async function resetDb(): Promise<void> {
       "expiry_reminders",
       "reminder_optouts",
       "subscriptions",
+      // Sau trials và licenses (khóa ngoại account_id trỏ vào accounts); login_attempts trước accounts.
+      "login_attempts",
+      "accounts",
       "sqlite_sequence",
     ].map((t) => env.DB.prepare(`DELETE FROM ${t}`)),
   );

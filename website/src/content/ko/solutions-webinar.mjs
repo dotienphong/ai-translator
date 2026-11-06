@@ -28,7 +28,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["지원 대상", "컴퓨터에서 소리가 나는 모든 것<small>브라우저, 미디어 플레이어, 강좌 플랫폼, 웨비나 도구</small>"],
-  ["추가 설치", "앱 외에는 필요 없음<small>브라우저 확장 프로그램도, 플러그인도, 로그인 계정도 필요 없음</small>"],
+  ["추가 설치", "앱 외에는 필요 없음<small>브라우저 확장 프로그램도, 플러그인도 필요 없음. Free 체험은 Google 계정으로 로그인 필요</small>"],
   ["언어", "영어, 중국어, 일본어, 한국어, 베트남어<small>읽고 싶은 언어를 고르면 됩니다</small>"],
   ["긴 세션", "5시간 23분 동안 오류 없이 실행<small>Mac M4 Pro, macOS, 애드혹 서명 릴리스 빌드, 1회 테스트</small>"],
 ])}</div>
@@ -127,6 +127,6 @@ ${linkCard({ href: "/ko/features/", icon: "sliders", title: "기능", text: "모
 <p class="center-text reveal">보는 내용이 어디로 가는지 궁금한가요? <a href="/ko/data-security/">데이터와 보안</a>을 읽어 보세요.</p>
 </div></section>
 
-${ctaBand({ title: "내 동영상으로 직접 써 보세요", text: "10일 무료 체험으로 시작하세요. 하루 30분, 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/pricing/", label: "요금 보기" } })}
+${ctaBand({ title: "내 동영상으로 직접 써 보세요", text: "10일 무료 체험으로 시작하세요. 하루 30분, 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/pricing/", label: "요금 보기" } })}
 `,
 };

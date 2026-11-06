@@ -60,6 +60,8 @@ pub const QUOTA_EXHAUSTED: &str = "quotaExhausted";
 pub const TRIAL_ENDED: &str = "trialEnded";
 /// Free mà chưa có token dùng thử và đăng ký không được: cần kết nối mạng một lần.
 pub const TRIAL_NEEDS_NETWORK: &str = "trialNeedsNetwork";
+/// Free mà chưa đăng nhập tài khoản Google (cổng đăng nhập, spec 2026-11-05 §6.2): đăng nhập rồi thử lại.
+pub const LOGIN_REQUIRED: &str = "loginRequired";
 /// Free mà giờ máy bị coi là chỉnh lùi: chỉnh lại giờ.
 pub const CLOCK_ROLLED_BACK: &str = "clockRolledBack";
 /// Phiên trả phí dừng vì key đang kích hoạt trên 2 máy (cùng mã với `LicenseError::Conflict`).
@@ -259,6 +261,7 @@ mod tests {
                 QUOTA_EXHAUSTED,
                 TRIAL_ENDED,
                 TRIAL_NEEDS_NETWORK,
+                LOGIN_REQUIRED,
                 CLOCK_ROLLED_BACK,
                 LICENSE_CONFLICT,
                 LICENSE_INVALID,

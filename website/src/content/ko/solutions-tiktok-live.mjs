@@ -98,6 +98,6 @@ ${linkCard({ href: "/ko/pricing/", icon: "wallet", title: "요금", text: "10일
 <p class="disclaimer">TikTok은 해당 소유자의 상표이며, AI Translator는 TikTok과 제휴 관계가 없습니다.</p>
 </div></section>
 
-${ctaBand({ title: "다음에 볼 TikTok 라이브에서 써 보세요", text: "명령 한 줄로 설치하고 10일 동안 하루 30분씩 Free로 써 보세요. 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/guide/quick-start/", label: "가이드 열기" } })}
+${ctaBand({ title: "다음에 볼 TikTok 라이브에서 써 보세요", text: "명령 한 줄로 설치하고 10일 동안 하루 30분씩 Free로 써 보세요. 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/guide/quick-start/", label: "가이드 열기" } })}
 `,
 };

@@ -27,7 +27,7 @@ export const HOME_FAQ = [
   },
   {
     q: "可以免费获得会议翻译字幕吗？",
-    a: `<p>AI Translator 提供 10 天免费试用，每天最多翻译 30 分钟，无需银行卡，也无需账号。这是试用，不是永久免费的套餐；之后需要购买预付套餐：Monthly 50,000 ₫、6 Months 269,000 ₫ 或 Yearly 500,000 ₫。</p>`,
+    a: `<p>AI Translator 提供 10 天免费试用，每天最多翻译 30 分钟，无需银行卡；试用需使用 Google 账号登录（付费套餐无需登录）。这是试用，不是永久免费的套餐；之后需要购买预付套餐：Monthly 50,000 ₫、6 Months 269,000 ₫ 或 Yearly 500,000 ₫。</p>`,
   },
   {
     q: "在越南境外可以付款吗？",
@@ -61,7 +61,7 @@ export default {
 <ul class="trust reveal">
 <li>${icon("check")} AI 100% 在你的设备上运行</li>
 <li>${icon("check")} 会议数据从不上传云端</li>
-<li>${icon("check")} 无需机器人，无需账号</li>
+<li>${icon("check")} 无需机器人，无需插件</li>
 </ul>
 </div>
 <div class="reveal">
@@ -155,7 +155,7 @@ ${dataFlow("zh")}
 ${feature({ icon: "lock", title: "音频不离开你的电脑", text: "音频只存在于 RAM 中：从不写入磁盘，也从不通过网络发送，我们已在 macOS 上用网络代理验证过。网络断开时字幕也会继续出现。", accent: true })}
 ${feature({ icon: "shield", title: "服务器上没有会议内容", text: "服务器只保存销售套餐、激活设备和提供支持所需的数据（详见下方），从不保存会议内容。" })}
 </div>
-<details class="more-details reveal"><summary>服务器具体保存哪些数据？</summary><p>我们的服务器只保存你的电子邮箱（购买时，或你在客服聊天中自愿留下时）、订单、许可证、设备激活信息（经过哈希处理的设备 ID 和设备名称）、Free 试用的开始时间（经过哈希处理的设备 ID）、许可证变更记录、去除了个人数据的错误报告（保存 30 天），以及你使用客服聊天时的聊天消息（保存 90 天），从不保存会议内容。</p></details>
+<details class="more-details reveal"><summary>服务器具体保存哪些数据？</summary><p>我们的服务器只保存你的电子邮箱（购买时，或你在客服聊天中自愿留下时）、登录时的 Google 邮箱、订单、许可证、设备激活信息（经过哈希处理的设备 ID 和设备名称）、Free 试用的开始时间（经过哈希处理的设备 ID）、许可证变更记录、去除了个人数据的错误报告（保存 30 天），以及你使用客服聊天时的聊天消息（保存 90 天），从不保存会议内容。</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/zh/data-security/">详细了解你的数据去向 ${icon("arrow-right")}</a></p>
 </div></section>
 

@@ -1,6 +1,8 @@
 // Worker API công khai (spec §6.8). Route nhận phụ thuộc qua `deps` để test thay được PayOS, Resend, đồng hồ.
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { registerAccount } from "./account";
+import { registerAuth } from "./auth";
 import { registerCheckout } from "./checkout";
 import { type Deps, type DepsFactory, realDeps } from "./deps";
 import { DIAGNOSTICS_PATH, registerDiagnostics } from "./diagnostics";
@@ -54,6 +56,8 @@ export function createApp(makeDeps: DepsFactory = realDeps) {
   registerOrders(app);
   registerLicenses(app);
   registerTrial(app);
+  registerAuth(app);
+  registerAccount(app);
   registerUnsubscribe(app);
   registerDiagnostics(app);
   registerSupport(app);

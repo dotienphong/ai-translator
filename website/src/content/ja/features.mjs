@@ -312,6 +312,6 @@ ${sectionHead({ eyebrow: "プラン別", title: "どの機能がどのプラン�
 <p class="center-text reveal"><a class="btn btn-primary" href="/ja/pricing/">料金の詳細を見る ${icon("arrow-right")}</a></p>
 </div></section>
 
-${ctaBand({ title: "実際の会議で試してみてください", text: "1 日 30 分、10 日間の無料お試し。カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/guide/quick-start/", label: "クイックスタートガイドを読む" } })}
+${ctaBand({ title: "実際の会議で試してみてください", text: "1 日 30 分、10 日間の無料お試し。カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/guide/quick-start/", label: "クイックスタートガイドを読む" } })}
 `,
 };

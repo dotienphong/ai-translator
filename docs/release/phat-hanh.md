@@ -254,6 +254,8 @@ chủ tài khoản Resend: chưa đủ để bán.
    không dùng `x` hay `test`: secret webhook yếu cộng `chat_id` đoán được thì người ngoài giả được chủ dự án. Chat vẫn tắt nên khách
    không gửi được; mục 11 ghi đè bằng giá trị thật. Deploy Worker mới thì phải áp migration 0005 trước (mục 11 bước 4 đến 6): Worker mới cần bốn bảng `support_*`.
 
+   Từ đợt đăng nhập bằng Google (mục 19), `secrets.required` của Worker API còn có `GOOGLE_OAUTH_CLIENT_SECRET` (Worker admin không có secret này): thiếu thì `wrangler deploy` từ chối. Cách tạo OAuth client trên Google Cloud và đặt secret ở mục 19.1 và 19.2. Nếu phải deploy Worker API trước khi có OAuth client, đặt giá trị giữ chỗ ngẫu nhiên (`openssl rand -hex 32 | pnpm exec wrangler secret put GOOGLE_OAUTH_CLIENT_SECRET`) và để `GOOGLE_OAUTH_CLIENT_ID` rỗng trong `wrangler.jsonc`: khi `GOOGLE_OAUTH_CLIENT_ID` còn rỗng thì server báo `GET /v1/auth/status` là `{"login":"off"}`, cổng đăng nhập của app mở, không ai bị khóa. Deploy Worker mới thì phải áp migration 0010 trước (mục 19.2).
+
 6. **Hai khóa ký token** (khóa riêng đi thẳng vào secret, không ra terminal, không ra file; nếu đã có CI thì tạo trong một job
    CI chạy tay thay vì trên máy dev, Q11). `<năm>` và `<tháng>` là hôm nay, ví dụ `prod-2026-10-1`; số thứ tự là số kế tiếp
    chưa từng dùng (script từ chối `kid` không đúng dạng `prod-<năm>-<tháng>-<n>` hay đã có trong `keys/public-keys.json`):
@@ -1867,3 +1869,134 @@ Còn phải làm khi phát hành:
 - **Ngừng bán tự động gia hạn:** đổi `"CREEM_AUTO_RENEW": "on"` thành `"off"` rồi `pnpm exec wrangler deploy`. Đơn mới là đơn trả một lần. Ô trong app ẩn sau lần tải bảng gói kế tiếp. **Không** dừng các thuê bao đang chạy: Creem vẫn trừ tiền và server vẫn xử lý webhook, cộng hạn đúng như cũ; muốn dừng hẳn thì hủy từng thuê bao trong dashboard Creem.
 - Không cần rollback migration 0009 (chỉ thêm). Nếu buộc phải bỏ, bảng `subscriptions` và cột `orders.auto_renew` có thể để nguyên.
 - **Giám sát:** bảng điều khiển admin (nhật ký kiểm toán) hiện `Kỳ tự gia hạn cần xem` (đã giữ một sự kiện vì không đọc được kỳ) và `Sự kiện thuê bao chưa gắn license`; cả hai làm phát cảnh báo `subscription_review` tới người vận hành. Gặp một trong hai: đọc payload trong log của Worker và liên hệ hỗ trợ Creem nếu cần.
+
+## 19. Đợt thêm đăng nhập bằng Google (migration D1 0010)
+
+Spec `2026-11-05-dang-nhap-google-design.md`, kế hoạch `2026-11-05-dang-nhap-google.md`. Đợt này đổi **server** (Worker API `mt-license`: route `/v1/auth/*`, `/v1/account/*`, luật dùng thử theo tài khoản ở `/v1/trial`, dọn `login_attempts`; Worker admin `mt-license-admin` và giao diện Web Admin: trang Tài khoản `/accounts`, `/accounts/:id`, xuất CSV, ẩn danh theo email; migration D1 `0010_accounts.sql`), **app** (module `src-tauri/src/account/`, cổng `AccountHook` trong `License`, màn `LoginGate`, bước `account` trong Onboarding, mục Cài đặt › Tài khoản, banner liên kết tài khoản cho gói trả phí), **văn bản pháp lý** (EULA 1.8, chính sách quyền riêng tư 1.14) và **website** (năm ngôn ngữ).
+
+**Vì sao thứ tự này.** Migration 0010 chỉ **thêm** bảng `accounts`, `login_attempts` và thêm cột cho phép NULL `account_id` vào `trials`, `licenses` (kèm các index), không dựng lại bảng và không đổi dòng nào đã có, nên phải áp **trước** khi deploy Worker mới. Worker mới deploy lần đầu với `ACCOUNT_REQUIRED="off"`: các endpoint `/v1/auth/*` và `/v1/account/*` đã hoạt động để kiểm thử và cho bản app mới đăng nhập, nhưng bản app cũ (≤ 0.6.8) gọi `POST /v1/trial` không có header `Authorization` vẫn nhận token dùng thử bình thường. Ngay cả sau khi bật `ACCOUNT_REQUIRED="on"`, máy đã có dòng trong `trials` vẫn nhận lại token dùng thử như cũ (L10), chỉ máy mới tinh chưa có dòng mới cần Bearer token tài khoản. Máy đang ở gói trả phí còn hiệu lực không bao giờ bị chặn vì chưa đăng nhập.
+
+### 19.1. Cấu hình Google Cloud (làm trước khi bật đăng nhập)
+
+1. **Tạo project và màn hình đồng ý OAuth (OAuth consent screen):**
+   - Loại người dùng: **External**.
+   - Tên ứng dụng: **AI Translator**; biểu tượng ứng dụng; email hỗ trợ `support@aitranslator.vn`.
+   - Liên kết ứng dụng: trang chủ `https://aitranslator.vn/`, chính sách quyền riêng tư `https://aitranslator.vn/chinh-sach-quyen-rieng-tu/` (hoặc `/en/privacy/`), điều khoản `https://aitranslator.vn/dieu-khoan/`. Lưu ý: chính sách quyền riêng tư 1.14 (có mục 15 nói về Đăng nhập bằng Google) phải có mặt trên `aitranslator.vn` trước hoặc cùng lúc gửi xác minh thương hiệu.
+   - Tên miền được phép (Authorized domains): `aitranslator.vn` (đã xác minh quyền sở hữu tên miền trên Google Search Console).
+   - Scope: **chỉ** `openid` và `.../auth/userinfo.email` (`openid email`); **không** thêm `profile` (không lấy tên hay ảnh đại diện). Đây là các scope không nhạy cảm (non-sensitive).
+   - Chuyển trạng thái xuất bản sang **"In production"** và hoàn tất **xác minh thương hiệu (Brand verification)** trước khi phát hành bản app bắt buộc đăng nhập.
+
+2. **Tạo OAuth 2.0 Client ID:**
+   - Loại ứng dụng (Application type): **Web application** (Worker `mt-license` là confidential client giữ client secret; app desktop không giữ secret và không mở cổng localhost).
+   - **Authorized redirect URIs:** điền đúng một địa chỉ:
+     ```text
+     https://api.aitranslator.vn/v1/auth/google/callback
+     ```
+     **Không** đăng ký tên miền cũ `api.aitranslator.io.vn` (đăng nhập chỉ có từ bản app mới, bản app mới chỉ gọi `api.aitranslator.vn`).
+   - Lưu lại **Client ID** (dạng `<số>-<chuỗi>.apps.googleusercontent.com`, không bí mật) và **Client secret** (dạng `GOCSPX-…`, bí mật).
+
+### 19.2. Migration D1 và deploy License Server (`ACCOUNT_REQUIRED="off"`)
+
+Mọi lệnh chạy trong `server/`:
+
+1. **Áp migration 0010** (bắt buộc làm **trước** khi deploy Worker mới):
+
+   ```bash
+   cd server
+   pnpm exec wrangler d1 migrations apply mt-license-production --remote
+   ```
+
+   Expected: bảng `Migrations to be applied:` chỉ có `0010_accounts.sql`, trả lời `y`, rồi ✅.
+
+2. **Kiểm sau khi áp (chỉ đọc):**
+
+   ```bash
+   pnpm exec wrangler d1 execute mt-license-production --remote --command "SELECT name FROM sqlite_master WHERE name IN ('accounts','login_attempts','trials_account','licenses_account') ORDER BY name"
+   ```
+
+   Expected: bốn dòng `accounts`, `licenses_account`, `login_attempts`, `trials_account`.
+
+3. **Đặt secret `GOOGLE_OAUTH_CLIENT_SECRET` cho Worker API** (không có `-c`; Worker admin không dùng secret này):
+
+   ```bash
+   pnpm exec wrangler secret put GOOGLE_OAUTH_CLIENT_SECRET
+   ```
+
+   Dán Client secret (`GOCSPX-…`) khi được hỏi. Không bao giờ đưa chuỗi `GOCSPX-…` vào `wrangler.jsonc` hay vào repo (test `wrangler-config.test.mjs` chặn).
+
+4. **Điền `GOOGLE_OAUTH_CLIENT_ID` vào `server/wrangler.jsonc`:**
+   - Trong `vars` của `server/wrangler.jsonc`, điền Client ID thật vào `"GOOGLE_OAUTH_CLIENT_ID": "<số>-<chuỗi>.apps.googleusercontent.com"`.
+   - Giữ `"LOGIN_GATE": "on"` và **`"ACCOUNT_REQUIRED": "off"`**.
+   - Chạy kiểm tra cấu hình và toàn bộ test server:
+
+     ```bash
+     pnpm check
+     ```
+
+     Expected: thoát 0 (`typecheck`, `vectors:check`, `vitest`, `test:scripts`, `ui:check`, `dry-run` đều xanh).
+
+5. **Deploy Worker API (`mt-license`):**
+
+   ```bash
+   pnpm exec wrangler deploy
+   ```
+
+6. **Kiểm trạng thái đăng nhập trên production:**
+
+   ```bash
+   curl -s https://api.aitranslator.vn/v1/auth/status
+   ```
+
+   Expected: `{"login":"on"}`. (Nếu `GOOGLE_OAUTH_CLIENT_ID` còn để trống hoặc thiếu secret thì trả `{"login":"off"}`.)
+
+### 19.3. Deploy Web Admin (`mt-license-admin`)
+
+Vẫn trong `server/`:
+
+```bash
+pnpm ui:build
+pnpm exec wrangler deploy -c wrangler.admin.jsonc
+```
+
+Kiểm trên `https://admin.aitranslator.vn`:
+- Thanh bên trái (nhóm Dữ liệu, cạnh *Máy & dùng thử*) có mục **Tài khoản** (`/accounts`).
+- Mở `/accounts`: danh sách hiện bảng tài khoản, ô tìm theo email, bộ lọc nhóm (*Tất cả*, *Đã mua*, *Đang dùng thử*, *Hết dùng thử*, *Đã xóa*), nút **Xuất CSV**.
+- Trang **Tra cứu** (`/search`) khi tìm theo email trả thêm kết quả tài khoản Google khớp email.
+
+### 19.4. Kiểm tay trên app trước khi phát hành (bắt buộc, spec §9)
+
+Trước khi đóng gói bản phát hành:
+- Nếu dùng biểu tượng chữ "G" nhiều màu chuẩn của Google trên nút đăng nhập: tải tệp chính thức từ <https://developers.google.com/identity/branding-guidelines> và đặt vào `src/assets/google/google-g.svg` (hoặc `google-g.png`; xem `src/assets/google/README.md`), chụp lại cảnh `login-gate` bằng `node scripts/ui-preview/check-i18n.mjs`.
+- Kiểm ngày hiệu lực ở dòng đầu của bốn file `docs/legal/{eula,privacy}.{vi,en}.md` (EULA 1.8, chính sách 1.14): nếu ngày phát hành khác ngày đang ghi thì đổi theo mục "Đổi ngày hiệu lực" của `docs/legal/README.md` và chạy lại `pnpm test` cùng `node --test website/test/site.test.mjs`.
+
+Chạy danh sách **kiểm tay trước phát hành** (bản build nối production đã có `LOGIN_GATE="on"` từ mục 19.2):
+
+1. **Đăng nhập thật trên Windows và macOS** với các trình duyệt phổ biến (**Chrome, Edge, Safari, Firefox**): bấm nút Đăng nhập bằng Google → trình duyệt hệ thống mở `accounts.google.com` → chọn tài khoản → trình duyệt hiện trang "Đã đăng nhập xong, bạn có thể đóng tab này và quay lại AI Translator" đúng ngôn ngữ giao diện → trong vài giây app nhận kết quả, mở cổng và ghi nhận 10 ngày dùng thử (hoặc giữ nguyên số ngày còn lại nếu máy đã có dùng thử).
+2. **Tài khoản Google Workspace bị tổ chức chặn ứng dụng bên thứ ba** hoặc bấm **Từ chối (Cancel/Deny)** trên trang Google: trình duyệt báo đã hủy/lỗi, app thoát trạng thái đang chờ trong vài giây, hiện thông báo lỗi tương ứng (`accountDenied` / `accountFailed`) và cho phép thử lại ngay, không bị kẹt ở "Đang chờ…".
+3. **Hủy giữa chừng và đóng tab trình duyệt:** bấm Đăng nhập rồi đóng luôn tab trình duyệt (không bấm gì trên Google), quay lại app bấm **Hủy**: vòng hỏi dừng ngay, nút Đăng nhập bật lại; bấm Đăng nhập lần hai hoạt động bình thường.
+4. **Đóng app khi đang chờ rồi mở lại:** bấm Đăng nhập, khi app đang hiện "Đang chờ bạn đăng nhập trên trình duyệt…" thì tắt hẳn app rồi mở lại: app ở trạng thái chưa đăng nhập (`Anonymous`), không tự kẹt ở trạng thái đang chờ.
+5. **Mất mạng sau khi đã đăng nhập:** đăng nhập thành công một lần, ngắt mạng (Wi-Fi/cáp), mở lại app và bắt đầu dịch: token tài khoản lưu trong kho khóa hệ thống được kiểm chữ ký Ed25519 offline nên dùng bình thường như cũ.
+6. **Gói trả phí chưa đăng nhập vẫn dịch bình thường:** trên máy có license trả phí còn hiệu lực mà ở trạng thái chưa đăng nhập (`Anonymous`), bắt đầu dịch phụ đề, Gõ dịch, Giọng đọc đều chạy ngay, không bao giờ hiện màn chặn `LoginGate`. Trang chủ hiện banner nhỏ gợi ý **"Liên kết tài khoản Google"** kèm nút **"Để sau"** (bấm "Để sau" thì ẩn trong phiên làm việc; bấm "Liên kết" thì đăng nhập và tự gắn license vào tài khoản).
+7. **Free chưa đăng nhập bị chặn đúng ba màn dịch, các màn khác vào bình thường:** trên máy Free chưa đăng nhập (khi `LOGIN_GATE="on"`), mở **Trang chủ (Home)**, **Gõ dịch (Compose)**, **Giọng đọc (Voice)** đều hiện `LoginGate` (ô đồng ý phải tick mới bấm được nút Đăng nhập; hai liên kết **Nâng cấp** và **Hỗ trợ** trên `LoginGate` bấm được). Trong khi đó các màn **Lịch sử, Bản chép lời, Từ điển, Cài đặt, Nâng cấp, Hỗ trợ, Giới thiệu** vẫn mở và dùng được bình thường (khách mua gói hoặc nhập key không cần đăng nhập).
+8. **Xóa tài khoản và chống dùng thử lại:** vào **Cài đặt › Tài khoản**, kiểm tra hiện đúng email Google, thử **Đăng xuất** (cổng đóng lại cho Free), đăng nhập lại rồi bấm **Xóa tài khoản** và xác nhận: app về trạng thái chưa đăng nhập; trên Web Admin dòng tài khoản chuyển sang nhóm *Đã xóa* (`email` về NULL, gỡ liên kết `trials`/`licenses`, nhưng giữ `google_sub` và mốc `trial_started_at`/`trial_ends_at`). Đăng nhập lại bằng chính tài khoản Google đó hoặc sang máy thứ hai đăng nhập cùng tài khoản: không được cấp thêm 10 ngày dùng thử mới.
+9. **Công tắc khẩn cấp `LOGIN_GATE="off"`:** thử đặt `"LOGIN_GATE": "off"` trên Worker (hoặc kiểm qua `/v1/auth/status`), mở lại app ở máy Free chưa đăng nhập: app mở cổng (`gate: false`), bắt đầu dịch và đi qua bước Onboarding không cần đăng nhập. Kiểm xong nhớ trả `"LOGIN_GATE": "on"`.
+10. **Xuất CSV trên Web Admin:** tại trang `/accounts`, bấm **Xuất CSV**, mở file tải về bằng cả **Microsoft Excel** và **Google Sheets**: có đúng 5 cột `email,created_at,last_login_at,plan,trial_ends_at`; thử với địa chỉ/chuỗi bắt đầu bằng `=`, `+`, `-`, `@` thì ô có dấu nháy đơn `'` đứng đầu, hiển thị thành chuỗi văn bản chứ không chạy thành công thức.
+
+### 19.5. Phát hành app, bật `ACCOUNT_REQUIRED="on"` và deploy website
+
+1. **Phát hành bản app mới** (đề xuất **0.7.0**, vì thêm tính năng đăng nhập Google và kèm EULA 1.8, chính sách 1.14) theo đúng quy trình 5 bước ở mục 2.
+2. **Bật `ACCOUNT_REQUIRED="on"` trên Worker API** (chỉ làm **sau khi** bản app mới đã phát hành lên R2 và kiểm chạy thật với một tài khoản Google thật trên bản phát hành):
+   - Trong `server/wrangler.jsonc`, đổi `"ACCOUNT_REQUIRED": "off"` thành `"ACCOUNT_REQUIRED": "on"`.
+   - Chạy `cd server && pnpm check && pnpm exec wrangler deploy`.
+   - Từ lúc này, máy mới tinh gọi `POST /v1/trial` mà không có Bearer token tài khoản sẽ nhận `401 account_required`; máy cũ đã có dòng trong `trials` từ các bản ≤ 0.6.8 vẫn nhận lại token dùng thử bình thường.
+3. **Deploy website cùng ngày** với bước phát hành app (mục 2 bước 6: `cd website && pnpm deploy`) để cập nhật nội dung năm ngôn ngữ, chính sách quyền riêng tư 1.14, EULA 1.8 và ghim bản cài mới vào `install.ps1` / `install.sh`. Commit thay đổi `ACCOUNT_REQUIRED` và bản ghim nếu có.
+4. **Theo dõi 7 ngày đầu:**
+   - Xem log Worker API (`pnpm exec wrangler tail mt-license --format json | grep -E 'auth_'`) và trang Hệ thống / Nhật ký trên Web Admin: theo dõi số tài khoản mới trên `/accounts`, tỉ lệ `auth_login_failed` theo `reason` (`exchange_failed`, `bad_id_token`, `email_unverified`, `nonce_mismatch`, `jwks_unavailable`), cảnh báo `auth_flood` nếu có, và các phiếu hỗ trợ liên quan.
+
+### 19.6. Tắt khẩn cấp và rollback
+
+- **Mở cổng đăng nhập khẩn cấp (Google lỗi, cấu hình OAuth trục trặc, hoặc muốn bỏ chặn ngay lập tức mà không cần phát hành lại app):**
+  1. Trong `server/wrangler.jsonc`, đổi `"LOGIN_GATE": "on"` thành `"LOGIN_GATE": "off"` và `"ACCOUNT_REQUIRED": "on"` thành `"ACCOUNT_REQUIRED": "off"`.
+  2. Chạy `cd server && pnpm exec wrangler deploy`.
+  3. Kết quả: `GET /v1/auth/status` trả `{"login":"off"}`. Mọi máy đang mở màn đăng nhập hoặc mở lại app (hay tới nhịp kiểm mỗi giờ) sẽ tự mở cổng (`gate: false`), người dùng Free đăng ký dùng thử và dịch bình thường không cần đăng nhập.
+- **Không cần rollback migration 0010:** hai bảng mới và hai cột `account_id` cho phép NULL hoàn toàn tương thích ngược với code cũ.

@@ -127,6 +127,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "Try offline translation on your own meeting", text: "Start with the free 10-day trial, 30 minutes a day. No card, no account.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/data-security/", label: "How we handle data" } })}
+${ctaBand({ title: "Try offline translation on your own meeting", text: "Start with the free 10-day trial, 30 minutes a day. No card needed; the trial needs you to sign in with Google.", primary: { href: "/en/download/", label: "Download" }, secondary: { href: "/en/data-security/", label: "How we handle data" } })}
 `,
 };

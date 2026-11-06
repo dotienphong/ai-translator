@@ -3104,3 +3104,440 @@ mod reports {
         assert_eq!(rig.reporter.flush(), 0);
     }
 }
+
+// ---- Tài khoản Google (spec 2026-11-05-dang-nhap-google §6.1, §6.2) ----
+
+/// Spec 2026-11-05 §6.2, A7: đang dịch thì không đăng nhập (không gọi `/v1/auth/*`): `accountBusy`, không gọi server tài khoản,
+/// không mở trình duyệt; giao diện vẫn nhận `account://changed`. Xóa tài khoản (gọi `/v1/account/*`) cũng vậy.
+#[test]
+fn account_sign_in_is_refused_while_a_session_runs() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    let events = record(&app, crate::events::ACCOUNT_CHANGED);
+    for session in [SessionStatus::Starting, SessionStatus::Running] {
+        app.state::<AppState>().update_status(|s| s.session = session);
+        for cmd in ["account_sign_in", "account_delete"] {
+            let err = invoke(&main, cmd, json!({ "lang": "vi" })).unwrap_err();
+            assert!(err.contains("\"code\":\"accountBusy\""), "{session:?} {cmd}: {err}");
+        }
+    }
+    assert!(rig.api.calls().is_empty(), "không gọi server tài khoản lúc đang dịch");
+    assert!(
+        crate::test_support::system_calls(&app).is_empty(),
+        "không mở trình duyệt"
+    );
+    wait_until("lệnh lỗi vẫn báo account://changed", || {
+        events.lock().unwrap().len() >= 4
+    });
+    // Hết dịch: đăng nhập được.
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Idle);
+    let view = invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    assert_eq!(view["state"], "signedIn");
+}
+
+/// Chưa có dịch vụ tài khoản (chưa cấu hình server, không dựng được) hay chưa cài bản quyền: `get_account` vẫn trả trạng thái
+/// mặc định, không panic, cổng không đóng; `License` không có hook nên chạy như cũ.
+#[test]
+fn get_account_answers_without_an_account_service() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let default = json!({ "state": "anonymous", "email": null, "gate": false });
+    assert_eq!(invoke(&main, "get_account", json!({})).unwrap(), default, "chưa cài gì");
+    let rig = crate::test_support::install_account(&app, false);
+    assert_eq!(
+        invoke(&main, "get_account", json!({})).unwrap(),
+        default,
+        "không có dịch vụ"
+    );
+    let now = crate::license::app::now();
+    assert_eq!(rig.license.start_block(now), None, "không hook: Free chạy như cũ");
+    let err = invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap_err();
+    assert!(err.contains("\"code\":\"accountUnavailable\""), "{err}");
+    assert!(invoke(&main, "account_cancel_sign_in", json!({})).is_ok());
+    assert_eq!(invoke(&main, "account_sign_out", json!({})).unwrap(), default);
+    assert!(crate::test_support::system_calls(&app).is_empty());
+}
+
+/// Spec 2026-11-05 §6.2: Free chưa đăng nhập bị chặn bằng `LoginRequired`; đăng nhập xong thì `start_block` về kết quả cũ (đăng
+/// ký dùng thử chạy nền, có Bearer) và cổng của giao diện mở. Mỗi lệnh báo `account://changed`, sự kiện không mang token.
+#[test]
+fn signing_in_lifts_the_login_gate_and_registers_the_trial() {
+    use crate::license::manager::StartBlock;
+    use crate::license::manager::tests::DEVICE;
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    let events = record(&app, crate::events::ACCOUNT_CHANGED);
+    let now = crate::license::app::now();
+    assert_eq!(rig.license.start_block(now), Some(StartBlock::LoginRequired));
+    let view = invoke(&main, "get_account", json!({})).unwrap();
+    assert_eq!(view, json!({ "state": "anonymous", "email": null, "gate": true }));
+    assert!(
+        rig.license_api.calls.lock().unwrap().is_empty(),
+        "cổng đóng: không gọi server"
+    );
+
+    let view = invoke(&main, "account_sign_in", json!({ "lang": "ja" })).unwrap();
+    assert_eq!(
+        view,
+        json!({ "state": "signedIn", "email": crate::test_support::ACCOUNT_EMAIL, "gate": false })
+    );
+    assert_eq!(rig.api.calls(), ["start ja", "poll"]);
+    let trial = format!("trial {DEVICE}");
+    wait_until("đăng ký dùng thử chạy nền", || {
+        rig.license_api.calls.lock().unwrap().contains(&trial)
+    });
+    assert_eq!(
+        rig.license.start_block(crate::license::app::now()),
+        None,
+        "về kết quả cũ"
+    );
+    wait_until("báo đang đăng nhập rồi đã đăng nhập", || {
+        let events = events.lock().unwrap();
+        events.iter().any(|e| e["state"] == "signingIn") && events.iter().any(|e| e["state"] == "signedIn")
+    });
+    let token = crate::test_support::account_token().0;
+    for e in events.lock().unwrap().iter() {
+        assert!(!e.to_string().contains(&token[..20]), "sự kiện không mang token: {e}");
+    }
+    assert!(
+        !rig.api.calls().iter().any(|c| c.starts_with("link")),
+        "không có license: không gắn"
+    );
+    // Đăng xuất: cổng đóng lại (máy chưa có license).
+    let view = invoke(&main, "account_sign_out", json!({})).unwrap();
+    assert_eq!(view, json!({ "state": "anonymous", "email": null, "gate": true }));
+}
+
+/// Máy có license: cổng của giao diện không bao giờ đóng (khách đã mua không bị đòi đăng nhập); đăng nhập xong thì gắn license vào
+/// tài khoản ở nền, với key và `activation_id` đang lưu.
+#[test]
+fn a_machine_with_a_license_is_never_gated_and_links_it_after_sign_in() {
+    use crate::license::manager::tests::{DEVICE, KEY, granted};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    let now = crate::license::app::now();
+    let claims = json!({
+        "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
+        "device_id_hash": DEVICE, "plan": "yearly", "expires_at": now + 365 * 86_400, "cycle_anchor": now,
+        "quota_minutes_per_cycle": null, "quota_epoch": 0, "quota_fresh": true,
+        "issued_at": now, "refresh_before": now + 14 * 86_400,
+    });
+    rig.license_api
+        .replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&claims, true));
+    rig.license.activate(KEY, now).unwrap();
+    assert_eq!(rig.license.start_block(now), None);
+    let view = invoke(&main, "get_account", json!({})).unwrap();
+    assert_eq!(view["gate"], false, "khách đã mua không bị đòi đăng nhập");
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    let key = rig.license.license_key().unwrap();
+    let link = format!("link {key} act");
+    wait_until("gắn license vào tài khoản ở nền", || {
+        rig.api.calls().contains(&link)
+    });
+}
+
+/// Báo `account://changed` không panic khi chưa có cửa sổ chính.
+#[test]
+fn account_events_do_not_need_the_main_window() {
+    let app = mock_app();
+    crate::test_support::install_account(&app, true);
+    assert!(crate::license::app::account_sign_out(app.handle()).is_ok());
+    crate::license::app::account_cancel(app.handle());
+}
+
+/// Hỏi công tắc đăng nhập ở nền (ticker): chỉ khi chưa đăng nhập và không đang dịch, mỗi giờ một lần. `"off"` mở cổng và báo
+/// giao diện; lỗi mạng giữ nguyên cổng.
+#[test]
+fn the_login_switch_is_asked_in_the_background_only_while_anonymous_and_idle() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    let events = record(&app, crate::events::ACCOUNT_CHANGED);
+    let mut last = crate::license::app::RetrySchedule::default();
+    let t0 = Instant::now();
+    // Đang dịch: không hỏi.
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Running);
+    crate::license::app::refresh_account_status(app.handle(), &mut last, t0);
+    assert!(rig.api.calls().is_empty() && last == crate::license::app::RetrySchedule::default());
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Idle);
+    // Mất mạng: cổng giữ nguyên.
+    crate::license::app::refresh_account_status(app.handle(), &mut last, t0);
+    assert_eq!(rig.api.calls(), ["status"]);
+    assert_eq!(invoke(&main, "get_account", json!({})).unwrap()["gate"], true);
+    // Chưa tới giờ: không hỏi lại.
+    *rig.api.login_on.lock().unwrap() = Some(false);
+    crate::license::app::refresh_account_status(app.handle(), &mut last, t0);
+    assert_eq!(rig.api.calls(), ["status"]);
+    // Tới giờ, server tắt đăng nhập: cổng mở, giao diện được báo.
+    let later = t0 + Duration::from_secs(3600);
+    crate::license::app::refresh_account_status(app.handle(), &mut last, later);
+    assert_eq!(rig.api.calls(), ["status", "status"]);
+    assert_eq!(invoke(&main, "get_account", json!({})).unwrap()["gate"], false);
+    wait_until("báo cổng mở", || {
+        events.lock().unwrap().iter().any(|e| e["gate"] == false)
+    });
+    // Đã đăng nhập: không hỏi nữa.
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    let mut last = crate::license::app::RetrySchedule::default();
+    crate::license::app::refresh_account_status(app.handle(), &mut last, later);
+    assert_eq!(rig.api.calls().iter().filter(|c| *c == "status").count(), 2);
+}
+
+/// Kích hoạt một gói năm trên máy giả (server giả trả token hợp lệ).
+fn activate_yearly(rig: &crate::test_support::AccountRig) {
+    use crate::license::manager::tests::{DEVICE, KEY, granted};
+    let now = crate::license::app::now();
+    let claims = json!({
+        "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
+        "device_id_hash": DEVICE, "plan": "yearly", "expires_at": now + 365 * 86_400, "cycle_anchor": now,
+        "quota_minutes_per_cycle": null, "quota_epoch": 0, "quota_fresh": true,
+        "issued_at": now, "refresh_before": now + 14 * 86_400,
+    });
+    rig.license_api
+        .replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&claims, true));
+    rig.license.activate(KEY, now).unwrap();
+}
+
+/// Máy có license và dùng thử từ trước; server tài khoản và `/v1/trial` trả lần lượt `trial_error`, `link_error` cho lần gắn đầu
+/// (sau đăng nhập). Đăng nhập rồi chờ việc nền sau đăng nhập xong.
+fn signed_in_with_pending_work(
+    app: &tauri::App<tauri::test::MockRuntime>,
+    trial_error: crate::license::client::ApiError,
+    link_error: crate::license::client::ApiError,
+) -> crate::test_support::AccountRig {
+    let main = window(app, "main");
+    let rig = crate::test_support::install_account(app, true);
+    activate_yearly(&rig);
+    rig.license.register_trial(crate::license::app::now()).unwrap();
+    rig.license_api.trials.lock().unwrap().push_back(Err(trial_error));
+    rig.api.link_results.lock().unwrap().push_back(Err(link_error));
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    wait_until("việc nền sau đăng nhập xong", || {
+        crate::license::app::account_followups_state(app.handle()).2 == 1
+    });
+    rig
+}
+
+fn trial_calls(rig: &crate::test_support::AccountRig) -> usize {
+    rig.license_api
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|c| c.starts_with("trial"))
+        .count()
+}
+
+fn link_calls(rig: &crate::test_support::AccountRig) -> usize {
+    rig.api.calls().iter().filter(|c| c.starts_with("link")).count()
+}
+
+/// Spec 2026-11-05 §6.2: sau đăng nhập, gắn dùng thử sẵn có (kèm Bearer) và license đang lưu vào tài khoản; lỗi mạng thì ticker
+/// thử lại ở nhịp kế tiếp, thành công thì thôi.
+#[test]
+fn the_trial_and_the_license_are_attached_again_after_a_network_error() {
+    use crate::license::app::{RetrySchedule, account_followups_state, run_account_followups};
+    let app = mock_app();
+    let net = || crate::license::client::ApiError::Network("mất mạng".into());
+    let rig = signed_in_with_pending_work(&app, net(), net());
+    assert_eq!(
+        account_followups_state(app.handle()),
+        (true, true, 1),
+        "lỗi mạng: còn chờ"
+    );
+    assert_eq!((trial_calls(&rig), link_calls(&rig)), (2, 1));
+    let mut schedule = RetrySchedule::default();
+    let t0 = Instant::now();
+    run_account_followups(app.handle(), &mut schedule, t0);
+    assert_eq!((trial_calls(&rig), link_calls(&rig)), (3, 2), "nhịp kế tiếp thử lại");
+    assert_eq!(account_followups_state(app.handle()), (false, false, 1), "xong");
+    run_account_followups(app.handle(), &mut schedule, t0 + Duration::from_secs(7200));
+    assert_eq!((trial_calls(&rig), link_calls(&rig)), (3, 2), "xong thì thôi");
+}
+
+/// Lỗi cuối (`401`, `409 license_linked_other_account`): không thử lại.
+#[test]
+fn a_final_error_is_not_retried() {
+    use crate::license::app::{RetrySchedule, account_followups_state, run_account_followups};
+    use crate::license::manager::tests::server;
+    let app = mock_app();
+    let rig = signed_in_with_pending_work(
+        &app,
+        server(401, "invalid_token"),
+        server(409, "license_linked_other_account"),
+    );
+    assert_eq!(account_followups_state(app.handle()), (false, false, 1));
+    let mut schedule = RetrySchedule::default();
+    run_account_followups(app.handle(), &mut schedule, Instant::now());
+    assert_eq!((trial_calls(&rig), link_calls(&rig)), (2, 1), "không gọi lại");
+}
+
+/// Đang dịch thì không gắn (A7): việc còn chờ, chạy ở nhịp sau khi hết dịch.
+#[test]
+fn pending_account_work_waits_while_a_session_runs() {
+    use crate::license::app::{RetrySchedule, account_followups_state, run_account_followups};
+    let app = mock_app();
+    let net = || crate::license::client::ApiError::Network("mất mạng".into());
+    let rig = signed_in_with_pending_work(&app, net(), net());
+    let mut schedule = RetrySchedule::default();
+    let t0 = Instant::now();
+    for session in [SessionStatus::Starting, SessionStatus::Running] {
+        app.state::<AppState>().update_status(|s| s.session = session);
+        run_account_followups(app.handle(), &mut schedule, t0);
+    }
+    assert_eq!((trial_calls(&rig), link_calls(&rig)), (2, 1), "không gọi lúc đang dịch");
+    assert_eq!(account_followups_state(app.handle()), (true, true, 1));
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Idle);
+    run_account_followups(app.handle(), &mut schedule, t0);
+    assert_eq!((trial_calls(&rig), link_calls(&rig)), (3, 2));
+    assert_eq!(account_followups_state(app.handle()), (false, false, 1));
+}
+
+/// Công tắc đăng nhập (spec 2026-11-05 §5.4b): lỗi thì hỏi lại sớm (60 giây, rồi 5 phút), có câu trả lời thật thì một giờ sau.
+#[test]
+fn the_login_switch_is_asked_again_soon_after_an_error_and_hourly_after_an_answer() {
+    use crate::license::app::{RetrySchedule, refresh_account_status};
+    let app = mock_app();
+    let rig = crate::test_support::install_account(&app, true);
+    let mut schedule = RetrySchedule::default();
+    let t0 = Instant::now();
+    let s = Duration::from_secs;
+    let asks = || rig.api.calls().iter().filter(|c| *c == "status").count();
+    refresh_account_status(app.handle(), &mut schedule, t0);
+    assert_eq!(asks(), 1);
+    refresh_account_status(app.handle(), &mut schedule, t0 + s(59));
+    assert_eq!(asks(), 1, "chưa tới 60 giây");
+    refresh_account_status(app.handle(), &mut schedule, t0 + s(60));
+    assert_eq!(asks(), 2, "lỗi: hỏi lại sau 60 giây");
+    refresh_account_status(app.handle(), &mut schedule, t0 + s(60 + 299));
+    assert_eq!(asks(), 2);
+    *rig.api.login_on.lock().unwrap() = Some(true);
+    refresh_account_status(app.handle(), &mut schedule, t0 + s(60 + 300));
+    assert_eq!(asks(), 3, "lỗi lần hai: 5 phút");
+    let answered = t0 + s(360);
+    refresh_account_status(app.handle(), &mut schedule, answered + s(3599));
+    assert_eq!(asks(), 3, "có câu trả lời: chờ một giờ");
+    refresh_account_status(app.handle(), &mut schedule, answered + s(3600));
+    assert_eq!(asks(), 4);
+}
+
+/// Máy có license không bao giờ bị đòi đăng nhập: không hỏi công tắc.
+#[test]
+fn a_licensed_machine_never_asks_the_login_switch() {
+    use crate::license::app::{RetrySchedule, refresh_account_status};
+    let app = mock_app();
+    let rig = crate::test_support::install_account(&app, true);
+    activate_yearly(&rig);
+    let mut schedule = RetrySchedule::default();
+    refresh_account_status(app.handle(), &mut schedule, Instant::now());
+    assert!(rig.api.calls().is_empty());
+}
+
+/// Gắn license chạy nền (fix round 2): mạng, `429` và mọi `5xx` thử lại ở nhịp kế tiếp; `4xx` khác thì thôi.
+#[test]
+fn link_license_retries_network_429_and_every_5xx_but_not_other_4xx() {
+    use crate::license::app::{RetrySchedule, account_followups_state, run_account_followups};
+    use crate::license::manager::tests::server;
+    let net = || crate::license::client::ApiError::Network("mất mạng".into());
+    for (error, retried) in [
+        (net(), true),
+        (server(429, "rate_limited"), true),
+        (server(500, "internal"), true),
+        (server(502, "bad_gateway"), true),
+        (server(503, "unavailable"), true),
+        (server(504, "timeout"), true),
+        (server(400, "invalid_request"), false),
+        (server(401, "invalid_token"), false),
+        (server(403, "forbidden"), false),
+        (server(409, "license_linked_other_account"), false),
+    ] {
+        let label = format!("{error:?}");
+        let app = mock_app();
+        // Dùng thử gắn được ngay (lỗi chỉ ở license): chỉ còn cờ gắn license.
+        let rig = signed_in_with_pending_work(&app, server(401, "invalid_token"), error);
+        assert_eq!(account_followups_state(app.handle()).1, retried, "{label}: còn chờ");
+        run_account_followups(app.handle(), &mut RetrySchedule::default(), Instant::now());
+        assert_eq!(link_calls(&rig), if retried { 2 } else { 1 }, "{label}");
+        assert!(!account_followups_state(app.handle()).1, "{label}: xong");
+    }
+}
+
+/// Đăng nhập xong thì luôn gắn dùng thử kèm Bearer (fix round 2): kể cả khi lúc đó tới lịch đăng ký (ticker có thể vừa đăng ký
+/// không Bearer ngay trước khi đăng nhập xong); server chỉ đặt `account_id` khi đang trống, nên gọi thêm vô hại.
+#[test]
+fn sign_in_always_attaches_the_trial_with_the_bearer() {
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    activate_yearly(&rig);
+    rig.license.allow_trial();
+    assert!(rig.license.trial_due(crate::license::app::now()), "tới lịch đăng ký");
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    wait_until("việc nền sau đăng nhập xong", || {
+        crate::license::app::account_followups_state(app.handle()).2 == 1
+    });
+    let token = Some(crate::test_support::account_token().0);
+    assert_eq!(
+        *rig.trial_bearers.lock().unwrap(),
+        [token.clone(), token],
+        "đăng ký kèm Bearer, rồi gắn kèm Bearer"
+    );
+}
+
+/// Lịch hỏi lại của ticker về đầu khi có phiên tài khoản mới (đăng nhập, đăng xuất): không phải chờ tới một giờ (fix round 2).
+#[test]
+fn a_new_sign_in_or_sign_out_resets_the_ticker_schedules() {
+    use crate::license::app::{AccountTicker, account_tick};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    let mut ticker = AccountTicker::default();
+    let t0 = Instant::now();
+    let s = Duration::from_secs;
+    let asks = || rig.api.calls().iter().filter(|c| *c == "status").count();
+    *rig.api.login_on.lock().unwrap() = Some(true);
+    account_tick(app.handle(), &mut ticker, t0);
+    account_tick(app.handle(), &mut ticker, t0 + s(1));
+    assert_eq!(asks(), 1, "đã có câu trả lời: chờ một giờ");
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    invoke(&main, "account_sign_out", json!({})).unwrap();
+    account_tick(app.handle(), &mut ticker, t0 + s(2));
+    assert_eq!(asks(), 2, "đăng xuất: hỏi lại ngay");
+
+    // Việc gắn license: lỗi ở nhịp của ticker lùi lịch 60 giây; phiên đăng nhập mới thì nhịp kế tiếp chạy ngay.
+    activate_yearly(&rig);
+    let net = || crate::license::client::ApiError::Network("mất mạng".into());
+    rig.api
+        .link_results
+        .lock()
+        .unwrap()
+        .extend([Err(net()), Err(net()), Err(net())]);
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    wait_until("việc nền sau đăng nhập xong", || {
+        crate::license::app::account_followups_state(app.handle()).2 == 2
+    });
+    account_tick(app.handle(), &mut ticker, t0 + s(3));
+    assert_eq!(link_calls(&rig), 2, "ticker thử lại, lỗi: lùi 60 giây");
+    invoke(&main, "account_sign_out", json!({})).unwrap();
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    wait_until("việc nền sau lần đăng nhập mới xong", || {
+        crate::license::app::account_followups_state(app.handle()).2 == 3
+    });
+    assert_eq!(link_calls(&rig), 3);
+    account_tick(app.handle(), &mut ticker, t0 + s(4));
+    assert_eq!(link_calls(&rig), 4, "phiên mới: nhịp kế tiếp chạy ngay");
+    assert!(!crate::license::app::account_followups_state(app.handle()).1);
+}

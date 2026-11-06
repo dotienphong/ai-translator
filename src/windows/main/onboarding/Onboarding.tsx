@@ -1,12 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import logo from "../../../../app-icon.svg";
 import { Icon } from "../../../components/Icon";
+import { SafeBoundary } from "../../../components/SafeBoundary";
 import { type MessageKey, UI_LANGUAGES } from "../../../i18n";
-import { canAdvance, type Step, stepsFor } from "../../../lib/onboardingSteps";
+import { accountCanDefer, accountStepReady, advanceEffects, canAdvance, type Step, stepsFor } from "../../../lib/onboardingSteps";
+import { useAccount } from "../accountStore";
 import { useApp, useT } from "../appStore";
 import { LanguagePicker } from "../LanguagePicker";
 import { LegalDetails } from "../LegalDocument";
 import { Notice } from "../Notice";
+import { LoginGate } from "../screens/LoginGate";
 import { ListenTest } from "./ListenTest";
 import { DownloadStep, ModelStep } from "./ModelSteps";
 import { TaskbarGuide } from "./TaskbarGuide";
@@ -18,6 +21,7 @@ import { TaskbarGuide } from "./TaskbarGuide";
 const TITLES: Record<Step, MessageKey> = {
   language: "onboarding.language.title",
   terms: "onboarding.terms.title",
+  account: "onboarding.account.title",
   model: "onboarding.model.title",
   download: "onboarding.download.title",
   permission: "onboarding.permission.title",
@@ -36,6 +40,11 @@ export function Onboarding() {
   const startTrial = useApp((s) => s.startTrial);
   const saveReportsConsent = useApp((s) => s.saveErrorReportsConsent);
   const accepted = useApp((s) => s.termsAccepted);
+  // Bước Đăng nhập (spec 2026-11-05-dang-nhap-google §6.3): đi tiếp khi đã đăng nhập hay cổng mở; không đọc được trạng thái thì
+  // không giam người dùng ở đây.
+  // "Để sau" (cổng đóng, không đăng nhập được): cờ cục bộ của onboarding, không mở cổng (xem `accountCanDefer`).
+  const [accountDeferred, setAccountDeferred] = useState(false);
+  const accountReady = useAccount((s) => accountStepReady(s.view, s.view === null && s.error !== null, accountDeferred));
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef(index);
   // Sang bước khác thì đưa focus về tiêu đề của bước mới (nút vừa bấm có thể đã biến mất hay bị khóa).
@@ -49,6 +58,18 @@ export function Onboarding() {
   const current = Math.min(index, steps.length - 1);
   const step = steps[current] ?? "language";
   const last = current === steps.length - 1;
+  // Bấm "Tiếp" (hay "Để sau" ở bước Đăng nhập): việc chạy nền của bước rồi sang bước sau.
+  const advance = () => {
+    // Qua bước Điều khoản (đã đồng ý): lưu lựa chọn báo cáo lỗi tự động (spec 2026-10-17 §5; trước bước tải model, vì lỗi có
+    // thể xảy ra từ đó). Qua bước Đăng nhập (đã đăng nhập, cổng mở, hay Để sau): đăng ký dùng thử chạy nền, vì request gửi mã băm
+    // ID máy (spec 2026-10-07 §3.2); không còn đăng ký ngay sau Điều khoản (spec 2026-11-05-dang-nhap-google §6.3). Cổng còn đóng
+    // thì phía Rust không đăng ký (vô hại).
+    const effects = advanceEffects(step);
+    if (effects.saveReportsConsent) void saveReportsConsent();
+    if (effects.startTrial) void startTrial();
+    if (last) void finish();
+    else setStep(current + 1);
+  };
   return (
     <main className="onboarding">
       <div className="onboarding-card">
@@ -68,7 +89,14 @@ export function Onboarding() {
           {t(TITLES[step])}
         </h1>
         <div className="onboarding-body">
-          <StepBody step={step} platform={info.platform} />
+          <StepBody
+            step={step}
+            platform={info.platform}
+            onDeferAccount={() => {
+              setAccountDeferred(true);
+              advance();
+            }}
+          />
         </div>
         <div className="onboarding-actions">
           <button disabled={current === 0} onClick={() => setStep(current - 1)}>
@@ -77,17 +105,8 @@ export function Onboarding() {
           </button>
           <button
             className="primary"
-            disabled={!canAdvance(step, accepted)}
-            onClick={() => {
-              // Qua bước Điều khoản (đã đồng ý): lưu lựa chọn báo cáo lỗi tự động (spec 2026-10-17 §5; trước bước tải model, vì lỗi có
-              // thể xảy ra từ đó), và đăng ký dùng thử chạy nền, vì request gửi mã băm ID máy (spec 2026-10-07 §3.2).
-              if (step === "terms") {
-                void saveReportsConsent();
-                void startTrial();
-              }
-              if (last) void finish();
-              else setStep(current + 1);
-            }}
+            disabled={!canAdvance(step, accepted, accountReady)}
+            onClick={advance}
           >
             {t(last ? "onboarding.finish" : "onboarding.next")}
             {!last && <Icon name="chevronRight" size={16} />}
@@ -98,7 +117,15 @@ export function Onboarding() {
   );
 }
 
-function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows" }) {
+function StepBody({
+  step,
+  platform,
+  onDeferAccount,
+}: {
+  step: Step;
+  platform: "macos" | "windows";
+  onDeferAccount: () => void;
+}) {
   const t = useT();
   const settings = useApp((s) => s.settings);
   const update = useApp((s) => s.updateSettings);
@@ -168,6 +195,8 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
           </p>
         </>
       );
+    case "account":
+      return <AccountStep onDefer={onDeferAccount} />;
     case "model":
       return <ModelStep />;
     case "download":
@@ -212,4 +241,31 @@ function StepBody({ step, platform }: { step: Step; platform: "macos" | "windows
     default:
       return <p className="hint">{t("common.notYet")}</p>;
   }
+}
+
+// Bước Đăng nhập: đã đăng nhập thì báo email; cổng mở (server tắt đăng nhập, máy có gói trả phí) thì báo chưa cần đăng nhập;
+// còn lại là màn đăng nhập (không có liên kết Nâng cấp, Hỗ trợ: chưa có các màn đó), trong `SafeBoundary`, kèm nút "Để sau" cho
+// người không đăng nhập được (nhập key hay mua gói trong app sau; dịch vẫn cần đăng nhập nếu máy chưa có gói trả phí).
+function AccountStep({ onDefer }: { onDefer: () => void }) {
+  const t = useT();
+  const view = useAccount((s) => s.view);
+  if (view?.state === "signedIn") return <p>{t("onboarding.account.signedIn", { email: view.email ?? "" })}</p>;
+  if (view !== null && !view.gate) return <p>{t("onboarding.account.notNeeded")}</p>;
+  return (
+    <SafeBoundary message={t("common.renderFailed")} retry={t("common.retry")}>
+      <LoginGate links={false} showTitle={false} />
+      {accountCanDefer(view) && (
+        <div className="account-later">
+          <p className="hint" id="account-later-hint">
+            {t("onboarding.account.laterHint")}
+          </p>
+          <div className="actions">
+            <button type="button" className="ghost" aria-describedby="account-later-hint" onClick={onDefer}>
+              {t("onboarding.account.later")}
+            </button>
+          </div>
+        </div>
+      )}
+    </SafeBoundary>
+  );
 }

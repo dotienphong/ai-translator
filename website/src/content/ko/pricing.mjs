@@ -133,6 +133,6 @@ ${sectionHead({ eyebrow: "요금 관련 질문", title: "구매 전에 물어보
 ${faq(PRICING_FAQ)}
 </div></section>
 
-${ctaBand({ title: "10일 체험부터 시작하세요", text: "하루 30분이면 실제 회의에서 시험해 보기에 충분합니다. 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/faq/", label: "자주 묻는 질문 읽기" } })}
+${ctaBand({ title: "10일 체험부터 시작하세요", text: "하루 30분이면 실제 회의에서 시험해 보기에 충분합니다. 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/faq/", label: "자주 묻는 질문 읽기" } })}
 `,
 };

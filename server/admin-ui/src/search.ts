@@ -23,8 +23,12 @@ export function detectQuery(raw: string): LookupQuery | null {
   return null;
 }
 
-/** Kết quả chỉ có một license và mọi đơn đều thuộc license đó: mở thẳng trang license. */
+/**
+ * Kết quả chỉ có một license và mọi đơn đều thuộc license đó: mở thẳng trang license. Có tài khoản Google khớp (tra theo email)
+ * thì không chuyển trang, để người vận hành thấy cả tài khoản.
+ */
 export function singleTarget(r: LookupResult): string | null {
+  if (r.accounts !== undefined && r.accounts.length > 0) return null;
   const lic = r.licenses.length === 1 ? r.licenses[0] : undefined;
   if (lic && r.orders.every((o) => o.license_id === lic.id || o.renew_license_id === lic.id)) return `/licenses/${lic.id}`;
   return null;

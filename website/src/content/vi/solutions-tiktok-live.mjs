@@ -100,6 +100,6 @@ ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Fr
 <p class="disclaimer">TikTok là nhãn hiệu của chủ sở hữu tương ứng; AI Translator không liên kết với TikTok.</p>
 </div></section>
 
-${ctaBand({ title: "Thử với buổi live TikTok tiếp theo", text: "Cài bằng một dòng lệnh, dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
+${ctaBand({ title: "Thử với buổi live TikTok tiếp theo", text: "Cài bằng một dòng lệnh, dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/huong-dan/bat-dau-nhanh/", label: "Xem hướng dẫn" } })}
 `,
 };

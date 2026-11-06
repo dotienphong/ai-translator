@@ -17,6 +17,7 @@ import {
   IconSidebarCollapse,
   IconSidebarExpand,
   IconTool,
+  IconUser,
 } from "./icons";
 
 interface NavEntry {
@@ -42,6 +43,7 @@ export const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       { to: "/orders", label: "Đơn hàng", icon: IconCart, routes: ["orders", "order"] },
       { to: "/licenses", label: "License", icon: IconKey, routes: ["licenses", "license"] },
       { to: "/trials", label: "Máy & dùng thử", icon: IconMonitor, routes: ["trials", "device"] },
+      { to: "/accounts", label: "Tài khoản", icon: IconUser, routes: ["accounts", "account"] },
       { to: "/errors", label: "Báo cáo lỗi", icon: IconBug, routes: ["errors", "error_group", "error_report"] },
     ],
   },

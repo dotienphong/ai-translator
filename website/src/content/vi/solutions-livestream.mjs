@@ -30,7 +30,7 @@ const FAQ = [
   },
   {
     q: "Dịch live có miễn phí không?",
-    a: `<p>Gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước; xem <a href="/bang-gia/">bảng giá</a>. Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
+    a: `<p>Gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ; dùng thử cần đăng nhập bằng Google (gói trả phí không cần đăng nhập). Sau đó cần gói trả trước; xem <a href="/bang-gia/">bảng giá</a>. Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
   },
 ];
 
@@ -143,6 +143,6 @@ ${linkCard({ href: "/huong-dan/bat-dau-nhanh/", icon: "zap", title: "Bắt đầ
 <p class="disclaimer">TikTok, YouTube, Facebook và các tên sản phẩm khác thuộc về chủ sở hữu tương ứng; AI Translator không liên kết với họ.</p>
 </div></section>
 
-${ctaBand({ title: "Thử với buổi livestream tiếp theo", text: "Cài bằng một dòng lệnh, dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
+${ctaBand({ title: "Thử với buổi livestream tiếp theo", text: "Cài bằng một dòng lệnh, dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
 `,
 };

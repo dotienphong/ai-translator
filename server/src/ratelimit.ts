@@ -44,6 +44,15 @@ export const LIMITS = {
   support_msg_conv: 20,
   support_email_conv: 5,
   support_global: 200,
+  // Đăng nhập Google (spec 2026-11-05 §5.6), con số khởi điểm theo IP mỗi giờ: xin login_url (start), trang callback của Google, và
+  // các endpoint /v1/account/* (link-license, delete). Việc hỏi kết quả (/v1/auth/poll) không đếm ở đây (mỗi lần đếm là một lần ghi D1):
+  // xem binding AUTH_POLL_LIMITER ở wrangler.jsonc.
+  auth_start_ip: 20,
+  // Xin login_url toàn hệ thống (cùng kiểu checkout_global): chạm trần thì có cảnh báo auth_flood; người dùng thật cũng bị từ chối (429) tới hết giờ.
+  // Mỗi lần start chỉ ghi một dòng login_attempts (dọn sau 1 ngày) nên 600 mỗi giờ còn dư xa lưu lượng thật (vài chục lần mỗi giờ).
+  auth_start_global: 600,
+  auth_callback_ip: 60,
+  account_ip: 30,
 } as const;
 export type LimitName = keyof typeof LIMITS;
 export const WINDOW_SECONDS = 3600;

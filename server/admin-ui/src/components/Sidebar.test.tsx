@@ -23,7 +23,7 @@ describe("Sidebar", () => {
   it("mỗi mục có biểu tượng SVG ẩn với trình đọc màn hình; mục của trang chi tiết được đánh dấu theo nhóm (đơn → Đơn hàng)", () => {
     setup({ current: "order" });
     const links = nav().getAllByRole("link");
-    expect(links).toHaveLength(9);
+    expect(links).toHaveLength(10);
     for (const a of links) expect(a.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     const orders = nav().getByRole("link", { name: "Đơn hàng" });
     expect(orders.getAttribute("aria-current")).toBe("page");
@@ -38,6 +38,16 @@ describe("Sidebar", () => {
       expect(link.getAttribute("href")).toBe("/errors");
       expect(link.getAttribute("aria-current")).toBe("page");
       expect(within(nav().getByRole("list", { name: "Dữ liệu" })).getByRole("link", { name: "Báo cáo lỗi" })).toBe(link);
+      unmount();
+    }
+  });
+
+  it("mục Tài khoản nằm trong nhóm Dữ liệu cạnh Máy & dùng thử, sáng ở cả danh sách và chi tiết", () => {
+    for (const current of ["accounts", "account"] as const) {
+      const { unmount } = render(<Sidebar current={current} queueCount={null} collapsed={false} onToggleCollapsed={() => {}} open={false} onClose={() => {}} />);
+      const link = within(nav().getByRole("list", { name: "Dữ liệu" })).getByRole("link", { name: "Tài khoản" });
+      expect(link.getAttribute("href")).toBe("/accounts");
+      expect(link.getAttribute("aria-current")).toBe("page");
       unmount();
     }
   });

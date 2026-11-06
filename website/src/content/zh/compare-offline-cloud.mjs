@@ -125,6 +125,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "在你自己的会议上试试离线翻译", text: "从 10 天免费试用开始，每天 30 分钟。无需银行卡，无需账户。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/data-security/", label: "我们如何处理数据" } })}
+${ctaBand({ title: "在你自己的会议上试试离线翻译", text: "从 10 天免费试用开始，每天 30 分钟。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/data-security/", label: "我们如何处理数据" } })}
 `,
 };

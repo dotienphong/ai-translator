@@ -9,6 +9,7 @@
 use serde_json::Value;
 use tauri::{AppHandle, Runtime, State};
 
+use crate::account::AccountView;
 use crate::actions::{self, AudioSourceOption, InputDeviceOption};
 use crate::compose;
 use crate::data::{self, TranscriptRef, blocking};
@@ -359,6 +360,37 @@ pub fn start_trial<R: Runtime>(app: AppHandle<R>) {
 #[tauri::command]
 pub async fn validate_license<R: Runtime>(app: AppHandle<R>) -> Result<Option<LicenseView>, CommandError> {
     blocking(app, license_app::validate_now).await
+}
+
+// ---- Tài khoản Google (spec 2026-11-05-dang-nhap-google §6.1). Chỉ cửa sổ `main`. `get_account` và `account_cancel_sign_in`
+// chỉ đụng bộ nhớ; ba lệnh còn lại gọi server hay kho khóa nên là `async` + `blocking`, như `validate_license`. Mọi lệnh báo
+// `account://changed`, kể cả khi lỗi. ----
+
+#[tauri::command]
+pub fn get_account<R: Runtime>(app: AppHandle<R>) -> AccountView {
+    license_app::account_view(&app)
+}
+
+/// `lang`: ngôn ngữ giao diện, gửi kèm để trang của server nói đúng ngôn ngữ. Chặn tới khi đăng nhập xong, hết hạn hay bị hủy;
+/// đang dịch thì `accountBusy`.
+#[tauri::command]
+pub async fn account_sign_in<R: Runtime>(app: AppHandle<R>, lang: String) -> Result<AccountView, CommandError> {
+    blocking(app, move |app| license_app::account_sign_in(app, &lang)).await
+}
+
+#[tauri::command]
+pub fn account_cancel_sign_in<R: Runtime>(app: AppHandle<R>) {
+    license_app::account_cancel(&app);
+}
+
+#[tauri::command]
+pub async fn account_sign_out<R: Runtime>(app: AppHandle<R>) -> Result<AccountView, CommandError> {
+    blocking(app, license_app::account_sign_out).await
+}
+
+#[tauri::command]
+pub async fn account_delete<R: Runtime>(app: AppHandle<R>) -> Result<AccountView, CommandError> {
+    blocking(app, license_app::account_delete).await
 }
 
 #[tauri::command]
@@ -781,6 +813,11 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_checkout_page",
     "recover_license",
     "start_trial",
+    "get_account",
+    "account_sign_in",
+    "account_cancel_sign_in",
+    "account_sign_out",
+    "account_delete",
     "check_for_updates",
     "restart_to_update",
     "send_log_report",
@@ -885,6 +922,11 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         open_checkout_page,
         recover_license,
         start_trial,
+        get_account,
+        account_sign_in,
+        account_cancel_sign_in,
+        account_sign_out,
+        account_delete,
         check_for_updates,
         restart_to_update,
         send_log_report,

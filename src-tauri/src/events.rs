@@ -8,6 +8,7 @@ use pipeline::subtitle::{LiveEnd, LiveLine, SpeakerLabel};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
+use crate::account::AccountView;
 use crate::compose::{self, ComposeView, Delta, Done, Loading};
 use crate::overlay;
 use crate::settings::Settings;
@@ -53,6 +54,9 @@ pub const TTS_CHANGED: &str = "tts://changed";
 /// Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4), chỉ gửi cho cửa sổ chính: trạng thái mới sau lần hỏi tin nền
 /// (`support::chat::SupportView`, không có token).
 pub const SUPPORT_VIEW: &str = "support://view";
+/// Tài khoản Google (spec 2026-11-05-dang-nhap-google §6.1), chỉ gửi cho cửa sổ chính: trạng thái mới sau mỗi lệnh tài khoản (kể
+/// cả khi lệnh lỗi) và sau lần hỏi công tắc đăng nhập ở nền (`account::AccountView`: trạng thái, email, cổng; không có token).
+pub const ACCOUNT_CHANGED: &str = "account://changed";
 
 /// Hướng cuộn của phím tắt cuộn phụ đề. Tên khớp `ScrollDirection` ở `src/lib/overlayScroll.ts`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -152,6 +156,10 @@ pub fn compose_done<R: Runtime>(app: &AppHandle<R>, done: &Done) {
 
 pub fn support_view<R: Runtime>(app: &AppHandle<R>, view: &SupportView) {
     emit(app, window::MAIN, SUPPORT_VIEW, view);
+}
+
+pub fn account_changed<R: Runtime>(app: &AppHandle<R>, view: &AccountView) {
+    emit(app, window::MAIN, ACCOUNT_CHANGED, view);
 }
 
 pub fn navigate<R: Runtime>(app: &AppHandle<R>, target: Navigate) {

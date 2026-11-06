@@ -56,7 +56,7 @@ ${feature({ icon: "shield", title: "設計からプライバシー重視", text:
 ${feature({ icon: "wifi-off", title: "翻訳中はオフライン", text: "音声認識と翻訳はパソコン上で動きます。インターネットが必要なのは、モデルのダウンロード、お試しの登録、ライセンスの購入と確認、アプリの更新のときだけです。" })}
 ${feature({ icon: "info", title: "状況を正直に伝える", text: "まだできていないことは、まだだと伝えます。macOS はまだ公証を受けておらず、Windows はまだコード署名されておらず、測定していないマシンもあります。ウェブサイトでもアプリでも、そのままお伝えします。" })}
 ${feature({ icon: "lock", title: "広告なし、アクセス解析なし", text: "アプリには広告もアクセス解析もありません。エラーが起きたときは、問題を直すために個人情報を除いたエラーレポート（音声も会議の内容も含みません）を送ります。設定でオフにできます。私たちの収入は有料プランから得ており、あなたのデータからではありません。" })}
-${feature({ icon: "video", title: "ボットなし、アカウントなし", text: "会議にボットが参加することも、インストールするプラグインも、サインインもありません。有料プランはメールで届くライセンスキーで有効にします。" })}
+${feature({ icon: "video", title: "ボットなし、プラグインなし", text: "会議にボットが参加することも、会議アプリにプラグインを入れることもありません。Free のお試しには Google でログインが必要です。有料プランはメールで届くライセンスキーで有効にし、ログインは不要です。" })}
 ${feature({ icon: "gauge", title: "数値には条件を添える", text: "このウェブサイトの速度や品質の数値には、すべて測定したマシンと条件を添えています。測定していないものは、測定していないとお伝えします。<a href=\"/ja/features/#performance\">機能とパフォーマンス</a>をご覧ください。" })}
 </div>
 </div></section>
@@ -127,6 +127,6 @@ ${linkCard({ href: "/ja/pricing/", icon: "wallet", title: "料金", text: "10 �
 </div>
 </div></section>
 
-${ctaBand({ title: "実際の会議で試してみてください", text: "macOS や Windows にコマンド 1 行でインストールし、10 日間の Free お試しをお使いください。カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/contact/", label: "お問い合わせ" } })}
+${ctaBand({ title: "実際の会議で試してみてください", text: "macOS や Windows にコマンド 1 行でインストールし、10 日間の Free お試しをお使いください。カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/contact/", label: "お問い合わせ" } })}
 `,
 };

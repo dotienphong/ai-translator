@@ -98,6 +98,6 @@ ${linkCard({ href: "/ja/pricing/", icon: "wallet", title: "料金", text: "10 �
 <p class="disclaimer">TikTok は各所有者の商標です。AI Translator は TikTok と提携していません。</p>
 </div></section>
 
-${ctaBand({ title: "次に見る TikTok ライブで試してみてください", text: "コマンド 1 つでインストールし、10 日間、1 日 30 分まで Free で試せます。カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/guide/quick-start/", label: "ガイドを開く" } })}
+${ctaBand({ title: "次に見る TikTok ライブで試してみてください", text: "コマンド 1 つでインストールし、10 日間、1 日 30 分まで Free で試せます。カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/guide/quick-start/", label: "ガイドを開く" } })}
 `,
 };

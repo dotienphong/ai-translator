@@ -68,3 +68,16 @@ describe("audit-labels: tự gia hạn Creem (thuê bao)", () => {
     expect(KNOWN_ACTIONS).toContain(action);
   });
 });
+
+describe("audit-labels: tài khoản Google (admin-accounts.ts)", () => {
+  it.each([
+    ["account_viewed", "Xem tài khoản", "default"],
+    ["account_license_unlinked", "Gỡ gắn license khỏi tài khoản", "info"],
+    ["account_anonymized", "Ẩn danh tài khoản", "bad"],
+    ["accounts_exported", "Xuất CSV tài khoản", "info"],
+  ])("%s có tên tiếng Việt, tông và là gợi ý của ô lọc hành động", (action, label, tone) => {
+    expect(actionLabel(action)).toBe(label);
+    expect(actionTone(action)).toBe(tone);
+    expect(KNOWN_ACTIONS).toContain(action);
+  });
+});

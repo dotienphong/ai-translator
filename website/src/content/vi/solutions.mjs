@@ -85,6 +85,6 @@ ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Fr
 </div>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp hoặc video thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
+${ctaBand({ title: "Thử trên cuộc họp hoặc video thật của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bang-gia/", label: "Xem bảng giá" } })}
 `,
 };

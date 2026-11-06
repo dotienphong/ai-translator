@@ -28,7 +28,7 @@ ${pageHero({
 <section class="section-tight"><div class="container">
 <div class="reveal">${facts([
   ["対応", "パソコンで音が出るものすべて<small>ブラウザー、メディアプレーヤー、講座のプラットフォーム、ウェビナーのツール</small>"],
-  ["追加のインストール", "アプリ本体のほかは不要<small>ブラウザーの拡張機能も、プラグインも、サインイン用のアカウントも不要</small>"],
+  ["追加のインストール", "アプリ本体のほかは不要<small>ブラウザーの拡張機能もプラグインも不要。Free のお試しには Google でログインが必要</small>"],
   ["言語", "英語、中国語、日本語、韓国語、ベトナム語<small>読みたい言語を選べます</small>"],
   ["長時間のセッション", "5 時間 23 分、エラーなしで動作<small>Mac M4 Pro、macOS、アドホック署名のリリースビルド、1 回のテスト</small>"],
 ])}</div>
@@ -127,6 +127,6 @@ ${linkCard({ href: "/ja/features/", icon: "sliders", title: "機能", text: "す
 <p class="center-text reveal">見ている内容がどこに行くのか気になりますか？<a href="/ja/data-security/">データとセキュリティ</a>をお読みください。</p>
 </div></section>
 
-${ctaBand({ title: "ご自身の動画で試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードもアカウントも不要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/pricing/", label: "料金を見る" } })}
+${ctaBand({ title: "ご自身の動画で試してみてください", text: "まずは 10 日間の無料お試しから。1 日 30 分まで、カードは不要です。お試しには Google でログインが必要です。", primary: { href: "/ja/download/", label: "ダウンロード" }, secondary: { href: "/ja/pricing/", label: "料金を見る" } })}
 `,
 };

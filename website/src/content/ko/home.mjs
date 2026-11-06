@@ -27,7 +27,7 @@ export const HOME_FAQ = [
   },
   {
     q: "회의 번역 자막을 무료로 받을 수 있나요?",
-    a: `<p>AI Translator에는 하루 최대 30분까지 번역할 수 있는 10일 무료 체험이 있으며, 카드도 계정도 필요 없습니다. 다만 체험판이며 계속 무료로 쓰는 요금제가 아닙니다. 그 후에는 선불 요금제가 필요합니다: Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫.</p>`,
+    a: `<p>AI Translator에는 하루 최대 30분까지 번역할 수 있는 10일 무료 체험이 있으며, 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다. 다만 체험판이며 계속 무료로 쓰는 요금제가 아닙니다. 그 후에는 선불 요금제가 필요합니다: Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫.</p>`,
   },
   {
     q: "베트남 밖에서도 결제할 수 있나요?",
@@ -61,7 +61,7 @@ export default {
 <ul class="trust reveal">
 <li>${icon("check")} AI가 100% 기기에서 실행</li>
 <li>${icon("check")} 회의 데이터는 클라우드로 가지 않음</li>
-<li>${icon("check")} 봇도 계정도 필요 없음</li>
+<li>${icon("check")} 봇도 플러그인도 필요 없음</li>
 </ul>
 </div>
 <div class="reveal">
@@ -155,7 +155,7 @@ ${dataFlow("ko")}
 ${feature({ icon: "lock", title: "음성은 컴퓨터 밖으로 나가지 않음", text: "음성은 RAM에만 있으며 디스크에 저장되거나 네트워크로 전송되지 않습니다. macOS에서 네트워크 프록시로 확인했습니다. 연결이 끊겨도 자막이 계속 나옵니다.", accent: true })}
 ${feature({ icon: "shield", title: "서버에 회의 내용 없음", text: "서버는 요금제 판매, 기기 활성화, 지원에 필요한 데이터만 저장하며(자세한 내용은 아래), 회의 내용은 저장하지 않습니다." })}
 </div>
-<details class="more-details reveal"><summary>서버는 정확히 무엇을 저장하나요?</summary><p>서버에는 이메일(구매 시, 또는 지원 채팅에 직접 남겼을 때), 주문, 라이선스, 기기 활성화 정보(해시 처리한 기기 ID와 기기 이름), Free 체험 시작 시점(해시 처리한 기기 ID), 라이선스 변경 기록, 개인 정보를 지운 오류 보고서(30일 보관), 채팅을 쓴 경우의 지원 채팅 메시지(90일 보관)만 저장하며, 회의 내용은 절대 저장하지 않습니다.</p></details>
+<details class="more-details reveal"><summary>서버는 정확히 무엇을 저장하나요?</summary><p>서버에는 이메일(구매 시, 또는 지원 채팅에 직접 남겼을 때), 로그인할 때의 Google 이메일, 주문, 라이선스, 기기 활성화 정보(해시 처리한 기기 ID와 기기 이름), Free 체험 시작 시점(해시 처리한 기기 ID), 라이선스 변경 기록, 개인 정보를 지운 오류 보고서(30일 보관), 채팅을 쓴 경우의 지원 채팅 메시지(90일 보관)만 저장하며, 회의 내용은 절대 저장하지 않습니다.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/ko/data-security/">데이터가 어디로 가는지 자세히 보기 ${icon("arrow-right")}</a></p>
 </div></section>
 

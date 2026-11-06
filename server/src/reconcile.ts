@@ -6,6 +6,7 @@
 // - thư nhắc gia hạn trước 3 ngày cho khách đã mua gói 6 tháng hay 1 năm (spec 2026-11-02).
 // Mỗi bước chạy riêng: một bước lỗi thì ghi log, các bước sau vẫn chạy.
 import { type AlertKind, authFailedAlert, raiseAlert, sendAlerts } from "./alerts";
+import { pruneLoginAttempts } from "./auth";
 import type { Deps } from "./deps";
 import { pruneErrorReports } from "./error-reports";
 import { fulfilOrder, retryUnsentEmails } from "./orders";
@@ -152,6 +153,7 @@ export async function reconcile(
     alertsSent = await sendAlerts(env, deps.email, now);
   });
   await step("prune", () => pruneRateLimits(env.DB, now));
+  await step("prune_login", () => pruneLoginAttempts(env.DB, now));
   await step("prune_error_reports", () => pruneErrorReports(env.DB, now));
   await step("prune_speaker_health", () => pruneSpeakerHealth(env.DB, now));
   await step("support_prune", () => pruneSupport(env.DB, now));

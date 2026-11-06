@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 const db = env.MIGRATION_DB;
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 
-it("có đúng chín migration theo thứ tự", () => {
+it("có đúng mười migration theo thứ tự", () => {
   expect(names).toEqual([
     "0001_init.sql",
     "0002_three_plans_trials.sql",
@@ -18,6 +18,7 @@ it("có đúng chín migration theo thứ tự", () => {
     "0007_speaker_health.sql",
     "0008_expiry_reminders.sql",
     "0009_creem_subscriptions.sql",
+    "0010_accounts.sql",
   ]);
 });
 
@@ -480,7 +481,8 @@ it("0009 chỉ thêm cột orders.auto_renew (mặc định 0, chỉ 0 hay 1) v�
   const before = await tables();
   const indexesBefore = await indexNames();
 
-  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+  // Chỉ 0001 đến 0009: 0010 có test riêng ngay dưới.
+  await applyD1Migrations(db, env.TEST_MIGRATIONS.slice(0, 9));
 
   const after = await tables();
   expect(after.filter((t) => !["orders", "subscriptions"].includes(t.name))).toEqual(before.filter((t) => t.name !== "orders"));
@@ -516,5 +518,139 @@ it("0009 chỉ thêm cột orders.auto_renew (mặc định 0, chỉ 0 hay 1) v�
   await expect(sub.bind("sub_1").run()).rejects.toThrow(/UNIQUE|PRIMARY/);
   // Không có khóa ngoại: xóa hay ẩn danh license không bị bảng này chặn.
   expect((await db.prepare("PRAGMA foreign_key_list(subscriptions)").all()).results).toEqual([]);
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("migration 0010 giữ nguyên dữ liệu cũ: chỉ thêm accounts, login_attempts, hai cột account_id (NULL) và bốn index", async () => {
+  // D1 đang ở trạng thái sau 0009 (test trên chỉ áp chín migration đầu) và còn dữ liệu của các test trước.
+  const tables = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name",
+        )
+        .all<{ name: string; sql: string }>()
+    ).results;
+  const indexNames = async () =>
+    (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results.map((r) => r.name);
+
+  // 13 license (kèm activation và đơn) và 90 máy dùng thử, tất cả dòng khác nhau để chép sai dòng hay sai cột lộ ra.
+  const lic = db.prepare(
+    `INSERT INTO licenses (id, license_key, email, plan, expires_at, cycle_anchor, anchor_applied_at, version, created_at)
+     VALUES (?1, ?2, ?3, 'monthly', ?4, 10, 10, 2, 1)`,
+  );
+  const act = db.prepare(
+    "INSERT INTO activations (id, license_id, device_id_hash, created_at, last_validated_at) VALUES (?1, ?2, ?3, 0, 0)",
+  );
+  const ord = db.prepare(
+    `INSERT INTO orders (order_code, order_token_hash, provider, plan, amount, currency, email_consent_at, license_id, status, created_at, expires_at)
+     VALUES (?1, 'h', 'payos', 'monthly', 50000, 'VND', 0, ?2, 'paid', 0, 0)`,
+  );
+  const trial = db.prepare("INSERT INTO trials (device_id_hash, started_at, ends_at, last_seen_at) VALUES (?1, ?2, ?3, ?4)");
+  const seed: D1PreparedStatement[] = [];
+  for (let i = 1; i <= 13; i++) {
+    const id = `M${String(i).padStart(2, "0")}`;
+    seed.push(lic.bind(id, `KM-${id}`, `m${i}@example.com`, 1000 + i));
+    seed.push(act.bind(`AM${i}`, id, `dev-m${i}`));
+    seed.push(ord.bind(7_000_000 + i, id));
+  }
+  for (let i = 1; i <= 90; i++) seed.push(trial.bind(`trial-${String(i).padStart(3, "0")}`, 100 + i, 200 + i, 300 + i));
+  await db.batch(seed);
+
+  const countsOf = async () =>
+    Object.fromEntries(
+      await Promise.all(
+        (await tables()).map(async (t) => [t.name, (await db.prepare(`SELECT COUNT(*) AS n FROM "${t.name}"`).first<{ n: number }>())!.n] as const),
+      ),
+    );
+  const before = await tables();
+  const indexesBefore = await indexNames();
+  const countsBefore = await countsOf();
+  const licensesBefore = (await db.prepare("SELECT * FROM licenses ORDER BY id").all()).results;
+  const trialsBefore = (await db.prepare("SELECT * FROM trials ORDER BY device_id_hash").all()).results;
+  const ordersBefore = (await db.prepare("SELECT * FROM orders ORDER BY order_code").all()).results;
+  const activationsBefore = (await db.prepare("SELECT * FROM activations ORDER BY id").all()).results;
+  expect(countsBefore.licenses).toBeGreaterThanOrEqual(13);
+  expect(countsBefore.trials).toBe(90);
+  expect(countsBefore.activations).toBeGreaterThanOrEqual(13);
+  expect(countsBefore.orders).toBeGreaterThanOrEqual(13);
+
+  await applyD1Migrations(db, env.TEST_MIGRATIONS);
+
+  // Số dòng từng bảng cũ không đổi; hai bảng mới trống.
+  const { accounts, login_attempts, ...oldCounts } = await countsOf();
+  expect(oldCounts).toEqual(countsBefore);
+  expect([accounts, login_attempts]).toEqual([0, 0]);
+  const after = await tables();
+  expect(after.map((t) => t.name)).toEqual([...before.map((t) => t.name), "accounts", "login_attempts"].sort());
+
+  // Dữ liệu từng dòng, từng cột giữ nguyên; cột mới account_id của trials và licenses đều NULL.
+  expect((await db.prepare("SELECT * FROM licenses ORDER BY id").all()).results).toEqual(licensesBefore.map((r) => ({ ...r, account_id: null })));
+  expect((await db.prepare("SELECT * FROM trials ORDER BY device_id_hash").all()).results).toEqual(trialsBefore.map((r) => ({ ...r, account_id: null })));
+  expect((await db.prepare("SELECT * FROM orders ORDER BY order_code").all()).results).toEqual(ordersBefore);
+  expect((await db.prepare("SELECT * FROM activations ORDER BY id").all()).results).toEqual(activationsBefore);
+  expect(await db.prepare("SELECT COUNT(*) AS n FROM trials WHERE account_id IS NULL").first()).toEqual({ n: 90 });
+  expect(await db.prepare("SELECT COUNT(*) AS n FROM licenses WHERE account_id IS NOT NULL").first()).toEqual({ n: 0 });
+
+  // Bảng cũ khác licenses và trials giữ nguyên câu lệnh tạo; licenses và trials chỉ dài thêm đúng một cột ở cuối.
+  const changed = ["licenses", "trials"];
+  expect(after.filter((t) => ![...changed, "accounts", "login_attempts"].includes(t.name))).toEqual(before.filter((t) => !changed.includes(t.name)));
+  for (const name of changed) {
+    const was = before.find((t) => t.name === name)!.sql;
+    const now = after.find((t) => t.name === name)!.sql;
+    expect(now).toContain(", account_id TEXT REFERENCES accounts (id)");
+    expect(now.replace(", account_id TEXT REFERENCES accounts (id)", "")).toBe(was);
+  }
+  expect(await indexNames()).toEqual([...indexesBefore, "accounts_email", "licenses_account", "login_attempts_expires", "trials_account"].sort());
+
+  // Khóa ngoại trỏ đúng bảng accounts; không còn khóa ngoại hỏng.
+  const fks = async (table: string) =>
+    (await db.prepare(`SELECT "table" AS target FROM pragma_foreign_key_list('${table}')`).all<{ target: string }>()).results.map((r) => r.target);
+  expect(await fks("trials")).toEqual(["accounts"]);
+  expect(await fks("login_attempts")).toEqual(["accounts"]);
+  expect(await fks("licenses")).toContain("accounts");
+  expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
+});
+
+it("migration 0010 tạo accounts.google_sub duy nhất (email không duy nhất, được NULL)", async () => {
+  const insert = (id: string, sub: string, email: string | null) =>
+    db
+      .prepare(
+        `INSERT INTO accounts (id, google_sub, email, email_verified, consent_at, created_at, last_login_at)
+         VALUES (?, ?, ?, 1, 1, 1, 1)`,
+      )
+      .bind(id, sub, email);
+  await insert("acc-1", "sub-1", "a@example.com").run();
+  await expect(insert("acc-2", "sub-1", "b@example.com").run()).rejects.toThrow(/UNIQUE/);
+  await expect(insert("acc-1", "sub-3", "c@example.com").run()).rejects.toThrow(/UNIQUE|PRIMARY/);
+  // Khóa là google_sub, không phải email: hai tài khoản trùng email vẫn vào được (và email NULL sau khi xóa tài khoản).
+  await insert("acc-4", "sub-4", "a@example.com").run();
+  await insert("acc-5", "sub-5", null).run();
+  // Các cột bắt buộc, các cột còn lại mặc định NULL (chưa dùng thử, chưa xóa).
+  expect(await db.prepare("SELECT trial_started_at, trial_ends_at, deleted_at, lang FROM accounts WHERE id = 'acc-1'").first()).toEqual({
+    trial_started_at: null,
+    trial_ends_at: null,
+    deleted_at: null,
+    lang: null,
+  });
+  await expect(
+    db.prepare("INSERT INTO accounts (id, google_sub, consent_at, created_at, last_login_at) VALUES ('acc-6', 'sub-6', 1, 1, 1)").run(),
+  ).rejects.toThrow(/NOT NULL/);
+});
+
+it("migration 0010: login_attempts.status từ chối giá trị lạ; account_id phải trỏ tới tài khoản có thật", async () => {
+  const insert = (id: string, status: string, accountId: string | null = null) =>
+    db
+      .prepare(
+        `INSERT INTO login_attempts (id, state_hash, nonce_hash, challenge, code_verifier, device_id_hash, consent_at, status, account_id, created_at, expires_at)
+         VALUES (?, 'sh', 'nh', 'ch', 'cv', 'dev', 1, ?, ?, 1, 601)`,
+      )
+      .bind(id, status, accountId);
+  for (const status of ["pending", "done", "denied", "failed", "claimed"]) await insert(`ok-${status}`, status).run();
+  for (const status of ["expired", "PENDING", "", "cancelled"]) {
+    await expect(insert(`bad-${status}`, status).run()).rejects.toThrow(/CHECK/);
+  }
+  await insert("with-account", "done", "acc-1").run();
+  await expect(insert("no-account", "done", "acc-không-có").run()).rejects.toThrow(/FOREIGN KEY/);
   expect((await db.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
 });

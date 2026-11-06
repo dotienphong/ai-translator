@@ -2,6 +2,7 @@ import "../../styles/main.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { htmlLang, translate } from "../../i18n";
+import { accountStore } from "./accountStore";
 import { App } from "./App";
 import { appStore, fallbackLanguage } from "./appStore";
 import { transcriptStore } from "./dataStores";
@@ -47,6 +48,14 @@ supportStore
   .getState()
   .init()
   .catch((e: unknown) => console.error("không khởi tạo được chat hỗ trợ", e));
+
+// Tài khoản Google (spec 2026-11-05-dang-nhap-google): đọc trạng thái và nghe `account://changed` đúng một lần lúc mở cửa sổ (không
+// trong effect của React: StrictMode chạy effect hai lần). Store không bao giờ ném; lỗi chỉ ghi log, cổng đăng nhập không hiện cho
+// tới khi có trạng thái, phần còn lại của cửa sổ vẫn dùng được.
+accountStore
+  .getState()
+  .init()
+  .catch((e: unknown) => console.error("không đọc được tài khoản", e));
 
 // Không đọc được cài đặt hay trạng thái (lệnh bị chặn, phía Rust lỗi) thì hiện câu báo theo ngôn ngữ của hệ
 // điều hành, thay vì để cửa sổ trắng trơn.

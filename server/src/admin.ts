@@ -7,6 +7,7 @@
 import { type Context, Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { AccessKeyProvider } from "./access-jwt";
+import { lookupAccountsByEmail, registerAdminAccounts } from "./admin-accounts";
 import { ADMIN_SECURE_HEADERS, registerAssets } from "./admin-assets";
 import { type AdminAppEnv, type AdminDeps, crossSite, useAdminAuth } from "./admin-auth";
 import { registerAdminOps } from "./admin-ops";
@@ -56,6 +57,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
   registerAdminOps(app);
   registerAdminReports(app);
   registerAdminSpeakerHealth(app);
+  registerAdminAccounts(app);
 
   /** Bảng gói lấy từ Worker API; thiếu hay sai thì null (route trả 503 pricing_not_configured). */
   async function plansOf(c: Context<AdminAppEnv>): Promise<PlanTable | null> {
@@ -82,6 +84,8 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
     let orderCode: number | null = null;
     // Tra theo máy (spec 2026-10-07 §3.1): dùng thử của máy và các license từng kích hoạt trên máy. Chỉ đọc.
     let trial: Record<string, unknown> | null | undefined;
+    // Tài khoản Google cùng email (chỉ khi tra theo email; spec 2026-11-05 §7). Không có thì không thêm trường nào vào phản hồi và nhật ký.
+    let accounts: Record<string, unknown>[] = [];
     if (body?.device_id_hash !== undefined) {
       const d = parseDeviceIdHash(body.device_id_hash);
       if (!d) return fail(c, 400, "invalid_request", { field: "device_id_hash" });
@@ -111,6 +115,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       orders = (await db.prepare("SELECT * FROM orders WHERE email = ? ORDER BY order_code").bind(e).all()).results;
       const lic = await db.prepare("SELECT id FROM licenses WHERE email = ?").bind(e).all<{ id: string }>();
       licenseIds = lic.results.map((r) => r.id);
+      accounts = await lookupAccountsByEmail(db, e, c.get("deps").now());
     } else if (Number.isSafeInteger(body?.order_code) && (body?.order_code as number) > 0) {
       by = "order_code";
       orderCode = body?.order_code as number;
@@ -150,10 +155,11 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       orderCode,
       detail:
         trial === undefined
-          ? { by, licenses: licenses.length, orders: orders.length }
+          ? { by, licenses: licenses.length, orders: orders.length, ...(accounts.length > 0 ? { accounts: accounts.length } : {}) }
           : { by, licenses: licenses.length, trial: trial !== null },
     });
-    return c.json(trial === undefined ? { licenses, orders } : { licenses, orders, trial });
+    if (trial !== undefined) return c.json({ licenses, orders, trial });
+    return c.json(accounts.length > 0 ? { licenses, orders, accounts } : { licenses, orders });
   });
 
   // GET nhưng có tác dụng phụ (ghi nhật ký, gọi cổng thanh toán của đơn: PayOS hay Creem): chặn request mà trình duyệt báo là từ trang khác.
@@ -587,7 +593,7 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
     // Tin nhắn xóa trước cuộc chat (khóa ngoại support_messages.conversation_id).
     const chatsOf = "SELECT id FROM support_conversations WHERE email = ?3";
     // Nhật ký đứng đầu batch (cùng transaction), đếm đúng các dòng các câu sau sẽ đổi; ghi nhật ký lỗi thì không xóa gì.
-    const [, , , , , , acts, lics, ords] = await db.batch([
+    const [, , , , , , acts, lics, ords, , , , accts] = await db.batch([
       db
         .prepare(
           `INSERT INTO audit_log (at, actor, action, detail)
@@ -612,9 +618,24 @@ export function createAdminApp(makeDeps: (env: AdminEnv) => AdminDeps, accessKey
       db.prepare("UPDATE licenses SET email = NULL WHERE email = ?").bind(email),
       // Bỏ cả ngôn ngữ lưu trên đơn (spec 2026-10-23 §3): chính sách mục 7 chỉ giữ dòng đơn ở mức kế toán.
       db.prepare("UPDATE orders SET email = NULL, lang = NULL WHERE email = ?").bind(email),
+      // Tài khoản Google cùng email (spec 2026-11-05 §5.5): luật xóa tài khoản, như POST /admin/accounts/:id/anonymize. `accounts.email` luôn
+      // chữ thường, `email` ở đây đã qua parseEmail (chữ thường) nên khớp dù người vận hành gõ hoa thường thế nào. Nhật ký đứng trước các
+      // câu đổi (đếm đúng dòng sẽ đổi) và chỉ ghi khi có tài khoản; GIỮ google_sub, trial_started_at, trial_ends_at để chống lách dùng thử.
+      db
+        .prepare(
+          `INSERT INTO audit_log (at, actor, action, detail)
+           SELECT ?1, ?2, 'account_anonymized', json_object('via', 'erase', 'accounts', (SELECT COUNT(*) FROM accounts WHERE email = ?3))
+           WHERE EXISTS (SELECT 1 FROM accounts WHERE email = ?3)`,
+        )
+        .bind(now, c.get("actor"), email),
+      db.prepare("UPDATE licenses SET account_id = NULL WHERE account_id IN (SELECT id FROM accounts WHERE email = ?)").bind(email),
+      db.prepare("UPDATE trials SET account_id = NULL WHERE account_id IN (SELECT id FROM accounts WHERE email = ?)").bind(email),
+      db.prepare("UPDATE accounts SET email = NULL, deleted_at = COALESCE(deleted_at, ?1) WHERE email = ?2").bind(now, email),
     ]);
     const counts = { activations: acts?.meta.changes ?? 0, licenses: lics?.meta.changes ?? 0, orders: ords?.meta.changes ?? 0 };
-    return c.json(counts);
+    // `accounts` chỉ có khi đã ẩn danh ít nhất một tài khoản: phản hồi cũ (không có tài khoản Google) giữ nguyên ba trường.
+    const accounts = accts?.meta.changes ?? 0;
+    return c.json(accounts > 0 ? { ...counts, accounts } : counts);
   });
 
   // Chỉ nhận URL webhook trên đúng Worker API của môi trường này (API_ORIGIN), để không ai trỏ webhook đi nơi khác.

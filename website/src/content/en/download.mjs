@@ -217,7 +217,7 @@ ${sectionHead({ eyebrow: "At a glance", title: "Free trial and pricing", center:
 <div class="reveal">${facts([
   ["Current version", RELEASE.en],
   ["Status", "Released. Both macOS and Windows install with one command"],
-  ["Free trial", "10 days, 30 minutes per day<small>No card, no account</small>"],
+  ["Free trial", "10 days, 30 minutes per day<small>No card needed; sign in with Google</small>"],
   ["Price afterwards", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>Prepaid with VietQR (VND) or international card (USD). VietQR has no auto-renewal; with a card, auto-renewal is optional (the box is ticked by default) and can be cancelled any time. Cards are not accepted in some countries, per Creem's list.</small>"],
   ["Models", "Downloaded once, 1.3 or 2.5 GB<small>After that, recognition and translation run offline on your machine</small>"],
 ])}</div>

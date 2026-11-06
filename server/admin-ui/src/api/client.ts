@@ -11,6 +11,8 @@ const MESSAGES: Record<string, string> = {
   not_found: "Không tìm thấy, hoặc đã ở trạng thái đó. Tải lại trang để xem trạng thái mới",
   order_not_found: "Không tìm thấy đơn",
   activation_not_found: "Không tìm thấy máy (có thể đã gỡ)",
+  account_not_found: "Không tìm thấy tài khoản",
+  license_not_linked: "License không còn gắn với tài khoản này (đã gỡ hoặc gắn tài khoản khác). Tải lại trang để xem trạng thái mới",
   pricing_not_configured: "Worker API chưa có cấu hình bảng gói (PLANS)",
   payment_provider_error: "Cổng thanh toán lỗi",
   temporarily_unavailable: "Chưa gửi được email, thử lại sau",

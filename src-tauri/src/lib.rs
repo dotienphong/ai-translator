@@ -6,6 +6,7 @@
 //! Kế hoạch 01 dựng khung: cài đặt, i18n phía Rust, khay, phím tắt, hai cửa sổ, quyền, kho khóa, log.
 //! Kế hoạch 02 nối `audio-capture` và `pipeline` vào (`session.rs`, `capture.rs`, `sidecar/`).
 
+pub mod account;
 pub mod actions;
 pub mod capture;
 pub mod commands;

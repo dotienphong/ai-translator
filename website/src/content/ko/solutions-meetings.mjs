@@ -137,6 +137,6 @@ ${linkCard({ href: "/ko/solutions/webinar-and-video-translation/", icon: "play",
 </div>
 </div></section>
 
-${ctaBand({ title: "내 통화에서 직접 써 보세요", text: "10일 무료 체험으로 시작하세요. 하루 30분, 카드도 계정도 필요 없습니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/guide/quick-start/", label: "빠른 시작 가이드" } })}
+${ctaBand({ title: "내 통화에서 직접 써 보세요", text: "10일 무료 체험으로 시작하세요. 하루 30분, 카드는 필요 없으며, 체험하려면 Google 계정으로 로그인해야 합니다.", primary: { href: "/ko/download/", label: "다운로드" }, secondary: { href: "/ko/guide/quick-start/", label: "빠른 시작 가이드" } })}
 `,
 };

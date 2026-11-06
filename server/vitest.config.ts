@@ -18,6 +18,8 @@ const FAKE_SECRETS = {
   ZALO_BOT_TOKEN: "test-zalo-token",
   ZALO_WEBHOOK_SECRET: "test-zalo-webhook-secret",
   ZALO_OWNER_CHAT_ID: "owner-chat-id",
+  // Đủ để plugin không cảnh báo thiếu secret; route đăng nhập dùng FakeGoogleAuth (Deps.google), không đọc giá trị này.
+  GOOGLE_OAUTH_CLIENT_SECRET: "test-google-oauth-client-secret",
 };
 Object.assign(process.env, FAKE_SECRETS);
 

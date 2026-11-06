@@ -57,7 +57,9 @@ const APP = [
   ["app-upgrade-qr", `screen=upgrade&plan=free&checkout=1&${FROZEN}`, { fit: true }],
   ["app-upgrade-card", `screen=upgrade&plan=free&checkout=card&${FROZEN}`, { fit: true }],
   ["app-about", "screen=about", { height: 580 }],
-  ...Array.from({ length: 9 }, (_, i) => [`app-onboarding-${i + 1}`, `onboarding=${i + 1}${i === 3 ? "&download=1" : ""}`]),
+  // Ảnh `app-onboarding-1…9` giữ đúng các bước như trước: bỏ qua bước 3 (Đăng nhập Google, spec 2026-11-05-dang-nhap-google §6.3,
+  // chưa có ảnh trên website), nên từ ảnh thứ ba trở đi là bước sau đó một số.
+  ...Array.from({ length: 9 }, (_, i) => [`app-onboarding-${i + 1}`, `onboarding=${i < 2 ? i + 1 : i + 2}${i === 3 ? "&download=1" : ""}`]),
 ];
 // Ô soạn Gõ dịch (compose.html, rộng 560 px như cửa sổ thật): trang tự gõ chữ mẫu rồi chờ dịch như thật; ảnh cắt đúng khung
 // `.compose`, nền trong suốt (website đặt nó trên nền tối như thanh phụ đề).

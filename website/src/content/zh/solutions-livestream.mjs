@@ -30,7 +30,7 @@ const FAQ = [
   },
   {
     q: "直播翻译是免费的吗？",
-    a: `<p>Free 套餐是 10 天试用，每天最多翻译 30 分钟，无需银行卡，也无需账户。之后需要购买预付套餐，请参阅<a href="/zh/pricing/">价格</a>。Free 是试用，不是永久免费的套餐。</p>`,
+    a: `<p>Free 套餐是 10 天试用，每天最多翻译 30 分钟，无需银行卡；试用需使用 Google 账号登录（付费套餐无需登录）。之后需要购买预付套餐，请参阅<a href="/zh/pricing/">价格</a>。Free 是试用，不是永久免费的套餐。</p>`,
   },
 ];
 
@@ -141,6 +141,6 @@ ${linkCard({ href: "/zh/guide/quick-start/", icon: "zap", title: "快速入门",
 <p class="disclaimer">TikTok、YouTube、Facebook 等产品名称归各自所有者所有；AI Translator 与它们没有关联。</p>
 </div></section>
 
-${ctaBand({ title: "在你观看的下一场直播上试试", text: "一行命令即可安装，用 Free 免费试用 10 天，每天 30 分钟。无需银行卡，无需账户。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/pricing/", label: "查看价格" } })}
+${ctaBand({ title: "在你观看的下一场直播上试试", text: "一行命令即可安装，用 Free 免费试用 10 天，每天 30 分钟。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/pricing/", label: "查看价格" } })}
 `,
 };

@@ -108,9 +108,86 @@ export interface Trial {
   last_seen_at: number;
 }
 
+/** Trạng thái tài khoản Google (server: accountStatus): mỗi tài khoản đúng một nhóm, ưu tiên deleted > paid > trial_active > trial_ended > none. */
+export type AccountStatus = "paid" | "trial_active" | "trial_ended" | "deleted" | "none";
+
+/** Một dòng của /admin/accounts. `email` là null khi tài khoản đã xóa (ẩn danh). */
+export interface AccountRow {
+  id: string;
+  email: string | null;
+  created_at: number;
+  last_login_at: number;
+  deleted_at: number | null;
+  trial_started_at: number | null;
+  trial_ends_at: number | null;
+  license_count: number;
+  device_count: number;
+  status: AccountStatus;
+}
+
+/** Tài khoản trong kết quả lookup theo email (chỉ id, email, hai mốc và trạng thái). */
+export interface LookupAccount {
+  id: string;
+  email: string | null;
+  created_at: number;
+  last_login_at: number;
+  status: AccountStatus;
+}
+
+/** License gắn với tài khoản (/admin/accounts/:id): key đã che, `email` là email mua license (có thể khác email tài khoản). */
+export interface AccountLicense {
+  id: string;
+  email: string | null;
+  license_key: string;
+  plan: PlanCode;
+  expires_at: number;
+  created_at: number;
+  revoked_at: number | null;
+  locked_at: number | null;
+  active_devices: number;
+}
+
+export interface AccountActivation {
+  id: string;
+  license_id: string;
+  device_id_hash: string;
+  device_label: string | null;
+  created_at: number;
+  last_validated_at: number;
+  deactivated_at: number | null;
+}
+
+/** Dòng `trials` của tài khoản: mỗi máy dùng thử bằng tài khoản này. */
+export interface AccountTrial {
+  device_id_hash: string;
+  started_at: number;
+  ends_at: number;
+  last_seen_at: number;
+}
+
+export interface AccountDetail {
+  account: {
+    id: string;
+    email: string | null;
+    created_at: number;
+    last_login_at: number;
+    consent_at: number;
+    lang: string | null;
+    trial_started_at: number | null;
+    trial_ends_at: number | null;
+    deleted_at: number | null;
+    status: AccountStatus;
+  };
+  licenses: AccountLicense[];
+  activations: AccountActivation[];
+  trials: AccountTrial[];
+}
+
 export interface LookupResult {
   licenses: LicenseDetail[];
   orders: OrderRow[];
+  /** Chỉ có khi tra theo email và có tài khoản Google khớp. */
+  accounts?: LookupAccount[];
   /** Chỉ có khi tra theo máy; null là máy chưa đăng ký dùng thử. */
   trial?: Trial | null;
 }

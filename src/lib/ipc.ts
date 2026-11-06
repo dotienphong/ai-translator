@@ -455,6 +455,7 @@ export type SettingsGroup =
   | "model"
   | "hotkeys"
   | "license"
+  | "account"
   | "privacy";
 
 export interface Navigate {
@@ -620,6 +621,18 @@ export interface SupportView {
   rev: number;
 }
 
+// Tài khoản Google (spec 2026-11-05-dang-nhap-google; `account::flow::AccountView`). Không có token hay mã tài khoản: chỉ trạng
+// thái, email để hiện, và `gate` (đang đòi đăng nhập mới dịch được). Lỗi của các lệnh `account_*` là `CommandError` có `code` ∈
+// `accountNetwork`, `accountDenied`, `accountFailed`, `accountExpired`, `accountCancelled`, `accountBusy`, `accountUnavailable`,
+// `accountStorage` (xem `lib/account.ts`); lệnh bắt đầu dịch bị chặn thì `loginRequired`.
+export type AccountState = "anonymous" | "signingIn" | "signedIn";
+
+export interface AccountView {
+  state: AccountState;
+  email: string | null;
+  gate: boolean;
+}
+
 export interface Commands {
   get_settings: { args: undefined; result: Settings };
   update_settings: { args: { patch: SettingsPatch }; result: Settings };
@@ -707,6 +720,13 @@ export interface Commands {
   overlay_tts_speak: { args: { lang: "vi" | "en"; text: string; onEvent: Channel<ArrayBuffer | TtsControl> }; result: number };
   overlay_tts_mark_playing: { args: { ms: number }; result: null };
   overlay_tts_stop: { args: undefined; result: null };
+  // Tài khoản Google, chỉ cửa sổ chính. `account_sign_in` chặn tới khi đăng nhập xong, hết hạn hay bị hủy (`account_cancel_sign_in`);
+  // `lang` là ngôn ngữ giao diện để trang của server nói đúng ngôn ngữ. Mọi lệnh đổi trạng thái đều báo `account://changed`.
+  get_account: { args: undefined; result: AccountView };
+  account_sign_in: { args: { lang: string }; result: AccountView };
+  account_cancel_sign_in: { args: undefined; result: null };
+  account_sign_out: { args: undefined; result: AccountView };
+  account_delete: { args: undefined; result: AccountView };
   get_license: { args: undefined; result: LicenseView | null };
   // `allowConflict`: người dùng đã xác nhận "Vẫn kích hoạt trên máy này" (spec 2026-10-07 §4.2).
   activate_license: { args: { key: string; allowConflict?: boolean }; result: ActivateOutcome };
@@ -788,6 +808,8 @@ export interface Events {
   // Phím tắt cuộn lên hay xuống (§4.4): dùng được cả khi thanh khóa, lúc con lăn chuột xuyên qua thanh.
   "overlay://scroll": ScrollDirection;
   "license://changed": LicenseView;
+  // Tài khoản đổi (đăng nhập, đăng xuất, xóa, cổng bật/tắt), kể cả khi lệnh lỗi.
+  "account://changed": AccountView;
   "license://order": OrderOutcome;
   "subtitle://upsert": Subtitle;
   "subtitle://delta": SubtitleDelta;

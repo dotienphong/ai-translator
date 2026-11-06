@@ -98,6 +98,6 @@ ${linkCard({ href: "/zh/pricing/", icon: "wallet", title: "价格", text: "10 �
 <p class="disclaimer">TikTok 是其各自所有者的商标；AI Translator 与 TikTok 没有关联。</p>
 </div></section>
 
-${ctaBand({ title: "在你下一次观看的 TikTok 直播上试试", text: "一行命令即可安装，用 Free 免费试用 10 天，每天 30 分钟。无需银行卡，无需账户。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/guide/quick-start/", label: "打开指南" } })}
+${ctaBand({ title: "在你下一次观看的 TikTok 直播上试试", text: "一行命令即可安装，用 Free 免费试用 10 天，每天 30 分钟。无需银行卡；试用需使用 Google 账号登录。", primary: { href: "/zh/download/", label: "下载" }, secondary: { href: "/zh/guide/quick-start/", label: "打开指南" } })}
 `,
 };

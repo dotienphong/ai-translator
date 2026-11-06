@@ -27,7 +27,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Can I get translated meeting subtitles for free?",
-    a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card and no account. It is a trial, not a permanent free plan; after that you need a prepaid plan: Monthly 50,000 ₫, 6 Months 269,000 ₫ or Yearly 500,000 ₫.</p>`,
+    a: `<p>AI Translator has a free 10-day trial with up to 30 minutes of translation a day, no card needed; the trial needs you to sign in with Google (paid plans need no sign-in). It is a trial, not a permanent free plan; after that you need a prepaid plan: Monthly 50,000 ₫, 6 Months 269,000 ₫ or Yearly 500,000 ₫.</p>`,
   },
   {
     q: "Can I pay from outside Vietnam?",
@@ -63,7 +63,7 @@ export default {
 <ul class="trust reveal">
 <li>${icon("check")} AI runs 100% on your device</li>
 <li>${icon("check")} Meeting data never goes to the cloud</li>
-<li>${icon("check")} No bot, no account</li>
+<li>${icon("check")} No bot, no plugin</li>
 </ul>
 </div>
 <div class="reveal">
@@ -157,7 +157,7 @@ ${dataFlow("en")}
 ${feature({ icon: "lock", title: "Audio never leaves your computer", text: "Audio lives only in RAM: it is never written to disk and never sent over the network, which we checked with a network proxy on macOS. Subtitles keep coming even when your connection drops.", accent: true })}
 ${feature({ icon: "shield", title: "No meeting content on our server", text: "Our server only stores what it needs to sell plans, activate devices and support you (details below), never meeting content." })}
 </div>
-<details class="more-details reveal"><summary>What exactly does the server store?</summary><p>Our server only stores your email (when you buy, or when you choose to leave it in the support chat), orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes, error reports with personal data scrubbed out (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), never meeting content.</p></details>
+<details class="more-details reveal"><summary>What exactly does the server store?</summary><p>Our server only stores your email (when you buy, or when you choose to leave it in the support chat), your Google email when you sign in, orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes, error reports with personal data scrubbed out (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), never meeting content.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>
 </div></section>
 

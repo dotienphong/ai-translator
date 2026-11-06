@@ -12,6 +12,8 @@ export type RouteName =
   | "license"
   | "device"
   | "trials"
+  | "accounts"
+  | "account"
   | "errors"
   | "error_group"
   | "error_report"
@@ -38,6 +40,8 @@ const ROUTES: [RouteName, RegExp][] = [
   ["license", /^\/licenses\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/],
   ["device", /^\/devices\/([0-9a-f]{64})$/],
   ["trials", /^\/trials$/],
+  ["accounts", /^\/accounts$/],
+  ["account", /^\/accounts\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/],
   ["errors", /^\/errors$/],
   ["error_group", /^\/errors\/groups\/([0-9a-f]{16})$/],
   ["error_report", /^\/errors\/reports\/(R-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4})$/],

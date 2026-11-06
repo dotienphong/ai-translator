@@ -418,3 +418,93 @@ fn the_overlay_only_gains_open_speaker_settings() {
         assert!(!err.contains("Lan"), "{cmd}: lỗi không có tên người: {err}");
     }
 }
+
+/// Lệnh tài khoản Google (spec 2026-11-05-dang-nhap-google §6.1): chỉ cửa sổ chính được cấp.
+const ACCOUNT_COMMANDS: &[&str] = &[
+    "get_account",
+    "account_sign_in",
+    "account_cancel_sign_in",
+    "account_sign_out",
+    "account_delete",
+];
+
+/// Năm lệnh tài khoản nằm trong danh sách cố định của cửa sổ chính, không nằm trong danh sách của cửa sổ nào khác.
+#[test]
+fn the_account_commands_belong_to_the_main_window_only() {
+    for cmd in ACCOUNT_COMMANDS {
+        assert!(MAIN_COMMANDS.contains(cmd), "MAIN_COMMANDS thiếu {cmd}");
+        for (label, list) in [
+            ("overlay", OVERLAY_COMMANDS),
+            ("compose", COMPOSE_COMMANDS),
+            ("hint", HINT_COMMANDS),
+        ] {
+            assert!(!list.contains(cmd), "{label} không được có {cmd}");
+        }
+        assert!(
+            include_str!("../build.rs").contains(&format!("\"{cmd}\"")),
+            "build.rs thiếu {cmd}"
+        );
+    }
+}
+
+/// Spec 2026-11-05 §6.1: overlay, compose, hint và cửa sổ lạ không gọi được lệnh tài khoản nào; lệnh bị chặn không tới server
+/// tài khoản hay `SystemOpener`. Cửa sổ chính gọi được cả năm; `account_sign_in` mở trang Google đúng một lần, qua bản giả.
+#[test]
+fn only_the_main_window_reaches_the_account_commands() {
+    let app = mock_app();
+    let rig = crate::test_support::install_account(&app, true);
+    let args = |cmd: &str| match cmd {
+        "account_sign_in" => json!({ "lang": "vi" }),
+        _ => json!({}),
+    };
+    for label in ["overlay", "compose", "hint", "stranger"] {
+        let other = window(&app, label);
+        for cmd in ACCOUNT_COMMANDS {
+            let result = invoke(&other, cmd, args(cmd));
+            assert!(denied(&result), "{label} không được gọi {cmd}: {result:?}");
+        }
+    }
+    assert!(rig.api.calls().is_empty(), "lệnh bị chặn không tới server tài khoản");
+    assert!(system_calls(&app).is_empty(), "lệnh bị chặn không mở gì");
+
+    let main = window(&app, "main");
+    let view = invoke(&main, "get_account", json!({})).expect("main đọc được tài khoản");
+    assert_eq!(view["state"], "anonymous");
+    let view = invoke(&main, "account_sign_in", json!({ "lang": "vi" })).expect("main đăng nhập được");
+    assert_eq!(view["state"], "signedIn");
+    assert_eq!(view["email"], crate::test_support::ACCOUNT_EMAIL);
+    assert!(
+        !view.to_string().contains(&crate::test_support::account_token().0[..20]),
+        "không trả token"
+    );
+    assert_eq!(
+        system_calls(&app),
+        [format!("open_external_url {}", crate::test_support::ACCOUNT_GOOGLE_URL)],
+        "mở trang Google đúng một lần"
+    );
+    for cmd in ["account_cancel_sign_in", "account_sign_out", "account_delete"] {
+        let result = invoke(&main, cmd, json!({}));
+        assert!(result.is_ok(), "main gọi được {cmd}: {result:?}");
+    }
+    assert_eq!(system_calls(&app).len(), 1, "chỉ đăng nhập mới mở trình duyệt");
+}
+
+/// URL đăng nhập mà server trả không phải trang Google: không mở gì, lệnh báo lỗi.
+#[test]
+fn account_sign_in_never_opens_a_url_that_is_not_google() {
+    let app = mock_app();
+    let rig = crate::test_support::install_account(&app, true);
+    for url in [
+        "https://evil.example/o/oauth2/v2/auth?x=1",
+        "https://evil.accounts.google.com/o/oauth2/v2/auth",
+        "https://accounts.google.com.evil.com/o/oauth2/v2/auth",
+        "https://pay.payos.vn/web/abc",
+    ] {
+        *rig.api.login_url.lock().unwrap() = Some(url.into());
+        let main = window(&app, "main");
+        let err = invoke(&main, "account_sign_in", json!({ "lang": "en" })).unwrap_err();
+        assert!(!denied(&Err(err.clone())), "{url}: {err}");
+        assert!(err.contains("\"code\":\"accountFailed\""), "{url}: {err}");
+        assert!(system_calls(&app).is_empty(), "{url}: không mở gì");
+    }
+}

@@ -58,7 +58,7 @@ ${feature({ icon: "shield", title: "Riêng tư theo thiết kế", text: "Âm th
 ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng giọng nói và dịch chạy trên máy. Mạng chỉ cần để tải model, đăng ký dùng thử, mua và kiểm tra bản quyền, cập nhật app." })}
 ${feature({ icon: "info", title: "Trung thực về trạng thái", text: "Chưa làm được thì ghi là chưa làm được. macOS chưa notarize, Windows chưa ký mã, máy nào chưa đo: chúng tôi nói thẳng, trên website và trong app." })}
 ${feature({ icon: "lock", title: "Không quảng cáo, không analytics", text: "App không có quảng cáo và không có analytics. Khi gặp lỗi, app tự gửi báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh hay nội dung cuộc họp) để chúng tôi sửa lỗi; bạn tắt được ở Cài đặt. Chúng tôi sống nhờ gói trả phí, không nhờ dữ liệu của bạn." })}
-${feature({ icon: "video", title: "Không bot, không tài khoản", text: "Không mời bot vào cuộc họp, không cài plugin, không đăng nhập. Gói trả phí kích hoạt bằng license key gửi qua email." })}
+${feature({ icon: "video", title: "Không bot, không plugin", text: "Không mời bot vào cuộc họp, không cài plugin vào app họp. Dùng thử Free cần đăng nhập bằng Google; gói trả phí kích hoạt bằng license key gửi qua email và không cần đăng nhập." })}
 ${feature({ icon: "gauge", title: "Số đo kèm điều kiện", text: "Con số về tốc độ hay chất lượng trên website này đều ghi máy đo và điều kiện; chỗ chưa đo thì ghi là chưa đo. Xem <a href=\"/tinh-nang/#hieu-nang\">hiệu năng</a>." })}
 </div>
 </div></section>
@@ -129,6 +129,6 @@ ${linkCard({ href: "/bang-gia/", icon: "wallet", title: "Bảng giá", text: "Fr
 </div>
 </div></section>
 
-${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Cài cho macOS hoặc Windows bằng một dòng lệnh, dùng thử Free 10 ngày. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/lien-he/", label: "Liên hệ chúng tôi" } })}
+${ctaBand({ title: "Thử trên cuộc họp thật của bạn", text: "Cài cho macOS hoặc Windows bằng một dòng lệnh, dùng thử Free 10 ngày. Không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/lien-he/", label: "Liên hệ chúng tôi" } })}
 `,
 };

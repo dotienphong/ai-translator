@@ -1426,6 +1426,14 @@ a.lic-key::after {
 .lic-item:hover .lic-go {
   color: var(--brand-ink);
 }
+/* Nút thao tác của license (trang tài khoản): nằm trên vùng bấm ::after của liên kết key */
+.lic-item > .lic-act {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  position: relative;
+  z-index: 1;
+}
 
 /* Máy của license: hàng có biểu tượng, tên (liên kết), trạng thái, mã máy và giờ; nút của máy bên phải, hẹp thì xuống dưới */
 .dev-list {

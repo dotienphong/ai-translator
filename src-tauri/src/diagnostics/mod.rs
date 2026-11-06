@@ -110,6 +110,8 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::QUOTA_EXHAUSTED,
     errors::TRIAL_ENDED,
     errors::TRIAL_NEEDS_NETWORK,
+    // Chưa đăng nhập tài khoản (cổng đăng nhập, spec 2026-11-05 §6.2): do người dùng, như dùng thử.
+    errors::LOGIN_REQUIRED,
     errors::CLOCK_ROLLED_BACK,
     errors::LICENSE_CONFLICT,
     errors::LICENSE_INVALID,
@@ -197,6 +199,13 @@ impl<R: Runtime> AppHost<R> {
     }
 }
 
+/// Không có phiên dịch nào đang bắt đầu hay chạy (`Idle` hay `Error`); chưa có `AppState` thì coi như đang dịch. Báo cáo tự động
+/// và các lệnh tài khoản (spec 2026-11-05-dang-nhap-google §6.2, A7: không gọi server tài khoản lúc đang dịch) dùng chung.
+pub fn translation_idle<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.try_state::<AppState>()
+        .is_some_and(|state| matches!(state.status().session, SessionStatus::Idle | SessionStatus::Error))
+}
+
 impl<R: Runtime> Host for AppHost<R> {
     fn auto_enabled(&self) -> bool {
         self.build_allows_auto
@@ -209,9 +218,7 @@ impl<R: Runtime> Host for AppHost<R> {
     /// Rảnh: không có phiên nào đang bắt đầu hay chạy. Dừng phiên giữ trạng thái `Running` cho tới khi xong (câu cuối còn
     /// được dịch), nên `Idle` và `Error` là lúc không còn gì dịch.
     fn translation_idle(&self) -> bool {
-        self.app
-            .try_state::<AppState>()
-            .is_some_and(|state| matches!(state.status().session, SessionStatus::Idle | SessionStatus::Error))
+        translation_idle(&self.app)
     }
 
     fn facts(&self) -> Option<Facts> {

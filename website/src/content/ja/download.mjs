@@ -214,7 +214,7 @@ ${sectionHead({ eyebrow: "概要", title: "無料お試しと料金", center: tr
 <div class="reveal">${facts([
   ["現在のバージョン", RELEASE.ja],
   ["状態", "リリース済み。macOS も Windows もコマンド 1 行でインストール"],
-  ["無料お試し", "10 日間、1 日 30 分<small>カードもアカウントも不要</small>"],
+  ["無料お試し", "10 日間、1 日 30 分<small>カードは不要、Google でログインが必要</small>"],
   ["その後の料金", "Monthly 50,000 ₫ · 6 Months 269,000 ₫ · Yearly 500,000 ₫<small>VietQR（VND）または国際カード（USD）で前払い。VietQR は自動更新なし、カードでは自動更新は任意（初期状態でチェック済み）で、いつでも解約できます。Creem の一覧にある一部の国ではカードを利用できません。</small>"],
   ["モデル", "1.3 GB または 2.5 GB を一度だけダウンロード<small>そのあとは、認識と翻訳がパソコン上でオフラインで動きます</small>"],
 ])}</div>

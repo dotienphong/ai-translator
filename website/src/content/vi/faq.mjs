@@ -26,7 +26,7 @@ const GROUPS = [
       },
       {
         q: "Có cách dịch phụ đề họp sang tiếng Việt miễn phí không?",
-        a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ hay tài khoản. Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày), 6 Months 269.000 ₫ (100 giờ mỗi 30 ngày, trong 180 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
+        a: `<p>AI Translator có gói Free dùng thử 10 ngày, tối đa 30 phút dịch mỗi ngày, không cần thẻ; dùng thử cần đăng nhập bằng Google (gói trả phí không cần đăng nhập). Sau đó cần gói trả trước: Monthly 50.000 ₫ (50 giờ mỗi 30 ngày), 6 Months 269.000 ₫ (100 giờ mỗi 30 ngày, trong 180 ngày) hoặc Yearly 500.000 ₫ (không giới hạn trong 365 ngày). Gói Free là dùng thử, không phải miễn phí vĩnh viễn.</p>`,
       },
       {
         q: "AI Translator có phụ đề song ngữ (câu gốc và bản dịch) không?",
@@ -54,7 +54,7 @@ const GROUPS = [
       },
       {
         q: "Có cần bot, plugin hay tài khoản không?",
-        a: `<p>Không cần cả ba. Không có bot tham gia cuộc họp, không cài plugin vào app họp và không có đăng nhập. Gói Free chỉ cần bạn đồng ý điều khoản; gói trả phí được kích hoạt bằng license key gửi qua email.</p>`,
+        a: `<p>Không cần bot hay plugin: không có bot tham gia cuộc họp và không cài plugin vào app họp. Tài khoản thì tùy gói. Gói Free (dùng thử) cần bạn đồng ý điều khoản và đăng nhập bằng Google; app lưu email Google của bạn cho tài khoản, hiện không dùng để quảng bá. Gói trả phí không cần đăng nhập: gói được kích hoạt bằng license key gửi qua email.</p>`,
       },
       {
         q: "Tôi tải AI Translator ở đâu? Có bản Windows không?",
@@ -106,7 +106,7 @@ const GROUPS = [
       },
       {
         q: "Dữ liệu về cuộc hội thoại của tôi nằm ở đâu?",
-        a: `<p>Hoàn toàn trên máy bạn. Âm thanh chỉ nằm trong RAM khi đang dịch; bản chép lời và bản dịch hiện trên màn hình và nằm trong bộ nhớ của phiên; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy. Máy chủ của chúng tôi không có dữ liệu cuộc hội thoại, chỉ có email (khi mua), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy). Xem <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>Hoàn toàn trên máy bạn. Âm thanh chỉ nằm trong RAM khi đang dịch; bản chép lời và bản dịch hiện trên màn hình và nằm trong bộ nhớ của phiên; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy. Máy chủ của chúng tôi không có dữ liệu cuộc hội thoại, chỉ có email (khi mua), email Google (khi bạn đăng nhập), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy). Xem <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "AI Translator có chạy offline được không?",
@@ -118,7 +118,7 @@ const GROUPS = [
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",
-        a: `<p>App không có quảng cáo và không có analytics. Website chỉ đo lượt truy cập bằng Google Analytics khi bạn bấm Đồng ý ở thanh thông báo; từ chối thì không có cookie đo lường nào (xem <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>, mục 14). Khi app gặp lỗi, nó tự gửi một báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh, chữ chép lời, key hay email); bạn tắt được ở Cài đặt › Quyền riêng tư. Máy chủ chỉ lưu email (khi bạn mua, hay khi bạn tự để lại trong chat hỗ trợ), đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free, nhật ký thay đổi license, các báo cáo lỗi (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), để cấp key, bảo đảm mỗi key một máy, mỗi máy dùng thử một lần, sửa lỗi và trả lời bạn. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo. Chi tiết ở <a href="/bao-mat-du-lieu/#bao-cao-loi">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>App không có quảng cáo và không có analytics. Website chỉ đo lượt truy cập bằng Google Analytics khi bạn bấm Đồng ý ở thanh thông báo; từ chối thì không có cookie đo lường nào (xem <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>, mục 14). Khi app gặp lỗi, nó tự gửi một báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh, chữ chép lời, key hay email); bạn tắt được ở Cài đặt › Quyền riêng tư. Máy chủ chỉ lưu email (khi bạn mua, hay khi bạn tự để lại trong chat hỗ trợ), email Google khi bạn đăng nhập, đơn hàng, license, mã băm ID máy, tên máy (khi bạn kích hoạt key), mốc dùng thử Free, nhật ký thay đổi license, các báo cáo lỗi (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), để cấp key, bảo đảm mỗi key một máy, mỗi máy dùng thử một lần, sửa lỗi và trả lời bạn. Chúng tôi không bán hay chia sẻ dữ liệu cho mục đích quảng cáo. Chi tiết ở <a href="/bao-mat-du-lieu/#bao-cao-loi">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "Bản chép lời có được lưu lại không?",

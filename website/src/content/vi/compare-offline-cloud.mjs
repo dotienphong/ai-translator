@@ -127,6 +127,6 @@ ${faq(COMPARE_FAQ)}
 })}
 </div></section>
 
-${ctaBand({ title: "Thử dịch offline trên cuộc họp của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ, không cần tài khoản.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bao-mat-du-lieu/", label: "Xem cách xử lý dữ liệu" } })}
+${ctaBand({ title: "Thử dịch offline trên cuộc họp của bạn", text: "Dùng thử Free 10 ngày, mỗi ngày 30 phút. Không cần thẻ; dùng thử cần đăng nhập bằng Google.", primary: { href: "/tai-xuong/", label: "Tải xuống" }, secondary: { href: "/bao-mat-du-lieu/", label: "Xem cách xử lý dữ liệu" } })}
 `,
 };

@@ -4,6 +4,7 @@ import { type EmailProvider, EmailProviderError, maskEmail } from "./email/provi
 import { ResendEmailProvider } from "./email/resend";
 import { type LicenseEmailEntry, type LicenseEmailKind, licenseEmail } from "./email/templates";
 import type { ApiEnv } from "./env";
+import { type GoogleAuth, googleFromEnv } from "./google-auth";
 import type { Lang } from "./lang";
 import { CreemProvider, parseProductIds, parseSubscriptionProductIds } from "./payment/creem";
 import { PayOSProvider } from "./payment/payos";
@@ -19,6 +20,8 @@ export interface Deps {
   signingKey(): Promise<SigningKey>;
   /** Zalo Bot gửi tin tới chủ dự án (chat hỗ trợ, spec 2026-10-22); null khi thiếu secret. */
   zalo: OwnerBot | null;
+  /** Đổi code và kiểm id_token Google (spec 2026-11-05 §5.7); null khi thiếu client id hay secret (đăng nhập tắt). */
+  google: GoogleAuth | null;
 }
 
 export type DepsFactory = (env: ApiEnv) => Deps;
@@ -121,6 +124,7 @@ export function realDeps(env: ApiEnv): Deps {
     email: new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO }),
     signingKey: () => (key ??= loadSigningKey(env)),
     zalo: zaloFromEnv(env),
+    google: googleFromEnv(env),
   };
 }
 

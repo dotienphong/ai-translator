@@ -255,6 +255,25 @@ describe("cảnh báo cho người vận hành", () => {
     });
   });
 
+  describe("đăng nhập Google bị gọi tràn (spec 2026-11-05 §5.6)", () => {
+    it("auth_flood: ngưỡng 600 mỗi giờ, khách thật có thể bị từ chối tạm, cách xem; thư chỉ có số lượng, không có IP hay dữ liệu đăng nhập", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      await raiseAlert(env.DB, "auth_flood", T);
+      const box = mailbox();
+      expect(await sendAlerts({ ...env, OPERATOR_EMAIL: "ops@example.com" }, box.provider, T + 300)).toBe(1);
+      expect(box.sent[0]!.subject).toBe("[license test] Cảnh báo: auth_flood (1)");
+      const text = box.sent[0]!.text;
+      expect(text).toContain("POST /v1/auth/google/start");
+      expect(text).toContain("chạm trần toàn hệ thống (600 yêu cầu mỗi giờ)");
+      expect(text).toContain("bị từ chối (429) tới hết giờ, nên người dùng thật cũng có thể bị từ chối tạm trong giờ đó");
+      expect(text).toContain("LOGIN_GATE");
+      expect(text).toContain("Thư này chỉ có số lượng");
+      // Không IP, không email, không mã máy, không mã đăng nhập.
+      expect(text).not.toMatch(/\b\d{1,3}(\.\d{1,3}){3}\b/);
+      expect(text).not.toMatch(/@(?!\w*\.)|[0-9a-f]{32,}/i);
+    });
+  });
+
   describe("authFailedAlert: loại cảnh báo theo tên cổng của đơn (orders.provider)", () => {
     it("payos và creem có loại riêng; cổng khác hay tên lạ (kể cả tên thuộc tính của Object) không có loại", () => {
       expect(authFailedAlert("payos")).toBe("payos_auth_failed");
