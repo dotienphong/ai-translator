@@ -1,5 +1,5 @@
 /* Token màu, chữ, khoảng cách của cửa sổ chính (spec §6.10). Màu nhấn theo biểu tượng app (#1d63c9). Cỡ chữ tính bằng rem
-   để phóng to được (⌘+ / Ctrl+); 1rem = 14px (cỡ chữ chuẩn của app desktop trên macOS và Windows). */
+   để phóng to được (⌘+ / Ctrl+); 1rem = 15px (nhỉnh hơn 14px một chút để dễ đọc trên cả macOS và Windows). */
 :root {
   --bg: #f3f5f8;
   --sidebar: #eceff3;
