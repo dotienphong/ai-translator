@@ -11,8 +11,8 @@ pub const MAIN: &str = "main";
 pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
         .title(app.package_info().name.clone())
-        .inner_size(960.0, 640.0)
-        .min_inner_size(720.0, 480.0)
+        .inner_size(1100.0, 720.0)
+        .min_inner_size(780.0, 520.0)
         .center()
         .visible(false)
         // ⌘+ / Ctrl+ phóng to chữ (§6.10). Trên macOS cần quyền `core:webview:allow-set-webview-zoom`.
