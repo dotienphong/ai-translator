@@ -676,9 +676,16 @@ export async function listen(event: string, handler: (e: { payload: unknown }) =
 }
 
 // Video giới thiệu: trang dựng cảnh phát sự kiện vào trang này và trả lời lệnh dịch của ô soạn (thay phía Rust).
-type DemoHooks = { composeTranslate?: (id: number, emit: (event: string, payload: unknown) => void) => void };
+type DemoHooks = {
+  composeTranslate?: (id: number, emit: (event: string, payload: unknown) => void) => void;
+  ttsSpeak?: (args: { lang: "vi" | "en"; text: string }) => number | undefined;
+};
 const demoHooks = (): DemoHooks => (window.top as unknown as { __demo?: DemoHooks } | null)?.__demo ?? {};
 if (demo) (window as unknown as { __demoEmit: typeof emit }).__demoEmit = emit;
+
+const ttsMock = demo || param("tts") === "1";
+let listenActive = false;
+let ttsSeq = 0;
 
 function changeStatus(patch: Partial<AppStatus>) {
   status = { ...status, ...patch, rev: status.rev + 1 };
@@ -904,7 +911,11 @@ const handlers = {
   },
   // Chat hỗ trợ: trạng thái trong bộ nhớ theo `chat=`, `support=`; gửi tin sau nửa giây, hay đúng lỗi của lệnh thật theo `send=`.
   // Màn hình Giọng đọc (spec 2026-11-04-giong-doc §7; mục chỉ có khi platform=windows): 25 giọng của gói thật, theo thứ tự tên.
-  // `tts_status` không có mẫu (null) nên màn hình chưa cho Nghe thử, như lúc chưa hỏi xong trạng thái.
+  // Khi không bật `demo=1` hay `tts=1`, `tts_status` trả `null` để màn hình chưa cho Nghe thử, như lúc chưa hỏi xong trạng thái.
+  tts_status: () => (ttsMock ? { available: true, running: false, reason: null, progress: null } : (null as never)),
+  overlay_tts_status: () => (ttsMock ? { available: true, running: false, reason: null, progress: null } : (null as never)),
+  tts_warmup: () => null,
+  overlay_tts_warmup: () => null,
   tts_list_voices: () => ({
     names: [
       "Adam", "Adam bựa", "Đoan Trang", "Đức Trí", "Hải Đăng", "Kim Thanh", "Mai Anh", "Minh Đức", "Minh Triết", "Mỹ Duyên",
@@ -913,6 +924,38 @@ const handlers = {
     ],
     default: "Hải Đăng",
   }),
+  tts_speak: ({ lang: spkLang, text, onEvent }) => {
+    const id = ++ttsSeq;
+    const durMs = demoHooks().ttsSpeak?.({ lang: spkLang, text }) ?? 1800;
+    setTimeout(() => onEvent.onmessage(new ArrayBuffer(960)), 20);
+    setTimeout(() => onEvent.onmessage({ kind: "done" }), durMs);
+    return id;
+  },
+  overlay_tts_speak: ({ lang: spkLang, text, onEvent }) => {
+    const id = ++ttsSeq;
+    const durMs = demoHooks().ttsSpeak?.({ lang: spkLang, text }) ?? 1800;
+    setTimeout(() => onEvent.onmessage(new ArrayBuffer(960)), 20);
+    setTimeout(() => onEvent.onmessage({ kind: "done" }), durMs);
+    return id;
+  },
+  tts_preview: ({ lang: spkLang, text, onEvent }) => {
+    const id = ++ttsSeq;
+    const durMs = demoHooks().ttsSpeak?.({ lang: spkLang, text }) ?? 2200;
+    setTimeout(() => onEvent.onmessage(new ArrayBuffer(960)), 20);
+    setTimeout(() => onEvent.onmessage({ kind: "done" }), durMs);
+    return id;
+  },
+  tts_cancel: () => null,
+  tts_mark_playing: () => null,
+  overlay_tts_mark_playing: () => null,
+  tts_stop: () => null,
+  overlay_tts_stop: () => null,
+  overlay_listen_status: () => (ttsMock ? { supported: platform === "windows", active: listenActive } : (null as never)),
+  overlay_listen_set: ({ enabled }) => {
+    listenActive = enabled;
+    setTimeout(() => emit("listen://state", { active: enabled, error: null }), 10);
+    return { supported: platform === "windows", active: enabled };
+  },
   support_screen: ({ open }) => changeSupport(open ? { unread: false } : {}),
   support_fetch: () => changeSupport({}),
   support_machine_info: () => machineLine(),

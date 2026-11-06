@@ -20,6 +20,7 @@ import { parseArgs } from "node:util";
 import { launch } from "../../website/tools/browser/cdp.mjs";
 import { AUDIO_RATE, mixAudio } from "./audio.mjs";
 import { buildDesktopTimeline } from "./desktop-timeline.mjs";
+import { buildShowcaseTimeline } from "./showcase-timeline.mjs";
 import { FPS, FRAME_MS, buildTimeline } from "./timeline.mjs";
 import { readWav, writeWav } from "./wav.mjs";
 import { dataName, voiceName } from "./names.mjs";
@@ -45,14 +46,25 @@ const script = json(`script.${name}.json`);
 // của bản dọc (`voiceFrom`) nhưng có chữ riêng (names.mjs).
 const data = dataName(script, name);
 const voiceData = voiceName(script, name);
-const desktop = script.stage === "desktop";
+const isShowcase = script.stage === "showcase";
+const desktop = script.stage === "desktop" || isShowcase;
 const page = desktop ? "desktop.html" : "stage.html";
 const viewport = script.viewport ?? { width: 540, height: 960, dpr: 2 };
 const voice = json(`data/voice.${voiceData}.json`);
-const build = desktop ? buildDesktopTimeline : buildTimeline;
-const tl = build(script, voice, json(`data/live.${data}.json`), json(`data/compose.${data}.json`));
-if (tl.totalMs < 30_000 || tl.totalMs > 60_000) {
-  console.error(`Video dài ${(tl.totalMs / 1000).toFixed(1)} giây, ngoài khoảng 30–60 giây: sửa kịch bản.`);
+const tl = isShowcase
+  ? buildShowcaseTimeline(
+      script,
+      voice,
+      json(`data/live.${data}.json`),
+      json(`data/voice.youtube.${voiceData}.json`),
+      json(`data/youtube.${data}.json`),
+      json(`data/compose.${data}.json`),
+      json(`data/tts.showcase.${data}.json`),
+    )
+  : (desktop ? buildDesktopTimeline : buildTimeline)(script, voice, json(`data/live.${data}.json`), json(`data/compose.${data}.json`));
+const [minMs, maxMs] = tl.durationRangeMs ?? [30_000, 60_000];
+if (tl.totalMs < minMs || tl.totalMs > maxMs) {
+  console.error(`Video dài ${(tl.totalMs / 1000).toFixed(1)} giây, ngoài khoảng ${minMs / 1000}–${maxMs / 1000} giây: sửa kịch bản.`);
   process.exit(1);
 }
 const pngDir = opts["png-dir"];
@@ -78,12 +90,35 @@ let partial = null;
 if (full) {
   const voiceFile = path.join(out, `voice48.${voiceData}.wav`);
   const bytes = readFileSync(voiceFile);
-  if (createHash("sha256").update(bytes).digest("hex") !== voice.sha256) {
+  if (!isShowcase && createHash("sha256").update(bytes).digest("hex") !== voice.sha256) {
     console.error(`${voiceFile} khác file đã dùng để lấy chữ (data/voice.${voiceData}.json): chạy lại voice.mjs rồi data.mjs.`);
     process.exit(1);
   }
   const audioFile = path.join(out, `audio.${name}.wav`);
-  const mixed = mixAudio({ voice: readWav(bytes).samples, voiceStartMs: tl.voiceStartMs, sounds: tl.sounds, totalMs: tl.totalMs });
+  let mixed;
+  if (isShowcase && tl.audioPlan) {
+    const meetSamples = readWav(bytes).samples;
+    const ytBytes = readFileSync(path.join(out, `voice48.youtube.${voiceData}.wav`));
+    const ytSamples = readWav(ytBytes).samples;
+    const sourceMap = { meetingVoice: meetSamples, ytVoice: ytSamples };
+    const ttsMap = {
+      meet0: readWav(readFileSync(path.join(out, `tts.meet-0.${data}.wav`))).samples,
+      meet1: readWav(readFileSync(path.join(out, `tts.meet-1.${data}.wav`))).samples,
+      meet2: readWav(readFileSync(path.join(out, `tts.meet-2.${data}.wav`))).samples,
+      preview: readWav(readFileSync(path.join(out, `tts.preview.${data}.wav`))).samples,
+      yt0: readWav(readFileSync(path.join(out, `tts.yt-0.${data}.wav`))).samples,
+      yt1: readWav(readFileSync(path.join(out, `tts.yt-1.${data}.wav`))).samples,
+    };
+    mixed = mixAudio({
+      segments: tl.audioPlan.segments.map((s) => ({ ...s, samples: sourceMap[s.key] })),
+      duckWindows: tl.audioPlan.duckWindows,
+      ttsSegments: tl.audioPlan.ttsSegments.map((s) => ({ ...s, samples: ttsMap[s.key] })),
+      sounds: tl.sounds,
+      totalMs: tl.totalMs,
+    });
+  } else {
+    mixed = mixAudio({ voice: readWav(bytes).samples, voiceStartMs: tl.voiceStartMs, sounds: tl.sounds, totalMs: tl.totalMs });
+  }
   writeFileSync(audioFile, writeWav(mixed, AUDIO_RATE));
   mkdirSync(path.join(out, `keyframes.${name}`), { recursive: true });
   mp4 = path.join(out, `ai-translator-demo.${name}.mp4`);
@@ -139,7 +174,7 @@ try {
     );
     for (const e of finals.filter((f) => f.at > t - FRAME_MS && f.at <= t)) {
       const shown = await tab.eval(
-        `document.querySelector(".overlay-frame").contentDocument.querySelector(".overlay .lines").textContent.includes(${JSON.stringify(e.payload.tgt_text)})`,
+        `[...document.querySelectorAll(".overlay-frame")].some((f) => f.contentDocument.querySelector(".overlay .lines")?.textContent.includes(${JSON.stringify(e.payload.tgt_text)}))`,
       );
       timing.push({ id: e.payload.id, scheduledMs: e.at, frameMs: t, shown });
       if (!shown) failures.push(`phụ đề ${e.payload.id} chưa có trên thanh phụ đề ở khung ${i} (${t.toFixed(1)} ms)`);

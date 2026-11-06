@@ -32,6 +32,18 @@ export function buildShell(parent, { script, tl, assets }) {
     el("span", "", box, l.text);
     return box;
   });
+  const introCards = (tl.introCards ?? []).map((c) => {
+    const backdrop = el("div", "intro-backdrop", parent);
+    const card = el("div", "intro-card", backdrop);
+    const top = el("div", "intro-top", card);
+    const logo = el("img", "intro-logo", top);
+    logo.alt = "";
+    logo.src = assets.appIcon;
+    el("span", "intro-step", top, c.step);
+    el("div", "intro-title", card, c.title);
+    el("div", "intro-desc", card, c.desc);
+    return backdrop;
+  });
   const keys = tl.keys.map((k) => {
     const box = el("div", "keys", parent);
     const caps = k.keys.map((key, j) => {
@@ -51,10 +63,23 @@ export function buildShell(parent, { script, tl, assets }) {
 
   return {
     render(t) {
-      const inChat = t >= tl.scenes.slide[0] + SLIDE_MS / 2;
-      app.cam.classList.toggle("active", !inChat);
-      app.chat.classList.toggle("active", inChat);
+      if (tl.scenes.youtube) {
+        const inYt = t >= tl.scenes.slide1[0] + SLIDE_MS / 2 && t < tl.scenes.slide2[0] + SLIDE_MS / 2;
+        const inChat = t >= tl.scenes.slide2[0] + SLIDE_MS / 2;
+        app.cam.classList.toggle("active", !inYt && !inChat);
+        app.globe.classList.toggle("active", inYt);
+        app.chat.classList.toggle("active", inChat);
+      } else {
+        const inChat = t >= tl.scenes.slide[0] + SLIDE_MS / 2;
+        app.cam.classList.toggle("active", !inChat);
+        app.chat.classList.toggle("active", inChat);
+      }
       tl.labels.forEach((l, i) => show(labels[i], visibility(t, [l.from, l.to])));
+      (tl.introCards ?? []).forEach((c, i) => {
+        const v = visibility(t, [c.from, c.to], 280);
+        const scale = 0.96 + 0.04 * v;
+        show(introCards[i], v, `scale(${scale.toFixed(4)})`);
+      });
       tl.keys.forEach((k, i) => {
         show(keys[i].box, pop(t, k.from, k.to, 120));
         for (const cap of keys[i].caps) cap.classList.toggle("down", within(t, k.down[0], k.down[1]));

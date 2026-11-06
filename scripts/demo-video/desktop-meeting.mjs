@@ -61,9 +61,17 @@ export function buildMeeting(parent, { script, tl, voice, assets }) {
       if (t >= tl.scenes.slide[1]) return; // desktop 1 đã trượt khỏi màn hình
       const secs = script.call.startClock + Math.floor(t / 1000);
       timer.textContent = `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+      const mapVoiceT = (ms) => {
+        if (!tl.meeting) return ms;
+        if (ms >= tl.meeting.voice1StartMs && ms <= tl.meeting.voice1EndMs) return ms;
+        if (ms >= tl.meeting.voice2StartMs && ms <= tl.meeting.voice2EndMs) {
+          return tl.voiceStartMs + script.timing.voiceSplitMs + (ms - tl.meeting.voice2StartMs);
+        }
+        return -10_000;
+      };
       let level = 0;
-      for (let back = 0; back <= SPEAK_HOLD_MS; back += 100) level = Math.max(level, levelAt(voice, tl.voiceStartMs, t - back));
-      const g = Math.min(1, levelAt(voice, tl.voiceStartMs, t) / 0.06);
+      for (let back = 0; back <= SPEAK_HOLD_MS; back += 100) level = Math.max(level, levelAt(voice, tl.voiceStartMs, mapVoiceT(t - back)));
+      const g = Math.min(1, levelAt(voice, tl.voiceStartMs, mapVoiceT(t)) / 0.06);
       speaker.ring.style.boxShadow = `0 0 0 ${3 + 9 * g}px rgba(91, 140, 255, ${0.25 + 0.6 * g})`;
       speaker.tile.classList.toggle("speaking", level > 0.009);
       speaker.bars.forEach((b, k) => (b.style.height = `${4 + Math.round(10 * g * [0.6, 1, 0.75][k])}px`));
