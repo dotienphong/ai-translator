@@ -66,7 +66,7 @@
     // <số>-<chuỗi>.apps.googleusercontent.com). **ĐỂ TRỐNG cho tới lúc phát hành: người vận hành điền ID thật** (docs/release/phat-hanh.md).
     // Rỗng (hay thiếu secret GOOGLE_OAUTH_CLIENT_SECRET) thì đăng nhập Google tắt: /v1/auth/status báo "off", app mở cổng, không ai bị khóa.
     // Client secret chỉ nằm ở secret của Worker, không bao giờ ở đây.
-    "GOOGLE_OAUTH_CLIENT_ID": "",
+    "GOOGLE_OAUTH_CLIENT_ID": "545629328006-v6pg8vli61m7j5t24ipj1b827mv6ddme.apps.googleusercontent.com",
     // Công tắc khẩn cấp (spec §5.4b): "off" thì /v1/auth/status báo off và app mở cổng đăng nhập cho mọi người; deploy lại là có hiệu lực.
     "LOGIN_GATE": "on",
     // "on" thì POST /v1/trial đòi token tài khoản cho máy chưa có dòng trong `trials` (spec §5.4). Đặt "on" SAU khi bản app có đăng nhập
