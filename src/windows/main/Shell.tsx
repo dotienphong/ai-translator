@@ -94,23 +94,21 @@ export function Shell() {
             </button>
           );
         })}
+        <button
+          type="button"
+          className="nav-account"
+          aria-current={accountActive ? "page" : undefined}
+          aria-label={accountLabel}
+          title={accountLabel}
+          onClick={() => navigate("settings", "account")}
+        >
+          <Icon name="user" />
+          <span>{accountLabel}</span>
+        </button>
         <div className="nav-foot">
-          <button
-            type="button"
-            className="nav-account"
-            aria-current={accountActive ? "page" : undefined}
-            aria-label={accountLabel}
-            title={accountLabel}
-            onClick={() => navigate("settings", "account")}
-          >
-            <Icon name="user" size={16} />
-            <span>{accountLabel}</span>
-          </button>
-          <div className="nav-meta">
-            {plan && <PlanName plan={plan} />}
-            {plan && version && " · "}
-            {version && `v${version}`}
-          </div>
+          {plan && <PlanName plan={plan} />}
+          {plan && version && " · "}
+          {version && `v${version}`}
         </div>
       </nav>
       <main className="content" ref={content}>
