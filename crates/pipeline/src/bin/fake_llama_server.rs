@@ -37,6 +37,7 @@ use std::net::{TcpListener, TcpStream};
 struct Plan {
     exit_at_start: Option<i32>,
     crash_on: Option<u32>,
+    device_lost_on: Option<u32>,
     ramble: bool,
     ramble_once: bool,
     label: bool,
@@ -69,6 +70,7 @@ fn parse(line: &str) -> Plan {
             "ok" => {}
             "exit_at_start" => plan.exit_at_start = value.parse().ok(),
             "crash_on" => plan.crash_on = value.parse().ok(),
+            "device_lost_on" => plan.device_lost_on = value.parse().ok(),
             "ramble" => plan.ramble = true,
             "ramble_once" => plan.ramble_once = true,
             "label" => plan.label = true,
@@ -270,6 +272,15 @@ fn main() {
                 ));
                 if plan.crash_on == Some(chats) {
                     std::process::exit(3);
+                }
+                if plan.device_lost_on == Some(chats) {
+                    respond(
+                        &stream,
+                        "500 Internal Server Error",
+                        "application/json",
+                        r#"{"error":{"code":500,"message":"decode() failed: vk::Device::getFenceStatus: ErrorDeviceLost","type":"server_error"}}"#,
+                    );
+                    continue;
                 }
                 let prompt = body["messages"][0]["content"].as_str().unwrap_or("");
                 let source = prompt.rsplit("\n\n").next().unwrap_or("");

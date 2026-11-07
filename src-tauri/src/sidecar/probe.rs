@@ -33,11 +33,20 @@ fn any_usable(gpus: &[GpuInfo]) -> bool {
         .any(|g| matches!(g.device_type.as_str(), "discrete" | "integrated"))
 }
 
-/// Máy chỉ có GPU tích hợp, không có card rời. `asr-worker` vẫn chạy GPU (nhanh hơn CPU khoảng 4–5 lần), nhưng
-/// `llama-server` chạy CPU: hai engine dùng chung một iGPU thì tranh nhau, và với Iris Xe, Hy-MT2 Q4_K_M chạy CPU sinh
-/// chữ nhanh hơn (44 so với 27 tok/s). Đo trên i5-1345U, `bench/phase0/results/s6_windows.md` mục "Llama chạy CPU".
+/// Ngưỡng VRAM tối thiểu (3 GiB) để một card rời được tính là đủ sức chạy đồng thời `asr-worker` và `llama-server`
+/// (hoặc bật "Dịch khi nói"). Các card rời 2 GB (như GeForce MX130/MX250/MX330) đi kèm iGPU sẽ được coi như máy chỉ có
+/// iGPU để `llama-server` chạy trên CPU, tránh quá tải / `ErrorDeviceLost` (báo cáo `R-XPHA-DXYR`).
+pub const MIN_DISCRETE_VRAM_BYTES: u64 = 3 << 30;
+
+/// Máy chỉ có GPU tích hợp, không có card rời (hoặc chỉ có card rời dưới `MIN_DISCRETE_VRAM_BYTES` đi kèm GPU tích hợp).
+/// `asr-worker` vẫn chạy GPU (nhanh hơn CPU khoảng 4–5 lần), nhưng `llama-server` chạy CPU: hai engine dùng chung một
+/// iGPU thì tranh nhau, và với Iris Xe, Hy-MT2 Q4_K_M chạy CPU sinh chữ nhanh hơn (44 so với 27 tok/s). Đo trên
+/// i5-1345U, `bench/phase0/results/s6_windows.md` mục "Llama chạy CPU".
 pub fn only_integrated_gpu(gpus: &[GpuInfo]) -> bool {
-    !gpus.iter().any(|g| g.device_type == "discrete") && gpus.iter().any(|g| g.device_type == "integrated")
+    !gpus
+        .iter()
+        .any(|g| g.device_type == "discrete" && g.device_local_bytes >= MIN_DISCRETE_VRAM_BYTES)
+        && gpus.iter().any(|g| g.device_type == "integrated")
 }
 
 /// Máy Windows chưa đủ sức dịch trong lúc người nói chưa dừng (spec 2026-10-10 §5, "Tắt ngay từ đầu phiên"): không có GPU
@@ -231,5 +240,21 @@ mod tests {
     fn a_new_binary_gets_a_longer_probe() {
         assert_eq!(probe_timeout(true), Duration::from_secs(60));
         assert_eq!(probe_timeout(false), Duration::from_secs(10));
+    }
+
+    /// Báo cáo thật `R-XPHA-DXYR`: laptop có NVIDIA GeForce MX250 (rời, 2 GB VRAM) + Intel UHD 620 (tích hợp).
+    /// Card rời 2 GB không đủ VRAM để gánh đồng thời `asr-worker` + `llama-server`, nên được coi như máy chỉ có iGPU
+    /// (để `llama-server` chạy CPU và không bật "Dịch khi nói").
+    #[test]
+    fn small_discrete_2gb_with_integrated_counts_as_only_integrated() {
+        let mx250_and_uhd = r#"[{"name":"NVIDIA GeForce MX250","device_type":"discrete","device_local_bytes":2000000000,"vendor_id":4318},
+            {"name":"Intel(R) UHD Graphics 620","device_type":"integrated","device_local_bytes":134217728,"vendor_id":32902}]"#;
+        let gpus = parse_gpus(mx250_and_uhd);
+        let out = ProbeOutcome {
+            usable: usable_gpu(mx250_and_uhd),
+            gpus,
+        };
+        assert!(only_integrated_gpu(&out.gpus));
+        assert!(too_slow_for_streaming(&out));
     }
 }

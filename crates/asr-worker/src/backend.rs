@@ -92,7 +92,7 @@ pub fn choose_gpu(candidates: &[Candidate], forced: Option<usize>) -> Option<Cho
             reason: Reason::Discrete,
         },
         None => Choice {
-            index: 0,
+            index: candidates.iter().position(|c| c.integrated).unwrap_or(0),
             reason: Reason::FirstDevice,
         },
     })
@@ -251,6 +251,22 @@ mod tests {
             pick(&[igpu("A", 8_000), igpu("B", 12_000)]),
             Some((0, Reason::FirstDevice))
         );
+    }
+
+    /// Báo cáo thật `R-XPHA-DXYR`: Vulkan liệt kê MX250 (rời, 1900 MiB trống < 2048 MiB) ở vị trí 0 và Intel UHD 620
+    /// (tích hợp) ở vị trí 1. Khi không có card rời nào đủ 2 GiB trống, phải chọn card tích hợp (1) thay vì quay về
+    /// vị trí 0 (chính là chiếc MX250 vừa bị loại). Nếu máy chỉ có một card rời nhỏ duy nhất (không có iGPU) thì vẫn
+    /// giữ vị trí 0.
+    #[test]
+    fn small_discrete_first_falls_back_to_integrated_gpu() {
+        let list = [
+            gpu("NVIDIA GeForce MX250", 1_900),
+            igpu("Intel(R) UHD Graphics 620", 16_000),
+        ];
+        assert_eq!(pick(&list), Some((1, Reason::FirstDevice)));
+
+        let single_small = [gpu("NVIDIA GeForce MX250", 1_900)];
+        assert_eq!(pick(&single_small), Some((0, Reason::FirstDevice)));
     }
 
     #[test]

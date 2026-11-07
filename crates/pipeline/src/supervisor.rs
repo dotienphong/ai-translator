@@ -351,6 +351,15 @@ pub fn looks_out_of_memory(text: &str) -> bool {
     OOM.iter().any(|m| text.contains(m))
 }
 
+/// Dấu hiệu mất thiết bị GPU (`VK_ERROR_DEVICE_LOST` / `ErrorDeviceLost` của Vulkan, hay `device lost` trong ggml) trong
+/// thông báo lỗi của `llama-server`. Khi thiết bị GPU đã mất, tiến trình `llama-server` có thể vẫn sống và trả `200 OK`
+/// ở `/health`, nhưng mọi lần `decode()` tiếp theo đều thất bại cho tới khi khởi động lại tiến trình (báo cáo `R-XPHA-DXYR`).
+pub fn looks_device_lost(text: &str) -> bool {
+    const DEVICE_LOST: [&str; 3] = ["errordevicelost", "device lost", "device_lost"];
+    let text = text.to_lowercase();
+    DEVICE_LOST.iter().any(|m| text.contains(m))
+}
+
 struct AsrSlot {
     worker: Option<AsrWorker>,
     tracker: RestartTracker,
@@ -1033,7 +1042,11 @@ impl SidecarManager {
             }
             Err(e) => {
                 let reason = format!("{e:#}");
-                let dead = server.exited().is_some() || !server.healthy();
+                let oom = looks_out_of_memory(&reason);
+                if oom {
+                    self.emit(SidecarEvent::OutOfMemory { which: Which::Llama });
+                }
+                let dead = server.exited().is_some() || looks_device_lost(&reason) || oom || !server.healthy();
                 if dead {
                     self.after_llama_failure(&mut slot, &reason)
                         .map_err(|e| MtError::Unavailable(e.reason))?;
@@ -1189,5 +1202,14 @@ mod tests {
         ));
         assert!(looks_out_of_memory("ggml_vulkan: ErrorOutOfDeviceMemory"));
         assert!(!looks_out_of_memory("llama-server thoát sớm (exit status: 1)"));
+    }
+
+    #[test]
+    fn device_lost_is_recognised_in_llama_errors() {
+        assert!(looks_device_lost(
+            "llama-server trả 500 Internal Server Error: {\"code\":500,\"message\":\"decode() failed: vk::Device::getFenceStatus: ErrorDeviceLost\"}"
+        ));
+        assert!(looks_device_lost("ggml_vulkan: device lost on Vulkan0"));
+        assert!(!looks_device_lost("connection closed before message completed"));
     }
 }

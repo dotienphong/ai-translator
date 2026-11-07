@@ -427,6 +427,33 @@ fn a_llama_server_crash_restarts_it_and_the_translation_is_retried() {
     assert_eq!(s.clock.sleeps(), [1_000]);
 }
 
+/// Báo cáo thật `R-XPHA-DXYR`: `llama-server` gặp `vk::Device::getFenceStatus: ErrorDeviceLost` trên Vulkan, trả HTTP 500
+/// nhưng tiến trình chưa thoát và `/health` vẫn trả 200 OK. Giám sát phải coi đây là lỗi chết thiết bị GPU, tắt server
+/// hỏng, khởi động lại để dịch lại, và chuyển sang CPU sau 2 lần lỗi GPU liên tiếp.
+#[test]
+fn llama_server_device_lost_restarts_and_falls_back_to_cpu_after_two_failures() {
+    let s = setup(
+        "llama-device-lost",
+        true,
+        &[],
+        &["device_lost_on:1", "device_lost_on:1", "ok"],
+    );
+    s.manager.ensure_started().unwrap();
+    let first = translate_hello(&s);
+    assert!(matches!(first, Outcome::Failed { .. }), "{first:?}");
+    match translate_hello(&s) {
+        Outcome::Done(t) => assert_eq!(t.text, "VI: Hello there"),
+        other => panic!("{other:?}"),
+    }
+    let names = s.events.names();
+    assert!(names.contains(&"cpu Llama".to_string()), "{names:?}");
+    assert_eq!(names.last().unwrap(), "ready Llama gpu=false", "{names:?}");
+    assert_eq!(
+        s.t.read("llama-events"),
+        "start ngl=auto extra=\nchat 1 repeat=1.05 max=40\nstart ngl=auto extra=\nchat 1 repeat=1.15 max=40\nstart ngl=0 extra=\nchat 1 repeat=1.05 max=40\n"
+    );
+}
+
 #[test]
 fn after_more_than_5_server_failures_only_the_source_is_shown() {
     // Lần 1: server chết giữa request dịch. Năm lần sau: server thoát ngay khi chạy. Lỗi thứ 6 trong 10 phút: bỏ cuộc.
