@@ -578,14 +578,29 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .flow-body p { margin: 0 0 .5em; color: var(--ink-3); }
 .flow-body .cmd { margin-top: .7em; }
 .flow-body .cmd + p { margin-top: .8em; }
-.panel-alt { margin-top: 1.8rem; padding: 1.15rem 1.3rem; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); }
-.panel-alt h3 { margin: 0 0 .35em; font-size: 1.05rem; }
-.panel-alt p { margin: 0 0 .8rem; color: var(--ink-3); font-size: .95rem; }
-.panel-alt p:last-child { margin-bottom: 0; }
-.panel-alt-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
-.panel-alt .btn { max-width: 100%; flex-wrap: wrap; text-align: center; }
-.panel-alt .btn .icon { flex-shrink: 0; width: 1.1em; height: 1.1em; }
-.panel-alt .btn code { overflow-wrap: anywhere; background: transparent; border: 0; padding: 0; color: inherit; }
+.dl-method { padding: 1.6rem 1.75rem; border-radius: var(--r-md); background: var(--surface); border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--line-strong)); box-shadow: var(--shadow-sm); }
+.dl-method + .dl-method { margin-top: 2.25rem; }
+.dl-method-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: .65rem; }
+.dl-method-head h3 { margin: 0; font-size: clamp(1.3rem, 1.1rem + .8vw, 1.55rem); font-weight: 700; color: var(--ink); }
+.dl-badge { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 999px; font-size: clamp(1.15rem, 1.05rem + .45vw, 1.35rem); font-weight: 800; line-height: 1.25; letter-spacing: .01em; background: var(--brand); color: var(--on-brand); box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 28%, transparent); }
+.dl-method-sub { margin: 0 0 1rem; color: var(--ink-3); font-size: .95rem; }
+.dl-method .flow { margin-top: .85rem; padding-top: .95rem; border-top: 1px solid var(--line); }
+.dl-method .flow > li { grid-template-columns: 28px minmax(0, 1fr); gap: 0 14px; padding-bottom: 18px; }
+.dl-method .flow > li:last-child { padding-bottom: 0; }
+.dl-method .flow > li::before { width: 28px; height: 28px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-strong); color: var(--ink-2); font-weight: 600; font-size: .85rem; box-shadow: none; }
+.dl-method .flow > li:not(:last-child)::after { left: 13px; top: 32px; bottom: 4px; width: 1px; background: var(--line-strong); }
+.dl-method .flow-body { padding-top: 2px; }
+.dl-method .flow-body h3 { font-size: 1rem; font-weight: 600; color: var(--ink-2); margin: 0 0 .25em; }
+.panel-alt-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 1rem; }
+.dl-method .btn { max-width: 100%; flex-wrap: wrap; text-align: center; }
+.dl-method .btn .icon { flex-shrink: 0; width: 1.1em; height: 1.1em; }
+.dl-method .btn code { overflow-wrap: anywhere; background: transparent; border: 0; padding: 0; color: inherit; }
+.btn-dl-exe { min-height: 44px; padding: 10px 20px; border-radius: 0; font-size: .98rem; font-weight: 700; background: var(--accent); color: var(--on-brand); border: 1px solid color-mix(in srgb, var(--accent) 80%, #000); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 55%, transparent); animation: dl-btn-pulse 2.2s ease-in-out infinite; }
+.btn-dl-exe:hover { transform: translateY(-2px); filter: brightness(1.07); background: var(--accent); color: var(--on-brand); box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--accent) 65%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); }
+.dl-method .btn-dl-exe .icon { width: 1.2em; height: 1.2em; }
+.dl-method .btn-dl-exe code { font-size: .95em; font-weight: 700; }
+@keyframes dl-btn-pulse { 0%, 100% { box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 0 0 transparent; } 50% { box-shadow: 0 8px 22px -4px color-mix(in srgb, var(--accent) 65%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .btn-dl-exe { animation: none; } }
 .panel-more { margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
 .panel-more > h3 { margin: 0 0 .9rem; font-size: 1.02rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
 .panel-more .faq details { background: var(--surface-2); }

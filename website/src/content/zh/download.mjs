@@ -125,6 +125,16 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 或 11，64 位"], ["cpu", "支持 AVX2 的 CPU"], ["download", "安装包约 22 MB"], ["shield", "无需管理员权限"]])}
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">方法 1：推荐</span><h3>直接下载 .exe 安装程序</h3></div>
+<p class="dl-method-sub">下载安装程序并直接打开即可为你的账户安装。如果 Windows 显示蓝色的 SmartScreen 界面，点击<strong>更多信息</strong>，再点击<strong>仍要运行</strong>（<a href="/zh/guide/install-windows/#install-exe">查看 .exe 安装说明</a>）。</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>下载 <code>${SITE.winInstaller.file}</code></span></a>
+</div>
+</div>
+<div class="dl-method" id="install-powershell">
+<div class="dl-method-head"><span class="dl-badge">方法 2</span><h3>用一行 PowerShell 命令安装</h3></div>
+<p class="dl-method-sub">自动下载最新版本、校验 SHA-256 并直接打开，不会弹出 SmartScreen 警告界面。</p>
 ${flow([
   { title: "打开 PowerShell", text: "<p>按 <kbd>Windows</kbd> 键，输入 <strong>PowerShell</strong>，然后按 Enter。不需要以管理员身份运行。</p>" },
   {
@@ -133,13 +143,6 @@ ${flow([
   },
   { title: "等待应用打开", text: "<p>大约一分钟：命令会下载最新版本，校验 SHA-256，只为你的账户静默运行安装程序，然后打开 AI Translator。Windows 不需要录音权限；应用会下载一次模型，之后即可开始翻译。</p>" },
 ])}
-<div class="panel-alt" id="download-exe">
-<h3>方法 2：直接下载 .exe 安装程序</h3>
-<p>如果你更想自己运行安装程序，或者电脑阻止了 PowerShell 脚本，请使用这种方式。用浏览器下载的文件可能会显示蓝色的 SmartScreen 界面：点击<strong>更多信息</strong>，再点击<strong>仍要运行</strong>（<a href="/zh/guide/install-windows/#install-exe">查看 .exe 安装说明</a>）。</p>
-<div class="panel-alt-actions">
-<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span>下载 <code>${SITE.winInstaller.file}</code></span></a>
-<a class="small" href="${SITE.winInstaller.sums}">SHA-256（<code>SHA256SUMS-windows.txt</code>）</a>
-</div>
 </div>
 <div class="panel-more">
 <h3>选项和故障排除</h3>

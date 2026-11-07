@@ -125,6 +125,16 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 또는 11, 64비트"], ["cpu", "AVX2 지원 CPU"], ["download", "설치 파일 약 22MB"], ["shield", "관리자 권한 필요 없음"]])}
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">방법 1: 권장</span><h3>.exe 설치 파일 직접 다운로드</h3></div>
+<p class="dl-method-sub">설치 파일을 내려받아 바로 열면 내 계정에 설치됩니다. Windows에서 파란색 SmartScreen 화면이 나오면 <strong>추가 정보</strong>를 누른 뒤 <strong>실행</strong>을 누르세요(<a href="/ko/guide/install-windows/#install-exe">.exe 설치 안내 보기</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> 다운로드</span></a>
+</div>
+</div>
+<div class="dl-method" id="install-powershell">
+<div class="dl-method-head"><span class="dl-badge">방법 2</span><h3>PowerShell 명령 한 줄로 설치</h3></div>
+<p class="dl-method-sub">최신 버전을 자동으로 내려받고 SHA-256을 확인한 뒤 SmartScreen 경고 화면 없이 바로 엽니다.</p>
 ${flow([
   { title: "PowerShell 열기", text: "<p><kbd>Windows</kbd> 키를 누르고 <strong>PowerShell</strong>을 입력한 뒤 Enter를 누릅니다. 관리자로 실행할 필요는 없습니다.</p>" },
   {
@@ -133,13 +143,6 @@ ${flow([
   },
   { title: "앱이 열릴 때까지 기다리기", text: "<p>1분 정도 걸립니다. 명령이 최신 버전을 내려받아 SHA-256을 확인하고, 내 계정에만 설치 프로그램을 조용히 실행한 뒤 AI Translator를 엽니다. Windows에서는 녹음 권한을 묻지 않으며, 앱이 모델을 한 번 내려받으면 번역할 준비가 끝납니다.</p>" },
 ])}
-<div class="panel-alt" id="download-exe">
-<h3>방법 2: .exe 설치 파일 직접 다운로드</h3>
-<p>설치 파일을 직접 실행하고 싶거나 PC에서 PowerShell 스크립트가 차단된 경우 이 방법을 쓰세요. 브라우저로 내려받은 파일은 파란색 SmartScreen 화면이 나올 수 있습니다: <strong>추가 정보</strong>를 누른 뒤 <strong>실행</strong>을 누르세요(<a href="/ko/guide/install-windows/#install-exe">.exe 설치 안내 보기</a>).</p>
-<div class="panel-alt-actions">
-<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> 다운로드</span></a>
-<a class="small" href="${SITE.winInstaller.sums}">SHA-256(<code>SHA256SUMS-windows.txt</code>)</a>
-</div>
 </div>
 <div class="panel-more">
 <h3>옵션과 문제 해결</h3>

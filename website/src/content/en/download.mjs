@@ -126,6 +126,16 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 or 11, 64-bit"], ["cpu", "CPU with AVX2"], ["download", "About 22 MB installer"], ["shield", "No administrator rights"]])}
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">Option 1: Recommended</span><h3>Download the .exe installer directly</h3></div>
+<p class="dl-method-sub">Download the installer file and open it directly to install for your account. If Windows shows the blue SmartScreen screen, click <strong>More info</strong>, then <strong>Run anyway</strong> (<a href="/en/guide/install-windows/#install-exe">see the .exe install guide</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>Download <code>${SITE.winInstaller.file}</code></span></a>
+</div>
+</div>
+<div class="dl-method" id="install-powershell">
+<div class="dl-method-head"><span class="dl-badge">Option 2</span><h3>Install with one PowerShell command</h3></div>
+<p class="dl-method-sub">Downloads the latest version, verifies its SHA-256 checksum and opens the app directly without the SmartScreen warning screen.</p>
 ${flow([
   { title: "Open PowerShell", text: "<p>Press the <kbd>Windows</kbd> key, type <strong>PowerShell</strong> and press Enter. You do not need to run it as administrator.</p>" },
   {
@@ -134,13 +144,6 @@ ${flow([
   },
   { title: "Wait for the app to open", text: "<p>About a minute: the command downloads the latest version, checks its SHA-256, runs the installer silently for your account only and opens AI Translator. Windows asks for no recording permission; the app downloads its models once and is then ready to translate.</p>" },
 ])}
-<div class="panel-alt" id="download-exe">
-<h3>Option 2: download the .exe installer directly</h3>
-<p>Use this if you prefer to run the installer yourself or if your PC blocks PowerShell scripts. A file downloaded in a browser may show the blue SmartScreen screen: click <strong>More info</strong>, then <strong>Run anyway</strong> (<a href="/en/guide/install-windows/#install-exe">see the .exe install guide</a>).</p>
-<div class="panel-alt-actions">
-<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span>Download <code>${SITE.winInstaller.file}</code></span></a>
-<a class="small" href="${SITE.winInstaller.sums}">SHA-256 (<code>SHA256SUMS-windows.txt</code>)</a>
-</div>
 </div>
 <div class="panel-more">
 <h3>Options and troubleshooting</h3>

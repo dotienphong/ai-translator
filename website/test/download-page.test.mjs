@@ -166,29 +166,27 @@ for (const page of PAGES) {
     await p.close();
   });
 
-  test(`${page.lang}: Windows: có ba bước PowerShell ưu tiên ở trên và khối Cách 2 tải trực tiếp .exe đúng phiên bản ở dưới`, { skip }, async () => {
+  test(`${page.lang}: Windows: có khối Cách 1 tải trực tiếp .exe đúng phiên bản ở trên và khối Cách 2 ba bước PowerShell ở dưới`, { skip }, async () => {
     const p = await open(page, { ua: UA.win });
     const info = await p.eval(`(() => {
       const win = document.getElementById(${JSON.stringify(page.win)});
-      const children = [...win.children].map((e) => e.tagName + (e.className ? "." + e.className.split(" ")[0] : ""));
-      const alt = win.querySelector(".panel-alt");
-      const exeBtn = alt?.querySelector('a.btn[href$="-setup.exe"]');
-      const sumsLink = alt?.querySelector('a[href$="SHA256SUMS-windows.txt"]');
+      const methods = [...win.querySelectorAll(":scope > .dl-method")];
+      const exeCard = methods[0];
+      const psCard = methods[1];
+      const exeBtn = exeCard?.querySelector('a.btn[href$="-setup.exe"]');
       return {
-        flowSteps: win.querySelectorAll(":scope > .flow > li").length,
-        flowIndex: children.indexOf("OL.flow"),
-        altIndex: children.indexOf("DIV.panel-alt"),
-        moreIndex: children.indexOf("DIV.panel-more"),
+        methodCount: methods.length,
+        firstPrimary: exeCard?.classList.contains("dl-method-primary") ?? false,
+        flowSteps: psCard?.querySelectorAll(".flow > li").length ?? 0,
         exeHref: exeBtn?.getAttribute("href") ?? null,
         exeCode: exeBtn?.querySelector("code")?.textContent ?? null,
-        sumsHref: sumsLink?.getAttribute("href") ?? null,
       };
     })()`);
+    assert.equal(info.methodCount, 2);
+    assert.equal(info.firstPrimary, true);
     assert.equal(info.flowSteps, 3);
-    assert.ok(info.flowIndex >= 0 && info.altIndex > info.flowIndex && info.moreIndex > info.altIndex, "khối tải .exe dự phòng phải nằm ngay dưới 3 bước PowerShell và trên phần câu hỏi");
     assert.equal(info.exeHref, SITE.winInstaller.url);
     assert.equal(info.exeCode, SITE.winInstaller.file);
-    assert.equal(info.sumsHref, SITE.winInstaller.sums);
     await p.close();
   });
 

@@ -124,6 +124,16 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 hoặc 11, 64-bit"], ["cpu", "CPU có AVX2"], ["download", "Bộ cài khoảng 22 MB"], ["shield", "Không cần quyền quản trị"]])}
+<div class="dl-method dl-method-primary" id="tai-exe">
+<div class="dl-method-head"><span class="dl-badge">Cách 1: Khuyên dùng</span><h3>Tải trực tiếp bộ cài .exe</h3></div>
+<p class="dl-method-sub">Tải file cài đặt về máy và mở trực tiếp để cài cho tài khoản của bạn. Nếu Windows hiện màn hình xanh SmartScreen, bấm <strong>More info</strong> rồi <strong>Run anyway</strong> (<a href="/huong-dan/cai-dat-windows/#cai-bang-exe">xem hướng dẫn cài từ .exe</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>Tải <code>${SITE.winInstaller.file}</code></span></a>
+</div>
+</div>
+<div class="dl-method" id="cai-powershell">
+<div class="dl-method-head"><span class="dl-badge">Cách 2</span><h3>Cài bằng một dòng lệnh PowerShell</h3></div>
+<p class="dl-method-sub">Tự tải bản mới nhất, kiểm mã SHA-256 và mở thẳng không qua màn hình cảnh báo SmartScreen.</p>
 ${flow([
   { title: "Mở PowerShell", text: "<p>Nhấn phím <kbd>Windows</kbd>, gõ <strong>PowerShell</strong> rồi nhấn Enter. Không cần chạy bằng quyền quản trị.</p>" },
   {
@@ -132,13 +142,6 @@ ${flow([
   },
   { title: "Chờ app mở", text: "<p>Khoảng một phút: lệnh tải bản mới nhất, kiểm mã SHA-256, chạy bộ cài im lặng cho riêng tài khoản của bạn rồi mở AI Translator. Windows không hỏi quyền ghi âm; app tải model một lần rồi sẵn sàng dịch.</p>" },
 ])}
-<div class="panel-alt" id="tai-exe">
-<h3>Cách 2: tải trực tiếp bộ cài .exe</h3>
-<p>Dùng cách này nếu bạn muốn tự mở file cài đặt hoặc máy chặn script PowerShell. File tải bằng trình duyệt có thể hiện màn hình xanh SmartScreen: bấm <strong>More info</strong> rồi <strong>Run anyway</strong> (<a href="/huong-dan/cai-dat-windows/#cai-bang-exe">xem hướng dẫn cài từ .exe</a>).</p>
-<div class="panel-alt-actions">
-<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span>Tải <code>${SITE.winInstaller.file}</code></span></a>
-<a class="small" href="${SITE.winInstaller.sums}">Mã SHA-256 (<code>SHA256SUMS-windows.txt</code>)</a>
-</div>
 </div>
 <div class="panel-more">
 <h3>Tùy chọn và xử lý sự cố</h3>

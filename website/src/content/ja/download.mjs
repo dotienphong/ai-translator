@@ -125,6 +125,16 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 または 11、64 ビット"], ["cpu", "AVX2 対応の CPU"], ["download", "インストーラー約 22 MB"], ["shield", "管理者権限不要"]])}
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">方法 1: おすすめ</span><h3>.exe インストーラーを直接ダウンロードする</h3></div>
+<p class="dl-method-sub">インストーラーをダウンロードしてそのまま開き、お使いのアカウントにインストールします。Windows で SmartScreen の青い画面が出た場合は、<strong>詳細情報</strong>をクリックしてから<strong>実行</strong>をクリックします（<a href="/ja/guide/install-windows/#install-exe">.exe からのインストール手順を見る</a>）。</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> をダウンロード</span></a>
+</div>
+</div>
+<div class="dl-method" id="install-powershell">
+<div class="dl-method-head"><span class="dl-badge">方法 2</span><h3>PowerShell の 1 行コマンドでインストール</h3></div>
+<p class="dl-method-sub">最新版を自動でダウンロードし、SHA-256 を確認して、SmartScreen の警告画面を通らずにそのまま開きます。</p>
 ${flow([
   { title: "PowerShell を開く", text: "<p><kbd>Windows</kbd> キーを押し、<strong>PowerShell</strong> と入力して Enter を押します。管理者として実行する必要はありません。</p>" },
   {
@@ -133,13 +143,6 @@ ${flow([
   },
   { title: "アプリが開くまで待つ", text: "<p>1 分ほどかかります。コマンドが最新版をダウンロードし、SHA-256 を確認して、あなたのアカウントだけにインストーラーをサイレントで実行し、AI Translator を開きます。Windows では録音の許可は求められません。アプリはモデルを一度ダウンロードすれば、翻訳の準備が整います。</p>" },
 ])}
-<div class="panel-alt" id="download-exe">
-<h3>方法 2：.exe インストーラーを直接ダウンロードする</h3>
-<p>自分でインストーラーを開きたい場合や、パソコンで PowerShell のスクリプトがブロックされている場合はこちらをお使いください。ブラウザーでダウンロードしたファイルは SmartScreen の青い画面が出ることがあります：<strong>詳細情報</strong>をクリックしてから<strong>実行</strong>をクリックします（<a href="/ja/guide/install-windows/#install-exe">.exe からのインストール手順を見る</a>）。</p>
-<div class="panel-alt-actions">
-<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> をダウンロード</span></a>
-<a class="small" href="${SITE.winInstaller.sums}">SHA-256（<code>SHA256SUMS-windows.txt</code>）</a>
-</div>
 </div>
 <div class="panel-more">
 <h3>オプションとトラブルシューティング</h3>
