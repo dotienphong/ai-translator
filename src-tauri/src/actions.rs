@@ -67,6 +67,12 @@ pub(crate) fn commit_settings<R: Runtime>(app: &AppHandle<R>, mut next: Settings
     if previous.compose.enabled != next.compose.enabled {
         sync_compose_hotkey(app, &next);
     }
+    if previous.translation_provider != next.translation_provider
+        || previous.openai_model != next.openai_model
+        || previous.gemini_model != next.gemini_model
+    {
+        crate::cloud_mt::reset_translation_fallback(app);
+    }
     next
 }
 

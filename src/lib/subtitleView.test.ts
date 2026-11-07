@@ -12,6 +12,7 @@ import {
   splitTail,
   streamingEffective,
   streamingNote,
+  translationBadge,
 } from "./subtitleView";
 
 const sub = (status: Subtitle["status"], tgt = "", provisional = false): Subtitle => ({
@@ -221,5 +222,26 @@ describe("dịch trong lúc người nói chưa dừng (spec 2026-10-10 §6)", (
     });
     expect(splitTail("Hello", "")).toEqual({ stable: "Hello", tail: "" });
     expect(splitTail("Hello", "world")).toEqual({ stable: "Hello", tail: "" });
+  });
+});
+
+describe("translationBadge", () => {
+  it("hiển thị đúng nguồn dịch Local, ChatGPT, Gemini và trạng thái dự phòng Local", () => {
+    expect(translationBadge("local", "gpt-4o-mini", "gemini-2.0-flash", false, "Local", "Local (dự phòng)")).toEqual({
+      text: "Local",
+      isFallback: false,
+    });
+    expect(translationBadge("openai", "gpt-4.1-mini", "gemini-2.0-flash", false, "Local", "Local (dự phòng)")).toEqual({
+      text: "ChatGPT · gpt-4.1-mini",
+      isFallback: false,
+    });
+    expect(translationBadge("gemini", "gpt-4o-mini", "gemini-2.5-flash", false, "Local", "Local (dự phòng)")).toEqual({
+      text: "Gemini · gemini-2.5-flash",
+      isFallback: false,
+    });
+    expect(translationBadge("openai", "gpt-4o-mini", "gemini-2.0-flash", true, "Local", "Local (dự phòng)")).toEqual({
+      text: "Local (dự phòng)",
+      isFallback: true,
+    });
   });
 });

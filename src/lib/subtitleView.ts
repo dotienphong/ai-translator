@@ -1,4 +1,4 @@
-import type { AppStatus, BackgroundColor, Subtitle, TextColor } from "./ipc";
+import type { AppStatus, BackgroundColor, Subtitle, TextColor, TranslationProvider } from "./ipc";
 
 // Cách hiện một phụ đề theo trạng thái (spec §4.4, §6.6), dùng chung cho thanh phụ đề và bản chép lời.
 // - `done`: bản dịch (câu gốc chữ nhỏ ở trên nếu bật "hiện câu gốc").
@@ -156,4 +156,26 @@ export function streamingNote(translateWhileSpeaking: boolean, status: AppStatus
 export function splitTail(full: string, tail: string): { stable: string; tail: string } {
   if (tail === "" || !full.endsWith(tail)) return { stable: full, tail: "" };
   return { stable: full.slice(0, full.length - tail.length), tail };
+}
+
+// Nhãn hiển thị nguồn dịch hiện tại trên khung phụ đề (Overlay) và ô Gõ dịch (Compose)
+// (spec 2026-11-07-cloud-mt-fallback-design.md §3.3).
+export function translationBadge(
+  provider: TranslationProvider | undefined,
+  openaiModel: string | undefined,
+  geminiModel: string | undefined,
+  fallback: boolean | undefined,
+  localLabel = "Local",
+  fallbackLabel = "Local (dự phòng)",
+): { text: string; isFallback: boolean } {
+  if (fallback && provider && provider !== "local") {
+    return { text: fallbackLabel, isFallback: true };
+  }
+  if (provider === "openai") {
+    return { text: `ChatGPT · ${openaiModel || "gpt-4o-mini"}`, isFallback: false };
+  }
+  if (provider === "gemini") {
+    return { text: `Gemini · ${geminiModel || "gemini-flash-lite-latest"}`, isFallback: false };
+  }
+  return { text: localLabel, isFallback: false };
 }

@@ -14,6 +14,7 @@ import {
   overlayBackground,
   overlayNotes,
   streamingEffective,
+  translationBadge,
 } from "../../lib/subtitleView";
 import { type OverlayRow, createOverlayStore, createResizeDrag, visibleRows } from "../../store/overlay";
 import { createListenStore } from "../../store/listen";
@@ -167,6 +168,14 @@ function Overlay() {
   const notes = overlayNotes(status);
   const running = status?.session === "running";
   const hearing = running && level >= HEARING_RMS;
+  const badge = translationBadge(
+    view.translationProvider,
+    view.openaiModel,
+    view.geminiModel,
+    status?.translationFallback,
+    t("overlay.engine.local"),
+    t("overlay.engine.fallback"),
+  );
   // Đang dịch trong lúc người nói chưa dừng: phụ đề tạm không nhạt cả dòng, chỉ phần tạm của dòng đang nói nhạt (§6.1).
   const dimProvisional = !streamingEffective(view.translateWhileSpeaking, status);
   // Dòng mời cấp quyền (spec §6.7): đang dịch, phía Rust bảo hiện, chưa bấm ✕ trong phiên, thanh chưa khóa.
@@ -201,6 +210,7 @@ function Overlay() {
             aria-label={t(hearing ? "overlay.hearing" : "overlay.listening")}
           />
         )}
+        <span className={badge.isFallback ? "note engine engine-fallback" : "note engine"}>{badge.text}</span>
         {notes.map((n) => (
           <span key={n} className={`note ${n}`}>
             {n === "quotaExhausted" && status?.quotaResetAt != null

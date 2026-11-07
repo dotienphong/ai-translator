@@ -27,6 +27,23 @@ export type UpdateChannel = "stable" | "beta";
 export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "failed" | "unavailable";
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
+// Nguồn dịch văn bản (`settings::TranslationProvider`, spec 2026-11-07-cloud-mt-fallback-design.md).
+export type TranslationProvider = "local" | "openai" | "gemini";
+export const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"] as const;
+export type OpenaiModel = (typeof OPENAI_MODELS)[number];
+export const GEMINI_MODELS = [
+  "gemini-flash-lite-latest",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
+] as const;
+export type GeminiModel = (typeof GEMINI_MODELS)[number];
+
+export interface TranslationKeysStatus {
+  openaiConfigured: boolean;
+  openaiHint: string | null;
+  geminiConfigured: boolean;
+  geminiHint: string | null;
+}
 // App họp mà gợi ý bật dịch nhận biết (`meeting_scan::hint::HintApp`, spec 2026-11-01-goi-y-bat-dich-khi-hop). Chrome và Edge là một "meet".
 export type HintApp = "teams" | "zoom" | "meet";
 export const HINT_APPS: readonly HintApp[] = ["teams", "zoom", "meet"];
@@ -105,6 +122,9 @@ export interface Settings {
   // Gợi ý bật dịch khi có cuộc họp (spec 2026-11-01-goi-y-bat-dich-khi-hop §6): mặc định bật; app đã chọn "Không hỏi lại". Bản đầu chỉ có tác dụng trên Windows.
   meetingHint: { enabled: boolean; ignoredApps: HintApp[] };
   modelTier: ModelTier | null;
+  translationProvider?: TranslationProvider;
+  openaiModel?: string;
+  geminiModel?: string;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
   // Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17 §5). Cài mới: `false` cho tới khi qua bước Điều khoản (ô tích sẵn);
@@ -177,6 +197,7 @@ export interface AppStatus {
   // Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc): lời mời cập nhật báo trước.
   updateReprompts: boolean;
   updateCheck: UpdateCheck;
+  translationFallback?: boolean;
   // Tăng mỗi lần trạng thái đổi: trạng thái có `rev` nhỏ hơn trạng thái đang có là cũ, bỏ qua.
   rev: number;
 }
@@ -214,6 +235,9 @@ export interface OverlayView {
   // Thu gì và dịch sang ngôn ngữ nào ("Nghe dịch": câu nào là của micro, có đọc được không).
   captureMode: CaptureMode;
   targetLanguage: Lang;
+  translationProvider?: TranslationProvider;
+  openaiModel?: string;
+  geminiModel?: string;
 }
 
 // Phần cài đặt và nội dung của cửa sổ gợi ý bật dịch (`meeting_hint::HintView`, spec 2026-11-01-goi-y-bat-dich-khi-hop §5): chỉ ngôn
@@ -235,6 +259,10 @@ export interface ComposeView {
   // Bản quyền đang chặn Gõ dịch: mã lỗi (`error.<mã>`); `null` là dùng được.
   blocked: string | null;
   platform: "macos" | "windows";
+  translationProvider?: TranslationProvider;
+  openaiModel?: string;
+  geminiModel?: string;
+  translationFallback?: boolean;
 }
 
 // Kết quả của một yêu cầu dịch (`compose::Outcome`).
@@ -781,6 +809,8 @@ export interface Commands {
   dismiss_models_update: { args: undefined; result: ModelsView };
   // "Tải lại": băm lại gói, bỏ file hỏng (để lần tải sau chỉ tải lại chúng).
   verify_models: { args: { pack: string }; result: ModelsView };
+  get_translation_keys: { args: undefined; result: TranslationKeysStatus };
+  set_translation_api_key: { args: { provider: TranslationProvider; apiKey: string }; result: TranslationKeysStatus };
   // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §3.6), chỉ cửa sổ `compose` gọi được. `compose_translate` trả số của yêu cầu, kết
   // quả tới qua `compose://delta` và `compose://done`; `compose_submit` dán kết quả đã lưu của đúng yêu cầu đó (không nhận chữ).
   // Cửa sổ gợi ý bật dịch (spec 2026-11-01-goi-y-bat-dich-khi-hop §5), chỉ cửa sổ `hint` gọi được.

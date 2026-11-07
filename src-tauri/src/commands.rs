@@ -751,6 +751,20 @@ pub fn overlay_tts_stop(svc: State<'_, crate::tts::TtsService>) {
     crate::tts::stop(&svc);
 }
 
+#[tauri::command]
+pub fn get_translation_keys<R: Runtime>(app: AppHandle<R>) -> crate::cloud_mt::TranslationKeysStatus {
+    crate::cloud_mt::get_keys_status(&app)
+}
+
+#[tauri::command]
+pub fn set_translation_api_key<R: Runtime>(
+    app: AppHandle<R>,
+    provider: crate::settings::TranslationProvider,
+    api_key: String,
+) -> Result<crate::cloud_mt::TranslationKeysStatus, CommandError> {
+    crate::cloud_mt::set_api_key(&app, provider, &api_key)
+}
+
 /// Lệnh của cửa sổ `main`.
 pub const MAIN_COMMANDS: &[&str] = &[
     "get_settings",
@@ -835,6 +849,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "tts_stop",
     "tts_list_voices",
     "tts_preview",
+    "get_translation_keys",
+    "set_translation_api_key",
 ];
 
 /// Lệnh của cửa sổ `overlay`.
@@ -977,5 +993,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         overlay_tts_speak,
         overlay_tts_mark_playing,
         overlay_tts_stop,
+        get_translation_keys,
+        set_translation_api_key,
     ]
 }

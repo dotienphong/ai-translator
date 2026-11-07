@@ -9,6 +9,7 @@
 pub mod account;
 pub mod actions;
 pub mod capture;
+pub mod cloud_mt;
 pub mod commands;
 pub mod compose;
 pub mod data;

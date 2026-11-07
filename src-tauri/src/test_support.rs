@@ -666,6 +666,7 @@ pub fn mock_app_full(deps: FakeDeps, models: ModelsConfig) -> tauri::App<MockRun
             data_dir,
             Ok(Keystore::mock("com.aitranslator.desktop.test")),
         ))
+        .manage(Arc::new(Keystore::mock("com.aitranslator.desktop.test")))
         .manage(ActiveGlossary::default())
         .manage(TranscriptStore::default())
         .manage(crate::speaker::Running::default())

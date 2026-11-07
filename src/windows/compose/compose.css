@@ -31,9 +31,35 @@ body {
 .compose header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   font-size: 13px;
   color: var(--muted);
+}
+
+.compose .title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.compose .engine-badge {
+  display: inline-block;
+  padding: 0.08rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-hover, rgba(128, 128, 128, 0.12));
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.compose .engine-badge.fallback {
+  border-color: rgba(217, 140, 31, 0.55);
+  background: rgba(217, 140, 31, 0.16);
+  color: var(--text);
 }
 
 .compose .status {

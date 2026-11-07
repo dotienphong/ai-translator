@@ -236,6 +236,18 @@ body {
   box-shadow: none;
 }
 
+.overlay .note.engine {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.overlay .note.engine-fallback {
+  background: rgba(180, 115, 24, 0.88);
+  color: #fff6e0;
+  opacity: 0.95;
+}
+
 /* Vùng kéo cạnh (cả macOS lẫn Windows): 6 px ở mỗi cạnh, 12 px ở góc. */
 .overlay .edge {
   position: absolute;

@@ -373,4 +373,39 @@ mod tests {
         let _ = apply(&before, &json!({ "theme": "dark", "vadEndSilenceMs": 5 }));
         assert_eq!(before, current());
     }
+
+    #[test]
+    fn translation_provider_and_cloud_models_are_validated() {
+        use crate::settings::TranslationProvider;
+        let d = current();
+        assert_eq!(d.translation_provider, TranslationProvider::Local);
+        assert_eq!(d.openai_model, "gpt-4o-mini");
+        assert_eq!(d.gemini_model, "gemini-flash-lite-latest");
+
+        let s = apply(
+            &d,
+            &json!({
+                "translationProvider": "openai",
+                "openaiModel": "gpt-4.1-mini",
+                "geminiModel": "gemini-3.5-flash-lite"
+            }),
+        )
+        .unwrap();
+        assert_eq!(s.translation_provider, TranslationProvider::Openai);
+        assert_eq!(s.openai_model, "gpt-4.1-mini");
+        assert_eq!(s.gemini_model, "gemini-3.5-flash-lite");
+
+        assert_eq!(
+            apply(&d, &json!({ "translationProvider": "claude" })),
+            Err(Invalid::new("translationProvider", Reason::WrongType))
+        );
+        assert_eq!(
+            apply(&d, &json!({ "openaiModel": "gpt-3.5" })),
+            Err(Invalid::new("openaiModel", Reason::OutOfRange))
+        );
+        assert_eq!(
+            apply(&d, &json!({ "geminiModel": "gemini-1.0" })),
+            Err(Invalid::new("geminiModel", Reason::OutOfRange))
+        );
+    }
 }

@@ -189,6 +189,12 @@ export function createComposeStore(ipc: Ipc, timers: Timers = realTimers) {
             if (get().request?.id === d.id) applyDone(d);
             else if (awaiting > 0) stash(d.id).done = d;
           }),
+          ipc.listen("app://status", (st) => {
+            const v = get().view;
+            if (v && v.translationFallback !== st.translationFallback) {
+              set({ view: { ...v, translationFallback: st.translationFallback } });
+            }
+          }),
         ]);
         // Phần cài đặt mới hơn đã tới qua `compose://open` trong lúc chờ thì giữ bản đó.
         const view = await ipc.invoke("get_compose_view");

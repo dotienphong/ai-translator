@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::errors::{self, CommandError};
-use crate::settings::{Lang, Theme, UiLanguage};
+use crate::settings::{Lang, Theme, TranslationProvider, UiLanguage};
 use crate::state::AppState;
 use crate::{actions, events, license, session, system};
 use detect::Detected;
@@ -94,6 +94,10 @@ pub struct ComposeView {
     pub blocked: Option<String>,
     /// `macos` hay `windows`: giao diện ghi ⌘V hay Ctrl+V.
     pub platform: &'static str,
+    pub translation_provider: TranslationProvider,
+    pub openai_model: String,
+    pub gemini_model: String,
+    pub translation_fallback: bool,
 }
 
 /// Kết quả của một yêu cầu dịch, gửi qua `compose://done`.
@@ -224,7 +228,9 @@ fn auto_paste<R: Runtime>(app: &AppHandle<R>) -> bool {
 
 /// Phần cài đặt của ô soạn lúc này.
 pub fn view<R: Runtime>(app: &AppHandle<R>) -> ComposeView {
-    let settings = app.state::<AppState>().settings();
+    let state = app.state::<AppState>();
+    let settings = state.settings();
+    let status = state.status();
     ComposeView {
         ui_language: settings.ui_language,
         theme: settings.theme,
@@ -232,6 +238,10 @@ pub fn view<R: Runtime>(app: &AppHandle<R>) -> ComposeView {
         auto_paste: auto_paste(app),
         blocked: license::app::compose_check(app).err().map(|e| e.code),
         platform: if cfg!(target_os = "macos") { "macos" } else { "windows" },
+        translation_provider: settings.translation_provider,
+        openai_model: settings.openai_model,
+        gemini_model: settings.gemini_model,
+        translation_fallback: status.translation_fallback,
     }
 }
 

@@ -50,6 +50,10 @@ describe("từ điển giao diện", () => {
         // Câu mẫu Nghe thử ở màn hình Giọng đọc: đọc bằng tiếng của khối, giống nhau ở mọi ngôn ngữ giao diện.
         "voice.sample.vi",
         "voice.sample.en",
+        // Tên riêng nhà cung cấp/nhãn engine dịch ngắn gọn.
+        "settings.model.provider.openai",
+        "settings.model.provider.gemini",
+        "overlay.engine.local",
       ].sort(),
     );
   });

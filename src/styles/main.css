@@ -205,6 +205,7 @@ button:disabled {
 /* ================================================================ ô nhập */
 
 input[type="text"],
+input[type="password"],
 input[type="search"],
 input[type="email"],
 select {
@@ -220,6 +221,7 @@ select {
 }
 
 input[type="text"],
+input[type="password"],
 input[type="search"],
 input[type="email"] {
   min-width: 0;
@@ -232,6 +234,7 @@ input::placeholder {
 }
 
 input[type="text"]:focus,
+input[type="password"]:focus,
 input[type="search"]:focus,
 input[type="email"]:focus,
 select:focus {

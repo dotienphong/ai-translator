@@ -126,6 +126,8 @@ fn main() {
                 "overlay_tts_speak",
                 "overlay_tts_mark_playing",
                 "overlay_tts_stop",
+                "get_translation_keys",
+                "set_translation_api_key",
             ])),
     )
     .expect("tauri-build thất bại");

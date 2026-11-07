@@ -244,6 +244,35 @@ pub struct MeetingHintSettings {
     pub ignored_apps: Vec<HintApp>,
 }
 
+/// Nguồn dịch văn bản (spec 2026-11-07-cloud-mt-fallback-design.md §3.1): Model trên máy (mặc định), ChatGPT (OpenAI API),
+/// hoặc Gemini (Google API). Khi chọn Cloud mà mất mạng hoặc lỗi API, phiên tự động dự phòng về `Local`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TranslationProvider {
+    #[default]
+    Local,
+    Openai,
+    Gemini,
+}
+
+pub const OPENAI_MODELS: &[&str] = &["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"];
+pub const DEFAULT_OPENAI_MODEL: &str = "gpt-4o-mini";
+
+pub const GEMINI_MODELS: &[&str] = &[
+    "gemini-flash-lite-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+];
+pub const DEFAULT_GEMINI_MODEL: &str = "gemini-flash-lite-latest";
+
+fn default_openai_model() -> String {
+    DEFAULT_OPENAI_MODEL.to_string()
+}
+
+fn default_gemini_model() -> String {
+    DEFAULT_GEMINI_MODEL.to_string()
+}
+
 /// Toàn bộ cài đặt. Tên khóa trong file JSON là tên trường dạng camelCase.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -302,6 +331,15 @@ pub struct Settings {
     /// Gói model đang dùng (§6.7): mã gói trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest, Đ7).
     /// `None` là chưa có gói nào. Chỉ đổi qua lệnh của kế hoạch 04 (gói phải đã tải xong).
     pub model_tier: Option<String>,
+    /// Nguồn dịch văn bản: `local` (mặc định), `openai`, hoặc `gemini` (spec 2026-11-07-cloud-mt-fallback-design.md).
+    #[serde(default)]
+    pub translation_provider: TranslationProvider,
+    /// Model của ChatGPT (OpenAI API), mặc định `gpt-4o-mini`.
+    #[serde(default = "default_openai_model")]
+    pub openai_model: String,
+    /// Model của Gemini (Google API), mặc định `gemini-2.0-flash`.
+    #[serde(default = "default_gemini_model")]
+    pub gemini_model: String,
     pub hotkeys: Hotkeys,
     pub save_history: bool,
     /// Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17-diagnostics-reports-design.md §5). Cài mới: `false` cho tới
@@ -402,6 +440,9 @@ impl Settings {
                 ignored_apps: Vec::new(),
             },
             model_tier: None,
+            translation_provider: TranslationProvider::Local,
+            openai_model: default_openai_model(),
+            gemini_model: default_gemini_model(),
             hotkeys: Hotkeys {
                 toggle_session: "Ctrl+Alt+T".into(),
                 toggle_overlay: "Ctrl+Alt+H".into(),
@@ -506,6 +547,12 @@ impl Settings {
             if !crate::models::manifest::is_id(pack, 32) {
                 return Err(Invalid::new("modelTier", Reason::WrongType));
             }
+        }
+        if !OPENAI_MODELS.contains(&self.openai_model.as_str()) {
+            return Err(Invalid::new("openaiModel", Reason::OutOfRange));
+        }
+        if !GEMINI_MODELS.contains(&self.gemini_model.as_str()) {
+            return Err(Invalid::new("geminiModel", Reason::OutOfRange));
         }
         hotkeys::check_all(&self.hotkeys.bindings()).map_err(|(action, error)| {
             let reason = match error {

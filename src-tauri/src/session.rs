@@ -40,7 +40,7 @@ use crate::debug::{DebugLog, DebugSession};
 use crate::errors::{self, CommandError};
 use crate::glossary::{self, ActiveGlossary};
 use crate::models::service::ModelService;
-use crate::settings::{AudioSource, CaptureMode, Lang, Settings};
+use crate::settings::{AudioSource, CaptureMode, Lang, Settings, TranslationProvider};
 use crate::sidecar::{self, first_run, integrity};
 use crate::state::{AppState, AppStatus, Loading, MicIssue, SessionStatus};
 use crate::transcript::history;
@@ -149,6 +149,8 @@ pub struct Session {
     /// Số việc của Gõ dịch đang dùng tiến trình phụ ([`with_compose_mt`]). `release_models` chờ các việc này như chờ lần chạy
     /// sẵn.
     composing: AtomicUsize,
+    /// Phiên đã chuyển dự phòng từ Cloud MT sang Local MT chưa (spec 2026-11-07-cloud-mt-fallback-design.md).
+    pub(crate) mt_fell_back: Arc<AtomicBool>,
 }
 
 impl Session {
@@ -163,6 +165,7 @@ impl Session {
             prewarming: AtomicBool::new(false),
             pack: Mutex::new(None),
             composing: AtomicUsize::new(0),
+            mt_fell_back: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -226,6 +229,12 @@ pub fn plan_for(settings: &Settings, options: StartOptions) -> CapturePlan {
     }
 }
 
+/// Khi dịch bằng Cloud (ChatGPT/Gemini), mỗi lượt gọi qua Internet mất ~600–800 ms. Nếu giữ ngưỡng ngắt đoạn mặc định
+/// 50 ms (thiết kế riêng cho Model Local trên GPU), mỗi nhịp lấy hơi 50 ms giữa các từ sẽ cắt đoạn mới và hủy (`cancel`)
+/// request Cloud của đoạn trước khi nó chưa kịp trả chữ về, gây hiện tượng trễ kéo dài suốt cả câu. Nâng ngưỡng ngắt câu
+/// tối thiểu lên 300 ms khi dùng Cloud để gom trọn cụm từ tự nhiên, chỉ gọi API 1 lần mỗi vế câu.
+const CLOUD_MIN_END_SILENCE_MS: u64 = 300;
+
 /// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh, công tắc "Dịch trong lúc người nói chưa
 /// dừng" (spec 2026-10-10 §6.3); từ điển thuật ngữ dùng chung; máy có đủ sức cho chế độ đó không (`streaming_supported`,
 /// app quyết lúc bắt đầu phiên, §5); nguồn micro dùng VAD riêng (spec 2026-10-24-nguon-micro mục 16); các ngưỡng khác theo
@@ -260,6 +269,14 @@ pub fn engine_config(
             .map(|l| code_of(*l).to_string())
             .collect(),
     };
+    // Chỉ bật "dịch trong lúc người nói chưa dừng" khi dùng Model Local trên máy đủ nhanh.
+    // Nguồn Cloud (ChatGPT/Gemini) có độ trễ mạng qua Internet nên không dùng dịch tạm đầu câu,
+    // đồng thời nâng ngưỡng ngắt đoạn tối thiểu lên 300 ms để tránh cắt vụn và hủy liên hoàn các request Cloud đang chạy.
+    let cloud_active = settings.translation_provider != TranslationProvider::Local;
+    if cloud_active {
+        pipeline.segmenter.end_silence_ms = pipeline.segmenter.end_silence_ms.max(CLOUD_MIN_END_SILENCE_MS);
+    }
+    let effective_streaming_supported = streaming_supported && !cloud_active;
     EngineConfig {
         pipeline,
         languages,
@@ -267,7 +284,7 @@ pub fn engine_config(
         translation_context: settings.experimental.translation_context,
         id_base,
         glossary,
-        streaming_supported,
+        streaming_supported: effective_streaming_supported,
         streaming_enabled: settings.translate_while_speaking,
     }
 }
@@ -420,6 +437,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
                 return false;
             }
             *session.pack.lock().unwrap() = settings.model_tier.clone();
+            session.mt_fell_back.store(false, Ordering::SeqCst);
             attempt = session.attempt.fetch_add(1, Ordering::SeqCst) + 1;
             s.session = SessionStatus::Starting;
             s.session_error = None;
@@ -428,6 +446,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
             s.waiting_for_app = false;
             s.waiting_for_device = false;
             s.mic_issue = None;
+            s.translation_fallback = false;
             s.overlay_visible = true;
             true
         })
@@ -509,9 +528,10 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
     // Máy đủ sức cho chế độ dịch trong lúc người nói chưa dừng không (spec 2026-10-10 §5; QĐ1, QĐ2 của kế hoạch 03): hỏi
     // sau `prepare`, khi đã biết thiết bị thật của `asr-worker`. Ghi chú ở Cài đặt › Phụ đề theo máy của phiên này; lần tự
     // tắt của phiên trước không còn.
+    let is_cloud = settings.translation_provider != TranslationProvider::Local;
     let streaming_supported = session.deps.streaming_supported();
-    state.update_status(|s| s.streaming_too_slow = !streaming_supported);
-    log::info!("phiên dịch {n}: máy đủ sức dịch trong lúc nói: {streaming_supported}");
+    state.update_status(|s| s.streaming_too_slow = !is_cloud && !streaming_supported);
+    log::info!("phiên dịch {n}: máy đủ sức dịch trong lúc nói: {streaming_supported} (cloud: {is_cloud})");
     let engine = match Engine::start_with_speaker(
         engine_config(
             &settings,
@@ -524,7 +544,7 @@ pub fn start_with<R: Runtime>(app: &AppHandle<R>, options: StartOptions) -> Resu
         source,
         session.deps.vad(),
         session.deps.asr(),
-        session.deps.mt(),
+        crate::cloud_mt::wrap_mt(app, session.deps.mt(), session.mt_fell_back.clone()),
         sink,
         session.deps.speaker(),
     ) {
@@ -896,7 +916,7 @@ pub fn with_compose_mt<R: Runtime, T>(
         }
         return Err(e);
     }
-    let mut mt = session.deps.mt();
+    let mut mt = crate::cloud_mt::wrap_mt(app, session.deps.mt(), session.mt_fell_back.clone());
     Ok(f(mt.as_mut(), &session.deps.pipeline_config().mt))
 }
 
@@ -1009,11 +1029,16 @@ impl<R: Runtime> EventSink for TauriSink<R> {
     }
 
     fn indicators(&self, indicators: &Indicators) {
+        let is_local = self
+            .app
+            .try_state::<AppState>()
+            .map(|s| s.settings().translation_provider == TranslationProvider::Local)
+            .unwrap_or(true);
         self.app.state::<AppState>().update_status(|s| {
             s.indicators = indicators.clone();
             // Phiên này dịch sau mỗi câu vì máy chưa đủ nhanh (tắt từ đầu, hay vừa tự tắt): Cài đặt › Phụ đề ghi chú, giữ
             // tới lần bắt đầu phiên sau (spec 2026-10-10 §6.3; QĐ2 của kế hoạch 03).
-            if indicators.streaming_unavailable {
+            if indicators.streaming_unavailable && is_local {
                 s.streaming_too_slow = true;
             }
         });
@@ -2285,6 +2310,21 @@ mod tests {
             true,
         );
         assert!(cfg.streaming_supported && !cfg.streaming_enabled, "người dùng tắt");
+
+        settings.translate_while_speaking = true;
+        settings.translation_provider = TranslationProvider::Gemini;
+        let cfg = engine_config(
+            &settings,
+            &system(),
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
+        assert!(
+            !cfg.streaming_supported && cfg.streaming_enabled,
+            "nguồn cloud tự tắt streaming speculative để tránh nghẽn hàng đợi"
+        );
     }
 
     /// Ghi chú 8 của review cuối 02, Q4 của review 04: mở lại cửa sổ chính lúc phiên đang bắt đầu hay đang chạy thì không
@@ -2424,5 +2464,51 @@ mod tests {
                 errors::QUOTA_EXHAUSTED
             ]
         );
+    }
+
+    #[test]
+    fn cloud_provider_disables_live_drafts_and_raises_min_end_silence_without_touching_local() {
+        let mut settings = Settings::defaults(UiLanguage::Vi);
+        settings.vad_end_silence_ms = 50;
+        let plan = plan_for(&settings, StartOptions::default());
+
+        // Local giữ nguyên 100% (50 ms và streaming_supported = true).
+        let local_cfg = engine_config(
+            &settings,
+            &plan,
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
+        assert_eq!(local_cfg.pipeline.segmenter.end_silence_ms, 50);
+        assert!(local_cfg.streaming_supported);
+
+        // Gemini / OpenAI: tắt streaming_supported (dịch tạm đầu câu) và nâng end_silence_ms tối thiểu lên 300 ms.
+        for provider in [TranslationProvider::Gemini, TranslationProvider::Openai] {
+            settings.translation_provider = provider;
+            let cloud_cfg = engine_config(
+                &settings,
+                &plan,
+                PipelineConfig::default(),
+                0,
+                SharedGlossary::default(),
+                true,
+            );
+            assert_eq!(cloud_cfg.pipeline.segmenter.end_silence_ms, 300);
+            assert!(!cloud_cfg.streaming_supported);
+        }
+
+        // Nếu người dùng tự đặt vad_end_silence_ms cao hơn (ví dụ 450 ms), giữ nguyên 450 ms.
+        settings.vad_end_silence_ms = 450;
+        let high_cfg = engine_config(
+            &settings,
+            &plan,
+            PipelineConfig::default(),
+            0,
+            SharedGlossary::default(),
+            true,
+        );
+        assert_eq!(high_cfg.pipeline.segmenter.end_silence_ms, 450);
     }
 }

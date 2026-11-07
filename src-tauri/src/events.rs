@@ -93,10 +93,12 @@ pub fn settings_changed<R: Runtime>(app: &AppHandle<R>, settings: &Settings) {
     emit(app, window::MAIN, SETTINGS_CHANGED, settings);
 }
 
-/// Gửi cho cả thanh phụ đề: nó cần biết đang nạp model, đang trễ, không có âm thanh (§4.4; kế hoạch 03 hiển thị).
+/// Gửi cho cả thanh phụ đề và ô soạn Gõ dịch: chúng cần biết đang nạp model, đang trễ, không có âm thanh, hoặc đã dự phòng
+/// nguồn dịch sang Local (§4.4; kế hoạch 03 hiển thị).
 pub fn status_changed<R: Runtime>(app: &AppHandle<R>, status: &AppStatus) {
     emit(app, window::MAIN, STATUS_CHANGED, status);
     emit(app, overlay::LABEL, STATUS_CHANGED, status);
+    emit(app, compose::LABEL, STATUS_CHANGED, status);
     // Phiên dừng hay thanh phụ đề ẩn thì "Nghe dịch" tắt và tiếng họp được trả về (rẻ khi chưa bật).
     crate::listen::on_status(app, status);
 }

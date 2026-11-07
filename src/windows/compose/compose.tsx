@@ -6,6 +6,7 @@ import { useStore } from "zustand";
 import { type MessageKey, type Params, errorKey, htmlLang, translate } from "../../i18n";
 import { errorScreen, keyAction, pasteKeys, shownTranslation } from "../../lib/compose";
 import { type ComposeMainScreen, tauriIpc as ipc } from "../../lib/ipc";
+import { translationBadge } from "../../lib/subtitleView";
 import { createComposeStore } from "../../store/compose";
 
 const store = createComposeStore(ipc);
@@ -104,6 +105,14 @@ function Compose() {
   const error = view.blocked ?? (current && s.outcome?.kind === "failed" ? s.outcome.code : null);
   const screen = error ? errorScreen(error) : null;
   const shown = shownTranslation(s);
+  const badge = translationBadge(
+    view.translationProvider,
+    view.openaiModel,
+    view.geminiModel,
+    view.translationFallback,
+    t("overlay.engine.local"),
+    t("overlay.engine.fallback"),
+  );
   const status = s.loading
     ? t("compose.loading")
     : s.waiting || s.pendingSubmit
@@ -116,6 +125,7 @@ function Compose() {
       <header>
         <span className="title">
           {t("compose.title")} · → {lang}
+          <span className={badge.isFallback ? "engine-badge fallback" : "engine-badge"}>{badge.text}</span>
         </span>
         <span className="status" aria-live="polite">
           {status}

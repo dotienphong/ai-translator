@@ -8,7 +8,7 @@ use pipeline::engine::Indicators;
 
 use crate::hotkeys::HotkeyAction;
 use crate::settings::migrate::FileMeta;
-use crate::settings::{BackgroundColor, CaptureMode, Lang, Settings, TextColor, UiLanguage};
+use crate::settings::{BackgroundColor, CaptureMode, Lang, Settings, TextColor, TranslationProvider, UiLanguage};
 
 /// Trạng thái phiên dịch (§4.3: Sẵn sàng, Đang dịch, Lỗi).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -108,6 +108,9 @@ pub struct AppStatus {
     /// Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc, chưa có Team ID): lời mời cập nhật báo trước.
     pub update_reprompts: bool,
     pub update_check: UpdateCheck,
+    /// Đang chọn dịch bằng ChatGPT/Gemini nhưng mất mạng hoặc lỗi API nên phiên tự động chuyển sang dịch bằng Model Local
+    /// (spec 2026-11-07-cloud-mt-fallback-design.md).
+    pub translation_fallback: bool,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
     /// tới sau sự kiện `app://status` mới hơn).
     pub rev: u64,
@@ -143,6 +146,9 @@ pub struct OverlayView {
     /// Thu gì và dịch sang ngôn ngữ nào: "Nghe dịch" cần biết câu nào là của micro và có đọc được không (spec 2026-11-02-nghe-dich-truc-tiep §6).
     pub capture_mode: CaptureMode,
     pub target_language: Lang,
+    pub translation_provider: TranslationProvider,
+    pub openai_model: String,
+    pub gemini_model: String,
 }
 
 impl OverlayView {
@@ -160,6 +166,9 @@ impl OverlayView {
             translate_while_speaking: settings.translate_while_speaking,
             capture_mode: settings.capture_mode,
             target_language: settings.target_language,
+            translation_provider: settings.translation_provider,
+            openai_model: settings.openai_model.clone(),
+            gemini_model: settings.gemini_model.clone(),
         }
     }
 }
@@ -214,6 +223,7 @@ impl AppState {
                 update_ready: None,
                 update_reprompts: crate::license::genuine::this_build_updates_reprompt(),
                 update_check: UpdateCheck::Idle,
+                translation_fallback: false,
                 rev: 0,
             }),
             launched_at_login,

@@ -88,6 +88,8 @@
     "allow-tts-mark-playing",
     "allow-tts-stop",
     "allow-tts-list-voices",
-    "allow-tts-preview"
+    "allow-tts-preview",
+    "allow-get-translation-keys",
+    "allow-set-translation-api-key"
   ]
 }
