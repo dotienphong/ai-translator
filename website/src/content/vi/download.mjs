@@ -1,4 +1,4 @@
-import { RELEASE } from "../../site.mjs";
+import { SITE, RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -56,8 +56,8 @@ const DL_FAQ = [
     a: "<p>Lệnh tải một script nhỏ từ <strong>aitranslator.vn</strong>. Script kiểm máy của bạn, đọc số phiên bản mới nhất, tải bộ cài và mã SHA-256 từ <strong>releases.aitranslator.vn</strong>, đối chiếu mã, cài rồi mở app. Script không gửi dữ liệu đi và không cần quyền quản trị.</p><p>Chạy một lệnh dán từ internet luôn cần tin nguồn của nó. Nếu muốn đọc script trước khi chạy, mở mục “Tôi muốn đọc script trước khi chạy” trong hướng dẫn của hệ điều hành bạn. Mã SHA-256 nằm cùng máy chủ với file nên chủ yếu bảo vệ bạn khỏi file tải lỗi, không thay được việc tin nguồn.</p>",
   },
   {
-    q: "Vì sao không có nút tải file .dmg hay .exe?",
-    a: "<p>Bản hiện tại chưa được ký bởi Apple hay Microsoft (chúng tôi chưa có Apple Developer ID và chứng thư ký mã Windows). File tải bằng trình duyệt bị gắn nhãn “tải từ internet”, nên macOS chặn lần mở đầu của file .dmg (Open Anyway) và Windows SmartScreen có thể cảnh báo file .exe. File tải bằng lệnh trong Terminal hay PowerShell không bị gắn nhãn đó, nên app cài và mở thẳng. Khi có chứng thư, chúng tôi sẽ thêm nút tải trực tiếp.</p>",
+    q: "Vì sao khuyến nghị cài bằng lệnh hơn là tải file .dmg hay .exe?",
+    a: "<p>Bản hiện tại chưa được ký bởi Apple hay Microsoft (chúng tôi chưa có Apple Developer ID và chứng thư ký mã Windows). File tải bằng trình duyệt bị gắn nhãn “tải từ internet”, nên macOS chặn lần mở đầu của file .dmg (Open Anyway) và Windows SmartScreen có thể cảnh báo file .exe. File tải bằng lệnh trong Terminal hay PowerShell không bị gắn nhãn đó, nên app cài và mở thẳng. Trên Windows, bạn vẫn có thể tải trực tiếp file .exe ở Cách 2 ngay bên dưới nếu không muốn dùng PowerShell.</p>",
   },
   {
     q: "Cập nhật và gỡ cài đặt thế nào?",
@@ -132,6 +132,14 @@ ${flow([
   },
   { title: "Chờ app mở", text: "<p>Khoảng một phút: lệnh tải bản mới nhất, kiểm mã SHA-256, chạy bộ cài im lặng cho riêng tài khoản của bạn rồi mở AI Translator. Windows không hỏi quyền ghi âm; app tải model một lần rồi sẵn sàng dịch.</p>" },
 ])}
+<div class="panel-alt" id="tai-exe">
+<h3>Cách 2: tải trực tiếp bộ cài .exe</h3>
+<p>Dùng cách này nếu bạn muốn tự mở file cài đặt hoặc máy chặn script PowerShell. File tải bằng trình duyệt có thể hiện màn hình xanh SmartScreen: bấm <strong>More info</strong> rồi <strong>Run anyway</strong> (<a href="/huong-dan/cai-dat-windows/#cai-bang-exe">xem hướng dẫn cài từ .exe</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span>Tải <code>${SITE.winInstaller.file}</code></span></a>
+<a class="small" href="${SITE.winInstaller.sums}">Mã SHA-256 (<code>SHA256SUMS-windows.txt</code>)</a>
+</div>
+</div>
 <div class="panel-more">
 <h3>Tùy chọn và xử lý sự cố</h3>
 ${faq(
@@ -158,7 +166,7 @@ ${faq(
     },
     {
       q: "Lệnh báo lỗi trên máy công ty hay trường học",
-      a: "<p>Máy do tổ chức quản lý có thể chặn script PowerShell (Constrained Language Mode). Khi đó hãy dùng file .exe (nhận qua email) hoặc hỏi quản trị viên.</p>",
+      a: "<p>Máy do tổ chức quản lý có thể chặn script PowerShell (Constrained Language Mode). Khi đó hãy tải file .exe ở Cách 2 bên trên hoặc hỏi quản trị viên.</p>",
     },
     {
       q: "Tôi muốn nhận file .exe qua email",

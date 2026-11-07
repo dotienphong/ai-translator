@@ -3011,3 +3011,24 @@ test("Chính sách quyền riêng tư (vi, en) trên website nêu đăng nhập 
   }
   assert.deepEqual(errors, []);
 });
+
+test("trang Tải xuống (năm ngôn ngữ): tab Windows giữ lệnh PowerShell ở trên và có khối Cách 2 tải trực tiếp bộ cài .exe đúng phiên bản ở dưới", async () => {
+  const conf = JSON.parse(await readFile(path.join(ROOT, "..", "src-tauri/tauri.conf.json"), "utf8"));
+  assert.equal(SITE.winInstaller.file, `AI Translator_${conf.version}_x64-setup.exe`);
+  assert.equal(SITE.winInstaller.url, `https://releases.aitranslator.vn/${conf.version}/AI%20Translator_${conf.version}_x64-setup.exe`);
+  for (const p of pages.filter((x) => x.id === "download")) {
+    const html = htmlByPath.get(p.path);
+    const winId = p.lang === "vi" ? "cai-windows" : "install-windows";
+    const altId = p.lang === "vi" ? "tai-exe" : "download-exe";
+    const winStart = html.indexOf(`id="${winId}"`);
+    assert.ok(winStart > 0, `${p.path}: thiếu #${winId}`);
+    const winBlock = html.slice(winStart, html.indexOf("</section>", winStart));
+    const psPos = winBlock.indexOf("irm https://aitranslator.vn/install.ps1 | iex");
+    const altPos = winBlock.indexOf(`<div class="panel-alt" id="${altId}">`);
+    const morePos = winBlock.indexOf('<div class="panel-more">');
+    assert.ok(psPos > 0 && altPos > psPos && morePos > altPos, `${p.path}: khối #${altId} phải nằm sau lệnh PowerShell và trước .panel-more`);
+    assert.ok(winBlock.includes(`href="${SITE.winInstaller.url}"`), `${p.path}: thiếu liên kết ${SITE.winInstaller.url}`);
+    assert.ok(winBlock.includes(`<code>${SITE.winInstaller.file}</code>`), `${p.path}: thiếu tên file ${SITE.winInstaller.file}`);
+    assert.ok(winBlock.includes(`href="${SITE.winInstaller.sums}"`), `${p.path}: thiếu liên kết ${SITE.winInstaller.sums}`);
+  }
+});

@@ -4,13 +4,14 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 export const RELEASES_URL = "https://releases.aitranslator.vn";
 
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.(0|[1-9]\d*))?$/;
 const STABLE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
-const REPO_ROOT = new URL("../../", import.meta.url).pathname;
+const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 /** Ngày `YYYY-MM-DD` theo giờ Việt Nam của một thời điểm ISO (UTC+7); null khi không phải thời điểm ISO. */
 export function vnDate(iso) {
@@ -89,6 +90,16 @@ export function installerFiles(version) {
   return {
     mac: { sums: `${RELEASES_URL}/${version}/SHA256SUMS-macos.txt`, file: `AI Translator_${version}_aarch64.dmg` },
     win: { sums: `${RELEASES_URL}/${version}/SHA256SUMS-windows.txt`, file: `AI Translator_${version}_x64-setup.exe` },
+  };
+}
+
+/** Bộ cài Windows (.exe) và file SHA256SUMS của một phiên bản để gắn liên kết tải trực tiếp trên trang Tải xuống. */
+export function winInstallerOf(version) {
+  const { file, sums } = installerFiles(version).win;
+  return {
+    file,
+    url: `${RELEASES_URL}/${version}/${file.replaceAll(" ", "%20")}`,
+    sums,
   };
 }
 

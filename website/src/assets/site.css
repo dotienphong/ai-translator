@@ -578,6 +578,14 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .flow-body p { margin: 0 0 .5em; color: var(--ink-3); }
 .flow-body .cmd { margin-top: .7em; }
 .flow-body .cmd + p { margin-top: .8em; }
+.panel-alt { margin-top: 1.8rem; padding: 1.15rem 1.3rem; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); }
+.panel-alt h3 { margin: 0 0 .35em; font-size: 1.05rem; }
+.panel-alt p { margin: 0 0 .8rem; color: var(--ink-3); font-size: .95rem; }
+.panel-alt p:last-child { margin-bottom: 0; }
+.panel-alt-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.panel-alt .btn { max-width: 100%; flex-wrap: wrap; text-align: center; }
+.panel-alt .btn .icon { flex-shrink: 0; width: 1.1em; height: 1.1em; }
+.panel-alt .btn code { overflow-wrap: anywhere; background: transparent; border: 0; padding: 0; color: inherit; }
 .panel-more { margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
 .panel-more > h3 { margin: 0 0 .9rem; font-size: 1.02rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
 .panel-more .faq details { background: var(--surface-2); }

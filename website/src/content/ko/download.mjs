@@ -1,4 +1,4 @@
-import { RELEASE } from "../../site.mjs";
+import { SITE, RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -57,8 +57,8 @@ const DL_FAQ = [
     a: `<p>명령은 <strong>aitranslator.vn</strong>에서 작은 스크립트를 내려받습니다. 스크립트는 컴퓨터를 확인하고, 최신 버전 번호를 읽고, <strong>releases.aitranslator.vn</strong>에서 설치 파일과 SHA-256 체크섬을 내려받아 체크섬을 비교한 다음, 앱을 설치하고 엽니다. 데이터를 보내지 않으며 관리자 권한도 필요 없습니다.</p><p>인터넷에서 붙여 넣은 명령을 실행한다는 것은 언제나 그 출처를 믿는다는 뜻입니다. 실행하기 전에 스크립트를 읽어 보고 싶다면 사용하는 운영체제 가이드의 '먼저 스크립트를 읽고 싶어요'를 여세요. SHA-256 체크섬은 파일과 같은 곳에서 제공되므로 주로 손상된 다운로드를 막아 줄 뿐, 출처에 대한 신뢰를 대신하지는 않습니다.</p>`,
   },
   {
-    q: "왜 .dmg나 .exe 다운로드 버튼이 없나요?",
-    a: `<p>현재 빌드는 아직 Apple이나 Microsoft의 서명을 받지 않았습니다(Apple Developer ID도, Windows 코드 서명 인증서도 아직 없습니다). 브라우저로 내려받은 파일에는 '인터넷에서 다운로드됨' 표시가 붙기 때문에, macOS는 .dmg를 처음 실행할 때 막고(확인 없이 열기), Windows SmartScreen은 .exe에 대해 경고할 수 있습니다. 터미널이나 PowerShell 명령으로 내려받은 파일에는 이 표시가 붙지 않으므로 앱이 바로 설치되고 열립니다. 인증서를 받으면 바로 내려받는 버튼을 추가하겠습니다.</p>`,
+    q: "왜 .dmg나 .exe 다운로드보다 명령 한 줄을 권장하나요?",
+    a: `<p>현재 빌드는 아직 Apple이나 Microsoft의 서명을 받지 않았습니다(Apple Developer ID도, Windows 코드 서명 인증서도 아직 없습니다). 브라우저로 내려받은 파일에는 '인터넷에서 다운로드됨' 표시가 붙기 때문에, macOS는 .dmg를 처음 실행할 때 막고(확인 없이 열기), Windows SmartScreen은 .exe에 대해 경고할 수 있습니다. 터미널이나 PowerShell 명령으로 내려받은 파일에는 이 표시가 붙지 않으므로 앱이 바로 설치되고 열립니다. Windows에서는 PowerShell을 쓰고 싶지 않다면 아래 방법 2에서 .exe를 직접 내려받을 수도 있습니다.</p>`,
   },
   {
     q: "업데이트나 삭제는 어떻게 하나요?",
@@ -133,6 +133,14 @@ ${flow([
   },
   { title: "앱이 열릴 때까지 기다리기", text: "<p>1분 정도 걸립니다. 명령이 최신 버전을 내려받아 SHA-256을 확인하고, 내 계정에만 설치 프로그램을 조용히 실행한 뒤 AI Translator를 엽니다. Windows에서는 녹음 권한을 묻지 않으며, 앱이 모델을 한 번 내려받으면 번역할 준비가 끝납니다.</p>" },
 ])}
+<div class="panel-alt" id="download-exe">
+<h3>방법 2: .exe 설치 파일 직접 다운로드</h3>
+<p>설치 파일을 직접 실행하고 싶거나 PC에서 PowerShell 스크립트가 차단된 경우 이 방법을 쓰세요. 브라우저로 내려받은 파일은 파란색 SmartScreen 화면이 나올 수 있습니다: <strong>추가 정보</strong>를 누른 뒤 <strong>실행</strong>을 누르세요(<a href="/ko/guide/install-windows/#install-exe">.exe 설치 안내 보기</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> 다운로드</span></a>
+<a class="small" href="${SITE.winInstaller.sums}">SHA-256(<code>SHA256SUMS-windows.txt</code>)</a>
+</div>
+</div>
 <div class="panel-more">
 <h3>옵션과 문제 해결</h3>
 ${faq(
@@ -159,7 +167,7 @@ ${faq(
     },
     {
       q: "회사나 학교 PC에서 명령이 실패해요",
-      a: "<p>관리되는 PC는 PowerShell 스크립트를 막을 수 있습니다(제한된 언어 모드). .exe를 쓰거나(이메일로 보내 드릴 수 있습니다) 관리자에게 문의하세요.</p>",
+      a: "<p>관리되는 PC는 PowerShell 스크립트를 막을 수 있습니다(제한된 언어 모드). 위의 방법 2에서 .exe를 내려받거나 관리자에게 문의하세요.</p>",
     },
     {
       q: ".exe를 이메일로 받고 싶어요",

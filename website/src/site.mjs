@@ -1,6 +1,6 @@
 // Cấu hình dùng chung của website: thông tin site, chuỗi giao diện (chrome) hai ngôn ngữ, điều hướng, chân trang.
 // Nội dung từng trang nằm ở src/content/. Giá và hạn mức ở plans.mjs (có test đối chiếu với server/wrangler.jsonc).
-import { resolveRelease } from "./release.mjs";
+import { resolveRelease, winInstallerOf } from "./release.mjs";
 import { formatDate } from "./langs.mjs";
 
 // Phiên bản và ngày phát hành không gõ tay: xem src/release.mjs (spec 2026-10-13-website-version-tu-dong-design.md).
@@ -17,6 +17,7 @@ export const SITE = {
   securityExpires: "2027-10-08T00:00:00.000Z",
   version: release.version,
   releaseDate: release.releaseDate,
+  winInstaller: winInstallerOf(release.version),
   // Chỉ có khi deploy (`--deploy`): SHA-256 hai bộ cài của `version`, build ghim vào install.sh và install.ps1 (build/pin-installers.mjs).
   pins: release.pins ?? null,
   llmSummaryEn:

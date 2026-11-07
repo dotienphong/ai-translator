@@ -1,4 +1,4 @@
-import { RELEASE } from "../../site.mjs";
+import { SITE, RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -57,8 +57,8 @@ const DL_FAQ = [
     a: `<p>命令会从 <strong>aitranslator.vn</strong> 下载一个小脚本。脚本会检查你的电脑，读取最新版本号，从 <strong>releases.aitranslator.vn</strong> 下载安装包及其 SHA-256 校验值，核对校验值，然后安装并打开应用。它不发送任何数据，也不需要管理员权限。</p><p>运行从网上粘贴来的命令，总是意味着信任它的来源。如果你想在运行前先读一下脚本，请在你所用系统的指南中打开“我想先看看脚本”。SHA-256 校验值和文件来自同一个地方，所以它主要防止下载损坏，并不能代替对来源的信任。</p>`,
   },
   {
-    q: "为什么没有 .dmg 或 .exe 下载按钮？",
-    a: `<p>当前版本还没有获得 Apple 或 Microsoft 的签名（我们还没有 Apple Developer ID，也没有 Windows 代码签名证书）。用浏览器下载的文件会被标记为“从互联网下载”，所以 macOS 会在首次启动 .dmg 时阻止它（仍要打开），Windows SmartScreen 也可能对 .exe 发出警告。通过终端或 PowerShell 命令下载的文件不会带这个标记，所以应用会直接安装并打开。等我们拿到证书后，会加上直接下载按钮。</p>`,
+    q: "为什么推荐用一行命令，而不是下载 .dmg 或 .exe？",
+    a: `<p>当前版本还没有获得 Apple 或 Microsoft 的签名（我们还没有 Apple Developer ID，也没有 Windows 代码签名证书）。用浏览器下载的文件会被标记为“从互联网下载”，所以 macOS 会在首次启动 .dmg 时阻止它（仍要打开），Windows SmartScreen 也可能对 .exe 发出警告。通过终端或 PowerShell 命令下载的文件不会带这个标记，所以应用会直接安装并打开。在 Windows 上，如果你不想使用 PowerShell，也可以在下面的方法 2 直接下载 .exe。</p>`,
   },
   {
     q: "如何更新或卸载？",
@@ -133,6 +133,14 @@ ${flow([
   },
   { title: "等待应用打开", text: "<p>大约一分钟：命令会下载最新版本，校验 SHA-256，只为你的账户静默运行安装程序，然后打开 AI Translator。Windows 不需要录音权限；应用会下载一次模型，之后即可开始翻译。</p>" },
 ])}
+<div class="panel-alt" id="download-exe">
+<h3>方法 2：直接下载 .exe 安装程序</h3>
+<p>如果你更想自己运行安装程序，或者电脑阻止了 PowerShell 脚本，请使用这种方式。用浏览器下载的文件可能会显示蓝色的 SmartScreen 界面：点击<strong>更多信息</strong>，再点击<strong>仍要运行</strong>（<a href="/zh/guide/install-windows/#install-exe">查看 .exe 安装说明</a>）。</p>
+<div class="panel-alt-actions">
+<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span>下载 <code>${SITE.winInstaller.file}</code></span></a>
+<a class="small" href="${SITE.winInstaller.sums}">SHA-256（<code>SHA256SUMS-windows.txt</code>）</a>
+</div>
+</div>
 <div class="panel-more">
 <h3>选项和故障排除</h3>
 ${faq(
@@ -159,7 +167,7 @@ ${faq(
     },
     {
       q: "在公司或学校的电脑上命令运行失败",
-      a: "<p>受管理的电脑可能会阻止 PowerShell 脚本（受约束的语言模式）。请使用 .exe（我们可以通过邮件发送给你），或者咨询管理员。</p>",
+      a: "<p>受管理的电脑可能会阻止 PowerShell 脚本（受约束的语言模式）。请使用上面的方法 2 下载 .exe，或者咨询管理员。</p>",
     },
     {
       q: "我想通过邮件获取 .exe",

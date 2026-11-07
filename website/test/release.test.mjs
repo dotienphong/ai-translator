@@ -14,6 +14,7 @@ import {
   previewRelease,
   resolveRelease,
   vnDate,
+  winInstallerOf,
 } from "../src/release.mjs";
 
 test("vnDate: ngày theo giờ Việt Nam (UTC+7) của một thời điểm ISO", () => {
@@ -151,6 +152,15 @@ test("installerFiles: tên file và SHA256SUMS khớp hai script cài", () => {
   assert.equal(f.win.file, "AI Translator_1.2.3_x64-setup.exe");
   assert.equal(f.mac.sums, `${RELEASES_URL}/1.2.3/SHA256SUMS-macos.txt`);
   assert.equal(f.win.sums, `${RELEASES_URL}/1.2.3/SHA256SUMS-windows.txt`);
+});
+
+test("winInstallerOf: trả tên file, URL tải .exe (%20 cho khoảng trắng) và URL SHA256SUMS-windows.txt của đúng phiên bản", () => {
+  const w = winInstallerOf("1.2.3");
+  assert.deepEqual(w, {
+    file: "AI Translator_1.2.3_x64-setup.exe",
+    url: `${RELEASES_URL}/1.2.3/AI%20Translator_1.2.3_x64-setup.exe`,
+    sums: `${RELEASES_URL}/1.2.3/SHA256SUMS-windows.txt`,
+  });
 });
 
 test("installerHash: đúng dòng của file, đổi về chữ thường, nhận dấu * và CRLF; khác tên hay không có thì null", () => {

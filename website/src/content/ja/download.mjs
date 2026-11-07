@@ -1,4 +1,4 @@
-import { RELEASE } from "../../site.mjs";
+import { SITE, RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -57,8 +57,8 @@ const DL_FAQ = [
     a: `<p>コマンドは <strong>aitranslator.vn</strong> から小さなスクリプトをダウンロードします。スクリプトはパソコンを確認し、最新のバージョン番号を読み取り、<strong>releases.aitranslator.vn</strong> からインストーラーとその SHA-256 チェックサムをダウンロードし、チェックサムを照合してからアプリをインストールして開きます。データを送信することはなく、管理者権限も必要ありません。</p><p>インターネットから貼り付けたコマンドを実行するということは、常にその提供元を信頼するということです。実行する前にスクリプトを読みたい場合は、お使いの OS のガイドにある「先にスクリプトを読みたい」を開いてください。SHA-256 チェックサムはファイルと同じ場所から配信されるため、主に壊れたダウンロードから守るためのもので、提供元を信頼することの代わりにはなりません。</p>`,
   },
   {
-    q: "なぜ .dmg や .exe のダウンロードボタンがないのですか？",
-    a: `<p>現在のビルドはまだ Apple や Microsoft の署名を受けていません（Apple Developer ID も Windows のコード署名証明書もまだ持っていません）。ブラウザーでダウンロードしたファイルには「インターネットからダウンロード」の印が付くため、macOS は .dmg の初回起動をブロックし（このまま開く）、Windows の SmartScreen は .exe について警告することがあります。ターミナルや PowerShell のコマンドでダウンロードしたファイルにはこの印が付かないため、アプリはそのままインストールされて開きます。証明書を取得したら、直接ダウンロードできるボタンを追加します。</p>`,
+    q: "なぜ .dmg や .exe のダウンロードより 1 行のコマンドをおすすめするのですか？",
+    a: `<p>現在のビルドはまだ Apple や Microsoft の署名を受けていません（Apple Developer ID も Windows のコード署名証明書もまだ持っていません）。ブラウザーでダウンロードしたファイルには「インターネットからダウンロード」の印が付くため、macOS は .dmg の初回起動をブロックし（このまま開く）、Windows の SmartScreen は .exe について警告することがあります。ターミナルや PowerShell のコマンドでダウンロードしたファイルにはこの印が付かないため、アプリはそのままインストールされて開きます。Windows では、PowerShell を使いたくない場合に下の方法 2 から .exe を直接ダウンロードすることもできます。</p>`,
   },
   {
     q: "更新やアンインストールはどうすればいいですか？",
@@ -133,6 +133,14 @@ ${flow([
   },
   { title: "アプリが開くまで待つ", text: "<p>1 分ほどかかります。コマンドが最新版をダウンロードし、SHA-256 を確認して、あなたのアカウントだけにインストーラーをサイレントで実行し、AI Translator を開きます。Windows では録音の許可は求められません。アプリはモデルを一度ダウンロードすれば、翻訳の準備が整います。</p>" },
 ])}
+<div class="panel-alt" id="download-exe">
+<h3>方法 2：.exe インストーラーを直接ダウンロードする</h3>
+<p>自分でインストーラーを開きたい場合や、パソコンで PowerShell のスクリプトがブロックされている場合はこちらをお使いください。ブラウザーでダウンロードしたファイルは SmartScreen の青い画面が出ることがあります：<strong>詳細情報</strong>をクリックしてから<strong>実行</strong>をクリックします（<a href="/ja/guide/install-windows/#install-exe">.exe からのインストール手順を見る</a>）。</p>
+<div class="panel-alt-actions">
+<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> をダウンロード</span></a>
+<a class="small" href="${SITE.winInstaller.sums}">SHA-256（<code>SHA256SUMS-windows.txt</code>）</a>
+</div>
+</div>
 <div class="panel-more">
 <h3>オプションとトラブルシューティング</h3>
 ${faq(
@@ -159,7 +167,7 @@ ${faq(
     },
     {
       q: "会社や学校のパソコンでコマンドが失敗する",
-      a: "<p>管理されたパソコンでは PowerShell のスクリプトがブロックされることがあります（制約付き言語モード）。.exe を使うか（メールでお送りできます）、管理者にご相談ください。</p>",
+      a: "<p>管理されたパソコンでは PowerShell のスクリプトがブロックされることがあります（制約付き言語モード）。上の方法 2 から .exe をダウンロードするか、管理者にご相談ください。</p>",
     },
     {
       q: ".exe をメールで受け取りたい",

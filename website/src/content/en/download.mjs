@@ -1,4 +1,4 @@
-import { RELEASE } from "../../site.mjs";
+import { SITE, RELEASE } from "../../site.mjs";
 import { pageHero, sectionHead, steps, callout, facts, ctaBand, feature, icon, faq, cmdBlock, chips, flow, osTabs } from "../../build/components.mjs";
 import { faqPage } from "../../build/schema.mjs";
 
@@ -58,8 +58,8 @@ const DL_FAQ = [
     a: `<p>The command downloads a small script from <strong>aitranslator.vn</strong>. The script checks your computer, reads the latest version number, downloads the installer and its SHA-256 checksum from <strong>releases.aitranslator.vn</strong>, compares the checksum, installs the app and opens it. It sends no data and needs no administrator rights.</p><p>Running a command you paste from the internet always means trusting its source. If you would rather read the script before running it, open “I want to read the script first” in the guide for your operating system. The SHA-256 checksum is served from the same place as the file, so it mainly protects you from a corrupted download; it does not replace trusting the source.</p>`,
   },
   {
-    q: "Why is there no .dmg or .exe download button?",
-    a: `<p>The current build is not yet signed by Apple or Microsoft (we do not have an Apple Developer ID or a Windows code-signing certificate). A file downloaded in a browser is tagged “downloaded from the internet”, so macOS blocks the first launch of a .dmg (Open Anyway) and Windows SmartScreen may warn about an .exe. A file downloaded by a command in Terminal or PowerShell does not get that tag, so the app installs and opens directly. Once we have the certificates we will add a direct download button.</p>`,
+    q: "Why is the one-line command recommended over downloading a .dmg or .exe?",
+    a: `<p>The current build is not yet signed by Apple or Microsoft (we do not have an Apple Developer ID or a Windows code-signing certificate). A file downloaded in a browser is tagged “downloaded from the internet”, so macOS blocks the first launch of a .dmg (Open Anyway) and Windows SmartScreen may warn about an .exe. A file downloaded by a command in Terminal or PowerShell does not get that tag, so the app installs and opens directly. On Windows, you can still download the .exe directly under Option 2 below if you prefer not to use PowerShell.</p>`,
   },
   {
     q: "How do I update or uninstall?",
@@ -134,6 +134,14 @@ ${flow([
   },
   { title: "Wait for the app to open", text: "<p>About a minute: the command downloads the latest version, checks its SHA-256, runs the installer silently for your account only and opens AI Translator. Windows asks for no recording permission; the app downloads its models once and is then ready to translate.</p>" },
 ])}
+<div class="panel-alt" id="download-exe">
+<h3>Option 2: download the .exe installer directly</h3>
+<p>Use this if you prefer to run the installer yourself or if your PC blocks PowerShell scripts. A file downloaded in a browser may show the blue SmartScreen screen: click <strong>More info</strong>, then <strong>Run anyway</strong> (<a href="/en/guide/install-windows/#install-exe">see the .exe install guide</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-secondary btn-sm" href="${SITE.winInstaller.url}">${icon("download")}<span>Download <code>${SITE.winInstaller.file}</code></span></a>
+<a class="small" href="${SITE.winInstaller.sums}">SHA-256 (<code>SHA256SUMS-windows.txt</code>)</a>
+</div>
+</div>
 <div class="panel-more">
 <h3>Options and troubleshooting</h3>
 ${faq(
@@ -160,7 +168,7 @@ ${faq(
     },
     {
       q: "The command fails on a company or school PC",
-      a: "<p>A managed PC may block PowerShell scripts (Constrained Language Mode). Use the .exe (we can email it to you) or ask the administrator.</p>",
+      a: "<p>A managed PC may block PowerShell scripts (Constrained Language Mode). Download the .exe under Option 2 above or ask the administrator.</p>",
     },
     {
       q: "I would like the .exe by email",
