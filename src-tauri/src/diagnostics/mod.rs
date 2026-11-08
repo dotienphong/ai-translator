@@ -757,6 +757,10 @@ mod tests {
             "stderr cuối: ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory | 0.01.252.165 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate Vulkan0 buffer of size 833634304",
         );
         std::thread::sleep(Duration::from_millis(100));
-        assert_eq!(rig.reporter.pending_count(), 0, "OOM của tiến trình phụ không gửi báo cáo lỗi");
+        assert_eq!(
+            rig.reporter.pending_count(),
+            0,
+            "OOM của tiến trình phụ không gửi báo cáo lỗi"
+        );
     }
 }

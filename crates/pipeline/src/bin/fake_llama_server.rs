@@ -207,10 +207,10 @@ fn main() {
         eprintln!(
             "\x1b[34m0.01.293.769\x1b[0m \x1b[31mE srv    load_model: failed to load model, '/models/mt.gguf'\x1b[0m"
         );
-        eprintln!("\x1b[34m0.01.293.786\x1b[0m \x1b[32mI \x1b[0msrv   operator (): operator (): cleaning up before exit...");
         eprintln!(
-            "\x1b[34m0.01.294.846\x1b[0m \x1b[31mE srv  llama_server: exiting due to model loading error\x1b[0m"
+            "\x1b[34m0.01.293.786\x1b[0m \x1b[32mI \x1b[0msrv   operator (): operator (): cleaning up before exit..."
         );
+        eprintln!("\x1b[34m0.01.294.846\x1b[0m \x1b[31mE srv  llama_server: exiting due to model loading error\x1b[0m");
         std::process::exit(1);
     }
     let key = std::env::var("LLAMA_API_KEY").unwrap_or_default();

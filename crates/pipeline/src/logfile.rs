@@ -341,7 +341,8 @@ mod tests {
     fn the_pump_strips_ansi_escape_codes() {
         let dir = temp("ansi");
         let path = dir.0.join("llama-server.log");
-        let input = "\x1b[34m0.01.293.761\x1b[0m \x1b[31mE llama_model_load_from_file_impl: failed to load model\x1b[0m\n";
+        let input =
+            "\x1b[34m0.01.293.761\x1b[0m \x1b[31mE llama_model_load_from_file_impl: failed to load model\x1b[0m\n";
         let log = RotatingLog::open(&path, MAX_BYTES, KEEP).unwrap();
         let (handle, tail) = pump(std::io::Cursor::new(input.as_bytes().to_vec()), log, Vec::new());
         handle.join().unwrap();

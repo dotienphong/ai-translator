@@ -298,7 +298,9 @@ mod tests {
             "\x1b[34m0.00.753.970\x1b[0m \x1b[35mW load: special_eos_id is not in special_eog_ids\x1b[0m\n",
         );
         for i in 0..100 {
-            text.push_str(&format!("\x1b[34m0.01.000.{i:03}\x1b[0m \x1b[32mI \x1b[0mslot launch_slot_: task {i}\n"));
+            text.push_str(&format!(
+                "\x1b[34m0.01.000.{i:03}\x1b[0m \x1b[32mI \x1b[0mslot launch_slot_: task {i}\n"
+            ));
         }
         let lines = sidecar_lines(&text);
         assert_eq!(

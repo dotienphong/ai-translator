@@ -172,11 +172,7 @@ pub fn reset_translation_fallback<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Bọc bộ dịch `local` trong [`FallbackMt`] khi người dùng đang chọn ChatGPT hoặc Gemini. Khi chọn `Local`, trả nguyên `local`.
-pub fn wrap_mt<R: Runtime>(
-    app: &AppHandle<R>,
-    local: Box<dyn Mt>,
-    fell_back: Arc<AtomicBool>,
-) -> Box<dyn Mt> {
+pub fn wrap_mt<R: Runtime>(app: &AppHandle<R>, local: Box<dyn Mt>, fell_back: Arc<AtomicBool>) -> Box<dyn Mt> {
     let Some(state) = app.try_state::<AppState>() else {
         return local;
     };
@@ -442,7 +438,8 @@ fn read_cloud_stream(
     let mut done = false;
     for line in reader.lines() {
         let line = line.map_err(|_| MtError::Failed("đứt kết nối khi đang đọc stream Cloud MT".into()))?;
-        match parse_cloud_sse_line(&line).map_err(|_| MtError::Failed("dữ liệu SSE từ Cloud MT không hợp lệ".into()))? {
+        match parse_cloud_sse_line(&line).map_err(|_| MtError::Failed("dữ liệu SSE từ Cloud MT không hợp lệ".into()))?
+        {
             SseEvent::Delta {
                 content,
                 finish_reason,
@@ -563,16 +560,15 @@ mod tests {
     use std::sync::Mutex;
     use std::sync::atomic::AtomicUsize;
 
+    type StreamStep = Box<dyn FnMut(&mut dyn FnMut(&str) -> ControlFlow<()>) -> Result<StreamEnd, MtError> + Send>;
+
     struct ScriptedMt {
         calls: Arc<AtomicUsize>,
-        steps: Mutex<Vec<Box<dyn FnMut(&mut dyn FnMut(&str) -> ControlFlow<()>) -> Result<StreamEnd, MtError> + Send>>>,
+        steps: Mutex<Vec<StreamStep>>,
     }
 
     impl ScriptedMt {
-        fn new(
-            calls: Arc<AtomicUsize>,
-            steps: Vec<Box<dyn FnMut(&mut dyn FnMut(&str) -> ControlFlow<()>) -> Result<StreamEnd, MtError> + Send>>,
-        ) -> Self {
+        fn new(calls: Arc<AtomicUsize>, steps: Vec<StreamStep>) -> Self {
             Self {
                 calls,
                 steps: Mutex::new(steps),
@@ -597,7 +593,7 @@ mod tests {
         }
     }
 
-    fn ok_stream(text: &'static str) -> Box<dyn FnMut(&mut dyn FnMut(&str) -> ControlFlow<()>) -> Result<StreamEnd, MtError> + Send> {
+    fn ok_stream(text: &'static str) -> StreamStep {
         Box::new(move |on_delta| {
             let _ = on_delta(text);
             Ok(StreamEnd {
@@ -842,16 +838,10 @@ mod tests {
         assert!(b_lite["generationConfig"].get("thinkingConfig").is_none());
 
         let b_31 = build_gemini_native_body("gemini-3.1-flash-lite", "Hi", 48);
-        assert_eq!(
-            b_31["generationConfig"]["thinkingConfig"]["thinkingLevel"],
-            "MINIMAL"
-        );
+        assert_eq!(b_31["generationConfig"]["thinkingConfig"]["thinkingLevel"], "MINIMAL");
 
         let b_35 = build_gemini_native_body("gemini-3.5-flash-lite", "Hi", 48);
-        assert_eq!(
-            b_35["generationConfig"]["thinkingConfig"]["thinkingLevel"],
-            "MINIMAL"
-        );
+        assert_eq!(b_35["generationConfig"]["thinkingConfig"]["thinkingLevel"], "MINIMAL");
 
         assert_eq!(
             gemini_stream_url(GEMINI_CHAT_ENDPOINT, "gemini-3.1-flash-lite"),
