@@ -192,8 +192,25 @@ fn main() {
         std::process::exit(code);
     }
     if plan.oom_at_start {
-        eprintln!("ggml_backend_metal_buffer_type_alloc_buffer: error: failed to allocate buffer, size = 1100.00 MiB");
-        eprintln!("llama_model_load: error loading model: unable to allocate Metal buffer: out of memory");
+        eprintln!("ggml_vulkan: Device memory allocation of size 833634304 failed.");
+        eprintln!("ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory");
+        eprintln!(
+            "\x1b[34m0.01.252.165\x1b[0m \x1b[31mE ggml_backend_buft_alloc_buffer_n_default: failed to allocate Vulkan0 buffer of size 833634304\x1b[0m"
+        );
+        eprintln!(
+            "\x1b[34m0.01.293.755\x1b[0m \x1b[31mE llama_model_load: error loading model: unable to allocate Vulkan0 buffer (out of memory)\x1b[0m"
+        );
+        eprintln!("\x1b[34m0.01.293.761\x1b[0m \x1b[31mE llama_model_load_from_file_impl: failed to load model\x1b[0m");
+        eprintln!(
+            "\x1b[34m0.01.293.765\x1b[0m \x1b[31mE cmn  common_init_: failed to load model '/models/mt.gguf'\x1b[0m"
+        );
+        eprintln!(
+            "\x1b[34m0.01.293.769\x1b[0m \x1b[31mE srv    load_model: failed to load model, '/models/mt.gguf'\x1b[0m"
+        );
+        eprintln!("\x1b[34m0.01.293.786\x1b[0m \x1b[32mI \x1b[0msrv   operator (): operator (): cleaning up before exit...");
+        eprintln!(
+            "\x1b[34m0.01.294.846\x1b[0m \x1b[31mE srv  llama_server: exiting due to model loading error\x1b[0m"
+        );
         std::process::exit(1);
     }
     let key = std::env::var("LLAMA_API_KEY").unwrap_or_default();

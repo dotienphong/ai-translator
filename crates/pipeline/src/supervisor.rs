@@ -340,10 +340,11 @@ pub struct StartError {
 /// Dấu hiệu hết bộ nhớ trong thông báo lỗi hay log của tiến trình phụ. Cùng danh sách với `asr_worker::engine::classify`,
 /// vì `llama-server` không có mã lỗi riêng cho việc này.
 pub fn looks_out_of_memory(text: &str) -> bool {
-    const OOM: [&str; 5] = [
+    const OOM: [&str; 6] = [
         "out of memory",
         "failed to allocate",
         "cannot allocate",
+        "unable to allocate",
         "outofdevicememory",
         "insufficient memory",
     ];

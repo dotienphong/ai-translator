@@ -176,7 +176,7 @@ pub fn pump_observed(
                 skip_line(&mut reader);
                 buf.truncate(MAX_LINE_BYTES.saturating_sub(longest_secret));
             }
-            let mut line = String::from_utf8_lossy(&buf).into_owned();
+            let mut line = strip_ansi(&String::from_utf8_lossy(&buf));
             for secret in secrets.iter().filter(|s| !s.is_empty()) {
                 if line.contains(secret.as_str()) {
                     line = line.replace(secret.as_str(), REDACTED);
@@ -197,6 +197,29 @@ pub fn pump_observed(
         }
     });
     (handle, tail)
+}
+
+/// Bỏ các mã màu ANSI CSI (`\x1b[...m`…) mà `llama-server` in ra stderr trên Windows ngay cả khi nối qua pipe.
+pub fn strip_ansi(text: &str) -> String {
+    if !text.contains('\x1b') {
+        return text.to_string();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' && chars.peek() == Some(&'[') {
+            chars.next();
+            while let Some(&next) = chars.peek() {
+                chars.next();
+                if ('@'..='~').contains(&next) {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 /// Bỏ phần còn lại của dòng hiện tại (tới hết `\n`), không giữ trong RAM.
@@ -310,5 +333,26 @@ mod tests {
         assert!(!written.contains('y'), "phần sau chỗ cắt bị bỏ");
         assert!(written.ends_with("\nnext line\n"));
         assert_eq!(tail.lines().last().map(String::as_str), Some("next line"));
+    }
+
+    /// Báo cáo thật `R-RE31-5DNB`: `llama-server` trên Windows in mã màu ANSI CSI ra stderr cả khi nối qua pipe;
+    /// `pump` phải bỏ mã màu trước khi ghi file và giữ `Tail`.
+    #[test]
+    fn the_pump_strips_ansi_escape_codes() {
+        let dir = temp("ansi");
+        let path = dir.0.join("llama-server.log");
+        let input = "\x1b[34m0.01.293.761\x1b[0m \x1b[31mE llama_model_load_from_file_impl: failed to load model\x1b[0m\n";
+        let log = RotatingLog::open(&path, MAX_BYTES, KEEP).unwrap();
+        let (handle, tail) = pump(std::io::Cursor::new(input.as_bytes().to_vec()), log, Vec::new());
+        handle.join().unwrap();
+        let written = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            written,
+            "0.01.293.761 E llama_model_load_from_file_impl: failed to load model\n"
+        );
+        assert_eq!(
+            tail.lines(),
+            ["0.01.293.761 E llama_model_load_from_file_impl: failed to load model"]
+        );
     }
 }

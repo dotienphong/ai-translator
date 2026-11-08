@@ -402,6 +402,7 @@ pub fn restart_to_update<R: Runtime>(app: &AppHandle<R>, restart: fn(&AppHandle<
         ));
     }
     updater.set_restart();
+    crate::diagnostics::mark_clean_exit(app);
     overlay::remember_position(app);
     log::info!("khởi động lại để cập nhật");
     let app = app.clone();

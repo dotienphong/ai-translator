@@ -157,11 +157,16 @@ fn now_secs() -> i64 {
 static PANIC_FILES: OnceLock<RunFiles> = OnceLock::new();
 
 /// Cài panic hook ghi `panic.json`, nối trước hook đang có (ở app: hook của `pipeline::process` kill tiến trình phụ rồi in
-/// panic). Gọi một lần ở `setup`; lần sau không làm gì.
+/// panic). Trên Windows cài thêm console control handler (`SetConsoleCtrlHandler`) để khi hệ thống hay trình quản lý gửi tín
+/// hiệu đóng (`CTRL_CLOSE_EVENT`, `CTRL_SHUTDOWN_EVENT`, `CTRL_LOGOFF_EVENT`, `CTRL_C_EVENT`, `CTRL_BREAK_EVENT` — chạy trên
+/// luồng riêng rồi gọi `ExitProcess` thẳng, không qua `RunEvent::Exit`), app vẫn xóa `run.marker` và tắt tiến trình phụ trước
+/// khi thoát (tránh báo nhầm `unclean_exit`, báo cáo thật `R-563N-3HW2`). Gọi một lần ở `setup`; lần sau không làm gì.
 pub fn install_panic_dump(files: RunFiles) {
     if PANIC_FILES.set(files).is_err() {
         return;
     }
+    #[cfg(windows)]
+    install_windows_ctrl_handler();
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         if let Some(files) = PANIC_FILES.get() {
@@ -169,6 +174,24 @@ pub fn install_panic_dump(files: RunFiles) {
         }
         previous(info);
     }));
+}
+
+#[cfg(windows)]
+fn install_windows_ctrl_handler() {
+    use windows::Win32::System::Console::SetConsoleCtrlHandler;
+    use windows::core::BOOL;
+
+    unsafe extern "system" fn handler(_ctrl_type: u32) -> BOOL {
+        if let Some(files) = PANIC_FILES.get() {
+            files.end_run();
+        }
+        pipeline::process::kill_all();
+        // Trả `FALSE` để handler mặc định của Windows kết thúc tiến trình như thường.
+        BOOL(0)
+    }
+
+    // SAFETY: `handler` là hàm `extern "system"` tĩnh, sống suốt vòng đời tiến trình và chỉ làm thao tác nguyên tử / xóa file.
+    let _ = unsafe { SetConsoleCtrlHandler(Some(handler), true) };
 }
 
 /// Giờ Unix (giây) máy khởi động, hay người dùng đăng nhập, lần gần nhất; nếu hỏi được.

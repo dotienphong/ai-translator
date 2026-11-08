@@ -131,8 +131,10 @@ fn is_device_line(line: &str) -> bool {
 }
 
 /// Log của tiến trình phụ: dòng cảnh báo hay lỗi, dòng nói thiết bị, cộng `SIDECAR_TAIL_LINES` dòng cuối, giữ thứ tự gốc.
+/// Bỏ mã màu ANSI CSI (`pipeline::logfile::strip_ansi`) cho cả file log cũ của `llama-server` trên Windows, để `LEVEL_LINE`
+/// nhận diện đúng dòng `W`/`E` và báo cáo không chứa `\u001b[...`.
 pub fn sidecar_lines(text: &str) -> Vec<String> {
-    let all: Vec<&str> = text.lines().collect();
+    let all: Vec<String> = text.lines().map(pipeline::logfile::strip_ansi).collect();
     let tail_from = all.len().saturating_sub(SIDECAR_TAIL_LINES);
     all.iter()
         .enumerate()
@@ -286,5 +288,23 @@ mod tests {
         let text = FileLogs { dir: dir.clone() }.read(LogFile::App);
         assert!(text.starts_with("ok") && text.contains('\u{fffd}'));
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// Báo cáo thật `R-RE31-5DNB`: `llama-server` trên Windows in mã màu ANSI CSI quanh mốc giờ và chữ `W`/`E`.
+    /// `sidecar_lines` phải bỏ mã màu trước khi khớp `LEVEL_LINE`, để giữ được dòng `W`/`E` ở đầu file và không gửi `\u001b[`.
+    #[test]
+    fn sidecar_logs_strip_ansi_and_match_colored_level_lines() {
+        let mut text = String::from(
+            "\x1b[34m0.00.753.970\x1b[0m \x1b[35mW load: special_eos_id is not in special_eog_ids\x1b[0m\n",
+        );
+        for i in 0..100 {
+            text.push_str(&format!("\x1b[34m0.01.000.{i:03}\x1b[0m \x1b[32mI \x1b[0mslot launch_slot_: task {i}\n"));
+        }
+        let lines = sidecar_lines(&text);
+        assert_eq!(
+            lines.first().map(String::as_str),
+            Some("0.00.753.970 W load: special_eos_id is not in special_eog_ids")
+        );
+        assert!(lines.iter().all(|l| !l.contains('\x1b')), "{lines:?}");
     }
 }

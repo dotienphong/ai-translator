@@ -58,6 +58,16 @@ pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
         (overlay::LABEL, WindowEvent::Moved(_) | WindowEvent::Resized(_)) => {
             overlay::remember_position(window.app_handle());
         }
+        // Thanh phụ đề và thẻ gợi ý họp đều tạo một lần lúc mở app: Alt+F4 hay `WM_CLOSE` chỉ đóng/ẩn, không hủy cửa sổ.
+        (overlay::LABEL, WindowEvent::CloseRequested { api, .. }) => {
+            api.prevent_close();
+            let app = window.app_handle().clone();
+            std::thread::spawn(move || crate::actions::close_overlay(&app));
+        }
+        (crate::meeting_hint::LABEL, WindowEvent::CloseRequested { api, .. }) => {
+            api.prevent_close();
+            crate::meeting_hint::dismiss(window.app_handle(), false);
+        }
         // Ô soạn Gõ dịch (spec 2026-10-17-go-dich §1.3, §3.1): bấm ra ngoài (mất focus) thì đóng như Esc; ⌘W hay Alt+F4 cũng
         // chỉ đóng ô soạn, không hủy cửa sổ (tạo một lần lúc mở app).
         (compose::LABEL, WindowEvent::Focused(false)) => compose::close(window.app_handle()),

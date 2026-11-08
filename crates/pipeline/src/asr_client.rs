@@ -292,24 +292,33 @@ pub fn command(launch: &AsrLaunch) -> Command {
 /// Chỗ nối giữa thông báo lỗi và các dòng cuối của stderr.
 const TAIL_MARK: &str = "; stderr cuối: ";
 
-/// Thêm tối đa 5 dòng cuối của stderr vào thông báo lỗi. Thông báo đã có các dòng đó (do `call` ghép lúc worker chết)
-/// thì giữ nguyên, để lỗi lúc nạp model không bị ghép hai lần.
+/// Thêm tối đa 5 dòng cuối của stderr (cộng các dòng báo hết bộ nhớ hay mất GPU nằm trước đó trong `tail`) vào thông báo lỗi.
+/// Thông báo đã có các dòng đó (do `call` ghép lúc worker chết) thì giữ nguyên, để lỗi lúc nạp model không bị ghép hai lần.
+///
+/// Báo cáo thật `R-RE31-5DNB`: khi `llama-server` hết VRAM lúc nạp model, nó in thêm 5 dòng dọn dẹp ở cuối
+/// (`llama_model_load_from_file_impl: failed to load model` … `exiting due to model loading error`) đẩy dòng gốc
+/// `ErrorOutOfDeviceMemory` / `failed to allocate Vulkan0 buffer` ra khỏi 5 dòng cuối; giữ các dòng gốc đó để giám sát
+/// và bộ lọc báo cáo lỗi nhận diện đúng `OutOfMemory`.
 pub fn with_tail(message: String, tail: &[String]) -> String {
     if message.contains(TAIL_MARK) {
         return message;
     }
-    let last: Vec<&str> = tail
+    let non_empty: Vec<&str> = tail
         .iter()
-        .rev()
-        .filter(|l| !l.trim().is_empty())
-        .take(5)
         .map(String::as_str)
+        .filter(|l| !l.trim().is_empty())
         .collect();
-    if last.is_empty() {
+    if non_empty.is_empty() {
         return message;
     }
-    let joined: Vec<&str> = last.into_iter().rev().collect();
-    format!("{message}{TAIL_MARK}{}", joined.join(" | "))
+    let tail_start = non_empty.len().saturating_sub(5);
+    let mut selected: Vec<&str> = non_empty[..tail_start]
+        .iter()
+        .copied()
+        .filter(|l| crate::supervisor::looks_out_of_memory(l) || crate::supervisor::looks_device_lost(l))
+        .collect();
+    selected.extend_from_slice(&non_empty[tail_start..]);
+    format!("{message}{TAIL_MARK}{}", selected.join(" | "))
 }
 
 impl Drop for AsrWorker {
@@ -375,5 +384,25 @@ mod tests {
         let once = with_tail("worker chết".into(), &["l1".into()]);
         assert_eq!(once, "worker chết; stderr cuối: l1");
         assert_eq!(with_tail(once.clone(), &["l2".into()]), once);
+    }
+
+    #[test]
+    fn oom_lines_before_the_last_five_lines_are_retained_in_the_tail() {
+        let tail = vec![
+            "0.00.205.787 I srv    load_model: loading model 'mt.gguf'".into(),
+            "ggml_vulkan: Device memory allocation of size 833634304 failed.".into(),
+            "ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory".into(),
+            "0.01.252.165 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate Vulkan0 buffer of size 833634304".into(),
+            "0.01.293.755 E llama_model_load: error loading model: unable to allocate Vulkan0 buffer".into(),
+            "0.01.293.761 E llama_model_load_from_file_impl: failed to load model".into(),
+            "0.01.293.765 E cmn  common_init_: failed to load model 'mt.gguf'".into(),
+            "0.01.293.769 E srv    load_model: failed to load model, 'mt.gguf'".into(),
+            "0.01.293.786 I srv   operator (): operator (): cleaning up before exit...".into(),
+            "0.01.294.846 E srv  llama_server: exiting due to model loading error".into(),
+        ];
+        let joined = with_tail("llama-server thoát sớm".into(), &tail);
+        assert!(crate::supervisor::looks_out_of_memory(&joined), "{joined}");
+        assert!(joined.contains("ErrorOutOfDeviceMemory"), "{joined}");
+        assert!(joined.contains("failed to allocate Vulkan0 buffer"), "{joined}");
     }
 }

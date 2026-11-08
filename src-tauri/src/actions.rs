@@ -432,6 +432,10 @@ pub fn open_audio_permission_settings<R: Runtime>(app: &AppHandle<R>) -> Result<
 /// Phần đồng bộ của Thoát ở menu khay, trước khi dừng phiên và thoát: nhớ vị trí thanh phụ đề, và cho phép cài bản cập nhật
 /// đã tải vì người dùng chủ động thoát (khác tắt máy, đăng xuất; kế hoạch 07b). Tách riêng để test gọi được mà không thoát.
 pub(crate) fn prepare_quit<R: Runtime>(app: &AppHandle<R>) {
+    // Xóa dấu "đang chạy" ngay khi người dùng chủ động thoát: `session::shutdown` trên luồng nền có thể chờ tới 2 giây
+    // (câu đang dịch, lưu lịch sử SQLCipher) trước khi `app.exit(0)` gửi sự kiện về luồng chính (`RunEvent::Exit`); nếu tiến
+    // trình bị đóng trong khoảng đó thì lần mở sau không báo nhầm `unclean_exit` (báo cáo thật `R-563N-3HW2`).
+    diagnostics::mark_clean_exit(app);
     overlay::remember_position(app);
     log::info!("thoát theo yêu cầu từ menu khay");
     updater::user_quits(app);

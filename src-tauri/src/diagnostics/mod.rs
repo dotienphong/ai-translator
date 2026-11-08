@@ -392,9 +392,11 @@ fn which_code(which: Which) -> &'static str {
 }
 
 /// Tiến trình phụ chết và được giám sát khởi động lại (`SidecarEvent::Restarting`). `failures` là số lần lỗi đang tính trong cửa
-/// sổ 10 phút: 0 là lần đầu chạy quá giờ chờ (không phải một lần chết), không báo.
+/// sổ 10 phút: 0 là lần đầu chạy quá giờ chờ (không phải một lần chết), không báo. Lỗi hết bộ nhớ (`OutOfMemory` của tiến trình
+/// phụ, spec §10: "Không báo cáo `cpu_fallback` và `OutOfMemory` của tiến trình phụ") là giới hạn tài nguyên máy đã có đường xử
+/// lý riêng (đề xuất gói Nhẹ + chuyển CPU, báo cáo thật `R-RE31-5DNB`), cũng không báo thành `sidecar_died`.
 pub fn on_sidecar_died<R: Runtime>(app: &AppHandle<R>, which: Which, failures: usize, reason: &str) {
-    if failures == 0 {
+    if failures == 0 || pipeline::supervisor::looks_out_of_memory(reason) {
         return;
     }
     let Some(reporter) = reporter_of(app) else {
@@ -739,5 +741,22 @@ mod tests {
         assert_eq!(host.facts().unwrap().gpu_backend.as_deref(), Some("cpu"));
         note_asr_backend(app.handle(), None);
         assert_eq!(host.facts().unwrap().gpu_backend, None);
+    }
+
+    /// Spec §10 & báo cáo thật `R-RE31-5DNB`: `OutOfMemory` của tiến trình phụ không được báo thành `sidecar_died`.
+    #[test]
+    fn sidecar_oom_is_not_reported_as_sidecar_died() {
+        use crate::test_support::{enable_error_reports, install_reports};
+        let app = mock_app();
+        let rig = install_reports(&app);
+        enable_error_reports(&app);
+        on_sidecar_died(
+            app.handle(),
+            Which::Llama,
+            1,
+            "stderr cuối: ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory | 0.01.252.165 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate Vulkan0 buffer of size 833634304",
+        );
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(rig.reporter.pending_count(), 0, "OOM của tiến trình phụ không gửi báo cáo lỗi");
     }
 }
