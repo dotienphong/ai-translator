@@ -57,10 +57,28 @@ export function tarExecutable(platform, env) {
   return win32.join(env.SystemRoot ?? env.windir ?? "C:\\Windows", "System32", "tar.exe");
 }
 
-async function download(url) {
-  const res = await fetch(url, { headers: { "User-Agent": "release-tools" }, redirect: "follow" });
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
+export async function download(url, retries = 5, backoffMs = 2000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { "User-Agent": "release-tools" }, redirect: "follow" });
+      if (!res.ok) {
+        if (attempt < retries && (res.status >= 500 || res.status === 429)) {
+          console.warn(`[install-tools] HTTP ${res.status} khi tải ${url}, thử lại lần ${attempt + 1}/${retries} sau ${backoffMs * attempt}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, backoffMs * attempt));
+          continue;
+        }
+        throw new Error(`${url}: HTTP ${res.status}`);
+      }
+      return Buffer.from(await res.arrayBuffer());
+    } catch (err) {
+      if (attempt < retries) {
+        console.warn(`[install-tools] Lỗi khi tải ${url}: ${err.message}, thử lại lần ${attempt + 1}/${retries} sau ${backoffMs * attempt}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs * attempt));
+      } else {
+        throw err;
+      }
+    }
+  }
 }
 
 function exportPath(dir) {

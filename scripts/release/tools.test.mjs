@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { shaErrors, tarExecutable, toolAsset } from "./install-tools.mjs";
+import { download, shaErrors, tarExecutable, toolAsset } from "./install-tools.mjs";
 import { parseVersions, readVersions } from "./versions.mjs";
 
 const versions = readVersions();
@@ -44,4 +44,36 @@ test("SHA-256 sai hay chưa khóa đều dừng", () => {
   assert.deepEqual(shaErrors("a.zip", "ab", "ab"), []);
   assert.deepEqual(shaErrors("a.zip", "ab", "cd"), ["a.zip: SHA-256 ab, versions.env khóa cd"]);
   assert.deepEqual(shaErrors("a.exe", "ab", ""), ["a.exe: versions.env chưa có SHA-256; SHA-256 của file vừa tải là ab"]);
+});
+
+test("download: thử lại khi gặp HTTP 5xx rồi thành công", async () => {
+  let calls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls < 3) return { ok: false, status: 504 };
+    return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
+  };
+  try {
+    const bytes = await download("https://example.com/file.zip", 3, 5);
+    assert.equal(calls, 3);
+    assert.deepEqual([...bytes], [1, 2, 3]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("download: dừng khi quá số lần thử", async () => {
+  let calls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    calls++;
+    return { ok: false, status: 504 };
+  };
+  try {
+    await assert.rejects(() => download("https://example.com/file.zip", 2, 5), /HTTP 504/);
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -48,8 +48,26 @@ export async function fetchModel(dir, { url, sha256: expected }) {
   mkdirSync(dir, { recursive: true });
   const path = join(dir, `smoke-${expected.slice(0, 12)}.gguf`);
   if (existsSync(path) && sha256(readFileSync(path)) === expected) return path;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`tải ${url}: HTTP ${response.status}`);
+  let response;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      response = await fetch(url);
+      if (response.ok) break;
+      if (attempt < 5 && (response.status >= 500 || response.status === 429)) {
+        console.warn(`[smoke-llama] HTTP ${response.status} khi tải model, thử lại lần ${attempt + 1}/5 sau ${2000 * attempt}ms...`);
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+      throw new Error(`tải ${url}: HTTP ${response.status}`);
+    } catch (err) {
+      if (attempt < 5) {
+        console.warn(`[smoke-llama] Lỗi khi tải model: ${err.message}, thử lại lần ${attempt + 1}/5 sau ${2000 * attempt}ms...`);
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+      } else {
+        throw err;
+      }
+    }
+  }
   const bytes = Buffer.from(await response.arrayBuffer());
   const actual = sha256(bytes);
   if (actual !== expected) throw new Error(`model thử có SHA-256 ${actual}, versions.env khóa ${expected}`);
