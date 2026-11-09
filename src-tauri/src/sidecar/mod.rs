@@ -3,6 +3,7 @@
 
 pub mod bundled_name;
 pub mod first_run;
+pub mod gpu_crash;
 pub mod integrity;
 pub mod paths;
 pub mod probe;
@@ -256,7 +257,18 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
         let outcome = app
             .state::<GpuProbe>()
             .run(|| probe::run_probe(&files.asr_gpu, probe::probe_timeout(first)));
-        let usable = outcome.as_ref().is_some_and(|o| o.usable);
+        // Binary Vulkan này đã chết vì lỗi native của driver trong 14 ngày qua (`R-NQBY-S4F7`): chạy thẳng bằng CPU, không
+        // đợi nó chết thêm một lần mỗi lần mở app. Bản app mới (binary khác) hay hết hạn thì thử GPU lại.
+        let gpu_crashed = gpu_crash::file_beside(&seen_file).is_some_and(|f| {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(0));
+            gpu_crash::is_blocked(&f, &verified.hashes[0], now)
+        });
+        if gpu_crashed {
+            log::info!("asr-worker-vulkan từng chết vì lỗi driver: chạy bằng CPU");
+        }
+        let usable = !gpu_crashed && outcome.as_ref().is_some_and(|o| o.usable);
         let llama_cpu = outcome.as_ref().is_some_and(|o| probe::only_integrated_gpu(&o.gpus));
         (usable, llama_cpu)
     } else {

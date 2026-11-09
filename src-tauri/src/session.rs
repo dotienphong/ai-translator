@@ -1223,6 +1223,19 @@ impl<R: Runtime> SidecarEvents for StatusEvents<R> {
                 reason,
                 ..
             } => {
+                // `asr-worker-vulkan` chết vì lỗi native của driver (`0xc0000005`…): nhớ để các lần mở app sau chạy thẳng bằng
+                // CPU (`sidecar::prepare`), thay vì chết lại mỗi lần (báo cáo `R-NQBY-S4F7`).
+                if *which == Which::Asr
+                    && crate::sidecar::gpu_crash::looks_like_native_crash(reason)
+                    && let Some(file) = crate::sidecar::gpu_crash::file_beside(&self.seen_file)
+                    && let Some(exe) = self.last_exe.lock().unwrap()[slot(*which)].clone()
+                    && let Some(hash) = self.hash_of(&exe)
+                {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(0));
+                    crate::sidecar::gpu_crash::record(&file, hash, now);
+                }
                 crate::diagnostics::on_sidecar_died(&self.app, *which, *failures, reason);
                 return;
             }
