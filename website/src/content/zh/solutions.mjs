@@ -24,6 +24,7 @@ ${linkCard({ href: "/zh/solutions/online-meeting-translation/", icon: "users", t
 ${linkCard({ href: "/zh/solutions/webinar-and-video-translation/", icon: "play", title: "网络研讨会、课程和视频", text: "观看其他语言的会议演讲、课程或视频时阅读翻译字幕，即使是长达数小时的会话也可以，之后还能复制或导出转写内容来复习。", more: "查看网络研讨会和视频解决方案" })}
 ${linkCard({ href: "/zh/solutions/livestream-translation/", icon: "video", title: "在电脑上观看直播", text: "在电脑上观看英语、中文、日语或韩语直播时显示翻译字幕，不需要在浏览器中安装任何东西。坦诚说明局限：不支持手机，也不能翻译你自己的直播。", more: "查看直播解决方案" })}
 ${linkCard({ href: "/zh/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok 直播", text: "如何在电脑浏览器中观看带翻译字幕的 TikTok 直播，以及它特有的局限。", more: "查看 TikTok 直播指南" })}
+${linkCard({ href: "/zh/solutions/youtube-translation/", icon: "play", title: "YouTube 视频与直播", text: "在电脑浏览器中观看讲座、新闻或 YouTube Live 时显示实时翻译字幕，无需安装浏览器插件。", more: "查看 YouTube 解决方案" })}
 </div>
 </div></section>
 
@@ -57,6 +58,7 @@ ${sectionHead({ eyebrow: "快速选择", title: "什么情况，用什么设置�
 <tr><th scope="row">直播或 TikTok 直播</th><td>在电脑浏览器中观看，只听取浏览器的声音（macOS），如果句子被切得零碎，就调高“结束一句话的停顿”；不支持手机</td></tr>
 <tr><th scope="row">网络研讨会或会议演讲</th><td>保留原文显示（默认开启），并且只听取播放器的声音（macOS）</td></tr>
 <tr><th scope="row">课程或讲座视频</th><td>导出转写内容以便复习（Pro），把专业术语加入术语表（Pro）</td></tr>
+<tr><th scope="row">YouTube 视频与直播</th><td>在电脑浏览器中观看，只听取浏览器的声音（macOS），把字幕条放在视频正下方；无需浏览器插件</td></tr>
 </tbody></table></div>
 </div></section>
 

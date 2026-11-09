@@ -24,6 +24,7 @@ ${linkCard({ href: "/ko/solutions/online-meeting-translation/", icon: "users", t
 ${linkCard({ href: "/ko/solutions/webinar-and-video-translation/", icon: "play", title: "웨비나, 강좌, 동영상", text: "다른 언어로 된 콘퍼런스 발표, 강좌, 동영상을 몇 시간짜리 세션이라도 번역 자막을 읽으며 보고, 나중에 대본을 복사하거나 내보내 다시 공부할 수 있습니다.", more: "웨비나와 동영상 솔루션 보기" })}
 ${linkCard({ href: "/ko/solutions/livestream-translation/", icon: "video", title: "컴퓨터로 보는 라이브 방송", text: "영어, 중국어, 일본어, 한국어 라이브 방송을 컴퓨터로 보면서 번역 자막을 읽을 수 있으며, 브라우저에 설치할 것이 없습니다. 솔직한 한계: 휴대폰에서는 쓸 수 없고, 내 라이브 방송을 번역해 주지도 않습니다.", more: "라이브 방송 솔루션 보기" })}
 ${linkCard({ href: "/ko/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok 라이브", text: "컴퓨터 브라우저에서 TikTok 라이브를 번역 자막과 함께 보는 방법과 TikTok 라이브만의 한계.", more: "TikTok 라이브 가이드 보기" })}
+${linkCard({ href: "/ko/solutions/youtube-translation/", icon: "play", title: "YouTube 동영상 및 라이브 방송", text: "컴퓨터 브라우저에서 강의, 뉴스, YouTube Live를 시청하면서 실시간 번역 자막을 확인하세요. 확장 프로그램 불필요.", more: "YouTube 솔루션 보기" })}
 </div>
 </div></section>
 
@@ -57,6 +58,7 @@ ${sectionHead({ eyebrow: "빠른 선택", title: "어떤 상황에 어떤 설정
 <tr><th scope="row">라이브 방송이나 TikTok 라이브</th><td>컴퓨터 브라우저에서 보고, 브라우저 소리만 듣게 하며(macOS), 문장이 잘게 끊기면 문장을 끝내는 정지 시간을 올립니다. 휴대폰은 지원하지 않습니다</td></tr>
 <tr><th scope="row">웨비나나 콘퍼런스 발표</th><td>원문 표시를 그대로 두고(기본값 켜짐), 플레이어 소리만 듣게 합니다(macOS)</td></tr>
 <tr><th scope="row">강좌나 강의 동영상</th><td>대본을 내보내 다시 공부하고(Pro), 분야별 용어를 용어집에 추가합니다(Pro)</td></tr>
+<tr><th scope="row">YouTube 동영상 및 라이브 방송</th><td>컴퓨터 브라우저에서 보고, 브라우저 소리만 듣게 하며(macOS), 자막 바를 영상 바로 아래에 둡니다. 확장 프로그램 불필요</td></tr>
 </tbody></table></div>
 </div></section>
 

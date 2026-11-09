@@ -26,6 +26,7 @@ ${linkCard({ href: "/en/solutions/online-meeting-translation/", icon: "users", t
 ${linkCard({ href: "/en/solutions/webinar-and-video-translation/", icon: "play", title: "Webinars, courses and videos", text: "Read translated subtitles while you watch a conference talk, a course or a video in another language, even in sessions that last hours, then copy or export the transcript to study it again.", more: "See the webinar and video solution" })}
 ${linkCard({ href: "/en/solutions/livestream-translation/", icon: "video", title: "Livestreams on a computer", text: "Translated subtitles while you watch a livestream in English, Chinese, Japanese or Korean on a computer, with nothing to install in your browser. Honest limits: no phones, and no translating your own livestream.", more: "See the livestream solution" })}
 ${linkCard({ href: "/en/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok Live", text: "How to watch TikTok Live in a desktop browser with translated subtitles, and its own limits.", more: "See the TikTok Live guide" })}
+${linkCard({ href: "/en/solutions/youtube-translation/", icon: "play", title: "YouTube videos and livestreams", text: "Real-time translated subtitles when watching lectures, news, podcasts or YouTube Live in a desktop browser without extensions.", more: "See the YouTube solution" })}
 </div>
 </div></section>
 
@@ -59,6 +60,7 @@ ${sectionHead({ eyebrow: "Quick pick", title: "Which situation, which setup?" })
 <tr><th scope="row">Livestream or TikTok Live</th><td>Watch in a desktop browser, listen to the browser only (macOS), raise the sentence pause if sentences get cut into pieces; not for phones</td></tr>
 <tr><th scope="row">Webinar or conference talk</th><td>Keep the original text showing (on by default), and listen to the player only (macOS)</td></tr>
 <tr><th scope="row">Course or lecture video</th><td>Export the transcript to study it again (Pro), add field-specific terms to the glossary (Pro)</td></tr>
+<tr><th scope="row">YouTube videos and livestreams</th><td>Watch in a desktop browser, listen to the browser only (macOS), place the subtitle bar just under the video; no browser extension needed</td></tr>
 </tbody></table></div>
 </div></section>
 

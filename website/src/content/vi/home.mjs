@@ -10,8 +10,8 @@ const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
 
 export const HOME_FAQ = [
   {
-    q: "Dùng được với Zoom, Teams, Google Meet, Zalo không?",
-    a: `<p>Được, không cần bot hay plugin: app thu âm thanh hệ thống của máy tính nên không phụ thuộc ứng dụng họp. Chúng tôi đã thử thu âm thanh trên macOS với Zoom, Google Meet, Microsoft Teams và Zalo PC (thử nghiệm nội bộ, không phải chứng nhận của các bên đó). Người cùng họp không được thông báo, nên nếu quy định yêu cầu thì bạn tự báo họ.</p>`,
+    q: "Làm sao dịch meeting và cuộc họp Zoom, Teams, Meet mà không cần bot?",
+    a: `<p>AI Translator giúp bạn dịch meeting và cuộc họp trực tuyến mà không cần bot hay plugin: app thu âm thanh hệ thống của máy tính nên không phụ thuộc ứng dụng họp. Chúng tôi đã thử thu âm thanh trên macOS với Zoom, Google Meet, Microsoft Teams và Zalo PC (thử nghiệm nội bộ, không phải chứng nhận của các bên đó). Người cùng họp không được thông báo, nên nếu quy định yêu cầu thì bạn tự báo họ. Xem thêm <a href="/giai-phap/dich-hop-truc-tuyen/">dịch meeting và cuộc họp trực tuyến</a>.</p>`,
   },
   {
     q: "AI Translator có cần internet không?",

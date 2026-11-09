@@ -24,6 +24,7 @@ ${linkCard({ href: "/ja/solutions/online-meeting-translation/", icon: "users", t
 ${linkCard({ href: "/ja/solutions/webinar-and-video-translation/", icon: "play", title: "ウェビナー、講座、動画", text: "ほかの言語のカンファレンスの講演、講座、動画を、何時間にもわたるセッションでも翻訳字幕を読みながら視聴し、あとで文字起こしをコピーしたり書き出したりして復習できます。", more: "ウェビナーと動画のソリューションを見る" })}
 ${linkCard({ href: "/ja/solutions/livestream-translation/", icon: "video", title: "パソコンで見るライブ配信", text: "英語、中国語、日本語、韓国語のライブ配信をパソコンで見ながら翻訳字幕を表示。ブラウザーに何かをインストールする必要はありません。正直な限界：スマホでは使えず、ご自身のライブ配信の翻訳もできません。", more: "ライブ配信のソリューションを見る" })}
 ${linkCard({ href: "/ja/solutions/tiktok-live-translation/", icon: "laptop", title: "TikTok ライブ", text: "パソコンのブラウザーで TikTok ライブを翻訳字幕付きで見る方法と、TikTok ライブならではの限界。", more: "TikTok ライブのガイドを見る" })}
+${linkCard({ href: "/ja/solutions/youtube-translation/", icon: "play", title: "YouTube 動画とライブ配信", text: "パソコンのブラウザーで講義、ニュース、YouTube Live を見ながらリアルタイムで翻訳字幕を表示。拡張機能は不要です。", more: "YouTube のソリューションを見る" })}
 </div>
 </div></section>
 
@@ -57,6 +58,7 @@ ${sectionHead({ eyebrow: "早見表", title: "どの場面に、どの設定？"
 <tr><th scope="row">ライブ配信や TikTok ライブ</th><td>パソコンのブラウザーで視聴し、ブラウザーの音だけを聞き取り（macOS）、文が細切れになるなら文を区切る間の長さを長くする。スマホには非対応</td></tr>
 <tr><th scope="row">ウェビナーやカンファレンスの講演</th><td>原文の表示を残し（初期設定でオン）、プレーヤーの音だけを聞き取る（macOS）</td></tr>
 <tr><th scope="row">講座や講義の動画</th><td>文字起こしを書き出して復習し（Pro）、分野の用語を用語集に追加する（Pro）</td></tr>
+<tr><th scope="row">YouTube 動画とライブ配信</th><td>パソコンのブラウザーで視聴し、ブラウザーの音だけを聞き取り（macOS）、字幕バーを映像のすぐ下に置く。拡張機能は不要</td></tr>
 </tbody></table></div>
 </div></section>
 

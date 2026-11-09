@@ -26,6 +26,7 @@ ${linkCard({ href: "/giai-phap/dich-hop-truc-tuyen/", icon: "users", title: "H�
 ${linkCard({ href: "/giai-phap/dich-webinar-va-video/", icon: "play", title: "Webinar, khóa học và video", text: "Đọc phụ đề dịch khi xem hội thảo, khóa học hay video bằng ngoại ngữ, kể cả phiên dài nhiều giờ, rồi sao chép hoặc xuất bản chép lời để học lại.", more: "Xem giải pháp cho webinar và video" })}
 ${linkCard({ href: "/giai-phap/dich-livestream/", icon: "video", title: "Livestream trên máy tính", text: "Phụ đề dịch khi xem livestream bằng tiếng Anh, Trung, Nhật hay Hàn trên máy tính, không cần cài gì vào trình duyệt. Nói rõ giới hạn: không dùng trên điện thoại, không dịch buổi live của chính bạn cho người xem.", more: "Xem giải pháp cho livestream" })}
 ${linkCard({ href: "/giai-phap/dich-live-tiktok/", icon: "laptop", title: "Live TikTok", text: "Cách xem TikTok LIVE trên trình duyệt máy tính với phụ đề tiếng Việt, và giới hạn riêng của nó.", more: "Xem hướng dẫn dịch live TikTok" })}
+${linkCard({ href: "/giai-phap/dich-youtube/", icon: "play", title: "Dịch YouTube: video & live", text: "Phụ đề dịch trực tiếp khi xem video bài giảng, tin tức, podcast hay YouTube Live trên trình duyệt máy tính mà không cần cài tiện ích mở rộng.", more: "Xem giải pháp cho YouTube" })}
 </div>
 </div></section>
 
@@ -59,6 +60,7 @@ ${sectionHead({ eyebrow: "Chọn nhanh", title: "Tình huống nào, thiết l�
 <tr><th scope="row">Livestream, live TikTok</th><td>Xem live trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), tăng Độ nhạy ngắt câu (số ms) nếu câu bị cắt vụn giữa chừng; không dùng trên điện thoại</td></tr>
 <tr><th scope="row">Webinar, hội thảo</th><td>Giữ hiện câu gốc (mặc định bật), chọn nguồn chỉ nghe trình phát (macOS)</td></tr>
 <tr><th scope="row">Khóa học, video bài giảng</th><td>Xuất bản chép lời để học lại (Pro), thêm thuật ngữ chuyên ngành vào từ điển (Pro)</td></tr>
+<tr><th scope="row">Video và livestream YouTube</th><td>Xem trên trình duyệt máy tính, chọn nguồn chỉ nghe trình duyệt (macOS), đặt thanh phụ đề sát dưới khung video; không cần tiện ích mở rộng</td></tr>
 </tbody></table></div>
 </div></section>
 
