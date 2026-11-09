@@ -132,6 +132,7 @@ export const NAV = {
         { label: "Webinar và video", href: "/giai-phap/dich-webinar-va-video/", hint: "Xem nội dung tiếng nước ngoài" },
         { label: "Dịch livestream", href: "/giai-phap/dich-livestream/", hint: "Phụ đề cho live trên máy tính" },
         { label: "Dịch live TikTok", href: "/giai-phap/dich-live-tiktok/", hint: "Xem trên trình duyệt máy tính" },
+        { label: "Dịch YouTube", href: "/giai-phap/dich-youtube/", hint: "Phụ đề cho video & livestream" },
       ],
     },
     {
@@ -155,6 +156,7 @@ export const NAV = {
         { label: "Webinars and videos", href: "/en/solutions/webinar-and-video-translation/", hint: "Follow foreign-language content" },
         { label: "Livestreams", href: "/en/solutions/livestream-translation/", hint: "Translated subtitles for live video" },
         { label: "TikTok Live", href: "/en/solutions/tiktok-live-translation/", hint: "Watch in a desktop browser" },
+        { label: "YouTube translation", href: "/en/solutions/youtube-translation/", hint: "Subtitles for videos & streams" },
       ],
     },
     {
@@ -178,6 +180,7 @@ export const NAV = {
         { label: "ウェビナーと動画", href: "/ja/solutions/webinar-and-video-translation/", hint: "外国語のコンテンツを理解する" },
         { label: "ライブ配信", href: "/ja/solutions/livestream-translation/", hint: "ライブ映像に翻訳字幕" },
         { label: "TikTok ライブ", href: "/ja/solutions/tiktok-live-translation/", hint: "パソコンのブラウザーで視聴" },
+        { label: "YouTube 翻訳", href: "/ja/solutions/youtube-translation/", hint: "動画とライブ配信に字幕" },
       ],
     },
     {
@@ -201,6 +204,7 @@ export const NAV = {
         { label: "网络研讨会和视频", href: "/zh/solutions/webinar-and-video-translation/", hint: "看懂外语内容" },
         { label: "直播", href: "/zh/solutions/livestream-translation/", hint: "为直播画面显示翻译字幕" },
         { label: "TikTok 直播", href: "/zh/solutions/tiktok-live-translation/", hint: "在电脑浏览器中观看" },
+        { label: "YouTube 翻译", href: "/zh/solutions/youtube-translation/", hint: "视频与直播翻译字幕" },
       ],
     },
     {
@@ -224,6 +228,7 @@ export const NAV = {
         { label: "웨비나와 동영상", href: "/ko/solutions/webinar-and-video-translation/", hint: "외국어 콘텐츠 이해하기" },
         { label: "라이브 방송", href: "/ko/solutions/livestream-translation/", hint: "라이브 영상에 번역 자막" },
         { label: "TikTok 라이브", href: "/ko/solutions/tiktok-live-translation/", hint: "컴퓨터 브라우저에서 시청" },
+        { label: "YouTube 번역", href: "/ko/solutions/youtube-translation/", hint: "동영상 및 라이브 자막" },
       ],
     },
     {
@@ -257,6 +262,7 @@ export const FOOTER = {
         { label: "Webinar và video", href: "/giai-phap/dich-webinar-va-video/" },
         { label: "Dịch livestream", href: "/giai-phap/dich-livestream/" },
         { label: "Dịch live TikTok", href: "/giai-phap/dich-live-tiktok/" },
+        { label: "Dịch YouTube", href: "/giai-phap/dich-youtube/" },
       ],
     },
     {
@@ -295,6 +301,7 @@ export const FOOTER = {
         { label: "Webinars and videos", href: "/en/solutions/webinar-and-video-translation/" },
         { label: "Livestreams", href: "/en/solutions/livestream-translation/" },
         { label: "TikTok Live", href: "/en/solutions/tiktok-live-translation/" },
+        { label: "YouTube translation", href: "/en/solutions/youtube-translation/" },
       ],
     },
     {
@@ -318,19 +325,19 @@ export const FOOTER = {
   ],
   ja: [
     { title: "製品", links: [{ label: "機能", href: "/ja/features/" }, { label: "料金", href: "/ja/pricing/" }, { label: "ダウンロード", href: "/ja/download/" }, { label: "オフライン翻訳とクラウド翻訳", href: "/ja/compare/offline-vs-cloud-translation/" }] },
-    { title: "ソリューション", links: [{ label: "Zoom・Teams・Meet の会議", href: "/ja/solutions/online-meeting-translation/" }, { label: "ウェビナーと動画", href: "/ja/solutions/webinar-and-video-translation/" }, { label: "ライブ配信", href: "/ja/solutions/livestream-translation/" }, { label: "TikTok ライブ", href: "/ja/solutions/tiktok-live-translation/" }] },
+    { title: "ソリューション", links: [{ label: "Zoom・Teams・Meet の会議", href: "/ja/solutions/online-meeting-translation/" }, { label: "ウェビナーと動画", href: "/ja/solutions/webinar-and-video-translation/" }, { label: "ライブ配信", href: "/ja/solutions/livestream-translation/" }, { label: "TikTok ライブ", href: "/ja/solutions/tiktok-live-translation/" }, { label: "YouTube 翻訳", href: "/ja/solutions/youtube-translation/" }] },
     { title: "サポート", links: [{ label: "ユーザーガイド", href: "/ja/guide/" }, { label: "よくある質問", href: "/ja/faq/" }, { label: "トラブルシューティング", href: "/ja/guide/troubleshooting/" }, { label: "お問い合わせ", href: "/ja/contact/" }] },
     { title: "会社情報", links: [{ label: "AI Translator について", href: "/ja/about/" }, { label: "データとセキュリティ", href: "/ja/data-security/" }, { label: "利用規約（英語）", href: "/en/terms/" }, { label: "プライバシーポリシー（英語）", href: "/en/privacy/" }] },
   ],
   zh: [
     { title: "产品", links: [{ label: "功能", href: "/zh/features/" }, { label: "价格", href: "/zh/pricing/" }, { label: "下载", href: "/zh/download/" }, { label: "离线翻译与云端翻译", href: "/zh/compare/offline-vs-cloud-translation/" }] },
-    { title: "解决方案", links: [{ label: "Zoom、Teams、Meet 会议", href: "/zh/solutions/online-meeting-translation/" }, { label: "网络研讨会和视频", href: "/zh/solutions/webinar-and-video-translation/" }, { label: "直播", href: "/zh/solutions/livestream-translation/" }, { label: "TikTok 直播", href: "/zh/solutions/tiktok-live-translation/" }] },
+    { title: "解决方案", links: [{ label: "Zoom、Teams、Meet 会议", href: "/zh/solutions/online-meeting-translation/" }, { label: "网络研讨会和视频", href: "/zh/solutions/webinar-and-video-translation/" }, { label: "直播", href: "/zh/solutions/livestream-translation/" }, { label: "TikTok 直播", href: "/zh/solutions/tiktok-live-translation/" }, { label: "YouTube 翻译", href: "/zh/solutions/youtube-translation/" }] },
     { title: "支持", links: [{ label: "使用指南", href: "/zh/guide/" }, { label: "常见问题", href: "/zh/faq/" }, { label: "故障排除", href: "/zh/guide/troubleshooting/" }, { label: "联系我们", href: "/zh/contact/" }] },
     { title: "公司", links: [{ label: "关于 AI Translator", href: "/zh/about/" }, { label: "数据与安全", href: "/zh/data-security/" }, { label: "使用条款（英文）", href: "/en/terms/" }, { label: "隐私政策（英文）", href: "/en/privacy/" }] },
   ],
   ko: [
     { title: "제품", links: [{ label: "기능", href: "/ko/features/" }, { label: "요금", href: "/ko/pricing/" }, { label: "다운로드", href: "/ko/download/" }, { label: "오프라인 번역과 클라우드 번역", href: "/ko/compare/offline-vs-cloud-translation/" }] },
-    { title: "솔루션", links: [{ label: "Zoom, Teams, Meet 회의", href: "/ko/solutions/online-meeting-translation/" }, { label: "웨비나와 동영상", href: "/ko/solutions/webinar-and-video-translation/" }, { label: "라이브 방송", href: "/ko/solutions/livestream-translation/" }, { label: "TikTok 라이브", href: "/ko/solutions/tiktok-live-translation/" }] },
+    { title: "솔루션", links: [{ label: "Zoom, Teams, Meet 회의", href: "/ko/solutions/online-meeting-translation/" }, { label: "웨비나와 동영상", href: "/ko/solutions/webinar-and-video-translation/" }, { label: "라이브 방송", href: "/ko/solutions/livestream-translation/" }, { label: "TikTok 라이브", href: "/ko/solutions/tiktok-live-translation/" }, { label: "YouTube 번역", href: "/ko/solutions/youtube-translation/" }] },
     { title: "지원", links: [{ label: "사용 가이드", href: "/ko/guide/" }, { label: "자주 묻는 질문", href: "/ko/faq/" }, { label: "문제 해결", href: "/ko/guide/troubleshooting/" }, { label: "문의하기", href: "/ko/contact/" }] },
     { title: "회사", links: [{ label: "AI Translator 소개", href: "/ko/about/" }, { label: "데이터와 보안", href: "/ko/data-security/" }, { label: "이용약관(영어)", href: "/en/terms/" }, { label: "개인정보 처리방침(영어)", href: "/en/privacy/" }] },
   ],
@@ -340,7 +347,8 @@ export const FOOTER = {
 const OG_GROUP = {
   home: "default", features: "features", pricing: "pricing", download: "download", faq: "faq", about: "about", contact: "contact",
   "data-security": "security", "compare-offline-cloud": "compare", solutions: "solutions", "solutions-meetings": "solutions",
-  "solutions-webinar": "solutions", "solutions-livestream": "solutions", "solutions-tiktok-live": "solutions", terms: "legal", privacy: "legal",
+  "solutions-webinar": "solutions", "solutions-livestream": "solutions", "solutions-tiktok-live": "solutions",
+  "solutions-youtube": "solutions", terms: "legal", privacy: "legal",
 };
 export const ogFor = (page) => page.ogImage ?? `/assets/og/${page.id.startsWith("guide") ? "guide" : (OG_GROUP[page.id] ?? "default")}-${page.lang}.jpg`;
 

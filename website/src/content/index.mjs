@@ -8,7 +8,7 @@ import { PUBLISHED, CJK, VI_EN_ONLY, homeOf, tagOf } from "../langs.mjs";
 
 const IDS = [
   "home", "features", "pricing", "download", "faq", "about", "contact", "data-security", "compare-offline-cloud",
-  "solutions", "solutions-meetings", "solutions-webinar", "solutions-livestream", "solutions-tiktok-live",
+  "solutions", "solutions-meetings", "solutions-webinar", "solutions-livestream", "solutions-tiktok-live", "solutions-youtube",
   "guide", "guide-quick-start", "guide-install-macos", "guide-install-windows", "guide-audio-permission", "guide-subtitle-bar", "guide-type-translate", "guide-glossary",
   "guide-history-export", "guide-license", "guide-troubleshooting",
   "terms", "privacy",
@@ -19,6 +19,7 @@ const FILE = {
   "data-security": "data-security", "compare-offline-cloud": "compare-offline-cloud",
   solutions: "solutions", "solutions-meetings": "solutions-meetings", "solutions-webinar": "solutions-webinar",
   "solutions-livestream": "solutions-livestream", "solutions-tiktok-live": "solutions-tiktok-live",
+  "solutions-youtube": "solutions-youtube",
   guide: "guide", "guide-quick-start": "guide-quick-start", "guide-install-macos": "guide-install-macos", "guide-install-windows": "guide-install-windows",
   "guide-audio-permission": "guide-audio-permission", "guide-subtitle-bar": "guide-subtitle-bar",
   "guide-type-translate": "guide-type-translate", "guide-glossary": "guide-glossary",
