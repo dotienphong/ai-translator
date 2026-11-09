@@ -171,23 +171,84 @@ pub fn reset_translation_fallback<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Bọc bộ dịch `local` trong [`FallbackMt`] khi người dùng đang chọn ChatGPT hoặc Gemini. Khi chọn `Local`, trả nguyên `local`.
+/// Bộ cung cấp Cloud MT động cho [`FallbackMt`]: đọc cài đặt hiện tại từ [`AppState`] và API key từ [`Keystore`]
+/// trước mỗi lượt dịch. Tự động khởi tạo lại [`CloudMt`] khi người dùng đổi model hoặc API key.
+struct AppCloudProvider<R: Runtime> {
+    app: AppHandle<R>,
+    cached_endpoint: String,
+    cached_model: String,
+    cached_key: String,
+    cached_cloud: Option<Box<dyn Mt>>,
+}
+
+impl<R: Runtime> DynamicCloud for AppCloudProvider<R> {
+    fn get_cloud<'a>(&'a mut self) -> Result<Option<&'a mut (dyn Mt + 'a)>, ()> {
+        let Some(state) = self.app.try_state::<AppState>() else {
+            return Err(());
+        };
+        let settings = state.settings();
+        let (endpoint, model) = match settings.translation_provider {
+            TranslationProvider::Local => {
+                self.cached_cloud = None;
+                self.cached_endpoint.clear();
+                self.cached_model.clear();
+                self.cached_key.clear();
+                return Err(());
+            }
+            TranslationProvider::Openai => (OPENAI_CHAT_ENDPOINT, settings.openai_model),
+            TranslationProvider::Gemini => (GEMINI_CHAT_ENDPOINT, settings.gemini_model),
+        };
+        let key = match read_provider_key(&self.app, settings.translation_provider) {
+            Some(k) if !k.trim().is_empty() => k,
+            _ => {
+                self.cached_cloud = None;
+                self.cached_endpoint.clear();
+                self.cached_model.clear();
+                self.cached_key.clear();
+                return Ok(None);
+            }
+        };
+
+        if self.cached_cloud.is_none()
+            || self.cached_endpoint != endpoint
+            || self.cached_model != model
+            || self.cached_key != key
+        {
+            match CloudMt::new(endpoint, &model, &key) {
+                Ok(c) => {
+                    self.cached_cloud = Some(Box::new(c));
+                    self.cached_endpoint = endpoint.to_string();
+                    self.cached_model = model;
+                    self.cached_key = key;
+                }
+                Err(_) => {
+                    self.cached_cloud = None;
+                    self.cached_endpoint.clear();
+                    self.cached_model.clear();
+                    self.cached_key.clear();
+                    return Ok(None);
+                }
+            }
+        }
+
+        Ok(self.cached_cloud.as_deref_mut().map(|c| c as &mut (dyn Mt + 'a)))
+    }
+}
+
+/// Bọc bộ dịch `local` trong [`FallbackMt`] điều phối động theo nguồn dịch và model trong cài đặt (Local, OpenAI, Gemini).
+/// Khi người dùng chuyển nguồn dịch hoặc đổi model giữa phiên, [`FallbackMt`] tự động áp dụng ngay ở câu tiếp theo
+/// mà không cần khởi động lại phiên dịch.
 pub fn wrap_mt<R: Runtime>(app: &AppHandle<R>, local: Box<dyn Mt>, fell_back: Arc<AtomicBool>) -> Box<dyn Mt> {
-    let Some(state) = app.try_state::<AppState>() else {
-        return local;
-    };
-    let settings = state.settings();
-    let (endpoint, model) = match settings.translation_provider {
-        TranslationProvider::Local => return local,
-        TranslationProvider::Openai => (OPENAI_CHAT_ENDPOINT, settings.openai_model),
-        TranslationProvider::Gemini => (GEMINI_CHAT_ENDPOINT, settings.gemini_model),
-    };
-    let cloud = read_provider_key(app, settings.translation_provider)
-        .and_then(|key| CloudMt::new(endpoint, model, key).ok())
-        .map(|c| Box::new(c) as Box<dyn Mt>);
     let app_handle = app.clone();
-    Box::new(FallbackMt::new(
-        cloud,
+    let provider = AppCloudProvider {
+        app: app.clone(),
+        cached_endpoint: String::new(),
+        cached_model: String::new(),
+        cached_key: String::new(),
+        cached_cloud: None,
+    };
+    Box::new(FallbackMt::dynamic(
+        Box::new(provider),
         local,
         fell_back,
         Arc::new(move || note_translation_fallback(&app_handle)),
@@ -475,9 +536,19 @@ fn read_cloud_stream(
     Ok(end)
 }
 
+/// Nguồn Cloud động cho [`FallbackMt`]: cho phép nhận biết thay đổi nguồn dịch (Local / OpenAI / Gemini),
+/// đổi model hoặc API Key ngay giữa phiên dịch mà không cần khởi động lại phiên.
+pub trait DynamicCloud: Send {
+    /// - `Err(())`: người dùng chọn Local -> dịch bằng model Local, không kích hoạt cờ fallback.
+    /// - `Ok(Some(cloud))`: người dùng chọn Cloud và đã cấu hình API key -> dịch bằng Cloud.
+    /// - `Ok(None)`: người dùng chọn Cloud nhưng chưa có API key -> kích hoạt fallback về Local.
+    fn get_cloud<'a>(&'a mut self) -> Result<Option<&'a mut (dyn Mt + 'a)>, ()>;
+}
+
 /// Bộ dịch bọc ưu tiên Cloud, tự động chuyển sang `local` đến hết phiên ngay khi Cloud lỗi hoặc thiếu API Key.
 pub struct FallbackMt {
     cloud: Option<Box<dyn Mt>>,
+    dynamic: Option<Box<dyn DynamicCloud>>,
     local: Box<dyn Mt>,
     fell_back: Arc<AtomicBool>,
     on_fallback: Arc<dyn Fn() + Send + Sync>,
@@ -492,36 +563,44 @@ impl FallbackMt {
     ) -> Self {
         Self {
             cloud,
+            dynamic: None,
             local,
             fell_back,
             on_fallback,
         }
     }
 
-    fn trigger_fallback(&self) {
-        if !self.fell_back.swap(true, Ordering::SeqCst) {
-            (self.on_fallback)();
+    pub fn dynamic(
+        dynamic: Box<dyn DynamicCloud>,
+        local: Box<dyn Mt>,
+        fell_back: Arc<AtomicBool>,
+        on_fallback: Arc<dyn Fn() + Send + Sync>,
+    ) -> Self {
+        Self {
+            cloud: None,
+            dynamic: Some(dynamic),
+            local,
+            fell_back,
+            on_fallback,
         }
     }
-}
 
-impl Mt for FallbackMt {
-    fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
-        if !self.fell_back.load(Ordering::SeqCst)
-            && let Some(cloud) = self.cloud.as_mut()
-        {
-            return cloud.count_tokens(text);
+    fn do_fallback(fell_back: &AtomicBool, on_fallback: &Arc<dyn Fn() + Send + Sync>) {
+        if !fell_back.swap(true, Ordering::SeqCst) {
+            on_fallback();
         }
-        self.local.count_tokens(text)
     }
 
-    fn stream(
-        &mut self,
+    fn stream_with_cloud<'a>(
+        mut cloud: Option<&'a mut (dyn Mt + 'a)>,
+        local: &'a mut Box<dyn Mt>,
+        fell_back: &AtomicBool,
+        on_fallback: &Arc<dyn Fn() + Send + Sync>,
         req: &ChatRequest,
         on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
     ) -> Result<StreamEnd, MtError> {
-        if !self.fell_back.load(Ordering::SeqCst) {
-            if let Some(cloud) = self.cloud.as_mut() {
+        if !fell_back.load(Ordering::SeqCst) {
+            if let Some(ref mut cloud) = cloud {
                 let mut emitted = false;
                 match cloud.stream(req, &mut |chunk| {
                     if !chunk.is_empty() {
@@ -531,10 +610,10 @@ impl Mt for FallbackMt {
                 }) {
                     Ok(end) => return Ok(end),
                     Err(err) => {
-                        self.trigger_fallback();
+                        Self::do_fallback(fell_back, on_fallback);
                         if !emitted {
                             // Lỗi trước khi phát bất kỳ chữ nào: chuyển sang Local ngay trong cùng lượt gọi.
-                            return self.local.stream(req, on_delta);
+                            return local.stream(req, on_delta);
                         }
                         // Lỗi giữa chừng sau khi đã phát vài chữ: trả lỗi để `pipeline::translate::translate`
                         // phát `Event::Retry` xóa chữ dở rồi dùng `local` ở lượt thử thứ 2.
@@ -543,10 +622,55 @@ impl Mt for FallbackMt {
                 }
             } else {
                 // Người dùng chọn Cloud nhưng chưa lưu API Key: chuyển sang Local ngay câu đầu tiên.
-                self.trigger_fallback();
+                Self::do_fallback(fell_back, on_fallback);
             }
         }
-        self.local.stream(req, on_delta)
+        local.stream(req, on_delta)
+    }
+}
+
+impl Mt for FallbackMt {
+    fn count_tokens(&mut self, text: &str) -> Result<usize, MtError> {
+        if !self.fell_back.load(Ordering::SeqCst) {
+            if let Some(d) = self.dynamic.as_mut() {
+                if let Ok(Some(ref mut cloud)) = d.get_cloud() {
+                    return cloud.count_tokens(text);
+                }
+            } else if let Some(ref mut cloud) = self.cloud {
+                return cloud.count_tokens(text);
+            }
+        }
+        self.local.count_tokens(text)
+    }
+
+    fn stream(
+        &mut self,
+        req: &ChatRequest,
+        on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
+    ) -> Result<StreamEnd, MtError> {
+        if let Some(d) = self.dynamic.as_mut() {
+            let cloud_target = match d.get_cloud() {
+                Err(()) => return self.local.stream(req, on_delta),
+                Ok(c) => c,
+            };
+            return Self::stream_with_cloud(
+                cloud_target,
+                &mut self.local,
+                &self.fell_back,
+                &self.on_fallback,
+                req,
+                on_delta,
+            );
+        }
+
+        Self::stream_with_cloud(
+            self.cloud.as_deref_mut().map(|c| c as &mut (dyn Mt + '_)),
+            &mut self.local,
+            &self.fell_back,
+            &self.on_fallback,
+            req,
+            on_delta,
+        )
     }
 }
 
@@ -866,5 +990,146 @@ mod tests {
         assert_eq!(end.text, "Xin chào thế giới");
         assert_eq!(end.finish_reason.as_deref(), Some("stop"));
         assert_eq!(end.completion_tokens, Some(4));
+    }
+
+    #[test]
+    fn dynamic_mt_switches_provider_and_model_without_session_restart() {
+        struct MockDynamic {
+            mode: Arc<Mutex<&'static str>>,
+            cloud_a: Box<dyn Mt>,
+            cloud_b: Box<dyn Mt>,
+        }
+        impl DynamicCloud for MockDynamic {
+            fn get_cloud<'a>(&'a mut self) -> Result<Option<&'a mut (dyn Mt + 'a)>, ()> {
+                match *self.mode.lock().unwrap() {
+                    "local" => Err(()),
+                    "cloud_a" => Ok(Some(&mut *self.cloud_a as &mut (dyn Mt + 'a))),
+                    "cloud_b" => Ok(Some(&mut *self.cloud_b as &mut (dyn Mt + 'a))),
+                    "missing_key" => Ok(None),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        let mode = Arc::new(Mutex::new("local"));
+        let cloud_a_calls = Arc::new(AtomicUsize::new(0));
+        let cloud_b_calls = Arc::new(AtomicUsize::new(0));
+        let local_calls = Arc::new(AtomicUsize::new(0));
+        let fell_back = Arc::new(AtomicBool::new(false));
+        let fallback_notified = Arc::new(AtomicUsize::new(0));
+        let notify = fallback_notified.clone();
+
+        let dynamic = MockDynamic {
+            mode: mode.clone(),
+            cloud_a: Box::new(ScriptedMt::new(
+                cloud_a_calls.clone(),
+                vec![ok_stream("Dịch từ Cloud Model A")],
+            )),
+            cloud_b: Box::new(ScriptedMt::new(
+                cloud_b_calls.clone(),
+                vec![ok_stream("Dịch từ Cloud Model B")],
+            )),
+        };
+
+        let mut mt = FallbackMt::dynamic(
+            Box::new(dynamic),
+            Box::new(ScriptedMt::new(
+                local_calls.clone(),
+                vec![
+                    ok_stream("Dịch từ Local 1"),
+                    ok_stream("Dịch từ Local 2"),
+                    ok_stream("Dịch từ Local 3 (khi thiếu key)"),
+                ],
+            )),
+            fell_back.clone(),
+            Arc::new(move || {
+                notify.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // 1. Ban đầu đang ở Local: gọi stream sẽ vào Local, không fallback
+        let out1 = translate(&mut mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out1, Outcome::Done(ref t) if t.text == "Dịch từ Local 1"));
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(cloud_a_calls.load(Ordering::SeqCst), 0);
+        assert!(!fell_back.load(Ordering::SeqCst));
+
+        // 2. Chuyển sang Cloud Model A giữa phiên: câu tiếp theo lập tức dùng Cloud Model A
+        *mode.lock().unwrap() = "cloud_a";
+        let out2 = translate(&mut mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out2, Outcome::Done(ref t) if t.text == "Dịch từ Cloud Model A"));
+        assert_eq!(cloud_a_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert!(!fell_back.load(Ordering::SeqCst));
+
+        // 3. Chuyển sang Cloud Model B giữa phiên: câu tiếp theo lập tức dùng Cloud Model B
+        *mode.lock().unwrap() = "cloud_b";
+        let out3 = translate(&mut mt, &job("Sentence 3"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out3, Outcome::Done(ref t) if t.text == "Dịch từ Cloud Model B"));
+        assert_eq!(cloud_b_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert!(!fell_back.load(Ordering::SeqCst));
+
+        // 4. Chuyển ngược lại Local: câu tiếp theo lập tức dùng Local, không kích hoạt fallback
+        *mode.lock().unwrap() = "local";
+        let out4 = translate(&mut mt, &job("Sentence 4"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out4, Outcome::Done(ref t) if t.text == "Dịch từ Local 2"));
+        assert_eq!(local_calls.load(Ordering::SeqCst), 2);
+        assert!(!fell_back.load(Ordering::SeqCst));
+        assert_eq!(fallback_notified.load(Ordering::SeqCst), 0);
+
+        // 5. Chọn Cloud nhưng chưa có key: lập tức fallback về Local và báo cờ
+        *mode.lock().unwrap() = "missing_key";
+        let out5 = translate(&mut mt, &job("Sentence 5"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out5, Outcome::Done(ref t) if t.text == "Dịch từ Local 3 (khi thiếu key)"));
+        assert_eq!(local_calls.load(Ordering::SeqCst), 3);
+        assert!(fell_back.load(Ordering::SeqCst));
+        assert_eq!(fallback_notified.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn wrap_mt_dynamically_tracks_app_settings() {
+        let app = mock_app();
+        app.manage(Arc::new(Keystore::mock(&app.config().identifier)));
+
+        let local_calls = Arc::new(AtomicUsize::new(0));
+        let fell_back = Arc::new(AtomicBool::new(false));
+        let mut mt = wrap_mt(
+            app.handle(),
+            Box::new(ScriptedMt::new(
+                local_calls.clone(),
+                vec![
+                    ok_stream("Local lần 1"),
+                    ok_stream("Local lần 2"),
+                ],
+            )),
+            fell_back.clone(),
+        );
+
+        // 1. Mặc định là Local: gọi stream đi thẳng vào Local
+        let out1 = translate(&mut *mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out1, Outcome::Done(ref t) if t.text == "Local lần 1"));
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert!(!fell_back.load(Ordering::SeqCst));
+
+        // 2. Chuyển sang Gemini khi chưa có key: wrap_mt nhận biết ngay và fallback về Local
+        let main = window(&app, "main");
+        crate::test_support::invoke(
+            &main,
+            "update_settings",
+            serde_json::json!({
+                "patch": {
+                    "translationProvider": "gemini",
+                    "geminiModel": "gemini-3.1-flash-lite"
+                }
+            }),
+        )
+        .unwrap();
+
+        let out2 = translate(&mut *mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        assert!(matches!(out2, Outcome::Done(ref t) if t.text == "Local lần 2"));
+        assert_eq!(local_calls.load(Ordering::SeqCst), 2);
+        assert!(fell_back.load(Ordering::SeqCst));
+        assert!(app.state::<AppState>().status().translation_fallback);
     }
 }
