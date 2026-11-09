@@ -42,6 +42,9 @@ const TT_VI = "/giai-phap/dich-live-tiktok/";
 const TT_EN = "/en/solutions/tiktok-live-translation/";
 const lsPath = (lang) => (lang === "vi" ? LS_VI : fromEn(LS_EN, lang));
 const ttPath = (lang) => (lang === "vi" ? TT_VI : fromEn(TT_EN, lang));
+const YT_VI = "/giai-phap/dich-youtube/";
+const YT_EN = "/en/solutions/youtube-translation/";
+const ytPath = (lang) => (lang === "vi" ? YT_VI : fromEn(YT_EN, lang));
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", nbsp: " " };
 /** Giải mã một lượt (không giải mã hai lần: "&amp;lt;" phải ra "&lt;"). */
@@ -71,11 +74,12 @@ const WHERE = {
   body: (h) => [text(mainOf(h))],
 };
 
-/** 17 cụm chủ dự án yêu cầu (2026-10-25), nguyên văn. */
+/** 23 cụm chủ dự án yêu cầu (2026-10-25 & 2026-11-09), nguyên văn. */
 const REQUESTED = [
   "dịch livestream ra tiếng việt", "dịch live trực tiếp", "dịch livestream trực tiếp", "dịch live tiktok", "dịch live", "dịch livestream",
   "real time translator", "live video translator", "ai meeting translator", "real-time translation", "ai translator", "ai live translator",
   "live meeting translation", "real time translation", "video translator", "realtime translation", "real-time translator for meetings",
+  "dịch meeting", "dịch cuộc họp", "dịch phụ đề cuộc họp", "dịch trực tuyến", "dịch youtube", "youtube translation",
 ];
 
 /**
@@ -103,10 +107,16 @@ const SEO_TARGETS = [
   { phrase: "real-time translator for meetings", lang: "en", id: "solutions-meetings", where: ["body"] },
   { phrase: "live meeting translation", lang: "en", id: "solutions-meetings", where: ["body"] },
   { phrase: "video translator", lang: "en", id: "solutions-webinar", where: ["body"] },
+  { phrase: "dịch meeting", lang: "vi", id: "solutions-meetings", where: ["title", "h1", "body"] },
+  { phrase: "dịch cuộc họp", lang: "vi", id: "solutions-meetings", where: ["title", "h1", "body"] },
+  { phrase: "dịch phụ đề cuộc họp", lang: "vi", id: "solutions-meetings", where: ["h2", "body"] },
+  { phrase: "dịch trực tuyến", lang: "vi", id: "solutions-meetings", where: ["title", "body"] },
+  { phrase: "dịch youtube", lang: "vi", id: "solutions-youtube", where: ["title", "h1", "body"] },
+  { phrase: "youtube translation", lang: "en", id: "solutions-youtube", where: ["title", "h1", "body"] },
 ];
 
-test("17 cụm từ khóa chủ dự án yêu cầu đều có mục trong SEO_TARGETS", () => {
-  assert.equal(REQUESTED.length, 17);
+test("23 cụm từ khóa chủ dự án yêu cầu đều có mục trong SEO_TARGETS", () => {
+  assert.equal(REQUESTED.length, 23);
   const have = new Set(SEO_TARGETS.map((t) => norm(t.phrase)));
   assert.deepEqual(REQUESTED.filter((r) => !have.has(norm(r))), []);
 });
@@ -139,6 +149,13 @@ const NEEDS = {
     ja: ["TikTok と提携していません"],
     zh: ["与 TikTok 没有关联"],
     ko: ["TikTok과 제휴 관계가 없습니다"],
+  },
+  "solutions-youtube": {
+    vi: ["không chạy trên điện thoại", "không tải video", "không lồng tiếng", "0,76–1,03 giây", "Mac M4 Pro"],
+    en: ["not on phones", "does not download videos", "no dubbing", "0.76–1.03 seconds", "Mac M4 Pro"],
+    ja: ["Mac M4 Pro", "0.76", "1.03"],
+    zh: ["Mac M4 Pro", "0.76", "1.03"],
+    ko: ["Mac M4 Pro", "0.76", "1.03"],
   },
 };
 
