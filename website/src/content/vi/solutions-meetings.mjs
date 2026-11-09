@@ -10,20 +10,20 @@ export default {
   id: "solutions-meetings",
   lang: "vi",
   path: "/giai-phap/dich-hop-truc-tuyen/",
-  title: "Phụ đề dịch họp trực tuyến: Zoom, Teams, Meet, Zalo",
+  title: "Dịch meeting, dịch cuộc họp, dịch trực tuyến Zoom",
   description:
-    "Dùng AI Translator để đọc phụ đề dịch khi họp Zoom, Teams, Google Meet, Zalo với đối tác nước ngoài: không bot, chạy offline. Cách chuẩn bị và giới hạn trung thực.",
+    "Dịch meeting và cuộc họp trực tuyến Zoom, Teams, Meet, Zalo: phụ đề dịch trực tiếp, AI chạy offline trên máy tính, không cần bot. Dùng thử Free 10 ngày.",
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
   modified: "2026-10-24",
-  llm: "Cách dùng AI Translator để có phụ đề dịch khi họp Zoom, Teams, Google Meet, Zalo: chuẩn bị trước họp, phím tắt khi họp, bản chép lời sau họp, app đã thử, quyền riêng tư và giới hạn.",
-  llmTitle: "Phụ đề dịch cho họp trực tuyến (Zoom, Teams, Meet, Zalo)",
+  llm: "Cách dùng AI Translator để dịch meeting, dịch cuộc họp trực tuyến Zoom, Teams, Google Meet, Zalo: chuẩn bị trước họp, dịch phụ đề cuộc họp thời gian thực, phím tắt khi họp, bản chép lời sau họp, app đã thử, quyền riêng tư và giới hạn.",
+  llmTitle: "Dịch meeting, dịch cuộc họp trực tuyến không cần bot",
   body: () => `
 ${pageHero({
   crumbs,
-  title: "Phụ đề dịch cho họp trực tuyến (Zoom, Teams, Meet, Zalo)",
-  lead: "AI Translator hiện phụ đề dịch trực tiếp cho cuộc họp Zoom, Microsoft Teams, Google Meet và Zalo PC bằng cách nghe âm thanh phát ra từ máy tính của bạn. Không cần bot vào phòng, không cần chủ họp bật tính năng nào, và việc nhận dạng cùng dịch chạy ngay trên máy bạn.",
+  title: "Dịch meeting, dịch cuộc họp trực tuyến bằng phụ đề trực tiếp",
+  lead: "AI Translator hỗ trợ dịch meeting và dịch cuộc họp trực tuyến Zoom, Microsoft Teams, Google Meet và Zalo PC bằng cách nghe âm thanh phát ra từ máy tính. Dịch trực tuyến và hiển thị phụ đề trực tiếp, dịch phụ đề cuộc họp chạy offline không cần bot, không cần chủ họp bật tính năng nào.",
   meta: "<span>Cập nhật {{updated}}</span>",
 })}
 
@@ -48,7 +48,7 @@ ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính của 
 </div>
 <div class="stack-lg reveal">
 <span class="eyebrow">Cách giải</span>
-<h2>AI Translator chạy ở phía người nghe</h2>
+<h2>Dịch phụ đề cuộc họp ngay trên máy tính của bạn</h2>
 ${checkList([
   "Thu âm thanh đang phát trên máy (macOS: quyền <em>Ghi âm thanh hệ thống</em>; họp tại chỗ thì chọn thêm nguồn micro; xem <a href=\"/huong-dan/cap-quyen-thu-am-macos/\">cách cấp quyền</a>)",
   "Cắt câu, nhận dạng giọng nói và dịch bằng model chạy trên máy bạn",
