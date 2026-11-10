@@ -554,6 +554,7 @@ pub trait DynamicCloud: Send {
     /// - `Err(())`: người dùng chọn Local -> dịch bằng model Local, không kích hoạt cờ fallback.
     /// - `Ok(Some(cloud))`: người dùng chọn Cloud và đã cấu hình API key -> dịch bằng Cloud.
     /// - `Ok(None)`: người dùng chọn Cloud nhưng chưa có API key -> kích hoạt fallback về Local.
+    #[allow(clippy::result_unit_err)]
     fn get_cloud<'a>(&'a mut self) -> Result<Option<&'a mut (dyn Mt + 'a)>, ()>;
 }
 
