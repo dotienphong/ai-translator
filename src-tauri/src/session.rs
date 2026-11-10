@@ -231,9 +231,15 @@ pub fn plan_for(settings: &Settings, options: StartOptions) -> CapturePlan {
 
 /// Khi dịch bằng Cloud (ChatGPT/Gemini), mỗi lượt gọi qua Internet mất ~600–800 ms. Nếu giữ ngưỡng ngắt đoạn mặc định
 /// 50 ms (thiết kế riêng cho Model Local trên GPU), mỗi nhịp lấy hơi 50 ms giữa các từ sẽ cắt đoạn mới và hủy (`cancel`)
-/// request Cloud của đoạn trước khi nó chưa kịp trả chữ về, gây hiện tượng trễ kéo dài suốt cả câu. Nâng ngưỡng ngắt câu
-/// tối thiểu lên 300 ms khi dùng Cloud để gom trọn cụm từ tự nhiên, chỉ gọi API 1 lần mỗi vế câu.
-const CLOUD_MIN_END_SILENCE_MS: u64 = 300;
+/// request Cloud của đoạn trước khi nó chưa kịp trả chữ về, gây hiện tượng trễ kéo dài suốt cả câu. Đặt ngưỡng ngắt câu
+/// tối thiểu là 200 ms khi dùng Cloud để câu ngắt vừa phải, phản hồi nhanh nhạy và không bị dồn quá dài.
+const CLOUD_MIN_END_SILENCE_MS: u64 = 200;
+/// Khi dùng Cloud MT, giảm dung lượng hàng đợi chờ dịch từ 3 xuống 2 câu để kích hoạt gộp câu sớm (`merge_runs`),
+/// tránh tích lũy nhiều request HTTP song song gây tắc nghẽn và vượt rate-limit.
+const CLOUD_MT_MAX_WAITING: usize = 2;
+/// Nâng ngưỡng cảnh báo "Đang trễ" từ 6s mặc định lên 9s cho Cloud MT, bù đắp thời gian round-trip mạng ~1-2s
+/// mà không làm người dùng hoang mang với cảnh báo nhấp nháy.
+const CLOUD_LAG_WARN_MS: u64 = 9_000;
 
 /// Cấu hình của engine từ cài đặt (§6.9): ngôn ngữ, độ nhạy ngắt câu, cờ ngữ cảnh, công tắc "Dịch trong lúc người nói chưa
 /// dừng" (spec 2026-10-10 §6.3); từ điển thuật ngữ dùng chung; máy có đủ sức cho chế độ đó không (`streaming_supported`,
@@ -271,10 +277,13 @@ pub fn engine_config(
     };
     // Chỉ bật "dịch trong lúc người nói chưa dừng" khi dùng Model Local trên máy đủ nhanh.
     // Nguồn Cloud (ChatGPT/Gemini) có độ trễ mạng qua Internet nên không dùng dịch tạm đầu câu,
-    // đồng thời nâng ngưỡng ngắt đoạn tối thiểu lên 300 ms để tránh cắt vụn và hủy liên hoàn các request Cloud đang chạy.
+    // đồng thời nâng ngưỡng ngắt đoạn tối thiểu lên 500 ms để tránh cắt vụn và hủy liên hoàn các request Cloud đang chạy,
+    // và điều chỉnh hàng đợi MT (gộp sớm khi đầy 2 câu, nới lỏng cảnh báo trễ lên 9s).
     let cloud_active = settings.translation_provider != TranslationProvider::Local;
     if cloud_active {
         pipeline.segmenter.end_silence_ms = pipeline.segmenter.end_silence_ms.max(CLOUD_MIN_END_SILENCE_MS);
+        pipeline.queue.mt_max_waiting = CLOUD_MT_MAX_WAITING;
+        pipeline.queue.lag_warn_ms = CLOUD_LAG_WARN_MS;
     }
     let effective_streaming_supported = streaming_supported && !cloud_active;
     EngineConfig {
@@ -2497,7 +2506,7 @@ mod tests {
         assert_eq!(local_cfg.pipeline.segmenter.end_silence_ms, 50);
         assert!(local_cfg.streaming_supported);
 
-        // Gemini / OpenAI: tắt streaming_supported (dịch tạm đầu câu) và nâng end_silence_ms tối thiểu lên 300 ms.
+        // Gemini / OpenAI: tắt streaming_supported (dịch tạm đầu câu) và nâng end_silence_ms tối thiểu lên 200 ms.
         for provider in [TranslationProvider::Gemini, TranslationProvider::Openai] {
             settings.translation_provider = provider;
             let cloud_cfg = engine_config(
@@ -2508,7 +2517,7 @@ mod tests {
                 SharedGlossary::default(),
                 true,
             );
-            assert_eq!(cloud_cfg.pipeline.segmenter.end_silence_ms, 300);
+            assert_eq!(cloud_cfg.pipeline.segmenter.end_silence_ms, 200);
             assert!(!cloud_cfg.streaming_supported);
         }
 
@@ -2523,5 +2532,26 @@ mod tests {
             true,
         );
         assert_eq!(high_cfg.pipeline.segmenter.end_silence_ms, 450);
+    }
+
+    #[test]
+    fn engine_config_adapts_queue_and_silence_for_cloud_mt() {
+        let mut s = Settings::defaults(UiLanguage::Vi);
+        s.translation_provider = TranslationProvider::Gemini;
+        s.vad_end_silence_ms = 50;
+        let cfg = engine_config(
+            &s,
+            &CapturePlan::Playback {
+                source: AudioSource::System,
+                include_self: false,
+            },
+            PipelineConfig::default(),
+            0,
+            Arc::new(std::sync::RwLock::new(pipeline::glossary::Glossary::default())),
+            true,
+        );
+        assert_eq!(cfg.pipeline.segmenter.end_silence_ms, 200);
+        assert_eq!(cfg.pipeline.queue.mt_max_waiting, 2);
+        assert_eq!(cfg.pipeline.queue.lag_warn_ms, 9000);
     }
 }

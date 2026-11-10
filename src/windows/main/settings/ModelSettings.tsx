@@ -21,13 +21,12 @@ import { UpdateNotice } from "../models/UpdateNotice";
 import { useModels } from "../modelsStore";
 
 const OPENAI_MODEL_LABELS: Record<string, string> = {
-  "gpt-4o-mini": "gpt-4o-mini (Nhanh nhất, ổn định)",
+  "gpt-4o-mini": "gpt-4o-mini (chatgpt-4o-mini - Nhanh nhất, ổn định)",
   "gpt-4.1-mini": "gpt-4.1-mini (Thế hệ mới, phản hồi nhanh)",
   "gpt-4o": "gpt-4o (Tiêu chuẩn, chất lượng cao)",
 };
 
 const GEMINI_MODEL_LABELS: Record<string, string> = {
-  "gemini-flash-lite-latest": "gemini-flash-lite-latest (Nhanh nhất - Tự cập nhật)",
   "gemini-3.1-flash-lite": "gemini-3.1-flash-lite (Rất nhanh, ổn định cao)",
   "gemini-3.5-flash-lite": "gemini-3.5-flash-lite (Cân bằng tốc độ & chất lượng)",
 };
@@ -45,7 +44,7 @@ export function ModelSettings() {
     : "gpt-4o-mini";
   const geminiModel = GEMINI_MODELS.includes(settings?.geminiModel as any)
     ? (settings?.geminiModel as GeminiModel)
-    : "gemini-flash-lite-latest";
+    : "gemini-3.1-flash-lite";
 
   const [keys, setKeys] = useState<TranslationKeysStatus | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState("");

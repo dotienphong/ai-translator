@@ -32,7 +32,6 @@ export type TranslationProvider = "local" | "openai" | "gemini";
 export const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"] as const;
 export type OpenaiModel = (typeof OPENAI_MODELS)[number];
 export const GEMINI_MODELS = [
-  "gemini-flash-lite-latest",
   "gemini-3.1-flash-lite",
   "gemini-3.5-flash-lite",
 ] as const;

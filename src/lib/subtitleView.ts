@@ -175,7 +175,7 @@ export function translationBadge(
     return { text: `ChatGPT · ${openaiModel || "gpt-4o-mini"}`, isFallback: false };
   }
   if (provider === "gemini") {
-    return { text: `Gemini · ${geminiModel || "gemini-flash-lite-latest"}`, isFallback: false };
+    return { text: `Gemini · ${geminiModel || "gemini-3.1-flash-lite"}`, isFallback: false };
   }
   return { text: localLabel, isFallback: false };
 }

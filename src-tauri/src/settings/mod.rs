@@ -255,15 +255,11 @@ pub enum TranslationProvider {
     Gemini,
 }
 
-pub const OPENAI_MODELS: &[&str] = &["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"];
+pub const OPENAI_MODELS: &[&str] = &["gpt-4o-mini", "chatgpt-4o-mini", "gpt-4.1-mini", "gpt-4o"];
 pub const DEFAULT_OPENAI_MODEL: &str = "gpt-4o-mini";
 
-pub const GEMINI_MODELS: &[&str] = &[
-    "gemini-flash-lite-latest",
-    "gemini-3.1-flash-lite",
-    "gemini-3.5-flash-lite",
-];
-pub const DEFAULT_GEMINI_MODEL: &str = "gemini-flash-lite-latest";
+pub const GEMINI_MODELS: &[&str] = &["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"];
+pub const DEFAULT_GEMINI_MODEL: &str = "gemini-3.1-flash-lite";
 
 fn default_openai_model() -> String {
     DEFAULT_OPENAI_MODEL.to_string()

@@ -11,7 +11,7 @@
 use std::io::{BufRead, BufReader, Read};
 use std::ops::ControlFlow;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use pipeline::llama::{ChatRequest, StreamEnd};
@@ -34,8 +34,16 @@ pub const OPENAI_CHAT_ENDPOINT: &str = "https://api.openai.com/v1/chat/completio
 pub const GEMINI_CHAT_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(12);
 const WARMUP_TTL_SECS: u64 = 45;
+const MAX_CONSECUTIVE_FAILURES: usize = 3;
+
+fn is_fatal_cloud_error(err: &MtError) -> bool {
+    match err {
+        MtError::Failed(msg) => msg.contains("HTTP 401") || msg.contains("HTTP 403"),
+        MtError::Unavailable(_) => true,
+    }
+}
 
 /// Trạng thái đã cấu hình API Key của hai nguồn Cloud, trả về cho Cài đặt › Model. Không bao giờ chứa toàn bộ key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -321,7 +329,7 @@ fn is_gemini_endpoint(endpoint: &str) -> bool {
 /// Dựng thân JSON cho Native Gemini REST API (`:streamGenerateContent?alt=sse`), tắt hoặc giảm tối đa bước suy luận ngầm
 /// (`thinkingConfig`) theo từng dòng model để đạt TTFT ~600–800 ms và tránh lỗi timeout 10 giây của lớp tương thích OpenAI.
 fn build_gemini_native_body(model: &str, prompt: &str, max_tokens: u32) -> serde_json::Value {
-    let max_output = max_tokens.max(512);
+    let max_output = (max_tokens * 2).clamp(128, 512);
     let gen_config = if model.contains("3.1") || model.contains("3.5") {
         serde_json::json!({
             "temperature": 0.0,
@@ -331,7 +339,7 @@ fn build_gemini_native_body(model: &str, prompt: &str, max_tokens: u32) -> serde
             }
         })
     } else {
-        // `gemini-flash-lite-latest` mặc định đã tắt thinking; không gửi `thinkingConfig` để đạt tốc độ nhanh nhất (~640 ms).
+        // Model không phải 3.x thì không gửi `thinkingConfig` để đạt tốc độ nhanh nhất.
         serde_json::json!({
             "temperature": 0.0,
             "maxOutputTokens": max_output
@@ -407,8 +415,12 @@ impl Mt for CloudMt {
                 .send()
                 .map_err(|_| MtError::Failed("không kết nối được tới máy chủ Cloud MT".into()))?
         } else {
+            let model_name = match self.model.as_str() {
+                "chatgpt-4o-mini" => "gpt-4o-mini",
+                other => other,
+            };
             let body = serde_json::json!({
-                "model": self.model,
+                "model": model_name,
                 "messages": [
                     {
                         "role": "system",
@@ -418,7 +430,7 @@ impl Mt for CloudMt {
                 ],
                 "stream": true,
                 "temperature": 0.0,
-                "max_tokens": req.max_tokens.max(256),
+                "max_tokens": (req.max_tokens * 2).clamp(128, 512),
             });
             self.http
                 .post(&self.endpoint)
@@ -551,6 +563,7 @@ pub struct FallbackMt {
     dynamic: Option<Box<dyn DynamicCloud>>,
     local: Box<dyn Mt>,
     fell_back: Arc<AtomicBool>,
+    consecutive_failures: Arc<AtomicUsize>,
     on_fallback: Arc<dyn Fn() + Send + Sync>,
 }
 
@@ -566,6 +579,7 @@ impl FallbackMt {
             dynamic: None,
             local,
             fell_back,
+            consecutive_failures: Arc::new(AtomicUsize::new(0)),
             on_fallback,
         }
     }
@@ -581,6 +595,7 @@ impl FallbackMt {
             dynamic: Some(dynamic),
             local,
             fell_back,
+            consecutive_failures: Arc::new(AtomicUsize::new(0)),
             on_fallback,
         }
     }
@@ -595,6 +610,7 @@ impl FallbackMt {
         mut cloud: Option<&'a mut (dyn Mt + 'a)>,
         local: &'a mut Box<dyn Mt>,
         fell_back: &AtomicBool,
+        consecutive_failures: &AtomicUsize,
         on_fallback: &Arc<dyn Fn() + Send + Sync>,
         req: &ChatRequest,
         on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
@@ -608,9 +624,16 @@ impl FallbackMt {
                     }
                     on_delta(chunk)
                 }) {
-                    Ok(end) => return Ok(end),
+                    Ok(end) => {
+                        consecutive_failures.store(0, Ordering::SeqCst);
+                        return Ok(end);
+                    }
                     Err(err) => {
-                        Self::do_fallback(fell_back, on_fallback);
+                        let fatal = emitted || is_fatal_cloud_error(&err);
+                        let fails = consecutive_failures.fetch_add(1, Ordering::SeqCst) + 1;
+                        if fatal || fails >= MAX_CONSECUTIVE_FAILURES {
+                            Self::do_fallback(fell_back, on_fallback);
+                        }
                         if !emitted {
                             // Lỗi trước khi phát bất kỳ chữ nào: chuyển sang Local ngay trong cùng lượt gọi.
                             return local.stream(req, on_delta);
@@ -657,6 +680,7 @@ impl Mt for FallbackMt {
                 cloud_target,
                 &mut self.local,
                 &self.fell_back,
+                &self.consecutive_failures,
                 &self.on_fallback,
                 req,
                 on_delta,
@@ -667,6 +691,7 @@ impl Mt for FallbackMt {
             self.cloud.as_deref_mut().map(|c| c as &mut (dyn Mt + '_)),
             &mut self.local,
             &self.fell_back,
+            &self.consecutive_failures,
             &self.on_fallback,
             req,
             on_delta,
@@ -821,6 +846,127 @@ mod tests {
     }
 
     #[test]
+    fn transient_cloud_error_falls_back_for_current_sentence_but_recovers_on_next() {
+        let cloud_calls = Arc::new(AtomicUsize::new(0));
+        let local_calls = Arc::new(AtomicUsize::new(0));
+        let fell_back = Arc::new(AtomicBool::new(false));
+        let fallback_notified = Arc::new(AtomicUsize::new(0));
+        let notify = fallback_notified.clone();
+
+        let mut mt = FallbackMt::new(
+            Some(Box::new(ScriptedMt::new(
+                cloud_calls.clone(),
+                vec![
+                    Box::new(|_| Err(MtError::Failed("cloud HTTP 429".into()))),
+                    ok_stream("Bản dịch Cloud câu 2"),
+                ],
+            ))),
+            Box::new(ScriptedMt::new(
+                local_calls.clone(),
+                vec![ok_stream("Bản dịch Local câu 1")],
+            )),
+            fell_back.clone(),
+            Arc::new(move || {
+                notify.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // Câu 1: Cloud lỗi tạm thời 429 -> dùng Local câu 1, fell_back vẫn false
+        let out1 = translate(&mut mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out1, Outcome::Done(ref t) if t.text == "Bản dịch Local câu 1"));
+        assert_eq!(cloud_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert!(!fell_back.load(Ordering::SeqCst));
+        assert_eq!(fallback_notified.load(Ordering::SeqCst), 0);
+
+        // Câu 2: Cloud phục hồi thành công -> dịch bằng Cloud câu 2, fell_back vẫn false
+        let out2 = translate(&mut mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out2, Outcome::Done(ref t) if t.text == "Bản dịch Cloud câu 2"));
+        assert_eq!(cloud_calls.load(Ordering::SeqCst), 2);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert!(!fell_back.load(Ordering::SeqCst));
+        assert_eq!(fallback_notified.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn three_consecutive_transient_errors_trigger_permanent_fallback() {
+        let cloud_calls = Arc::new(AtomicUsize::new(0));
+        let local_calls = Arc::new(AtomicUsize::new(0));
+        let fell_back = Arc::new(AtomicBool::new(false));
+        let fallback_notified = Arc::new(AtomicUsize::new(0));
+        let notify = fallback_notified.clone();
+
+        let mut mt = FallbackMt::new(
+            Some(Box::new(ScriptedMt::new(
+                cloud_calls.clone(),
+                vec![
+                    Box::new(|_| Err(MtError::Failed("cloud HTTP 429".into()))),
+                    Box::new(|_| Err(MtError::Failed("cloud timeout".into()))),
+                    Box::new(|_| Err(MtError::Failed("đứt mạng".into()))),
+                ],
+            ))),
+            Box::new(ScriptedMt::new(
+                local_calls.clone(),
+                vec![
+                    ok_stream("Local câu 1"),
+                    ok_stream("Local câu 2"),
+                    ok_stream("Local câu 3"),
+                    ok_stream("Local câu 4"),
+                ],
+            )),
+            fell_back.clone(),
+            Arc::new(move || {
+                notify.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // Lần 1: Lỗi tạm thời 1
+        let out1 = translate(&mut mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out1, Outcome::Done(ref t) if t.text == "Local câu 1"));
+        assert!(!fell_back.load(Ordering::SeqCst));
+        assert_eq!(cloud_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+
+        // Lần 2: Lỗi tạm thời 2
+        let out2 = translate(&mut mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out2, Outcome::Done(ref t) if t.text == "Local câu 2"));
+        assert!(!fell_back.load(Ordering::SeqCst));
+        assert_eq!(cloud_calls.load(Ordering::SeqCst), 2);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 2);
+
+        // Lần 3: Lỗi tạm thời 3 -> Đạt MAX_CONSECUTIVE_FAILURES (3) -> kích hoạt permanent fallback!
+        let out3 = translate(&mut mt, &job("Sentence 3"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out3, Outcome::Done(ref t) if t.text == "Local câu 3"));
+        assert!(fell_back.load(Ordering::SeqCst));
+        assert_eq!(fallback_notified.load(Ordering::SeqCst), 1);
+        assert_eq!(cloud_calls.load(Ordering::SeqCst), 3);
+        assert_eq!(local_calls.load(Ordering::SeqCst), 3);
+
+        // Lần 4: Đã fell_back -> đi thẳng vào Local, không gọi Cloud nữa
+        let out4 = translate(&mut mt, &job("Sentence 4"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out4, Outcome::Done(ref t) if t.text == "Local câu 4"));
+        assert!(fell_back.load(Ordering::SeqCst));
+        assert_eq!(
+            cloud_calls.load(Ordering::SeqCst),
+            3,
+            "không gọi Cloud thêm lần nào nữa"
+        );
+        assert_eq!(local_calls.load(Ordering::SeqCst), 4);
+    }
+
+    #[test]
     fn cloud_error_mid_stream_triggers_retry_then_uses_local() {
         let cloud_calls = Arc::new(AtomicUsize::new(0));
         let local_calls = Arc::new(AtomicUsize::new(0));
@@ -957,14 +1103,12 @@ mod tests {
 
     #[test]
     fn gemini_native_body_and_sse_parser_handle_all_models_and_thoughts() {
-        let b_lite = build_gemini_native_body("gemini-flash-lite-latest", "Hi", 48);
-        assert_eq!(b_lite["generationConfig"]["maxOutputTokens"], 512);
-        assert!(b_lite["generationConfig"].get("thinkingConfig").is_none());
-
         let b_31 = build_gemini_native_body("gemini-3.1-flash-lite", "Hi", 48);
+        assert_eq!(b_31["generationConfig"]["maxOutputTokens"], 128);
         assert_eq!(b_31["generationConfig"]["thinkingConfig"]["thinkingLevel"], "MINIMAL");
 
         let b_35 = build_gemini_native_body("gemini-3.5-flash-lite", "Hi", 48);
+        assert_eq!(b_35["generationConfig"]["maxOutputTokens"], 128);
         assert_eq!(b_35["generationConfig"]["thinkingConfig"]["thinkingLevel"], "MINIMAL");
 
         assert_eq!(
@@ -990,6 +1134,15 @@ mod tests {
         assert_eq!(end.text, "Xin chào thế giới");
         assert_eq!(end.finish_reason.as_deref(), Some("stop"));
         assert_eq!(end.completion_tokens, Some(4));
+    }
+
+    #[test]
+    fn gemini_native_body_clamps_max_output_tokens_appropriately() {
+        let b_short = build_gemini_native_body("gemini-3.1-flash-lite", "Hi", 32);
+        assert_eq!(b_short["generationConfig"]["maxOutputTokens"], 128);
+
+        let b_long = build_gemini_native_body("gemini-3.1-flash-lite", "A long sentence...", 300);
+        assert_eq!(b_long["generationConfig"]["maxOutputTokens"], 512);
     }
 
     #[test]
@@ -1048,7 +1201,9 @@ mod tests {
         );
 
         // 1. Ban đầu đang ở Local: gọi stream sẽ vào Local, không fallback
-        let out1 = translate(&mut mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out1 = translate(&mut mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out1, Outcome::Done(ref t) if t.text == "Dịch từ Local 1"));
         assert_eq!(local_calls.load(Ordering::SeqCst), 1);
         assert_eq!(cloud_a_calls.load(Ordering::SeqCst), 0);
@@ -1056,7 +1211,9 @@ mod tests {
 
         // 2. Chuyển sang Cloud Model A giữa phiên: câu tiếp theo lập tức dùng Cloud Model A
         *mode.lock().unwrap() = "cloud_a";
-        let out2 = translate(&mut mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out2 = translate(&mut mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out2, Outcome::Done(ref t) if t.text == "Dịch từ Cloud Model A"));
         assert_eq!(cloud_a_calls.load(Ordering::SeqCst), 1);
         assert_eq!(local_calls.load(Ordering::SeqCst), 1);
@@ -1064,7 +1221,9 @@ mod tests {
 
         // 3. Chuyển sang Cloud Model B giữa phiên: câu tiếp theo lập tức dùng Cloud Model B
         *mode.lock().unwrap() = "cloud_b";
-        let out3 = translate(&mut mt, &job("Sentence 3"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out3 = translate(&mut mt, &job("Sentence 3"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out3, Outcome::Done(ref t) if t.text == "Dịch từ Cloud Model B"));
         assert_eq!(cloud_b_calls.load(Ordering::SeqCst), 1);
         assert_eq!(local_calls.load(Ordering::SeqCst), 1);
@@ -1072,7 +1231,9 @@ mod tests {
 
         // 4. Chuyển ngược lại Local: câu tiếp theo lập tức dùng Local, không kích hoạt fallback
         *mode.lock().unwrap() = "local";
-        let out4 = translate(&mut mt, &job("Sentence 4"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out4 = translate(&mut mt, &job("Sentence 4"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out4, Outcome::Done(ref t) if t.text == "Dịch từ Local 2"));
         assert_eq!(local_calls.load(Ordering::SeqCst), 2);
         assert!(!fell_back.load(Ordering::SeqCst));
@@ -1080,7 +1241,9 @@ mod tests {
 
         // 5. Chọn Cloud nhưng chưa có key: lập tức fallback về Local và báo cờ
         *mode.lock().unwrap() = "missing_key";
-        let out5 = translate(&mut mt, &job("Sentence 5"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out5 = translate(&mut mt, &job("Sentence 5"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out5, Outcome::Done(ref t) if t.text == "Dịch từ Local 3 (khi thiếu key)"));
         assert_eq!(local_calls.load(Ordering::SeqCst), 3);
         assert!(fell_back.load(Ordering::SeqCst));
@@ -1098,16 +1261,15 @@ mod tests {
             app.handle(),
             Box::new(ScriptedMt::new(
                 local_calls.clone(),
-                vec![
-                    ok_stream("Local lần 1"),
-                    ok_stream("Local lần 2"),
-                ],
+                vec![ok_stream("Local lần 1"), ok_stream("Local lần 2")],
             )),
             fell_back.clone(),
         );
 
         // 1. Mặc định là Local: gọi stream đi thẳng vào Local
-        let out1 = translate(&mut *mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out1 = translate(&mut *mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out1, Outcome::Done(ref t) if t.text == "Local lần 1"));
         assert_eq!(local_calls.load(Ordering::SeqCst), 1);
         assert!(!fell_back.load(Ordering::SeqCst));
@@ -1126,7 +1288,9 @@ mod tests {
         )
         .unwrap();
 
-        let out2 = translate(&mut *mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| ControlFlow::Continue(()));
+        let out2 = translate(&mut *mt, &job("Sentence 2"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
         assert!(matches!(out2, Outcome::Done(ref t) if t.text == "Local lần 2"));
         assert_eq!(local_calls.load(Ordering::SeqCst), 2);
         assert!(fell_back.load(Ordering::SeqCst));

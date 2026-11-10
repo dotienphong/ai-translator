@@ -380,7 +380,10 @@ mod tests {
         let d = current();
         assert_eq!(d.translation_provider, TranslationProvider::Local);
         assert_eq!(d.openai_model, "gpt-4o-mini");
-        assert_eq!(d.gemini_model, "gemini-flash-lite-latest");
+        assert_eq!(d.gemini_model, "gemini-3.1-flash-lite");
+
+        let s_alias = apply(&d, &json!({ "openaiModel": "chatgpt-4o-mini" })).unwrap();
+        assert_eq!(s_alias.openai_model, "chatgpt-4o-mini");
 
         let s = apply(
             &d,
