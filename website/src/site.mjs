@@ -123,6 +123,7 @@ export const T = {
 
 export const NAV = {
   vi: [
+    { label: "Trang chủ", href: "/" },
     { label: "Tính năng", href: "/tinh-nang/" },
     {
       label: "Giải pháp",
@@ -147,6 +148,7 @@ export const NAV = {
     { label: "Hỏi đáp", href: "/cau-hoi-thuong-gap/" },
   ],
   en: [
+    { label: "Home", href: "/en/" },
     { label: "Features", href: "/en/features/" },
     {
       label: "Solutions",
@@ -171,6 +173,7 @@ export const NAV = {
     { label: "FAQ", href: "/en/faq/" },
   ],
   ja: [
+    { label: "ホーム", href: "/ja/" },
     { label: "機能", href: "/ja/features/" },
     {
       label: "ソリューション",
@@ -195,6 +198,7 @@ export const NAV = {
     { label: "よくある質問", href: "/ja/faq/" },
   ],
   zh: [
+    { label: "首页", href: "/zh/" },
     { label: "功能", href: "/zh/features/" },
     {
       label: "解决方案",
@@ -219,6 +223,7 @@ export const NAV = {
     { label: "常见问题", href: "/zh/faq/" },
   ],
   ko: [
+    { label: "홈", href: "/ko/" },
     { label: "기능", href: "/ko/features/" },
     {
       label: "솔루션",
