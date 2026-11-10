@@ -247,18 +247,19 @@ ${floatB ? `<span class="floaty b">${icon(floatB.icon)} ${esc(floatB.text)}</spa
 export function plansGrid(lang, { ctaLabel, freeLabel, featured = "yearly", detail = true } = {}) {
   const L = S[lang].plans;
   void detail;
+  const isVi = lang === "vi";
   return `<div class="plans">${PLANS.map((p) => {
     const f = p.code === featured;
     const card = L.cards[p.code];
-    const price = p.priceVnd === 0 ? L.free : vnd(p.priceVnd, lang);
-    // Giá USD khi trả bằng thẻ quốc tế (spec 2026-10-14): chỉ gói trả phí; chưa gồm thuế (nói ở chú thích dưới lưới gói).
-    const usdLine = p.priceUsdCents > 0 ? `<p class="usd">${esc(L.usd(usd(p.priceUsdCents, lang)))}</p>` : "";
+    const price = p.priceVnd === 0 ? L.free : isVi ? vnd(p.priceVnd, lang) : usd(p.priceUsdCents, lang);
+    const subPrice = isVi ? usd(p.priceUsdCents, lang) : vnd(p.priceVnd, lang);
+    const subLine = p.priceUsdCents > 0 ? `<p class="usd">${esc(L.sub(subPrice))}</p>` : "";
     return `<div class="plan${f ? " featured" : ""} reveal">
 ${f ? `<span class="tag">${esc(L.best)}</span>` : ""}
 <h3>${esc(planName(p, lang))}</h3>
 <p class="for">${esc(card.for)}</p>
 <div class="price"><b>${esc(price)}</b></div>
-${usdLine}
+${subLine}
 <p class="per">${esc(card.per)}</p>
 ${checkList(card.feats.map(esc))}
 <a class="btn ${f ? "btn-primary" : "btn-secondary"} btn-lg" href="${T[lang].cta.href}">${esc(p.priceVnd === 0 ? freeLabel ?? ctaLabel : ctaLabel)}</a>

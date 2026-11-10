@@ -59,7 +59,7 @@ ${feature({ icon: "wifi-off", title: "Offline khi dịch", text: "Nhận dạng 
 ${feature({ icon: "info", title: "Trung thực về trạng thái", text: "Chưa làm được thì ghi là chưa làm được. macOS chưa notarize, Windows chưa ký mã, máy nào chưa đo: chúng tôi nói thẳng, trên website và trong app." })}
 ${feature({ icon: "lock", title: "Không quảng cáo, không analytics", text: "App không có quảng cáo và không có analytics. Khi gặp lỗi, app tự gửi báo cáo lỗi đã che dữ liệu cá nhân (không có âm thanh hay nội dung cuộc họp) để chúng tôi sửa lỗi; bạn tắt được ở Cài đặt. Chúng tôi sống nhờ gói trả phí, không nhờ dữ liệu của bạn." })}
 ${feature({ icon: "video", title: "Không bot, không plugin", text: "Không mời bot vào cuộc họp, không cài plugin vào app họp. Dùng thử Free cần đăng nhập bằng Google; gói trả phí kích hoạt bằng license key gửi qua email và không cần đăng nhập." })}
-${feature({ icon: "gauge", title: "Số đo kèm điều kiện", text: "Con số về tốc độ hay chất lượng trên website này đều ghi máy đo và điều kiện; chỗ chưa đo thì ghi là chưa đo. Xem <a href=\"/tinh-nang/#hieu-nang\">hiệu năng</a>." })}
+${feature({ icon: "gauge", title: "Số đo kèm điều kiện", text: "Con số về tốc độ hay chất lượng trên website này đều ghi máy đo và điều kiện; chỗ chưa đo thì ghi là chưa đo. Xem <a href=\"/tinh-nang/\">tính năng</a>." })}
 </div>
 </div></section>
 

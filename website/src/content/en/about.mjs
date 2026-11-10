@@ -59,7 +59,7 @@ ${feature({ icon: "wifi-off", title: "Offline while translating", text: "Speech 
 ${feature({ icon: "info", title: "Honest about status", text: "If we have not done something yet, we say so. macOS is not notarized yet, Windows is not code-signed yet, some machines are not measured: we say so plainly, on the website and in the app." })}
 ${feature({ icon: "lock", title: "No ads, no analytics", text: "The app has no ads and no analytics. When it hits an error, it sends an error report with personal data scrubbed out (no audio and no meeting content) so we can fix the problem; you can turn that off in Settings. We make a living from paid plans, not from your data." })}
 ${feature({ icon: "video", title: "No bot, no plugin", text: "No bot joins your meeting and no plugin goes into your meeting app. The Free trial needs you to sign in with Google; paid plans are activated with a license key sent by email and need no sign-in." })}
-${feature({ icon: "gauge", title: "Numbers with conditions", text: "Every speed or quality figure on this website comes with the machine and conditions it was measured under; what we have not measured, we say we have not measured. See <a href=\"/en/features/#performance\">features and performance</a>." })}
+${feature({ icon: "gauge", title: "Numbers with conditions", text: "Every speed or quality figure on this website comes with the machine and conditions it was measured under; what we have not measured, we say we have not measured. See <a href=\"/en/features/\">features</a>." })}
 </div>
 </div></section>
 

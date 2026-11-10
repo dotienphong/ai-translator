@@ -30,7 +30,6 @@ ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイ
 <a class="card card-link" href="#audio-source"><h3>音声ソース</h3><p class="muted">どの会議アプリでも、ボット不要</p></a>
 <a class="card card-link" href="#shortcuts"><h3>ショートカットとトレイ</h3><p class="muted">会議から離れずに操作</p></a>
 <a class="card card-link" href="#models"><h3>モデルとハードウェア</h3><p class="muted">Standard と Lite のパック</p></a>
-<a class="card card-link" href="#performance"><h3>パフォーマンス</h3><p class="muted">測定値と測定条件</p></a>
 </div>
 </div></section>
 
@@ -39,7 +38,7 @@ ${sectionHead({ eyebrow: "デバイス上の AI", title: "会議をクラウド�
 ${dataFlow("ja")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "ローカルで動く 2 つの AI モデル", text: "1 つが音声を認識し、もう 1 つが翻訳します。どちらも一度ダウンロードすれば、GPU または CPU を使ってあなたのパソコン上で動きます。", accent: true })}
-${feature({ icon: "zap", title: "遠回りしないから低遅延", text: "サーバーとの往復がないため、話し手が文を言い終えるとすぐに翻訳が表示されます。Mac M4 Pro での中央値は 1.1 秒未満で、測定条件は下の「パフォーマンス」に記載しています。" })}
+${feature({ icon: "zap", title: "遠回りしないから低遅延", text: "サーバーとの往復がないため、話し手が文を言い終えるとすぐに翻訳が表示されます。Mac M4 Pro での中央値は 1.1 秒未満です。" })}
 ${feature({ icon: "lock", title: "会話のデータはパソコンに残ります", text: "音声は RAM 上にだけ存在し、文字起こしと翻訳はパソコンに残ります。履歴は初期設定でオフで、オンにした場合もパソコン上で暗号化されます。" })}
 </div>
 </div></section>
@@ -49,7 +48,7 @@ ${feature({ icon: "lock", title: "会話のデータはパソコンに残りま�
 <div class="stack-lg reveal">
 <span class="eyebrow">リアルタイム翻訳</span>
 <h2>聞き取り、認識、翻訳、字幕表示をひとつの流れで</h2>
-<p>AI Translator はパソコンで再生されている音声を取り込み、文ごとに区切って音声を認識し、翻訳して字幕バーに表示します。Mac M4 Pro では、話し手が文を言い終えてから約 1 秒（中央値）で翻訳全体が表示されます。ほかのパソコンでは遅くなることがあります。<a href=\"#performance\">測定結果</a>をご覧ください。</p>
+<p>AI Translator はパソコンで再生されている音声を取り込み、文ごとに区切って音声を認識し、翻訳して字幕バーに表示します。Mac M4 Pro では、話し手が文を言い終えてから約 1 秒（中央値）で翻訳全体が表示されます。ほかのパソコンでは遅くなることがあります。</p>
 ${checkList([
   "話される音声と翻訳の両方で <strong>5 言語</strong>：英語、中国語（中文）、日本語、韓国語（한국어）、ベトナム語（Tiếng Việt）。今後さらに言語を追加する予定です（時期は未定）",
   "<em>会議で話される言語</em>でチェックした言語の中から話されている言語を<strong>自動検出</strong>。話される言語がわかっているときは、<em>音声の言語</em>で 1 つに<strong>固定</strong>することもできます",
@@ -249,49 +248,8 @@ ${facts([
   ["macOS", "macOS 14.2 以降、Apple シリコン（M1 以降）<small>Intel Mac 版はありません</small>"],
   ["RAM", "8 GB 以上、16 GB 推奨"],
   ["ディスク", "ダウンロードするモデルのサイズに加えて 1 GB 以上の空き"],
-  ["Windows", "Windows 10/11 64 ビット（x64）、AVX2 対応の CPU<small>Standard パックには VRAM 6 GB 以上のディスクリート GPU を推奨。まだコード署名されていないため、インストール時に SmartScreen が警告することがあります。Windows での遅延は内蔵グラフィックスのノートパソコン 1 台で予備テストをしただけで、Mac M4 Pro より遅くなります（「パフォーマンス」をご覧ください）</small>"],
+  ["Windows", "Windows 10/11 64 ビット（x64）、AVX2 対応の CPU<small>Standard パックには VRAM 6 GB 以上のディスクリート GPU を推奨。まだコード署名されていないため、インストール時に SmartScreen が警告することがあります。Windows での遅延は内蔵グラフィックスのノートパソコン 1 台で予備テストをしただけで、Mac M4 Pro より遅くなります</small>"],
 ])}
-</div></section>
-
-<section class="section" id="performance"><div class="container">
-${sectionHead({ eyebrow: "パフォーマンス", title: "実際の測定値を、測定条件とともに", text: "公開するのは、測定したマシンで実際に測定した値だけです。テストしていないマシンもはっきりお伝えします。", center: true })}
-<div class="table-wrap reveal" role="region" aria-label="測定したパフォーマンス" tabindex="0"><table>
-<thead><tr><th scope="col">測定（Mac M4 Pro 24 GB、macOS 26、Apple GPU）</th><th scope="col">Standard パック</th><th scope="col">Lite パック</th></tr></thead>
-<tbody>
-<tr><th scope="row">遅延の中央値（p50）：話し手が文を言い終えてから翻訳全体が表示されるまで</th><td>0.76〜1.03 秒</td><td>0.61〜0.84 秒</td></tr>
-<tr><th scope="row">p90 の遅延</th><td>0.94〜1.34 秒</td><td>0.73〜1.14 秒</td></tr>
-<tr><th scope="row">翻訳の最初の単語が表示されるまで（p50）</th><td>0.63〜0.69 秒</td><td>0.52〜0.57 秒</td></tr>
-<tr><th scope="row">実行中の RAM</th><td>2.9 GiB</td><td>1.8〜1.9 GiB</td></tr>
-</tbody></table></div>
-<div class="grid grid-2">
-${feature({ icon: "gauge", title: "長時間のセッション", text: "5 時間 23 分の連続セッション 1 回（英語の講義動画、アドホック署名のリリースビルド）：6,019 セグメント、エラーなし、遅延の中央値 0.48 秒。2 時間の安定性テストでは、どのコンポーネントも再起動しませんでした。" })}
-${feature({ icon: "languages", title: "翻訳と認識の品質", text: "アプリ自身の翻訳経路を使い、ベトナム語が関わる 8 方向で行った社内テストでは、Standard パックの翻訳モデルは翻訳品質の自動スコア（0〜1、下の表）で平均約 0.84 でした。翻訳モデルは、別のテストセットで複数のモデルを比較して選びました。きれいな読み上げ音声では、Standard パックのベトナム語認識の単語誤り率は 8.7% です。これは読み上げ音声であり、実際の会議の会話ではありません。" })}
-</div>
-<h3 class="reveal" id="quality-by-direction">方向別の翻訳品質と認識品質</h3>
-<p class="reveal">翻訳品質の自動スコアは、アプリ自身の翻訳経路（実際の利用と同じ構成）で、1 方向につき 100 文（ベトナム語 → 中国語、日本語、韓国語は 40 文）で測定しました。0〜1 の相対的なスコアで、高いほど良い結果です。<strong>正解率のパーセンテージではありません</strong>。</p>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">方向（テキスト）</th><th scope="col">Standard パック</th><th scope="col">Lite パック</th></tr></thead>
-<tbody>
-<tr><th scope="row">英語 → ベトナム語</th><td>0.842</td><td>0.841</td></tr>
-<tr><th scope="row">中文 → ベトナム語</th><td>0.829</td><td>0.831</td></tr>
-<tr><th scope="row">日本語 → ベトナム語</th><td>0.830</td><td>0.815</td></tr>
-<tr><th scope="row">한국어 → ベトナム語</th><td>0.834</td><td>0.822</td></tr>
-<tr><th scope="row">ベトナム語 → 英語</th><td>0.821</td><td>0.822</td></tr>
-<tr><th scope="row">ベトナム語 → 中文</th><td>0.836</td><td>0.821</td></tr>
-<tr><th scope="row">ベトナム語 → 日本語</th><td>0.847</td><td>0.845</td></tr>
-<tr><th scope="row">ベトナム語 → 한국어</th><td>0.851</td><td>0.842</td></tr>
-</tbody></table></div>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">音声認識（誤り率、低いほど良い）</th><th scope="col">Standard パック</th><th scope="col">Lite パック</th></tr></thead>
-<tbody>
-<tr><th scope="row">英語（単語誤り）</th><td>5.4%</td><td>6.6%</td></tr>
-<tr><th scope="row">ベトナム語（単語誤り）</th><td>8.7%</td><td>22.5%</td></tr>
-<tr><th scope="row">中文（文字誤り）</th><td>5.6%</td><td>9.6%</td></tr>
-<tr><th scope="row">日本語（文字誤り）</th><td>4.5%</td><td>13.1%</td></tr>
-<tr><th scope="row">한국어（文字誤り）</th><td>4.1%</td><td>8.2%</td></tr>
-</tbody></table></div>
-<p class="small muted reveal">読み方：翻訳のテストセットは日常の話し言葉に寄っているため、会議の発話の目安にすぎません。認識はきれいな読み上げ音声（1 言語あたり約 15 分）で測定したもので、実際の会議の会話ではありません。狭帯域の音声（通話モードの Bluetooth ヘッドセットのような音）を模したテストでは誤り率が上がりました。実際のヘッドセットではテストしていません。上の 8 方向はすべてベトナム語が関わる方向です。英語、中文、日本語、한국어 のあいだのほかの 12 方向も動作しますが、品質スコアはまだありません。Lite パックは、ベトナム語、日本語、韓国語、中国語の認識が目に見えて不正確になります。</p>
-${callout({ kind: "warn", title: "測定していないこと、約束しないこと", text: "上の数値はすべて Mac M4 Pro 1 台で、文を区切る間の長さを 300&nbsp;ms にして測定したものです（アプリの現在の初期設定は 50&nbsp;ms。5 時間のセッションは初期設定で実施）。次の項目は測定していません：M1 の Mac、8 GB のパソコン、Windows のディスクリート GPU、バッテリーと消費電力、実際の会議の会話や Bluetooth ヘッドセット経由での精度、ベトナム語が関わらない方向の翻訳品質（動作はしますが、公開できる品質スコアがありません）。Windows ノートパソコン 1 台（Core i5-1345U、内蔵グラフィックス、RAM 32 GB、Windows 11。設定ごとに 17〜23 文のセッションを 6 回）での予備テストでは、遅延の中央値は Lite パックで 1.3〜2.6 秒、Standard パックで 2.7〜5.4 秒で、遅延の目標を満たしませんでした。このノートパソコンは最低要件のマシンより高性能なので、これは非力な PC での数値ではありません。" })}
 </div></section>
 
 <section class="section section-alt"><div class="container">

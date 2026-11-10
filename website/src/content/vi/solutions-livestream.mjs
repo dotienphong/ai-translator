@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "Dịch livestream ra tiếng Việt bằng cách nào?",
-    a: `<p>Cài AI Translator trên máy tính, mở livestream trong trình duyệt, chọn tiếng Việt ở ô Dịch sang rồi bấm Bắt đầu. App nghe âm thanh đang phát ra từ máy và hiện phụ đề tiếng Việt trên một thanh nổi, với độ trễ trung vị 0,76–1,03 giây, tính từ lúc người nói dừng câu, khi đo trên Mac M4 Pro (gói model Chuẩn). Live có thể bằng tiếng Anh, Trung, Nhật hay Hàn; cả bốn chiều sang tiếng Việt đều đã có điểm đo chất lượng dịch (<a href="/tinh-nang/#chat-luong-theo-chieu">xem bảng</a>).</p>`,
+    a: `<p>Cài AI Translator trên máy tính, mở livestream trong trình duyệt, chọn tiếng Việt ở ô Dịch sang rồi bấm Bắt đầu. App nghe âm thanh đang phát ra từ máy và hiện phụ đề tiếng Việt trên một thanh nổi, với độ trễ trung vị 0,76–1,03 giây, tính từ lúc người nói dừng câu, khi đo trên Mac M4 Pro (gói model Chuẩn). Live có thể bằng tiếng Anh, Trung, Nhật hay Hàn; cả bốn chiều sang tiếng Việt đều được hỗ trợ (xem <a href="/tinh-nang/">tính năng</a>).</p>`,
   },
   {
     q: "Có dịch được live TikTok, YouTube và Facebook không?",
@@ -120,7 +120,7 @@ ${checkList([
   "<strong>Bạn là người phát live và muốn dịch cho người xem của mình.</strong> App làm phụ đề để chính người dùng app đọc, trên thanh nổi ở máy của họ. App không đưa phụ đề hay giọng dịch vào buổi live của bạn.",
   "<strong>Bạn cần ghi lại buổi live, tải video hoặc tạo file phụ đề từ file video.</strong> App không ghi âm hay ghi hình xuống đĩa và không xử lý file video; nó chỉ có bản chép lời bằng chữ và không có chế độ tóm tắt.",
   "<strong>Âm thanh không rõ.</strong> Nhạc nền lớn, tiếng ồn hay nhiều người nói chồng lên nhau làm nhận dạng kém đi và bản dịch dễ sai.",
-  "<strong>Máy yếu hoặc cần tốc độ trên Windows.</strong> Độ trễ 0,76–1,03 giây là đo trên Mac M4 Pro với gói model Chuẩn; Windows mới đo sơ bộ trên một laptop có GPU tích hợp và chậm hơn (<a href=\"/tinh-nang/#hieu-nang\">điều kiện đo</a>).",
+  "<strong>Máy yếu hoặc cần tốc độ trên Windows.</strong> Độ trễ 0,76–1,03 giây là đo trên Mac M4 Pro với gói model Chuẩn; Windows mới đo sơ bộ trên một laptop có GPU tích hợp và chậm hơn (<a href=\"/tinh-nang/\">chi tiết</a>).",
   "<strong>Buổi live không nói tiếng Anh, Trung, Nhật, Hàn hay Việt.</strong> App chỉ hỗ trợ năm ngôn ngữ này; live bằng tiếng Thái, tiếng Indonesia hay ngôn ngữ khác chưa dịch được.",
 ], true)}
 ${callout({ kind: "warn", title: "Bản dịch tự động có thể sai.", text: "Đừng dựa vào AI Translator cho quyết định quan trọng (mua bán, hợp đồng, y tế, pháp lý, tài chính) mà chưa kiểm tra lại với người có chuyên môn." })}

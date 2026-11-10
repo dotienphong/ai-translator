@@ -95,7 +95,7 @@ ${featureTabs({
       lead: "应用收听电脑上正在播放的音频，把译文显示在悬浮字幕条上。不会有机器人加入会议。",
       bullets: [
         "五种语言，任意两种之间互译：英语、中文、日语、韩语、越南语；自动检测说话的语言",
-        `说话人说完一句话后，字幕就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href="/zh/features/#performance">测试条件</a>）`,
+        `说话人说完一句话后，字幕就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href="/zh/features/">详细信息</a>）`,
         `可用于 Zoom、Teams、Meet 和 Zalo；线下会议把采集来源选为<strong>麦克风</strong>（<a href="/zh/features/#microphone">使用方法</a>）；也适用于你在电脑上观看的直播（<a href="/zh/solutions/livestream-translation/">直播翻译</a>）`,
       ],
       cta: { href: "/zh/features/", label: "查看全部功能" },

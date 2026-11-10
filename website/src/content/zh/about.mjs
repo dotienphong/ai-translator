@@ -57,7 +57,7 @@ ${feature({ icon: "wifi-off", title: "翻译时离线", text: "语音识别和�
 ${feature({ icon: "info", title: "如实说明现状", text: "还没做到的事，我们就说还没做到。macOS 还没有经过公证，Windows 还没有代码签名，有些机器还没有测量：我们在网站和应用里都坦白说明。" })}
 ${feature({ icon: "lock", title: "没有广告，没有统计分析", text: "应用没有广告，也没有统计分析。遇到错误时，它会发送一份去除了个人数据的错误报告（不含音频和会议内容），以便我们修复问题；你可以在设置中关闭。我们靠付费套餐维持，而不是靠你的数据。" })}
 ${feature({ icon: "video", title: "无需机器人，无需插件", text: "不会有机器人加入你的会议，也不会在会议应用中安装插件。Free 试用需要使用 Google 账号登录；付费套餐通过邮件发送的许可证密钥激活，无需登录。" })}
-${feature({ icon: "gauge", title: "数字都附带条件", text: "本网站上的每一个速度或质量数据都附有测量所用的机器和条件；没有测量过的，我们就说没有测量过。请参阅<a href=\"/zh/features/#performance\">功能和性能</a>。" })}
+${feature({ icon: "gauge", title: "数字都附带条件", text: "本网站上的每一个速度或质量数据都附有测量所用的机器和条件；没有测量过的，我们就说没有测量过。请参阅<a href=\"/zh/features/\">功能列表</a>。" })}
 </div>
 </div></section>
 

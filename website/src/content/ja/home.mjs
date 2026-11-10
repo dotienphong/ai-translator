@@ -95,7 +95,7 @@ ${featureTabs({
       lead: "パソコンで再生されている音声を聞き取り、翻訳をフローティング字幕バーに表示します。会議にボットは参加しません。",
       bullets: [
         "5 つの言語のうち、どの 2 つのあいだでも翻訳：英語、中国語、日本語、韓国語、ベトナム語。話されている言語は自動で検出します",
-        `話し手が文を言い終えると字幕が表示されます。Mac M4 Pro（Standard モデルパック）での中央値は 1.1 秒未満で、ほかのパソコンでは遅くなることがあります（<a href="/ja/features/#performance">測定条件</a>）`,
+        `話し手が文を言い終えると字幕が表示されます。Mac M4 Pro（Standard モデルパック）での中央値は 1.1 秒未満で、ほかのパソコンでは遅くなることがあります（<a href="/ja/features/">詳細</a>）`,
         `Zoom、Teams、Meet、Zalo で使えます。対面の会議は入力元を<strong>マイク</strong>にします（<a href="/ja/features/#microphone">使い方</a>）。パソコンで見るライブ配信にも使えます（<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>）`,
       ],
       cta: { href: "/ja/features/", label: "すべての機能を見る" },

@@ -9,6 +9,7 @@ export const S = {
       free: "Miễn phí",
       best: "Tiết kiệm nhất",
       usd: (price) => `hoặc ${price} bằng thẻ quốc tế`,
+      sub: (price) => `hoặc ${price} bằng thẻ quốc tế`,
       cards: {
         free: { for: "Dùng thử trước khi quyết định.", per: "Dùng thử 10 ngày · mỗi máy một lần", feats: ["Phụ đề dịch trực tiếp, đủ 5 ngôn ngữ", "30 phút mỗi ngày trong 10 ngày dùng thử", "Thanh phụ đề tùy chỉnh, phím tắt, sao chép bản chép lời"] },
         monthly: { for: "Cho người họp thường xuyên, dự án ngắn hạn.", per: "cho mỗi 30 ngày · trả trước", feats: ["50 giờ dịch cho mỗi chu kỳ 30 ngày", "Tính năng Pro: từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown", "Gia hạn khi cần; với thẻ có thể bật tự động gia hạn, hủy bất cứ lúc nào"] },
@@ -43,6 +44,7 @@ export const S = {
       free: "Free",
       best: "Best value",
       usd: (price) => `or ${price} by international card`,
+      sub: (price) => `or ${price} via VietQR`,
       cards: {
         free: { for: "Try it before you decide.", per: "10-day trial · once per device", feats: ["Live translated subtitles in all 5 languages", "30 minutes per day during the 10-day trial", "Subtitle bar, shortcuts and copying the transcript"] },
         monthly: { for: "For regular meetings and short projects.", per: "per 30 days · prepaid", feats: ["50 hours of translation per 30-day cycle", "Pro features: glossary, history, TXT/SRT/Markdown export", "Renew when you need it; with a card you can turn on auto-renewal and cancel any time"] },
@@ -77,6 +79,7 @@ export const S = {
       free: "無料",
       best: "最もお得",
       usd: (price) => `またはカードで ${price}`,
+      sub: (price) => `または VietQR で ${price}`,
       cards: {
         free: { for: "購入前にまずお試しください。", per: "10 日間のお試し · 1 台につき 1 回", feats: ["5 言語すべてでリアルタイム翻訳字幕", "10 日間のお試し期間中、1 日 30 分", "字幕バー、ショートカット、文字起こしのコピー"] },
         monthly: { for: "定期的な会議や短期のプロジェクトに。", per: "30 日ごと · 前払い", feats: ["30 日サイクルごとに 50 時間の翻訳", "Pro 機能：用語集、履歴、TXT/SRT/Markdown 書き出し", "必要なときに更新。カードなら自動更新も選べ、いつでも解約できます"] },
@@ -118,6 +121,7 @@ export const S = {
       free: "免费",
       best: "最划算",
       usd: (price) => `或用国际银行卡支付 ${price}`,
+      sub: (price) => `或使用 VietQR 支付 ${price}`,
       cards: {
         free: { for: "先试用，再决定。", per: "试用 10 天 · 每台设备一次", feats: ["5 种语言的实时翻译字幕", "10 天试用期内每天 30 分钟", "字幕条、快捷键和复制转写记录"] },
         monthly: { for: "适合经常开会和短期项目。", per: "每 30 天 · 预付", feats: ["每个 30 天周期 50 小时翻译", "Pro 功能：术语表、历史记录、TXT/SRT/Markdown 导出", "需要时再续费；银行卡可选自动续费，随时取消"] },
@@ -159,6 +163,7 @@ export const S = {
       free: "무료",
       best: "가장 경제적",
       usd: (price) => `또는 카드로 ${price}`,
+      sub: (price) => `또는 VietQR로 ${price}`,
       cards: {
         free: { for: "결정하기 전에 먼저 써 보세요.", per: "10일 체험 · 기기당 1회", feats: ["5개 언어 모두 실시간 번역 자막", "10일 체험 기간 동안 하루 30분", "자막 바, 단축키, 받아쓰기 복사"] },
         monthly: { for: "정기적인 회의와 단기 프로젝트에.", per: "30일마다 · 선불", feats: ["30일 주기마다 50시간 번역", "Pro 기능: 용어집, 기록, TXT/SRT/Markdown 내보내기", "필요할 때 갱신. 카드는 자동 갱신을 선택할 수 있고 언제든 해지할 수 있습니다"] },

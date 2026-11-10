@@ -97,7 +97,7 @@ ${featureTabs({
       lead: "The app listens to the audio playing on your computer and shows the translation on a floating subtitle bar. No bot joins the meeting.",
       bullets: [
         "Five languages, translated between any two of them: English, Chinese, Japanese, Korean, Vietnamese; the spoken language is detected automatically",
-        `Subtitles appear after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href="/en/features/#performance">test conditions</a>)`,
+        `Subtitles appear after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href="/en/features/">details</a>)`,
         `Works with Zoom, Teams, Meet and Zalo; in-person meetings through the <strong>Microphone</strong> source (<a href="/en/features/#microphone">how it works</a>); livestreams you watch on a computer (<a href="/en/solutions/livestream-translation/">livestream translation</a>)`,
       ],
       cta: { href: "/en/features/", label: "See all features" },

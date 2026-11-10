@@ -30,7 +30,6 @@ ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", 
 <a class="card card-link" href="#audio-source"><h3>音频来源</h3><p class="muted">任何会议应用，无需机器人</p></a>
 <a class="card card-link" href="#shortcuts"><h3>快捷键和托盘</h3><p class="muted">不离开会议就能控制</p></a>
 <a class="card card-link" href="#models"><h3>模型和硬件</h3><p class="muted">Standard 和 Lite 模型包</p></a>
-<a class="card card-link" href="#performance"><h3>性能</h3><p class="muted">实测数据，附测试条件</p></a>
 </div>
 </div></section>
 
@@ -39,7 +38,7 @@ ${sectionHead({ eyebrow: "设备端 AI", title: "AI 翻译，无需把会议放�
 ${dataFlow("zh")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "两个在本地运行的 AI 模型", text: "一个模型识别语音，一个模型负责翻译。两者都只需下载一次，之后利用 GPU 或 CPU 在你的电脑上运行。", accent: true })}
-${feature({ icon: "zap", title: "不绕路，所以延迟低", text: "不需要往返服务器，说话人说完一句话后译文很快就会出现。在 Mac M4 Pro 上中位数低于 1.1 秒；测试条件见下方的“性能”部分。" })}
+${feature({ icon: "zap", title: "不绕路，所以延迟低", text: "不需要往返服务器，说话人说完一句话后译文很快就会出现。在 Mac M4 Pro 上中位数低于 1.1 秒。" })}
 ${feature({ icon: "lock", title: "对话数据留在你的电脑上", text: "音频只存在于 RAM 中；转写文本和译文留在你的电脑上。历史记录默认关闭，开启后也会在你的电脑上加密保存。" })}
 </div>
 </div></section>
@@ -49,7 +48,7 @@ ${feature({ icon: "lock", title: "对话数据留在你的电脑上", text: "音
 <div class="stack-lg reveal">
 <span class="eyebrow">实时翻译</span>
 <h2>收听、识别、翻译、显示字幕，一气呵成</h2>
-<p>AI Translator 采集电脑上播放的音频，把它切分成句子，识别语音，进行翻译，再把结果显示在字幕条上。在 Mac M4 Pro 上，说话人说完一句话后约 1 秒（中位数）就会显示完整译文；其他电脑可能更慢，请查看<a href=\"#performance\">测量数据</a>。</p>
+<p>AI Translator 采集电脑上播放的音频，把它切分成句子，识别语音，进行翻译，再把结果显示在字幕条上。在 Mac M4 Pro 上，说话人说完一句话后约 1 秒（中位数）就会显示完整译文；其他电脑可能更慢。</p>
 ${checkList([
   "源音频和译文都支持<strong>五种语言</strong>：英语、中文、日语（日本語）、韩语（한국어）、越南语（Tiếng Việt）。我们计划在未来增加更多语言（暂无时间表）",
   "在你于<em>会议中使用的语言</em>里勾选的语言中<strong>自动检测</strong>正在说的语言；如果你知道会说哪种语言，也可以在<em>源语言</em>中<strong>固定</strong>为一种",
@@ -249,49 +248,8 @@ ${facts([
   ["macOS", "macOS 14.2 或更高版本，Apple 芯片（M1 或更新）<small>没有 Intel Mac 版本</small>"],
   ["内存", "至少 8 GB，建议 16 GB"],
   ["磁盘", "在要下载的模型大小之外，至少还需 1 GB 可用空间"],
-  ["Windows", "Windows 10/11 64 位（x64），支持 AVX2 的 CPU<small>Standard 模型包建议使用 6 GB 或以上显存的独立显卡。尚未进行代码签名，所以安装时 SmartScreen 可能会发出警告；Windows 上的延迟只在一台使用集成显卡的笔记本上做过初步测试，比 Mac M4 Pro 慢（见“性能”）</small>"],
+  ["Windows", "Windows 10/11 64 位（x64），支持 AVX2 的 CPU<small>Standard 模型包建议使用 6 GB 或以上显存的独立显卡。尚未进行代码签名，所以安装时 SmartScreen 可能会发出警告；Windows 上的延迟只在一台使用集成显卡的笔记本上做过初步测试，比 Mac M4 Pro 慢</small>"],
 ])}
-</div></section>
-
-<section class="section" id="performance"><div class="container">
-${sectionHead({ eyebrow: "性能", title: "真实测量数据，附测试条件", text: "我们只公布实际测得的数据，并说明是在哪台机器上测的；没有测试过的机器，我们也会如实说明。", center: true })}
-<div class="table-wrap reveal" role="region" aria-label="性能测量" tabindex="0"><table>
-<thead><tr><th scope="col">测量项目（Mac M4 Pro 24 GB，macOS 26，Apple GPU）</th><th scope="col">Standard 模型包</th><th scope="col">Lite 模型包</th></tr></thead>
-<tbody>
-<tr><th scope="row">延迟中位数（p50）：从说话人说完一句话到完整译文出现</th><td>0.76–1.03 秒</td><td>0.61–0.84 秒</td></tr>
-<tr><th scope="row">p90 延迟</th><td>0.94–1.34 秒</td><td>0.73–1.14 秒</td></tr>
-<tr><th scope="row">第一个译词出现（p50）</th><td>0.63–0.69 秒</td><td>0.52–0.57 秒</td></tr>
-<tr><th scope="row">运行时内存</th><td>2.9 GiB</td><td>1.8–1.9 GiB</td></tr>
-</tbody></table></div>
-<div class="grid grid-2">
-${feature({ icon: "gauge", title: "长时间会话", text: "一次连续 5 小时 23 分的会话（英语讲座视频，临时签名的发布版本）：6,019 个片段，没有错误，延迟中位数 0.48 秒。在 2 小时的稳定性测试中，没有任何组件重启。" })}
-${feature({ icon: "languages", title: "翻译和识别质量", text: "在一项内部测试中，我们通过应用自己的翻译流程测试了八个涉及越南语的方向，Standard 模型包的翻译模型在自动翻译质量评分（0 到 1，见下表）上平均约 0.84。翻译模型是在另一套测试集上比较多个模型后选出的。在清晰的朗读语音上，Standard 模型包的越南语识别词错误率为 8.7%。这是朗读语音，不是真实的会议对话。" })}
-</div>
-<h3 class="reveal" id="quality-by-direction">各方向的翻译和识别质量</h3>
-<p class="reveal">自动翻译质量评分通过应用自己的翻译流程测得（与实际使用的设置相同），每个方向 100 句（越南语 → 中文、日语、韩语为 40 句）。这是 0 到 1 的相对分数，越高越好；<strong>它不是准确率百分比</strong>。</p>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">方向（文本）</th><th scope="col">Standard 模型包</th><th scope="col">Lite 模型包</th></tr></thead>
-<tbody>
-<tr><th scope="row">英语 → 越南语</th><td>0.842</td><td>0.841</td></tr>
-<tr><th scope="row">中文 → 越南语</th><td>0.829</td><td>0.831</td></tr>
-<tr><th scope="row">日本語 → 越南语</th><td>0.830</td><td>0.815</td></tr>
-<tr><th scope="row">한국어 → 越南语</th><td>0.834</td><td>0.822</td></tr>
-<tr><th scope="row">越南语 → 英语</th><td>0.821</td><td>0.822</td></tr>
-<tr><th scope="row">越南语 → 中文</th><td>0.836</td><td>0.821</td></tr>
-<tr><th scope="row">越南语 → 日本語</th><td>0.847</td><td>0.845</td></tr>
-<tr><th scope="row">越南语 → 한국어</th><td>0.851</td><td>0.842</td></tr>
-</tbody></table></div>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">语音识别（错误率，越低越好）</th><th scope="col">Standard 模型包</th><th scope="col">Lite 模型包</th></tr></thead>
-<tbody>
-<tr><th scope="row">英语（词错误）</th><td>5.4%</td><td>6.6%</td></tr>
-<tr><th scope="row">越南语（词错误）</th><td>8.7%</td><td>22.5%</td></tr>
-<tr><th scope="row">中文（字错误）</th><td>5.6%</td><td>9.6%</td></tr>
-<tr><th scope="row">日本語（字错误）</th><td>4.5%</td><td>13.1%</td></tr>
-<tr><th scope="row">한국어（字错误）</th><td>4.1%</td><td>8.2%</td></tr>
-</tbody></table></div>
-<p class="small muted reveal">如何解读：翻译测试集偏向日常口语，所以只能粗略反映会议用语；识别是在清晰的朗读语音（每种语言约 15 分钟）上测得的，不是真实的会议对话；在模拟窄带音频（类似通话模式下的蓝牙耳机）的测试中错误率会上升，我们没有测试过真实的耳机。上面八个方向都涉及越南语；英语、中文、日本語和한국어之间的其他 12 个方向可以使用，但还没有质量评分。Lite 模型包识别越南语、日语、韩语和中文的准确度明显较低。</p>
-${callout({ kind: "warn", title: "我们没有测量、也不承诺的内容", text: "上面的所有数据都在同一台 Mac M4 Pro 上测得，断句停顿设为 300&nbsp;ms（应用当前的默认值是 50&nbsp;ms；5 小时的会话使用的是默认值）。我们没有测量：M1 Mac、8 GB 内存的电脑、Windows 独立显卡、电池和功耗、真实会议对话或蓝牙耳机下的准确度，以及不涉及越南语的方向的翻译质量（可以使用，但没有可公布的质量评分）。在一台 Windows 笔记本（Core i5-1345U，集成显卡，32 GB 内存，Windows 11；每种设置 6 次会话，每次 17–23 句）上的初步测试中，Lite 模型包的延迟中位数为 1.3–2.6 秒，Standard 模型包为 2.7–5.4 秒，没有达到我们的延迟目标。这台笔记本比我们的最低配置更强，所以这些不是弱配置电脑上的数据。" })}
 </div></section>
 
 <section class="section section-alt"><div class="container">

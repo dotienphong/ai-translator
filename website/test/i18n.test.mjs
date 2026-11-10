@@ -140,11 +140,11 @@ test("glue: nhãn bảng theo ngôn ngữ", () => {
   assert.ok(html.includes('<span class="sr-only">項目</span>'));
 });
 
-test("plansGrid tiếng Nhật: tên gói tiếng Anh, giá VND, dòng thẻ US$, nút tới /ja/download/", () => {
+test("plansGrid tiếng Nhật: tên gói tiếng Anh, giá USD, dòng VietQR, nút tới /ja/download/", () => {
   const html = plansGrid("ja", { ctaLabel: "ダウンロード" });
   assert.deepEqual([...html.matchAll(/<h3>([^<]*)<\/h3>/g)].map((m) => m[1]), ["Free", "Monthly", "6 Months", "Yearly"]);
-  assert.ok(html.includes("<b>無料</b>") && html.includes("<b>50,000 ₫</b>"));
-  assert.ok(html.includes('<p class="usd">またはカードで US$3.99</p>'));
+  assert.ok(html.includes("<b>無料</b>") && html.includes("<b>US$3.99</b>"));
+  assert.ok(html.includes('<p class="usd">または VietQR で 50,000 ₫</p>'));
   assert.equal((html.match(/href="\/ja\/download\/"/g) ?? []).length, 4);
 });
 

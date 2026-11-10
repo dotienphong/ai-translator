@@ -15,7 +15,7 @@ export default {
   software: true,
   breadcrumbs: crumbs,
   modified: "2026-11-03",
-  llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models), with performance figures and the conditions they were measured under.",
+  llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models).",
   llmTitle: "AI Translator features",
   body: () => `
 ${pageHero({ crumbs, title: "Live meeting translation features, running on your computer", lead: "This is what AI Translator can do today, exactly as it works in the app. Anything that is only in the paid plans is marked clearly." })}
@@ -32,7 +32,6 @@ ${pageHero({ crumbs, title: "Live meeting translation features, running on your 
 <a class="card card-link" href="#audio-source"><h3>Audio source</h3><p class="muted">Any meeting app, no bot</p></a>
 <a class="card card-link" href="#shortcuts"><h3>Shortcuts and tray</h3><p class="muted">Control without leaving the meeting</p></a>
 <a class="card card-link" href="#models"><h3>Models and hardware</h3><p class="muted">Standard and Lite packs</p></a>
-<a class="card card-link" href="#performance"><h3>Performance</h3><p class="muted">Measured, with conditions</p></a>
 </div>
 </div></section>
 
@@ -41,7 +40,7 @@ ${sectionHead({ eyebrow: "On-device AI", title: "AI translation without putting 
 ${dataFlow("en")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "Two AI models running locally", text: "One model recognizes speech and one translates. Both are downloaded once and then run on your machine using the GPU or the CPU.", accent: true })}
-${feature({ icon: "zap", title: "Low latency because there is no detour", text: "There is no round trip to a server, so the translation appears right after the speaker finishes a sentence. Median under 1.1 seconds on a Mac M4 Pro; the test conditions are in the Performance section below." })}
+${feature({ icon: "zap", title: "Low latency because there is no detour", text: "There is no round trip to a server, so the translation appears right after the speaker finishes a sentence. Median under 1.1 seconds on a Mac M4 Pro." })}
 ${feature({ icon: "lock", title: "Conversation data stays on your computer", text: "Audio lives only in RAM; the transcript and translation stay on your machine. History is off by default and, if you turn it on, is encrypted on your computer." })}
 </div>
 </div></section>
@@ -51,7 +50,7 @@ ${feature({ icon: "lock", title: "Conversation data stays on your computer", tex
 <div class="stack-lg reveal">
 <span class="eyebrow">Live translation</span>
 <h2>Listen, recognize, translate and show subtitles in one loop</h2>
-<p>AI Translator captures the audio playing on your computer, splits it into sentences, recognizes the speech, translates it and shows the result on the subtitle bar. On a Mac M4 Pro the full translation appears about a second (median) after the speaker finishes a sentence; other computers may be slower, see the <a href=\"#performance\">measurements</a>.</p>
+<p>AI Translator captures the audio playing on your computer, splits it into sentences, recognizes the speech, translates it and shows the result on the subtitle bar. On a Mac M4 Pro the full translation appears about a second (median) after the speaker finishes a sentence; other computers may be slower.</p>
 ${checkList([
   "<strong>Five languages</strong> for both the source audio and the translation: English, Chinese (中文), Japanese (日本語), Korean (한국어), Vietnamese (Tiếng Việt). We plan to add more languages in the future (no schedule yet)",
   "<strong>Automatic detection</strong> of the spoken language among the ones you tick under <em>Languages spoken in the meeting</em>, or <strong>lock</strong> a single one in <em>Source language</em> when you know what will be spoken",
@@ -251,49 +250,8 @@ ${facts([
   ["macOS", "macOS 14.2 or later, Apple Silicon (M1 or newer)<small>No version for Intel Macs</small>"],
   ["RAM", "At least 8 GB, 16 GB recommended"],
   ["Disk", "At least 1 GB free on top of the size of the model being downloaded"],
-  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows has only had a preliminary test on one laptop with integrated graphics, slower than on a Mac M4 Pro (see Performance)</small>"],
+  ["Windows", "Windows 10/11 64-bit (x64), CPU with AVX2<small>For the Standard pack, a discrete graphics card with 6 GB or more of VRAM is recommended. Not code-signed yet, so SmartScreen may warn during installation; latency on Windows has only had a preliminary test on one laptop with integrated graphics, slower than on a Mac M4 Pro</small>"],
 ])}
-</div></section>
-
-<section class="section" id="performance"><div class="container">
-${sectionHead({ eyebrow: "Performance", title: "Real measurements, with the conditions", text: "We publish only what we measured, on the machine we measured it on, and we say which machines we have not tested.", center: true })}
-<div class="table-wrap reveal" role="region" aria-label="Measured performance" tabindex="0"><table>
-<thead><tr><th scope="col">Measurement (Mac M4 Pro 24 GB, macOS 26, Apple GPU)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
-<tbody>
-<tr><th scope="row">Median (p50) delay: from the speaker finishing a sentence to the complete translation appearing</th><td>0.76–1.03 s</td><td>0.61–0.84 s</td></tr>
-<tr><th scope="row">p90 delay</th><td>0.94–1.34 s</td><td>0.73–1.14 s</td></tr>
-<tr><th scope="row">First translated word appears (p50)</th><td>0.63–0.69 s</td><td>0.52–0.57 s</td></tr>
-<tr><th scope="row">RAM while running</th><td>2.9 GiB</td><td>1.8–1.9 GiB</td></tr>
-</tbody></table></div>
-<div class="grid grid-2">
-${feature({ icon: "gauge", title: "Long sessions", text: "One continuous session of 5 h 23 min (a lecture video in English, on an ad-hoc-signed release build): 6,019 segments, no errors, median delay 0.48 s. In a 2-hour stability test, no component was restarted." })}
-${feature({ icon: "languages", title: "Translation and recognition quality", text: "In an internal test across eight directions involving Vietnamese, run through the app's own translation path, the Standard pack's translation model scored an average of about 0.84 on an automatic translation-quality score (scale 0 to 1, table below). We chose the translation model by comparing several models on a separate test set. On clean read speech, Vietnamese recognition in the Standard pack has a word error rate of 8.7%. That is read speech, not real meeting conversation." })}
-</div>
-<h3 class="reveal" id="quality-by-direction">Translation and recognition quality by direction</h3>
-<p class="reveal">Automatic translation-quality scores were measured through the app's own translation path (the same setup as in real use), 100 sentences per direction (Vietnamese → Chinese, Japanese, Korean: 40 sentences). It is a relative score from 0 to 1, higher is better; <strong>it is not a percentage accuracy</strong>.</p>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">Direction (text)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
-<tbody>
-<tr><th scope="row">English → Vietnamese</th><td>0.842</td><td>0.841</td></tr>
-<tr><th scope="row">中文 → Vietnamese</th><td>0.829</td><td>0.831</td></tr>
-<tr><th scope="row">日本語 → Vietnamese</th><td>0.830</td><td>0.815</td></tr>
-<tr><th scope="row">한국어 → Vietnamese</th><td>0.834</td><td>0.822</td></tr>
-<tr><th scope="row">Vietnamese → English</th><td>0.821</td><td>0.822</td></tr>
-<tr><th scope="row">Vietnamese → 中文</th><td>0.836</td><td>0.821</td></tr>
-<tr><th scope="row">Vietnamese → 日本語</th><td>0.847</td><td>0.845</td></tr>
-<tr><th scope="row">Vietnamese → 한국어</th><td>0.851</td><td>0.842</td></tr>
-</tbody></table></div>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">Speech recognition (error rate, lower is better)</th><th scope="col">Standard pack</th><th scope="col">Lite pack</th></tr></thead>
-<tbody>
-<tr><th scope="row">English (word errors)</th><td>5.4%</td><td>6.6%</td></tr>
-<tr><th scope="row">Vietnamese (word errors)</th><td>8.7%</td><td>22.5%</td></tr>
-<tr><th scope="row">中文 (character errors)</th><td>5.6%</td><td>9.6%</td></tr>
-<tr><th scope="row">日本語 (character errors)</th><td>4.5%</td><td>13.1%</td></tr>
-<tr><th scope="row">한국어 (character errors)</th><td>4.1%</td><td>8.2%</td></tr>
-</tbody></table></div>
-<p class="small muted reveal">How to read this: the translation test set leans toward everyday spoken language, so it is only a rough proxy for meeting speech; recognition was measured on clean read speech (about 15 minutes per language), not real meeting conversations, and in a simulated narrowband-audio test (like a Bluetooth headset in call mode) the error rate rose; we have not tested real headsets. All eight directions above involve Vietnamese; the other 12 directions among English, 中文, 日本語 and 한국어 run but have no quality score yet. The Lite pack is noticeably less accurate at recognizing Vietnamese, Japanese, Korean and Chinese.</p>
-${callout({ kind: "warn", title: "What we have not measured, and do not promise", text: "All the figures above were measured on a single Mac M4 Pro, with a 300&nbsp;ms pause to end a sentence (the app's current default is 50&nbsp;ms; the 5-hour session used the default). We have not measured: an M1 Mac, 8 GB computers, discrete Windows graphics cards, battery and power use, accuracy on real meeting conversation or over Bluetooth headsets, and translation quality for directions that do not involve Vietnamese (they work, but we have no quality score to publish). A preliminary test on one Windows laptop (Core i5-1345U, integrated graphics, 32 GB of RAM, Windows 11; 6 sessions of 17–23 sentences per setup) gave a median latency of 1.3–2.6 seconds for the Lite pack and 2.7–5.4 seconds for the Standard pack, which did not meet our latency target. That laptop is stronger than our minimum machine, so these are not figures for a weak PC." })}
 </div></section>
 
 <section class="section section-alt"><div class="container">

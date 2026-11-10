@@ -97,7 +97,7 @@ ${featureTabs({
       lead: "App nghe âm thanh đang phát trên máy và hiện bản dịch trên thanh phụ đề nổi. Không bot nào vào phòng họp.",
       bullets: [
         "Năm ngôn ngữ, dịch qua lại mọi chiều: Anh, Trung, Nhật, Hàn, Việt; tự nhận diện ngôn ngữ đang nói",
-        `Phụ đề hiện sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn), máy khác có thể chậm hơn (<a href="/tinh-nang/#hieu-nang">điều kiện đo</a>)`,
+        `Phụ đề hiện sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn), máy khác có thể chậm hơn (<a href="/tinh-nang/">chi tiết</a>)`,
         `Dùng với Zoom, Teams, Meet, Zalo; họp tại chỗ qua nguồn <strong>Micro</strong> (<a href="/tinh-nang/#micro">cách dùng</a>); livestream xem trên máy tính (<a href="/giai-phap/dich-livestream/">dịch livestream</a>)`,
       ],
       cta: { href: "/tinh-nang/", label: "Xem tất cả tính năng" },

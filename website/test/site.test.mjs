@@ -396,7 +396,7 @@ test("thẻ gói ở trang chủ và Bảng giá: đủ bốn thẻ theo thứ t
     const prices = [...block.matchAll(/<div class="price"><b>([^<]*)<\/b>/g)].map((m) => m[1].replaceAll("&nbsp;", " "));
     const featured = [...block.matchAll(/<div class="plan featured[^>]*>[\s\S]*?<h3>([^<]*)<\/h3>/g)].map((m) => m[1]);
     const wantNames = PLANS.map((p) => (lang === "en" ? p.nameEn : p.nameVi));
-    const wantPrices = PLANS.map((p) => (p.priceVnd === 0 ? (lang === "en" ? "Free" : "Miễn phí") : vnd(p.priceVnd, lang)));
+    const wantPrices = PLANS.map((p) => (p.priceVnd === 0 ? (lang === "en" ? "Free" : "Miễn phí") : (lang === "vi" ? vnd(p.priceVnd, lang) : usd(p.priceUsdCents, lang))));
     if (JSON.stringify(names) !== JSON.stringify(wantNames)) errors.push(`${urlPath}: tên thẻ ${names.join(" | ")}`);
     if (JSON.stringify(prices) !== JSON.stringify(wantPrices)) errors.push(`${urlPath}: giá thẻ ${prices.join(" | ")}`);
     if (JSON.stringify(featured) !== JSON.stringify(["Yearly"])) errors.push(`${urlPath}: thẻ nổi bật ${featured.join(" | ")}`);
@@ -404,7 +404,7 @@ test("thẻ gói ở trang chủ và Bảng giá: đủ bốn thẻ theo thứ t
   assert.deepEqual(errors, []);
 });
 
-test("thẻ gói ở trang chủ và Bảng giá: gói trả phí ghi thêm giá USD bằng thẻ quốc tế, gói Free thì không", () => {
+test("thẻ gói ở trang chủ và Bảng giá: gói trả phí ghi thêm dòng thanh toán phụ (thẻ quốc tế cho vi, VietQR cho en), gói Free thì không", () => {
   const errors = [];
   for (const [urlPath, lang] of [["/", "vi"], ["/bang-gia/", "vi"], ["/en/", "en"], ["/en/pricing/", "en"]]) {
     const html = htmlByPath.get(urlPath);
@@ -412,9 +412,9 @@ test("thẻ gói ở trang chủ và Bảng giá: gói trả phí ghi thêm giá
     const block = html.slice(start, html.indexOf('<p class="disclaimer">', start));
     const lines = [...block.matchAll(/<p class="usd">([^<]*)<\/p>/g)].map((m) => m[1].replaceAll("&nbsp;", " "));
     const want = PLANS.filter((p) => p.priceUsdCents > 0).map((p) =>
-      lang === "en" ? `or ${usd(p.priceUsdCents, "en")} by international card` : `hoặc ${usd(p.priceUsdCents, "vi")} bằng thẻ quốc tế`,
+      lang === "en" ? `or ${vnd(p.priceVnd, "en")} via VietQR` : `hoặc ${usd(p.priceUsdCents, "vi")} bằng thẻ quốc tế`,
     );
-    if (JSON.stringify(lines) !== JSON.stringify(want)) errors.push(`${urlPath}: dòng giá USD: ${lines.join(" | ")}`);
+    if (JSON.stringify(lines) !== JSON.stringify(want)) errors.push(`${urlPath}: dòng giá phụ: ${lines.join(" | ")}`);
   }
   assert.deepEqual(errors, []);
 });

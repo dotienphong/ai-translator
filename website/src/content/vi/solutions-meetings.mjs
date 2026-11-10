@@ -124,7 +124,7 @@ ${callout({ title: "Người cùng họp sẽ không được báo.", text: "Vì
 <section class="section section-alt"><div class="container narrow">
 ${sectionHead({ eyebrow: "Trung thực", title: "Giới hạn bạn nên biết" })}
 ${checkList([
-  "<strong>Độ trễ:</strong> trung vị 0,76–1,03 giây, p90 0,94–1,34 giây, đo trên Mac M4 Pro 24 GB, gói model Chuẩn. Máy yếu hơn sẽ chậm hơn: chưa đo Mac M1; gói model Chuẩn trên một laptop Windows dùng GPU tích hợp chưa đạt mục tiêu. Xem <a href=\"/tinh-nang/#hieu-nang\">điều kiện đo</a>.",
+  "<strong>Độ trễ:</strong> trung vị 0,76–1,03 giây, p90 0,94–1,34 giây, đo trên Mac M4 Pro 24 GB, gói model Chuẩn. Máy yếu hơn sẽ chậm hơn: chưa đo Mac M1; gói model Chuẩn trên một laptop Windows dùng GPU tích hợp chưa đạt mục tiêu. Xem <a href=\"/tinh-nang/\">chi tiết</a>.",
   "<strong>Chất lượng khác nhau</strong> theo ngôn ngữ và độ rõ của âm thanh. Gói model Nhẹ chép lời kém hơn gói model Chuẩn ở tiếng Việt, Nhật, Hàn, Trung. Chưa đo qua tai nghe Bluetooth thật.",
   "<strong>Bản dịch có thể sai</strong>, nhất là thuật ngữ và tên riêng. Đừng dựa vào nó cho quyết định quan trọng khi chưa kiểm tra lại với người có chuyên môn.",
 ], true)}

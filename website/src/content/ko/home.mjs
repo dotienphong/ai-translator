@@ -95,7 +95,7 @@ ${featureTabs({
       lead: "컴퓨터에서 재생되는 소리를 듣고 번역을 떠 있는 자막 바에 보여 줍니다. 회의에 봇이 참가하지 않습니다.",
       bullets: [
         "다섯 가지 언어 중 어떤 두 언어 사이든 번역: 영어, 중국어, 일본어, 한국어, 베트남어. 말하는 언어는 자동으로 감지합니다",
-        `화자가 문장을 마치면 자막이 나타납니다. Mac M4 Pro(Standard 모델 팩)에서 중앙값은 1.1초 미만이며, 다른 컴퓨터는 더 느릴 수 있습니다(<a href="/ko/features/#performance">측정 조건</a>)`,
+        `화자가 문장을 마치면 자막이 나타납니다. Mac M4 Pro(Standard 모델 팩)에서 중앙값은 1.1초 미만이며, 다른 컴퓨터는 더 느릴 수 있습니다(<a href="/ko/features/">자세히 보기</a>)`,
         `Zoom, Teams, Meet, Zalo에서 쓸 수 있습니다. 대면 회의는 입력 소스를 <strong>마이크</strong>로 고르세요(<a href="/ko/features/#microphone">사용 방법</a>). 컴퓨터로 보는 라이브 방송에도 쓸 수 있습니다(<a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>)`,
       ],
       cta: { href: "/ko/features/", label: "모든 기능 보기" },

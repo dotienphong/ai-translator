@@ -10,7 +10,7 @@ const crumbs = [
 const FAQ = [
   {
     q: "How do I translate a livestream into my language?",
-    a: `<p>Install AI Translator on your computer, open the livestream in a browser, choose the language you want to read in Translate into (English, Vietnamese, Chinese, Japanese or Korean) and press Start. The app listens to the audio playing on your computer and shows translated subtitles on a floating bar, with a median delay of 0.76–1.03 seconds from when the speaker finishes a sentence, measured on a Mac M4 Pro (Standard pack). Translation quality has been measured only for pairs that include Vietnamese (<a href="/en/features/#quality-by-direction">see the table</a>); other pairs, such as Japanese to English, work but have no measured score.</p>`,
+    a: `<p>Install AI Translator on your computer, open the livestream in a browser, choose the language you want to read in Translate into (English, Vietnamese, Chinese, Japanese or Korean) and press Start. The app listens to the audio playing on your computer and shows translated subtitles on a floating bar, with a median delay of 0.76–1.03 seconds from when the speaker finishes a sentence, measured on a Mac M4 Pro (Standard pack). Pairs that include Vietnamese are well supported (see <a href="/en/features/">features</a>); other pairs, such as Japanese to English, work as well.</p>`,
   },
   {
     q: "Does it work with TikTok Live, YouTube and Facebook Live?",
@@ -120,7 +120,7 @@ ${checkList([
   "<strong>You are the one streaming and want to translate for your viewers.</strong> The app makes subtitles for the person using it to read, on a floating bar on their own computer. It does not add subtitles or a translated voice to your livestream.",
   "<strong>You need to record the livestream, download the video or create a subtitle file from a video file.</strong> The app does not record audio or video to disk and does not process video files; it only has a text transcript and no summary mode.",
   "<strong>The audio is unclear.</strong> Loud background music, noise or several people talking over each other make recognition worse and translations more likely to be wrong.",
-  "<strong>You need speed on Windows or on a weaker machine.</strong> The 0.76–1.03-second delay was measured on a Mac M4 Pro with the Standard pack; Windows has only a preliminary measurement on one laptop with integrated graphics and is slower (<a href=\"/en/features/#performance\">test conditions</a>).",
+  "<strong>You need speed on Windows or on a weaker machine.</strong> The 0.76–1.03-second delay was measured on a Mac M4 Pro with the Standard pack; Windows has only a preliminary measurement on one laptop with integrated graphics and is slower (<a href=\"/en/features/\">details</a>).",
   "<strong>The livestream is not in English, Chinese, Japanese, Korean or Vietnamese.</strong> The app supports only these five languages; a livestream in Thai, Indonesian or another language cannot be translated yet.",
 ], true)}
 ${callout({ kind: "warn", title: "Machine translation can be wrong.", text: "Do not rely on AI Translator for important decisions (purchases, contracts, medical, legal, financial) without checking with someone qualified." })}

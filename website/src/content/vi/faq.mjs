@@ -84,7 +84,7 @@ const GROUPS = [
       },
       {
         q: "Bản dịch có chính xác không?",
-        a: `<p>Chưa hoàn hảo: bản dịch có thể sai, thiếu hoặc không hợp ngữ cảnh, nhất là với thuật ngữ chuyên ngành, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng.</p><p>Từ điển thuật ngữ (tính năng Pro) gợi ý tên riêng và thuật ngữ cho bộ dịch, nhưng không bảo đảm bộ dịch dùng đúng mọi lần. Chúng tôi không đưa ra tỉ lệ chính xác chung vì chưa đo trên hội thoại họp thật; số đo hiện có kèm điều kiện nằm ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
+        a: `<p>Chưa hoàn hảo: bản dịch có thể sai, thiếu hoặc không hợp ngữ cảnh, nhất là với thuật ngữ chuyên ngành, tên riêng và tiếng nói không rõ. Đừng dựa vào nó cho quyết định quan trọng.</p><p>Từ điển thuật ngữ (tính năng Pro) gợi ý tên riêng và thuật ngữ cho bộ dịch, nhưng không bảo đảm bộ dịch dùng đúng mọi lần. Chúng tôi không đưa ra tỉ lệ chính xác chung vì chưa đo trên hội thoại họp thật; bạn có thể xem thêm ở trang <a href="/tinh-nang/">Tính năng</a>.</p>`,
       },
       {
         q: "Gói model Chuẩn và gói model Nhẹ khác nhau thế nào?",
@@ -92,7 +92,7 @@ const GROUPS = [
       },
       {
         q: "Độ trễ của phụ đề là bao nhiêu?",
-        a: `<p>Trên Mac M4 Pro, độ trễ trung vị dưới khoảng 1,1 giây kể từ lúc người nói dừng câu tới khi hiện đủ bản dịch; chữ dịch đầu tiên hiện sau khoảng 0,5 đến 0,7 giây, ở cả hai gói model. Đây là số đo trên một máy cụ thể, bằng âm thanh phát lại theo thời gian thực.</p><p>Chúng tôi chưa đo Mac M1, máy 8 GB hay card đồ họa rời của Windows. Thử sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói model Chuẩn chưa đạt mục tiêu độ trễ. Chi tiết và điều kiện đo ở trang <a href="/tinh-nang/#hieu-nang">Tính năng</a>.</p>`,
+        a: `<p>Trên Mac M4 Pro, độ trễ trung vị dưới khoảng 1,1 giây kể từ lúc người nói dừng câu tới khi hiện đủ bản dịch; chữ dịch đầu tiên hiện sau khoảng 0,5 đến 0,7 giây, ở cả hai gói model. Đây là số đo trên một máy cụ thể, bằng âm thanh phát lại theo thời gian thực.</p><p>Chúng tôi chưa đo Mac M1, máy 8 GB hay card đồ họa rời của Windows. Thử sơ bộ trên một laptop Windows có GPU tích hợp cho thấy gói model Chuẩn chưa đạt mục tiêu độ trễ. Bạn có thể xem thêm thông tin ở trang <a href="/tinh-nang/">Tính năng</a>.</p>`,
       },
     ],
   },

@@ -30,7 +30,6 @@ ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 �
 <a class="card card-link" href="#audio-source"><h3>오디오 소스</h3><p class="muted">모든 회의 앱, 봇 없이</p></a>
 <a class="card card-link" href="#shortcuts"><h3>단축키와 트레이</h3><p class="muted">회의를 떠나지 않고 조작</p></a>
 <a class="card card-link" href="#models"><h3>모델과 하드웨어</h3><p class="muted">Standard와 Lite 팩</p></a>
-<a class="card card-link" href="#performance"><h3>성능</h3><p class="muted">측정값과 측정 조건</p></a>
 </div>
 </div></section>
 
@@ -39,7 +38,7 @@ ${sectionHead({ eyebrow: "기기 내 AI", title: "회의를 클라우드에 올�
 ${dataFlow("ko")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "로컬에서 실행되는 두 AI 모델", text: "하나는 음성을 인식하고, 하나는 번역합니다. 둘 다 한 번만 내려받으면 GPU나 CPU를 이용해 내 컴퓨터에서 실행됩니다.", accent: true })}
-${feature({ icon: "zap", title: "돌아가지 않으니 지연이 낮습니다", text: "서버를 오갈 필요가 없어 화자가 문장을 마치면 바로 번역이 나타납니다. Mac M4 Pro에서 중앙값은 1.1초 미만이며, 측정 조건은 아래 '성능' 부분에 있습니다." })}
+${feature({ icon: "zap", title: "돌아가지 않으니 지연이 낮습니다", text: "서버를 오갈 필요가 없어 화자가 문장을 마치면 바로 번역이 나타납니다. Mac M4 Pro에서 중앙값은 1.1초 미만입니다." })}
 ${feature({ icon: "lock", title: "대화 데이터는 내 컴퓨터에 남습니다", text: "음성은 RAM에만 있고, 받아쓰기와 번역은 내 컴퓨터에 남습니다. 기록은 기본으로 꺼져 있으며, 켜더라도 내 컴퓨터에 암호화되어 저장됩니다." })}
 </div>
 </div></section>
@@ -49,7 +48,7 @@ ${feature({ icon: "lock", title: "대화 데이터는 내 컴퓨터에 남습니
 <div class="stack-lg reveal">
 <span class="eyebrow">실시간 번역</span>
 <h2>듣기, 인식, 번역, 자막 표시를 한 흐름으로</h2>
-<p>AI Translator는 컴퓨터에서 재생되는 소리를 가져와 문장 단위로 나누고, 음성을 인식하고 번역해 자막 바에 보여 줍니다. Mac M4 Pro에서는 화자가 문장을 마친 뒤 약 1초(중앙값) 만에 번역 전체가 나타납니다. 다른 컴퓨터는 더 느릴 수 있으니 <a href=\"#performance\">측정 결과</a>를 참조하세요.</p>
+<p>AI Translator는 컴퓨터에서 재생되는 소리를 가져와 문장 단위로 나누고, 음성을 인식하고 번역해 자막 바에 보여 줍니다. Mac M4 Pro에서는 화자가 문장을 마친 뒤 약 1초(중앙값) 만에 번역 전체가 나타납니다. 다른 컴퓨터는 더 느릴 수 있습니다.</p>
 ${checkList([
   "원본 음성과 번역 모두 <strong>다섯 가지 언어</strong>: 영어, 중국어(中文), 일본어(日本語), 한국어, 베트남어(Tiếng Việt). 앞으로 더 많은 언어를 추가할 계획입니다(일정은 아직 없습니다)",
   "<em>회의에서 사용하는 언어</em>에서 체크한 언어 중에서 말하는 언어를 <strong>자동 감지</strong>하며, 어떤 언어로 말할지 알면 <em>원본 언어</em>에서 한 언어로 <strong>고정</strong>할 수 있습니다",
@@ -249,49 +248,8 @@ ${facts([
   ["macOS", "macOS 14.2 이상, Apple 실리콘(M1 이상)<small>Intel Mac용 버전은 없습니다</small>"],
   ["RAM", "최소 8GB, 16GB 권장"],
   ["디스크", "내려받는 모델 크기에 더해 최소 1GB 여유 공간"],
-  ["Windows", "Windows 10/11 64비트(x64), AVX2 지원 CPU<small>Standard 팩에는 VRAM 6GB 이상의 외장 그래픽 카드를 권장합니다. 아직 코드 서명이 없어 설치할 때 SmartScreen이 경고할 수 있습니다. Windows의 지연은 내장 그래픽 노트북 한 대에서만 예비 테스트를 했으며 Mac M4 Pro보다 느립니다('성능' 참조)</small>"],
+  ["Windows", "Windows 10/11 64비트(x64), AVX2 지원 CPU<small>Standard 팩에는 VRAM 6GB 이상의 외장 그래픽 카드를 권장합니다. 아직 코드 서명이 없어 설치할 때 SmartScreen이 경고할 수 있습니다. Windows의 지연은 내장 그래픽 노트북 한 대에서만 예비 테스트를 했으며 Mac M4 Pro보다 느립니다</small>"],
 ])}
-</div></section>
-
-<section class="section" id="performance"><div class="container">
-${sectionHead({ eyebrow: "성능", title: "측정 조건과 함께 공개하는 실제 측정값", text: "측정한 기기에서 실제로 측정한 값만 공개하며, 테스트하지 않은 기기도 분명히 밝힙니다.", center: true })}
-<div class="table-wrap reveal" role="region" aria-label="측정한 성능" tabindex="0"><table>
-<thead><tr><th scope="col">측정(Mac M4 Pro 24GB, macOS 26, Apple GPU)</th><th scope="col">Standard 팩</th><th scope="col">Lite 팩</th></tr></thead>
-<tbody>
-<tr><th scope="row">지연 중앙값(p50): 화자가 문장을 마친 뒤 번역 전체가 나타날 때까지</th><td>0.76~1.03초</td><td>0.61~0.84초</td></tr>
-<tr><th scope="row">p90 지연</th><td>0.94~1.34초</td><td>0.73~1.14초</td></tr>
-<tr><th scope="row">번역의 첫 단어가 나타날 때까지(p50)</th><td>0.63~0.69초</td><td>0.52~0.57초</td></tr>
-<tr><th scope="row">실행 중 RAM</th><td>2.9GiB</td><td>1.8~1.9GiB</td></tr>
-</tbody></table></div>
-<div class="grid grid-2">
-${feature({ icon: "gauge", title: "긴 세션", text: "5시간 23분 동안 이어진 연속 세션 한 번(영어 강의 동영상, 애드혹 서명 릴리스 빌드): 6,019개 구간, 오류 없음, 지연 중앙값 0.48초. 2시간 안정성 테스트에서는 어떤 구성 요소도 다시 시작되지 않았습니다." })}
-${feature({ icon: "languages", title: "번역과 인식 품질", text: "앱의 자체 번역 경로로 베트남어가 포함된 여덟 방향을 내부 테스트한 결과, Standard 팩의 번역 모델은 자동 번역 품질 점수(0~1, 아래 표)에서 평균 약 0.84를 기록했습니다. 번역 모델은 별도의 테스트 세트에서 여러 모델을 비교해 골랐습니다. 깨끗한 낭독 음성에서 Standard 팩의 베트남어 인식 단어 오류율은 8.7%입니다. 이는 낭독 음성이며 실제 회의 대화가 아닙니다." })}
-</div>
-<h3 class="reveal" id="quality-by-direction">방향별 번역 품질과 인식 품질</h3>
-<p class="reveal">자동 번역 품질 점수는 앱의 자체 번역 경로(실제 사용과 같은 구성)로 방향마다 100문장(베트남어 → 중국어, 일본어, 한국어는 40문장)을 측정했습니다. 0~1 사이의 상대 점수로 높을수록 좋으며, <strong>정확도 백분율이 아닙니다</strong>.</p>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">방향(텍스트)</th><th scope="col">Standard 팩</th><th scope="col">Lite 팩</th></tr></thead>
-<tbody>
-<tr><th scope="row">영어 → 베트남어</th><td>0.842</td><td>0.841</td></tr>
-<tr><th scope="row">中文 → 베트남어</th><td>0.829</td><td>0.831</td></tr>
-<tr><th scope="row">日本語 → 베트남어</th><td>0.830</td><td>0.815</td></tr>
-<tr><th scope="row">한국어 → 베트남어</th><td>0.834</td><td>0.822</td></tr>
-<tr><th scope="row">베트남어 → 영어</th><td>0.821</td><td>0.822</td></tr>
-<tr><th scope="row">베트남어 → 中文</th><td>0.836</td><td>0.821</td></tr>
-<tr><th scope="row">베트남어 → 日本語</th><td>0.847</td><td>0.845</td></tr>
-<tr><th scope="row">베트남어 → 한국어</th><td>0.851</td><td>0.842</td></tr>
-</tbody></table></div>
-<div class="table-wrap reveal"><table>
-<thead><tr><th scope="col">음성 인식(오류율, 낮을수록 좋음)</th><th scope="col">Standard 팩</th><th scope="col">Lite 팩</th></tr></thead>
-<tbody>
-<tr><th scope="row">영어(단어 오류)</th><td>5.4%</td><td>6.6%</td></tr>
-<tr><th scope="row">베트남어(단어 오류)</th><td>8.7%</td><td>22.5%</td></tr>
-<tr><th scope="row">中文(글자 오류)</th><td>5.6%</td><td>9.6%</td></tr>
-<tr><th scope="row">日本語(글자 오류)</th><td>4.5%</td><td>13.1%</td></tr>
-<tr><th scope="row">한국어(글자 오류)</th><td>4.1%</td><td>8.2%</td></tr>
-</tbody></table></div>
-<p class="small muted reveal">읽는 법: 번역 테스트 세트는 일상 구어에 가까워 회의 발화의 대략적인 지표일 뿐입니다. 인식은 깨끗한 낭독 음성(언어마다 약 15분)에서 측정했으며 실제 회의 대화가 아닙니다. 협대역 오디오(통화 모드의 블루투스 헤드셋 같은 소리)를 흉내 낸 테스트에서는 오류율이 올라갔으며, 실제 헤드셋으로는 테스트하지 않았습니다. 위의 여덟 방향은 모두 베트남어가 포함된 방향입니다. 영어, 中文, 日本語, 한국어 사이의 나머지 12개 방향도 작동하지만 아직 품질 점수가 없습니다. Lite 팩은 베트남어, 일본어, 한국어, 중국어 인식이 눈에 띄게 덜 정확합니다.</p>
-${callout({ kind: "warn", title: "측정하지 않았고 약속하지 않는 것", text: "위의 수치는 모두 Mac M4 Pro 한 대에서, 문장을 끝내는 정지 시간을 300&nbsp;ms로 두고 측정했습니다(앱의 현재 기본값은 50&nbsp;ms이며, 5시간 세션은 기본값으로 진행했습니다). 측정하지 않은 것: M1 Mac, 8GB 컴퓨터, Windows 외장 그래픽 카드, 배터리와 전력 사용량, 실제 회의 대화나 블루투스 헤드셋을 거친 정확도, 베트남어가 포함되지 않은 방향의 번역 품질(작동은 하지만 공개할 품질 점수가 없습니다). Windows 노트북 한 대(Core i5-1345U, 내장 그래픽, RAM 32GB, Windows 11, 설정마다 17~23문장 세션 6회)에서 한 예비 테스트에서는 지연 중앙값이 Lite 팩 1.3~2.6초, Standard 팩 2.7~5.4초로 지연 목표를 충족하지 못했습니다. 이 노트북은 최소 사양보다 성능이 좋으므로, 이는 저사양 PC의 수치가 아닙니다." })}
 </div></section>
 
 <section class="section section-alt"><div class="container">

@@ -167,7 +167,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 .site-header { position: sticky; top: 0; z-index: 50; height: var(--header-h); border-bottom: 1px solid var(--line); }
 /* Nền mờ đặt ở ::before: backdrop-filter trên chính header sẽ biến nó thành "khối chứa" của menu di động (position: fixed). */
 .site-header::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 84%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); }
-.site-header .container { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 100%; }
+.site-header .container { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 100%; max-width: 100%; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.12rem; color: var(--ink); text-decoration: none; letter-spacing: -0.02em; }
 .brand img { width: 34px; height: 34px; border-radius: 9px; }
 .brand:hover { color: var(--ink); }
@@ -501,9 +501,21 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 
 /* ---------- Footer ---------- */
 .site-footer { margin-top: clamp(56px, 8vw, 110px); background: var(--bg-alt); border-top: 1px solid var(--line); padding-block: clamp(40px, 6vw, 72px) 28px; font-size: .96rem; }
-.footer-grid { display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
-.footer-grid .about { grid-column: span 2; min-width: min(100%, 280px); }
-@media (max-width: 560px) { .footer-grid .about { grid-column: 1 / -1; } }
+.site-footer .container { max-width: 100%; }
+.footer-grid { display: grid; gap: 32px 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+.footer-grid .about { grid-column: span 2; min-width: min(100%, 260px); }
+@media (max-width: 560px) {
+  .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
+  .footer-grid .about { grid-column: 1 / -1; min-width: 0; }
+}
+@media (min-width: 561px) and (max-width: 979px) {
+  .footer-grid { grid-template-columns: repeat(4, 1fr); gap: 24px 20px; }
+  .footer-grid .about { grid-column: 1 / -1; min-width: 0; }
+}
+@media (min-width: 980px) {
+  .footer-grid { grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)); gap: 32px; }
+  .footer-grid .about { grid-column: auto; min-width: 0; }
+}
 .footer-title { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink); margin: 0 0 .9rem; }
 .site-footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
 .site-footer a { color: var(--ink-2); text-decoration: none; }
