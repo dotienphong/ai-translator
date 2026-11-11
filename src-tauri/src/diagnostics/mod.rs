@@ -743,7 +743,7 @@ mod tests {
         assert_eq!(host.facts().unwrap().gpu_backend, None);
     }
 
-    /// Spec §10 & báo cáo thật `R-RE31-5DNB`: `OutOfMemory` của tiến trình phụ không được báo thành `sidecar_died`.
+    /// Spec §10 & báo cáo thật `R-RE31-5DNB`, `R-FN56-AMPB`: `OutOfMemory` của tiến trình phụ không được báo thành `sidecar_died`.
     #[test]
     fn sidecar_oom_is_not_reported_as_sidecar_died() {
         use crate::test_support::{enable_error_reports, install_reports};
@@ -755,6 +755,12 @@ mod tests {
             Which::Llama,
             1,
             "stderr cuối: ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory | 0.01.252.165 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate Vulkan0 buffer of size 833634304",
+        );
+        on_sidecar_died(
+            app.handle(),
+            Which::Llama,
+            1,
+            "stderr cuối: D:\\a\\ai-translator\\ai-translator\\target\\release-work\\llama.cpp\\ggml\\src\\ggml.c:1655: GGML_ASSERT(ctx->mem_buffer != NULL) failed: llama-server thoát sớm (exit code: 0xc0000409)",
         );
         std::thread::sleep(Duration::from_millis(100));
         assert_eq!(

@@ -387,12 +387,15 @@ pub fn classify(default: ErrorKind, err: &anyhow::Error) -> ErrorKind {
 /// Như [`classify`], với các dòng log cho sẵn.
 pub fn classify_with(default: ErrorKind, err: &anyhow::Error, log: &[String]) -> ErrorKind {
     let text = format!("{err:#}\n{}", log.join("\n")).to_lowercase();
-    const OOM: [&str; 5] = [
+    const OOM: [&str; 8] = [
         "out of memory",
         "failed to allocate",
         "cannot allocate",
+        "unable to allocate",
         "outofdevicememory",
         "insufficient memory",
+        "mem_buffer != null",
+        "ctx->mem_buffer",
     ];
     if OOM.iter().any(|m| text.contains(m)) {
         ErrorKind::OutOfMemory
@@ -573,6 +576,10 @@ mod tests {
         let kind = |m: &str| classify_with(ErrorKind::Internal, &e(m), &[]);
         assert_eq!(kind("ggml_metal: failed to allocate buffer"), ErrorKind::OutOfMemory);
         assert_eq!(kind("VkResult ErrorOutOfDeviceMemory"), ErrorKind::OutOfMemory);
+        assert_eq!(
+            kind("GGML_ASSERT(ctx->mem_buffer != NULL) failed"),
+            ErrorKind::OutOfMemory
+        );
         assert_eq!(kind("ggml_vulkan: failed to init device"), ErrorKind::GpuInit);
         assert_eq!(kind("chép lời"), ErrorKind::Internal);
         assert_eq!(

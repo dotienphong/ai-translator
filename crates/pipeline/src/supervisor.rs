@@ -340,13 +340,16 @@ pub struct StartError {
 /// Dấu hiệu hết bộ nhớ trong thông báo lỗi hay log của tiến trình phụ. Cùng danh sách với `asr_worker::engine::classify`,
 /// vì `llama-server` không có mã lỗi riêng cho việc này.
 pub fn looks_out_of_memory(text: &str) -> bool {
-    const OOM: [&str; 6] = [
+    const OOM: [&str; 9] = [
         "out of memory",
         "failed to allocate",
         "cannot allocate",
         "unable to allocate",
         "outofdevicememory",
         "insufficient memory",
+        "mem_buffer != null",
+        "ctx->mem_buffer",
+        "failed to create context",
     ];
     let text = text.to_lowercase();
     OOM.iter().any(|m| text.contains(m))
@@ -1202,6 +1205,12 @@ mod tests {
              allocate Metal buffer: out of memory"
         ));
         assert!(looks_out_of_memory("ggml_vulkan: ErrorOutOfDeviceMemory"));
+        assert!(looks_out_of_memory(
+            "D:\\a\\ai-translator\\ai-translator\\target\\release-work\\llama.cpp\\ggml\\src\\ggml.c:1655: GGML_ASSERT(ctx->mem_buffer != NULL) failed"
+        ));
+        assert!(looks_out_of_memory(
+            "failed to create context with model 'Hy-MT2-1.8B-Q8_0.gguf'"
+        ));
         assert!(!looks_out_of_memory("llama-server thoát sớm (exit status: 1)"));
     }
 
