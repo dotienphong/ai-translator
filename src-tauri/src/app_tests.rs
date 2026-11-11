@@ -3243,6 +3243,39 @@ fn a_machine_with_a_license_is_never_gated_and_links_it_after_sign_in() {
     });
 }
 
+/// Đăng nhập trước (dùng thử), mua rồi mới nhập key: kích hoạt xong cũng gắn license vào tài khoản ở nền. Thiếu bước này thì
+/// Web Admin xếp khách đã mua vào nhóm "Đang dùng thử" (license `account_id` trống).
+#[test]
+fn activating_a_key_while_signed_in_links_it_to_the_account() {
+    use crate::license::manager::tests::{DEVICE, KEY, granted};
+    let app = mock_app();
+    let main = window(&app, "main");
+    let rig = crate::test_support::install_account(&app, true);
+    invoke(&main, "account_sign_in", json!({ "lang": "vi" })).unwrap();
+    wait_until("luồng nền sau đăng nhập xong", || {
+        crate::license::app::account_followups_state(app.handle()).2 > 0
+    });
+    assert!(!rig.api.calls().iter().any(|c| c.starts_with("link")), "chưa có license: chưa gắn");
+    let now = crate::license::app::now();
+    let claims = json!({
+        "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
+        "device_id_hash": DEVICE, "plan": "monthly", "expires_at": now + 30 * 86_400, "cycle_anchor": now,
+        "quota_minutes_per_cycle": null, "quota_epoch": 0, "quota_fresh": true,
+        "issued_at": now, "refresh_before": now + 14 * 86_400,
+    });
+    rig.license_api
+        .replies
+        .lock()
+        .unwrap()
+        .push_back(granted(&claims, true));
+    invoke(&main, "activate_license", json!({ "key": KEY })).unwrap();
+    let key = rig.license.license_key().unwrap();
+    let link = format!("link {key} act");
+    wait_until("gắn license vừa kích hoạt vào tài khoản", || {
+        rig.api.calls().contains(&link)
+    });
+}
+
 /// Báo `account://changed` không panic khi chưa có cửa sổ chính.
 #[test]
 fn account_events_do_not_need_the_main_window() {

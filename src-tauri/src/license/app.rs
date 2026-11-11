@@ -171,7 +171,12 @@ pub fn install_with_account<R: Runtime>(app: &AppHandle<R>, license: License, ac
     if let Some(account) = account {
         let account = Arc::new(account);
         license.set_account_hook(account.clone());
-        app.manage(Accounts::new(account));
+        let signed_in = account.view().state == AccountState::SignedIn;
+        let accounts = Accounts::new(account);
+        // Đã đăng nhập từ lần chạy trước: gắn lại license đang lưu ở nhịp đầu của ticker (idempotent ở server). Bù cho bản cũ chỉ
+        // gắn ngay sau đăng nhập, nên khách đăng nhập trước rồi mới nhập key thì license chưa từng gắn vào tài khoản.
+        accounts.pending_link.store(signed_in, Ordering::SeqCst);
+        app.manage(accounts);
     }
     // Đã xong các bước lần đầu mở (đã đồng ý điều khoản ở lần chạy trước): ticker được đăng ký dùng thử chạy nền.
     if app
@@ -423,6 +428,9 @@ pub fn activate<R: Runtime>(
         license.activate(key, now())
     };
     refresh(app);
+    if matches!(result, Ok(()) | Err(LicenseError::Conflict(_))) {
+        link_after_activation(app);
+    }
     match result {
         Ok(()) | Err(LicenseError::Conflict(_)) => Ok(ActivateOutcome {
             view: Some(license.view(now())),
@@ -768,6 +776,29 @@ fn after_sign_in<R: Runtime>(app: &AppHandle<R>) {
         });
     if spawned.is_err() {
         log::warn!("không tạo được luồng nền sau đăng nhập");
+    }
+}
+
+/// Vừa kích hoạt key: đang đăng nhập thì gắn license vào tài khoản ở nền (spec 2026-11-05 §6.2), trên luồng riêng để không làm
+/// chậm câu trả lời của lệnh kích hoạt. Đang dịch hay lỗi tạm thời thì cờ còn chờ, ticker chạy lại. Chưa đăng nhập thì thôi:
+/// đăng nhập sau sẽ gắn ([`after_sign_in`]).
+fn link_after_activation<R: Runtime>(app: &AppHandle<R>) {
+    let Some(state) = app.try_state::<Accounts>() else {
+        return;
+    };
+    if state.service.view().state != AccountState::SignedIn {
+        return;
+    }
+    state.pending_link.store(true, Ordering::SeqCst);
+    let app = app.clone();
+    let spawned = std::thread::Builder::new()
+        .name("account-link-license".into())
+        .spawn(move || {
+            run_account_followups(&app, &mut RetrySchedule::default(), Instant::now());
+            account_changed(&app);
+        });
+    if spawned.is_err() {
+        log::warn!("không tạo được luồng gắn license");
     }
 }
 
