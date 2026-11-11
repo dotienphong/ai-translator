@@ -57,7 +57,7 @@ const DL_FAQ = [
   },
   {
     q: "Vì sao khuyến nghị cài bằng lệnh hơn là tải file .dmg hay .exe?",
-    a: "<p>Bản hiện tại chưa được ký bởi Apple hay Microsoft (chúng tôi chưa có Apple Developer ID và chứng thư ký mã Windows). File tải bằng trình duyệt bị gắn nhãn “tải từ internet”, nên macOS chặn lần mở đầu của file .dmg (Open Anyway) và Windows SmartScreen có thể cảnh báo file .exe. File tải bằng lệnh trong Terminal hay PowerShell không bị gắn nhãn đó, nên app cài và mở thẳng. Trên Windows, bạn vẫn có thể tải trực tiếp file .exe ở Cách 2 ngay bên dưới nếu không muốn dùng PowerShell.</p>",
+    a: "<p>Bản hiện tại chưa được ký bởi Apple hay Microsoft (chúng tôi chưa có Apple Developer ID và chứng thư ký mã Windows). File tải bằng trình duyệt bị gắn nhãn “tải từ internet”, nên macOS chặn lần mở đầu của file .dmg (Open Anyway) và Windows SmartScreen có thể cảnh báo file .exe. File tải bằng lệnh trong Terminal hay PowerShell không bị gắn nhãn đó, nên app cài và mở thẳng. Trên Windows, bạn cũng có thể cài từ Microsoft Store ở Cách 1 (không lo SmartScreen) hoặc tải trực tiếp file .exe ở Cách 2 ngay bên dưới nếu không muốn dùng PowerShell.</p>",
   },
   {
     q: "Cập nhật và gỡ cài đặt thế nào?",
@@ -124,15 +124,23 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 hoặc 11, 64-bit"], ["cpu", "CPU có AVX2"], ["download", "Bộ cài khoảng 22 MB"], ["shield", "Không cần quyền quản trị"]])}
-<div class="dl-method dl-method-primary" id="tai-exe">
-<div class="dl-method-head"><span class="dl-badge">Cách 1: Khuyên dùng</span><h3>Tải trực tiếp bộ cài .exe</h3></div>
+<div class="dl-method dl-method-primary" id="cai-store">
+<div class="dl-method-head"><span class="dl-badge">Cách 1: Khuyên dùng</span><h3>Cài đặt từ Microsoft Store</h3></div>
+<p class="dl-method-sub">Mở trực tiếp ứng dụng Microsoft Store trên Windows để cài đặt nhanh chóng, an toàn và tự động nhận cập nhật (không bị cảnh báo SmartScreen).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-store" href="${SITE.msStore.appUrl}">${icon("windows")}<span>Mở trong Microsoft Store</span></a>
+<a class="btn btn-secondary btn-sm" href="${SITE.msStore.webUrl}" rel="noopener"><span>Xem trên web (apps.microsoft.com)</span></a>
+</div>
+</div>
+<div class="dl-method" id="tai-exe">
+<div class="dl-method-head"><span class="dl-badge">Cách 2</span><h3>Tải trực tiếp bộ cài .exe</h3></div>
 <p class="dl-method-sub">Tải file cài đặt về máy và mở trực tiếp để cài cho tài khoản của bạn. Nếu Windows hiện màn hình xanh SmartScreen, bấm <strong>More info</strong> rồi <strong>Run anyway</strong> (<a href="/huong-dan/cai-dat-windows/#cai-bang-exe">xem hướng dẫn cài từ .exe</a>).</p>
 <div class="panel-alt-actions">
 <a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>Tải <code>${SITE.winInstaller.file}</code></span></a>
 </div>
 </div>
 <div class="dl-method" id="cai-powershell">
-<div class="dl-method-head"><span class="dl-badge">Cách 2</span><h3>Cài bằng một dòng lệnh PowerShell</h3></div>
+<div class="dl-method-head"><span class="dl-badge">Cách 3</span><h3>Cài bằng một dòng lệnh PowerShell</h3></div>
 <p class="dl-method-sub">Tự tải bản mới nhất, kiểm mã SHA-256 và mở thẳng không qua màn hình cảnh báo SmartScreen.</p>
 ${flow([
   { title: "Mở PowerShell", text: "<p>Nhấn phím <kbd>Windows</kbd>, gõ <strong>PowerShell</strong> rồi nhấn Enter. Không cần chạy bằng quyền quản trị.</p>" },
@@ -169,7 +177,7 @@ ${faq(
     },
     {
       q: "Lệnh báo lỗi trên máy công ty hay trường học",
-      a: "<p>Máy do tổ chức quản lý có thể chặn script PowerShell (Constrained Language Mode). Khi đó hãy tải file .exe ở Cách 2 bên trên hoặc hỏi quản trị viên.</p>",
+      a: "<p>Máy do tổ chức quản lý có thể chặn script PowerShell (Constrained Language Mode). Khi đó hãy cài qua Microsoft Store ở Cách 1 hoặc tải file .exe ở Cách 2 bên trên, hoặc hỏi quản trị viên.</p>",
     },
     {
       q: "Tôi muốn nhận file .exe qua email",

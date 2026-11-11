@@ -135,7 +135,7 @@ test("liên kết nội bộ và neo (#) đều tồn tại", async () => {
     const html = strip(htmlByPath.get(p.path));
     for (const m of html.matchAll(/<(?:a|link|img|script|source|video)\b[^>]*?\s(?:href|src|poster)="([^"]+)"/g)) {
       const url = m[1];
-      if (/^(https?:|mailto:|tel:|data:)/.test(url)) continue;
+      if (/^(https?:|mailto:|tel:|data:|ms-windows-store:)/.test(url)) continue;
       // Bỏ query (`?v=<mã băm>` của ảnh app, video demo) trước khi tìm file.
       const [target, hash] = url.replace(/\?[^#]*/, "").split("#");
       const t = target === "" ? p.path : target;
@@ -3012,23 +3012,31 @@ test("Chính sách quyền riêng tư (vi, en) trên website nêu đăng nhập 
   assert.deepEqual(errors, []);
 });
 
-test("trang Tải xuống (năm ngôn ngữ): tab Windows có khối Cách 1 tải trực tiếp bộ cài .exe đúng phiên bản ở trên và khối Cách 2 lệnh PowerShell ở dưới", async () => {
+test("trang Tải xuống (năm ngôn ngữ): tab Windows có khối Cách 1 Microsoft Store, Cách 2 tải trực tiếp .exe, Cách 3 lệnh PowerShell", async () => {
   const conf = JSON.parse(await readFile(path.join(ROOT, "..", "src-tauri/tauri.conf.json"), "utf8"));
   assert.equal(SITE.winInstaller.file, `AI Translator_${conf.version}_x64-setup.exe`);
   assert.equal(SITE.winInstaller.url, `https://releases.aitranslator.vn/${conf.version}/AI%20Translator_${conf.version}_x64-setup.exe`);
+  assert.equal(SITE.msStore.productId, "9mw5zpnkn3t6");
   for (const p of pages.filter((x) => x.id === "download")) {
     const html = htmlByPath.get(p.path);
     const winId = p.lang === "vi" ? "cai-windows" : "install-windows";
-    const psId = p.lang === "vi" ? "cai-powershell" : "install-powershell";
+    const storeId = p.lang === "vi" ? "cai-store" : "install-store";
     const exeId = p.lang === "vi" ? "tai-exe" : "download-exe";
+    const psId = p.lang === "vi" ? "cai-powershell" : "install-powershell";
     const winStart = html.indexOf(`id="${winId}"`);
     assert.ok(winStart > 0, `${p.path}: thiếu #${winId}`);
     const winBlock = html.slice(winStart, html.indexOf("</section>", winStart));
-    const exeCardPos = winBlock.indexOf(`<div class="dl-method dl-method-primary" id="${exeId}">`);
+    const storeCardPos = winBlock.indexOf(`<div class="dl-method dl-method-primary" id="${storeId}">`);
+    const exeCardPos = winBlock.indexOf(`<div class="dl-method" id="${exeId}">`);
     const psCardPos = winBlock.indexOf(`<div class="dl-method" id="${psId}">`);
     const psPos = winBlock.indexOf("irm https://aitranslator.vn/install.ps1 | iex");
     const morePos = winBlock.indexOf('<div class="panel-more">');
-    assert.ok(exeCardPos > 0 && psCardPos > exeCardPos && psPos > psCardPos && morePos > psPos, `${p.path}: khối #${exeId} (Cách 1) phải nằm trước khối #${psId} (Cách 2) và trước .panel-more`);
+    assert.ok(
+      storeCardPos > 0 && exeCardPos > storeCardPos && psCardPos > exeCardPos && psPos > psCardPos && morePos > psPos,
+      `${p.path}: thứ tự khối phải là Store (${storeId}) -> Exe (${exeId}) -> PowerShell (${psId}) -> .panel-more`,
+    );
+    assert.ok(winBlock.includes(`href="${SITE.msStore.appUrl}"`), `${p.path}: thiếu liên kết ${SITE.msStore.appUrl}`);
+    assert.ok(winBlock.includes(`href="${SITE.msStore.webUrl}"`), `${p.path}: thiếu liên kết ${SITE.msStore.webUrl}`);
     assert.ok(winBlock.includes(`href="${SITE.winInstaller.url}"`), `${p.path}: thiếu liên kết ${SITE.winInstaller.url}`);
     assert.ok(winBlock.includes(`<code>${SITE.winInstaller.file}</code>`), `${p.path}: thiếu tên file ${SITE.winInstaller.file}`);
     assert.ok(!winBlock.includes("SHA256SUMS-windows.txt"), `${p.path}: không hiện liên kết SHA256SUMS-windows.txt`);

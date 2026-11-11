@@ -18,6 +18,11 @@ export const SITE = {
   version: release.version,
   releaseDate: release.releaseDate,
   winInstaller: winInstallerOf(release.version),
+  msStore: {
+    productId: "9mw5zpnkn3t6",
+    appUrl: "ms-windows-store://pdp/?productid=9mw5zpnkn3t6",
+    webUrl: "https://apps.microsoft.com/detail/9mw5zpnkn3t6?hl=en-US&gl=VN&ocid=pdpshare",
+  },
   // Chỉ có khi deploy (`--deploy`): SHA-256 hai bộ cài của `version`, build ghim vào install.sh và install.ps1 (build/pin-installers.mjs).
   pins: release.pins ?? null,
   llmSummaryEn:

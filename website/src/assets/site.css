@@ -607,12 +607,15 @@ td .yes { color: var(--ok); font-weight: 700; } td .no { color: var(--ink-3); }
 .dl-method .btn { max-width: 100%; flex-wrap: wrap; text-align: center; }
 .dl-method .btn .icon { flex-shrink: 0; width: 1.1em; height: 1.1em; }
 .dl-method .btn code { overflow-wrap: anywhere; background: transparent; border: 0; padding: 0; color: inherit; }
-.btn-dl-exe { min-height: 44px; padding: 10px 20px; border-radius: 0; font-size: .98rem; font-weight: 700; background: var(--accent); color: var(--on-brand); border: 1px solid color-mix(in srgb, var(--accent) 80%, #000); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 55%, transparent); animation: dl-btn-pulse 2.2s ease-in-out infinite; }
+.btn-dl-store { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 22px; border-radius: 0; font-size: .98rem; font-weight: 700; background: var(--accent); color: var(--on-brand); border: 1px solid color-mix(in srgb, var(--accent) 80%, #000); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 55%, transparent); animation: dl-btn-pulse 2.2s ease-in-out infinite; }
+.btn-dl-store:hover { transform: translateY(-2px); filter: brightness(1.08); background: var(--accent); color: var(--on-brand); box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--accent) 65%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); }
+.dl-method .btn-dl-store .icon { width: 1.25em; height: 1.25em; }
+.btn-dl-exe { min-height: 44px; padding: 10px 20px; border-radius: 0; font-size: .98rem; font-weight: 700; background: var(--accent); color: var(--on-brand); border: 1px solid color-mix(in srgb, var(--accent) 80%, #000); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 55%, transparent); }
 .btn-dl-exe:hover { transform: translateY(-2px); filter: brightness(1.07); background: var(--accent); color: var(--on-brand); box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--accent) 65%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); }
 .dl-method .btn-dl-exe .icon { width: 1.2em; height: 1.2em; }
 .dl-method .btn-dl-exe code { font-size: .95em; font-weight: 700; }
 @keyframes dl-btn-pulse { 0%, 100% { box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 0 0 transparent; } 50% { box-shadow: 0 8px 22px -4px color-mix(in srgb, var(--accent) 65%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .btn-dl-exe { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .btn-dl-store, .btn-dl-exe { animation: none; } }
 .panel-more { margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
 .panel-more > h3 { margin: 0 0 .9rem; font-size: 1.02rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
 .panel-more .faq details { background: var(--surface-2); }

@@ -58,7 +58,7 @@ const DL_FAQ = [
   },
   {
     q: "왜 .dmg나 .exe 다운로드보다 명령 한 줄을 권장하나요?",
-    a: `<p>현재 빌드는 아직 Apple이나 Microsoft의 서명을 받지 않았습니다(Apple Developer ID도, Windows 코드 서명 인증서도 아직 없습니다). 브라우저로 내려받은 파일에는 '인터넷에서 다운로드됨' 표시가 붙기 때문에, macOS는 .dmg를 처음 실행할 때 막고(확인 없이 열기), Windows SmartScreen은 .exe에 대해 경고할 수 있습니다. 터미널이나 PowerShell 명령으로 내려받은 파일에는 이 표시가 붙지 않으므로 앱이 바로 설치되고 열립니다. Windows에서는 PowerShell을 쓰고 싶지 않다면 아래 방법 2에서 .exe를 직접 내려받을 수도 있습니다.</p>`,
+    a: `<p>현재 빌드는 아직 Apple이나 Microsoft의 서명을 받지 않았습니다(Apple Developer ID도, Windows 코드 서명 인증서도 아직 없습니다). 브라우저로 내려받은 파일에는 '인터넷에서 다운로드됨' 표시가 붙기 때문에, macOS는 .dmg를 처음 실행할 때 막고(확인 없이 열기), Windows SmartScreen은 .exe에 대해 경고할 수 있습니다. 터미널이나 PowerShell 명령으로 내려받은 파일에는 이 표시가 붙지 않으므로 앱이 바로 설치되고 열립니다. Windows에서는 PowerShell을 쓰고 싶지 않다면 방법 1의 Microsoft Store나 아래 방법 2에서 .exe를 직접 내려받을 수도 있습니다.</p>`,
   },
   {
     q: "업데이트나 삭제는 어떻게 하나요?",
@@ -125,15 +125,23 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 또는 11, 64비트"], ["cpu", "AVX2 지원 CPU"], ["download", "설치 파일 약 22MB"], ["shield", "관리자 권한 필요 없음"]])}
-<div class="dl-method dl-method-primary" id="download-exe">
-<div class="dl-method-head"><span class="dl-badge">방법 1: 권장</span><h3>.exe 설치 파일 직접 다운로드</h3></div>
+<div class="dl-method dl-method-primary" id="install-store">
+<div class="dl-method-head"><span class="dl-badge">방법 1: 권장</span><h3>Microsoft Store에서 설치</h3></div>
+<p class="dl-method-sub">Windows Microsoft Store 앱에서 바로 열어 빠르고 안전하게 설치하고 자동 업데이트를 받으세요(SmartScreen 경고 없음).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-store" href="${SITE.msStore.appUrl}">${icon("windows")}<span>Microsoft Store에서 열기</span></a>
+<a class="btn btn-secondary btn-sm" href="${SITE.msStore.webUrl}" rel="noopener"><span>웹에서 보기 (apps.microsoft.com)</span></a>
+</div>
+</div>
+<div class="dl-method" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">방법 2</span><h3>.exe 설치 파일 직접 다운로드</h3></div>
 <p class="dl-method-sub">설치 파일을 내려받아 바로 열면 내 계정에 설치됩니다. Windows에서 파란색 SmartScreen 화면이 나오면 <strong>추가 정보</strong>를 누른 뒤 <strong>실행</strong>을 누르세요(<a href="/ko/guide/install-windows/#install-exe">.exe 설치 안내 보기</a>).</p>
 <div class="panel-alt-actions">
 <a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> 다운로드</span></a>
 </div>
 </div>
 <div class="dl-method" id="install-powershell">
-<div class="dl-method-head"><span class="dl-badge">방법 2</span><h3>PowerShell 명령 한 줄로 설치</h3></div>
+<div class="dl-method-head"><span class="dl-badge">방법 3</span><h3>PowerShell 명령 한 줄로 설치</h3></div>
 <p class="dl-method-sub">최신 버전을 자동으로 내려받고 SHA-256을 확인한 뒤 SmartScreen 경고 화면 없이 바로 엽니다.</p>
 ${flow([
   { title: "PowerShell 열기", text: "<p><kbd>Windows</kbd> 키를 누르고 <strong>PowerShell</strong>을 입력한 뒤 Enter를 누릅니다. 관리자로 실행할 필요는 없습니다.</p>" },
@@ -170,7 +178,7 @@ ${faq(
     },
     {
       q: "회사나 학교 PC에서 명령이 실패해요",
-      a: "<p>관리되는 PC는 PowerShell 스크립트를 막을 수 있습니다(제한된 언어 모드). 위의 방법 2에서 .exe를 내려받거나 관리자에게 문의하세요.</p>",
+      a: "<p>관리되는 PC는 PowerShell 스크립트를 막을 수 있습니다(제한된 언어 모드). 위의 방법 1(Microsoft Store) 또는 방법 2(.exe)를 이용하거나 관리자에게 문의하세요.</p>",
     },
     {
       q: ".exe를 이메일로 받고 싶어요",
