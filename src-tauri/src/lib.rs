@@ -30,6 +30,7 @@ pub mod login_item;
 pub mod meeting_hint;
 pub mod models;
 pub mod navigation;
+pub mod notes;
 pub mod overlay;
 pub mod pro;
 pub mod quit_guard;
