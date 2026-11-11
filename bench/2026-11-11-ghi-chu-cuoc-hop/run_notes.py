@@ -401,6 +401,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):  # console Windows mặc định cp1252; `python -I` bỏ qua PYTHONIOENCODING
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     args = build_parser().parse_args(argv)
     return run_local(args) if args.mode == "local" else run_cloud(args)
 
