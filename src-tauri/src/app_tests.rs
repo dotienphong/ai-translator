@@ -3255,7 +3255,10 @@ fn activating_a_key_while_signed_in_links_it_to_the_account() {
     wait_until("luồng nền sau đăng nhập xong", || {
         crate::license::app::account_followups_state(app.handle()).2 > 0
     });
-    assert!(!rig.api.calls().iter().any(|c| c.starts_with("link")), "chưa có license: chưa gắn");
+    assert!(
+        !rig.api.calls().iter().any(|c| c.starts_with("link")),
+        "chưa có license: chưa gắn"
+    );
     let now = crate::license::app::now();
     let claims = json!({
         "kid": "test-1", "license_id": "lic", "activation_id": "act", "activation_created_at": now,
