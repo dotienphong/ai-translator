@@ -440,6 +440,13 @@ pub fn mark_clean_exit<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Xóa dấu "đang chạy" khi không có sẵn `AppHandle` (ví dụ từ WndProc subclass khi Windows tắt máy, khởi động lại, đăng xuất `WM_ENDSESSION`).
+pub fn mark_clean_exit_static() {
+    if let Some(files) = marker::panic_files() {
+        files.end_run();
+    }
+}
+
 /// Người dùng tắt báo cáo lỗi tự động (`actions::commit_settings`): bỏ các báo cáo đang chờ gửi, và sổ tình trạng bộ đọc tên (spec
 /// 2026-10-26-phan-biet-nguoi-noi §7.2).
 pub fn purge_queue<R: Runtime>(app: &AppHandle<R>) {

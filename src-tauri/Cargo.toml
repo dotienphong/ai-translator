@@ -1,6 +1,6 @@
 [package]
 name = "meeting-translator"
-version = "0.6.16"
+version = "0.6.17"
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
@@ -106,6 +106,7 @@ windows = { version = "0.62.2", features = [
     # Giờ đăng nhập của phiên hiện tại (`WTSQuerySessionInformationW`, diagnostics/marker.rs): phân biệt tắt máy với crash.
     "Win32_System_RemoteDesktop",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
     # Gõ dịch (compose/native_windows.rs): clipboard (`OpenClipboard`, `GlobalAlloc`, `CF_UNICODETEXT`) và gửi Ctrl+V
     # (`SendInput`).
     "Win32_System_DataExchange",

@@ -3,8 +3,9 @@
 //! Báo cáo thật `R-NQBY-S4F7` (RTX 2060 SUPER, driver Vulkan trên Windows 10.0.26300): `asr-worker-vulkan` thoát `0xc0000005`
 //! (access violation) ngay lúc dựng backend Vulkan trong `whisper_model_load`, mỗi lần mở app. Giám sát chuyển CPU sau lần
 //! lỗi đầu, nhưng quyết định đó mất khi tắt app, nên mọi lần mở sau lại tốn ~6 giây để chết lần nữa và sinh thêm báo cáo
-//! `sidecar_died`. Ở đây ta ghi lại mã băm SHA-256 của binary Vulkan đã chết cùng thời điểm; `prepare` bỏ GPU khi binary hiện
-//! tại trùng mã băm và chưa quá [`BLOCK_SECS`]. Bản app mới (binary khác, mã băm khác) hay hết hạn thì thử GPU lại.
+//! `sidecar_died`. Ở đây ta ghi lại thời điểm binary Vulkan đã chết; `prepare` bỏ GPU trong [`BLOCK_SECS`] (14 ngày) để
+//! các bản cập nhật app tiếp theo không bị chết lại mỗi lần cập nhật (báo cáo thật `R-ATR4-EAR7`). Hết hạn 14 ngày thì thử
+//! GPU lại (người dùng có thể đã cập nhật driver).
 
 use std::path::{Path, PathBuf};
 
@@ -54,12 +55,14 @@ pub fn record(file: &Path, sha256: &str, now: i64) {
     }
 }
 
-/// Binary Vulkan `sha256` đã chết vì lỗi native trong [`BLOCK_SECS`] gần đây không.
-pub fn is_blocked(file: &Path, sha256: &str, now: i64) -> bool {
+/// Vulkan trên máy đã chết vì lỗi native trong [`BLOCK_SECS`] gần đây không. Chặn theo thời gian thay vì mã băm binary
+/// cụ thể (báo cáo thật `R-ATR4-EAR7`), để bản app cập nhật mới không bị chết lại ngay lần mở đầu trước khi người dùng kịp
+/// cập nhật driver GPU.
+pub fn is_blocked(file: &Path, _sha256: &str, now: i64) -> bool {
     std::fs::read(file)
         .ok()
         .and_then(|b| serde_json::from_slice::<Record>(&b).ok())
-        .is_some_and(|r| r.sha256 == sha256 && (0..BLOCK_SECS).contains(&(now - r.at)))
+        .is_some_and(|r| (0..BLOCK_SECS).contains(&(now - r.at)))
 }
 
 #[cfg(test)]
@@ -83,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn a_recorded_crash_blocks_the_same_binary_until_it_expires() {
+    fn a_recorded_crash_blocks_until_it_expires() {
         let file = temp("block");
         assert!(!is_blocked(&file, "abc", 1_000), "chưa ghi gì");
         record(&file, "abc", 1_000);
@@ -91,8 +94,8 @@ mod tests {
         assert!(is_blocked(&file, "abc", 1_000 + BLOCK_SECS - 1));
         assert!(!is_blocked(&file, "abc", 1_000 + BLOCK_SECS), "hết hạn thì thử GPU lại");
         assert!(
-            !is_blocked(&file, "other", 1_000 + 60),
-            "binary mới (bản app mới) thử GPU lại"
+            is_blocked(&file, "other", 1_000 + 60),
+            "bản app mới vẫn tiếp tục nhớ trong thời gian chặn"
         );
         assert!(!is_blocked(&file, "abc", 500), "đồng hồ lùi: không tin");
         let _ = std::fs::remove_dir_all(file.parent().unwrap());

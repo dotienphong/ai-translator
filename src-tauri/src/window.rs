@@ -9,7 +9,7 @@ pub const MAIN: &str = "main";
 /// Tạo cửa sổ chính, ẩn. Tạo bằng code (không khai trong `tauri.conf.json`) để gắn được
 /// `on_new_window`: link mở cửa sổ mới không bao giờ mở webview mới (`navigation.rs`).
 pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
+    let window = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
         .title(app.package_info().name.clone())
         .inner_size(1100.0, 720.0)
         .min_inner_size(780.0, 520.0)
@@ -19,7 +19,51 @@ pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .zoom_hotkeys_enabled(true)
         .on_new_window(navigation::new_window_handler(app.clone()))
         .build()?;
+    #[cfg(windows)]
+    hook_end_session(&window);
+    #[cfg(not(windows))]
+    let _ = window;
     Ok(())
+}
+
+/// Windows: móc `WM_QUERYENDSESSION` và `WM_ENDSESSION` trên cửa sổ chính để khi người dùng tắt máy, khởi động lại,
+/// đăng xuất, hoặc trình cài đặt / Restart Manager yêu cầu đóng, app xóa `run.marker` và kill tiến trình phụ ngay lập tức
+/// trước khi Windows kill tiến trình (tránh báo nhầm `unclean_exit`, báo cáo thật `R-4THH-W1AT`).
+#[cfg(windows)]
+fn hook_end_session<R: Runtime>(window: &tauri::WebviewWindow<R>) {
+    use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+    use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+    use windows::Win32::UI::WindowsAndMessaging::{WM_ENDSESSION, WM_QUERYENDSESSION};
+
+    unsafe extern "system" fn subclass_proc(
+        hwnd: HWND,
+        msg: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+        _uidsubclass: usize,
+        _refdata: usize,
+    ) -> LRESULT {
+        match msg {
+            WM_QUERYENDSESSION => LRESULT(1),
+            WM_ENDSESSION => {
+                if wparam.0 != 0 {
+                    crate::diagnostics::mark_clean_exit_static();
+                    pipeline::process::kill_all();
+                }
+                // SAFETY: ủy quyền xử lý tin nhắn mặc định cho chuỗi subclass của Win32.
+                unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
+            }
+            // SAFETY: ủy quyền xử lý tin nhắn mặc định cho chuỗi subclass của Win32.
+            _ => unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) },
+        }
+    }
+
+    if let Ok(hwnd) = window.hwnd() {
+        // SAFETY: `subclass_proc` là hàm extern "system" tĩnh sống suốt vòng đời tiến trình.
+        unsafe {
+            let _ = SetWindowSubclass(hwnd, Some(subclass_proc), 1, 0);
+        }
+    }
 }
 
 /// Hiện cửa sổ chính. Trên Mac, app hiện icon ở Dock (activation policy `regular`). Hai tiến trình phụ chạy sẵn trên
