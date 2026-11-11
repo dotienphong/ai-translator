@@ -156,6 +156,11 @@ fn now_secs() -> i64 {
 
 static PANIC_FILES: OnceLock<RunFiles> = OnceLock::new();
 
+/// Tham chiếu tĩnh tới `RunFiles` toàn cục (đã cài ở `install_panic_dump`).
+pub fn panic_files() -> Option<&'static RunFiles> {
+    PANIC_FILES.get()
+}
+
 /// Cài panic hook ghi `panic.json`, nối trước hook đang có (ở app: hook của `pipeline::process` kill tiến trình phụ rồi in
 /// panic). Trên Windows cài thêm console control handler (`SetConsoleCtrlHandler`) để khi hệ thống hay trình quản lý gửi tín
 /// hiệu đóng (`CTRL_CLOSE_EVENT`, `CTRL_SHUTDOWN_EVENT`, `CTRL_LOGOFF_EVENT`, `CTRL_C_EVENT`, `CTRL_BREAK_EVENT` — chạy trên

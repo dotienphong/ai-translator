@@ -286,7 +286,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
             // Lần đầu chạy được hỏi cho từng binary qua `SidecarEvents::is_first_run` (session.rs).
             first_run: false,
             require_shared: true,
-            env: Vec::new(),
+            env: default_sidecar_env(),
         },
         llama: LlamaSpec {
             exe: files.llama.clone(),
@@ -294,7 +294,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
             log: logs.join("llama-server.log"),
             extra_args: llama_cpu_extra_args(llama_cpu),
             first_run: false,
-            env: Vec::new(),
+            env: default_sidecar_env(),
         },
         supervisor: key.supervisor.clone(),
         asr_config: key.asr.clone(),
@@ -309,6 +309,18 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
         seen_file,
         locks: verified.locks,
     })
+}
+
+fn default_sidecar_env() -> Vec<(String, String)> {
+    if cfg!(windows) {
+        vec![
+            // Tránh crash Access Violation (0xc0000005) trong ggml-vulkan do bug driver NVIDIA với extension VK_NV_cooperative_matrix2 (báo cáo thật R-ATR4-EAR7).
+            // Tắt extension thử nghiệm này buộc ggml-vulkan dùng chuẩn VK_KHR_cooperative_matrix hoặc compute shader an toàn và ổn định.
+            ("GGML_VK_DISABLE_COOPMAT2".to_string(), "1".to_string()),
+        ]
+    } else {
+        Vec::new()
+    }
 }
 
 #[cfg(test)]
