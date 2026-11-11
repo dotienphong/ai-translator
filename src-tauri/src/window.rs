@@ -21,6 +21,8 @@ pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .build()?;
     #[cfg(windows)]
     hook_end_session(&window);
+    #[cfg(not(windows))]
+    let _ = window;
     Ok(())
 }
 
