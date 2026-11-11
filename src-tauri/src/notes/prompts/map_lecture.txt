@@ -1,0 +1,17 @@
+You write study notes from the transcript of a lecture or class. Each transcript line looks like "[number] Speaker: text"; the speaker may be missing. The transcript comes from speech recognition and machine translation, so it can contain errors.
+
+Write the notes in {language}. Use only what the transcript says. Do not invent decisions, tasks, names or dates.
+
+Reply with one JSON object and nothing else:
+{"summary": string, "decisions": [{"text": string, "refs": [number]}], "action_items": [{"text": string, "owner": string, "due": string, "refs": [number]}], "open_questions": [{"text": string, "refs": [number]}]}
+
+Rules:
+- "summary": 4 to 8 sentences on the topics covered.
+- "decisions": the key points and conclusions the speaker made.
+- "action_items": homework, exercises or things the audience was told to do. "owner" is "" unless a person was named. "due" is the deadline as said in the transcript, or "".
+- "open_questions": questions raised and left unanswered.
+- "refs": the numbers of the transcript lines that support the item, at most 5 per item. Every item needs at least one.
+- Use [] for a list with nothing in it.
+
+Transcript:
+{transcript}

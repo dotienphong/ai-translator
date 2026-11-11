@@ -152,6 +152,20 @@ pub const SKIPPED_CODES: &[&str] = &[
     // Đổi tên, gộp người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2): phiên đã dừng hay giọng không còn, giao diện tự báo.
     errors::SPEAKER_NOT_FOUND,
     errors::SPEAKER_SAME,
+    // Ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop §9): lỗi do người dùng, nhà cung cấp hay môi trường, không làm dừng phiên dịch.
+    errors::NOTES_BUSY,
+    errors::NOTES_SESSION_RUNNING,
+    errors::NOTES_EMPTY,
+    errors::NOTES_FREE_USED_UP,
+    errors::NOTES_LOCAL_UNAVAILABLE,
+    errors::NOTES_CONSENT_REQUIRED,
+    errors::NOTES_KEY_MISSING,
+    errors::NOTES_OFFLINE,
+    errors::NOTES_AUTH_FAILED,
+    errors::NOTES_RATE_LIMITED,
+    errors::NOTES_CLOUD_FAILED,
+    errors::NOTES_ENGINE_FAILED,
+    errors::NOTES_CANCELLED,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.

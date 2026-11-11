@@ -85,6 +85,18 @@ pub const MIGRATIONS: &[&str] = &[
     // 1 → 2: nhãn người nói của từng câu (spec 2026-10-26-phan-biet-nguoi-noi §9): nhãn lúc dừng phiên (sau đổi tên, gộp), rỗng khi
     // chưa xác định hay phiên không có nhận giọng. Vẫn trong SQLCipher, vẫn chỉ khi có Pro và bật "Lưu lịch sử".
     "ALTER TABLE lines ADD COLUMN speaker TEXT;",
+    // 2 → 3: ghi chú cuộc họp bằng AI (spec 2026-11-11-ghi-chu-cuoc-hop-design §5), mỗi phiên một bản. Chỉ thêm bảng, không sửa
+    // bảng cũ và không đụng dữ liệu cũ; xóa phiên thì xóa luôn ghi chú. Vẫn trong SQLCipher, vẫn chỉ khi có Pro và bật "Lưu lịch sử".
+    "CREATE TABLE notes (
+        session_id INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        source TEXT NOT NULL,      -- local | openai | gemini
+        model TEXT NOT NULL,
+        lang TEXT NOT NULL,
+        template TEXT NOT NULL,
+        body_json TEXT NOT NULL,
+        edited INTEGER NOT NULL DEFAULT 0
+    );",
 ];
 
 pub const SCHEMA_VERSION: i64 = MIGRATIONS.len() as i64;
@@ -369,7 +381,7 @@ mod tests {
             ))
         })
         .unwrap();
-        assert_eq!(names, ["glossary", "lines", "sessions"]);
+        assert_eq!(names, ["glossary", "lines", "notes", "sessions"]);
         assert_eq!(version, SCHEMA_VERSION);
         let secure = db
             .with(|c| Ok::<i64, DbError>(c.query_row("PRAGMA secure_delete", [], |r| r.get(0))?))
@@ -495,7 +507,7 @@ mod tests {
             .set(KEY_NAME, to_hex(&[2; KEY_BYTES]).as_bytes())
             .unwrap();
         let names = run(&store(&dir, &keys), |c| Ok(tables(c))).unwrap();
-        assert_eq!(names, ["glossary", "lines", "sessions"]);
+        assert_eq!(names, ["glossary", "lines", "notes", "sessions"]);
         assert_eq!(
             std::fs::read_dir(&dir).unwrap().count(),
             2,
@@ -559,7 +571,7 @@ mod tests {
         }
         let conn = open_with_key(&path, &key).unwrap();
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!((version, SCHEMA_VERSION), (2, 2));
+        assert_eq!(version, SCHEMA_VERSION);
         let (text, speaker): (String, Option<String>) = conn
             .query_row("SELECT tgt_text, speaker FROM lines WHERE session_id = 1", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -631,11 +643,14 @@ mod tests {
             queries.iter().map(|q| dump(&conn, q)).collect()
         };
         assert_eq!(before.iter().map(Vec::len).collect::<Vec<_>>(), [2, 2, 3]);
-        // Lần đầu nâng 1 → 2; lần sau `user_version` đã là 2, không chạy bước nào.
+        // Lần đầu nâng 1 → 2 → 3; lần sau `user_version` đã là `SCHEMA_VERSION`, không chạy bước nào.
         for round in 0..2 {
             let conn = open_with_key(&path, &key).unwrap();
             let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-            assert_eq!(version, 2, "lần mở {round}");
+            assert_eq!(version, SCHEMA_VERSION, "lần mở {round}");
+            // Bước 2 → 3 chỉ thêm bảng `notes`: có sau khi nâng và rỗng.
+            let notes: i64 = conn.query_row("SELECT count(*) FROM notes", [], |r| r.get(0)).unwrap();
+            assert_eq!(notes, 0, "lần mở {round}: bảng notes có và rỗng");
             let after: Vec<_> = queries.iter().map(|q| dump(&conn, q)).collect();
             assert_eq!(after, before, "lần mở {round}: dữ liệu cũ còn nguyên");
             assert_eq!(
@@ -700,7 +715,7 @@ mod tests {
         drop(conn);
         let conn = open_with_key(&path, &key).unwrap();
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(version, 2, "lần mở sau nâng được");
+        assert_eq!(version, SCHEMA_VERSION, "lần mở sau nâng được");
         drop(conn);
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -749,10 +764,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
-    /// QĐ 19 của kế hoạch 03: app ≤ 0.3.1 (cùng hàm `migrate`, chỉ có `MIGRATIONS[0]`) gặp DB đã nâng lên phiên bản 2 thì từ
-    /// chối mở (`Newer(2)`) và không sửa gì. Hành vi biết trước của mọi lần nâng schema; app không tự hạ phiên bản.
+    /// QĐ 19 của kế hoạch 03: app ≤ 0.3.1 (cùng hàm `migrate`, chỉ có `MIGRATIONS[0]`) gặp DB đã nâng lên bản mới hơn thì từ
+    /// chối mở (`Newer(SCHEMA_VERSION)`) và không sửa gì. Hành vi biết trước của mọi lần nâng schema; app không tự hạ phiên bản.
     #[test]
-    fn an_app_with_only_the_first_migration_refuses_a_version_2_database() {
+    fn an_app_with_only_the_first_migration_refuses_an_upgraded_database() {
         let dir = temp_dir("v2-old-app");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(DB_FILE);
@@ -762,7 +777,7 @@ mod tests {
         let bytes = std::fs::read(&path).unwrap();
         let conn = raw(&path, &key);
         let err = migrate_steps(&conn, &MIGRATIONS[..1]).unwrap_err();
-        assert!(matches!(err, DbError::Newer(2)), "{err}");
+        assert!(matches!(err, DbError::Newer(v) if v == SCHEMA_VERSION), "{err}");
         drop(conn);
         assert_eq!(std::fs::read(&path).unwrap(), bytes, "file không đổi");
         let _ = std::fs::remove_dir_all(dir);

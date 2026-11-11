@@ -3577,3 +3577,219 @@ fn a_new_sign_in_or_sign_out_resets_the_ticker_schedules() {
     assert_eq!(link_calls(&rig), 4, "phiên mới: nhịp kế tiếp chạy ngay");
     assert!(!crate::license::app::account_followups_state(app.handle()).1);
 }
+
+// ---- Ghi chú cuộc họp bằng AI (spec 2026-11-11-ghi-chu-cuoc-hop §7): bảy lệnh của cửa sổ chính ----
+
+/// Engine giả trả một ghi chú cố định, để lệnh `generate_notes` chạy hết đường mà không ra mạng.
+struct CannedNotes;
+
+impl crate::notes::engine::NotesEngine for CannedNotes {
+    fn limits(&self) -> crate::notes::engine::Limits {
+        crate::notes::engine::Limits {
+            budget: 100_000,
+            max_map: 800,
+            max_reduce: 1500,
+        }
+    }
+    fn count_tokens(&self, text: &str) -> usize {
+        text.split_whitespace().count()
+    }
+    fn generate(
+        &self,
+        _req: &crate::notes::engine::NotesRequest,
+        _cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<String, crate::notes::engine::NotesError> {
+        Ok(r#"{"summary":"Chốt *lịch*","decisions":[],"action_items":[],"open_questions":[]}"#.into())
+    }
+}
+
+/// App giả đã chạy xong một phiên có câu dịch, với dịch vụ ghi chú dùng `CannedNotes`, nguồn Gemini đã đồng ý và có key.
+fn notes_app(save_history: bool) -> tauri::App<tauri::test::MockRuntime> {
+    let app = app_after_one_session(save_history);
+    crate::notes::install_with(
+        app.handle(),
+        Arc::new(
+            |_provider: crate::settings::NotesProvider, _model: &str, _key: Option<String>| {
+                Ok(Box::new(CannedNotes) as Box<dyn crate::notes::engine::NotesEngine>)
+            },
+        ),
+    );
+    let state = app.state::<AppState>();
+    let mut s = state.settings();
+    s.notes_provider = crate::settings::NotesProvider::Gemini;
+    s.notes_cloud_consent = true;
+    state.replace_settings(&mut s);
+    app.state::<Arc<crate::security::keystore::Keystore>>()
+        .set(crate::cloud_mt::GEMINI_KEY_ENTRY, b"AIza-test")
+        .unwrap();
+    app
+}
+
+/// Tên file xuất ghi chú gợi ý: tên file bản chép lời của phiên, tiền tố `transcript` đổi thành `notes`.
+fn notes_file_name(t: &crate::transcript::store::Transcript, format: crate::transcript::export::Format) -> String {
+    let name = crate::transcript::export::file_name(t, format, 0);
+    format!("notes-{}", name.strip_prefix("transcript-").unwrap())
+}
+
+#[test]
+fn the_notes_of_the_current_session_are_generated_edited_copied_and_exported() {
+    use crate::test_support::FakePicker;
+    use crate::transcript::export::Format;
+    let app = notes_app(false);
+    let main = window(&app, "main");
+    let current = json!({ "kind": "current" });
+    let text = || invoke(&main, "notes_text", json!({ "target": current }));
+
+    // Chưa có ghi chú: không có gì để sao chép hay xuất.
+    assert!(text().unwrap_err().contains(errors::NOTES_EMPTY));
+    let none = invoke(&main, "get_notes", json!({ "target": current })).unwrap();
+    assert!(none["notes"].is_null());
+
+    let started = invoke(&main, "generate_notes", json!({ "target": current, "template": null })).unwrap();
+    assert_eq!(started["target"], current);
+    wait_until("có ghi chú", || {
+        !invoke(&main, "get_notes", json!({ "target": current })).unwrap()["notes"].is_null()
+    });
+    let view = invoke(&main, "get_notes", json!({ "target": current })).unwrap();
+    assert_eq!(view["notes"]["body"]["summary"], "Chốt *lịch*");
+    assert_eq!(text().unwrap(), "# Ghi chú cuộc họp\n\n## Tóm tắt\n\nChốt \\*lịch\\*\n");
+
+    // Sửa tay: dữ liệu từ giao diện được kiểm, rồi ghi chú mới thay chữ cũ.
+    let edited = json!({ "summary": "Đã sửa", "decisions": [{ "text": "Lùi hạn", "refs": [] }],
+        "actionItems": [{ "text": "Gửi", "owner": "Minh", "due": "", "refs": [] }], "openQuestions": [], "raw": false });
+    let view = invoke(&main, "save_notes", json!({ "target": current, "notes": edited })).unwrap();
+    assert_eq!(view["notes"]["edited"], true);
+    assert_eq!(
+        text().unwrap(),
+        "# Ghi chú cuộc họp\n\n## Tóm tắt\n\nĐã sửa\n\n## Quyết định\n\n- Lùi hạn\n\n## Việc cần làm\n\n- Gửi (Phụ trách: Minh)\n"
+    );
+
+    // Xuất file (Pro): đúng định dạng, tên theo giờ bắt đầu phiên với tiền tố `notes`.
+    let t = crate::data::current(app.handle());
+    let export = |format: &str, offset: i32| {
+        invoke(
+            &main,
+            "export_notes",
+            json!({ "target": current, "format": format, "utcOffsetMinutes": offset }),
+        )
+    };
+    let md = export("markdown", 0).unwrap();
+    let md = md.as_str().unwrap();
+    assert!(md.ends_with(&notes_file_name(&t, Format::Markdown)), "{md}");
+    assert_eq!(
+        std::fs::read_to_string(md).unwrap(),
+        "# Ghi chú cuộc họp\n\n## Tóm tắt\n\nĐã sửa\n\n## Quyết định\n\n- Lùi hạn\n\n## Việc cần làm\n\n- Gửi (Phụ trách: Minh)\n"
+    );
+    let txt = export("txt", 0).unwrap();
+    let txt = txt.as_str().unwrap();
+    assert!(txt.ends_with(&notes_file_name(&t, Format::Txt)), "{txt}");
+    assert!(
+        std::fs::read_to_string(txt)
+            .unwrap()
+            .starts_with("Ghi chú cuộc họp\n\nTóm tắt\nĐã sửa\n")
+    );
+    // SRT không có nghĩa với ghi chú; độ lệch múi giờ ngoài ±18 giờ là dữ liệu hỏng.
+    let refused = export("srt", 0).unwrap_err();
+    assert!(
+        refused.contains("outOfRange") && refused.contains("format"),
+        "{refused}"
+    );
+    for bad in [1081, -1081] {
+        let refused = export("txt", bad).unwrap_err();
+        assert!(refused.contains("outOfRange"), "{refused}");
+    }
+    app.state::<FakePicker>()
+        .cancel
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(export("txt", 0).unwrap(), Value::Null, "bấm Hủy thì không ghi gì");
+    app.state::<FakePicker>()
+        .cancel
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+
+    // Gói Free: vẫn sao chép được ghi chú của phiên vừa dừng; xuất file và danh sách phiên có ghi chú là Pro.
+    set_pro(&app, false);
+    assert!(text().is_ok());
+    for (cmd, args) in [
+        ("list_notes_sessions", json!({})),
+        (
+            "export_notes",
+            json!({ "target": current, "format": "markdown", "utcOffsetMinutes": 0 }),
+        ),
+    ] {
+        let refused = invoke(&main, cmd, args).unwrap_err();
+        assert!(refused.contains(errors::PRO_REQUIRED), "{cmd}: {refused}");
+    }
+    invoke(&main, "cancel_notes", json!({})).unwrap();
+}
+
+#[test]
+fn the_notes_of_a_history_session_are_listed_read_and_need_pro() {
+    use crate::notes::schema::{ActionItem, Item, Notes};
+    use crate::notes::store::{self, Stored};
+    use crate::settings::{NotesProvider, NotesTemplate};
+    let app = notes_app(true);
+    let main = window(&app, "main");
+    let list = invoke(&main, "list_history", json!({})).unwrap();
+    let id = list[0]["id"].as_i64().unwrap();
+    let source = json!({ "kind": "history", "id": id });
+    // Phiên trong Lịch sử mà chưa có ghi chú: không có trong danh sách, không có gì để sao chép hay xuất.
+    assert_eq!(invoke(&main, "list_notes_sessions", json!({})).unwrap(), json!([]));
+    let empty = invoke(&main, "notes_text", json!({ "target": source })).unwrap_err();
+    assert!(empty.contains(errors::NOTES_EMPTY), "{empty}");
+    let args = json!({ "target": source, "format": "txt", "utcOffsetMinutes": 0 });
+    let empty = invoke(&main, "export_notes", args.clone()).unwrap_err();
+    assert!(empty.contains(errors::NOTES_EMPTY), "{empty}");
+
+    let stored = Stored {
+        created_at: 1_790_000_000_000,
+        source: NotesProvider::Gemini,
+        model: "m".into(),
+        lang: "vi".into(),
+        template: NotesTemplate::Meeting,
+        body: Notes {
+            summary: "Tổng kết".into(),
+            decisions: vec![Item {
+                text: "Lùi hạn".into(),
+                refs: vec![],
+            }],
+            action_items: vec![ActionItem {
+                text: "Gửi".into(),
+                owner: "".into(),
+                due: "mai".into(),
+                refs: vec![],
+            }],
+            open_questions: vec![],
+            raw: false,
+        },
+        edited: false,
+    };
+    assert!(crate::db::with(app.handle(), |c| store::put(c, id, &stored)).unwrap());
+    assert_eq!(invoke(&main, "list_notes_sessions", json!({})).unwrap(), json!([id]));
+    let view = invoke(&main, "get_notes", json!({ "target": source })).unwrap();
+    assert_eq!(view["notes"]["body"]["summary"], "Tổng kết");
+    assert_eq!(view["persisted"], true);
+    assert_eq!(
+        invoke(&main, "notes_text", json!({ "target": source })).unwrap(),
+        "# Ghi chú cuộc họp\n\n## Tóm tắt\n\nTổng kết\n\n## Quyết định\n\n- Lùi hạn\n\n## Việc cần làm\n\n- Gửi (Hạn: mai)\n"
+    );
+    let path = invoke(&main, "export_notes", args.clone()).unwrap();
+    let t = crate::data::load(app.handle(), crate::data::TranscriptRef::History { id }).unwrap();
+    assert!(
+        path.as_str()
+            .unwrap()
+            .ends_with(&notes_file_name(&t, crate::transcript::export::Format::Txt))
+    );
+
+    // Gói Free: xem ghi chú của phiên trong Lịch sử cũng là Pro.
+    set_pro(&app, false);
+    for (cmd, args) in [
+        ("get_notes", json!({ "target": source })),
+        ("notes_text", json!({ "target": source })),
+        ("save_notes", json!({ "target": source, "notes": stored.body })),
+        ("export_notes", args),
+        ("list_notes_sessions", json!({})),
+    ] {
+        let refused = invoke(&main, cmd, args).unwrap_err();
+        assert!(refused.contains(errors::PRO_REQUIRED), "{cmd}: {refused}");
+    }
+}

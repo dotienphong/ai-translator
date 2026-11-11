@@ -10,6 +10,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
 use crate::account::AccountView;
 use crate::compose::{self, ComposeView, Delta, Done, Loading};
+use crate::notes::service::NotesChanged;
 use crate::overlay;
 use crate::settings::Settings;
 use crate::state::{AppStatus, OverlayView};
@@ -57,6 +58,9 @@ pub const SUPPORT_VIEW: &str = "support://view";
 /// Tài khoản Google (spec 2026-11-05-dang-nhap-google §6.1), chỉ gửi cho cửa sổ chính: trạng thái mới sau mỗi lệnh tài khoản (kể
 /// cả khi lệnh lỗi) và sau lần hỏi công tắc đăng nhập ở nền (`account::AccountView`: trạng thái, email, cổng; không có token).
 pub const ACCOUNT_CHANGED: &str = "account://changed";
+/// Ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design), chỉ gửi cho cửa sổ chính: trạng thái việc tạo ghi chú
+/// (`notes::service::NotesChanged`: mục tiêu, trạng thái, tiến độ, mã lỗi). Không mang chữ ghi chú.
+pub const NOTES_CHANGED: &str = "notes://changed";
 
 /// Hướng cuộn của phím tắt cuộn phụ đề. Tên khớp `ScrollDirection` ở `src/lib/overlayScroll.ts`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -162,6 +166,10 @@ pub fn support_view<R: Runtime>(app: &AppHandle<R>, view: &SupportView) {
 
 pub fn account_changed<R: Runtime>(app: &AppHandle<R>, view: &AccountView) {
     emit(app, window::MAIN, ACCOUNT_CHANGED, view);
+}
+
+pub fn notes_changed<R: Runtime>(app: &AppHandle<R>, changed: &NotesChanged) {
+    emit(app, window::MAIN, NOTES_CHANGED, changed);
 }
 
 pub fn navigate<R: Runtime>(app: &AppHandle<R>, target: Navigate) {

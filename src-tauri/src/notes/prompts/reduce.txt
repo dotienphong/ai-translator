@@ -1,0 +1,8 @@
+Below are notes written from consecutive parts of one meeting, in order, one JSON object per line. Merge them into one set of notes for the whole meeting.
+
+Write in {language}. Keep the same JSON format. Merge items that say the same thing and join their "refs". Keep every other item. Do not add anything that is not in the parts. Keep "refs" numbers exactly as given. "summary": 4 to 8 sentences for the whole meeting.
+
+Reply with one JSON object and nothing else.
+
+Parts:
+{parts}

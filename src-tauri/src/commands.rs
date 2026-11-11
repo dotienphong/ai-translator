@@ -21,8 +21,10 @@ use crate::license::app::{self as license_app, ActivateOutcome};
 use crate::license::manager::LicenseView;
 use crate::license::purchase::{CheckoutView, PlansView, SubscriptionView};
 use crate::meeting_hint;
+use crate::notes::schema::Notes;
+use crate::notes::service::NotesView;
 use crate::overlay::{self, placement::Edge};
-use crate::settings::Settings;
+use crate::settings::{NotesTemplate, Settings};
 use crate::state::{AppInfo, AppState, AppStatus, OverlayView};
 use crate::support::{self, chat::SupportView};
 use crate::transcript::export::{Format, SrtText};
@@ -254,6 +256,75 @@ pub async fn delete_history_session<R: Runtime>(app: AppHandle<R>, id: i64) -> R
 #[tauri::command]
 pub async fn clear_history<R: Runtime>(app: AppHandle<R>) -> Result<usize, CommandError> {
     blocking(app, data::clear_history).await
+}
+
+// ---- Ghi chú cuộc họp bằng AI (spec 2026-11-11-ghi-chu-cuoc-hop §7). Chỉ cửa sổ chính. Việc nặng nằm ở `notes::service`. ----
+
+/// Ghi chú và trạng thái việc tạo ghi chú của `target`. Phiên trong Lịch sử cần Pro.
+#[tauri::command]
+pub async fn get_notes<R: Runtime>(app: AppHandle<R>, target: TranscriptRef) -> Result<NotesView, CommandError> {
+    blocking(app, move |app| data::notes_service(app)?.view(app, target)).await
+}
+
+/// Bắt đầu tạo ghi chú cho `target`; trả ngay (trạng thái `running`), tiến độ và kết quả đến qua `notes://changed`. `template`
+/// không gửi thì lấy mẫu trong cài đặt.
+#[tauri::command]
+pub async fn generate_notes<R: Runtime>(
+    app: AppHandle<R>,
+    target: TranscriptRef,
+    template: Option<NotesTemplate>,
+) -> Result<NotesView, CommandError> {
+    blocking(app, move |app| data::notes_service(app)?.start(app, target, template)).await
+}
+
+/// Hủy việc tạo ghi chú đang chạy (không có việc nào thì không làm gì). Chạy trên luồng `blocking` như các lệnh ghi chú
+/// khác: `cancel` lấy khóa của service, mà khóa có thể đang bị việc khác giữ qua lệnh keychain hay ghi DB; chạy trên
+/// luồng chính thì Hủy làm đứng mọi cửa sổ.
+#[tauri::command]
+pub async fn cancel_notes<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
+    blocking(app, |app| {
+        if let Ok(service) = data::notes_service(app) {
+            service.cancel(app);
+        }
+        Ok(())
+    })
+    .await
+}
+
+/// Lưu ghi chú người dùng sửa tay. Dữ liệu được kiểm và làm sạch trước khi lưu.
+#[tauri::command]
+pub async fn save_notes<R: Runtime>(
+    app: AppHandle<R>,
+    target: TranscriptRef,
+    notes: Notes,
+) -> Result<NotesView, CommandError> {
+    blocking(app, move |app| data::notes_service(app)?.save_edit(app, target, notes)).await
+}
+
+/// Mã các phiên trong Lịch sử đã có ghi chú (Pro).
+#[tauri::command]
+pub async fn list_notes_sessions<R: Runtime>(app: AppHandle<R>) -> Result<Vec<i64>, CommandError> {
+    blocking(app, data::list_notes_sessions).await
+}
+
+/// Markdown của ghi chú để sao chép (mọi gói).
+#[tauri::command]
+pub async fn notes_text<R: Runtime>(app: AppHandle<R>, target: TranscriptRef) -> Result<String, CommandError> {
+    blocking(app, move |app| data::notes_text(app, target)).await
+}
+
+/// Xuất ghi chú ra file TXT hay Markdown (Pro). Trả đường dẫn đã ghi, `null` nếu người dùng bấm Hủy ở hộp thoại lưu.
+#[tauri::command]
+pub async fn export_notes<R: Runtime>(
+    app: AppHandle<R>,
+    target: TranscriptRef,
+    format: Format,
+    utc_offset_minutes: i32,
+) -> Result<Option<String>, CommandError> {
+    blocking(app, move |app| {
+        data::export_notes(app, target, format, utc_offset_minutes)
+    })
+    .await
 }
 
 // ---- Từ điển thuật ngữ (F5, Pro), quyền riêng tư, bảng debug. ----
@@ -796,6 +867,13 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "get_history_session",
     "delete_history_session",
     "clear_history",
+    "get_notes",
+    "generate_notes",
+    "cancel_notes",
+    "save_notes",
+    "list_notes_sessions",
+    "notes_text",
+    "export_notes",
     "list_glossary",
     "add_glossary_entry",
     "update_glossary_entry",
@@ -916,6 +994,13 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         get_history_session,
         delete_history_session,
         clear_history,
+        get_notes,
+        generate_notes,
+        cancel_notes,
+        save_notes,
+        list_notes_sessions,
+        notes_text,
+        export_notes,
         list_glossary,
         add_glossary_entry,
         update_glossary_entry,

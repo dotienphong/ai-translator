@@ -489,6 +489,79 @@ fn only_the_main_window_reaches_the_account_commands() {
     assert_eq!(system_calls(&app).len(), 1, "chỉ đăng nhập mới mở trình duyệt");
 }
 
+/// Lệnh ghi chú cuộc họp bằng AI (spec 2026-11-11-ghi-chu-cuoc-hop §7): chỉ cửa sổ chính được cấp.
+const NOTES_COMMANDS: &[&str] = &[
+    "get_notes",
+    "generate_notes",
+    "cancel_notes",
+    "save_notes",
+    "list_notes_sessions",
+    "notes_text",
+    "export_notes",
+];
+
+/// Bảy lệnh ghi chú nằm trong danh sách cố định của cửa sổ chính, không nằm trong danh sách của cửa sổ nào khác.
+#[test]
+fn the_notes_commands_belong_to_the_main_window_only() {
+    assert_eq!(NOTES_COMMANDS.len(), 7);
+    for cmd in NOTES_COMMANDS {
+        assert!(MAIN_COMMANDS.contains(cmd), "MAIN_COMMANDS thiếu {cmd}");
+        for (label, list) in [
+            ("overlay", OVERLAY_COMMANDS),
+            ("compose", COMPOSE_COMMANDS),
+            ("hint", HINT_COMMANDS),
+        ] {
+            assert!(!list.contains(cmd), "{label} không được có {cmd}");
+        }
+        assert!(
+            include_str!("../build.rs").contains(&format!("\"{cmd}\"")),
+            "build.rs thiếu {cmd}"
+        );
+        assert!(
+            include_str!("../capabilities/main.json").contains(&format!("\"{}\"", allow(cmd))),
+            "capabilities/main.json thiếu {}",
+            allow(cmd)
+        );
+    }
+}
+
+/// Overlay, compose, hint và cửa sổ lạ không gọi được lệnh ghi chú nào (bị chặn trước khi tới dịch vụ); cửa sổ chính gọi được cả
+/// bảy: lỗi của lệnh (chưa có ghi chú, chưa có câu) không phải là bị chặn.
+#[test]
+fn only_the_main_window_reaches_the_notes_commands() {
+    let app = mock_app();
+    crate::notes::install_with(app.handle(), crate::notes::service::live_factory());
+    let current = json!({ "kind": "current" });
+    let args = |cmd: &str| match cmd {
+        "list_notes_sessions" | "cancel_notes" => json!({}),
+        "generate_notes" => json!({ "target": current, "template": null }),
+        "save_notes" => {
+            json!({ "target": current, "notes": { "summary": "x", "decisions": [], "actionItems": [], "openQuestions": [] } })
+        }
+        "export_notes" => json!({ "target": current, "format": "markdown", "utcOffsetMinutes": 0 }),
+        _ => json!({ "target": current }),
+    };
+    for label in ["overlay", "compose", "hint", "stranger"] {
+        let other = window(&app, label);
+        for cmd in NOTES_COMMANDS {
+            let result = invoke(&other, cmd, args(cmd));
+            assert!(denied(&result), "{label} không được gọi {cmd}: {result:?}");
+        }
+        // Đúng ví dụ của brief: `get_notes` với `{ "target": { "kind": "current" } }`.
+        let result = invoke(&other, "get_notes", json!({ "target": { "kind": "current" } }));
+        assert!(denied(&result), "{label} không được gọi get_notes: {result:?}");
+    }
+    let main = window(&app, "main");
+    let view = invoke(&main, "get_notes", json!({ "target": { "kind": "current" } })).expect("main đọc được ghi chú");
+    assert_eq!(view["target"], current);
+    assert_eq!(view["status"], "idle");
+    assert!(view["notes"].is_null(), "chưa có ghi chú");
+    for cmd in NOTES_COMMANDS {
+        let result = invoke(&main, cmd, args(cmd));
+        assert!(!denied(&result), "main gọi được {cmd}: {result:?}");
+    }
+}
+
 /// URL đăng nhập mà server trả không phải trang Google: không mở gì, lệnh báo lỗi.
 #[test]
 fn account_sign_in_never_opens_a_url_that_is_not_google() {

@@ -210,6 +210,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     speaker::recipes::install(&handle)?;
     // Chat hỗ trợ (spec 2026-10-22-chat-ho-tro-zalo §4): đọc `support.json`, luồng hỏi tin chỉ kết nối khi đã dùng chat.
     support::install(&handle)?;
+    // Ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design): không chạy gì tới khi người dùng bấm hay bật tự tạo.
+    notes::install(&handle);
 
     #[cfg(target_os = "macos")]
     {

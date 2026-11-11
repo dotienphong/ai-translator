@@ -42,6 +42,14 @@ pub struct Strings {
     pub speaker_voice: &'static str,
     /// Một tên khớp nhiều giọng (máy chung phòng họp, spec 2026-10-26-phan-biet-nguoi-noi §6.6): `{name}` là tên, `{k}` thứ tự giọng.
     pub speaker_room_voice: &'static str,
+    /// File xuất ghi chú cuộc họp (`notes/render.rs`): tiêu đề, tên các khối, nhãn người phụ trách và hạn của một việc.
+    pub notes_title: &'static str,
+    pub notes_summary: &'static str,
+    pub notes_decisions: &'static str,
+    pub notes_actions: &'static str,
+    pub notes_questions: &'static str,
+    pub notes_owner: &'static str,
+    pub notes_due: &'static str,
 }
 
 pub const EN: Strings = Strings {
@@ -70,6 +78,13 @@ pub const EN: Strings = Strings {
     export_failed: "(not translated)",
     speaker_voice: "Speaker {n}",
     speaker_room_voice: "{name} · voice {k}",
+    notes_title: "Meeting notes",
+    notes_summary: "Summary",
+    notes_decisions: "Decisions",
+    notes_actions: "Action items",
+    notes_questions: "Open questions",
+    notes_owner: "Owner",
+    notes_due: "Due",
 };
 
 pub const VI: Strings = Strings {
@@ -98,6 +113,13 @@ pub const VI: Strings = Strings {
     export_failed: "(chưa dịch được)",
     speaker_voice: "Người {n}",
     speaker_room_voice: "{name} · giọng {k}",
+    notes_title: "Ghi chú cuộc họp",
+    notes_summary: "Tóm tắt",
+    notes_decisions: "Quyết định",
+    notes_actions: "Việc cần làm",
+    notes_questions: "Câu hỏi còn mở",
+    notes_owner: "Phụ trách",
+    notes_due: "Hạn",
 };
 
 pub const JA: Strings = Strings {
@@ -126,6 +148,13 @@ pub const JA: Strings = Strings {
     export_failed: "（未翻訳）",
     speaker_voice: "話者{n}",
     speaker_room_voice: "{name} · 声{k}",
+    notes_title: "会議メモ",
+    notes_summary: "要約",
+    notes_decisions: "決定事項",
+    notes_actions: "アクションアイテム",
+    notes_questions: "未解決の質問",
+    notes_owner: "担当",
+    notes_due: "期限",
 };
 
 pub const ZH: Strings = Strings {
@@ -154,6 +183,13 @@ pub const ZH: Strings = Strings {
     export_failed: "（未翻译）",
     speaker_voice: "说话人{n}",
     speaker_room_voice: "{name} · 声音{k}",
+    notes_title: "会议纪要",
+    notes_summary: "摘要",
+    notes_decisions: "决定事项",
+    notes_actions: "待办事项",
+    notes_questions: "未决问题",
+    notes_owner: "负责人",
+    notes_due: "截止时间",
 };
 
 pub const KO: Strings = Strings {
@@ -182,6 +218,13 @@ pub const KO: Strings = Strings {
     export_failed: "(번역 안 됨)",
     speaker_voice: "화자 {n}",
     speaker_room_voice: "{name} · 목소리 {k}",
+    notes_title: "회의 노트",
+    notes_summary: "요약",
+    notes_decisions: "결정 사항",
+    notes_actions: "할 일",
+    notes_questions: "미해결 질문",
+    notes_owner: "담당자",
+    notes_due: "기한",
 };
 
 impl Strings {
@@ -214,6 +257,13 @@ impl Strings {
             export_failed,
             speaker_voice,
             speaker_room_voice,
+            notes_title,
+            notes_summary,
+            notes_decisions,
+            notes_actions,
+            notes_questions,
+            notes_owner,
+            notes_due,
         } = *self;
         vec![
             ("tray_start", tray_start),
@@ -241,6 +291,13 @@ impl Strings {
             ("export_failed", export_failed),
             ("speaker_voice", speaker_voice),
             ("speaker_room_voice", speaker_room_voice),
+            ("notes_title", notes_title),
+            ("notes_summary", notes_summary),
+            ("notes_decisions", notes_decisions),
+            ("notes_actions", notes_actions),
+            ("notes_questions", notes_questions),
+            ("notes_owner", notes_owner),
+            ("notes_due", notes_due),
         ]
     }
 

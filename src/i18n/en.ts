@@ -758,6 +758,19 @@ export const en = {
   "error.ttsBadText": "This text cannot be read aloud.",
   "error.ttsUnsupportedLanguage": "Voice reading is only available for Vietnamese and English.",
   "error.speakerSame": "A speaker cannot be merged into themselves.",
+  "error.notesBusy": "Another set of notes is being created. Wait for it or cancel it, then try again.",
+  "error.notesSessionRunning": "Stop translating before creating notes for this session.",
+  "error.notesEmpty": "This session has nothing to take notes from.",
+  "error.notesFreeUsedUp": "You have used the 3 notes included in the trial. Upgrade to keep using it.",
+  "error.notesLocalUnavailable": "The on-device notes model is not available. Choose ChatGPT or Gemini, or download the notes pack.",
+  "error.notesConsentRequired": "Your consent is needed to send this session's text to the chosen provider.",
+  "error.notesKeyMissing": "No API key is saved for the chosen provider.",
+  "error.notesOffline": "Could not reach the provider. Check your connection and try again.",
+  "error.notesAuthFailed": "The provider rejected the API key. Check the key.",
+  "error.notesRateLimited": "The key hit the provider's limit. Try again later.",
+  "error.notesCloudFailed": "The provider returned an error. Try again later.",
+  "error.notesEngineFailed": "Could not create the notes. Try again.",
+  "error.notesCancelled": "Cancelled.",
 } as const;
 
 export type MessageKey = keyof typeof en;

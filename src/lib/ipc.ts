@@ -448,6 +448,71 @@ export interface SessionSummary {
   preview: string;
 }
 
+// Ghi chú cuộc họp bằng AI (`notes::schema`, `notes::store::Stored`, `notes::service::NotesView`, spec 2026-11-11-ghi-chu-cuoc-hop-design.md).
+// `refs` là số thứ tự (từ 1) của các câu làm căn cứ trong bản chép lời. `owner` và `due` là chuỗi rỗng khi chưa rõ.
+export interface NotesItem {
+  text: string;
+  refs: number[];
+}
+
+export interface NotesActionItem {
+  text: string;
+  owner: string;
+  due: string;
+  refs: number[];
+}
+
+export interface Notes {
+  summary: string;
+  decisions: NotesItem[];
+  actionItems: NotesActionItem[];
+  openQuestions: NotesItem[];
+  // Model không trả được JSON đúng hình nên `summary` là chữ thô của model.
+  raw: boolean;
+}
+
+// Một ghi chú đã dựng, cùng nơi nó từ đâu tới.
+export interface StoredNotes {
+  // Giờ Unix (ms) lúc dựng xong.
+  createdAt: number;
+  source: NotesProvider;
+  // Tên model đã dùng (có thể rỗng).
+  model: string;
+  // Ngôn ngữ của ghi chú.
+  lang: string;
+  template: NotesTemplate;
+  body: Notes;
+  // Người dùng đã sửa tay.
+  edited: boolean;
+}
+
+export type NotesJobStatus = "idle" | "running" | "failed";
+
+// Ghi chú và trạng thái việc tạo ghi chú của một bản chép lời.
+export interface NotesView {
+  target: TranscriptRef;
+  status: NotesJobStatus;
+  // `[xong, tổng]` khi đang chạy.
+  progress: [number, number] | null;
+  // Mã lỗi (`error.<mã>` trong từ điển) khi `status` là `failed`.
+  error: string | null;
+  notes: StoredNotes | null;
+  // Ghi chú đã nằm trong DB (phiên trong Lịch sử); `false` khi chỉ ở bộ nhớ hay chưa có.
+  persisted: boolean;
+  // Số lần Free còn lại; `null` khi là Pro.
+  freeLeft: number | null;
+}
+
+// Nội dung sự kiện `notes://changed` (`notes::service::NotesChanged`). Không có chữ ghi chú: hỏi lại bằng `get_notes`.
+export interface NotesChanged {
+  target: TranscriptRef;
+  status: NotesJobStatus;
+  progress: [number, number] | null;
+  error: string | null;
+}
+
+export const NOTES_CHANGED = "notes://changed" as const;
+
 // Một cặp thuật ngữ (`glossary::GlossaryEntry`) và kết quả nhập CSV (`glossary::ImportReport`).
 export interface GlossaryEntry {
   id: number;
@@ -713,6 +778,19 @@ export interface Commands {
   get_history_session: { args: { id: number }; result: Transcript };
   delete_history_session: { args: { id: number }; result: null };
   clear_history: { args: undefined; result: number };
+  // Ghi chú cuộc họp bằng AI (chỉ cửa sổ chính). `get_notes`, `generate_notes`, `save_notes` cho phiên trong Lịch sử cần Pro.
+  // `generate_notes` trả ngay khi việc bắt đầu (`status: "running"`); tiến độ và kết quả đến qua `notes://changed`. `template` không
+  // gửi thì lấy mẫu trong cài đặt. Lỗi có mã `notes*` (xem `error.notes*`).
+  get_notes: { args: { target: TranscriptRef }; result: NotesView };
+  generate_notes: { args: { target: TranscriptRef; template?: NotesTemplate | null }; result: NotesView };
+  cancel_notes: { args: undefined; result: null };
+  save_notes: { args: { target: TranscriptRef; notes: Notes }; result: NotesView };
+  // Pro. Mã các phiên trong Lịch sử đã có ghi chú.
+  list_notes_sessions: { args: undefined; result: number[] };
+  // Markdown để sao chép; mọi gói. Chưa có ghi chú thì lỗi `notesEmpty`.
+  notes_text: { args: { target: TranscriptRef }; result: string };
+  // Pro. Chỉ `txt` và `markdown` (`srt` là lỗi `outOfRange` ở field `format`). Trả đường dẫn đã ghi, `null` nếu bấm Hủy.
+  export_notes: { args: { target: TranscriptRef; format: ExportFormat; utcOffsetMinutes: number }; result: string | null };
   // Người nói (spec 2026-10-26-phan-biet-nguoi-noi §8.2): đổi tên (≤ 40 ký tự; rỗng là trở về tên tự động), gộp, trong phiên đang
   // chạy. Lỗi `speakerNotFound` khi phiên đã dừng hay giọng không còn; đổi tên: `tooLong` (field `name`); gộp: `speakerSame` khi gộp
   // một giọng vào chính nó hay vào giọng nó đã được gộp vào.
@@ -879,6 +957,8 @@ export interface Events {
   "compose://done": ComposeDone;
   // Chat hỗ trợ: trạng thái mới sau lần hỏi tin nền (tin mới, chấm đỏ, chat tắt, cuộc chat không còn).
   "support://view": SupportView;
+  // Việc tạo ghi chú đổi trạng thái hay tiến độ (không có chữ ghi chú).
+  [NOTES_CHANGED]: NotesChanged;
 }
 
 export type Command = keyof Commands;

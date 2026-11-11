@@ -154,6 +154,35 @@ pub const SPEAKER_NOT_FOUND: &str = "speakerNotFound";
 /// Gộp một người nói vào chính họ (giao diện không cho làm; lỗi phòng hờ, rà soát A-N11).
 pub const SPEAKER_SAME: &str = "speakerSame";
 
+// Mã lỗi của ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design, kế hoạch 02). Giao diện hiện câu báo lỗi; `NotesError::code()`
+// (`notes/engine.rs`) đổi lỗi của engine sang các mã này.
+/// Đã có một bản ghi chú đang được tạo (mỗi lúc chỉ một việc): chờ xong hay hủy rồi thử lại.
+pub const NOTES_BUSY: &str = "notesBusy";
+/// Phiên này còn đang dịch: dừng dịch rồi mới tạo ghi chú.
+pub const NOTES_SESSION_RUNNING: &str = "notesSessionRunning";
+/// Phiên không có câu nào để ghi chú.
+pub const NOTES_EMPTY: &str = "notesEmpty";
+/// Free đã dùng hết 3 lần tạo ghi chú của bản dùng thử (`quota::FREE_NOTES`): nâng cấp để dùng tiếp.
+pub const NOTES_FREE_USED_UP: &str = "notesFreeUsedUp";
+/// Chọn model trên máy mà chưa có model ghi chú: chọn ChatGPT hay Gemini, hoặc tải gói ghi chú.
+pub const NOTES_LOCAL_UNAVAILABLE: &str = "notesLocalUnavailable";
+/// Dùng ChatGPT hay Gemini mà người dùng chưa đồng ý gửi nội dung phiên ra ngoài.
+pub const NOTES_CONSENT_REQUIRED: &str = "notesConsentRequired";
+/// Chưa có API key cho nguồn cloud đã chọn (`NotesError::KeyMissing`).
+pub const NOTES_KEY_MISSING: &str = "notesKeyMissing";
+/// Không nối được nhà cung cấp cloud (`NotesError::Offline`).
+pub const NOTES_OFFLINE: &str = "notesOffline";
+/// Nhà cung cấp từ chối API key (`NotesError::AuthFailed`).
+pub const NOTES_AUTH_FAILED: &str = "notesAuthFailed";
+/// Key chạm giới hạn của nhà cung cấp (`NotesError::RateLimited`).
+pub const NOTES_RATE_LIMITED: &str = "notesRateLimited";
+/// Nhà cung cấp trả lỗi hay phản hồi không đọc được (`NotesError::Cloud`, `BadResponse`).
+pub const NOTES_CLOUD_FAILED: &str = "notesCloudFailed";
+/// Engine ghi chú lỗi khác (`NotesError::Engine`).
+pub const NOTES_ENGINE_FAILED: &str = "notesEngineFailed";
+/// Người dùng hủy việc tạo ghi chú (`NotesError::Cancelled`).
+pub const NOTES_CANCELLED: &str = "notesCancelled";
+
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
         Self {
@@ -299,6 +328,19 @@ mod tests {
                 SUPPORT_INVALID,
                 SPEAKER_NOT_FOUND,
                 SPEAKER_SAME,
+                NOTES_BUSY,
+                NOTES_SESSION_RUNNING,
+                NOTES_EMPTY,
+                NOTES_FREE_USED_UP,
+                NOTES_LOCAL_UNAVAILABLE,
+                NOTES_CONSENT_REQUIRED,
+                NOTES_KEY_MISSING,
+                NOTES_OFFLINE,
+                NOTES_AUTH_FAILED,
+                NOTES_RATE_LIMITED,
+                NOTES_CLOUD_FAILED,
+                NOTES_ENGINE_FAILED,
+                NOTES_CANCELLED,
             ]
             .map(String::from),
         );
@@ -325,5 +367,28 @@ mod tests {
             (e.code.as_str(), e.field.as_deref()),
             ("hotkeyDuplicate", Some("toggleOverlay"))
         );
+    }
+
+    /// 13 mã của ghi chú cuộc họp khác nhau từng đôi một (`NotesError::code()` chỉ trả các mã này).
+    #[test]
+    fn notes_codes_are_unique() {
+        let codes = [
+            NOTES_BUSY,
+            NOTES_SESSION_RUNNING,
+            NOTES_EMPTY,
+            NOTES_FREE_USED_UP,
+            NOTES_LOCAL_UNAVAILABLE,
+            NOTES_CONSENT_REQUIRED,
+            NOTES_KEY_MISSING,
+            NOTES_OFFLINE,
+            NOTES_AUTH_FAILED,
+            NOTES_RATE_LIMITED,
+            NOTES_CLOUD_FAILED,
+            NOTES_ENGINE_FAILED,
+            NOTES_CANCELLED,
+        ];
+        let set: std::collections::HashSet<_> = codes.iter().collect();
+        assert_eq!(set.len(), 13);
+        assert!(codes.iter().all(|c| c.starts_with("notes")));
     }
 }
