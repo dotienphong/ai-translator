@@ -466,6 +466,21 @@ mod tests {
         assert_eq!(loaded.rejected, ["translateWhileSpeaking"]);
     }
 
+    /// Spec 2026-11-11-ghi-chu-cuoc-hop: file của bản trước chưa có bốn khóa `notes*` thì nhận mặc định, khóa thiếu không bị coi
+    /// là hỏng; giá trị sai thì về mặc định và được báo trong `rejected`.
+    #[test]
+    fn an_old_file_without_the_notes_keys_gets_defaults() {
+        use crate::settings::{NotesProvider, NotesTemplate};
+        let raw = object(json!({ "schemaVersion": 1 }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.notes_provider, NotesProvider::Local);
+        assert!(loaded.rejected.is_empty());
+        let raw = object(json!({ "schemaVersion": 1, "notesTemplate": "essay" }));
+        let loaded = load(raw, defaults());
+        assert_eq!(loaded.settings.notes_template, NotesTemplate::Meeting);
+        assert_eq!(loaded.rejected, ["notesTemplate"]);
+    }
+
     /// Spec 2026-10-26-phan-biet-nguoi-noi §8.3, §9: file của bản trước chưa có hai công tắc người nói thì cả hai bật (bật sẵn),
     /// không phải ghi lại file; giá trị đã lưu được giữ.
     #[test]

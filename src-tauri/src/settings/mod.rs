@@ -255,6 +255,26 @@ pub enum TranslationProvider {
     Gemini,
 }
 
+/// Nguồn tạo ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design.md): model trên máy (mặc định), ChatGPT hoặc Gemini.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NotesProvider {
+    #[default]
+    Local,
+    Openai,
+    Gemini,
+}
+
+/// Mẫu ghi chú: cuộc họp (mặc định), bài giảng, hoặc bản tóm tắt ngắn.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NotesTemplate {
+    #[default]
+    Meeting,
+    Lecture,
+    Brief,
+}
+
 pub const OPENAI_MODELS: &[&str] = &["gpt-4o-mini", "chatgpt-4o-mini", "gpt-4.1-mini", "gpt-4o"];
 pub const DEFAULT_OPENAI_MODEL: &str = "gpt-4o-mini";
 
@@ -336,6 +356,18 @@ pub struct Settings {
     /// Model của Gemini (Google API), mặc định `gemini-2.0-flash`.
     #[serde(default = "default_gemini_model")]
     pub gemini_model: String,
+    /// Nguồn tạo ghi chú cuộc họp: `local` (mặc định), `openai`, hoặc `gemini`. File của bản trước chưa có khóa này thì lấy mặc định.
+    #[serde(default)]
+    pub notes_provider: NotesProvider,
+    /// Tự tạo ghi chú khi phiên kết thúc, mặc định tắt.
+    #[serde(default)]
+    pub notes_auto: bool,
+    /// Mẫu ghi chú, mặc định `meeting`.
+    #[serde(default)]
+    pub notes_template: NotesTemplate,
+    /// Người dùng đã đồng ý gửi nội dung cuộc họp lên Cloud để tạo ghi chú, mặc định chưa.
+    #[serde(default)]
+    pub notes_cloud_consent: bool,
     pub hotkeys: Hotkeys,
     pub save_history: bool,
     /// Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17-diagnostics-reports-design.md §5). Cài mới: `false` cho tới
@@ -439,6 +471,10 @@ impl Settings {
             translation_provider: TranslationProvider::Local,
             openai_model: default_openai_model(),
             gemini_model: default_gemini_model(),
+            notes_provider: NotesProvider::Local,
+            notes_auto: false,
+            notes_template: NotesTemplate::Meeting,
+            notes_cloud_consent: false,
             hotkeys: Hotkeys {
                 toggle_session: "Ctrl+Alt+T".into(),
                 toggle_overlay: "Ctrl+Alt+H".into(),

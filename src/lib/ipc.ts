@@ -29,6 +29,9 @@ export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "fa
 export type ModelTier = string;
 // Nguồn dịch văn bản (`settings::TranslationProvider`, spec 2026-11-07-cloud-mt-fallback-design.md).
 export type TranslationProvider = "local" | "openai" | "gemini";
+// Nguồn và mẫu của ghi chú cuộc họp (`settings::NotesProvider`, `settings::NotesTemplate`, spec 2026-11-11-ghi-chu-cuoc-hop-design.md).
+export type NotesProvider = "local" | "openai" | "gemini";
+export type NotesTemplate = "meeting" | "lecture" | "brief";
 export const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"] as const;
 export type OpenaiModel = (typeof OPENAI_MODELS)[number];
 export const GEMINI_MODELS = [
@@ -124,6 +127,10 @@ export interface Settings {
   translationProvider?: TranslationProvider;
   openaiModel?: string;
   geminiModel?: string;
+  notesProvider?: NotesProvider;
+  notesAuto?: boolean;
+  notesTemplate?: NotesTemplate;
+  notesCloudConsent?: boolean;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
   // Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17 §5). Cài mới: `false` cho tới khi qua bước Điều khoản (ô tích sẵn);
@@ -237,6 +244,10 @@ export interface OverlayView {
   translationProvider?: TranslationProvider;
   openaiModel?: string;
   geminiModel?: string;
+  notesProvider?: NotesProvider;
+  notesAuto?: boolean;
+  notesTemplate?: NotesTemplate;
+  notesCloudConsent?: boolean;
 }
 
 // Phần cài đặt và nội dung của cửa sổ gợi ý bật dịch (`meeting_hint::HintView`, spec 2026-11-01-goi-y-bat-dich-khi-hop §5): chỉ ngôn
@@ -261,6 +272,10 @@ export interface ComposeView {
   translationProvider?: TranslationProvider;
   openaiModel?: string;
   geminiModel?: string;
+  notesProvider?: NotesProvider;
+  notesAuto?: boolean;
+  notesTemplate?: NotesTemplate;
+  notesCloudConsent?: boolean;
   translationFallback?: boolean;
 }
 
