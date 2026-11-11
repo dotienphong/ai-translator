@@ -1,6 +1,8 @@
 """Thư viện của spike ghi chú cuộc họp: đọc bản xuất Markdown của app, cắt theo phút, dựng chữ, chia đoạn,
 đọc JSON ghi chú và kiểm ngôn ngữ. Chỉ dùng thư viện chuẩn."""
+import json
 import re
+import unicodedata
 from typing import Callable
 
 DROPPED_MARKER = "[bỏ qua đoạn]"
@@ -117,3 +119,126 @@ def chunk_lines(lines: list[dict], budget: int, count_tokens: Callable[[str], in
     if cur:
         chunks.append(cur)
     return chunks
+
+
+EMPTY_NOTES = {"summary": "", "decisions": [], "action_items": [], "open_questions": []}
+
+_THINK = re.compile(r"<think>.*?</think>", re.S)
+
+
+def _first_object(text: str) -> str | None:
+    """Đoạn từ `{` đầu tiên tới `}` khớp ngoặc của nó; ngoặc trong chuỗi JSON không tính."""
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth, in_str, esc = 0, False, False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return None
+
+
+def _clean_refs(refs, valid: set[int], stats: dict) -> list[int]:
+    if not isinstance(refs, list):
+        return []
+    kept: set[int] = set()
+    for ref in refs:
+        stats["refs_total"] += 1
+        n = None
+        if isinstance(ref, int) and not isinstance(ref, bool):
+            n = ref
+        elif isinstance(ref, str) and ref.strip().isdigit():
+            n = int(ref.strip())
+        if n is None or n not in valid:
+            stats["refs_invalid"] += 1
+        else:
+            kept.add(n)
+    return sorted(kept)
+
+
+def _text(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def parse_notes(raw: str, lines: list[dict]) -> dict | None:
+    obj_text = _first_object(_THINK.sub("", raw))
+    if obj_text is None:
+        return None
+    try:
+        data = json.loads(obj_text)
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("summary"), str):
+        return None
+    for key in ("decisions", "action_items", "open_questions"):
+        if not isinstance(data.get(key), list):
+            return None
+
+    valid = {l["seq"] for l in lines if not l["dropped"]}
+    speakers = {l["speaker"].lower() for l in lines if l["speaker"]}
+    texts = [t.lower() for t in (line_text(l) for l in lines) if t]
+    stats = {"refs_total": 0, "refs_invalid": 0, "owners_cleared": 0}
+
+    def owner_known(name: str) -> bool:
+        low = name.lower()
+        return low in speakers or any(low in t for t in texts)
+
+    out = {"summary": data["summary"].strip(), "decisions": [], "action_items": [], "open_questions": []}
+    for key in ("decisions", "open_questions"):
+        for item in data[key]:
+            if not isinstance(item, dict) or not _text(item.get("text")):
+                continue
+            out[key].append({"text": _text(item["text"]), "refs": _clean_refs(item.get("refs"), valid, stats)})
+    for item in data["action_items"]:
+        if not isinstance(item, dict) or not _text(item.get("text")):
+            continue
+        owner = _text(item.get("owner"))
+        if owner and not owner_known(owner):
+            owner = ""
+            stats["owners_cleared"] += 1
+        out["action_items"].append({"text": _text(item["text"]), "owner": owner, "due": _text(item.get("due")),
+                                    "refs": _clean_refs(item.get("refs"), valid, stats)})
+    out["_stats"] = stats
+    return out
+
+
+def _is_cjk(ch: str) -> bool:
+    cp = ord(ch)
+    return (0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF or 0x3040 <= cp <= 0x30FF
+            or 0xAC00 <= cp <= 0xD7AF or 0x1100 <= cp <= 0x11FF)
+
+
+def _is_accented(ch: str) -> bool:
+    return ch in "đĐ" or any(unicodedata.combining(c) for c in unicodedata.normalize("NFD", ch))
+
+
+def lang_ok(notes: dict, lang: str) -> bool:
+    parts = [notes.get("summary", "")]
+    for key in ("decisions", "action_items", "open_questions"):
+        parts += [item.get("text", "") for item in notes.get(key, [])]
+    letters = [c for c in "".join(parts) if c.isalpha()]
+    if not letters:
+        return True
+    total = len(letters)
+    if sum(_is_cjk(c) for c in letters) / total > 0.05:
+        return False
+    if lang == "vi":
+        return sum(_is_accented(c) for c in letters) / total >= 0.10
+    if lang == "en":
+        return sum(ord(c) > 127 for c in letters) / total <= 0.05
+    raise ValueError(f"ngôn ngữ không hỗ trợ: {lang}")
