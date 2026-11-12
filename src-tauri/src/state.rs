@@ -108,7 +108,7 @@ pub struct AppStatus {
     /// Cập nhật xong macOS sẽ hỏi lại mật khẩu Keychain và quyền thu âm (bản ký ad-hoc, chưa có Team ID): lời mời cập nhật báo trước.
     pub update_reprompts: bool,
     pub update_check: UpdateCheck,
-    /// Đang chọn dịch bằng ChatGPT/Gemini nhưng mất mạng hoặc lỗi API nên phiên tự động chuyển sang dịch bằng Model Local
+    /// Đang chọn dịch bằng ChatGPT/Gemini/DeepSeek nhưng mất mạng hoặc lỗi API nên phiên tự động chuyển sang dịch bằng Model Local
     /// (spec 2026-11-07-cloud-mt-fallback-design.md).
     pub translation_fallback: bool,
     /// Tăng mỗi lần trạng thái đổi. Giao diện bỏ trạng thái có `rev` nhỏ hơn trạng thái đã có (kết quả của một lệnh có thể
@@ -149,6 +149,7 @@ pub struct OverlayView {
     pub translation_provider: TranslationProvider,
     pub openai_model: String,
     pub gemini_model: String,
+    pub deepseek_model: String,
 }
 
 impl OverlayView {
@@ -169,6 +170,7 @@ impl OverlayView {
             translation_provider: settings.translation_provider,
             openai_model: settings.openai_model.clone(),
             gemini_model: settings.gemini_model.clone(),
+            deepseek_model: settings.deepseek_model.clone(),
         }
     }
 }

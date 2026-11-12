@@ -739,6 +739,7 @@ export const zh: Record<MessageKey, string> = {
   "settings.model.provider.local": "本地模型（Local · 推荐）",
   "settings.model.provider.openai": "ChatGPT (OpenAI API)",
   "settings.model.provider.gemini": "Gemini (Google API)",
+  "settings.model.provider.deepseek": "DeepSeek (DeepSeek API)",
   "settings.model.provider.hint": "如果断网或 API 出错，应用会自动切换到本地模型，避免翻译中断。",
   "settings.model.cloudModel": "模型",
   "settings.model.apiKey": "API 密钥",

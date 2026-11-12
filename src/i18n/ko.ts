@@ -739,6 +739,7 @@ export const ko: Record<MessageKey, string> = {
   "settings.model.provider.local": "기기 내 모델 (Local · 권장)",
   "settings.model.provider.openai": "ChatGPT (OpenAI API)",
   "settings.model.provider.gemini": "Gemini (Google API)",
+  "settings.model.provider.deepseek": "DeepSeek (DeepSeek API)",
   "settings.model.provider.hint": "오프라인이거나 API 오류가 발생하면 끊김 없이 기기 내 모델로 자동 전환됩니다.",
   "settings.model.cloudModel": "모델",
   "settings.model.apiKey": "API 키",

@@ -1,4 +1,5 @@
 import type { AppStatus, BackgroundColor, Subtitle, TextColor, TranslationProvider } from "./ipc";
+import { DEFAULT_DEEPSEEK_MODEL } from "./ipc";
 
 // Cách hiện một phụ đề theo trạng thái (spec §4.4, §6.6), dùng chung cho thanh phụ đề và bản chép lời.
 // - `done`: bản dịch (câu gốc chữ nhỏ ở trên nếu bật "hiện câu gốc").
@@ -167,6 +168,7 @@ export function translationBadge(
   fallback: boolean | undefined,
   localLabel = "Local",
   fallbackLabel = "Local (dự phòng)",
+  deepseekModel?: string,
 ): { text: string; isFallback: boolean } {
   if (fallback && provider && provider !== "local") {
     return { text: fallbackLabel, isFallback: true };
@@ -176,6 +178,9 @@ export function translationBadge(
   }
   if (provider === "gemini") {
     return { text: `Gemini · ${geminiModel || "gemini-3.1-flash-lite"}`, isFallback: false };
+  }
+  if (provider === "deepseek") {
+    return { text: `DeepSeek · ${deepseekModel || DEFAULT_DEEPSEEK_MODEL}`, isFallback: false };
   }
   return { text: localLabel, isFallback: false };
 }

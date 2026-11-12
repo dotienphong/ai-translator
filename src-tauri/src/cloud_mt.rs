@@ -1,9 +1,10 @@
-//! Kết nối nguồn dịch Cloud (ChatGPT / OpenAI API và Gemini / Google API) kèm tự động dự phòng (fallback) tức thì
+//! Kết nối nguồn dịch Cloud (ChatGPT / OpenAI API, Gemini / Google API và DeepSeek / DeepSeek API) kèm tự động dự phòng (fallback) tức thì
 //! về Model Local (`llama-server`) khi mất mạng, lỗi xác thực, hết hạn mức hoặc đứt luồng giữa chừng
-//! (spec `docs/superpowers/specs/2026-11-07-cloud-mt-fallback-design.md`).
+//! (spec `docs/superpowers/specs/2026-11-07-cloud-mt-fallback-design.md`; DeepSeek:
+//! `docs/superpowers/specs/2026-11-13-deepseek-cloud-mt-design.md`).
 //!
 //! Nguyên tắc an toàn:
-//! - API Key chỉ lưu trong [`Keystore`] của hệ điều hành (`openai-api-key`, `gemini-api-key`), không ghi vào `settings.json`,
+//! - API Key chỉ lưu trong [`Keystore`] của hệ điều hành (`openai-api-key`, `gemini-api-key`, `deepseek-api-key`), không ghi vào `settings.json`,
 //!   không ghi vào log, không trả nguyên văn về giao diện.
 //! - Mọi lỗi mạng/HTTP từ Cloud chỉ báo mã trạng thái, không bao giờ dùng `unwrap()`/`expect()` và không dừng phiên dịch:
 //!   [`FallbackMt`] tự động chuyển sang `local` ngay trong câu đang dịch và giữ `local` cho đến hết phiên.
@@ -29,9 +30,12 @@ use crate::state::AppState;
 
 pub const OPENAI_KEY_ENTRY: &str = "openai-api-key";
 pub const GEMINI_KEY_ENTRY: &str = "gemini-api-key";
+pub const DEEPSEEK_KEY_ENTRY: &str = "deepseek-api-key";
 
 pub const OPENAI_CHAT_ENDPOINT: &str = "https://api.openai.com/v1/chat/completions";
 pub const GEMINI_CHAT_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/models";
+/// DeepSeek dùng định dạng `/chat/completions` của OpenAI (model `deepseek-flash`, `deepseek-v4-pro`).
+pub const DEEPSEEK_CHAT_ENDPOINT: &str = "https://api.deepseek.com/chat/completions";
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(12);
@@ -40,12 +44,13 @@ const MAX_CONSECUTIVE_FAILURES: usize = 3;
 
 fn is_fatal_cloud_error(err: &MtError) -> bool {
     match err {
-        MtError::Failed(msg) => msg.contains("HTTP 401") || msg.contains("HTTP 403"),
+        // 402 là "hết số dư" của DeepSeek: thử lại câu sau cũng không khá hơn, nên coi như lỗi xác thực.
+        MtError::Failed(msg) => msg.contains("HTTP 401") || msg.contains("HTTP 402") || msg.contains("HTTP 403"),
         MtError::Unavailable(_) => true,
     }
 }
 
-/// Trạng thái đã cấu hình API Key của hai nguồn Cloud, trả về cho Cài đặt › Model. Không bao giờ chứa toàn bộ key.
+/// Trạng thái đã cấu hình API Key của các nguồn Cloud, trả về cho Cài đặt › Model. Không bao giờ chứa toàn bộ key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationKeysStatus {
@@ -53,6 +58,10 @@ pub struct TranslationKeysStatus {
     pub openai_hint: Option<String>,
     pub gemini_configured: bool,
     pub gemini_hint: Option<String>,
+    #[serde(default)]
+    pub deepseek_configured: bool,
+    #[serde(default)]
+    pub deepseek_hint: Option<String>,
 }
 
 /// Chỉ giữ 4 ký tự cuối của API Key để người dùng nhận biết (`••••abcd`); chuỗi ngắn `<= 4` ký tự chỉ hiện `••••`.
@@ -92,6 +101,7 @@ fn read_provider_key<R: Runtime>(app: &AppHandle<R>, provider: TranslationProvid
         TranslationProvider::Local => return None,
         TranslationProvider::Openai => OPENAI_KEY_ENTRY,
         TranslationProvider::Gemini => GEMINI_KEY_ENTRY,
+        TranslationProvider::Deepseek => DEEPSEEK_KEY_ENTRY,
     };
     with_keystore(app, |ks| Ok(read_key_from_store(ks, entry)))
         .ok()
@@ -102,11 +112,14 @@ pub fn get_keys_status<R: Runtime>(app: &AppHandle<R>) -> TranslationKeysStatus 
     with_keystore(app, |ks| {
         let openai = read_key_from_store(ks, OPENAI_KEY_ENTRY);
         let gemini = read_key_from_store(ks, GEMINI_KEY_ENTRY);
+        let deepseek = read_key_from_store(ks, DEEPSEEK_KEY_ENTRY);
         Ok(TranslationKeysStatus {
             openai_configured: openai.is_some(),
             openai_hint: openai.as_deref().and_then(mask_key),
             gemini_configured: gemini.is_some(),
             gemini_hint: gemini.as_deref().and_then(mask_key),
+            deepseek_configured: deepseek.is_some(),
+            deepseek_hint: deepseek.as_deref().and_then(mask_key),
         })
     })
     .unwrap_or_default()
@@ -120,6 +133,7 @@ pub fn set_api_key<R: Runtime>(
     let entry = match provider {
         TranslationProvider::Openai => OPENAI_KEY_ENTRY,
         TranslationProvider::Gemini => GEMINI_KEY_ENTRY,
+        TranslationProvider::Deepseek => DEEPSEEK_KEY_ENTRY,
         TranslationProvider::Local => {
             return Err(CommandError::new(
                 errors::UNKNOWN,
@@ -205,6 +219,7 @@ impl<R: Runtime> DynamicCloud for AppCloudProvider<R> {
             }
             TranslationProvider::Openai => (OPENAI_CHAT_ENDPOINT, settings.openai_model),
             TranslationProvider::Gemini => (GEMINI_CHAT_ENDPOINT, settings.gemini_model),
+            TranslationProvider::Deepseek => (DEEPSEEK_CHAT_ENDPOINT, settings.deepseek_model),
         };
         let key = match read_provider_key(&self.app, settings.translation_provider) {
             Some(k) if !k.trim().is_empty() => k,
@@ -243,7 +258,7 @@ impl<R: Runtime> DynamicCloud for AppCloudProvider<R> {
     }
 }
 
-/// Bọc bộ dịch `local` trong [`FallbackMt`] điều phối động theo nguồn dịch và model trong cài đặt (Local, OpenAI, Gemini).
+/// Bọc bộ dịch `local` trong [`FallbackMt`] điều phối động theo nguồn dịch và model trong cài đặt (Local, OpenAI, Gemini, DeepSeek).
 /// Khi người dùng chuyển nguồn dịch hoặc đổi model giữa phiên, [`FallbackMt`] tự động áp dụng ngay ở câu tiếp theo
 /// mà không cần khởi động lại phiên dịch.
 pub fn wrap_mt<R: Runtime>(app: &AppHandle<R>, local: Box<dyn Mt>, fell_back: Arc<AtomicBool>) -> Box<dyn Mt> {
@@ -266,6 +281,7 @@ pub fn wrap_mt<R: Runtime>(app: &AppHandle<R>, local: Box<dyn Mt>, fell_back: Ar
 static SHARED_HTTP: std::sync::OnceLock<reqwest::blocking::Client> = std::sync::OnceLock::new();
 static LAST_OPENAI_WARMUP_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 static LAST_GEMINI_WARMUP_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static LAST_DEEPSEEK_WARMUP_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn shared_http_client() -> reqwest::blocking::Client {
     SHARED_HTTP
@@ -293,12 +309,15 @@ fn now_epoch_secs() -> u64 {
 fn prewarm_connection_in_background(endpoint: &str, api_key: &str) {
     let is_gemini = is_gemini_endpoint(endpoint);
     let is_openai = endpoint == OPENAI_CHAT_ENDPOINT;
-    if !is_gemini && !is_openai {
+    let is_deepseek = endpoint == DEEPSEEK_CHAT_ENDPOINT;
+    if !is_gemini && !is_openai && !is_deepseek {
         return;
     }
     let now = now_epoch_secs();
     let slot = if is_gemini {
         &LAST_GEMINI_WARMUP_SECS
+    } else if is_deepseek {
+        &LAST_DEEPSEEK_WARMUP_SECS
     } else {
         &LAST_OPENAI_WARMUP_SECS
     };
@@ -313,6 +332,8 @@ fn prewarm_connection_in_background(endpoint: &str, api_key: &str) {
         let req = if is_gemini {
             http.get("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1")
                 .header("x-goog-api-key", key)
+        } else if is_deepseek {
+            http.get("https://api.deepseek.com/models").bearer_auth(key)
         } else {
             http.head("https://api.openai.com/v1/models").bearer_auth(key)
         };
@@ -324,6 +345,37 @@ fn prewarm_connection_in_background(endpoint: &str, api_key: &str) {
 
 fn is_gemini_endpoint(endpoint: &str) -> bool {
     endpoint.contains("generativelanguage.googleapis.com")
+}
+
+fn is_deepseek_endpoint(endpoint: &str) -> bool {
+    endpoint.contains("api.deepseek.com")
+}
+
+/// Dựng thân JSON cho API kiểu OpenAI `/chat/completions` (ChatGPT và DeepSeek). Riêng DeepSeek mặc định bật chế độ suy
+/// luận (`thinking`): model nghĩ xong mới trả chữ, vừa chậm vài giây vừa ăn hết `max_tokens` của câu dịch ngắn, nên luôn
+/// gửi `thinking.type = "disabled"` để chữ đầu về nhanh như ChatGPT. OpenAI không nhận trường này nên không gửi.
+fn build_chat_completions_body(endpoint: &str, model: &str, prompt: &str, max_tokens: u32) -> serde_json::Value {
+    let model_name = match model {
+        "chatgpt-4o-mini" => "gpt-4o-mini",
+        other => other,
+    };
+    let mut body = serde_json::json!({
+        "model": model_name,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Output only the raw translation without explanations or quotes."
+            },
+            { "role": "user", "content": prompt }
+        ],
+        "stream": true,
+        "temperature": 0.0,
+        "max_tokens": (max_tokens * 2).clamp(128, 512),
+    });
+    if is_deepseek_endpoint(endpoint) {
+        body["thinking"] = serde_json::json!({ "type": "disabled" });
+    }
+    body
 }
 
 /// Dựng thân JSON cho Native Gemini REST API (`:streamGenerateContent?alt=sse`), tắt hoặc giảm tối đa bước suy luận ngầm
@@ -367,7 +419,8 @@ fn gemini_stream_url(endpoint: &str, model: &str) -> String {
     }
 }
 
-/// Bộ dịch gọi trực tiếp Gemini (Native `:streamGenerateContent?alt=sse`) hoặc OpenAI (`/v1/chat/completions`).
+/// Bộ dịch gọi trực tiếp Gemini (Native `:streamGenerateContent?alt=sse`), OpenAI (`/v1/chat/completions`) hoặc
+/// DeepSeek (`/chat/completions`, cùng định dạng OpenAI).
 pub struct CloudMt {
     endpoint: String,
     model: String,
@@ -415,23 +468,7 @@ impl Mt for CloudMt {
                 .send()
                 .map_err(|_| MtError::Failed("không kết nối được tới máy chủ Cloud MT".into()))?
         } else {
-            let model_name = match self.model.as_str() {
-                "chatgpt-4o-mini" => "gpt-4o-mini",
-                other => other,
-            };
-            let body = serde_json::json!({
-                "model": model_name,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "Output only the raw translation without explanations or quotes."
-                    },
-                    { "role": "user", "content": req.prompt }
-                ],
-                "stream": true,
-                "temperature": 0.0,
-                "max_tokens": (req.max_tokens * 2).clamp(128, 512),
-            });
+            let body = build_chat_completions_body(&self.endpoint, &self.model, req.prompt, req.max_tokens);
             self.http
                 .post(&self.endpoint)
                 .bearer_auth(&self.api_key)
@@ -548,7 +585,7 @@ fn read_cloud_stream(
     Ok(end)
 }
 
-/// Nguồn Cloud động cho [`FallbackMt`]: cho phép nhận biết thay đổi nguồn dịch (Local / OpenAI / Gemini),
+/// Nguồn Cloud động cho [`FallbackMt`]: cho phép nhận biết thay đổi nguồn dịch (Local / OpenAI / Gemini / DeepSeek),
 /// đổi model hoặc API Key ngay giữa phiên dịch mà không cần khởi động lại phiên.
 pub trait DynamicCloud: Send {
     /// - `Err(())`: người dùng chọn Local -> dịch bằng model Local, không kích hoạt cờ fallback.
@@ -1060,6 +1097,142 @@ mod tests {
         assert!(!cleared.openai_configured);
         assert_eq!(cleared.openai_hint, None);
         assert!(cleared.gemini_configured);
+    }
+
+    #[test]
+    fn deepseek_api_key_is_stored_separately_and_masked() {
+        let app = mock_app();
+        app.manage(Arc::new(Keystore::mock(&app.config().identifier)));
+        assert!(!get_keys_status(app.handle()).deepseek_configured);
+
+        let status = set_api_key(app.handle(), TranslationProvider::Deepseek, "  sk-deepseek-0000wxyz ").unwrap();
+        assert!(status.deepseek_configured);
+        assert_eq!(status.deepseek_hint.as_deref(), Some("••••wxyz"));
+        // Key của DeepSeek nằm ở mục riêng: không đụng tới ChatGPT và Gemini.
+        assert!(!status.openai_configured);
+        assert!(!status.gemini_configured);
+        assert_eq!(
+            read_provider_key(app.handle(), TranslationProvider::Deepseek).as_deref(),
+            Some("sk-deepseek-0000wxyz")
+        );
+        assert_eq!(read_provider_key(app.handle(), TranslationProvider::Openai), None);
+
+        // Giao diện nhận camelCase, và không bao giờ nhận nguyên văn key.
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json["deepseekConfigured"], true);
+        assert_eq!(json["deepseekHint"], "••••wxyz");
+        assert!(!json.to_string().contains("sk-deepseek"));
+
+        let cleared = set_api_key(app.handle(), TranslationProvider::Deepseek, "").unwrap();
+        assert!(!cleared.deepseek_configured);
+        assert_eq!(cleared.deepseek_hint, None);
+    }
+
+    #[test]
+    fn deepseek_body_disables_thinking_and_openai_body_is_unchanged() {
+        for model in crate::settings::DEEPSEEK_MODELS {
+            let body = build_chat_completions_body(DEEPSEEK_CHAT_ENDPOINT, model, "Hello", 48);
+            assert_eq!(body["model"], *model);
+            assert_eq!(body["stream"], true);
+            assert_eq!(body["temperature"], 0.0);
+            assert_eq!(body["max_tokens"], 128);
+            assert_eq!(body["thinking"]["type"], "disabled");
+            assert_eq!(body["messages"][1]["content"], "Hello");
+        }
+        let long = build_chat_completions_body(DEEPSEEK_CHAT_ENDPOINT, "deepseek-flash", "A long sentence", 300);
+        assert_eq!(long["max_tokens"], 512);
+
+        // ChatGPT: thân request y như trước, không có trường `thinking`; bí danh `chatgpt-4o-mini` vẫn đổi về `gpt-4o-mini`.
+        let openai = build_chat_completions_body(OPENAI_CHAT_ENDPOINT, "chatgpt-4o-mini", "Hello", 48);
+        assert_eq!(
+            openai,
+            serde_json::json!({
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Output only the raw translation without explanations or quotes."
+                    },
+                    { "role": "user", "content": "Hello" }
+                ],
+                "stream": true,
+                "temperature": 0.0,
+                "max_tokens": 128,
+            })
+        );
+
+        assert!(is_deepseek_endpoint(DEEPSEEK_CHAT_ENDPOINT));
+        assert!(!is_deepseek_endpoint(OPENAI_CHAT_ENDPOINT));
+        assert!(!is_gemini_endpoint(DEEPSEEK_CHAT_ENDPOINT));
+    }
+
+    #[test]
+    fn deepseek_sse_stream_skips_reasoning_and_ends_on_done() {
+        // Dù đã tắt `thinking`, vẫn phải chịu được gói `reasoning_content` (content null) và gói `usage` không có choices.
+        let sse_stream = concat!(
+            "data: {\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null,\"reasoning_content\":\"nghĩ ngầm\"}}]}\n\n",
+            "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Xin chào \"},\"finish_reason\":null}]}\n\n",
+            "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"thế giới\"},\"finish_reason\":null}]}\n\n",
+            "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":\"stop\"}],\"usage\":{\"completion_tokens\":4}}\n\n",
+            "data: {\"choices\":[],\"usage\":{\"completion_tokens\":4}}\n\n",
+            "data: [DONE]\n\n"
+        );
+        let mut deltas = Vec::new();
+        let end = read_cloud_stream(
+            std::io::Cursor::new(sse_stream.as_bytes()),
+            Instant::now(),
+            &mut |chunk| {
+                deltas.push(chunk.to_string());
+                ControlFlow::Continue(())
+            },
+        )
+        .unwrap();
+        assert_eq!(deltas, vec!["Xin chào ", "thế giới"]);
+        assert_eq!(end.text, "Xin chào thế giới");
+        assert_eq!(end.finish_reason.as_deref(), Some("stop"));
+        assert!(!end.cancelled);
+    }
+
+    #[test]
+    fn deepseek_insufficient_balance_is_fatal_like_bad_key() {
+        assert!(is_fatal_cloud_error(&MtError::Failed("cloud HTTP 402".into())));
+        assert!(is_fatal_cloud_error(&MtError::Failed("cloud HTTP 401".into())));
+        assert!(!is_fatal_cloud_error(&MtError::Failed("cloud HTTP 429".into())));
+        assert!(!is_fatal_cloud_error(&MtError::Failed("cloud HTTP 500".into())));
+    }
+
+    #[test]
+    fn wrap_mt_with_deepseek_and_no_key_falls_back_to_local_without_crashing() {
+        let app = mock_app();
+        app.manage(Arc::new(Keystore::mock(&app.config().identifier)));
+        let local_calls = Arc::new(AtomicUsize::new(0));
+        let fell_back = Arc::new(AtomicBool::new(false));
+        let mut mt = wrap_mt(
+            app.handle(),
+            Box::new(ScriptedMt::new(
+                local_calls.clone(),
+                vec![ok_stream("Local thay DeepSeek")],
+            )),
+            fell_back.clone(),
+        );
+        let main = window(&app, "main");
+        crate::test_support::invoke(
+            &main,
+            "update_settings",
+            serde_json::json!({ "patch": { "translationProvider": "deepseek", "deepseekModel": "deepseek-flash" } }),
+        )
+        .unwrap();
+        let settings = app.state::<AppState>().settings();
+        assert_eq!(settings.translation_provider, TranslationProvider::Deepseek);
+        assert_eq!(settings.deepseek_model, "deepseek-flash");
+
+        let out = translate(&mut *mt, &job("Sentence"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out, Outcome::Done(ref t) if t.text == "Local thay DeepSeek"));
+        assert_eq!(local_calls.load(Ordering::SeqCst), 1);
+        assert!(fell_back.load(Ordering::SeqCst));
+        assert!(app.state::<AppState>().status().translation_fallback);
     }
 
     #[test]

@@ -41,6 +41,7 @@ const SAME_AS_EN: MessageKey[] = [
   // Tên riêng nhà cung cấp/nhãn engine dịch ngắn gọn.
   "settings.model.provider.openai",
   "settings.model.provider.gemini",
+  "settings.model.provider.deepseek",
   "overlay.engine.local",
 ];
 

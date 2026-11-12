@@ -97,6 +97,7 @@ pub struct ComposeView {
     pub translation_provider: TranslationProvider,
     pub openai_model: String,
     pub gemini_model: String,
+    pub deepseek_model: String,
     pub translation_fallback: bool,
 }
 
@@ -241,6 +242,7 @@ pub fn view<R: Runtime>(app: &AppHandle<R>) -> ComposeView {
         translation_provider: settings.translation_provider,
         openai_model: settings.openai_model,
         gemini_model: settings.gemini_model,
+        deepseek_model: settings.deepseek_model,
         translation_fallback: status.translation_fallback,
     }
 }

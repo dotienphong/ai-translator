@@ -175,6 +175,7 @@ function Overlay() {
     status?.translationFallback,
     t("overlay.engine.local"),
     t("overlay.engine.fallback"),
+    view.deepseekModel,
   );
   // Đang dịch trong lúc người nói chưa dừng: phụ đề tạm không nhạt cả dòng, chỉ phần tạm của dòng đang nói nhạt (§6.1).
   const dimProvisional = !streamingEffective(view.translateWhileSpeaking, status);
