@@ -5,7 +5,8 @@ import json
 import os
 import sys
 
-GPU_MAX_S, CPU_MAX_S, RSS_MAX_MIB, JSON_MIN = 180, 600, 6144, 0.98
+# Thời gian: chủ dự án nới lên 15 phút cho phiên 60 phút (2026-11-12), cả có lẫn không có GPU.
+GPU_MAX_S, CPU_MAX_S, RSS_MAX_MIB, JSON_MIN = 900, 900, 6144, 0.98
 
 
 def load(out_dir: str) -> dict[str, list[dict]]:

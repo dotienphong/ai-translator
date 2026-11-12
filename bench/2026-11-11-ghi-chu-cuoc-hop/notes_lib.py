@@ -242,3 +242,61 @@ def lang_ok(notes: dict, lang: str) -> bool:
     if lang == "en":
         return sum(ord(c) > 127 for c in letters) / total <= 0.05
     raise ValueError(f"ngôn ngữ không hỗ trợ: {lang}")
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Lượt kiểm việc cần làm (sau lượt đo đầu: 56/180 việc cần làm bị chấm sai, results/cham-tay.md).
+
+def owner_known(name: str, lines: list[dict]) -> bool:
+    """Tên có là nhãn người nói, hay có trong câu gốc hoặc bản dịch của một câu nào không."""
+    low = name.strip().lower()
+    if not low:
+        return False
+    for l in lines:
+        if l["speaker"] and l["speaker"].lower() == low:
+            return True
+        if any(t and low in t.lower() for t in (l["src"], l["tgt"])):
+            return True
+    return False
+
+
+def render_verify_lines(lines: list[dict], refs: list[int], around: int = 2) -> str:
+    """Các câu quanh `refs` (±`around`), mỗi câu kèm câu gốc và bản dịch: model kiểm được lỗi của dịch máy."""
+    wanted = {s for r in refs for s in range(r - around, r + around + 1)}
+    out = []
+    for l in lines:
+        if l["seq"] not in wanted or l["dropped"]:
+            continue
+        who = f"{l['speaker']}: " if l["speaker"] else ""
+        out.append(f"[{l['seq']}] {who}{l['src']}\n")
+        if l["tgt"] and l["tgt"] != l["src"]:
+            out.append(f"    → {l['tgt']}\n")
+    return "".join(out)
+
+
+def parse_verdicts(raw: str) -> dict[int, dict] | None:
+    """Trả lời của lượt kiểm theo lô: {"items": [{"n", "keep", "owner", "due"}]} → {n: phán quyết}.
+
+    Mục hỏng bị bỏ qua (việc tương ứng được giữ nguyên); trả `None` khi không có đối tượng `items` nào."""
+    obj_text = _first_object(_THINK.sub("", raw))
+    if obj_text is None:
+        return None
+    try:
+        data = json.loads(obj_text)
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+        return None
+    out: dict[int, dict] = {}
+    for v in data["items"]:
+        if not isinstance(v, dict) or not isinstance(v.get("keep"), bool):
+            continue
+        n = v.get("n")
+        if not isinstance(n, int) or isinstance(n, bool):
+            continue
+        out[n] = {"keep": v["keep"], "owner": _text(v.get("owner")), "due": _text(v.get("due"))}
+    return out
+
+
+def has_cjk(text: str) -> bool:
+    return any(_is_cjk(c) for c in text)

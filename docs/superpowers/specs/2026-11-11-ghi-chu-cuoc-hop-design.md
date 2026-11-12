@@ -139,18 +139,18 @@ Chuỗi giao diện đủ vi, en, ja, zh, ko.
 - **Ứng viên:** 2–3 model đa ngôn ngữ cỡ 4B, giấy phép cho phép phân phối lại, bản ổn định mới nhất lúc đo (spec gốc §6.12), lượng tử hóa Q4.
 - **Bộ thử:** bản chép lời do chính app tạo (có lỗi nhận dạng, có nhãn người nói), 5 ngôn ngữ, ba độ dài 10, 30, 60 phút.
 - **Chỉ số:** tỉ lệ JSON hợp lệ; tỉ lệ `refs` trỏ đúng câu; việc cần làm bịa và sót (người chấm); đúng ngôn ngữ đầu ra; thời gian tạo; RAM đỉnh. Mốc so sánh: model mặc định của Gemini và ChatGPT trên cùng bộ thử.
-- **Ngưỡng đạt** (chốt trước khi đo): JSON hợp lệ sau tối đa một lần thử lại ≥ 98%; `refs` đúng ≥ 90%; việc cần làm bịa ≤ 1 mỗi 10 cuộc họp (đo: ≤ 2 trên 20 bản); đúng ngôn ngữ đầu ra ở mọi bản (20/20); phiên 60 phút xong trong ≤ 3 phút có GPU và ≤ 10 phút chỉ CPU trên máy 16 GB; RAM đỉnh của tiến trình ghi chú ≤ 6 GiB.
+- **Ngưỡng đạt** (chốt trước khi đo): JSON hợp lệ sau tối đa một lần thử lại ≥ 98%; `refs` đúng ≥ 90%; việc cần làm bịa ≤ 1 mỗi 10 cuộc họp (đo: ≤ 2 trên 20 bản); đúng ngôn ngữ đầu ra ở mọi bản (20/20); phiên 60 phút xong trong ≤ 15 phút (900 s), có hay không có GPU (chủ dự án nới ngày 2026-11-12; trước là ≤ 3 phút có GPU, ≤ 10 phút chỉ CPU); RAM đỉnh của tiến trình ghi chú ≤ 6 GiB.
 - **Không ứng viên nào đạt:** dừng, báo chủ dự án xem lại G3.
 - Kết quả ghi ở `bench/2026-11-11-ghi-chu-cuoc-hop/`.
 
-### 10.1 Kết quả đo (2026-11-12): không đạt
+### 10.1 Kết quả đo (2026-11-13): chưa đạt
 
 Chi tiết: `bench/2026-11-11-ghi-chu-cuoc-hop/results/tong-hop.md`.
 
-- Hệ tốt nhất: `qwen3-5-4b` (Q4_K_M, Apache-2.0), cấu hình `c16kb`. Đạt JSON 100%, ngôn ngữ 20/20, `refs` 99,6%, RAM đỉnh 5889 MiB.
-- **Rớt thời gian:** phiên 60 phút 662 s (iGPU), 1335 s (chỉ CPU) so với ngưỡng 600 s. Mốc 180 s của GPU rời chưa đo được (máy đo chỉ có iGPU).
-- **Rớt việc cần làm bịa:** 56/180 (31%), ngưỡng ≤ 2/20 bản. Một phần do lỗi dịch máy trong bộ thử.
-- Chưa đo: mốc Cloud, nhiễu nhận dạng giọng nói, máy 16 GB chỉ CPU, gói Nhẹ (mới một nửa).
+- Hệ tốt nhất: `qwen3-5-4b` (Q4_K_M, Apache-2.0), cấu hình `c16kx`: lời nhắc chặt cho việc cần làm, gộp đoạn chỉ viết tóm tắt, lượt kiểm từng việc đọc câu gốc. Đạt JSON 100%, ngôn ngữ 20/20, `refs` 100%, phiên 60 phút 840 s (iGPU), RAM đỉnh 4315 MiB.
+- **Rớt việc cần làm bịa:** 42/177 (24%; hệ vòng 1: 60/180), ngưỡng ≤ 2/20 bản. Phần lớn lỗi còn lại là sai chi tiết do dịch máy ở khâu trước.
+- `llama-server` của tiến trình ghi chú phải chạy với `--cache-ram 0` (mặc định giữ tới 8 GiB bộ đệm prompt trên RAM).
+- Chưa đo: mốc Cloud, Local đọc câu gốc thay vì bản dịch, chỉ CPU với cấu hình mới, máy 16 GB, nhiễu nhận dạng giọng nói.
 - Theo luật dừng ở trên: **G3 chờ chủ dự án quyết định lại.** Không làm kế hoạch 03 (engine Local) trước đó.
 
 ## 11. Rủi ro

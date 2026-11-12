@@ -18,7 +18,8 @@ from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from notes_lib import EMPTY_NOTES, chunk_lines, lang_ok, parse_notes, render_lines  # noqa: E402
+from notes_lib import (EMPTY_NOTES, _first_object, chunk_lines, lang_ok, has_cjk, owner_known, parse_notes, parse_verdicts,  # noqa: E402
+                       render_lines, render_verify_lines)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LANGUAGE_NAME = {"vi": "Vietnamese", "en": "English"}
@@ -50,8 +51,148 @@ def _merge_mechanically(parts: list[dict]) -> dict:
     return merged
 
 
+VERIFY_SCHEMA = {
+    "type": "object", "additionalProperties": False, "required": ["items"],
+    "properties": {"items": {"type": "array", "items": {
+        "type": "object", "additionalProperties": False, "required": ["n", "keep", "owner", "due"],
+        "properties": {"n": {"type": "integer"}, "keep": {"type": "boolean"}, "owner": {"type": "string"},
+                       "due": {"type": "string"}}}}}}
+VERIFY_TOKENS_PER_ITEM = 40
+
+
+def _batches(items: list[dict], lines: list[dict], budget: int, count_tokens: Callable[[str], int],
+             around: int) -> list[list[dict]]:
+    """Gom việc thành lô sao cho các câu cần cho một lô không quá `budget` token; việc quá lớn đi một mình."""
+    out: list[list[dict]] = []
+    cur: list[dict] = []
+    for item in items:
+        if cur:
+            refs = [r for i in cur + [item] for r in i["refs"]]
+            if count_tokens(render_verify_lines(lines, refs, around)) > budget:
+                out.append(cur)
+                cur = []
+        cur.append(item)
+    if cur:
+        out.append(cur)
+    return out
+
+
+def verify_actions(notes: dict, lines: list[dict], lang: str, call: Callable, count_tokens: Callable[[str], int],
+                   budget: int, around: int, result: dict) -> None:
+    """Kiểm việc cần làm theo lô với câu gốc quanh `refs`: bỏ việc không có lời giao/nhận, sửa người nhận và hạn.
+
+    Nội dung việc giữ nguyên (model hay chép lại câu gốc sai ngôn ngữ). Việc không có `refs` bị bỏ luôn. Việc không có
+    phán quyết đọc được (sau một lần thử lại cả lô) được giữ nguyên. Hạn có chữ CJK bị bỏ qua: ghi chú là vi hay en."""
+    stats = {"checked": 0, "dropped": 0, "edited": 0, "unparsed": 0, "no_refs": 0}
+    template = _prompt("verify.txt").replace("{language}", LANGUAGE_NAME[lang])
+    fix = _prompt("fix.txt")
+    with_refs = []
+    for item in notes["action_items"]:
+        if item["refs"]:
+            with_refs.append(item)
+        else:
+            stats["no_refs"] += 1
+    kept_ids: set[int] = set()
+    replaced: dict[int, dict] = {}
+    for batch in _batches(with_refs, lines, budget, count_tokens, around):
+        stats["checked"] += len(batch)
+        shown = "\n".join(json.dumps({"n": n, **{k: it[k] for k in ("text", "owner", "due", "refs")}},
+                                      ensure_ascii=False) for n, it in enumerate(batch, 1))
+        refs = [r for it in batch for r in it["refs"]]
+        prompt = template.replace("{lines}", render_verify_lines(lines, refs, around)).replace("{items}", shown)
+        messages = [{"role": "user", "content": prompt}]
+        max_tokens = 100 + VERIFY_TOKENS_PER_ITEM * len(batch)
+        raw = call(messages, max_tokens, schema=VERIFY_SCHEMA)
+        verdicts = parse_verdicts(raw)
+        valid_first = verdicts is not None
+        if verdicts is None:
+            retry = messages + [{"role": "assistant", "content": raw}, {"role": "user", "content": fix}]
+            verdicts = parse_verdicts(call(retry, max_tokens, schema=VERIFY_SCHEMA))
+        result["calls"].append({"kind": "verify", "valid_first": valid_first, "valid": verdicts is not None})
+        for n, item in enumerate(batch, 1):
+            v = (verdicts or {}).get(n)
+            if v is None:
+                stats["unparsed"] += 1
+                kept_ids.add(id(item))
+                continue
+            if not v["keep"]:
+                stats["dropped"] += 1
+                continue
+            owner = v["owner"] if owner_known(v["owner"], lines) else ""
+            due = item["due"] if has_cjk(v["due"]) else v["due"]
+            if (owner, due) != (item["owner"], item["due"]):
+                stats["edited"] += 1
+                replaced[id(item)] = {**item, "owner": owner, "due": due}
+            kept_ids.add(id(item))
+    notes["action_items"] = [replaced.get(id(i), i) for i in with_refs if id(i) in kept_ids]
+    result["verify"] = stats
+
+
+def _norm(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def _merge_items(parts: list[dict]) -> dict:
+    """Gộp máy các mục của mọi đoạn; mục trùng chữ (bỏ hoa/thường, khoảng trắng) gộp `refs`, giữ người nhận/hạn đầu tiên
+    không rỗng."""
+    merged = _merge_mechanically(parts)
+    for key in ("decisions", "action_items", "open_questions"):
+        seen: dict[str, dict] = {}
+        out = []
+        for item in merged[key]:
+            k = _norm(item["text"])
+            if k in seen:
+                first = seen[k]
+                first["refs"] = sorted(set(first["refs"]) | set(item["refs"]))
+                for field in ("owner", "due"):
+                    if field in item and not first.get(field):
+                        first[field] = item[field]
+                continue
+            item = dict(item)
+            seen[k] = item
+            out.append(item)
+        merged[key] = out
+    return merged
+
+
+def _reduce_summary(parts: list[dict], language: str, call: Callable, result: dict) -> dict:
+    """Gộp nhẹ: mục gộp bằng máy, model chỉ viết tóm tắt cả buổi từ tóm tắt từng đoạn (ít token đầu ra hơn nhiều)."""
+    notes = _merge_items(parts)
+    prompt = _prompt("reduce_summary.txt").replace("{language}", language).replace(
+        "{parts}", "\n".join(json.dumps(p["summary"], ensure_ascii=False) for p in parts))
+    messages = [{"role": "user", "content": prompt}]
+    schema = {"type": "object", "additionalProperties": False, "required": ["summary"],
+              "properties": {"summary": {"type": "string"}}}
+
+    def parse(raw: str) -> str | None:
+        obj = _first_object(raw)
+        try:
+            data = json.loads(obj) if obj else None
+        except ValueError:
+            return None
+        return data["summary"].strip() if isinstance(data, dict) and isinstance(data.get("summary"), str) else None
+
+    raw = call(messages, MAX_SUMMARY, schema=schema)
+    summary = parse(raw)
+    valid_first = summary is not None
+    if summary is None:
+        retry = messages + [{"role": "assistant", "content": raw}, {"role": "user", "content": _prompt("fix.txt")}]
+        summary = parse(call(retry, MAX_SUMMARY, schema=schema))
+    result["calls"].append({"kind": "reduce", "valid_first": valid_first, "valid": summary is not None})
+    if summary is None:
+        result["reduce_fallback"] = True
+    else:
+        notes["summary"] = summary
+    return notes
+
+
+MAX_SUMMARY = 800
+
+
 def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[str], int],
-            call: Callable[[list[dict], int], str], max_map: int, max_reduce: int) -> dict:
+            call: Callable[[list[dict], int], str], max_map: int, max_reduce: int, verify: bool = False,
+            map_prompt: str = "map.txt", verify_budget: int = 6000, verify_around: int = 2,
+            reduce_mode: str = "full") -> dict:
     result = {"notes": None, "raw_fallback": None, "chunks": 0, "failed_chunks": 0, "reduce_fallback": False,
               "calls": []}
     language = LANGUAGE_NAME[lang]
@@ -79,7 +220,7 @@ def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[s
     parts: list[dict] = []
     last_raw = ""
     for chunk in chunks:
-        prompt = _prompt("map.txt").replace("{language}", language).replace("{transcript}", render_lines(chunk))
+        prompt = _prompt(map_prompt).replace("{language}", language).replace("{transcript}", render_lines(chunk))
         notes, last_raw = ask("map", prompt, max_map)
         if notes is None:
             result["failed_chunks"] += 1
@@ -91,6 +232,14 @@ def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[s
         return result
     if len(chunks) == 1 and len(parts) == 1:
         result["notes"] = parts[0]
+        if verify:
+            verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
+        return result
+
+    if reduce_mode == "summary":
+        result["notes"] = _reduce_summary(parts, language, call, result)
+        if verify:
+            verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
         return result
 
     while len(parts) > 1:
@@ -119,6 +268,8 @@ def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[s
             next_level.append(notes)
         parts = next_level
     result["notes"] = parts[0]
+    if verify:
+        verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
     return result
 
 
@@ -136,6 +287,16 @@ CONFIGS = {
     "c8kb": {"ctx": 8192, "budget": 3500, "max_map": 1600, "max_reduce": 2500},
     # Sau lượt c16k: ghi chú tiếng Hàn dùng nhiều token đầu ra, map chạm trần 1200 và reduce chạm trần 2000.
     "c16kb": {"ctx": 16384, "budget": 12000, "max_map": 2000, "max_reduce": 3000},
+    # Sau chấm tay c16kb (56/180 việc cần làm sai): lời nhắc map chặt hơn và lượt kiểm việc cần làm với câu gốc.
+    # (Lượt `c16kv` ngày 2026-11-12 kiểm từng việc một và cho model viết lại nội dung: phiên 60 phút vượt 900 s,
+    # RSS phình do bộ đệm prompt, nội dung bị chép lại bằng tiếng Nhật. Bản đó ở lịch sử git, cấu hình đã bỏ.)
+    "c16kw": {"ctx": 16384, "budget": 12000, "max_map": 2000, "max_reduce": 3000, "verify": True,
+              "map_prompt": "map_v2.txt", "verify_budget": 6000},
+    # Sau c16kw: kiểm theo lô bỏ ít hơn hẳn kiểm từng việc (ko-60: 1/31 so với 8/31) mà vẫn 953 s; token đầu ra là phần
+    # đắt (≈ 9 token/s trên iGPU), lượt reduce viết lại mọi mục (≈ 2000 token). Nay: reduce chỉ viết tóm tắt, mục gộp
+    # bằng máy; kiểm từng việc (ngân sách lô 1 token) với ±1 câu.
+    "c16kx": {"ctx": 16384, "budget": 12000, "max_map": 2000, "max_reduce": 3000, "verify": True,
+              "map_prompt": "map_v2.txt", "verify_budget": 1, "verify_around": 1, "reduce_mode": "summary"},
     "cloud": {"ctx": None, "budget": 60000, "max_map": 4000, "max_reduce": 4000},
 }
 
@@ -197,6 +358,8 @@ class LocalServer:
         cmd = [exe, "-m", model, "--host", "127.0.0.1", "--port", str(self.port), "-c", str(ctx), "-np", "1",
                "--no-slots", "--no-ui"]
         cmd += ["-ngl", "auto"] if hw == "gpu" else ["-ngl", "0", "--device", "none"]
+        # Bộ nhớ đệm prompt trên RAM (mặc định 8192 MiB ở b11146) làm RSS phình tới 12 GiB khi có nhiều lượt gọi.
+        cmd += ["--cache-ram", "0"]
         cmd += server_args
         self.cmd = cmd
         self.proc: subprocess.Popen | None = None
@@ -254,11 +417,12 @@ class LocalServer:
         return len(http_json(f"http://127.0.0.1:{self.port}/tokenize", {"content": text}, {}, 120)["tokens"])
 
 
-def local_call(server: LocalServer, json_mode: str, request_extra: dict, schema: dict, usage: list) -> Callable:
-    def call(messages: list[dict], max_tokens: int) -> str:
+def local_call(server: LocalServer, json_mode: str, request_extra: dict, notes_schema: dict, usage: list) -> Callable:
+    def call(messages: list[dict], max_tokens: int, schema: dict | None = None) -> str:
         body = {"messages": messages, "temperature": 0, "max_tokens": max_tokens, **request_extra}
         if json_mode == "schema":
-            body["response_format"] = {"type": "json_schema", "json_schema": {"name": "notes", "schema": schema}}
+            body["response_format"] = {"type": "json_schema",
+                                       "json_schema": {"name": "notes", "schema": schema or notes_schema}}
         started = time.monotonic()
         resp = http_json(f"http://127.0.0.1:{server.port}/v1/chat/completions", body, {}, 1800)
         u = resp.get("usage", {})
@@ -288,7 +452,7 @@ def cloud_call(provider: str, model: str, usage: list) -> Callable:
                 time.sleep(5 * (attempt + 1))
         raise RuntimeError("unreachable")
 
-    def call(messages: list[dict], max_tokens: int) -> str:
+    def call(messages: list[dict], max_tokens: int, schema: dict | None = None) -> str:
         started = time.monotonic()
         if provider == "openai":
             body = {"model": model, "messages": messages, "temperature": 0, "max_tokens": max_tokens,
@@ -349,7 +513,11 @@ def run_local(args) -> int:
                              cand["server_args"]) as srv:
                 call = local_call(srv, args.json_mode, cand.get("request_extra", {}), schema, usage)
                 started = time.monotonic()
-                job = run_job(lines, lang, cfg["budget"], srv.count_tokens, call, cfg["max_map"], cfg["max_reduce"])
+                job = run_job(lines, lang, cfg["budget"], srv.count_tokens, call, cfg["max_map"], cfg["max_reduce"],
+                              verify=cfg.get("verify", False), map_prompt=cfg.get("map_prompt", "map.txt"),
+                              verify_budget=cfg.get("verify_budget", 6000),
+                              verify_around=cfg.get("verify_around", 2),
+                              reduce_mode=cfg.get("reduce_mode", "full"))
                 gen_ms = int((time.monotonic() - started) * 1000)
             write_result(out_dir, name, finish(system, name, lang, srv.load_ms, gen_ms,
                                                round(srv.peak_rss_mib, 1), job, usage))
@@ -390,7 +558,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="mode", required=True)
     loc = sub.add_parser("local", help="llama-server trên máy")
     loc.add_argument("--candidate", required=True)
-    loc.add_argument("--config", choices=["c8k", "c8kb", "c16k", "c16kb"], required=True)
+    loc.add_argument("--config", choices=["c8k", "c8kb", "c16k", "c16kb", "c16kw", "c16kx"], required=True)
     loc.add_argument("--hw", choices=["gpu", "cpu"], required=True)
     loc.add_argument("--json-mode", choices=["schema", "prompt"], default="schema")
     loc.add_argument("--server")
