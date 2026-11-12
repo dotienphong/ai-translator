@@ -92,10 +92,11 @@ def line_text(line: dict) -> str | None:
     return line["tgt"] or line["src"]
 
 
-def render_lines(lines: list[dict]) -> str:
+def render_lines(lines: list[dict], source: bool = False) -> str:
+    """`source`: dùng lời gốc (`src`) thay cho bản dịch: model ghi chú không chép theo lỗi dịch máy (chỉ Local)."""
     out = []
     for line in lines:
-        text = line_text(line)
+        text = (None if line["dropped"] else line["src"]) if source else line_text(line)
         if text is None:
             continue
         who = f"{line['speaker']}: " if line["speaker"] else ""
@@ -300,3 +301,16 @@ def parse_verdicts(raw: str) -> dict[int, dict] | None:
 
 def has_cjk(text: str) -> bool:
     return any(_is_cjk(c) for c in text)
+
+
+_NUM = re.compile(r"\d+")
+
+
+def due_supported(due: str, lines: list[dict], refs: list[int], around: int = 1) -> bool:
+    """Mọi con số trong hạn phải có trong lời gốc của các câu quanh `refs` (±`around`). Hạn không có số: không kiểm."""
+    wanted = {int(n) for n in _NUM.findall(unicodedata.normalize("NFKC", due))}
+    if not wanted:
+        return True
+    window = {s for r in refs for s in range(r - around, r + around + 1)}
+    text = " ".join(unicodedata.normalize("NFKC", l["src"]) for l in lines if l["seq"] in window and not l["dropped"])
+    return wanted <= {int(n) for n in _NUM.findall(text)}

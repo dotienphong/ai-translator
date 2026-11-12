@@ -18,7 +18,7 @@ from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from notes_lib import (EMPTY_NOTES, _first_object, chunk_lines, lang_ok, has_cjk, owner_known, parse_notes, parse_verdicts,  # noqa: E402
+from notes_lib import (EMPTY_NOTES, _first_object, chunk_lines, due_supported, lang_ok, has_cjk, owner_known, parse_notes, parse_verdicts,  # noqa: E402
                        render_lines, render_verify_lines)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -189,10 +189,23 @@ def _reduce_summary(parts: list[dict], language: str, call: Callable, result: di
 MAX_SUMMARY = 800
 
 
+def _finish(result: dict, lines: list[dict], lang: str, call: Callable, count_tokens: Callable[[str], int],
+            verify: bool, verify_budget: int, verify_around: int, due_check: bool) -> None:
+    if verify:
+        verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
+    if due_check:
+        cleared = 0
+        for item in result["notes"]["action_items"]:
+            if item["due"] and not due_supported(item["due"], lines, item["refs"]):
+                item["due"] = ""
+                cleared += 1
+        result["due_cleared"] = cleared
+
+
 def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[str], int],
             call: Callable[[list[dict], int], str], max_map: int, max_reduce: int, verify: bool = False,
             map_prompt: str = "map.txt", verify_budget: int = 6000, verify_around: int = 2,
-            reduce_mode: str = "full") -> dict:
+            reduce_mode: str = "full", map_source: bool = False, due_check: bool = False) -> dict:
     result = {"notes": None, "raw_fallback": None, "chunks": 0, "failed_chunks": 0, "reduce_fallback": False,
               "calls": []}
     language = LANGUAGE_NAME[lang]
@@ -220,7 +233,7 @@ def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[s
     parts: list[dict] = []
     last_raw = ""
     for chunk in chunks:
-        prompt = _prompt(map_prompt).replace("{language}", language).replace("{transcript}", render_lines(chunk))
+        prompt = _prompt(map_prompt).replace("{language}", language).replace("{transcript}", render_lines(chunk, source=map_source))
         notes, last_raw = ask("map", prompt, max_map)
         if notes is None:
             result["failed_chunks"] += 1
@@ -232,14 +245,12 @@ def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[s
         return result
     if len(chunks) == 1 and len(parts) == 1:
         result["notes"] = parts[0]
-        if verify:
-            verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
+        _finish(result, lines, lang, call, count_tokens, verify, verify_budget, verify_around, due_check)
         return result
 
     if reduce_mode == "summary":
         result["notes"] = _reduce_summary(parts, language, call, result)
-        if verify:
-            verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
+        _finish(result, lines, lang, call, count_tokens, verify, verify_budget, verify_around, due_check)
         return result
 
     while len(parts) > 1:
@@ -268,8 +279,7 @@ def run_job(lines: list[dict], lang: str, budget: int, count_tokens: Callable[[s
             next_level.append(notes)
         parts = next_level
     result["notes"] = parts[0]
-    if verify:
-        verify_actions(result["notes"], lines, lang, call, count_tokens, verify_budget, verify_around, result)
+    _finish(result, lines, lang, call, count_tokens, verify, verify_budget, verify_around, due_check)
     return result
 
 
@@ -297,6 +307,11 @@ CONFIGS = {
     # bằng máy; kiểm từng việc (ngân sách lô 1 token) với ±1 câu.
     "c16kx": {"ctx": 16384, "budget": 12000, "max_map": 2000, "max_reduce": 3000, "verify": True,
               "map_prompt": "map_v2.txt", "verify_budget": 1, "verify_around": 1, "reduce_mode": "summary"},
+    # Sau chấm tay c16kx (42/177 việc sai, phần lớn do dịch máy): map đọc lời gốc thay vì bản dịch, và hạn có con số
+    # không thấy trong lời gốc quanh `refs` thì bị xoá.
+    "c16ky": {"ctx": 16384, "budget": 12000, "max_map": 2000, "max_reduce": 3000, "verify": True,
+              "map_prompt": "map_v3.txt", "verify_budget": 1, "verify_around": 1, "reduce_mode": "summary",
+              "map_source": True, "due_check": True},
     "cloud": {"ctx": None, "budget": 60000, "max_map": 4000, "max_reduce": 4000},
 }
 
@@ -517,7 +532,8 @@ def run_local(args) -> int:
                               verify=cfg.get("verify", False), map_prompt=cfg.get("map_prompt", "map.txt"),
                               verify_budget=cfg.get("verify_budget", 6000),
                               verify_around=cfg.get("verify_around", 2),
-                              reduce_mode=cfg.get("reduce_mode", "full"))
+                              reduce_mode=cfg.get("reduce_mode", "full"),
+                              map_source=cfg.get("map_source", False), due_check=cfg.get("due_check", False))
                 gen_ms = int((time.monotonic() - started) * 1000)
             write_result(out_dir, name, finish(system, name, lang, srv.load_ms, gen_ms,
                                                round(srv.peak_rss_mib, 1), job, usage))
@@ -558,7 +574,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="mode", required=True)
     loc = sub.add_parser("local", help="llama-server trên máy")
     loc.add_argument("--candidate", required=True)
-    loc.add_argument("--config", choices=["c8k", "c8kb", "c16k", "c16kb", "c16kw", "c16kx"], required=True)
+    loc.add_argument("--config", choices=["c8k", "c8kb", "c16k", "c16kb", "c16kw", "c16kx", "c16ky"], required=True)
     loc.add_argument("--hw", choices=["gpu", "cpu"], required=True)
     loc.add_argument("--json-mode", choices=["schema", "prompt"], default="schema")
     loc.add_argument("--server")

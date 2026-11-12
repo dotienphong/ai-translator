@@ -24,10 +24,10 @@ uv run --python 3.12 --with psutil python -I run_notes.py local --candidate qwen
 # chấm tự động
 python score_auto.py "$DATA\out" > results\tu-dong.md
 # kiểm thử
-foreach ($t in "test_notes_lib","test_run_notes","test_grading","test_verify") { python -I "$t.py" }
+foreach ($t in "test_notes_lib","test_run_notes","test_grading","test_verify","test_round3") { python -I "$t.py" }
 ```
 
-Cấu hình (`CONFIGS` trong `run_notes.py`): `c8k`, `c8kb`, `c16k`, `c16kb` (context, độ dài đoạn, trần token map, trần token reduce); `c16kw` (kiểm theo lô), `c16kx` (hệ tốt nhất: `map_v2.txt`, gộp chỉ viết tóm tắt `reduce_summary.txt`, kiểm từng việc `verify.txt`). Ứng viên: `candidates.json`.
+Cấu hình (`CONFIGS` trong `run_notes.py`): `c8k`, `c8kb`, `c16k`, `c16kb` (context, độ dài đoạn, trần token map, trần token reduce); `c16kw` (kiểm theo lô), `c16kx` (hệ tốt nhất: `map_v2.txt`, gộp chỉ viết tóm tắt `reduce_summary.txt`, kiểm từng việc `verify.txt`), `c16ky` (`c16kx` + map đọc lời gốc `map_v3.txt` + xoá hạn có số không có trong lời gốc). Ứng viên: `candidates.json`.
 
 ## Tệp
 
@@ -35,4 +35,4 @@ Cấu hình (`CONFIGS` trong `run_notes.py`): `c8k`, `c8kb`, `c16k`, `c16kb` (co
 - `schema.json`, `prompts/`: lược đồ đầu ra và lời nhắc.
 - `make_raw.py`, `build_set.py`: dựng bộ thử (`results/bo-thu.md` mô tả và nêu giới hạn).
 - `score_auto.py`: chấm tự động; `grading.py`: dựng phiếu và tính điểm chấm tay.
-- `results/`: `may-do.md`, `ung-vien.md`, `bo-thu.md`, `tu-dong.md`, `cham-tay.md`, `cham-tay-2.md`, `tong-hop.md`.
+- `results/`: `may-do.md`, `ung-vien.md`, `bo-thu.md`, `tu-dong.md`, `cham-tay.md`, `cham-tay-2.md`, `cham-tay-3.md`, `tong-hop.md`.

@@ -143,14 +143,14 @@ Chuỗi giao diện đủ vi, en, ja, zh, ko.
 - **Không ứng viên nào đạt:** dừng, báo chủ dự án xem lại G3.
 - Kết quả ghi ở `bench/2026-11-11-ghi-chu-cuoc-hop/`.
 
-### 10.1 Kết quả đo (2026-11-13): chưa đạt
+### 10.1 Kết quả đo (2026-11-13, ba vòng): chưa đạt
 
 Chi tiết: `bench/2026-11-11-ghi-chu-cuoc-hop/results/tong-hop.md`.
 
 - Hệ tốt nhất: `qwen3-5-4b` (Q4_K_M, Apache-2.0), cấu hình `c16kx`: lời nhắc chặt cho việc cần làm, gộp đoạn chỉ viết tóm tắt, lượt kiểm từng việc đọc câu gốc. Đạt JSON 100%, ngôn ngữ 20/20, `refs` 100%, phiên 60 phút 840 s (iGPU), RAM đỉnh 4315 MiB.
-- **Rớt việc cần làm bịa:** 42/177 (24%; hệ vòng 1: 60/180), ngưỡng ≤ 2/20 bản. Phần lớn lỗi còn lại là sai chi tiết do dịch máy ở khâu trước.
+- **Rớt việc cần làm bịa:** chấm tách hai loại (vòng 3): 7 việc bịa hẳn trên 20 bản (ngưỡng ≤ 2) và 41 việc có thật nhưng sai người nhận, hạn hay chi tiết; tổng 48/177. Cho model đọc lời gốc thay vì bản dịch (`c16ky`) không hơn rõ ràng: sai chi tiết giảm nhưng sót việc và bịa hẳn tăng.
 - `llama-server` của tiến trình ghi chú phải chạy với `--cache-ram 0` (mặc định giữ tới 8 GiB bộ đệm prompt trên RAM).
-- Chưa đo: mốc Cloud, Local đọc câu gốc thay vì bản dịch, chỉ CPU với cấu hình mới, máy 16 GB, nhiễu nhận dạng giọng nói.
+- Chưa đo: mốc Cloud, chỉ CPU với cấu hình mới, máy 16 GB, nhiễu nhận dạng giọng nói.
 - Theo luật dừng ở trên: **G3 chờ chủ dự án quyết định lại.** Không làm kế hoạch 03 (engine Local) trước đó.
 
 ## 11. Rủi ro

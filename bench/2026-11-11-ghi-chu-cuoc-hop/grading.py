@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # `python -I` không tự thêm thư mục script
 from notes_lib import render_lines  # noqa: E402
 
-COLUMNS = ["he", "loai", "text", "owner", "due", "refs", "bang_chung", "dung", "refs_dung", "nhom"]
+COLUMNS = ["he", "loai", "text", "owner", "due", "refs", "bang_chung", "dung", "refs_dung", "nhom", "loai_loi"]
 KINDS = (("decisions", "decision"), ("action_items", "action"), ("open_questions", "question"))
 
 
@@ -47,7 +47,7 @@ def make(out_dir: str, set_dir: str, grading_dir: str, systems: list[str]) -> in
                         w.writerow({"he": letter, "loai": kind, "text": item["text"], "owner": item.get("owner", ""),
                                     "due": item.get("due", ""), "refs": " ".join(str(r) for r in refs),
                                     "bang_chung": render_lines([by_seq[r] for r in refs if r in by_seq]).strip(),
-                                    "dung": "", "refs_dung": "", "nhom": ""})
+                                    "dung": "", "refs_dung": "", "nhom": "", "loai_loi": ""})
     with open(os.path.join(grading_dir, "key.json"), "w", encoding="utf-8") as f:
         json.dump(key, f, ensure_ascii=False, indent=1)
     print(f"{len(key)} phiếu ở {grading_dir}")
@@ -61,7 +61,8 @@ def score(rows: list[dict], key: dict) -> dict[str, dict]:
     for n, r in enumerate(rows, 2):
         where = f"{r.get('file', r['name'])} dòng {r.get('line', n)}"
         system = key[r["name"]][r["he"]]
-        s = out.setdefault(system, {"bia": 0, "refs_dung": 0.0, "recall": 0.0, "items": 0})
+        s = out.setdefault(system, {"bia": 0, "bia_han": 0, "sai_chi_tiet": 0, "refs_dung": 0.0, "recall": 0.0,
+                                    "items": 0})
         refs_seen.setdefault(system, [0, 0])
         groups.setdefault(r["name"], {}).setdefault(system, set())
         dung = r["dung"].strip()
@@ -70,6 +71,11 @@ def score(rows: list[dict], key: dict) -> dict[str, dict]:
         s["items"] += 1
         if r["loai"] == "action" and dung == "0":
             s["bia"] += 1
+            if "loai_loi" in r:  # phiếu vòng 3: tách bịa hẳn với có thật nhưng sai chi tiết
+                kind = (r["loai_loi"] or "").strip()
+                if kind not in ("bia", "chi_tiet"):
+                    raise ValueError(f"{where}: việc cần làm sai phải có `loai_loi` là bia hay chi_tiet")
+                s["bia_han" if kind == "bia" else "sai_chi_tiet"] += 1
         if dung == "1" and r["refs"].strip():
             mark = r["refs_dung"].strip()
             if mark not in ("0", "1"):
@@ -118,10 +124,12 @@ def main(argv: list[str] | None = None) -> int:
     with open(os.path.join(args.grading_dir, "key.json"), encoding="utf-8") as f:
         key = json.load(f)
     result = score(read_sheets(args.grading_dir), key)
-    print("| Hệ | Số mục | Việc cần làm bịa (`bia`) | `refs` đúng | Recall việc cần làm |\n|---|---|---|---|---|")
+    print("| Hệ | Số mục | Việc cần làm sai (`bia`) | Bịa hẳn | Sai chi tiết | `refs` đúng | Recall việc cần làm |\n"
+          "|---|---|---|---|---|---|---|")
     for system in sorted(result):
         s = result[system]
-        print(f"| {system} | {s['items']} | {s['bia']} | {s['refs_dung'] * 100:.1f}% | {s['recall'] * 100:.1f}% |")
+        print(f"| {system} | {s['items']} | {s['bia']} | {s['bia_han']} | {s['sai_chi_tiet']} | "
+              f"{s['refs_dung'] * 100:.1f}% | {s['recall'] * 100:.1f}% |")
     return 0
 
 
