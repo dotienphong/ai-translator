@@ -132,6 +132,10 @@ DEFAULT_SERVER = os.path.join(REPO, "tools", "llama-b11146", "win-vulkan-x64", "
 CONFIGS = {
     "c8k": {"ctx": 8192, "budget": 5000, "max_map": 800, "max_reduce": 1500},
     "c16k": {"ctx": 16384, "budget": 12000, "max_map": 1200, "max_reduce": 2000},
+    # Thêm sau lượt c8k đầu tiên: mọi lần JSON hỏng ở c8k đều do bị cắt ở max_tokens (results/tu-dong.md).
+    "c8kb": {"ctx": 8192, "budget": 3500, "max_map": 1600, "max_reduce": 2500},
+    # Sau lượt c16k: ghi chú tiếng Hàn dùng nhiều token đầu ra, map chạm trần 1200 và reduce chạm trần 2000.
+    "c16kb": {"ctx": 16384, "budget": 12000, "max_map": 2000, "max_reduce": 3000},
     "cloud": {"ctx": None, "budget": 60000, "max_map": 4000, "max_reduce": 4000},
 }
 
@@ -386,7 +390,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="mode", required=True)
     loc = sub.add_parser("local", help="llama-server trên máy")
     loc.add_argument("--candidate", required=True)
-    loc.add_argument("--config", choices=["c8k", "c16k"], required=True)
+    loc.add_argument("--config", choices=["c8k", "c8kb", "c16k", "c16kb"], required=True)
     loc.add_argument("--hw", choices=["gpu", "cpu"], required=True)
     loc.add_argument("--json-mode", choices=["schema", "prompt"], default="schema")
     loc.add_argument("--server")

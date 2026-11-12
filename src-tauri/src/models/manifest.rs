@@ -689,6 +689,20 @@ pub(crate) mod tests {
         assert_eq!(m.files_of("standard").len(), 4);
     }
 
+    /// Spec 2026-11-11-ghi-chu-cuoc-hop §4: gói ghi chú đi ở khóa mới `notes` ở gốc phần thân; app chưa biết khóa này
+    /// (0.6.16 trở về trước) vẫn đọc được manifest và các gói như cũ.
+    #[test]
+    fn a_notes_entry_at_the_root_does_not_break_this_app() {
+        let mut value = sample();
+        value["notes"] = json!({
+            "id": "notes-model", "version": "1", "file": "notes-model.gguf", "url": "files/notes-model.gguf",
+            "bytes": 2_600_000_000u64, "sha256": "ef".repeat(32), "license_id": "Apache-2.0",
+            "min_app_version": "0.7.0", "min_ram_mib": 15360, "ctx": 8192
+        });
+        let m = parse(&value).unwrap();
+        assert_eq!(m.files_of("standard").len(), 4);
+    }
+
     /// Vì sao không đưa model nhúng giọng vào `files`: một `kind` lạ làm app hiện tại từ chối cả manifest.
     #[test]
     fn an_unknown_kind_in_files_breaks_this_app() {
