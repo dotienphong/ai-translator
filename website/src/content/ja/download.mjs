@@ -58,7 +58,7 @@ const DL_FAQ = [
   },
   {
     q: "なぜ .dmg や .exe のダウンロードより 1 行のコマンドをおすすめするのですか？",
-    a: `<p>現在のビルドはまだ Apple や Microsoft の署名を受けていません（Apple Developer ID も Windows のコード署名証明書もまだ持っていません）。ブラウザーでダウンロードしたファイルには「インターネットからダウンロード」の印が付くため、macOS は .dmg の初回起動をブロックし（このまま開く）、Windows の SmartScreen は .exe について警告することがあります。ターミナルや PowerShell のコマンドでダウンロードしたファイルにはこの印が付かないため、アプリはそのままインストールされて開きます。Windows では、PowerShell を使いたくない場合、方法 1 の Microsoft Store や方法 2 の .exe 直接ダウンロードもご利用いただけます。</p>`,
+    a: `<p>現在のビルドはまだ Apple や Microsoft の署名を受けていません（Apple Developer ID も Windows のコード署名証明書もまだ持っていません）。ブラウザーでダウンロードしたファイルには「インターネットからダウンロード」の印が付くため、macOS は .dmg の初回起動をブロックし（このまま開く）、Windows の SmartScreen は .exe について警告することがあります。ターミナルや PowerShell のコマンドでダウンロードしたファイルにはこの印が付かないため、アプリはそのままインストールされて開きます。Windows では、PowerShell を使いたくない場合、方法 1 の .exe 直接ダウンロードや方法 2 の Microsoft Store もご利用いただけます。</p>`,
   },
   {
     q: "更新やアンインストールはどうすればいいですか？",
@@ -125,19 +125,19 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 または 11、64 ビット"], ["cpu", "AVX2 対応の CPU"], ["download", "インストーラー約 22 MB"], ["shield", "管理者権限不要"]])}
-<div class="dl-method dl-method-primary" id="install-store">
-<div class="dl-method-head"><span class="dl-badge">方法 1: おすすめ</span><h3>Microsoft Store からインストール</h3></div>
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">方法 1: おすすめ</span><h3>.exe インストーラーを直接ダウンロードする</h3></div>
+<p class="dl-method-sub">インストーラーをダウンロードしてそのまま開き、お使いのアカウントにインストールします。Windows で SmartScreen の青い画面が出た場合は、<strong>詳細情報</strong>をクリックしてから<strong>実行</strong>をクリックします（<a href="/ja/guide/install-windows/#install-exe">.exe からのインストール手順を見る</a>）。</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> をダウンロード</span></a>
+</div>
+</div>
+<div class="dl-method" id="install-store">
+<div class="dl-method-head"><span class="dl-badge">方法 2</span><h3>Microsoft Store からインストール</h3></div>
 <p class="dl-method-sub">Windows の Microsoft Store アプリを直接開いて迅速・安全にインストールし、自動更新に対応します（SmartScreen の警告もありません）。</p>
 <div class="panel-alt-actions">
 <a class="btn btn-dl-store" href="${SITE.msStore.appUrl}">${icon("windows")}<span>Microsoft Store で開く</span></a>
 <a class="btn btn-secondary btn-sm" href="${SITE.msStore.webUrl}" rel="noopener"><span>Web で表示 (apps.microsoft.com)</span></a>
-</div>
-</div>
-<div class="dl-method" id="download-exe">
-<div class="dl-method-head"><span class="dl-badge">方法 2</span><h3>.exe インストーラーを直接ダウンロードする</h3></div>
-<p class="dl-method-sub">インストーラーをダウンロードしてそのまま開き、お使いのアカウントにインストールします。Windows で SmartScreen の青い画面が出た場合は、<strong>詳細情報</strong>をクリックしてから<strong>実行</strong>をクリックします（<a href="/ja/guide/install-windows/#install-exe">.exe からのインストール手順を見る</a>）。</p>
-<div class="panel-alt-actions">
-<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span><code>${SITE.winInstaller.file}</code> をダウンロード</span></a>
 </div>
 </div>
 <div class="dl-method" id="install-powershell">
@@ -178,7 +178,7 @@ ${faq(
     },
     {
       q: "会社や学校のパソコンでコマンドが失敗する",
-      a: "<p>管理されたパソコンでは PowerShell のスクリプトがブロックされることがあります（制約付き言語モード）。上の方法 1 の Microsoft Store または方法 2 の .exe をご利用いただくか、管理者にご相談ください。</p>",
+      a: "<p>管理されたパソコンでは PowerShell のスクリプトがブロックされることがあります（制約付き言語モード）。上の方法 1 の .exe または方法 2 の Microsoft Store をご利用いただくか、管理者にご相談ください。</p>",
     },
     {
       q: ".exe をメールで受け取りたい",

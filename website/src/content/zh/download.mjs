@@ -58,7 +58,7 @@ const DL_FAQ = [
   },
   {
     q: "为什么推荐用一行命令，而不是下载 .dmg 或 .exe？",
-    a: `<p>当前版本还没有获得 Apple 或 Microsoft 的签名（我们还没有 Apple Developer ID，也没有 Windows 代码签名证书）。用浏览器下载的文件会被标记为“从互联网下载”，所以 macOS 会在首次启动 .dmg 时阻止它（仍要打开），Windows SmartScreen 也可能对 .exe 发出警告。通过终端或 PowerShell 命令下载的文件不会带这个标记，所以应用会直接安装并打开。在 Windows 上，如果你不想使用 PowerShell，也可以通过方法 1 的 Microsoft Store 或方法 2 直接下载 .exe。</p>`,
+    a: `<p>当前版本还没有获得 Apple 或 Microsoft 的签名（我们还没有 Apple Developer ID，也没有 Windows 代码签名证书）。用浏览器下载的文件会被标记为“从互联网下载”，所以 macOS 会在首次启动 .dmg 时阻止它（仍要打开），Windows SmartScreen 也可能对 .exe 发出警告。通过终端或 PowerShell 命令下载的文件不会带这个标记，所以应用会直接安装并打开。在 Windows 上，如果你不想使用 PowerShell，也可以通过方法 1 直接下载 .exe 或方法 2 从 Microsoft Store 安装。</p>`,
   },
   {
     q: "如何更新或卸载？",
@@ -125,19 +125,19 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 或 11，64 位"], ["cpu", "支持 AVX2 的 CPU"], ["download", "安装包约 22 MB"], ["shield", "无需管理员权限"]])}
-<div class="dl-method dl-method-primary" id="install-store">
-<div class="dl-method-head"><span class="dl-badge">方法 1：推荐</span><h3>从 Microsoft Store 安装</h3></div>
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">方法 1：推荐</span><h3>直接下载 .exe 安装程序</h3></div>
+<p class="dl-method-sub">下载安装程序并直接打开即可为你的账户安装。如果 Windows 显示蓝色的 SmartScreen 界面，点击<strong>更多信息</strong>，再点击<strong>仍要运行</strong>（<a href="/zh/guide/install-windows/#install-exe">查看 .exe 安装说明</a>）。</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>下载 <code>${SITE.winInstaller.file}</code></span></a>
+</div>
+</div>
+<div class="dl-method" id="install-store">
+<div class="dl-method-head"><span class="dl-badge">方法 2</span><h3>从 Microsoft Store 安装</h3></div>
 <p class="dl-method-sub">直接打开 Windows 的 Microsoft Store 快速安全地安装，并支持自动更新（不会弹出 SmartScreen 警告）。</p>
 <div class="panel-alt-actions">
 <a class="btn btn-dl-store" href="${SITE.msStore.appUrl}">${icon("windows")}<span>在 Microsoft Store 中打开</span></a>
 <a class="btn btn-secondary btn-sm" href="${SITE.msStore.webUrl}" rel="noopener"><span>在网页中查看 (apps.microsoft.com)</span></a>
-</div>
-</div>
-<div class="dl-method" id="download-exe">
-<div class="dl-method-head"><span class="dl-badge">方法 2</span><h3>直接下载 .exe 安装程序</h3></div>
-<p class="dl-method-sub">下载安装程序并直接打开即可为你的账户安装。如果 Windows 显示蓝色的 SmartScreen 界面，点击<strong>更多信息</strong>，再点击<strong>仍要运行</strong>（<a href="/zh/guide/install-windows/#install-exe">查看 .exe 安装说明</a>）。</p>
-<div class="panel-alt-actions">
-<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>下载 <code>${SITE.winInstaller.file}</code></span></a>
 </div>
 </div>
 <div class="dl-method" id="install-powershell">
@@ -178,7 +178,7 @@ ${faq(
     },
     {
       q: "在公司或学校的电脑上命令运行失败",
-      a: "<p>受管理的电脑可能会阻止 PowerShell 脚本（受约束的语言模式）。请使用上面的方法 1（Microsoft Store）或方法 2 下载 .exe，或者咨询管理员。</p>",
+      a: "<p>受管理的电脑可能会阻止 PowerShell 脚本（受约束的语言模式）。请使用上面的方法 1 下载 .exe 或方法 2（Microsoft Store），或者咨询管理员。</p>",
     },
     {
       q: "我想通过邮件获取 .exe",

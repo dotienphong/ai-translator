@@ -59,7 +59,7 @@ const DL_FAQ = [
   },
   {
     q: "Why is the one-line command recommended over downloading a .dmg or .exe?",
-    a: `<p>The current build is not yet signed by Apple or Microsoft (we do not have an Apple Developer ID or a Windows code-signing certificate). A file downloaded in a browser is tagged “downloaded from the internet”, so macOS blocks the first launch of a .dmg (Open Anyway) and Windows SmartScreen may warn about an .exe. A file downloaded by a command in Terminal or PowerShell does not get that tag, so the app installs and opens directly. On Windows, you can also install from the Microsoft Store under Option 1 (no SmartScreen) or download the .exe directly under Option 2 below if you prefer not to use PowerShell.</p>`,
+    a: `<p>The current build is not yet signed by Apple or Microsoft (we do not have an Apple Developer ID or a Windows code-signing certificate). A file downloaded in a browser is tagged “downloaded from the internet”, so macOS blocks the first launch of a .dmg (Open Anyway) and Windows SmartScreen may warn about an .exe. A file downloaded by a command in Terminal or PowerShell does not get that tag, so the app installs and opens directly. On Windows, you can also download the .exe directly under Option 1 below or install from the Microsoft Store under Option 2 if you prefer not to use PowerShell.</p>`,
   },
   {
     q: "How do I update or uninstall?",
@@ -126,19 +126,19 @@ ${faq(
 
 const winPanel = () => `
 ${chips([["windows", "Windows 10 or 11, 64-bit"], ["cpu", "CPU with AVX2"], ["download", "About 22 MB installer"], ["shield", "No administrator rights"]])}
-<div class="dl-method dl-method-primary" id="install-store">
-<div class="dl-method-head"><span class="dl-badge">Option 1: Recommended</span><h3>Install from Microsoft Store</h3></div>
+<div class="dl-method dl-method-primary" id="download-exe">
+<div class="dl-method-head"><span class="dl-badge">Option 1: Recommended</span><h3>Download the .exe installer directly</h3></div>
+<p class="dl-method-sub">Download the installer file and open it directly to install for your account. If Windows shows the blue SmartScreen screen, click <strong>More info</strong>, then <strong>Run anyway</strong> (<a href="/en/guide/install-windows/#install-exe">see the .exe install guide</a>).</p>
+<div class="panel-alt-actions">
+<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>Download <code>${SITE.winInstaller.file}</code></span></a>
+</div>
+</div>
+<div class="dl-method" id="install-store">
+<div class="dl-method-head"><span class="dl-badge">Option 2</span><h3>Install from Microsoft Store</h3></div>
 <p class="dl-method-sub">Open the Microsoft Store app on Windows directly to install quickly, safely, and receive automatic updates (without SmartScreen warnings).</p>
 <div class="panel-alt-actions">
 <a class="btn btn-dl-store" href="${SITE.msStore.appUrl}">${icon("windows")}<span>Open in Microsoft Store</span></a>
 <a class="btn btn-secondary btn-sm" href="${SITE.msStore.webUrl}" rel="noopener"><span>View on web (apps.microsoft.com)</span></a>
-</div>
-</div>
-<div class="dl-method" id="download-exe">
-<div class="dl-method-head"><span class="dl-badge">Option 2</span><h3>Download the .exe installer directly</h3></div>
-<p class="dl-method-sub">Download the installer file and open it directly to install for your account. If Windows shows the blue SmartScreen screen, click <strong>More info</strong>, then <strong>Run anyway</strong> (<a href="/en/guide/install-windows/#install-exe">see the .exe install guide</a>).</p>
-<div class="panel-alt-actions">
-<a class="btn btn-dl-exe" href="${SITE.winInstaller.url}">${icon("download")}<span>Download <code>${SITE.winInstaller.file}</code></span></a>
 </div>
 </div>
 <div class="dl-method" id="install-powershell">
@@ -179,7 +179,7 @@ ${faq(
     },
     {
       q: "The command fails on a company or school PC",
-      a: "<p>A managed PC may block PowerShell scripts (Constrained Language Mode). Install via Microsoft Store under Option 1 or download the .exe under Option 2 above, or ask the administrator.</p>",
+      a: "<p>A managed PC may block PowerShell scripts (Constrained Language Mode). Download the .exe under Option 1 or install via Microsoft Store under Option 2 above, or ask the administrator.</p>",
     },
     {
       q: "I would like the .exe by email",
