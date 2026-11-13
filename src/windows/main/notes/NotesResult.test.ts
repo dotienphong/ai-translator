@@ -73,10 +73,27 @@ describe("NotesResult", () => {
 
   it("an_action_shows_owner_and_due_only_when_present", () => {
     const markup = html(props());
-    expect(markup).toContain("Người nhận: Lan");
-    expect(markup).toContain("Hạn: thứ Sáu");
-    expect(count(markup, "Người nhận:")).toBe(1);
-    expect(count(markup, "Hạn:")).toBe(1);
+    // Chip có biểu tượng; nhãn "Người nhận:" / "Hạn:" chỉ dành cho trình đọc màn hình, chữ hiển thị là giá trị.
+    const plain = markup.replace(/<[^>]+>/g, "");
+    expect(plain).toContain("Người nhận: Lan");
+    expect(plain).toContain("Hạn: thứ Sáu");
+    expect(count(plain, "Người nhận:")).toBe(1);
+    expect(count(plain, "Hạn:")).toBe(1);
+    expect(markup).toContain('class="notes-chip is-owner"');
+    expect(markup).toContain('class="notes-chip is-due"');
+  });
+
+  it("each_block_title_carries_how_many_items_it_holds", () => {
+    const counts = [...html(props()).matchAll(/class="notes-count">(\d+)</g)].map((m) => m[1]);
+    expect(counts).toEqual(["2", "2", "1"]);
+    const empty: Notes = { summary: "x", decisions: [], actionItems: [], openQuestions: [], raw: false };
+    expect(html(props({ notes: empty }))).not.toContain("notes-count");
+  });
+
+  it("an_action_item_is_display_only_with_no_checkbox", () => {
+    const markup = html(props());
+    expect(markup).not.toContain('type="checkbox"');
+    expect(markup).not.toContain("<input");
   });
 
   it("raw_notes_show_only_the_summary", () => {

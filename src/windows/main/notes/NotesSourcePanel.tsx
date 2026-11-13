@@ -11,7 +11,8 @@ export interface NotesSourcePanelProps {
   onClose: () => void;
 }
 
-// Khung đối chiếu cạnh kết quả: cả bản chép lời theo thứ tự, các câu mà mục ghi chú dẫn tới được tô. Bản dịch chỉ hiện khi khác
+// Khung đối chiếu cạnh kết quả: cả bản chép lời theo thứ tự (mỗi câu mang số thứ tự, khớp với chip "#số" trong ghi chú), các câu mà
+// mục ghi chú dẫn tới được tô. Bản dịch chỉ hiện khi khác
 // câu gốc. Giọng đã gộp vào giọng khác thì hiện nhãn của giọng gốc (như bản chép lời ở Lịch sử).
 export function NotesSourcePanel(p: NotesSourcePanelProps) {
   const t = (key: MessageKey, params?: Params) => translate(p.lang, key, params);
@@ -43,11 +44,14 @@ export function NotesSourcePanel(p: NotesSourcePanelProps) {
               className={isRef ? "notes-source-line is-ref" : "notes-source-line"}
               aria-current={isRef ? "true" : undefined}
             >
-              {speaker !== null && <span className="notes-source-speaker">{speaker}</span>}
-              <span className="notes-source-src">{line.src_text}</span>
-              {line.tgt_text !== "" && line.tgt_text !== line.src_text && (
-                <span className="notes-source-tgt">{line.tgt_text}</span>
-              )}
+              <span className="notes-source-n">{index + 1}</span>
+              <span className="notes-source-body">
+                {speaker !== null && <span className="notes-source-speaker">{speaker}</span>}
+                <span className="notes-source-src">{line.src_text}</span>
+                {line.tgt_text !== "" && line.tgt_text !== line.src_text && (
+                  <span className="notes-source-tgt">{line.tgt_text}</span>
+                )}
+              </span>
             </li>
           );
         })}

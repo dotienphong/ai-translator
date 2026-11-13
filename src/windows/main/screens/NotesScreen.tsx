@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { EmptyState } from "../../../components/EmptyState";
 import { Field } from "../../../components/Field";
 import { Icon } from "../../../components/Icon";
@@ -19,9 +19,11 @@ import { type UiError, toUiError } from "../../../store/app";
 import { type NotesDialog, type NotesNotice, type NotesStoreState, sameRef } from "../../../store/notes";
 import { useApp } from "../appStore";
 import { notesStore, useNotes } from "../dataStores";
+import { type Banner, pickBanner } from "../notes/banner";
 import { NotesDialogs } from "../notes/NotesDialogs";
 import { NotesPackPanel } from "../notes/NotesPackPanel";
 import { NotesResult } from "../notes/NotesResult";
+import { NotesSessionRail, NotesSessionSelect, sessionTitle } from "../notes/NotesSessionList";
 import { NotesSourcePanel } from "../notes/NotesSourcePanel";
 import { useModels } from "../modelsStore";
 
@@ -86,9 +88,10 @@ export interface NotesScreenViewProps {
   onCancelDiscard(): void;
 }
 
-// Màn hình Ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design §7): chọn phiên, thanh tạo (mẫu, nguồn đang dùng, nút Tạo),
-// kết quả kèm khung đối chiếu câu gốc, xuất, thiết lập (gói trên máy, tự tạo) và lỗi của việc. Phần hiển thị thuần: mọi quyết định
-// (có hỏi không, tạo được không) đã nằm ở `gate` và store.
+// Màn hình Ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design §7), bố cục hai cột: cột "Cuộc họp" bên trái (cửa sổ hẹp thì là ô
+// chọn), bên phải là đầu trang (tên phiên, sửa/chép/xuất), thanh công cụ (mẫu, nguồn, nút Tạo), MỘT thông báo gấp nhất, rồi kết quả kèm
+// khung đối chiếu câu gốc; chưa có ghi chú thì là thẻ bắt đầu. Phần hiển thị thuần: mọi quyết định (có hỏi không, tạo được không) đã nằm
+// ở `gate` và store.
 export function NotesScreenView(p: NotesScreenViewProps) {
   const t = (key: MessageKey, params?: Params) => translate(p.lang, key, params);
   const { view, gate } = p;
@@ -120,153 +123,254 @@ export function NotesScreenView(p: NotesScreenViewProps) {
     }
   };
   const setupOpen = gate.kind === "blocked" && (gate.reason === "packMissing" || gate.reason === "packDownloading");
+  // Chưa có ghi chú mà thiếu gói: tải gói ngay trong thẻ bắt đầu, không bắt người dùng đi tìm khối Thiết lập.
+  const packInStart = stored === null && !running && setupOpen;
   const failure = view?.status === "failed" && view.error !== null ? view.error : null;
+  const banner = pickBanner({
+    confirmDiscard: p.confirmDiscard,
+    error: p.error,
+    failure,
+    editing,
+    staleDraft: p.staleDraft,
+    notice: p.notice,
+    unsaved: stored !== null && view !== null && !view.persisted,
+  });
+  const selectedTarget = targets.find((x) => sameRef(x.ref, p.selected)) ?? null;
+  const listProps = { lang: p.lang, targets, selected: p.selected, pro: p.pro, onSelect: p.onSelect };
+  const closeMenu = (e: MouseEvent<HTMLButtonElement>) => e.currentTarget.closest("details")?.removeAttribute("open");
 
-  return (
-    <>
-      <div role="alert">
-        {p.error && (
-          <div className="notice error">
+  const renderBanner = (b: Banner) => {
+    switch (b.kind) {
+      case "discard":
+        return (
+          <div className="notice warning" role="alertdialog" aria-label={t("notes.discard.ask")}>
             <Icon name="alert" />
-            <span>{t(errorKey(p.error.code))}</span>
+            <span>{t("notes.discard.ask")}</span>
+            <button type="button" onClick={p.onConfirmDiscard}>
+              {t("notes.edit.discard")}
+            </button>
+            <button type="button" onClick={p.onCancelDiscard}>
+              {t("notes.cancel")}
+            </button>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="notice error" role="alert">
+            <Icon name="alert" />
+            <span>{t(errorKey(b.code))}</span>
             <button type="button" onClick={p.onDismissError}>
               {t("common.dismiss")}
             </button>
           </div>
-        )}
-      </div>
+        );
+      case "failure":
+        return (
+          <div className="notice error" role="alert">
+            <Icon name="alert" />
+            <span>{t(errorKey(b.code))}</span>
+            {CLOUD_FAILURES.includes(b.code) && (
+              <>
+                <button type="button" onClick={p.onGenerate}>
+                  {t("notes.error.retry")}
+                </button>
+                {p.localUsable && (
+                  <button type="button" onClick={p.onUseLocal}>
+                    {t("notes.error.useLocal")}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      case "stale":
+        return (
+          <div className="notice warning" role="alert">
+            <Icon name="alert" />
+            <span>{t("notes.draft.stale")}</span>
+          </div>
+        );
+      case "notice":
+        return (
+          <div className="notice" role="status">
+            <Icon name="check" />
+            <span>{b.notice.kind === "copied" ? t("notes.copied") : t("notes.exported", { path: b.notice.path })}</span>
+          </div>
+        );
+      case "unsaved":
+        return (
+          <div className="notice warning" role="note">
+            <Icon name="alert" />
+            <span>{t("notes.unsaved")}</span>
+          </div>
+        );
+    }
+  };
 
-      <ul className="notes-sessions">
-        {targets.map((x) => {
-          const selected = sameRef(x.ref, p.selected);
-          return (
-            <li key={x.ref.kind === "current" ? "current" : x.ref.id}>
+  const headActions =
+    stored === null ? null : editing ? (
+      <>
+        <button type="button" className="primary" onClick={p.onSave}>
+          {t("notes.edit.save")}
+        </button>
+        <button type="button" onClick={p.onDiscard}>
+          {t("notes.edit.discard")}
+        </button>
+      </>
+    ) : (
+      <>
+        <button type="button" onClick={() => p.onEdit(stored.body)} disabled={running}>
+          <Icon name="edit" size={16} />
+          {t("notes.edit")}
+        </button>
+        <button type="button" onClick={p.onCopy}>
+          <Icon name="copy" size={16} />
+          {t("notes.copy")}
+        </button>
+        {p.pro && (
+          <details className="notes-menu">
+            <summary>
+              <Icon name="download" size={16} />
+              {t("notes.export.menu")}
+            </summary>
+            <div className="notes-menu-list">
               <button
                 type="button"
-                className={selected ? "notes-session is-selected" : "notes-session"}
-                aria-current={selected ? "true" : undefined}
-                onClick={() => p.onSelect(x.ref)}
+                onClick={(e) => {
+                  closeMenu(e);
+                  p.onExport("markdown");
+                }}
               >
-                {x.hasNotes && <Icon name="notes" size={14} />}
-                <span>
-                  {x.ref.kind === "current" || x.startedAt === null
-                    ? t("notes.session.current")
-                    : dateTime(x.startedAt, localOffsetMinutes(x.startedAt))}
-                </span>
+                {t("notes.export.md")}
               </button>
-            </li>
-          );
-        })}
-      </ul>
+              <button
+                type="button"
+                onClick={(e) => {
+                  closeMenu(e);
+                  p.onExport("txt");
+                }}
+              >
+                {t("notes.export.txt")}
+              </button>
+            </div>
+          </details>
+        )}
+      </>
+    );
 
-      {p.confirmDiscard && (
-        <div className="notice warning" role="alertdialog" aria-label={t("notes.discard.ask")}>
-          <Icon name="alert" />
-          <span>{t("notes.discard.ask")}</span>
-          <button type="button" onClick={p.onConfirmDiscard}>
-            {t("notes.edit.discard")}
-          </button>
-          <button type="button" onClick={p.onCancelDiscard}>
-            {t("notes.cancel")}
-          </button>
+  return (
+    <div className="notes-layout">
+      <NotesSessionRail {...listProps} />
+      <div className="notes-main">
+        <NotesSessionSelect {...listProps} />
+
+        <div className="notes-banner">{banner && renderBanner(banner)}</div>
+
+        <div className="notes-head">
+          <div className="notes-head-text">
+            <h2 className="notes-title">{selectedTarget ? sessionTitle(selectedTarget, t) : t("notes.sessions.title")}</h2>
+            {stored && (
+              <p className="notes-sub">
+                {t("notes.meta.created", { time: dateTime(stored.createdAt, localOffsetMinutes(stored.createdAt)) })}
+              </p>
+            )}
+          </div>
+          {headActions && <div className="notes-head-actions">{headActions}</div>}
         </div>
-      )}
 
-      <div className="card notes-bar">
-        <Field label={t("notes.template.label")} htmlFor="notes-template">
-          <select
-            id="notes-template"
-            value={p.template}
-            disabled={running}
-            onChange={(e) => p.onTemplate(e.target.value as NotesTemplate)}
-          >
-            {TEMPLATES.map((x) => (
-              <option key={x} value={x}>
-                {t(`notes.template.${x}`)}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <p className="notes-using">
-          <span>{t("notes.source.using", { source: sourceLabel(p.source, t) })}</span>{" "}
-          <button type="button" className="link" onClick={p.onOpenModelSettings}>
-            {t("notes.source.change")}
-          </button>
-        </p>
-        {running ? (
-          <div className="notes-running" role="status">
-            <span>{t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}</span>
+        <div className="notes-toolbar">
+          <label className="notes-chip notes-chip-field" htmlFor="notes-template">
+            <span>{t("notes.template.label")}</span>
+            <select
+              id="notes-template"
+              value={p.template}
+              disabled={running}
+              onChange={(e) => p.onTemplate(e.target.value as NotesTemplate)}
+            >
+              {TEMPLATES.map((x) => (
+                <option key={x} value={x}>
+                  {t(`notes.template.${x}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="notes-chip">
+            <Icon name={p.source.kind === "local" ? "cpu" : "sparkle"} size={14} />
+            {t("notes.source.chip", { source: sourceLabel(p.source, t) })}
+            <button type="button" className="notes-chip-link" title={t("notes.source.change")} onClick={p.onOpenModelSettings}>
+              {t("notes.source.changeShort")}
+            </button>
+          </span>
+          <span className="notes-spacer" />
+          {running ? (
             <button type="button" onClick={p.onCancel}>
               {t("notes.cancel")}
             </button>
+          ) : (
+            <button
+              type="button"
+              className={editing ? undefined : "primary"}
+              disabled={gate.kind === "blocked" || editing}
+              onClick={p.onGenerate}
+            >
+              <Icon name="sparkle" size={16} />
+              {stored ? t("notes.regenerate") : t("notes.generate")}
+            </button>
+          )}
+          {gate.kind === "blocked" && (
+            <p className="hint notes-blocked" role="status">
+              {blockedText(gate.reason)}
+            </p>
+          )}
+          {gate.kind === "blocked" && gate.reason === "freeUsedUp" && !p.pro && (
+            <button type="button" onClick={p.onUpgrade}>
+              <Icon name="upgrade" size={16} />
+              {t("pro.upgrade")}
+            </button>
+          )}
+          {!p.pro && view?.freeLeft != null && view.freeLeft > 0 && (
+            <p className="hint">{t("notes.free.left", { n: view.freeLeft })}</p>
+          )}
+        </div>
+
+        {running && (
+          <div className="notes-running" role="status">
+            <progress
+              max={Math.max(1, view?.progress?.[1] ?? 0)}
+              value={view?.progress?.[0] ?? 0}
+              aria-label={t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}
+            />
+            <span>{t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}</span>
           </div>
-        ) : (
-          <button
-            type="button"
-            className="primary"
-            disabled={gate.kind === "blocked" || editing}
-            onClick={p.onGenerate}
-          >
-            {stored ? t("notes.regenerate") : t("notes.generate")}
-          </button>
         )}
-        {gate.kind === "blocked" && (
-          <p className="hint notes-blocked" role="status">
-            {blockedText(gate.reason)}
-          </p>
+
+        {stored === null && running && (
+          <div className="notes-skeleton" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
         )}
-        {gate.kind === "blocked" && gate.reason === "freeUsedUp" && !p.pro && (
-          <button type="button" onClick={p.onUpgrade}>
-            <Icon name="upgrade" size={16} />
-            {t("pro.upgrade")}
-          </button>
+
+        {stored === null && !running && (
+          <section className="notes-start">
+            <Icon name="notes" size={28} />
+            <h3>{t("notes.start.title")}</h3>
+            <p>{t("notes.start.body")}</p>
+            {packInStart && (
+              <NotesPackPanel
+                lang={p.lang}
+                pack={p.pack}
+                onDownload={p.onDownloadPack}
+                onCancel={p.onCancelPack}
+                onDelete={p.onDeletePack}
+              />
+            )}
+          </section>
         )}
-        {!p.pro && view?.freeLeft != null && view.freeLeft > 0 && (
-          <p className="hint">{t("notes.free.left", { n: view.freeLeft })}</p>
-        )}
-      </div>
 
-      {failure !== null && (
-        <div className="notice error" role="alert">
-          <Icon name="alert" />
-          <span>{t(errorKey(failure))}</span>
-          {CLOUD_FAILURES.includes(failure) && (
-            <>
-              <button type="button" onClick={p.onGenerate}>
-                {t("notes.error.retry")}
-              </button>
-              {p.localUsable && (
-                <button type="button" onClick={p.onUseLocal}>
-                  {t("notes.error.useLocal")}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {editing && p.staleDraft && (
-        <div className="notice warning" role="alert">
-          <Icon name="alert" />
-          <span>{t("notes.draft.stale")}</span>
-        </div>
-      )}
-
-      {p.notice && (
-        <div className="notice" role="status">
-          <Icon name="check" />
-          <span>{p.notice.kind === "copied" ? t("notes.copied") : t("notes.exported", { path: p.notice.path })}</span>
-        </div>
-      )}
-
-      {stored && (
-        <>
-          {view && !view.persisted && (
-            <div className="notice warning" role="note">
-              <Icon name="alert" />
-              <span>{t("notes.unsaved")}</span>
-            </div>
-          )}
+        {stored && (
           <div className={p.sourcePanel ? "notes-body has-source" : "notes-body"}>
             <NotesResult
               lang={p.lang}
@@ -286,74 +390,44 @@ export function NotesScreenView(p: NotesScreenViewProps) {
               />
             )}
           </div>
-          <div className="actions notes-actions">
-            {editing ? (
-              <>
-                <button type="button" className="primary" onClick={p.onSave}>
-                  {t("notes.edit.save")}
-                </button>
-                <button type="button" onClick={p.onDiscard}>
-                  {t("notes.edit.discard")}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => p.onEdit(stored.body)} disabled={running}>
-                  <Icon name="edit" size={16} />
-                  {t("notes.edit")}
-                </button>
-                <button type="button" onClick={p.onCopy}>
-                  <Icon name="copy" size={16} />
-                  {t("notes.copy")}
-                </button>
-                {p.pro && (
-                  <>
-                    <button type="button" onClick={() => p.onExport("markdown")}>
-                      <Icon name="download" size={16} />
-                      {t("notes.export.md")}
-                    </button>
-                    <button type="button" onClick={() => p.onExport("txt")}>
-                      <Icon name="download" size={16} />
-                      {t("notes.export.txt")}
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-          {!p.pro && !editing && <p className="hint">{t("notes.export.pro")}</p>}
-        </>
-      )}
+        )}
+        {stored && !p.pro && !editing && <p className="hint">{t("notes.export.pro")}</p>}
 
-      <details className="card notes-setup" open={setupOpen}>
-        <summary>{t("notes.settings.title")}</summary>
-        <NotesPackPanel
+        <details className="card notes-setup" open={setupOpen && !packInStart}>
+          <summary>
+            <Icon name="settings" size={16} />
+            {t("notes.settings.title")}
+          </summary>
+          {!packInStart && (
+            <NotesPackPanel
+              lang={p.lang}
+              pack={p.pack}
+              onDownload={p.onDownloadPack}
+              onCancel={p.onCancelPack}
+              onDelete={p.onDeletePack}
+            />
+          )}
+          <Field label={t("notes.auto")} htmlFor="notes-auto">
+            <input
+              id="notes-auto"
+              className="switch"
+              type="checkbox"
+              checked={p.auto}
+              onChange={(e) => p.onAuto(e.target.checked)}
+            />
+          </Field>
+        </details>
+
+        <NotesDialogs
           lang={p.lang}
-          pack={p.pack}
-          onDownload={p.onDownloadPack}
-          onCancel={p.onCancelPack}
-          onDelete={p.onDeletePack}
+          dialog={p.dialog}
+          provider={p.source}
+          onConfirm={p.onDialogConfirm}
+          onDismiss={p.onDialogDismiss}
+          onOpenModelSettings={p.onOpenModelSettings}
         />
-        <Field label={t("notes.auto")} htmlFor="notes-auto">
-          <input
-            id="notes-auto"
-            className="switch"
-            type="checkbox"
-            checked={p.auto}
-            onChange={(e) => p.onAuto(e.target.checked)}
-          />
-        </Field>
-      </details>
-
-      <NotesDialogs
-        lang={p.lang}
-        dialog={p.dialog}
-        provider={p.source}
-        onConfirm={p.onDialogConfirm}
-        onDismiss={p.onDialogDismiss}
-        onOpenModelSettings={p.onOpenModelSettings}
-      />
-    </>
+      </div>
+    </div>
   );
 }
 

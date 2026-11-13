@@ -1,5 +1,5 @@
 import { translate, type MessageKey, type Params, type UiLanguage } from "../../../i18n";
-import { Icon } from "../../../components/Icon";
+import { Icon, type IconName } from "../../../components/Icon";
 import type { Notes, NotesProvider } from "../../../lib/ipc";
 import { withItem } from "../../../lib/notes";
 
@@ -14,14 +14,15 @@ export interface NotesResultProps {
 
 type ItemKey = "decisions" | "actionItems" | "openQuestions";
 
-const BLOCKS: { key: ItemKey; title: MessageKey }[] = [
-  { key: "decisions", title: "notes.block.decisions" },
-  { key: "actionItems", title: "notes.block.actions" },
-  { key: "openQuestions", title: "notes.block.questions" },
+const BLOCKS: { key: ItemKey; title: MessageKey; icon: IconName }[] = [
+  { key: "decisions", title: "notes.block.decisions", icon: "check" },
+  { key: "actionItems", title: "notes.block.actions", icon: "arrowRight" },
+  { key: "openQuestions", title: "notes.block.questions", icon: "info" },
 ];
 
-// Kết quả ghi chú: bốn khối (tóm tắt, quyết định, việc cần làm, câu hỏi mở). Mỗi mục có nút "#số" mở câu gốc; khi sửa tay thì chữ
-// thành ô nhập và mỗi mục có nút xóa. Ghi chú của model trên máy có nhãn "Bản nháp"; mọi nguồn đều nhắc kiểm lại (spec mục 8).
+// Kết quả ghi chú: bốn thẻ (tóm tắt, quyết định, việc cần làm, câu hỏi mở), mỗi thẻ có số mục. Việc cần làm chỉ để xem: người nhận
+// và hạn là hai chip, không có ô tích. Mỗi mục có nút "#số" mở câu gốc; khi sửa tay thì chữ thành ô nhập và mỗi mục có nút xóa.
+// Ghi chú của model trên máy có nhãn "Bản nháp"; mọi nguồn đều nhắc kiểm lại (spec mục 8).
 // Không có tên model hay tên file model ở đây: chỉ có `source`, và component này chỉ phân biệt local với cloud.
 export function NotesResult(p: NotesResultProps) {
   const t = (key: MessageKey, params?: Params) => translate(p.lang, key, params);
@@ -56,10 +57,16 @@ export function NotesResult(p: NotesResultProps) {
   ) : notes.summary.trim() === "" ? (
     <p className="notes-empty">{t("notes.block.empty")}</p>
   ) : (
-    <p className="notes-text">{notes.summary}</p>
+    <p className="notes-text notes-summary">{notes.summary}</p>
   );
 
-  const heading = (title: MessageKey) => <h3 className="notes-block-title">{t(title)}</h3>;
+  const heading = (title: MessageKey, icon: IconName, count?: number) => (
+    <h3 className="notes-block-title">
+      <Icon name={icon} size={16} />
+      {t(title)}
+      {count !== undefined && count > 0 && <span className="notes-count">{count}</span>}
+    </h3>
+  );
 
   const itemText = (key: ItemKey, index: number, text: string) =>
     p.editing ? (
@@ -76,33 +83,33 @@ export function NotesResult(p: NotesResultProps) {
 
   return (
     <div className="notes-result">
-      {p.source === "local" && (
-        <div className="notice warning" role="note">
-          <Icon name="alert" />
-          <span>
+      <div className={p.source === "local" ? "notes-caveat is-draft" : "notes-caveat"}>
+        {p.source === "local" && (
+          <p role="note">
             <strong className="notes-badge">{t("notes.draft.badge")}</strong> {t("notes.draft.hint")}
-          </span>
-        </div>
-      )}
-      <p className="hint notes-review">{t("notes.review.hint")}</p>
-      <section className="notes-block">
-        {heading("notes.block.summary")}
+          </p>
+        )}
+        <p className="notes-review">{t("notes.review.hint")}</p>
+      </div>
+      <section className="notes-block is-summary">
+        {heading("notes.block.summary", "notes")}
         {summary}
       </section>
       {notes.raw ? (
         <p className="hint notes-raw">{t("notes.raw.hint")}</p>
       ) : (
-        BLOCKS.map(({ key, title }) => {
+        BLOCKS.map(({ key, title, icon }) => {
           const list = notes[key];
           return (
-            <section className="notes-block" key={key}>
-              {heading(title)}
+            <section className={key === "openQuestions" ? "notes-block is-quiet" : "notes-block"} key={key}>
+              {heading(title, icon, list.length)}
               {list.length === 0 ? (
                 <p className="notes-empty">{t("notes.block.empty")}</p>
               ) : (
                 <ul className="notes-list">
                   {list.map((item, index) => (
                     <li className="notes-item" key={index}>
+                      <span className="notes-dot" aria-hidden="true" />
                       {itemText(key, index, item.text)}
                       {"owner" in item && "due" in item && (
                         <span className="notes-meta">
@@ -127,8 +134,19 @@ export function NotesResult(p: NotesResultProps) {
                             </>
                           ) : (
                             <>
-                              {item.owner !== "" && <span>{t("notes.action.owner", { owner: item.owner })}</span>}
-                              {item.due !== "" && <span>{t("notes.action.due", { due: item.due })}</span>}
+                              {item.owner !== "" && (
+                                <span className="notes-chip is-owner">
+                                  <Icon name="user" size={12} />
+                                  <span className="sr-only">{t("notes.action.owner", { owner: "" })}</span>
+                                  {item.owner}
+                                </span>
+                              )}
+                              {item.due !== "" && (
+                                <span className="notes-chip is-due">
+                                  <span className="sr-only">{t("notes.action.due", { due: "" })}</span>
+                                  {item.due}
+                                </span>
+                              )}
                             </>
                           )}
                         </span>

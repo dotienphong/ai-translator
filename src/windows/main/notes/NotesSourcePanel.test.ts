@@ -66,6 +66,13 @@ describe("NotesSourcePanel", () => {
     expect(withMerged).not.toContain("Người 2");
   });
 
+  it("every_line_shows_its_number_so_the_chips_in_the_notes_can_be_matched", () => {
+    const markup = html(props());
+    expect(count(markup, 'class="notes-source-n"')).toBe(4);
+    expect(markup).toContain('class="notes-source-n">1<');
+    expect(markup).toContain('class="notes-source-n">4<');
+  });
+
   it("has_a_close_button", () => {
     expect(html(props())).toContain(`aria-label="${viText["common.dismiss"]}"`);
   });

@@ -274,7 +274,7 @@ async function startByQr(page, ck, lang) {
 // ---------------------------------------------------------------- màn hình Ghi chú cuộc họp (kế hoạch 04)
 
 // Các cảnh có hộp hỏi: bấm nút Tạo thật (tauri-mock chưa có ghi chú và chưa đồng ý), hộp mở đúng loại, chữ của hộp đủ trong khung.
-const NOTES_GENERATE = ".notes-bar button.primary";
+const NOTES_GENERATE = ".notes-toolbar button.primary";
 const NOTES_DIALOG = '.modal[role="alertdialog"]';
 
 async function notesConsent(page, ck, lang) {
@@ -1373,7 +1373,7 @@ const EXTRA = {
     [`!document.body.textContent.toLowerCase().includes("gguf") && !document.body.textContent.includes("Qwen")`, "không lộ tên file hay tên model trên máy"],
   ],
   "notes-pack": () => [
-    has(".notes-setup[open]", "gói đang tải thì khối Thiết lập mở sẵn"),
+    has(".notes-start .notes-pack", "chưa có ghi chú, gói đang tải thì khối tải gói nằm ngay trong thẻ bắt đầu"),
     has(".notes-pack progress", "có thanh tiến độ tải gói"),
   ],
   "login-gate-history": () => [gateShown(false)],
