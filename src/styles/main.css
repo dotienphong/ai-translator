@@ -2893,3 +2893,190 @@ button.google-signin img {
 .account-delete .confirm > span {
   flex-basis: 100%;
 }
+
+/* Màn Ghi chú cuộc họp (NotesScreen và các khối trong src/windows/main/notes). */
+.notes-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.notes-badge {
+  color: var(--warning);
+}
+
+.notes-block-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.notes-block {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.notes-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.notes-empty,
+.notes-raw {
+  margin: 0;
+  color: var(--muted);
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notes-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+}
+
+.notes-item > .notes-text {
+  flex: 1 1 14rem;
+}
+
+.notes-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.notes-ref {
+  min-height: 0;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+  font-size: 0.82rem;
+}
+
+.notes-remove,
+.notes-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.notes-remove:hover,
+.notes-icon-button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.notes-edit,
+.notes-edit-small {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.notes-edit {
+  flex: 1 1 14rem;
+  resize: vertical;
+}
+
+.notes-edit-small {
+  width: 9rem;
+}
+
+.notes-source {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.notes-source-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.notes-source-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.notes-source-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 24rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.notes-source-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.notes-source-line.is-ref {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.notes-source-speaker {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.notes-source-tgt {
+  color: var(--muted);
+}
+
+.notes-warning-points {
+  margin: 0 0 0.9rem;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+
+.notes-remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.notes-pack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notes-pack progress {
+  width: 100%;
+}
+
+.notes-pack-actions {
+  display: flex;
+  gap: 0.6rem;
+}

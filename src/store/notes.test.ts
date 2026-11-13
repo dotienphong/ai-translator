@@ -7,6 +7,7 @@ import {
   type NotesChanged,
   type NotesView,
   type SessionSummary,
+  type SpeakerVoice,
   type Subtitle,
   type Transcript,
   type TranscriptRef,
@@ -39,6 +40,8 @@ const transcript = (lines: Subtitle[], startedAt = 1_000): Transcript => ({
   speakers: [],
   speakersRev: 0,
 });
+
+const VOICE: SpeakerVoice = { id: 1, label: "Lan", color: 0, source: "name", room: false, mergedInto: null };
 
 const session = (id: number, startedAt: number): SessionSummary => ({
   id,
@@ -340,7 +343,7 @@ describe("createNotesStore", () => {
   it("open_source_loads_the_right_transcript_once", async () => {
     const { store, f } = setup({
       list_history: () => [session(8, 10)],
-      get_history_session: () => transcript([line(1), line(2)], 10),
+      get_history_session: () => ({ ...transcript([line(1), line(2)], 10), speakers: [VOICE] }),
     });
     await store.getState().init();
     const before = calls(f, "get_transcript").length;
@@ -353,6 +356,7 @@ describe("createNotesStore", () => {
     await store.getState().openSource([1]);
     expect(calls(f, "get_history_session").map((c) => c.args)).toEqual([{ id: 8 }]);
     expect(store.getState().source?.lines).toHaveLength(2);
+    expect(store.getState().source?.speakers).toEqual([VOICE]);
     store.getState().closeSource();
     expect(store.getState().source).toBeNull();
   });

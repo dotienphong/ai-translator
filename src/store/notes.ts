@@ -7,6 +7,7 @@ import {
   type NotesTemplate,
   type NotesView,
   type SessionSummary,
+  type SpeakerVoice,
   type Subtitle,
   type TranscriptRef,
 } from "../lib/ipc";
@@ -36,8 +37,8 @@ export interface NotesStoreState {
   // Bản đang sửa tay; `null` khi không sửa.
   draft: Notes | null;
   dialog: NotesDialog | null;
-  // Khung đối chiếu: các câu của bản chép lời và số thứ tự (từ 1) của các câu được tô.
-  source: { ref: TranscriptRef; lines: Subtitle[]; refs: number[] } | null;
+  // Khung đối chiếu: các câu của bản chép lời, người nói của bản đó (để hiện nhãn) và số thứ tự (từ 1) của các câu được tô.
+  source: { ref: TranscriptRef; lines: Subtitle[]; speakers: SpeakerVoice[]; refs: number[] } | null;
   notice: NotesNotice | null;
   error: UiError | null;
   // Nghe `notes://changed`, nạp danh sách phiên, chọn mục đầu.
@@ -274,7 +275,9 @@ export function createNotesStore(deps: NotesDeps): StoreApi<NotesStoreState> {
         }
         try {
           const transcript = ref.kind === "current" ? await ipc.invoke("get_transcript") : await ipc.invoke("get_history_session", { id: ref.id });
-          if (sameRef(get().selected, ref)) set({ source: { ref, lines: transcript.lines, refs } });
+          if (sameRef(get().selected, ref)) {
+            set({ source: { ref, lines: transcript.lines, speakers: transcript.speakers, refs } });
+          }
         } catch (e) {
           fail(e);
         }

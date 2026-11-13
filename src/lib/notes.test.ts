@@ -4,6 +4,7 @@ import type { Notes, Subtitle } from "./ipc";
 import {
   type AskDialog,
   canExportFile,
+  companyOf,
   type Gate,
   type GateInput,
   gate,
@@ -110,6 +111,15 @@ describe("source", () => {
     expect(sourceLabel({ kind: "cloud", provider: "gemini", model: "gemini-2.5-flash" }, t)).toBe("Gemini · gemini-2.5-flash");
     expect(sourceLabel({ kind: "cloud", provider: "deepseek", model: "deepseek-flash" }, t)).toBe("DeepSeek · deepseek-flash");
     expect(sourceLabel({ kind: "cloud", provider: "deepseek", model: "" }, t)).toBe("DeepSeek");
+  });
+});
+
+describe("companyOf", () => {
+  it("company_of_names_the_company_behind_each_provider", () => {
+    expect(companyOf({ kind: "cloud", provider: "openai", model: "x" })).toBe("OpenAI");
+    expect(companyOf({ kind: "cloud", provider: "gemini", model: "x" })).toBe("Google");
+    expect(companyOf({ kind: "cloud", provider: "deepseek", model: "x" })).toBe("DeepSeek");
+    expect(companyOf({ kind: "local" })).toBe("");
   });
 });
 

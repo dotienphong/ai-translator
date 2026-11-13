@@ -11,6 +11,8 @@ export type CloudProvider = "openai" | "gemini" | "deepseek";
 export type NotesSource = { kind: "local" } | { kind: "cloud"; provider: CloudProvider; model: string };
 
 const PROVIDER_NAME: Record<CloudProvider, string> = { openai: "ChatGPT", gemini: "Gemini", deepseek: "DeepSeek" };
+// Công ty nhận bản dịch khi gửi đi (hộp đồng ý, spec mục 9). Local không gửi đi đâu nên không có.
+const COMPANY: Record<CloudProvider, string> = { openai: "OpenAI", gemini: "Google", deepseek: "DeepSeek" };
 
 // Nguồn của ghi chú đi theo nguồn dịch (Cài đặt > Model), không có cài đặt riêng. Cài đặt chưa nạp thì coi là Local: không đoán
 // một nhà cung cấp cloud.
@@ -34,6 +36,10 @@ export function sourceLabel(source: NotesSource, t: Translate): string {
   if (source.kind === "local") return t("notes.source.local");
   const name = PROVIDER_NAME[source.provider];
   return source.model === "" ? name : `${name} · ${source.model}`;
+}
+
+export function companyOf(source: NotesSource): string {
+  return source.kind === "cloud" ? COMPANY[source.provider] : "";
 }
 
 export interface GateInput {
