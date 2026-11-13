@@ -5,7 +5,7 @@
 //
 // Tham số URL (đều không bắt buộc):
 //   lang=vi|en|ja|zh|ko  theme=light|dark  platform=macos|windows
-//   screen=home|compose|voice|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|account|privacy
+//   screen=home|compose|voice|notes|transcript|history|glossary|settings|upgrade|support|about  group=general|subtitles|audio|model|hotkeys|license|account|privacy
 //   session=idle|starting|running|error  error=<mã lỗi phiên>  plan=free|monthly|six_months|yearly  trial=active|ended
 //   onboarding=<số bước, từ 1>  checkout=1|card  download=1  notice=update|quit|hotkeys|license|error  empty=1
 //   now=<giây Unix hay ngày giờ ISO>  đóng băng đồng hồ của cả trang (Date.now) và của dữ liệu mẫu: hạn đơn thanh toán, hạn
@@ -46,6 +46,12 @@
 //     đọc)  signin=ok|wait|<mã lỗi account…> (kết quả nút đăng nhập: ok đăng nhập xong sau 0,6 giây; wait chờ trình duyệt tới khi bấm
 //     Hủy; mã lỗi như accountNetwork thì báo lỗi đó sau 0,6 giây)  accountfail=<mã lỗi account…> (Đăng xuất và Xóa tài khoản báo lỗi
 //     đó, vẫn đăng nhập; Cài đặt › Tài khoản, banner liên kết ở Màn hình chính của máy gói trả phí chưa đăng nhập: plan khác free)
+//   Ghi chú cuộc họp (kế hoạch 04, spec 2026-11-11-ghi-chu-cuoc-hop-design §7): screen=notes  notes=empty|ready|draft|running|failed|
+//     consent|localWarning (mặc định ready: phiên hiện tại đã có ghi chú mẫu bốn khối, ba việc cần làm, một việc không có `refs`;
+//     draft: ghi chú của model trên máy, có nhãn Bản nháp; running: đang tạo 3/7; failed: lỗi của việc, mã trong error=, mặc định
+//     notesRateLimited; consent, localWarning: chưa có ghi chú và chưa đồng ý/chưa xác nhận, để script bấm Tạo mở hộp hỏi)
+//     provider=local|openai|gemini|deepseek (nguồn dịch, mặc định deepseek khi screen=notes)  pack=installed|missing|downloading|ramTooLow
+//     (gói ghi chú trên máy, mặc định installed khi screen=notes; bấm Tải gói thì tiến độ tự chạy)  keys=0 (chưa nhập API key nào)
 import conf from "../../src-tauri/tauri.conf.json";
 import type {
   AppInfo,
@@ -65,6 +71,9 @@ import type {
   SubscriptionView,
   AccountView,
   SupportView,
+  Notes,
+  NotesView,
+  StoredNotes,
 } from "../../src/lib/ipc";
 import type { ModelsView, PackView } from "../../src/lib/models";
 
@@ -78,6 +87,12 @@ const platform = param("platform", "macos") as "macos" | "windows";
 const sessionParam = param("session", "idle") as AppStatus["session"];
 const plan = param("plan", "monthly") as "free" | "monthly" | "six_months" | "yearly";
 const empty = param("empty") === "1";
+// Ghi chú cuộc họp: chỉ đổi nguồn dịch và gói ghi chú khi xem màn hình Ghi chú (hay khi có provider=, pack=), để các cảnh khác
+// giữ nguyên hành vi cũ.
+const notesDemo = q.get("screen") === "notes" || q.has("provider") || q.has("pack");
+const notesScene = (["empty", "ready", "draft", "running", "failed", "consent", "localWarning"] as const).find((v) => v === param("notes")) ?? "ready";
+const providerParam = (["local", "openai", "gemini", "deepseek"] as const).find((v) => v === param("provider")) ?? "deepseek";
+const packParam = (["installed", "missing", "downloading", "ramTooLow"] as const).find((v) => v === param("pack")) ?? "installed";
 const demo = param("demo") === "1";
 const sec = (ms: number) => Math.floor(ms / 1000);
 const DAY = 86_400_000;
@@ -147,6 +162,17 @@ let settings: Settings = {
   updateChannel: "stable",
   experimental: { translationContext: true },
   onboardingDone: !q.has("onboarding"),
+  ...(notesDemo
+    ? {
+        translationProvider: providerParam,
+        openaiModel: "gpt-4o-mini",
+        geminiModel: "gemini-3.1-flash-lite",
+        deepseekModel: "deepseek-flash",
+        notesLocalAck: notesScene !== "localWarning",
+        notesCloudConsent: notesScene !== "consent",
+        notesAuto: false,
+      }
+    : {}),
   revision: 1,
 };
 
@@ -318,6 +344,16 @@ let models: ModelsView = {
     : { state: "idle", pack: null, doneBytes: 0, totalBytes: 0, error: null, replacesInUse: false },
   updateAvailable: false,
   speaker: param("speakermodel", speakers ? "ready" : "unavailable") as ModelsView["speaker"],
+  ...(notesDemo
+    ? {
+        notes: {
+          state: packParam === "ramTooLow" ? "ramTooLow" : packParam,
+          bytes: 2_740_937_888,
+          done: packParam === "installed" ? 2_740_937_888 : packParam === "downloading" ? 1_370_468_944 : 0,
+          minRamMib: 15_360,
+        },
+      }
+    : {}),
 } as ModelsView;
 
 const SAMPLE: [string, string, string][] = [
@@ -774,6 +810,127 @@ if (sessionParam === "running" && !demo) {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// ---------------------------------------------------------------- Ghi chú cuộc họp (kế hoạch 04)
+
+// Số câu mẫu của bản chép lời là `lines.length` (tối đa năm câu đầu có `refs` ở đây); chữ ghi chú theo ngôn ngữ giao diện.
+function notesBody(): Notes {
+  return {
+    summary: pick({
+      vi: "Nhóm rà soát kế hoạch quý, chốt ngân sách và phân việc cho tuần tới.",
+      en: "The team reviewed the quarterly plan, settled the budget and assigned next week's work.",
+      ja: "チームは四半期計画を確認し、予算を決定して来週の作業を割り振りました。",
+      zh: "团队回顾了季度计划，确定了预算，并分配了下周的工作。",
+      ko: "팀은 분기 계획을 검토하고 예산을 확정했으며 다음 주 업무를 배분했습니다.",
+    }),
+    decisions: [
+      {
+        text: pick({
+          vi: "Chốt ngân sách quý ở mức đã duyệt.",
+          en: "The quarterly budget stays at the approved level.",
+          ja: "四半期予算は承認済みの水準で確定。",
+          zh: "季度预算维持在已批准的水平。",
+          ko: "분기 예산은 승인된 수준으로 확정.",
+        }),
+        refs: [1, 2],
+      },
+      {
+        text: pick({
+          vi: "Hoãn ra mắt bản thử sang tháng sau.",
+          en: "The trial release moves to next month.",
+          ja: "試用版のリリースは来月に延期。",
+          zh: "试用版发布推迟到下个月。",
+          ko: "체험판 출시를 다음 달로 연기.",
+        }),
+        refs: [4],
+      },
+    ],
+    actionItems: [
+      {
+        text: pick({
+          vi: "Gửi báo cáo tiến độ cho cả nhóm.",
+          en: "Send the progress report to the whole team.",
+          ja: "進捗レポートをチーム全員に送る。",
+          zh: "向全组发送进度报告。",
+          ko: "진행 보고서를 팀 전체에 보낸다.",
+        }),
+        owner: "Lan",
+        due: pick({ vi: "thứ Sáu", en: "Friday", ja: "金曜日", zh: "周五", ko: "금요일" }),
+        refs: [3],
+      },
+      {
+        text: pick({
+          vi: "Đặt phòng họp cho buổi rà soát tiếp theo.",
+          en: "Book a room for the next review.",
+          ja: "次のレビュー用に会議室を予約する。",
+          zh: "为下次评审预订会议室。",
+          ko: "다음 검토를 위한 회의실을 예약한다.",
+        }),
+        owner: "Minh",
+        due: "",
+        refs: [5],
+      },
+      {
+        text: pick({
+          vi: "Cập nhật bảng theo dõi rủi ro.",
+          en: "Update the risk tracker.",
+          ja: "リスク管理表を更新する。",
+          zh: "更新风险跟踪表。",
+          ko: "위험 추적표를 갱신한다.",
+        }),
+        owner: "",
+        due: "",
+        refs: [],
+      },
+    ],
+    openQuestions: [
+      {
+        text: pick({
+          vi: "Ai duyệt chi phí phát sinh ngoài ngân sách?",
+          en: "Who approves spending beyond the budget?",
+          ja: "予算外の支出は誰が承認するか。",
+          zh: "预算外的支出由谁批准？",
+          ko: "예산 외 지출은 누가 승인하는가?",
+        }),
+        refs: [2],
+      },
+    ],
+    raw: false,
+  };
+}
+
+const notesStored = (source: StoredNotes["source"], edited = false): StoredNotes => ({
+  createdAt: now - 3 * 60_000,
+  source,
+  model: source === "local" ? "" : source === "openai" ? "gpt-4o-mini" : source === "gemini" ? "gemini-3.1-flash-lite" : "deepseek-flash",
+  lang,
+  template: "meeting",
+  body: notesBody(),
+  edited,
+});
+
+let notesView: NotesView = {
+  target: { kind: "current" },
+  status: notesScene === "running" ? "running" : notesScene === "failed" ? "failed" : "idle",
+  progress: notesScene === "running" ? [3, 7] : null,
+  error: notesScene === "failed" ? param("error", "notesRateLimited") : null,
+  notes:
+    notesScene === "ready" ? notesStored(providerParam) : notesScene === "draft" ? notesStored("local") : null,
+  persisted: settings.saveHistory,
+  freeLeft: plan === "free" ? 2 : null,
+};
+let notesPackTimer = false;
+
+const notesChanged = (view: NotesView) => emit("notes://changed", { target: view.target, status: view.status, progress: view.progress, error: view.error });
+
+// Gói ghi chú tải giả: mỗi lần hỏi trạng thái tăng 20%, tới 100% thì thành đã cài. Chỉ chạy khi giao diện bấm Tải gói (cảnh
+// pack=downloading đứng yên để chụp).
+function advanceNotesPack() {
+  const pack = models.notes;
+  if (!notesPackTimer || pack.state !== "downloading") return;
+  const done = Math.min(pack.bytes, pack.done + Math.round(pack.bytes * 0.2));
+  models = { ...models, notes: { ...pack, done, state: done >= pack.bytes ? "installed" : "downloading" } };
+}
+
 // Mỗi lệnh nhận đúng kiểu tham số và trả đúng kiểu kết quả của `Commands` (src/lib/ipc.ts): đổi hợp đồng IPC mà quên đổi mẫu
 // thì `tsc` báo; tên lệnh sai chính tả cũng báo (`satisfies` kiểm cả khóa thừa).
 type Handlers = { [C in Command]?: (args: Commands[C]["args"]) => Commands[C]["result"] | Promise<Commands[C]["result"]> };
@@ -1008,7 +1165,10 @@ const handlers = {
     await wait(700);
     return changeStatus({ updateCheck: "upToDate" });
   },
-  get_models_state: () => models,
+  get_models_state: () => {
+    advanceNotesPack();
+    return models;
+  },
   load_models: () => models,
   download_models: () => models,
   pause_models_download: () => models,
@@ -1017,6 +1177,53 @@ const handlers = {
   delete_models: () => models,
   delete_models_and_data: () => models,
   select_model_pack: ({ pack: id }) => changeSettings({ ...settings, modelTier: id }),
+  // Ghi chú cuộc họp: tạo giả chạy nửa giây rồi ra kết quả mẫu theo nguồn dịch (hay Local khi `forceLocal`).
+  get_notes: ({ target }) => (target.kind === "current" ? notesView : { ...notesView, target, status: "idle", progress: null, error: null, notes: null, persisted: true }),
+  generate_notes: async ({ target, forceLocal }) => {
+    notesView = { ...notesView, target, status: "running", progress: [0, 7], error: null };
+    notesChanged(notesView);
+    await wait(500);
+    const provider = settings.translationProvider ?? "local";
+    notesView = {
+      ...notesView,
+      status: "idle",
+      progress: null,
+      notes: notesStored(forceLocal === true ? "local" : provider),
+      freeLeft: plan === "free" ? Math.max(0, (notesView.freeLeft ?? 3) - 1) : null,
+    };
+    notesChanged(notesView);
+    return notesView;
+  },
+  cancel_notes: () => {
+    notesView = { ...notesView, status: "idle", progress: null };
+    notesChanged(notesView);
+    return null;
+  },
+  save_notes: ({ notes }) => {
+    notesView = { ...notesView, notes: { ...(notesView.notes ?? notesStored("local")), body: notes, edited: true } };
+    return notesView;
+  },
+  list_notes_sessions: () => [],
+  notes_text: () => `# ${pick({ vi: "Ghi chú cuộc họp", en: "Meeting notes", ja: "会議ノート", zh: "会议笔记", ko: "회의 노트" })}\n\n${notesBody().summary}\n`,
+  export_notes: ({ format }) => (platform === "macos" ? `/Users/an/Documents/notes.${format === "markdown" ? "md" : "txt"}` : `C:\\Users\\an\\Documents\\notes.${format === "markdown" ? "md" : "txt"}`),
+  download_notes_pack: () => {
+    notesPackTimer = true;
+    models = { ...models, notes: { ...models.notes, state: "downloading", done: 0 } };
+    return models;
+  },
+  cancel_notes_download: () => {
+    notesPackTimer = false;
+    models = { ...models, notes: { ...models.notes, state: "missing", done: 0 } };
+    return models;
+  },
+  delete_notes_pack: () => {
+    models = { ...models, notes: { ...models.notes, state: "missing", done: 0 } };
+    return models;
+  },
+  get_translation_keys: () => {
+    const on = param("keys") !== "0";
+    return { openaiConfigured: on, openaiHint: on ? "…a1b2" : null, geminiConfigured: on, geminiHint: on ? "…c3d4" : null, deepseekConfigured: on, deepseekHint: on ? "…e5f6" : null };
+  },
 } satisfies Handlers;
 
 // `Channel` của `@tauri-apps/api/core` (giọng đọc, spec 2026-11-04-giong-doc): `dataStores.ts` và thanh phụ đề dựng nó lúc nạp

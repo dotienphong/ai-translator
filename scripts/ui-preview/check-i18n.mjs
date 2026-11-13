@@ -271,6 +271,34 @@ async function startByQr(page, ck, lang) {
   for (const check of qrOrder(lang)) await ck(...check);
 }
 
+// ---------------------------------------------------------------- màn hình Ghi chú cuộc họp (kế hoạch 04)
+
+// Các cảnh có hộp hỏi: bấm nút Tạo thật (tauri-mock chưa có ghi chú và chưa đồng ý), hộp mở đúng loại, chữ của hộp đủ trong khung.
+const NOTES_GENERATE = ".notes-bar button.primary";
+const NOTES_DIALOG = '.modal[role="alertdialog"]';
+
+async function notesConsent(page, ck, lang) {
+  await page.click(NOTES_GENERATE);
+  await sleep(250);
+  await ck(has(NOTES_DIALOG, "bấm Tạo thì hộp đồng ý mở")[0], "bấm Tạo thì hộp đồng ý mở");
+  await ck(inPage(lang, `return document.querySelector(".modal h2").textContent === t("notes.consent.title", { company: "DeepSeek" });`), "hộp đồng ý nêu đúng nhà cung cấp (DeepSeek)");
+  await ck(`!document.querySelector(".modal").textContent.includes("OpenAI") && !document.querySelector(".modal").textContent.includes("Google")`, "hộp đồng ý không nêu nhà cung cấp khác");
+  await ck(`document.querySelectorAll(".modal-actions button").length === 2`, "hộp đồng ý có hai nút: Hủy và Đồng ý");
+}
+
+async function notesLocalWarning(page, ck, lang) {
+  await page.click(NOTES_GENERATE);
+  await sleep(250);
+  await ck(inPage(lang, `return document.querySelector(".modal h2").textContent === t("notes.local.suggest.title");`), "bấm Tạo (model trên máy) thì hiện lời gợi ý dùng cloud");
+  // Nút thứ hai là "Vẫn dùng model trên máy": sang hộp cảnh báo.
+  await page.click(".modal-actions button:nth-child(2)");
+  await sleep(250);
+  await ck(inPage(lang, `return document.querySelector(".modal h2").textContent === t("notes.local.warning.title");`), "chọn giữ model trên máy thì hiện hộp cảnh báo");
+  await ck(`document.querySelectorAll(".modal .notes-warning-points li").length === 3`, "hộp cảnh báo nêu ba điều: tài nguyên, tốc độ, sai sót");
+  await ck(`!!document.querySelector('.modal input[type="checkbox"]')`, "hộp cảnh báo có ô Không hỏi lại");
+  await ck(inPage(lang, `return document.querySelector(".modal").textContent.includes(t("notes.local.warning.slow"));`), "hộp cảnh báo có câu về tốc độ (kèm số phút)");
+}
+
 // Bấm thật sang cách trả không được chọn sẵn: chữ, giá và ghi chú đổi theo cách đó.
 async function pickOtherMethod(page, ck, lang) {
   const other = defaultMethod(lang) === "VND" ? "USD" : "VND";
@@ -989,6 +1017,14 @@ const SCREENS = [
   ["compose-windows", "screen=compose&platform=windows"],
   // Giọng đọc (spec 2026-11-04-giong-doc §7; mục chỉ có khi platform=windows).
   ["voice", "screen=voice&platform=windows"],
+  // Ghi chú cuộc họp (kế hoạch 04, spec 2026-11-11-ghi-chu-cuoc-hop-design §7): kết quả của model cloud, bản nháp của model trên máy
+  // (nhãn Bản nháp), hai hộp hỏi mở bằng cách bấm Tạo thật (cảnh báo model trên máy sau lời gợi ý, đồng ý gửi tới nhà cung cấp) và
+  // khối Thiết lập khi gói đang tải.
+  ["notes", "screen=notes&notes=ready"],
+  ["notes-draft", "screen=notes&notes=draft&provider=local&pack=installed"],
+  ["notes-local-warning", "screen=notes&notes=localWarning&provider=local&pack=installed", { interact: notesLocalWarning }],
+  ["notes-consent", "screen=notes&notes=consent&provider=deepseek", { interact: notesConsent }],
+  ["notes-pack", "screen=notes&notes=empty&provider=local&pack=downloading"],
   // Nâng cấp (spec 2026-10-14, 2026-10-22): ba bước; cách trả chọn sẵn theo ngôn ngữ của lượt chạy (vi: VietQR, còn lại: thẻ).
   ["upgrade", "screen=upgrade&plan=free"],
   // Bấm sang cách trả còn lại: chữ, giá và ghi chú của cách đó.
@@ -1327,6 +1363,19 @@ const EXTRA = {
   "login-gate-dark": (lang) => [...gateInShell(lang, "home"), [`document.documentElement.dataset.theme === "dark"`, "giao diện tối"]],
   "login-gate-compose": (lang) => gateInShell(lang, "compose"),
   "login-gate-voice": (lang) => gateInShell(lang, "voice"),
+  notes: () => [
+    has(".notes-result", "có kết quả ghi chú"),
+    has(".notes-ref", "mục có `refs` có nút mở câu gốc"),
+    [`!document.querySelector(".notes-badge")`, "ghi chú của model cloud không có nhãn Bản nháp"],
+  ],
+  "notes-draft": () => [
+    has(".notes-badge", "ghi chú của model trên máy có nhãn Bản nháp"),
+    [`!document.body.textContent.toLowerCase().includes("gguf") && !document.body.textContent.includes("Qwen")`, "không lộ tên file hay tên model trên máy"],
+  ],
+  "notes-pack": () => [
+    has(".notes-setup[open]", "gói đang tải thì khối Thiết lập mở sẵn"),
+    has(".notes-pack progress", "có thanh tiến độ tải gói"),
+  ],
   "login-gate-history": () => [gateShown(false)],
   "login-gate-settings": () => [gateShown(false), has("#ui-language", "Cài đặt › Chung vẫn dùng được")],
   "login-gate-running": () => [gateShown(false)],
