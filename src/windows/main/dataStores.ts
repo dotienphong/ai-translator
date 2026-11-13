@@ -9,6 +9,7 @@ import {
   createHistoryStore,
   resetWhenDataCleared,
 } from "../../store/library";
+import { type NotesStoreState, createNotesStore } from "../../store/notes";
 import { type TranscriptStoreState, createTranscriptStore } from "../../store/transcript";
 import { type TtsStoreState, createTtsStore } from "../../store/tts";
 import { appStore } from "./appStore";
@@ -47,8 +48,10 @@ export const ttsStore = createTtsStore({
   }),
   createChannel: () => new Channel<ArrayBuffer | TtsControl>(),
 });
-// "Xóa toàn bộ dữ liệu" xong thì bỏ cả bản chép lời, lịch sử và từ điển đang hiện (N2 của review 03).
-resetWhenDataCleared(appStore, [transcriptStore, historyStore, glossaryStore]);
+// Ghi chú cuộc họp bằng AI (spec 2026-11-11-ghi-chu-cuoc-hop-design.md): danh sách phiên, ghi chú đang chọn, bản đang sửa tay.
+export const notesStore = createNotesStore({ ipc: tauriIpc, writeClipboard });
+// "Xóa toàn bộ dữ liệu" xong thì bỏ cả bản chép lời, lịch sử, từ điển và ghi chú đang hiện (N2 của review 03).
+resetWhenDataCleared(appStore, [transcriptStore, historyStore, glossaryStore, notesStore]);
 
 export function useTranscript<T>(selector: (state: TranscriptStoreState) => T): T {
   return useStore(transcriptStore, selector);
@@ -64,4 +67,8 @@ export function useGlossary<T>(selector: (state: GlossaryStoreState) => T): T {
 
 export function useTts<T>(selector: (state: TtsStoreState) => T): T {
   return useStore(ttsStore, selector);
+}
+
+export function useNotes<T>(selector: (state: NotesStoreState) => T): T {
+  return useStore(notesStore, selector);
 }
