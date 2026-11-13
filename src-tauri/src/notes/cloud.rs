@@ -512,6 +512,61 @@ mod tests {
         );
     }
 
+    /// Chạy thật với DeepSeek (`cargo test --lib live_deepseek -- --ignored --nocapture`), khóa lấy từ biến môi trường
+    /// `DEEPSEEK_API_KEY` của tiến trình; không in khóa, không in chữ của cuộc họp.
+    #[test]
+    #[ignore = "gọi API thật, cần DEEPSEEK_API_KEY"]
+    fn live_deepseek_builds_valid_notes_from_a_short_meeting() {
+        use crate::notes::chunk::PromptLine;
+        let key = std::env::var("DEEPSEEK_API_KEY").expect("đặt DEEPSEEK_API_KEY");
+        let say = |seq: u32, who: &str, text: &str| PromptLine {
+            seq,
+            speaker: Some(who.into()),
+            text: text.into(),
+        };
+        let lines = vec![
+            say(1, "Lan", "Chào mọi người, hôm nay ta chốt kế hoạch ra mắt bản 2.0."),
+            say(2, "Minh", "Mình đề nghị ra mắt vào ngày 15 tháng 12, vì đội kiểm thử cần thêm hai tuần."),
+            say(3, "Lan", "Được, chốt ngày 15 tháng 12. Minh, bạn gửi bản kiểm thử cho tôi trước thứ Sáu nhé."),
+            say(4, "Minh", "Vâng, tôi sẽ gửi bản kiểm thử trước thứ Sáu."),
+            say(5, "Hoa", "Còn ngân sách quảng cáo thì sao? Chúng ta chưa có con số."),
+            say(6, "Lan", "Đó là câu hỏi còn mở, Hoa tìm hiểu rồi báo lại trong cuộc họp tuần sau."),
+        ];
+        let engine = CloudNotes::new(NotesProvider::Deepseek, "deepseek-flash", key).unwrap();
+        let started = std::time::Instant::now();
+        let mut last = (0, 0);
+        let out = crate::notes::job::run(
+            &lines,
+            "vi",
+            crate::settings::NotesTemplate::Meeting,
+            &engine,
+            &AtomicBool::new(false),
+            &mut |done, total| last = (done, total),
+        )
+        .unwrap();
+        let n = &out.notes;
+        println!(
+            "live deepseek: {} ms, chunks {}, failed {}, raw {}, decisions {}, actions {}, questions {}, progress {:?}",
+            started.elapsed().as_millis(),
+            out.chunks,
+            out.failed_chunks,
+            n.raw,
+            n.decisions.len(),
+            n.action_items.len(),
+            n.open_questions.len(),
+            last
+        );
+        assert!(!n.raw && out.failed_chunks == 0 && !n.summary.trim().is_empty());
+        assert!(!n.decisions.is_empty() && !n.action_items.is_empty() && !n.open_questions.is_empty());
+        let valid = |refs: &[u32]| refs.iter().all(|r| (1..=6).contains(r));
+        assert!(n.decisions.iter().all(|d| valid(&d.refs)));
+        assert!(n.action_items.iter().all(|a| valid(&a.refs)));
+        assert!(
+            n.action_items.iter().any(|a| a.owner == "Minh"),
+            "việc gửi bản kiểm thử phải có người nhận là Minh"
+        );
+    }
+
     #[test]
     fn new_rejects_local_and_empty_key_and_debug_hides_key() {
         let err = CloudNotes::new(NotesProvider::Local, "m", "k".into()).err().unwrap();
