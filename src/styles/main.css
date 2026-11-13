@@ -2782,14 +2782,24 @@ ul.points .icon {
   background: rgba(16, 24, 40, 0.45);
 }
 
+/* Rộng theo hàng nút (độ dài nút đổi theo ngôn ngữ) để các nút luôn nằm cùng một hàng: tối thiểu 26rem, tối đa 42rem hay bề
+   ngang cửa sổ; quá mức đó thì hàng nút mới xuống dòng (`.modal-actions`). Tiêu đề và đoạn chữ không tham gia tính bề ngang
+   (`width: 0` + `min-width: 100%`), nếu không một đoạn dài sẽ kéo hộp ra hết cỡ tối đa. */
 .modal {
-  width: min(26rem, 100%);
+  width: max-content;
+  min-width: min(26rem, 100%);
+  max-width: min(42rem, 100%);
   padding: 1.25rem 1.35rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-lg);
+}
+
+.modal > :not(.modal-actions) {
+  width: 0;
+  min-width: 100%;
 }
 
 .modal-head {
@@ -2815,6 +2825,7 @@ ul.points .icon {
 
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.6rem;
 }
