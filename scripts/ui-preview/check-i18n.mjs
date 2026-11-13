@@ -1021,6 +1021,7 @@ const SCREENS = [
   // (nhãn Bản nháp), hai hộp hỏi mở bằng cách bấm Tạo thật (cảnh báo model trên máy sau lời gợi ý, đồng ý gửi tới nhà cung cấp) và
   // khối Thiết lập khi gói đang tải.
   ["notes", "screen=notes&notes=ready"],
+  ["notes-dark", "screen=notes&notes=ready&theme=dark"],
   ["notes-draft", "screen=notes&notes=draft&provider=local&pack=installed"],
   ["notes-local-warning", "screen=notes&notes=localWarning&provider=local&pack=installed", { interact: notesLocalWarning }],
   ["notes-consent", "screen=notes&notes=consent&provider=deepseek", { interact: notesConsent }],
