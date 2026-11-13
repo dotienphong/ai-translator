@@ -65,6 +65,17 @@ export interface Job {
 // Dữ liệu nhận giọng (`models::service::SpeakerModel`, spec 2026-10-26-phan-biet-nguoi-noi §4.5).
 export type SpeakerModel = "unavailable" | "missing" | "downloading" | "ready";
 
+// Gói model ghi chú cuộc họp chạy trên máy (`models::service::NotesPack`, spec 2026-11-11-ghi-chu-cuoc-hop §4). `done`:
+// số byte đã tải khi `downloading`, bằng `bytes` khi `installed`; `minRamMib`: RAM tối thiểu theo manifest (0 khi `unavailable`).
+export type NotesPackState = "unavailable" | "ramTooLow" | "missing" | "downloading" | "installed";
+
+export interface NotesPack {
+  state: NotesPackState;
+  bytes: number;
+  done: number;
+  minRamMib: number;
+}
+
 export interface ModelsView {
   rev: number;
   hasSource: boolean;
@@ -79,6 +90,7 @@ export interface ModelsView {
   job: Job;
   updateAvailable: boolean;
   speaker: SpeakerModel;
+  notes: NotesPack;
 }
 
 // Dung lượng theo đơn vị thập phân như spec ("khoảng 2,5 GB"): GB từ 1 GB, MB từ 1 MB, còn lại KB. Tiếng Việt dùng

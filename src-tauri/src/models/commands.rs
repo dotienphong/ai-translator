@@ -42,6 +42,27 @@ pub async fn download_models<R: Runtime>(app: AppHandle<R>, pack: String) -> Res
         .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 }
 
+/// Tải gói model ghi chú chạy trên máy (spec 2026-11-11-ghi-chu-cuoc-hop §4); chạy trên luồng riêng, lệnh trả ngay.
+#[tauri::command]
+pub async fn download_notes_pack<R: Runtime>(app: AppHandle<R>) -> Result<ModelsView, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || service(&app).download_notes_pack(&app))
+        .await
+        .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
+}
+
+/// Hủy việc tải gói ghi chú (giữ phần đã tải).
+#[tauri::command]
+pub fn cancel_notes_download<R: Runtime>(app: AppHandle<R>, models: State<'_, Arc<ModelService>>) -> ModelsView {
+    models.cancel_notes_download();
+    models.view(&app)
+}
+
+/// Xóa gói ghi chú đã tải.
+#[tauri::command]
+pub async fn delete_notes_pack<R: Runtime>(app: AppHandle<R>) -> Result<ModelsView, CommandError> {
+    blocking(app, |app, models| models.delete_notes_pack(app)).await?
+}
+
 /// "Tải lại": băm lại gói, bỏ file hỏng (băm 2,5 GB mất vài giây).
 #[tauri::command]
 pub async fn verify_models<R: Runtime>(app: AppHandle<R>, pack: String) -> Result<ModelsView, CommandError> {

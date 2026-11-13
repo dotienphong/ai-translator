@@ -325,6 +325,16 @@ impl Store {
         self.forget(&doomed)
     }
 
+    /// Xóa một file model ngoài gói (khóa gốc như `notes`): file đã tải, phần dở, và bỏ khỏi danh sách đã tải.
+    pub fn delete_entry(&self, entry: &FileEntry) -> std::io::Result<()> {
+        for name in self.installed().into_iter().filter(|i| i.id == entry.id).map(|i| i.file) {
+            remove_if_exists(&self.path(&name))?;
+        }
+        remove_if_exists(&self.path(&entry.file))?;
+        remove_if_exists(&self.part(entry))?;
+        self.forget(std::slice::from_ref(&entry.id))
+    }
+
     /// Xóa cả thư mục model ("Xóa model và dữ liệu", A6).
     pub fn delete_all(&self) -> std::io::Result<()> {
         match std::fs::remove_dir_all(&self.dir) {
@@ -346,6 +356,12 @@ impl Store {
         }
         if let Some(entry) = manifest.speaker_model("999.0.0")
             && let Some(name) = self.part(&entry).file_name()
+        {
+            keep.insert(name.to_string_lossy().into_owned());
+        }
+        // Phần dở của gói ghi chú (đã hủy tải) giữ lại để tải tiếp.
+        if let Some(model) = manifest.notes_model("999.0.0")
+            && let Some(name) = self.part(&model.file).file_name()
         {
             keep.insert(name.to_string_lossy().into_owned());
         }

@@ -904,6 +904,9 @@ export interface Commands {
   load_models: { args: undefined; result: ModelsView };
   download_models: { args: { pack: string }; result: ModelsView };
   pause_models_download: { args: undefined; result: ModelsView };
+  download_notes_pack: { args: undefined; result: ModelsView };
+  cancel_notes_download: { args: undefined; result: ModelsView };
+  delete_notes_pack: { args: undefined; result: ModelsView };
   select_model_pack: { args: { pack: string }; result: Settings };
   delete_models: { args: { pack: string }; result: ModelsView };
   delete_models_and_data: { args: undefined; result: ModelsView };

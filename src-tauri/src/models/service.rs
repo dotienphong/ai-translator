@@ -26,7 +26,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
 
 use super::download::{self, DownloadError, Pause, Retry};
 use super::machine::{self, Machine};
-use super::manifest::{Localized, Manifest};
+use super::manifest::{FileEntry, Localized, Manifest};
 use super::recommend::{self, Unsupported, Verdict};
 use super::signed::{self, Signed, TrustedKey};
 use super::source::{self, FetchError};
@@ -46,6 +46,10 @@ pub const STATE_EVENT: &str = "models://state";
 pub const DISK_MARGIN: u64 = 1 << 30;
 /// Báo tiến độ tải cho giao diện tối đa chừng này một lần.
 const PROGRESS_EVERY: Duration = Duration::from_millis(250);
+/// Tải gói ghi chú: ổ phải còn trống phần còn phải tải cộng chừng này (spec 2026-11-11-ghi-chu-cuoc-hop §4).
+const NOTES_DISK_MARGIN: u64 = 512 << 20;
+/// Báo tiến độ tải gói ghi chú cho giao diện tối đa chừng này một lần.
+const NOTES_PROGRESS_EVERY: Duration = Duration::from_secs(1);
 
 type MachineFn = dyn Fn(Option<&[GpuInfo]>) -> Machine + Send + Sync;
 type FreeDiskFn = dyn Fn(&Path) -> Option<u64> + Send + Sync;
@@ -152,6 +156,39 @@ pub enum SpeakerModel {
     Ready,
 }
 
+/// Trạng thái gói model ghi chú chạy trên máy (khóa `notes` của manifest; spec 2026-11-11-ghi-chu-cuoc-hop §4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NotesPackState {
+    /// Manifest không có mục `notes` dùng được (chưa đăng, sai, hay cần app mới hơn): ghi chú trên máy "ngủ".
+    Unavailable,
+    /// Máy có ít RAM hơn `notes.min_ram_mib`.
+    RamTooLow,
+    /// Dùng được trên máy này nhưng chưa tải.
+    Missing,
+    /// Đang tải. Việc tải giữ khóa bảo trì (`begin_work`): tải, xóa, kiểm gói trong lúc đó gặp `modelsBusy`.
+    Downloading,
+    Installed,
+}
+
+/// Gói ghi chú gửi giao diện: `done` là số byte đã tải khi `Downloading`, bằng `bytes` khi `Installed`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotesPack {
+    pub state: NotesPackState,
+    pub bytes: u64,
+    pub done: u64,
+    pub min_ram_mib: u64,
+}
+
+/// Gói ghi chú đã tải xong: đường dẫn, SHA-256 theo manifest (engine chỉ chạy khi file băm ra đúng giá trị này) và cỡ ngữ cảnh.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NotesReady {
+    pub path: PathBuf,
+    pub sha256: String,
+    pub ctx: u32,
+}
+
 /// Trạng thái gửi giao diện.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,6 +209,8 @@ pub struct ModelsView {
     pub update_available: bool,
     /// Model nhận giọng (kế hoạch 03).
     pub speaker: SpeakerModel,
+    /// Gói model ghi chú cuộc họp chạy trên máy.
+    pub notes: NotesPack,
 }
 
 struct Inner {
@@ -250,9 +289,43 @@ impl Drop for TtsDownloading<'_> {
     }
 }
 
+/// Việc bảo trì (`begin_work`) của lần tải gói ghi chú, sống qua luồng tải nên giữ `Arc` thay vì mượn dịch vụ. Hủy thì hết.
+struct OwnedWork(Arc<ModelService>);
+
+impl Drop for OwnedWork {
+    fn drop(&mut self) {
+        self.0.lock().maintenance = None;
+    }
+}
+
+/// Cờ "đang tải gói ghi chú" (`NotesPackState::Downloading`) bật trong lúc giữ; thả ra (kể cả lối ra sớm hay panic) thì tắt.
+struct NotesDownloading(Arc<ModelService>);
+
+impl NotesDownloading {
+    fn start(service: &Arc<ModelService>) -> Self {
+        service.notes_downloading.store(true, Ordering::SeqCst);
+        Self(service.clone())
+    }
+}
+
+impl Drop for NotesDownloading {
+    fn drop(&mut self) {
+        self.0.notes_downloading.store(false, Ordering::SeqCst);
+    }
+}
+
+/// Móc chạy ngay trước khi một phiên dịch bắt đầu (ghi chú: hủy việc ghi chú trên máy đang chạy).
+type SessionHook = Arc<dyn Fn() + Send + Sync>;
+
 pub struct ModelService {
     cfg: Config,
     store: Store,
+    /// Đang tải gói ghi chú; `done` là số byte đã có của file; `pause` để hủy.
+    notes_downloading: AtomicBool,
+    notes_done: AtomicU64,
+    notes_pause: Pause,
+    /// Móc "trước phiên" (xem [`ModelService::set_before_session`]).
+    before_session: Mutex<Option<SessionHook>>,
     /// Gói model giọng đọc (`models/tts`), tách khỏi kho chính vì có thư mục con.
     tts: TtsStore,
     /// Đang tải gói giọng đọc; giao diện hỏi tiến độ qua [`Self::tts_progress`] (không có sự kiện: overlay không nhận
@@ -298,6 +371,10 @@ impl ModelService {
     pub fn new(cfg: Config) -> Self {
         Self {
             store: Store::new(&cfg.dir),
+            notes_downloading: AtomicBool::new(false),
+            notes_done: AtomicU64::new(0),
+            notes_pause: Pause::default(),
+            before_session: Mutex::new(None),
             tts: TtsStore::new(&cfg.dir),
             tts_downloading: AtomicBool::new(false),
             tts_done: AtomicU64::new(0),
@@ -378,6 +455,11 @@ impl ModelService {
     /// đó và bị từ chối (`modelsBusy`), hoặc việc đó thấy phiên và bị từ chối (`modelsInUse`); không có trường hợp cả hai
     /// cùng chạy (Q-A của review 04 lần 2).
     pub fn begin_session<T>(&self, begin: impl FnOnce() -> T) -> Result<T, CommandError> {
+        // Móc "trước phiên" chạy trước mọi việc khác và không giữ khóa nào: nó có thể chờ một tiến trình tắt (ghi chú trên máy).
+        let hook = self.before_session.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        if let Some(hook) = hook {
+            hook();
+        }
         let inner = self.lock();
         if inner.touches_in_use() {
             return Err(CommandError::new(errors::MODELS_BUSY, None, "đang cập nhật model"));
@@ -507,6 +589,7 @@ impl ModelService {
             Some(_) if inner.speaker_downloading => SpeakerModel::Downloading,
             Some(_) => SpeakerModel::Missing,
         };
+        let notes = self.notes_pack_of(manifest, machine.ram_mib);
         ModelsView {
             rev: inner.rev,
             has_source: self.cfg.source.is_some(),
@@ -521,6 +604,7 @@ impl ModelService {
             job: inner.job.clone(),
             update_available,
             speaker,
+            notes,
         }
     }
 
@@ -1199,6 +1283,205 @@ impl ModelService {
         drop(work);
         discarded
     }
+
+    // ---- Gói model ghi chú chạy trên máy (spec 2026-11-11-ghi-chu-cuoc-hop §4) ----
+
+    /// Trạng thái gói ghi chú theo manifest và RAM máy, theo thứ tự: không có mục dùng được → `Unavailable`; RAM thấp hơn
+    /// `min_ram_mib` → `RamTooLow`; đang tải → `Downloading`; đã tải → `Installed`; còn lại `Missing`.
+    fn notes_pack_of(&self, manifest: Option<&Manifest>, ram_mib: u64) -> NotesPack {
+        let Some(model) = manifest.and_then(|m| m.notes_model(&self.cfg.app_version)) else {
+            return NotesPack {
+                state: NotesPackState::Unavailable,
+                bytes: 0,
+                done: 0,
+                min_ram_mib: 0,
+            };
+        };
+        let bytes = model.file.bytes;
+        let (state, done) = if ram_mib < model.min_ram_mib {
+            (NotesPackState::RamTooLow, 0)
+        } else if self.notes_downloading.load(Ordering::SeqCst) {
+            (NotesPackState::Downloading, self.notes_done.load(Ordering::SeqCst).min(bytes))
+        } else if self.store.is_installed(&model.file) {
+            (NotesPackState::Installed, bytes)
+        } else {
+            (NotesPackState::Missing, 0)
+        };
+        NotesPack {
+            state,
+            bytes,
+            done,
+            min_ram_mib: model.min_ram_mib,
+        }
+    }
+
+    /// RAM của máy (không cần kết quả dò GPU).
+    fn ram_mib(&self) -> u64 {
+        (self.cfg.machine)(None).ram_mib
+    }
+
+    pub fn notes_pack(&self) -> NotesPack {
+        self.ensure_loaded();
+        let manifest = self.lock().manifest.clone();
+        self.notes_pack_of(manifest.as_ref().map(|s| &s.manifest), self.ram_mib())
+    }
+
+    /// Gói ghi chú để chạy: chỉ khi trạng thái là `Installed` (đủ RAM, file đã tải và đúng kích thước).
+    pub fn notes_ready(&self) -> Option<NotesReady> {
+        let manifest = self.manifest()?;
+        let model = manifest.manifest.notes_model(&self.cfg.app_version)?;
+        let pack = self.notes_pack_of(Some(&manifest.manifest), self.ram_mib());
+        (pack.state == NotesPackState::Installed).then(|| NotesReady {
+            path: self.store.path(&model.file.file),
+            sha256: model.file.sha256,
+            ctx: model.ctx,
+        })
+    }
+
+    /// Bắt đầu tải gói ghi chú trên luồng nền (trả ngay, trạng thái `Downloading`). Từ chối bằng `notesLocalUnavailable` khi
+    /// manifest không có mục dùng được hay RAM thấp, `modelsNoSource`, `modelsNoSpace` (ổ phải còn trống phần còn phải tải cộng
+    /// 512 MiB), `modelsBusy` (đang tải hay bảo trì gói khác). Tải tiếp được từ phần đã có sau khi hủy hay rớt mạng.
+    pub fn download_notes_pack<R: Runtime>(self: &Arc<Self>, app: &AppHandle<R>) -> Result<ModelsView, CommandError> {
+        let manifest = self.manifest().ok_or_else(notes_unavailable)?;
+        let model = manifest
+            .manifest
+            .notes_model(&self.cfg.app_version)
+            .ok_or_else(notes_unavailable)?;
+        if self.machine(app).ram_mib < model.min_ram_mib {
+            return Err(notes_unavailable());
+        }
+        if self.store.is_installed(&model.file) {
+            return Ok(self.view(app));
+        }
+        let url = self
+            .cfg
+            .source
+            .as_ref()
+            .and_then(|u| source::file_url(u, &model.file))
+            .ok_or_else(|| CommandError::new(errors::MODELS_NO_SOURCE, None, "chưa có URL manifest"))?;
+        if self.client().is_none() {
+            return Err(CommandError::new(errors::MODELS_DOWNLOAD_FAILED, None, "không tạo được client HTTP"));
+        }
+        let part = std::fs::metadata(self.store.part(&model.file))
+            .map(|m| m.len())
+            .unwrap_or(0)
+            .min(model.file.bytes);
+        let need = model.file.bytes - part + NOTES_DISK_MARGIN;
+        if let Some(free) = (self.cfg.free_disk)(&self.cfg.dir)
+            && free < need
+        {
+            return Err(CommandError::new(
+                errors::MODELS_NO_SPACE,
+                None,
+                format!("cần {need} byte, còn {free}"),
+            ));
+        }
+        let (work, _) = self.begin_work(app, Some(&manifest.manifest), |_| false)?;
+        // Việc bảo trì sống qua luồng tải: giao khóa cho `OwnedWork` (cùng làm việc của `Work::drop`).
+        std::mem::forget(work);
+        let work = OwnedWork(self.clone());
+        self.notes_pause.clear();
+        self.notes_done.store(part, Ordering::SeqCst);
+        let downloading = NotesDownloading::start(self);
+        let view = self.changed(app);
+        let (service, app) = (self.clone(), app.clone());
+        std::thread::spawn(move || {
+            service.run_notes_download(&app, &model.file, url);
+            drop(downloading);
+            drop(work);
+            service.changed(&app);
+        });
+        Ok(view)
+    }
+
+    fn run_notes_download<R: Runtime>(&self, app: &AppHandle<R>, entry: &FileEntry, url: Url) {
+        let result = (|| -> Result<(), &'static str> {
+            let client = self.client().ok_or(errors::MODELS_DOWNLOAD_FAILED)?;
+            std::fs::create_dir_all(self.store.dir()).map_err(|_| errors::MODELS_DISK)?;
+            let mut job = self.store.job(entry, url);
+            job.keep_part = true;
+            let mut last = Instant::now();
+            download::download(
+                client,
+                &job,
+                &self.notes_pause,
+                &self.cfg.retry,
+                &mut |wait| download::sleep_unless_paused(&self.notes_pause, wait),
+                &mut |n| {
+                    self.notes_done.store(n, Ordering::SeqCst);
+                    if last.elapsed() >= NOTES_PROGRESS_EVERY {
+                        last = Instant::now();
+                        self.changed(app);
+                    }
+                },
+            )
+            .map_err(|e| {
+                if e == DownloadError::Paused {
+                    "paused"
+                } else {
+                    download_code(&e)
+                }
+            })?;
+            // Đủ byte và đúng SHA-256 (`download` kiểm): giờ mới đặt vào chỗ file chính rồi ghi vào danh sách đã tải.
+            std::fs::rename(self.store.part(entry), self.store.path(&entry.file)).map_err(|_| errors::MODELS_DISK)?;
+            self.store.mark_installed(entry).map_err(|_| errors::MODELS_DISK)
+        })();
+        match result {
+            Ok(()) => log::info!("đã tải xong gói ghi chú trên máy"),
+            Err("paused") => log::info!("đã hủy tải gói ghi chú trên máy, giữ phần đã tải"),
+            Err(code) => log::warn!("không tải được gói ghi chú trên máy: {code}"),
+        }
+    }
+
+    /// Hủy việc tải gói ghi chú đang chạy (giữ phần đã tải để tải tiếp). Không đang tải thì không làm gì.
+    pub fn cancel_notes_download(&self) {
+        if self.notes_downloading.load(Ordering::SeqCst) {
+            self.notes_pause.request();
+        }
+    }
+
+    /// Xóa gói ghi chú đã tải (và phần dở). Là một việc bảo trì: đang tải hay kiểm gói thì `modelsBusy`.
+    pub fn delete_notes_pack<R: Runtime>(&self, app: &AppHandle<R>) -> Result<ModelsView, CommandError> {
+        let manifest = self.manifest().ok_or_else(notes_unavailable)?;
+        let model = manifest
+            .manifest
+            .notes_model(&self.cfg.app_version)
+            .ok_or_else(notes_unavailable)?;
+        let (work, _) = self.begin_work(app, Some(&manifest.manifest), |_| false)?;
+        self.store
+            .delete_entry(&model.file)
+            .map_err(|e| CommandError::new(errors::MODELS_DISK, None, e.to_string()))?;
+        drop(work);
+        Ok(self.changed(app))
+    }
+
+    /// File gói ghi chú băm ra khác SHA-256 của manifest (hỏng hay bị thay): bỏ dấu đã cài và xóa file, để trạng thái về
+    /// `Missing` và người dùng tải lại. Người gọi báo giao diện (`models::service::changed`).
+    pub fn discard_notes_pack(&self) {
+        let Some(model) = self
+            .manifest()
+            .and_then(|s| s.manifest.notes_model(&self.cfg.app_version))
+        else {
+            return;
+        };
+        if let Err(e) = self.store.delete_entry(&model.file) {
+            log::warn!("không bỏ được gói ghi chú hỏng: {e}");
+        }
+    }
+
+    /// Đặt móc chạy ngay trước khi một phiên dịch bắt đầu ([`Self::begin_session`]): ghi chú dùng nó để hủy việc ghi chú trên
+    /// máy trước khi tiến trình của phiên chạy (phiên dịch luôn thắng). Đặt lại thì thay móc cũ.
+    pub fn set_before_session(&self, hook: Box<dyn Fn() + Send + Sync>) {
+        *self.before_session.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::from(hook));
+    }
+}
+
+fn notes_unavailable() -> CommandError {
+    CommandError::new(
+        errors::NOTES_LOCAL_UNAVAILABLE,
+        None,
+        "gói ghi chú trên máy không dùng được",
+    )
 }
 
 /// Lúc khởi động: đọc manifest đã lưu và kiểm bản mới (tối đa mỗi ngày một lần), trên luồng nền; rồi xem lại mỗi giờ.
@@ -1259,6 +1542,8 @@ mod tests {
     use tauri::Listener;
     use tauri::test::MockRuntime;
 
+    use crate::models::machine::Machine;
+    use crate::models::manifest::Os;
     use crate::models::signed::tests::signed_with_test_key;
     use crate::models::store::tests::{content, real_sample};
     use crate::models::test_http::{FakeServer, Fault};
@@ -2530,5 +2815,178 @@ mod tests {
         assert_eq!(service.speaker_model(), None, "bỏ khỏi installed.json");
         assert!(service.download_speaker_model(h.app.handle()), "tải lại");
         assert_eq!(std::fs::read(&path).unwrap(), good);
+    }
+
+    // ---- Gói ghi chú trên máy (kế hoạch 03 ghi chú cuộc họp, Task 2) ----
+
+    /// Đặt manifest có khóa `notes` (file `bytes` byte) và nội dung lên server giả; trả nội dung và SHA-256 của nó.
+    fn publish_notes(h: &Harness, bytes: u64, min_ram_mib: u64) -> (Vec<u8>, String) {
+        let data = content("notes-qwen35-4b", bytes);
+        let sha: String = Sha256::digest(&data).iter().map(|b| format!("{b:02x}")).collect();
+        put_notes(h, bytes, min_ram_mib, &sha);
+        h.server.put("files/notes-model.gguf", &data);
+        (data, sha)
+    }
+
+    /// Đặt manifest có khóa `notes` với SHA-256 tùy ý (không đặt nội dung).
+    fn put_notes(h: &Harness, bytes: u64, min_ram_mib: u64, sha: &str) {
+        let mut body = real_sample();
+        body["notes"] = json!({
+            "id": "notes-qwen35-4b", "version": "1", "file": "notes-model.gguf", "url": "files/notes-model.gguf",
+            "bytes": bytes, "sha256": sha, "license_id": "Apache-2.0", "min_app_version": "0.1.0",
+            "min_ram_mib": min_ram_mib, "ctx": 16384
+        });
+        publish(&h.server, &body);
+    }
+
+    fn notes_state(h: &Harness) -> Value {
+        h.call("get_models_state", json!({})).unwrap()["notes"].clone()
+    }
+
+    /// Chờ gói ghi chú tới trạng thái `state`.
+    fn wait_notes(h: &Harness, state: &str) -> Value {
+        let started = Instant::now();
+        loop {
+            let notes = notes_state(h);
+            if notes["state"] == state {
+                return notes;
+            }
+            assert!(started.elapsed() < Duration::from_secs(10), "chờ quá lâu: {notes}");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn the_notes_pack_is_unavailable_without_the_manifest_entry() {
+        let h = harness(|_| {});
+        h.call("load_models", json!({})).unwrap();
+        assert_eq!(notes_state(&h)["state"], "unavailable");
+        assert!(h.service().notes_ready().is_none());
+        let refused = h.call("download_notes_pack", json!({})).unwrap_err();
+        assert!(refused.contains("\"code\":\"notesLocalUnavailable\""), "{refused}");
+    }
+
+    #[test]
+    fn the_notes_pack_is_ram_too_low_below_the_manifest_threshold() {
+        let h = harness(|cfg| {
+            cfg.machine = Box::new(|_| Machine {
+                os: Os::Macos,
+                ram_mib: 8192,
+                avx2: true,
+                gpus: Vec::new(),
+                gpu_known: true,
+            })
+        });
+        publish_notes(&h, 64, 15_360);
+        h.call("load_models", json!({})).unwrap();
+        let notes = notes_state(&h);
+        assert_eq!((notes["state"].clone(), notes["minRamMib"].clone()), ("ramTooLow".into(), 15_360.into()));
+        let refused = h.call("download_notes_pack", json!({})).unwrap_err();
+        assert!(refused.contains("\"code\":\"notesLocalUnavailable\""), "{refused}");
+        assert!(
+            h.server.requests().iter().all(|r| !r.path.ends_with("notes-model.gguf")),
+            "không tải gì"
+        );
+    }
+
+    #[test]
+    fn downloading_the_notes_pack_installs_it_and_reports_progress() {
+        let h = harness(|_| {});
+        let (data, sha) = publish_notes(&h, 64, 15_360);
+        h.call("load_models", json!({})).unwrap();
+        let before = notes_state(&h);
+        assert_eq!((before["state"].clone(), before["bytes"].clone()), ("missing".into(), 64.into()));
+        let view = h.call("download_notes_pack", json!({})).unwrap();
+        assert_eq!(view["notes"]["state"], "downloading", "trả ngay, tải trên luồng nền");
+        let done = wait_notes(&h, "installed");
+        assert_eq!((done["done"].clone(), done["bytes"].clone()), (64.into(), 64.into()));
+        let ready = h.service().notes_ready().unwrap();
+        assert_eq!((ready.ctx, ready.sha256.as_str()), (16384, sha.as_str()));
+        assert_eq!(std::fs::read(&ready.path).unwrap(), data);
+        assert!(
+            h.events.lock().unwrap().iter().any(|v| v["notes"]["state"] == "downloading"),
+            "giao diện nhận trạng thái đang tải"
+        );
+        assert!(!h.service().busy());
+    }
+
+    #[test]
+    fn a_notes_pack_with_the_wrong_sha256_is_not_installed() {
+        let h = harness(|_| {});
+        publish_notes(&h, 64, 15_360);
+        put_notes(&h, 64, 15_360, &"ab".repeat(32));
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_notes_pack", json!({})).unwrap();
+        let notes = wait_notes(&h, "missing");
+        assert_eq!(notes["state"], "missing");
+        assert!(h.service().notes_ready().is_none());
+        assert!(!h.dir().join("notes-model.gguf").exists(), "file sai không được đặt vào chỗ");
+    }
+
+    #[test]
+    fn cancelling_keeps_the_part_and_a_second_download_resumes() {
+        let h = harness(|_| {});
+        publish_notes(&h, 2_000, 15_360);
+        h.call("load_models", json!({})).unwrap();
+        h.server.fault(Fault::Slow(40));
+        h.call("download_notes_pack", json!({})).unwrap();
+        let started = Instant::now();
+        while notes_state(&h)["done"] == 0 {
+            assert!(started.elapsed() < Duration::from_secs(10), "không có tiến độ");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let view = h.call("cancel_notes_download", json!({})).unwrap();
+        assert!(view["notes"].is_object());
+        wait_notes(&h, "missing");
+        let entry = h
+            .service()
+            .manifest()
+            .unwrap()
+            .manifest
+            .notes_model("9.0.0")
+            .unwrap()
+            .file;
+        let kept = std::fs::metadata(h.service().store().part(&entry)).unwrap().len();
+        assert!(kept > 0 && kept < 2_000, "giữ phần dở: {kept}");
+        h.call("download_notes_pack", json!({})).unwrap();
+        wait_notes(&h, "installed");
+        let ranges: Vec<_> = h
+            .server
+            .requests()
+            .into_iter()
+            .filter(|r| r.path.ends_with("notes-model.gguf"))
+            .map(|r| r.range)
+            .collect();
+        assert_eq!(ranges.first(), Some(&None));
+        assert!(
+            ranges.last().is_some_and(|r| r.as_deref().is_some_and(|r| r.starts_with("bytes="))),
+            "tải tiếp, không tải lại từ đầu: {ranges:?}"
+        );
+    }
+
+    #[test]
+    fn deleting_the_notes_pack_returns_to_missing() {
+        let h = harness(|_| {});
+        publish_notes(&h, 64, 15_360);
+        h.call("load_models", json!({})).unwrap();
+        h.call("download_notes_pack", json!({})).unwrap();
+        wait_notes(&h, "installed");
+        let path = h.service().notes_ready().unwrap().path;
+        assert!(path.is_file());
+        let view = h.call("delete_notes_pack", json!({})).unwrap();
+        assert_eq!(view["notes"]["state"], "missing");
+        assert!(!path.exists());
+        assert!(h.service().notes_ready().is_none());
+    }
+
+    #[test]
+    fn the_before_session_hook_runs_before_the_session_begins() {
+        let h = harness(|_| {});
+        let service = h.service();
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let hook_log = log.clone();
+        service.set_before_session(Box::new(move || hook_log.lock().unwrap().push("hook")));
+        service.begin_session(|| log.lock().unwrap().push("begin")).unwrap();
+        assert_eq!(*log.lock().unwrap(), ["hook", "begin"]);
     }
 }
