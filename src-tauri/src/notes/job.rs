@@ -247,6 +247,7 @@ mod tests {
             seq,
             speaker: None,
             text: vec!["w"; n].join(" "),
+            source: None,
         }
     }
 

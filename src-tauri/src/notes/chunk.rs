@@ -12,6 +12,9 @@ pub struct PromptLine {
     pub seq: u32,
     pub speaker: Option<String>,
     pub text: String,
+    /// Câu gốc (đã `trim`) khi `text` là bản dịch khác câu gốc; `None` khi `text` đã là câu gốc hay câu gốc rỗng. Chỉ lượt
+    /// kiểm đọc nó ([`render_verify`]): lượt trích ([`render`]) không bao giờ thấy câu gốc.
+    pub source: Option<String>,
 }
 
 /// Chữ của câu theo đúng luật của `transcript::export::translation`: bản dịch khi câu đang ở trạng thái có dịch và bản dịch
@@ -37,10 +40,13 @@ pub fn lines_of(t: &Transcript) -> Vec<PromptLine> {
             if text.is_empty() {
                 return None;
             }
+            let src = line.src_text.trim();
+            let source = (!src.is_empty() && src != text).then(|| src.to_string());
             Some(PromptLine {
                 seq: u32::try_from(i.saturating_add(1)).unwrap_or(u32::MAX),
                 speaker: t.speaker_label(line).map(str::to_string),
                 text: text.to_string(),
+                source,
             })
         })
         .collect()
@@ -56,6 +62,36 @@ pub fn render(lines: &[PromptLine]) -> String {
             out.push_str(": ");
         }
         out.push_str(&l.text);
+        out.push('\n');
+    }
+    out
+}
+
+/// Dựng các câu quanh những câu được trích dẫn, cho lượt kiểm: câu có `seq` trong `r - around ..= r + around` của một `r`
+/// nào đó (theo thứ tự các dòng). Mỗi câu là `[seq] Người nói: <câu gốc>`; khi có bản dịch khác câu gốc, thêm một dòng
+/// `    → <bản dịch>`. Câu gốc là `source` nếu có, không thì `text` (đã là câu gốc).
+pub fn render_verify(lines: &[PromptLine], refs: &[u32], around: u32) -> String {
+    let mut out = String::new();
+    for l in lines {
+        let near = refs
+            .iter()
+            .any(|&r| l.seq >= r.saturating_sub(around) && l.seq <= r.saturating_add(around));
+        if !near {
+            continue;
+        }
+        out.push_str(&format!("[{}] ", l.seq));
+        if let Some(who) = &l.speaker {
+            out.push_str(who);
+            out.push_str(": ");
+        }
+        match &l.source {
+            Some(src) => {
+                out.push_str(src);
+                out.push_str("\n    → ");
+                out.push_str(&l.text);
+            }
+            None => out.push_str(&l.text),
+        }
         out.push('\n');
     }
     out
@@ -114,7 +150,42 @@ mod tests {
             seq,
             speaker: None,
             text: words(n),
+            source: None,
         }
+    }
+    fn line(seq: u32, who: Option<&str>, text: &str, source: Option<&str>) -> PromptLine {
+        PromptLine {
+            seq,
+            speaker: who.map(str::to_string),
+            text: text.into(),
+            source: source.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn render_verify_shows_the_original_then_the_translation_around_the_refs() {
+        let lines = vec![
+            line(1, Some("Lan"), "Chào", Some("Hello")),
+            line(2, None, "Same", None),
+            line(3, Some("Minh"), "Tôi gửi thứ Sáu", Some("I'll send it Friday")),
+            line(5, None, "Xa", Some("Far")),
+        ];
+        assert_eq!(
+            render_verify(&lines, &[3], 1),
+            "[2] Same\n[3] Minh: I'll send it Friday\n    → Tôi gửi thứ Sáu\n"
+        );
+        assert_eq!(render_verify(&lines, &[1], 1), "[1] Lan: Hello\n    → Chào\n[2] Same\n");
+        assert_eq!(
+            render_verify(&lines, &[u32::MAX, 0], 1),
+            "[1] Lan: Hello\n    → Chào\n"
+        );
+        assert_eq!(render_verify(&lines, &[], 1), "");
+    }
+
+    #[test]
+    fn render_never_contains_the_original_words() {
+        let lines = vec![line(1, Some("Lan"), "Chào", Some("Hello-ORIGINAL"))];
+        assert!(!render(&lines).contains("ORIGINAL"));
     }
     fn seqs(c: &[Vec<PromptLine>]) -> Vec<Vec<u32>> {
         c.iter().map(|x| x.iter().map(|l| l.seq).collect()).collect()
@@ -142,6 +213,9 @@ mod tests {
         };
         let got = lines_of(&t);
         assert_eq!(got.iter().map(|l| l.seq).collect::<Vec<_>>(), [1, 2, 4, 5, 6]);
+        assert_eq!(got[0].source.as_deref(), Some("Good morning.")); // có bản dịch khác câu gốc: giữ câu gốc
+        assert_eq!(got[1].source, None); // dịch rỗng: chữ đã là câu gốc
+        assert!(got[2..].iter().all(|l| l.source.is_none())); // Failed, SameLang, Skipped: chữ đã là câu gốc
         assert_eq!(
             (got[0].speaker.as_deref(), got[0].text.as_str()),
             (Some("Lan"), "Chào buổi sáng.")

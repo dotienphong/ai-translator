@@ -523,6 +523,7 @@ mod tests {
             seq,
             speaker: Some(who.into()),
             text: text.into(),
+            source: None,
         };
         let lines = vec![
             say(1, "Lan", "Chào mọi người, hôm nay ta chốt kế hoạch ra mắt bản 2.0."),

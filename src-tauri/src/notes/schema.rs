@@ -318,11 +318,13 @@ mod tests {
                 seq: 1,
                 speaker: Some("Lan".into()),
                 text: "Minh gửi báo cáo thứ Sáu".into(),
+                source: None,
             },
             PromptLine {
                 seq: 2,
                 speaker: None,
                 text: "y".into(),
+                source: None,
             }, // câu 3 đã bị bỏ (Dropped)
         ]
     }
@@ -624,6 +626,7 @@ mod tests {
             seq: 1,
             speaker: None,
             text: long.clone(),
+            source: None,
         }];
         let item = format!(r#"{{"text":"{long}","owner":"{long}","due":"{long}","refs":[1]}}"#);
         let summary = "ế".repeat(MAX_SUMMARY_CHARS + 5);
