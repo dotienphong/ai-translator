@@ -258,174 +258,180 @@ export function NotesScreenView(p: NotesScreenViewProps) {
       </>
     );
 
+  // Thiết lập nằm ngay dưới tiêu đề màn hình, trên danh sách cuộc họp: gói model và tự tạo ghi chú áp cho mọi cuộc họp.
+  const setup = (
+    <details className="card notes-setup" open={setupOpen && !packInStart}>
+      <summary>
+        <Icon name="settings" />
+        {t("notes.settings.title")}
+      </summary>
+      {!packInStart && (
+        <NotesPackPanel
+          lang={p.lang}
+          pack={p.pack}
+          onDownload={p.onDownloadPack}
+          onCancel={p.onCancelPack}
+          onDelete={p.onDeletePack}
+        />
+      )}
+      <Field label={t("notes.auto")} htmlFor="notes-auto">
+        <input
+          id="notes-auto"
+          className="switch"
+          type="checkbox"
+          checked={p.auto}
+          onChange={(e) => p.onAuto(e.target.checked)}
+        />
+      </Field>
+    </details>
+  );
+
   return (
-    <div className="notes-layout">
-      <NotesSessionRail {...listProps} />
-      <div className="notes-main">
-        <NotesSessionSelect {...listProps} />
+    <div className="notes-page">
+      {setup}
+      <div className="notes-layout">
+        <NotesSessionRail {...listProps} />
+        <div className="notes-main">
+          <NotesSessionSelect {...listProps} />
 
-        <div className="notes-banner">{banner && renderBanner(banner)}</div>
+          <div className="notes-banner">{banner && renderBanner(banner)}</div>
 
-        <div className="notes-head">
-          <div className="notes-head-text">
-            <h2 className="notes-title">{selectedTarget ? sessionTitle(selectedTarget, t) : t("notes.sessions.title")}</h2>
-            {stored && (
-              <p className="notes-sub">
-                {t("notes.meta.created", { time: dateTime(stored.createdAt, localOffsetMinutes(stored.createdAt)) })}
+          <div className="notes-head">
+            <div className="notes-head-text">
+              <h2 className="notes-title">{selectedTarget ? sessionTitle(selectedTarget, t) : t("notes.sessions.title")}</h2>
+              {stored && (
+                <p className="notes-sub">
+                  {t("notes.meta.created", { time: dateTime(stored.createdAt, localOffsetMinutes(stored.createdAt)) })}
+                </p>
+              )}
+            </div>
+            {headActions && <div className="notes-head-actions">{headActions}</div>}
+          </div>
+
+          <div className="notes-toolbar">
+            <label className="notes-chip notes-chip-field" htmlFor="notes-template">
+              <span>{t("notes.template.label")}</span>
+              <select
+                id="notes-template"
+                value={p.template}
+                disabled={running}
+                onChange={(e) => p.onTemplate(e.target.value as NotesTemplate)}
+              >
+                {TEMPLATES.map((x) => (
+                  <option key={x} value={x}>
+                    {t(`notes.template.${x}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="notes-chip">
+              <Icon name={p.source.kind === "local" ? "cpu" : "sparkle"} size={14} />
+              {t("notes.source.chip", { source: sourceLabel(p.source, t) })}
+              <button type="button" className="notes-chip-link" title={t("notes.source.change")} onClick={p.onOpenModelSettings}>
+                {t("notes.source.changeShort")}
+              </button>
+            </span>
+            <span className="notes-spacer" />
+            {running ? (
+              <button type="button" onClick={p.onCancel}>
+                {t("notes.cancel")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={editing ? undefined : "primary"}
+                disabled={gate.kind === "blocked" || editing}
+                onClick={p.onGenerate}
+              >
+                <Icon name="sparkle" size={16} />
+                {stored ? t("notes.regenerate") : t("notes.generate")}
+              </button>
+            )}
+            {gate.kind === "blocked" && (
+              <p className="hint notes-blocked" role="status">
+                {blockedText(gate.reason)}
               </p>
             )}
-          </div>
-          {headActions && <div className="notes-head-actions">{headActions}</div>}
-        </div>
-
-        <div className="notes-toolbar">
-          <label className="notes-chip notes-chip-field" htmlFor="notes-template">
-            <span>{t("notes.template.label")}</span>
-            <select
-              id="notes-template"
-              value={p.template}
-              disabled={running}
-              onChange={(e) => p.onTemplate(e.target.value as NotesTemplate)}
-            >
-              {TEMPLATES.map((x) => (
-                <option key={x} value={x}>
-                  {t(`notes.template.${x}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="notes-chip">
-            <Icon name={p.source.kind === "local" ? "cpu" : "sparkle"} size={14} />
-            {t("notes.source.chip", { source: sourceLabel(p.source, t) })}
-            <button type="button" className="notes-chip-link" title={t("notes.source.change")} onClick={p.onOpenModelSettings}>
-              {t("notes.source.changeShort")}
-            </button>
-          </span>
-          <span className="notes-spacer" />
-          {running ? (
-            <button type="button" onClick={p.onCancel}>
-              {t("notes.cancel")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={editing ? undefined : "primary"}
-              disabled={gate.kind === "blocked" || editing}
-              onClick={p.onGenerate}
-            >
-              <Icon name="sparkle" size={16} />
-              {stored ? t("notes.regenerate") : t("notes.generate")}
-            </button>
-          )}
-          {gate.kind === "blocked" && (
-            <p className="hint notes-blocked" role="status">
-              {blockedText(gate.reason)}
-            </p>
-          )}
-          {gate.kind === "blocked" && gate.reason === "freeUsedUp" && !p.pro && (
-            <button type="button" onClick={p.onUpgrade}>
-              <Icon name="upgrade" size={16} />
-              {t("pro.upgrade")}
-            </button>
-          )}
-          {!p.pro && view?.freeLeft != null && view.freeLeft > 0 && (
-            <p className="hint">{t("notes.free.left", { n: view.freeLeft })}</p>
-          )}
-        </div>
-
-        {running && (
-          <div className="notes-running" role="status">
-            <progress
-              max={Math.max(1, view?.progress?.[1] ?? 0)}
-              value={view?.progress?.[0] ?? 0}
-              aria-label={t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}
-            />
-            <span>{t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}</span>
-          </div>
-        )}
-
-        {stored === null && running && (
-          <div className="notes-skeleton" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <i />
-          </div>
-        )}
-
-        {stored === null && !running && (
-          <section className="notes-start">
-            <Icon name="notes" size={28} />
-            <h3>{t("notes.start.title")}</h3>
-            <p>{t("notes.start.body")}</p>
-            {packInStart && (
-              <NotesPackPanel
-                lang={p.lang}
-                pack={p.pack}
-                onDownload={p.onDownloadPack}
-                onCancel={p.onCancelPack}
-                onDelete={p.onDeletePack}
-              />
+            {gate.kind === "blocked" && gate.reason === "freeUsedUp" && !p.pro && (
+              <button type="button" onClick={p.onUpgrade}>
+                <Icon name="upgrade" size={16} />
+                {t("pro.upgrade")}
+              </button>
             )}
-          </section>
-        )}
-
-        {stored && (
-          <div className={p.sourcePanel ? "notes-body has-source" : "notes-body"}>
-            <NotesResult
-              lang={p.lang}
-              notes={p.draft ?? stored.body}
-              source={stored.source}
-              editing={editing}
-              onEdit={p.onEdit}
-              onOpenSource={p.onOpenSource}
-            />
-            {p.sourcePanel && (
-              <NotesSourcePanel
-                lang={p.lang}
-                lines={p.sourcePanel.lines}
-                speakers={p.sourcePanel.speakers}
-                refs={p.sourcePanel.refs}
-                onClose={p.onCloseSource}
-              />
+            {!p.pro && view?.freeLeft != null && view.freeLeft > 0 && (
+              <p className="hint">{t("notes.free.left", { n: view.freeLeft })}</p>
             )}
           </div>
-        )}
-        {stored && !p.pro && !editing && <p className="hint">{t("notes.export.pro")}</p>}
 
-        <details className="card notes-setup" open={setupOpen && !packInStart}>
-          <summary>
-            <Icon name="settings" size={16} />
-            {t("notes.settings.title")}
-          </summary>
-          {!packInStart && (
-            <NotesPackPanel
-              lang={p.lang}
-              pack={p.pack}
-              onDownload={p.onDownloadPack}
-              onCancel={p.onCancelPack}
-              onDelete={p.onDeletePack}
-            />
+          {running && (
+            <div className="notes-running" role="status">
+              <progress
+                max={Math.max(1, view?.progress?.[1] ?? 0)}
+                value={view?.progress?.[0] ?? 0}
+                aria-label={t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}
+              />
+              <span>{t("notes.progress", { done: view?.progress?.[0] ?? 0, total: view?.progress?.[1] ?? 0 })}</span>
+            </div>
           )}
-          <Field label={t("notes.auto")} htmlFor="notes-auto">
-            <input
-              id="notes-auto"
-              className="switch"
-              type="checkbox"
-              checked={p.auto}
-              onChange={(e) => p.onAuto(e.target.checked)}
-            />
-          </Field>
-        </details>
 
-        <NotesDialogs
-          lang={p.lang}
-          dialog={p.dialog}
-          provider={p.source}
-          onConfirm={p.onDialogConfirm}
-          onDismiss={p.onDialogDismiss}
-          onOpenModelSettings={p.onOpenModelSettings}
-        />
+          {stored === null && running && (
+            <div className="notes-skeleton" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+          )}
+
+          {stored === null && !running && (
+            <section className="notes-start">
+              <Icon name="notes" size={28} />
+              <h3>{t("notes.start.title")}</h3>
+              <p>{t("notes.start.body")}</p>
+              {packInStart && (
+                <NotesPackPanel
+                  lang={p.lang}
+                  pack={p.pack}
+                  onDownload={p.onDownloadPack}
+                  onCancel={p.onCancelPack}
+                  onDelete={p.onDeletePack}
+                />
+              )}
+            </section>
+          )}
+
+          {stored && (
+            <div className={p.sourcePanel ? "notes-body has-source" : "notes-body"}>
+              <NotesResult
+                lang={p.lang}
+                notes={p.draft ?? stored.body}
+                source={stored.source}
+                editing={editing}
+                onEdit={p.onEdit}
+                onOpenSource={p.onOpenSource}
+              />
+              {p.sourcePanel && (
+                <NotesSourcePanel
+                  lang={p.lang}
+                  lines={p.sourcePanel.lines}
+                  speakers={p.sourcePanel.speakers}
+                  refs={p.sourcePanel.refs}
+                  onClose={p.onCloseSource}
+                />
+              )}
+            </div>
+          )}
+          {stored && !p.pro && !editing && <p className="hint">{t("notes.export.pro")}</p>}
+
+          <NotesDialogs
+            lang={p.lang}
+            dialog={p.dialog}
+            provider={p.source}
+            onConfirm={p.onDialogConfirm}
+            onDismiss={p.onDialogDismiss}
+            onOpenModelSettings={p.onOpenModelSettings}
+          />
+        </div>
       </div>
     </div>
   );
