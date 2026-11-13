@@ -84,3 +84,7 @@ Người chấm ghi phần lớn lỗi còn lại ở ja và vi là sai hạn, s
 1. Chỉ phát hành Cloud trước; Local sau.
 2. Cloud mặc định; Local tùy chọn, ghi rõ "bản nháp, kiểm lại việc cần làm", có nút đối chiếu câu gốc, hệ `c16kx`; sửa ngưỡng bịa của spec thành "không tệ hơn mốc Cloud".
 3. Giữ G3 (cùng phát hành, Local mặc định): không khuyên, vì Local sót khoảng 40% việc thật.
+
+## Bổ sung 2026-11-13: `c16kx` chỉ CPU
+
+`qwen3-5-4b` / `c16kx`, `--hw cpu` (`-ngl 0 --device none`), bản `ko-chuan-60` (60 phút), i5-1345U, máy không chạy việc khác: tải model 6,7 s, chạy 1465 s (24,4 phút), RSS đỉnh 4846 MiB. Cùng bản đó trên iGPU: 840 s.
