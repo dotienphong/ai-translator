@@ -13,6 +13,7 @@
     "test": "vitest run",
     "tauri": "tauri",
     "models:update": "node scripts/models/update.mjs",
+    "models:notes": "node scripts/models/notes-manifest.mjs",
     "recipes:update": "node scripts/speaker-recipes/update.mjs"
   },
   "dependencies": {
