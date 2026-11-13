@@ -2000,3 +2000,101 @@ Chạy danh sách **kiểm tay trước phát hành** (bản build nối product
   2. Chạy `cd server && pnpm exec wrangler deploy`.
   3. Kết quả: `GET /v1/auth/status` trả `{"login":"off"}`. Mọi máy đang mở màn đăng nhập hoặc mở lại app (hay tới nhịp kiểm mỗi giờ) sẽ tự mở cổng (`gate: false`), người dùng Free đăng ký dùng thử và dịch bình thường không cần đăng nhập.
 - **Không cần rollback migration 0010:** hai bảng mới và hai cột `account_id` cho phép NULL hoàn toàn tương thích ngược với code cũ.
+
+## 20. Ghi chú cuộc họp bằng AI: phát hành, bật gói trên máy, tắt khẩn
+
+Spec `2026-11-11-ghi-chu-cuoc-hop-design.md` (mục 4, 4.3, F14) và các kế hoạch `2026-11-13-ghi-chu-cuoc-hop-03-engine-local.md`, `-04-man-hinh.md`, `-05-phap-ly-website-phat-hanh.md`. **Mọi bước ghi vào production (merge, đẩy `main`, đẩy tag, ký, đăng R2, deploy) do chủ dự án chạy**; Claude chỉ chuẩn bị file và kiểm bằng lệnh chỉ-đọc. Mục này theo bố cục mục 16. Hạ tầng manifest và lệnh ký là mục 13 và 16.5; mục này là thứ tự đưa ghi chú ra người dùng và cách rút lại.
+
+### 20.1. Hai bước tách rời và các công tắc
+
+| Bước | Việc | Người dùng thấy |
+|---|---|---|
+| 1. Phát hành app (số mới sau 0.6.18) | Mục 2, thêm mục 20.3. Manifest model **chưa có** khóa `notes` | **Cloud dùng được ngay**: ai đã nhập khóa API ChatGPT, Gemini hay DeepSeek và chọn làm model dịch thì tạo được ghi chú sau khi dừng phiên (có hỏi đồng ý ở lần gửi đầu). **Local "ngủ"**: không có khối "Gói ghi chú trên máy" nên không tải được model |
+| 2. **Bật Local** | Đăng manifest model số mới có khóa `notes` (`min_app_version` = số bản vừa phát hành), mục 20.4 | Máy có RAM từ 16 GB thấy khối "Gói ghi chú trên máy", tải khoảng 2,6 GB một lần, tạo ghi chú bằng model trên máy |
+
+Các công tắc, từ xa tới gần người dùng:
+
+| Công tắc | Ở đâu | Đổi bằng |
+|---|---|---|
+| Khóa `notes` ở gốc phần thân manifest | `releases.aitranslator.vn/models/models.json` | `node scripts/models/notes-manifest.mjs add` / `remove` (`pnpm models:notes …`) rồi ký, đăng (20.4, 20.6) |
+| `notes.min_ram_mib` | cùng khóa `notes` | `add` lần hai với `--min-ram-mib N` (thay mục `notes` cũ), ký, đăng: đổi ngưỡng RAM **không** cần phát hành app |
+| Ghi chú Cloud | mã app | **Không có công tắc từ xa**: chỉ tắt bằng bản app mới (20.6c) |
+| Công tắc của người dùng | Cài đặt › Model (chọn model dịch), hộp đồng ý ở lần gửi đầu cho Cloud | người dùng |
+
+App "ngủ" ở phần Local khi manifest chưa có khóa `notes` dùng được cho bản này; app cũ (≤ 0.6.18) bỏ qua khóa lạ ở gốc, nên đăng `notes` không làm hỏng bản cũ (kiểm ở 20.5). Mục `notes` nằm **ngoài** `files`: một `kind` lạ trong `files` thì làm app từ chối cả manifest, vì vậy đừng thêm file model ghi chú vào `files`.
+
+### 20.2. Điều kiện trước khi phát hành app (bước 1)
+
+- [ ] Ba kế hoạch 03, 04, 05 xong; `cargo test --lib`, `vitest` và các bài kiểm của website không cần trình duyệt xanh (trừ ba bài `install.sh` cần `/bin/bash` trên Windows/WSL).
+- [ ] **Thử tay sáu mục của kế hoạch 04 Task 7** (bản debug, `pnpm tauri dev`) trên Windows và macOS (chủ dự án): (1) chọn DeepSeek, dịch 2 phút, dừng, mở Ghi chú cuộc họp, bấm Tạo, hộp đồng ý nêu "DeepSeek", ghi chú hiện ra; (2) bấm số câu ở một việc cần làm: khung Câu gốc mở, câu được tô; (3) sửa một mục, Lưu, mở lại app (phiên đã lưu ở Lịch sử): bản sửa còn; (4) đổi sang Gemini rồi Tạo lại: hộp đồng ý hiện lại, nêu "Google"; (5) chọn Model trên máy, bấm Tạo: hộp gợi ý, "Vẫn dùng model trên máy", cảnh báo ba ý; (6) Sao chép, Xuất Markdown. Mục nào không thử được thì ghi rõ lý do, không đánh dấu xong.
+- [ ] **Chạy thật:** DeepSeek đã chạy bằng khóa trong `.env`; **[CHỦ DỰ ÁN]** chạy thật một lần với khóa **Gemini** và một lần với khóa **ChatGPT** (chưa ai chạy hai nhà cung cấp này cho ghi chú).
+- [ ] **[CHỦ DỰ ÁN]** bước đo độ trễ của kế hoạch 03 Task 8 (chưa chạy): chỉ sau khi có số đo mới được viết số về tốc độ Cloud lên website (hiện website chỉ nói định tính).
+- [ ] `docs/legal`: chính sách 1.15 và EULA 1.9 có **ngày hiệu lực**. Hai file đang để 06/11/2026; chủ dự án đổi dòng phiên bản và ngày vào **ngày phát hành**, trước khi build (`docs/legal/README.md`, mục "Đổi ngày hiệu lực"). Cần luật sư xem vai trò của nhà cung cấp cloud (OpenAI, Google, DeepSeek) khi họ nhận chữ chép lời; chính sách đang nói họ không phải bên xử lý của chúng tôi.
+- [ ] `THIRD_PARTY_NOTICES.txt` của **bản build** có mục model ghi chú và nội dung `licenses/models/Notes-Apache-2.0-LICENSE.txt`.
+- [ ] Nội dung `licenses/models/Notes-Apache-2.0-LICENSE.txt` mới chỉ đối chiếu qua WebFetch: so lại với file giấy phép đi kèm model ở nơi tải gốc trước khi đăng lên R2.
+
+### 20.3. Phát hành app [CHỦ DỰ ÁN]
+
+Làm đúng mục 2: merge nhánh `ghi-chu-cuoc-hop` vào `main`, nâng bốn file lên số phiên bản mới, đợi CI, hỏi chủ dự án rồi đẩy tag, kiểm R2 và SHA-256, GitHub Release. **Deploy website sau cùng**, sau khi bản app đã lên (website nói về tính năng đã có) và sau khi chủ dự án đã đọc lại các trang ja/zh/ko (20.7).
+
+Kiểm "Local ngủ" trên bản đã cài (không phải bản dev): Cài đặt › Model **không** có khối "Gói ghi chú trên máy"; chọn model dịch là một model cloud đã có khóa thì dừng phiên xong thấy nút tạo ghi chú.
+
+### 20.4. Bật Local [CHỦ DỰ ÁN]
+
+Điều kiện máy như mục 13.1 (thư mục chính, nhánh `main`, cây sạch, khớp `origin/main`, `gh` đăng nhập tài khoản `dotienphong`, wrangler đã đăng nhập). Trước hết so số manifest đang chạy với số body mới nhất trong repo (như đầu mục 16.5); hai số phải bằng nhau.
+
+Model: `Qwen3.5-4B-Q4_K_M.gguf`, **2 740 937 888 byte**, SHA-256 `00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4`; khóa R2 `models/notes/00fe7986ff5f/` (12 ký tự đầu của SHA-256).
+
+1. **Dựng phần thân** (không chạm mạng; chỉ ghi `scripts/models/released/body-<N+1>.json`, in các việc tiếp theo):
+   ```bash
+   pnpm models:notes add --file <đường dẫn Qwen3.5-4B-Q4_K_M.gguf> --min-app-version <số bản app vừa phát hành>
+   ```
+   Tùy chọn: `--min-ram-mib N` (mặc định 15360), `--ctx N` (mặc định 16384), `--license-id <id>` (mặc định `Apache-2.0`), `--version <chuỗi>`. Lệnh kiểm theo luật của app (`Manifest::notes_entry`) và từ chối mục sai; chạy `add` lần hai thì **thay** mục `notes` cũ.
+2. **Đặt model và giấy phép lên R2** (**trước** manifest, vì app tải model theo manifest). Dùng `wrangler` như mục 16.5, hay `rclone` như mục 13.1 (`--s3-no-check-bucket`):
+   ```bash
+   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/notes/00fe7986ff5f/Qwen3.5-4B-Q4_K_M.gguf" \
+     --file <đường dẫn Qwen3.5-4B-Q4_K_M.gguf> --content-type application/octet-stream --remote
+   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/notes/00fe7986ff5f/Notes-Apache-2.0-LICENSE.txt" \
+     --file licenses/models/Notes-Apache-2.0-LICENSE.txt --content-type text/plain --remote
+   curl -s https://releases.aitranslator.vn/models/notes/00fe7986ff5f/Qwen3.5-4B-Q4_K_M.gguf | shasum -a 256
+   ```
+   (Windows: `sha256sum` hay `certutil -hashfile <file> SHA256`.) SHA-256 in ra phải bằng `00fe7986ff5f…11a4` và `notes.sha256` trong body; kích thước đúng 2 740 937 888 byte. Nếu nguồn gốc của model có file `NOTICE`, đặt cạnh model như giấy phép. Giấy phép nằm cạnh model, **không** nằm trong `files`; giấy phép đi theo app qua `THIRD_PARTY_NOTICES`.
+3. **Commit body, đẩy `main`, ký:** commit `scripts/models/released/body-<N+1>.json` (`chore(models): manifest số <N+1> có model ghi chú`), đẩy `main`, chờ CI xanh, rồi chạy workflow **`Sign model manifest`** (`sign-manifest.yml`) với `body=scripts/models/released/body-<N+1>.json` và `previous=scripts/models/released/body-<N>.json`; tải artifact `models-manifest` (`models.json` đã ký).
+4. **Đăng `models.json`** (sao lưu bản đang chạy trước; số đang chạy vẫn phải là `<N>`):
+   ```bash
+   curl -s https://releases.aitranslator.vn/models/models.json > <thư mục sao lưu>/models-seq-<N>.json
+   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/models.json" --file <models.json đã ký> \
+     --content-type application/json --cache-control no-cache --remote
+   ```
+   Kiểm lại bằng lệnh `curl … | node -e …` ở đầu mục 16.5 (đổi `b.speaker` thành `b.notes`): `sequence <N+1>` và có `notes`. Kiểm DNS bằng `dig @8.8.8.8 releases.aitranslator.vn` nếu `curl` lỗi.
+5. **Kiểm trên bản đã cài** (app kiểm manifest tối đa một lần mỗi ngày, nên đợi tới khoảng 25 giờ hay mở lại app quá hạn):
+   - Máy **≥ 16 GB RAM**: Cài đặt › Model hiện khối "Gói ghi chú trên máy"; bấm tải (khoảng 2,6 GB), xong tạo được một ghi chú bằng model trên máy sau khi dừng một phiên.
+   - Máy **< 16 GB** (hay hạ tạm `min_ram_mib` trong một manifest thử, **không** đăng manifest thử lên production): thấy câu `notes.pack.ramTooLow` ("Máy cần từ {gb} GB RAM để tạo ghi chú bằng model trên máy. Hãy chọn một model cloud ở Cài đặt > Model.").
+   - Bằng proxy hay `nettop` (`bench/phase1/acceptance/RUNBOOK-mac.md`): ghi chú tạo bằng model trên máy không tạo kết nối nào ngoài tải gói từ `releases.aitranslator.vn`.
+
+`pnpm models:update` về sau giữ nguyên khóa `notes` (`bumpBody` trải `...prev`; test `scripts/models/notes-manifest.test.mjs`), nên các lượt cập nhật model khác không làm mất nó.
+
+### 20.5. Kiểm app cũ
+
+Sau khi manifest có `notes`, mở **app 0.6.18** (bản chưa biết khóa `notes`): vẫn nhận manifest, tải và dùng model dịch như cũ (khóa lạ ở gốc bị bỏ qua), không báo lỗi manifest. Đây là kiểm tay một lần của chủ dự án; không có bản thử tự động trên bản app đã phát hành.
+
+### 20.6. Tắt khẩn, từ nhẹ tới nặng
+
+Làm lớp nhẹ nhất đủ dùng, rồi tìm nguyên nhân; **không gỡ bản app** (bản đã phát hành không bao giờ bị ghi đè, mục 2).
+
+| Lớp | Muốn | Làm | Hiệu lực và giới hạn |
+|---|---|---|---|
+| (a) | Tắt Local cho mọi người | `pnpm models:notes remove` → `body-<N+1>.json` không có `notes`; commit, đẩy `main`, ký (`Sign model manifest`), đăng như 20.4 bước 3–4 (không cần file R2 mới) | Local ẩn ở **lần app kiểm manifest kế tiếp** (tối đa khoảng 25 giờ, mỗi ngày một lần). Ghi chú đã tạo còn nguyên; gói đã tải vẫn nằm trong kho model của máy, không dùng tới. Không có cách đẩy tức thì |
+| (b) | Chỉ chặn máy yếu | `pnpm models:notes add` với cùng file và `--min-ram-mib` cao hơn, ký, đăng | Như (a). Không cần phát hành app |
+| (c) | Tắt cả Cloud (lỗi trong app) | Phát hành bản app mới không có mục điều hướng ghi chú (sửa `SCREENS` ở `src/`), theo mục 2 | Khi người dùng cập nhật (24 giờ trở lên). Cloud không có công tắc từ xa |
+| (d) | Người dùng tự dừng | Chọn model dịch không phải cloud, hay không đồng ý ở hộp hỏi lần đầu | Ngay |
+
+`pnpm models:update --rollback-to <S>` (mục 13.4) chỉ đổi các mục trong `files`, **không** đổi hay bỏ khóa `notes`: không dùng nó để tắt. Bật lại sau khi tắt: `pnpm models:notes add` với cùng file (số manifest mới, không bao giờ quay số cũ; model đã ở R2 thì chỉ cần kiểm SHA-256 qua URL công khai). Manifest đã đăng không bị rút; sai thì đăng số mới.
+
+### 20.7. Việc còn nợ sau phát hành
+
+- Ảnh `app-notes` cho website: chụp trên macOS bằng `scripts/ui-preview/shoot.mjs` (script này chỉ chạy trên macOS); đến lúc đó trang Tính năng chưa có ảnh màn hình ghi chú.
+- Đo model trên máy với **máy 16 GB thật** và máy chỉ CPU khác: số đo đang đăng (khoảng 14 phút với GPU tích hợp, khoảng 24 phút chỉ CPU, cuộc họp 60 phút, Core i5 đời 13, RAM 32 GB) chưa có máy 16 GB.
+- Người bản ngữ duyệt các trang website tiếng Nhật, Trung, Hàn (các trang mới nhất dịch từ bản tiếng Anh) và chuỗi ja/zh/ko trong app.
+- Đo độ trễ Cloud (kế hoạch 03 Task 8) rồi mới được nêu số về tốc độ Cloud.
+- Ba khóa API đã lộ trong phiên làm việc (ChatGPT, Gemini, DeepSeek): thu hồi và cấp khóa mới.
