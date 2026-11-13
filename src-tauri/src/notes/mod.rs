@@ -15,6 +15,7 @@ pub mod cloud;
 pub mod engine;
 pub mod job;
 pub mod keys;
+pub mod local;
 pub mod prompt;
 pub mod quota;
 pub mod render;
@@ -108,6 +109,7 @@ mod tests {
         ("engine.rs", include_str!("engine.rs")),
         ("job.rs", include_str!("job.rs")),
         ("keys.rs", include_str!("keys.rs")),
+        ("local.rs", include_str!("local.rs")),
         ("mod.rs", include_str!("mod.rs")),
         ("prompt.rs", include_str!("prompt.rs")),
         ("quota.rs", include_str!("quota.rs")),
