@@ -8,6 +8,8 @@ export const en = {
   "nav.home": "Home",
   "nav.compose": "Type & Translate",
   "nav.voice": "Voice",
+  "nav.notes": "Meeting notes",
+  "notes.empty": "No session to take notes on yet. Translate a meeting, then come back here.",
   "nav.transcript": "Transcript",
   "nav.history": "History",
   "nav.glossary": "Glossary",

@@ -11,6 +11,8 @@ const PATHS = {
   about: "M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17ZM12 11v5.5M12 7.6v.1",
   // Màn hình Hỗ trợ (chat): bong bóng hội thoại; gửi tin; menu ⋯; đính kèm log.
   support: "M4.5 5h15a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H10l-4.5 3.5v-3.5h-1a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM8 9.5h8M8 12.5h5",
+  // Mục Ghi chú cuộc họp: tờ giấy có ba dòng kẻ.
+  notes: "M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1ZM9 8.5h6M9 12h6M9 15.5h3.5",
   send: "M4 11.5 20 4l-6.5 16-2.5-6.5ZM11 13.5 20 4",
   more: "M5.5 12h.1M12 12h.1M18.5 12h.1",
   paperclip: "M16 7.5 9.2 14.3a1.8 1.8 0 0 0 2.5 2.5l7-7a3.6 3.6 0 0 0-5.1-5.1l-7.1 7.1a5.4 5.4 0 0 0 7.6 7.6L19.5 14",

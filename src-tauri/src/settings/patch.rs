@@ -40,8 +40,12 @@ pub fn apply(current: &Settings, patch: &Value) -> Result<Settings, Invalid> {
     for (key, value) in patch {
         set(&mut merged, key, value)?;
     }
-    let settings: Settings =
+    let mut settings: Settings =
         serde_json::from_value(Value::Object(merged)).map_err(|_| first_wrong_type(current, patch))?;
+    // Sự đồng ý gửi bản dịch cho ghi chú là theo từng nhà cung cấp (spec ghi chú cuộc họp §9).
+    if settings.translation_provider != current.translation_provider && !patch.contains_key("notesCloudConsent") {
+        settings.notes_cloud_consent = false;
+    }
     settings.validate()?;
     Ok(settings)
 }
@@ -426,6 +430,21 @@ mod tests {
             apply(&d, &json!({ "deepseekModel": "deepseek-chat" })),
             Err(Invalid::new("deepseekModel", Reason::OutOfRange))
         );
+    }
+
+    /// Spec 2026-11-11-ghi-chu-cuoc-hop §9: đổi nhà cung cấp dịch thì sự đồng ý gửi bản dịch ra ngoài bị rút lại
+    /// (hộp đồng ý hiện lại), trừ khi chính bản vá đó đặt lại `notesCloudConsent`.
+    #[test]
+    fn changing_the_translation_provider_withdraws_the_cloud_consent() {
+        let mut d = current();
+        d.translation_provider = crate::settings::TranslationProvider::Gemini;
+        d.notes_cloud_consent = true;
+        let s = apply(&d, &json!({ "translationProvider": "deepseek" })).unwrap();
+        assert!(!s.notes_cloud_consent);
+        let same = apply(&d, &json!({ "translationProvider": "gemini" })).unwrap();
+        assert!(same.notes_cloud_consent);
+        let both = apply(&d, &json!({ "translationProvider": "openai", "notesCloudConsent": true })).unwrap();
+        assert!(both.notes_cloud_consent);
     }
 
     /// Spec 2026-11-11-ghi-chu-cuoc-hop: bốn cài đặt của ghi chú cuộc họp, mặc định và vá từng khóa.

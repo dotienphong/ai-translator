@@ -563,7 +563,7 @@ export interface DebugSession {
 // "support": màn hình Hỗ trợ (chat, spec 2026-10-22-chat-ho-tro-zalo §4), giữa Nâng cấp và Giới thiệu.
 // "compose": màn hình Gõ dịch (spec 2026-11-02-tach-go-dich-thanh-tab), ngay dưới Màn hình chính; trước đó là nhóm của Cài đặt.
 // "voice": màn hình Giọng đọc (spec 2026-11-04-giong-doc §7), ngay dưới Gõ dịch, chỉ trên Windows.
-export type Screen = "home" | "compose" | "voice" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
+export type Screen = "home" | "compose" | "voice" | "notes" | "transcript" | "history" | "glossary" | "settings" | "upgrade" | "support" | "about";
 export type SettingsGroup =
   | "general"
   | "subtitles"

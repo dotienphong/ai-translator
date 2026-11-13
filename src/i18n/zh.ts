@@ -9,6 +9,8 @@ export const zh: Record<MessageKey, string> = {
   "nav.home": "主页",
   "nav.compose": "输入翻译",
   "nav.voice": "朗读语音",
+  "nav.notes": "会议纪要",
+  "notes.empty": "还没有可生成纪要的会话。请先翻译一场会议，然后回到这里。",
   "nav.transcript": "转写记录",
   "nav.history": "历史记录",
   "nav.glossary": "术语表",

@@ -9,6 +9,8 @@ export const ko: Record<MessageKey, string> = {
   "nav.home": "홈",
   "nav.compose": "입력 번역",
   "nav.voice": "읽어 주기 음성",
+  "nav.notes": "회의 노트",
+  "notes.empty": "노트를 만들 세션이 아직 없습니다. 회의를 번역한 뒤 여기로 돌아오세요.",
   "nav.transcript": "대본",
   "nav.history": "기록",
   "nav.glossary": "용어집",

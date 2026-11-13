@@ -30,6 +30,15 @@ describe("thanh điều hướng của cửa sổ chính", () => {
     expect(translate("vi", "nav.voice")).toBe("Giọng đọc");
   });
 
+  it("notes_sits_right_after_voice_on_windows_and_after_compose_on_macos", () => {
+    const win = visibleScreens("windows");
+    expect(win[win.indexOf("voice") + 1]).toBe("notes");
+    const mac = visibleScreens("macos");
+    expect(mac.includes("voice")).toBe(false);
+    expect(mac[mac.indexOf("compose") + 1]).toBe("notes");
+    expect(ICONS.notes).toBe("notes");
+  });
+
   it("macos_hides_voice: macOS không có mục Giọng đọc, các mục khác giữ thứ tự", () => {
     const screens = visibleScreens("macos");
     expect(screens).not.toContain("voice");

@@ -16,6 +16,7 @@ import { Home } from "./screens/Home";
 import { GlossaryScreen } from "./screens/GlossaryScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { gateBlocks, isSessionActive, LoginGate } from "./screens/LoginGate";
+import { NotesScreen } from "./screens/NotesScreen";
 import { UpgradeScreen } from "./screens/UpgradeScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { SupportScreen } from "./screens/SupportScreen";
@@ -27,6 +28,7 @@ const BODIES: Record<Screen, () => React.JSX.Element | null> = {
   home: Home,
   compose: ComposeScreen,
   voice: VoiceScreen,
+  notes: NotesScreen,
   transcript: TranscriptScreen,
   history: HistoryScreen,
   glossary: GlossaryScreen,
