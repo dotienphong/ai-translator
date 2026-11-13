@@ -448,7 +448,7 @@ def local_call(server: LocalServer, json_mode: str, request_extra: dict, notes_s
 
 
 def cloud_call(provider: str, model: str, usage: list) -> Callable:
-    env = "OPENAI_API_KEY" if provider == "openai" else "GEMINI_API_KEY"
+    env = {"openai": "OPENAI_API_KEY", "gemini": "GEMINI_API_KEY", "deepseek": "DEEPSEEK_API_KEY"}[provider]
     key = os.environ.get(env)
     if not key:
         sys.exit(f"Thiếu biến môi trường {env}; không gọi mạng.")
@@ -469,10 +469,14 @@ def cloud_call(provider: str, model: str, usage: list) -> Callable:
 
     def call(messages: list[dict], max_tokens: int, schema: dict | None = None) -> str:
         started = time.monotonic()
-        if provider == "openai":
+        if provider in ("openai", "deepseek"):
             body = {"model": model, "messages": messages, "temperature": 0, "max_tokens": max_tokens,
                     "response_format": {"type": "json_object"}}
-            resp = post("https://api.openai.com/v1/chat/completions", {"Authorization": f"Bearer {key}"}, body)
+            url = "https://api.openai.com/v1/chat/completions"
+            if provider == "deepseek":  # mốc so sánh "model lớn" (không phải nguồn của spec G2); tắt chế độ suy nghĩ
+                body["thinking"] = {"type": "disabled"}
+                url = "https://api.deepseek.com/chat/completions"
+            resp = post(url, {"Authorization": f"Bearer {key}"}, body)
             u = resp.get("usage", {})
             usage.append({"prompt_tokens": u.get("prompt_tokens"), "completion_tokens": u.get("completion_tokens"),
                           "ms": int((time.monotonic() - started) * 1000)})
@@ -579,7 +583,7 @@ def build_parser() -> argparse.ArgumentParser:
     loc.add_argument("--json-mode", choices=["schema", "prompt"], default="schema")
     loc.add_argument("--server")
     cloud = sub.add_parser("cloud", help="API cloud")
-    cloud.add_argument("--provider", choices=["openai", "gemini"], required=True)
+    cloud.add_argument("--provider", choices=["openai", "gemini", "deepseek"], required=True)
     cloud.add_argument("--model", required=True)
     for p in (loc, cloud):
         p.add_argument("--filter", help="glob theo tên bản chép lời, ví dụ '*-chuan-60'")

@@ -1,14 +1,24 @@
 # Tổng hợp: đo model local cho ghi chú cuộc họp
 
-Ngày đo: 2026-11-11 đến 2026-11-13 (ba vòng). Máy đo và cách chạy lại: `../README.md`.
+Ngày đo: 2026-11-11 đến 2026-11-13 (ba vòng Local, một vòng mốc Cloud). Máy đo và cách chạy lại: `../README.md`.
 
 ## Kết luận
 
-**Chưa đạt, và đã chạm trần.** Sau ba vòng, hệ tốt nhất là `qwen3-5-4b` cấu hình `c16kx` (vòng 2): đạt mọi cổng tự động (JSON 100%, ngôn ngữ 20/20, phiên 60 phút chậm nhất 840 s trên iGPU, RAM đỉnh 4315 MiB) và `refs` đúng 100%, nhưng **rớt cổng việc cần làm bịa**. Vòng 3 chấm tách hai loại: 7 việc **bịa hẳn** trên 20 bản (ngưỡng ≤ 2) và 41 việc có thật nhưng **sai chi tiết** (người nhận, hạn, số liệu, nội dung); tổng 48/177 (27%).
+**Local chưa đạt ngưỡng của spec, nhưng ngưỡng bịa của spec cũng không thực tế.** Mốc Cloud (DeepSeek `deepseek-v4-flash`, vòng 4, `cham-tay-4.md`) chấm mù cùng Local cho kết quả:
 
-Vòng 3 (`c16ky`: model ghi chú đọc lời gốc thay vì bản dịch, xoá hạn có số không thấy trong lời gốc) giảm sai chi tiết (41 → 31) và quyết định sai (35 → 16), nhưng tìm ít việc hơn (recall 68% so với 73%), bịa hẳn 10, và phiên 60 phút 870 s, sát ngưỡng 900 s. Không hơn `c16kx` một cách rõ ràng.
+| | Cloud (DeepSeek) | Local `qwen3-5-4b c16kx` |
+|---|---|---|
+| Việc cần làm bịa hẳn (ngưỡng ≤ 2 / 20 bản) | 10 | 8 |
+| Việc có thật nhưng sai chi tiết | 10 | 32 |
+| Việc cần làm sai / tổng | 20 / 207 (10%) | 40 / 177 (23%) |
+| Recall việc cần làm | 94% | 59% |
+| Phiên 60 phút chậm nhất | 13 s | 840 s (iGPU) |
 
-Ngày 2026-11-12 chủ dự án nới cổng thời gian lên **15 phút (900 s)** cho phiên 60 phút, áp cho cả máy có và không có GPU. Chạy chỉ CPU chưa đo với cấu hình mới (`c16kb` chỉ CPU: 1335 s).
+- Về **bịa hẳn**, Local ngang model cloud; cả hai đều rớt ngưỡng ≤ 2/20, nên ngưỡng này nên viết lại theo mốc Cloud.
+- Khoảng cách thật là **chi tiết và độ đủ**: Local sai chi tiết gấp ba và sót khoảng 40% việc thật.
+- Hệ tốt nhất cho Local vẫn là `c16kx` (vòng 2): đạt mọi cổng tự động (JSON 100%, ngôn ngữ 20/20, 840 s, RAM đỉnh 4315 MiB). Vòng 3 (`c16ky`, đọc lời gốc) không hơn rõ ràng.
+
+Ngày 2026-11-12 chủ dự án nới cổng thời gian lên **15 phút (900 s)** cho phiên 60 phút. Chạy chỉ CPU chưa đo với cấu hình mới (`c16kb` chỉ CPU: 1335 s).
 
 Theo spec §10, G3 chờ chủ dự án quyết định lại. Kế hoạch 03 (engine Local) chưa viết.
 
@@ -25,7 +35,7 @@ Theo spec §10, G3 chờ chủ dự án quyết định lại. Kế hoạch 03 (
 | Việc cần làm sai (chấm mù chung) | 60 / 180 (33%) | 42 / 177 (24%) |
 | Recall việc cần làm | 81,8% | 82,4% |
 
-Hai cấu hình thử giữa chừng: `c16kv` (kiểm từng việc, model viết lại nội dung: ko-60 1076 s, RSS 12 GiB, 2 bản ja sai ngôn ngữ) và `c16kw` (kiểm theo lô: nhanh hơn nhưng gần như không bỏ việc nào, ko-60 vẫn 955 s). Số liệu ở `tu-dong.md`; chấm tay ở `cham-tay.md` (vòng 1), `cham-tay-2.md` (vòng 2) và `cham-tay-3.md` (vòng 3, tách bịa hẳn với sai chi tiết).
+Hai cấu hình thử giữa chừng: `c16kv` (kiểm từng việc, model viết lại nội dung: ko-60 1076 s, RSS 12 GiB, 2 bản ja sai ngôn ngữ) và `c16kw` (kiểm theo lô: nhanh hơn nhưng gần như không bỏ việc nào, ko-60 vẫn 955 s). Số liệu ở `tu-dong.md`; chấm tay ở `cham-tay.md` (vòng 1), `cham-tay-2.md` (vòng 2) , `cham-tay-3.md` (vòng 3, tách bịa hẳn với sai chi tiết) và `cham-tay-4.md` (mốc Cloud).
 
 ## Bảng đối chiếu ngưỡng tự động (đầy đủ ở `tu-dong.md`)
 
@@ -62,7 +72,7 @@ Người chấm ghi phần lớn lỗi còn lại ở ja và vi là sai hạn, s
 
 ## Chưa đo / hạn chế
 
-- **Mốc Cloud** (Gemini, ChatGPT): chưa đo (chưa có key API), nên chưa biết ngưỡng ≤ 2/20 với tiêu chí chặt này có đạt nổi với model lớn hay không.
+- **Mốc Cloud của chính spec** (Gemini, ChatGPT): chưa đo; mốc đã đo là DeepSeek v4-flash (cùng tầm model mặc định của hai nguồn đó, không phải số của chính chúng).
 - Vòng 3 đã thử ghi chú đọc lời gốc (`c16ky`): không hơn rõ ràng (xem `cham-tay-3.md`).
 - **Chỉ CPU với `c16kx`**, **máy 16 GB**, **card rời**: chưa đo.
 - **Nhiễu nhận dạng giọng nói:** bộ thử dựng từ chữ rồi dịch bằng MT của app, không thu qua app.
@@ -71,6 +81,6 @@ Người chấm ghi phần lớn lỗi còn lại ở ja và vi là sai hạn, s
 
 ## Quyết định cần chủ dự án (G3)
 
-1. Chỉ phát hành Cloud trước; Local sau, khi có model nhỏ tốt hơn.
-2. Cloud mặc định; Local tùy chọn, ghi rõ "bản nháp, kiểm lại việc cần làm" và có nút đối chiếu câu gốc (spec §11 rủi ro 3), hệ `c16kx`.
-3. Đo mốc Cloud trước khi chốt (cần key API qua biến môi trường), để biết ngưỡng ≤ 2/20 có thực tế với tiêu chí chấm này không.
+1. Chỉ phát hành Cloud trước; Local sau.
+2. Cloud mặc định; Local tùy chọn, ghi rõ "bản nháp, kiểm lại việc cần làm", có nút đối chiếu câu gốc, hệ `c16kx`; sửa ngưỡng bịa của spec thành "không tệ hơn mốc Cloud".
+3. Giữ G3 (cùng phát hành, Local mặc định): không khuyên, vì Local sót khoảng 40% việc thật.

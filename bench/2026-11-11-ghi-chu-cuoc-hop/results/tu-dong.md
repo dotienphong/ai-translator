@@ -1,5 +1,6 @@
 | Hß╗ç | Bß║ún ch├⌐p lß╗¥i | L╞░ß╗út gß╗ìi | JSON hß╗úp lß╗ç (Γëñ 1 lß║ºn thß╗¡ lß║íi) | Hß╗úp lß╗ç ngay lß║ºn ─æß║ºu | reduce_fallback | failed_chunks | raw_fallback | `refs` tß╗ôn tß║íi | ─É├║ng ng├┤n ngß╗» | 60 ph├║t chß║¡m nhß║Ñt (s) | RSS ─æß╗ënh (MiB) | Cß╗òng |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
+| deepseek-deepseek-v4-flash | 20 | 20 | 100.0% | 80.0% | 0 | 0 | 0 | 100.0% (863) | 20/20 | 13.0 (5 bß║ún) | ΓÇö | ─æß║ít |
 | qwen3-4b-instruct-2507-c8k-gpu | 11 | 32 | 53.1% | 50.0% | 0 | 15 | 4 | 100.0% (244) | 7/11 | 1040.8 (3 bß║ún) | 8265 | rß╗¢t: JSON, ng├┤n ngß╗», thß╗¥i gian |
 | qwen3-5-4b-c16k-gpu | 12 | 18 | 88.9% | 88.9% | 1 | 1 | 1 | 100.0% (336) | 11/12 | 886.3 (3 bß║ún) | 5181 | rß╗¢t: JSON, ng├┤n ngß╗» |
 | qwen3-5-4b-c16kb-cpu | 5 | 15 | 100.0% | 100.0% | 0 | 0 | 0 | 100.0% (285) | 5/5 | 1334.8 (5 bß║ún) | 5889 | rß╗¢t: thß╗¥i gian |

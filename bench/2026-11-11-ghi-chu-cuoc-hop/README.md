@@ -21,6 +21,8 @@ uv run --python 3.12 python -I build_set.py
 # chạy một cấu hình (gpu = Vulkan, cpu = chỉ CPU)
 uv run --python 3.12 --with psutil python -I run_notes.py local --candidate qwen3-5-4b --config c16kx --hw gpu
 uv run --python 3.12 --with psutil python -I run_notes.py local --candidate qwen3-5-4b --config c16kb --hw cpu --filter '*-chuan-60'
+# mốc Cloud (key trong biến môi trường DEEPSEEK_API_KEY, GEMINI_API_KEY hay OPENAI_API_KEY; không ghi key vào file)
+uv run --python 3.12 python -I run_notes.py cloud --provider deepseek --model deepseek-v4-flash
 # chấm tự động
 python score_auto.py "$DATA\out" > results\tu-dong.md
 # kiểm thử
@@ -35,4 +37,4 @@ Cấu hình (`CONFIGS` trong `run_notes.py`): `c8k`, `c8kb`, `c16k`, `c16kb` (co
 - `schema.json`, `prompts/`: lược đồ đầu ra và lời nhắc.
 - `make_raw.py`, `build_set.py`: dựng bộ thử (`results/bo-thu.md` mô tả và nêu giới hạn).
 - `score_auto.py`: chấm tự động; `grading.py`: dựng phiếu và tính điểm chấm tay.
-- `results/`: `may-do.md`, `ung-vien.md`, `bo-thu.md`, `tu-dong.md`, `cham-tay.md`, `cham-tay-2.md`, `cham-tay-3.md`, `tong-hop.md`.
+- `results/`: `may-do.md`, `ung-vien.md`, `bo-thu.md`, `tu-dong.md`, `cham-tay.md`, `cham-tay-2.md`, `cham-tay-3.md`, `cham-tay-4.md`, `tong-hop.md`.

@@ -150,7 +150,8 @@ Chi tiết: `bench/2026-11-11-ghi-chu-cuoc-hop/results/tong-hop.md`.
 - Hệ tốt nhất: `qwen3-5-4b` (Q4_K_M, Apache-2.0), cấu hình `c16kx`: lời nhắc chặt cho việc cần làm, gộp đoạn chỉ viết tóm tắt, lượt kiểm từng việc đọc câu gốc. Đạt JSON 100%, ngôn ngữ 20/20, `refs` 100%, phiên 60 phút 840 s (iGPU), RAM đỉnh 4315 MiB.
 - **Rớt việc cần làm bịa:** chấm tách hai loại (vòng 3): 7 việc bịa hẳn trên 20 bản (ngưỡng ≤ 2) và 41 việc có thật nhưng sai người nhận, hạn hay chi tiết; tổng 48/177. Cho model đọc lời gốc thay vì bản dịch (`c16ky`) không hơn rõ ràng: sai chi tiết giảm nhưng sót việc và bịa hẳn tăng.
 - `llama-server` của tiến trình ghi chú phải chạy với `--cache-ram 0` (mặc định giữ tới 8 GiB bộ đệm prompt trên RAM).
-- Chưa đo: mốc Cloud, chỉ CPU với cấu hình mới, máy 16 GB, nhiễu nhận dạng giọng nói.
+- **Mốc Cloud** (DeepSeek `deepseek-v4-flash`, chấm mù chung, 2026-11-13): bịa hẳn 10/20 bản, sai chi tiết 10, recall 94%; Local `c16kx` cùng lượt: bịa hẳn 8, sai chi tiết 32, recall 59%. Ngưỡng "bịa ≤ 1 mỗi 10 cuộc họp" model cloud cũng không đạt với tiêu chí chấm này; khoảng cách Local–Cloud nằm ở chi tiết và độ đủ.
+- Chưa đo: mốc Gemini/ChatGPT, chỉ CPU với cấu hình mới, máy 16 GB, nhiễu nhận dạng giọng nói.
 - Theo luật dừng ở trên: **G3 chờ chủ dự án quyết định lại.** Không làm kế hoạch 03 (engine Local) trước đó.
 
 ## 11. Rủi ro
