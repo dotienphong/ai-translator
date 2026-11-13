@@ -11,6 +11,7 @@ export const ja: Record<MessageKey, string> = {
   "nav.voice": "読み上げ音声",
   "nav.notes": "会議メモ",
   "notes.empty": "メモを作成できるセッションがまだありません。会議を翻訳してから、ここに戻ってきてください。",
+  "notes.source.local": "端末内モデル",
   "nav.transcript": "文字起こし",
   "nav.history": "履歴",
   "nav.glossary": "用語集",

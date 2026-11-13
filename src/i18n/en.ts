@@ -10,6 +10,7 @@ export const en = {
   "nav.voice": "Voice",
   "nav.notes": "Meeting notes",
   "notes.empty": "No session to take notes on yet. Translate a meeting, then come back here.",
+  "notes.source.local": "On-device model",
   "nav.transcript": "Transcript",
   "nav.history": "History",
   "nav.glossary": "Glossary",

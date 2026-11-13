@@ -10,6 +10,7 @@ export const vi: Record<MessageKey, string> = {
   "nav.voice": "Giọng đọc",
   "nav.notes": "Ghi chú cuộc họp",
   "notes.empty": "Chưa có phiên nào để ghi chú. Dịch một cuộc họp rồi quay lại đây.",
+  "notes.source.local": "Model trên máy",
   "nav.transcript": "Bản chép lời",
   "nav.history": "Lịch sử",
   "nav.glossary": "Từ điển thuật ngữ",
