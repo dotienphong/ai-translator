@@ -1,12 +1,12 @@
 # Thỏa thuận cấp phép người dùng cuối (EULA) của AI Translator
 
-**Phiên bản 1.8, hiệu lực từ 06/11/2026.**
+**Phiên bản 1.9, hiệu lực từ 06/11/2026.**
 
 Văn bản này là thỏa thuận giữa bạn và **Đỗ Tiến Phong** ("chúng tôi") về việc dùng ứng dụng **AI Translator** ("ứng dụng"). Bằng việc cài đặt hoặc dùng ứng dụng, bạn đồng ý với thỏa thuận này. Nếu không đồng ý, xin đừng cài đặt hay dùng.
 
 ## 1. Ứng dụng làm gì
 
-AI Translator hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính của bạn (ví dụ cuộc họp trực tuyến) và, khi bạn chọn, cho âm thanh từ micro (ví dụ người nói trong phòng họp). Việc nhận dạng giọng nói và dịch chạy **trên máy bạn**, không gửi âm thanh đi đâu. Khi bạn bật (tính năng này hiện chỉ có trên macOS, Windows chưa có), ứng dụng cũng phân biệt người nói và hiện tên người tham dự đọc từ cửa sổ cuộc họp (hiện chỉ Microsoft Teams bản cài); kết quả chỉ là nhãn trên phụ đề và có thể sai. Chính sách quyền riêng tư (`privacy`) là một phần của thỏa thuận này.
+AI Translator hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy tính của bạn (ví dụ cuộc họp trực tuyến) và, khi bạn chọn, cho âm thanh từ micro (ví dụ người nói trong phòng họp). Việc nhận dạng giọng nói chạy **trên máy bạn**, không gửi âm thanh đi đâu; việc dịch mặc định cũng chạy trên máy bạn, trừ khi bạn tự bật model cloud bằng khóa API của mình (chính sách quyền riêng tư, mục 16): khi đó chữ cần dịch, hoặc chữ của bản chép lời để lập ghi chú cuộc họp, được gửi tới nhà cung cấp bạn chọn. Khi bạn bật (tính năng này hiện chỉ có trên macOS, Windows chưa có), ứng dụng cũng phân biệt người nói và hiện tên người tham dự đọc từ cửa sổ cuộc họp (hiện chỉ Microsoft Teams bản cài); kết quả chỉ là nhãn trên phụ đề và có thể sai. Chính sách quyền riêng tư (`privacy`) là một phần của thỏa thuận này.
 
 ## 2. Quyền sử dụng chúng tôi cấp cho bạn
 

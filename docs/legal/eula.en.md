@@ -1,12 +1,12 @@
 # AI Translator End User License Agreement (EULA)
 
-**Version 1.8, effective 6 November 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
+**Version 1.9, effective 6 November 2026. If this English translation and the Vietnamese version differ, the Vietnamese version prevails.**
 
 This is an agreement between you and **Do Tien Phong** ("we", "us") for your use of the **AI Translator** application (the "app"). By installing or using the app you agree to it. If you do not agree, please do not install or use the app.
 
 ## 1. What the app does
 
-AI Translator shows live translated subtitles for audio playing on your computer (for example an online meeting) and, when you choose, for audio from the microphone (for example people speaking in the meeting room). Speech recognition and translation run **on your computer**; your audio is not sent anywhere. When you turn it on (this feature is only on macOS for now, not yet on Windows), the app also tells speakers apart and shows the names of participants read from the meeting window (currently only the Microsoft Teams desktop app); the result is only a label on the subtitles and can be wrong. The Privacy Policy is part of this agreement.
+AI Translator shows live translated subtitles for audio playing on your computer (for example an online meeting) and, when you choose, for audio from the microphone (for example people speaking in the meeting room). Speech recognition runs **on your computer** and your audio is not sent anywhere; translation also runs on your computer by default, unless you turn on a cloud model yourself with your own API key (Privacy Policy, section 16), in which case the text to translate, or the transcript text for meeting notes, is sent to the provider you chose. When you turn it on (this feature is only on macOS for now, not yet on Windows), the app also tells speakers apart and shows the names of participants read from the meeting window (currently only the Microsoft Teams desktop app); the result is only a label on the subtitles and can be wrong. The Privacy Policy is part of this agreement.
 
 ## 2. The license we grant you
 

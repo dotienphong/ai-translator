@@ -72,7 +72,7 @@ describe("loadLegal", () => {
 });
 
 // Đăng nhập bằng Google (spec 2026-11-05-dang-nhap-google-design.md §8, §10): bản đóng gói trong app chính là docs/legal (không có
-// bản chép riêng), EULA lên 1.8 và chính sách lên 1.14, và chính sách nói cùng điều với màn đăng nhập và nút Xóa tài khoản trong app.
+// bản chép riêng), EULA lên 1.9 và chính sách lên 1.15 (model cloud và ghi chú cuộc họp, spec 2026-11-11 mục 10), và chính sách nói cùng điều với màn đăng nhập và nút Xóa tài khoản trong app.
 // Đọc file bằng `node:fs` nạp động (dự án không cài kiểu của Node), như markdown.test.ts.
 type Fs = { readFileSync(path: URL, encoding: "utf8"): string };
 const onDisk = async (name: string) =>
@@ -87,11 +87,11 @@ describe("văn bản pháp lý đóng gói, bản có tài khoản Google", () =
       }
     }
   });
-  it("EULA 1.8 và chính sách 1.14, bản vi và en cùng phiên bản", async () => {
-    expect(await onDisk("eula.vi.md")).toMatch(/^\*\*Phiên bản 1\.8, hiệu lực từ \d\d\/\d\d\/\d{4}\.\*\*$/m);
-    expect(await onDisk("eula.en.md")).toMatch(/^\*\*Version 1\.8, effective \d{1,2} [A-Z][a-z]+ \d{4}\. /m);
-    expect(await onDisk("privacy.vi.md")).toMatch(/^\*\*Phiên bản 1\.14, hiệu lực từ \d\d\/\d\d\/\d{4}\.\*\*$/m);
-    expect(await onDisk("privacy.en.md")).toMatch(/^\*\*Version 1\.14, effective \d{1,2} [A-Z][a-z]+ \d{4}\. /m);
+  it("EULA 1.9 và chính sách 1.15, bản vi và en cùng phiên bản", async () => {
+    expect(await onDisk("eula.vi.md")).toMatch(/^\*\*Phiên bản 1\.9, hiệu lực từ \d\d\/\d\d\/\d{4}\.\*\*$/m);
+    expect(await onDisk("eula.en.md")).toMatch(/^\*\*Version 1\.9, effective \d{1,2} [A-Z][a-z]+ \d{4}\. /m);
+    expect(await onDisk("privacy.vi.md")).toMatch(/^\*\*Phiên bản 1\.15, hiệu lực từ \d\d\/\d\d\/\d{4}\.\*\*$/m);
+    expect(await onDisk("privacy.en.md")).toMatch(/^\*\*Version 1\.15, effective \d{1,2} [A-Z][a-z]+ \d{4}\. /m);
   });
   it("chính sách không còn nói ứng dụng không có tài khoản đăng nhập", async () => {
     expect(await onDisk("privacy.vi.md")).not.toMatch(/không có tài khoản đăng nhập/);
@@ -150,5 +150,54 @@ describe("văn bản pháp lý đóng gói, bản có tài khoản Google", () =
       const text = await onDisk(`eula.${lang}.md`);
       for (const n of need[lang]) expect(text, `eula.${lang}.md: "${n}"`).toContain(n);
     }
+  });
+});
+
+// Model cloud và ghi chú cuộc họp (spec 2026-11-11 mục 10; kế hoạch 05 Task 1): chính sách 1.14 chưa có dòng nào về nhà cung cấp cloud,
+// nên câu "không gửi qua mạng" của chép lời và bản dịch phải có ngoại lệ, và EULA phải đổi theo câu "dịch chạy trên máy bạn".
+describe("văn bản pháp lý, bản có model cloud và ghi chú cuộc họp", () => {
+  it("chính sách có đủ mục 1 đến 16, bản vi và en", async () => {
+    for (const lang of ["vi", "en"] as const) {
+      const heads = (await onDisk(`privacy.${lang}.md`)).match(/^## \d+\./gm) ?? [];
+      expect(heads, lang).toEqual(Array.from({ length: 16 }, (_, i) => `## ${i + 1}.`));
+    }
+  });
+  it("chính sách nêu model cloud do người dùng bật, ba máy chủ, việc không gửi âm thanh và nhà cung cấp không phải bên xử lý của chúng tôi", async () => {
+    const need = {
+      vi: [
+        "## 16. Model cloud và ghi chú cuộc họp",
+        "Mặc định cả hai đều tắt",
+        "api.openai.com",
+        "generativelanguage.googleapis.com",
+        "api.deepseek.com",
+        "**Không bao giờ gửi âm thanh**",
+        "không phải bên xử lý dữ liệu của chúng tôi",
+        "| Ghi chú cuộc họp |",
+        "Ghi chú tạo bằng model trên máy",
+      ],
+      en: [
+        "## 16. Cloud models and meeting notes",
+        "Both are off by default",
+        "api.openai.com",
+        "generativelanguage.googleapis.com",
+        "api.deepseek.com",
+        "**Audio is never sent**",
+        "are not processors of our data",
+        "| Meeting notes |",
+        "Meeting notes made with the on-device model",
+      ],
+    } as const;
+    for (const lang of ["vi", "en"] as const) {
+      const text = await onDisk(`privacy.${lang}.md`);
+      for (const phrase of need[lang]) expect(text, `${lang}: ${phrase}`).toContain(phrase);
+    }
+  });
+  it("câu \"không có kết nối nào khác\" và câu dịch trên máy có ngoại lệ model cloud", async () => {
+    expect(await onDisk("privacy.vi.md")).toContain("chỉ rời máy ở kết nối số 6");
+    expect(await onDisk("privacy.en.md")).toContain("only through connection 6");
+    expect(await onDisk("privacy.vi.md")).toContain("chỉ khi bạn tự bật model cloud thì từng câu cần dịch");
+    expect(await onDisk("privacy.en.md")).toContain("only if you turn on a cloud model yourself is each sentence");
+    expect(await onDisk("eula.vi.md")).toContain("trừ khi bạn tự bật model cloud");
+    expect(await onDisk("eula.en.md")).toContain("unless you turn on a cloud model yourself");
   });
 });

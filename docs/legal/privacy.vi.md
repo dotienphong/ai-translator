@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư của AI Translator
 
-**Phiên bản 1.14, hiệu lực từ 06/11/2026.**
+**Phiên bản 1.15, hiệu lực từ 06/11/2026.**
 
 ## 1. Ai chịu trách nhiệm về dữ liệu của bạn
 
@@ -14,6 +14,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 - **Phân biệt người nói** (hiện chỉ có trên macOS, Windows chưa có tính năng này; bật mặc định, tắt được ở Cài đặt › Phụ đề › Người nói): ứng dụng tạm thời phân tích đặc điểm giọng ngay trên máy để biết câu nào do cùng một người nói và hiện nhãn "Người 1", "Người 2". Đặc điểm giọng **chỉ nằm trong bộ nhớ RAM, tự xóa khi hết phiên, không ghi xuống đĩa, không gửi đi**, và ứng dụng không dùng nó để xác định danh tính ai (mục 3). Trên macOS, ứng dụng còn đọc **tên người tham dự hiển thị trên cửa sổ cuộc họp Microsoft Teams bản cài** để gắn tên vào phụ đề (mục 3).
 - **Gói Free (dùng thử) cần Đăng nhập bằng Google**; gói trả phí còn hạn không cần đăng nhập. Khi bạn đăng nhập, máy chủ của chúng tôi lưu **email Google** và **mã định danh tài khoản Google** của bạn để quản lý tài khoản, key, dùng thử và liên hệ về dịch vụ; hiện email này không được dùng để quảng bá. Bạn đăng xuất hay xóa tài khoản ở Cài đặt › Tài khoản (mục 15).
 - Ứng dụng **không có quảng cáo, không có analytics**. Khi gặp lỗi, ứng dụng **tự gửi báo cáo lỗi đã che dữ liệu cá nhân** cho chúng tôi để sửa lỗi; bạn tắt được bất cứ lúc nào (mục 10).
+- **Model cloud do bạn tự bật** (mặc định tắt): nếu bạn nhập khóa API của chính mình cho ChatGPT (OpenAI), Gemini (Google) hay DeepSeek và chọn dùng, ứng dụng gửi **chữ** cần dịch, hoặc chữ của bản chép lời để lập ghi chú cuộc họp, thẳng từ máy bạn tới nhà cung cấp đó bằng khóa của bạn. **Không bao giờ gửi âm thanh**, và chúng tôi không nhận hay lưu những chữ đó (mục 16). Ghi chú cuộc họp tạo bằng model trên máy không gửi gì đi.
 - **Website** aitranslator.vn chỉ đo lượt truy cập bằng Google Analytics **khi bạn bấm "Đồng ý"** ở thanh thông báo. Không đồng ý thì website không tải Google Analytics và không đặt cookie đo lường (mục 14). Ứng dụng không dùng Google Analytics.
 - Nếu bạn nhắn ở **chat hỗ trợ** (trên website hay trong ứng dụng), tin nhắn được lưu trên máy chủ của chúng tôi, chuyển tới tài khoản Zalo của người vận hành để trả lời, và **tự xóa sau 90 ngày** kể từ tin cuối; bạn tự xóa được sớm hơn (mục 11).
 - Máy chủ của chúng tôi chỉ lưu **email** (khi bạn mua gói, hoặc khi bạn tự để lại trong chat hỗ trợ), **email Google và mã định danh tài khoản Google** (khi bạn đăng nhập, mục 15), thông tin đơn hàng, license, mã nhận diện máy đã băm, báo cáo lỗi (giữ 30 ngày), báo cáo tình trạng của bộ đọc tên (giữ 60 ngày, không có tên người) và tin nhắn chat hỗ trợ (giữ 90 ngày), để cấp key, kiểm tra bản quyền, bảo đảm mỗi máy và mỗi tài khoản Google chỉ dùng thử gói Free một lần, sửa lỗi và trả lời bạn.
@@ -25,7 +26,9 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 |---|---|
 | Âm thanh máy đang thu | Chỉ nằm trong bộ nhớ RAM trong lúc dịch; không ghi xuống đĩa, không gửi qua mạng |
 | Âm thanh từ micro (khi bạn chọn nguồn có micro) | Chỉ nằm trong bộ nhớ RAM trong lúc dịch; không ghi xuống đĩa, không gửi qua mạng. Log không ghi tên micro, chỉ ghi loại kết nối (ví dụ tích hợp, USB, Bluetooth) |
-| Bản chép lời và bản dịch | Hiện trên màn hình. **Lịch sử mặc định tắt.** Bật thì lưu trên máy bạn, mã hóa, và xóa toàn bộ được bằng một nút |
+| Bản chép lời và bản dịch | Hiện trên màn hình. **Lịch sử mặc định tắt.** Bật thì lưu trên máy bạn, mã hóa, và xóa toàn bộ được bằng một nút. Việc dịch mặc định chạy trên máy bạn; chỉ khi bạn tự bật model cloud thì từng câu cần dịch mới được gửi tới nhà cung cấp bạn chọn (mục 16) |
+| Ghi chú cuộc họp | Tạo khi bạn bấm (hoặc tự động, nếu bạn bật tạo tự động). Nếu phiên được lưu (Lịch sử bật), ghi chú nằm cùng phiên trong cơ sở dữ liệu mã hóa trên máy bạn; nếu phiên không được lưu, ghi chú chỉ nằm trong bộ nhớ RAM. Ghi chú bị xóa cùng phiên, khi bạn bấm Xóa lịch sử hay Xóa toàn bộ dữ liệu. Không có trong log hay báo cáo lỗi. Tệp Markdown hay TXT chỉ có khi bạn tự xuất (Pro) |
+| Ghi chú tạo bằng model trên máy | Model chạy hoàn toàn trên máy bạn: bản chép lời và ghi chú không bao giờ rời máy |
 | Chữ bạn gõ ở Gõ dịch và bản dịch của nó | Chỉ nằm trong bộ nhớ RAM tới khi bạn dán hoặc thoát ứng dụng; không ghi xuống đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Ứng dụng chép bản dịch vào clipboard của hệ điều hành để dán; bản dịch ở lại đó tới khi bạn chép thứ khác |
 | Từ điển thuật ngữ, cài đặt | Lưu trên máy bạn |
 | Khóa mã hóa lịch sử, token bản quyền, token dùng thử, bộ đếm hạn mức, và (khi bạn đăng nhập) token tài khoản cùng email Google | Lưu trong kho khóa của hệ điều hành (Keychain của macOS, Credential Manager của Windows) |
@@ -53,10 +56,11 @@ Cũng trên macOS, việc hiện tên người nói dùng quyền **Trợ năng*
 3. **Làm việc với license server** của chúng tôi (`api.aitranslator.vn`): khi bạn **Đăng nhập bằng Google** (mục 15), khi đăng ký dùng thử Free (ngay sau khi bạn đăng nhập; gửi mã băm của ID máy kèm token tài khoản), khi liên kết license của máy với tài khoản Google, khi đăng xuất hay xóa tài khoản, khi mua gói, kích hoạt, gỡ kích hoạt, khôi phục key, kiểm tra bản quyền định kỳ, gửi báo cáo lỗi (mục 10), gửi báo cáo tình trạng của bộ đọc tên (mục 10) và (hiếm khi) hỏi giờ của máy chủ khi đồng hồ máy bị đặt lệch. Việc hỏi giờ không gửi dữ liệu gì của bạn. Khi bạn đăng nhập, ứng dụng nhờ máy chủ này tạo một lượt đăng nhập rồi mở trang đăng nhập của Google (`accounts.google.com`) bằng trình duyệt của bạn; trình duyệt, không phải ứng dụng, kết nối tới Google. Ứng dụng không gửi yêu cầu nào về đăng nhập hay tài khoản trong lúc đang dịch. Khi bạn dùng **chat hỗ trợ**, ứng dụng cũng gửi và nhận tin chat qua máy chủ này (mục 11): chỉ khi màn hình Hỗ trợ đang mở, hoặc khi bạn đang chờ câu trả lời cho tin đã gửi trong 24 giờ qua và ứng dụng không đang dịch; chưa từng dùng chat thì không có kết nối nào cho chat. Trong lúc dịch, ứng dụng chỉ gửi hay nhận tin chat khi màn hình Hỗ trợ đang mở hoặc khi bạn bấm gửi.
 4. **Trang thanh toán** do PayOS (chuyển khoản VietQR) hoặc Creem (thẻ quốc tế) cung cấp, mở bằng trình duyệt của bạn khi bạn mua gói.
 5. **Website** `aitranslator.vn` của chúng tôi, mở bằng trình duyệt của bạn khi bạn bấm liên kết trong ứng dụng.
+6. **Gọi model cloud do bạn tự bật** (mục 16), chỉ khi bạn đã nhập khóa API và chọn dùng: `api.openai.com` (ChatGPT), `generativelanguage.googleapis.com` (Gemini) hoặc `api.deepseek.com` (DeepSeek), mỗi lần chỉ tới nhà cung cấp bạn chọn. Ứng dụng gọi thẳng từ máy bạn bằng khóa của bạn, không qua máy chủ của chúng tôi, và gửi chữ cần dịch hoặc chữ của bản chép lời để lập ghi chú; không gửi âm thanh.
 
 Các bản ứng dụng trước 0.2.7 kết nối tới cùng các máy chủ trên dưới tên miền cũ `aitranslator.io.vn` của chúng tôi; website ở tên cũ tự chuyển sang `aitranslator.vn`.
 
-Không có kết nối nào khác, và không có kết nối nào mang âm thanh (kể cả âm thanh từ micro), nội dung chép lời hay chữ bạn gõ ở Gõ dịch.
+Không có kết nối nào khác, và không có kết nối nào mang âm thanh (kể cả âm thanh từ micro) hay chữ bạn gõ ở Gõ dịch. Nội dung chép lời hay bản dịch chỉ rời máy ở kết nối số 6, khi bạn tự bật model cloud.
 
 ## 5. Dữ liệu chúng tôi lưu trên máy chủ
 
@@ -93,6 +97,8 @@ Máy chủ cũng lưu **báo cáo tình trạng của bộ đọc tên** (mục 
 | **Zalo** (Công ty Cổ phần VNG, Việt Nam; máy chủ ở Việt Nam) | Chuyển tin nhắn chat hỗ trợ của bạn tới tài khoản Zalo của người vận hành, và chuyển câu trả lời của người vận hành về máy chủ của chúng tôi | Nội dung tin, mã cuộc chat (3 ký tự), nguồn (website hay ứng dụng), ngôn ngữ, trang bạn đang xem (website), dòng thông tin máy nếu bạn để tích (ứng dụng), và thông báo bạn đã để lại email (kèm địa chỉ email) hay đã xóa cuộc chat. Không có địa chỉ IP của bạn. Zalo xử lý các dữ liệu đó theo điều khoản và chính sách riêng của Zalo |
 
 Cloudflare và Resend đặt máy chủ ngoài Việt Nam, còn Creem là pháp nhân Estonia, nên dữ liệu ở mục 5, mục 10 và mục 11 có thể được xử lý ở nước ngoài; Google đặt máy chủ ở nhiều nước, nên dữ liệu đo lường ở mục 14 và việc đăng nhập bằng Google (mục 15) cũng có thể được xử lý ở nước ngoài; Zalo đặt máy chủ ở Việt Nam. Bằng việc mua gói và đồng ý xử lý email, đăng nhập bằng Google sau khi tick ô đồng ý ở màn hình đăng nhập, hoặc gửi tin ở chat hỗ trợ, bạn đồng ý với việc này. Chúng tôi không bán và không chia sẻ dữ liệu của bạn cho mục đích quảng cáo.
+
+**OpenAI, Google (Gemini) và DeepSeek không phải bên xử lý dữ liệu của chúng tôi.** Khi bạn tự bật model cloud (mục 16), ứng dụng gọi thẳng tới họ từ máy bạn, bằng tài khoản và khóa API của chính bạn; chúng tôi không nhận, không lưu và không thấy nội dung đó hay khóa của bạn. Nhà cung cấp xử lý nội dung theo điều khoản và chính sách của họ với tài khoản của bạn, và có thể xử lý ở ngoài Việt Nam. Khóa API được cất trong kho khóa của hệ điều hành trên máy bạn.
 
 ## 7. Thời gian lưu và quyền của bạn
 
@@ -199,3 +205,15 @@ Mục này chỉ nói về website aitranslator.vn. Ứng dụng không có anal
 **Đăng xuất** (Cài đặt › Tài khoản › Đăng xuất) xóa thông tin đăng nhập khỏi máy này, không xóa tài khoản trên máy chủ. Máy dùng thử Free phải đăng nhập lại mới dịch tiếp được; máy có gói trả phí không bị ảnh hưởng.
 
 **Xóa tài khoản** (Cài đặt › Tài khoản › Xóa tài khoản; không làm được khi đang dịch): Xóa tài khoản chỉ xóa email Google khỏi bản ghi tài khoản và gỡ liên kết với license và bản dùng thử. Để mỗi tài khoản Google chỉ có một lần dùng thử, máy chủ vẫn giữ mã định danh tài khoản Google, ngày tạo, lần đăng nhập gần nhất, thời điểm bạn đồng ý, ngôn ngữ giao diện, mốc dùng thử và thời điểm xóa (không kèm email); dòng dùng thử của máy (mã băm ID máy, mốc dùng thử) cũng được giữ như mục 7. License key và gói trả phí không bị xóa. Email bạn dùng để mua gói vẫn nằm trong license và đơn hàng đó; muốn xóa thì hãy nhắn Hỗ trợ hoặc yêu cầu xóa theo mục 7. Sau khi xóa, máy có gói trả phí vẫn dùng bình thường; máy dùng thử Free phải đăng nhập lại mới dịch tiếp được và không có thêm ngày dùng thử. Đăng nhập lại bằng cùng tài khoản Google thì tài khoản cũ được khôi phục với mốc dùng thử cũ, và email cùng thời điểm đồng ý được ghi lại.
+
+## 16. Model cloud và ghi chú cuộc họp
+
+Mục này nói về việc dùng model của bên thứ ba **chỉ khi bạn tự bật**: dịch bằng model cloud (bạn chọn trong Cài đặt) và lập Ghi chú cuộc họp bằng model cloud. **Mặc định cả hai đều tắt** và ứng dụng không gửi nội dung nào ra ngoài.
+
+- **Điều kiện bật:** bạn nhập khóa API của chính mình cho ChatGPT (OpenAI), Gemini (Google) hay DeepSeek, rồi chọn nhà cung cấp đó. Khóa được cất trong kho khóa của hệ điều hành (macOS Keychain, Windows Credential Manager); ứng dụng không gửi khóa cho chúng tôi và không ghi khóa vào log.
+- **Khi dịch:** từng câu đang dịch được gửi tới nhà cung cấp bạn chọn. Có thể kèm các thuật ngữ trong từ điển thuật ngữ của bạn có mặt trong câu đó, hoặc, nếu bạn bật tùy chọn thử nghiệm dịch theo ngữ cảnh, câu liền trước.
+- **Khi lập ghi chú:** chữ của từng câu trong phiên (bản dịch sang ngôn ngữ bạn chọn, hoặc câu gốc nếu câu chưa được dịch), kèm số thứ tự và nhãn hay tên người nói nếu có (kể cả tên người tham dự nếu ứng dụng đã đọc được), cùng yêu cầu cố định của ứng dụng về cách lập ghi chú. Từ điển thuật ngữ không được gửi trong lần này.
+- **Không bao giờ gửi:** âm thanh (kể cả micro); email, license hay tài khoản của bạn; chữ bạn gõ ở Gõ dịch.
+- **Đồng ý:** với ghi chú cuộc họp, lần đầu dùng model cloud ứng dụng hiện hộp thoại nêu tên nhà cung cấp và chỉ gửi sau khi bạn đồng ý; đổi sang nhà cung cấp khác thì hỏi lại.
+- **Tắt:** chọn lại model trên máy (ở phần dịch trong Cài đặt, và ở màn hình Ghi chú) là ứng dụng ngừng gửi ngay. Ghi chú tạo bằng model trên máy không gửi gì đi.
+- **Phía nhà cung cấp:** họ nhận nội dung trực tiếp từ máy bạn và xử lý theo điều khoản, loại tài khoản và cài đặt dữ liệu của bạn với họ (mục 6). Việc họ giữ lại hay dùng nội dung đó là việc của họ; hãy đọc chính sách của họ trước khi bật. Chúng tôi không nhận bản sao.
