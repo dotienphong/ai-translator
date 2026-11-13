@@ -867,6 +867,47 @@ test("không nguồn chữ nào của site còn câu cũ về số phím tắt, 
   assert.deepEqual(scanStale(await siteTexts(), STALE_COMPOSE), []);
 });
 
+// Gõ dịch đi qua model cloud khi người dùng tự bật (session.rs with_compose_mt dùng cloud_mt::wrap_mt, như phụ đề): câu nói chữ gõ
+// "không bao giờ rời máy / không gửi qua mạng" mà không kèm "mặc định" hay "chỉ khi bật model cloud" là sai (review cuối nhánh ghi-chu-cuoc-hop).
+const STALE_COMPOSE_CLOUD = [
+{ id: "vi: Gõ dịch không gửi", re: /Gõ\s+dịch[^.。]{0,90}(?:không\s+(?:bao\s+giờ\s+)?(?:rời|gửi)|không\s+được\s+gửi)|không\s+bao\s+giờ\s+gửi[^.。]*Gõ\s+dịch/iu, unless: /mặc\s+định|model\s+cloud|trừ\s+khi|nếu\s+bạn\s+tự\s+bật/iu },
+{ id: "en: Type & Translate never sent", re: /Type\s*(?:&|&amp;)\s*Translate[^.]{0,90}?(?:never\s+leave|not\s+sent|never\s+sent|isn't\s+sent)|never\s+sent[^.]*Type\s*(?:&|&amp;)\s*Translate/i, unless: /by\s+default|cloud\s+model|unless\s+you|if\s+you\s+turn/i },
+{ id: "ja: 入力翻訳は送られない", re: /入力翻訳[^。]*(?:出ることはありません|送られず|送りません|送られることも)|決して送らないもの[^。]*入力翻訳/u, unless: /デフォルト|クラウドモデル|自分で/u },
+{ id: "zh: 输入翻译不发送", re: /输入翻译[^。]*(?:不会离开|不通过网络发送|不会收到)|绝不发送[^。]*输入翻译/u, unless: /默认|云端模型|自行开启/u },
+{ id: "ko: 입력 번역 전송 안 함", re: /입력 번역[^.]*(?:나가지 않|전송되지 않|받지 않|보내지 않)|절대 보내지 않는 것[^.]*입력 번역/u, unless: /기본적으로|클라우드 모델|직접 켜/u },
+];
+const STALE_COMPOSE_CLOUD_MUST_CATCH = [
+"Chữ bạn gõ ở Gõ dịch cũng được dịch hoàn toàn trên máy bạn: không được gửi đi và không được ghi xuống đĩa.",
+"Âm thanh và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy.",
+"Không bao giờ gửi: âm thanh (kể cả micro); email, license hay tài khoản của bạn; chữ bạn gõ ở Gõ dịch.",
+"Audio and the text you type in Type & Translate never leave your computer.",
+"Never sent: audio (including the microphone); your email, license or account; the text you type in Type & Translate.",
+"音频以及你在输入翻译中输入的文字，都不会离开你的电脑。",
+"絶対に送らない: 決して送らないもの：音声（マイクを含む）、メールアドレス、ライセンス、アカウント、入力翻訳で入力したテキスト。",
+"오디오와 입력 번역에서 입력한 텍스트는 컴퓨터 밖으로 나가지 않습니다.",
+];
+const STALE_COMPOSE_CLOUD_MUST_KEEP = [
+"Mặc định chữ bạn gõ ở Gõ dịch được xử lý trên máy bạn, không gửi qua mạng; nếu bạn tự bật model cloud thì chữ đó được gửi tới nhà cung cấp bạn chọn.",
+"Âm thanh không bao giờ rời khỏi máy.",
+"Không bao giờ gửi: âm thanh (kể cả micro); email, license hay tài khoản của bạn.",
+"By default, what you type in Type & Translate is not sent over the network; if you turn on a cloud model yourself, it is sent to the provider you chose.",
+"Never sent: audio (including the microphone); your email, license or account.",
+"默认情况下，你在输入翻译中输入的文字不通过网络发送；如果你自行开启云端模型，才会发送给你选择的服务商。",
+"デフォルトでは、入力翻訳で入力したテキストはネットワークに送られません。クラウドモデルを自分でオンにした場合は提供元に送られます。",
+"기본적으로 입력 번역에서 입력한 텍스트는 네트워크로 전송되지 않습니다. 클라우드 모델을 직접 켰다면 전송됩니다.",
+];
+
+test("luật câu cũ về Gõ dịch và model cloud (STALE_COMPOSE_CLOUD) bắt câu cũ và không bắt câu đúng", () => {
+const missed = STALE_COMPOSE_CLOUD_MUST_CATCH.filter((s) => staleHits(s, STALE_COMPOSE_CLOUD).length === 0);
+assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+const extra = STALE_COMPOSE_CLOUD_MUST_KEEP.filter((s) => staleHits(s, STALE_COMPOSE_CLOUD).length > 0).map((s) => `${s} → ${staleHits(s, STALE_COMPOSE_CLOUD).map((h) => h.id).join(", ")}`);
+assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site (kể cả chính sách) nói chữ gõ ở Gõ dịch không bao giờ rời máy mà không nêu ngoại lệ model cloud", async () => {
+assert.deepEqual(scanStale(await siteTexts(), STALE_COMPOSE_CLOUD), []);
+});
+
 // Chữ của app có "&" (Type & Translate): textOf đổi thực thể HTML thành khoảng trắng, nên so cả hai phía sau khi bỏ "&".
 const plainAmp = (s) => s.replace(/&/g, " ").replace(/\s+/g, " ").trim();
 
@@ -917,13 +958,13 @@ test("Gõ dịch: các trang nêu phím tắt, mọi gói, không trừ thời l
 test("chính sách quyền riêng tư: Gõ dịch ở mục 2, 3 (dữ liệu trên máy, clipboard, quyền Trợ năng), 4 (không kết nối nào mang chữ gõ) và 10 (báo cáo không gồm chữ gõ)", () => {
   const errors = [
     ...sectionErrors("/chinh-sach-quyen-rieng-tu/", {
-      2: ["Chữ bạn gõ ở Gõ dịch", "không được gửi đi và không được ghi xuống đĩa"],
+      2: ["Chữ bạn gõ ở Gõ dịch", "hoàn toàn trên máy bạn", "chỉ khi bạn tự bật model cloud"],
       3: ["Chữ bạn gõ ở Gõ dịch và bản dịch của nó", "clipboard", "Trợ năng", "không đọc chữ, nội dung hay clipboard của ứng dụng khác"],
       4: ["hay chữ bạn gõ ở Gõ dịch"],
       10: ["chữ bạn gõ ở Gõ dịch"],
     }),
     ...sectionErrors("/en/privacy/", {
-      2: ["Text you type in Type", "it is not sent anywhere and not written to disk"],
+      2: ["Text you type in Type", "entirely on your computer", "only if you turn on a cloud model yourself"],
       3: ["Translate and its translation", "clipboard", "Accessibility", "does not read text, content or the clipboard of other apps"],
       4: ["or text you type in Type"],
       10: ["text typed in Type"],

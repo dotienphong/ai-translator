@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Type & Translate",
-  lead: "Type & Translate lets you message people who speak another language from the chat box of the app you are using. You type in your own language in a floating compose box, AI Translator translates it on your computer, then pastes the translation into the chat box for you to check and send.",
+  lead: "Type & Translate lets you message people who speak another language from the chat box of the app you are using. You type in your own language in a floating compose box, AI Translator translates it on your computer (unless you turn on a cloud model yourself, in which case what you type is sent to the provider you chose), then pastes the translation into the chat box for you to check and send.",
   meta: `<span>Updated {{updated}}</span>`,
 })}
 

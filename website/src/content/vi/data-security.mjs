@@ -52,20 +52,20 @@ ${facts([
   ["Xử lý AI", "Nhận dạng giọng nói luôn chạy trên máy bạn; dịch và ghi chú mặc định dùng model AI trên máy, model cloud chỉ chạy khi bạn tự bật và nhập khóa API"],
   ["Dữ liệu cuộc họp", "Mặc định chỉ ở trên máy bạn, máy chủ của chúng tôi không có; nếu bạn tự bật model cloud, chữ đi thẳng tới nhà cung cấp bạn chọn"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
-  ["Kết nối mạng", "Sáu nơi; không nơi nào nhận âm thanh hay chữ bạn gõ ở Gõ dịch; chữ chép lời chỉ đi tới nhà cung cấp cloud khi bạn tự bật model cloud"],
+  ["Kết nối mạng", "Sáu nơi; không nơi nào nhận âm thanh; chữ chép lời và chữ bạn gõ ở Gõ dịch chỉ đi tới nhà cung cấp cloud khi bạn tự bật model cloud"],
   ["Máy chủ lưu", "Email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), email Google khi bạn đăng nhập, đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
   ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày; chat hỗ trợ 90 ngày"],
   ["Đã kiểm", "Proxy và nettop trên macOS"],
   ["Ký số", "macOS ký ad-hoc, chưa notarize; Windows chưa ký"],
 ])}
 <h2 id="tren-may">Dữ liệu nào ở lại trên máy bạn?</h2>
-<p>Âm thanh và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy. Bản chép lời và bản dịch mặc định cũng ở lại trên máy; chỉ khi bạn tự bật model cloud thì chúng đi tới nhà cung cấp bạn chọn (xem <a href="#model-cloud">Model cloud và Ghi chú cuộc họp</a>). App không có quảng cáo và không có analytics. Dùng thử Free cần đăng nhập bằng Google, nên máy chủ lưu email Google của bạn cho tài khoản (xem <a href="#may-chu">Máy chủ lưu gì</a>). Gói trả phí không cần đăng nhập. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
+<p>Âm thanh không bao giờ rời khỏi máy. Bản chép lời, bản dịch và chữ bạn gõ ở Gõ dịch mặc định cũng ở lại trên máy; chỉ khi bạn tự bật model cloud thì chúng đi tới nhà cung cấp bạn chọn (xem <a href="#model-cloud">Model cloud và Ghi chú cuộc họp</a>). App không có quảng cáo và không có analytics. Dùng thử Free cần đăng nhập bằng Google, nên máy chủ lưu email Google của bạn cho tài khoản (xem <a href="#may-chu">Máy chủ lưu gì</a>). Gói trả phí không cần đăng nhập. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
 <div class="table-wrap" role="region" aria-label="Dữ liệu ở lại trên máy bạn" tabindex="0"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Cách xử lý</th></tr></thead>
 <tbody>
 <tr><th scope="row">Âm thanh đang thu (âm thanh máy và, nếu bạn chọn, micro)</th><td>Chỉ nằm trong RAM khi dịch. Không ghi đĩa, không gửi qua mạng. AI Translator cũng không ghi âm cuộc họp thành file. Khi bạn chọn nguồn có micro, app thu micro suốt phiên dịch, kể cả khi bạn đã tắt micro trong app họp.</td></tr>
 <tr><th scope="row">Bản chép lời và bản dịch</th><td>Hiện trên màn hình và nằm trong bộ nhớ theo phiên. Lịch sử mặc định tắt; nếu bạn bật (tính năng Pro), lịch sử lưu trên máy, được mã hóa.</td></tr>
-<tr><th scope="row">Chữ bạn gõ ở Gõ dịch và bản dịch của nó</th><td>Chỉ nằm trong bộ nhớ của app tới khi bạn dán hay thoát app. Không ghi đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Bản dịch được chép vào clipboard để dán và ở lại đó tới khi bạn chép thứ khác.</td></tr>
+<tr><th scope="row">Chữ bạn gõ ở Gõ dịch và bản dịch của nó</th><td>Chỉ nằm trong bộ nhớ của app tới khi bạn dán hay thoát app. Không ghi đĩa, không có trong log hay báo cáo lỗi. Mặc định không gửi qua mạng; chỉ khi bạn tự bật model cloud thì chữ bạn gõ được gửi tới nhà cung cấp bạn chọn để dịch. Bản dịch được chép vào clipboard để dán và ở lại đó tới khi bạn chép thứ khác.</td></tr>
 <tr><th scope="row">Khóa, token, bộ đếm hạn mức</th><td>Khóa mã hóa lịch sử, token bản quyền, token dùng thử và bộ đếm hạn mức nằm trong Keychain (macOS) hoặc Credential Manager (Windows). Khi bạn đăng nhập, token tài khoản và email Google cũng nằm ở đó.</td></tr>
 <tr><th scope="row">Log</th><td>Nằm trên máy bạn, không chứa nội dung chép lời. Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>).</td></tr>
 <tr><th scope="row">Từ điển, cài đặt, model</th><td>Lưu trên máy bạn. Model tải một lần rồi chạy hoàn toàn trên máy.</td></tr>
@@ -87,7 +87,7 @@ ${facts([
 <p>Tính năng này chưa đo bằng proxy như phần còn lại của app (xem “Chúng tôi đã kiểm tra điều đó thế nào?”). Toàn văn (kể cả công thức đọc tên) ở mục 2, 3, 4 và 10 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng sáu nơi, và không nơi nào nhận âm thanh hay chữ bạn gõ ở Gõ dịch; nội dung chép lời chỉ tới nơi thứ sáu (nhà cung cấp model cloud), và chỉ khi bạn tự bật model cloud. Nhận dạng giọng nói và dịch bằng model trên máy không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn), cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi. Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê sáu kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục; ba nhà cung cấp model cloud gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
+<p>Đúng sáu nơi, và không nơi nào nhận âm thanh; nội dung chép lời và chữ bạn gõ ở Gõ dịch chỉ tới nơi thứ sáu (nhà cung cấp model cloud), và chỉ khi bạn tự bật model cloud. Nhận dạng giọng nói và dịch bằng model trên máy không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn), cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi. Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê sáu kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục; ba nhà cung cấp model cloud gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
@@ -103,7 +103,7 @@ ${facts([
 <p>Mặc định, nhận dạng giọng nói, dịch và ghi chú cuộc họp đều chạy bằng model trên máy. Model cloud (ChatGPT của OpenAI, Gemini của Google, DeepSeek) là tùy chọn: chỉ chạy khi bạn tự bật và nhập khóa API của chính bạn. Khi đó app gọi thẳng từ máy bạn tới nhà cung cấp bạn chọn, không qua máy chủ của chúng tôi.</p>
 <ul>
 <li><strong>Gửi đi:</strong> chữ cần dịch, kèm thuật ngữ khớp trong từ điển hoặc câu liền trước nếu có; với ghi chú cuộc họp, là bản dịch (hoặc câu gốc nếu chưa dịch) cùng nhãn hoặc tên người nói.</li>
-<li><strong>Không bao giờ gửi:</strong> âm thanh (kể cả micro); email, license hay tài khoản của bạn; chữ bạn gõ ở Gõ dịch.</li>
+<li><strong>Không bao giờ gửi:</strong> âm thanh (kể cả micro); email, license hay tài khoản của bạn.</li>
 <li><strong>App hỏi trước:</strong> với ghi chú, app hỏi bạn đồng ý trước lần đầu gửi chữ chép lời tới nhà cung cấp; đổi nhà cung cấp thì app hỏi lại.</li>
 <li><strong>Khóa API</strong> nằm trong kho khóa của hệ điều hành; app không gửi khóa cho chúng tôi và không ghi khóa vào log.</li>
 <li><strong>Nhà cung cấp</strong> (OpenAI, Google, DeepSeek) không phải bên xử lý của chúng tôi: họ xử lý chữ theo chính sách và điều khoản của họ, nên hãy đọc chúng trước khi bật. Chúng tôi chưa đo kết nối này bằng proxy.</li>

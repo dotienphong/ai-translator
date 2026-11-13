@@ -9,7 +9,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 ## 2. Tóm tắt
 
 - Âm thanh (âm thanh máy và, nếu bạn chọn, micro) được xử lý **hoàn toàn trên máy bạn**. Âm thanh **không bao giờ** được gửi đi, và không được ghi xuống đĩa. Khi nguồn thu có micro (máy cài mới chọn sẵn **Âm thanh máy + Micro**), ứng dụng thu micro suốt phiên dịch, **kể cả khi bạn đã tắt micro (mute) trong ứng dụng họp** (mục 3).
-- Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) cũng được dịch **hoàn toàn trên máy bạn**: không được gửi đi và không được ghi xuống đĩa (mục 3).
+- Chữ bạn gõ ở **Gõ dịch** (ô soạn tin nhắn để dịch rồi dán vào ứng dụng khác) mặc định cũng được dịch **hoàn toàn trên máy bạn** và không được ghi xuống đĩa (mục 3); chỉ khi bạn tự bật model cloud thì chữ đó được gửi tới nhà cung cấp bạn chọn để dịch (kết nối số 6, mục 4).
 - **Gợi ý bật dịch khi có cuộc họp** (Windows; bật mặc định, tắt ở Cài đặt › Chung): ứng dụng kiểm tra **ngay trên máy bạn** xem Teams, Zoom hoặc Google Meet có đang họp và có tiếng không để hiện gợi ý "Bật dịch?". Không lưu, không ghi vào log, không gửi gì đi, và không tự bật dịch khi bạn chưa bấm.
 - **Phân biệt người nói** (hiện chỉ có trên macOS, Windows chưa có tính năng này; bật mặc định, tắt được ở Cài đặt › Phụ đề › Người nói): ứng dụng tạm thời phân tích đặc điểm giọng ngay trên máy để biết câu nào do cùng một người nói và hiện nhãn "Người 1", "Người 2". Đặc điểm giọng **chỉ nằm trong bộ nhớ RAM, tự xóa khi hết phiên, không ghi xuống đĩa, không gửi đi**, và ứng dụng không dùng nó để xác định danh tính ai (mục 3). Trên macOS, ứng dụng còn đọc **tên người tham dự hiển thị trên cửa sổ cuộc họp Microsoft Teams bản cài** để gắn tên vào phụ đề (mục 3).
 - **Gói Free (dùng thử) cần Đăng nhập bằng Google**; gói trả phí còn hạn không cần đăng nhập. Khi bạn đăng nhập, máy chủ của chúng tôi lưu **email Google** và **mã định danh tài khoản Google** của bạn để quản lý tài khoản, key, dùng thử và liên hệ về dịch vụ; hiện email này không được dùng để quảng bá. Bạn đăng xuất hay xóa tài khoản ở Cài đặt › Tài khoản (mục 15).
@@ -29,7 +29,7 @@ AI Translator ("ứng dụng") do **Đỗ Tiến Phong** (cá nhân) phát tri�
 | Bản chép lời và bản dịch | Hiện trên màn hình. **Lịch sử mặc định tắt.** Bật thì lưu trên máy bạn, mã hóa, và xóa toàn bộ được bằng một nút. Việc dịch mặc định chạy trên máy bạn; chỉ khi bạn tự bật model cloud thì từng câu cần dịch mới được gửi tới nhà cung cấp bạn chọn (mục 16) |
 | Ghi chú cuộc họp | Tạo khi bạn bấm (hoặc tự động, nếu bạn bật tạo tự động). Nếu phiên được lưu (Lịch sử bật), ghi chú nằm cùng phiên trong cơ sở dữ liệu mã hóa trên máy bạn; nếu phiên không được lưu, ghi chú chỉ nằm trong bộ nhớ RAM. Ghi chú bị xóa cùng phiên, khi bạn bấm Xóa lịch sử hay Xóa toàn bộ dữ liệu. Không có trong log hay báo cáo lỗi. Tệp Markdown hay TXT chỉ có khi bạn tự xuất (Pro) |
 | Ghi chú tạo bằng model trên máy | Model chạy hoàn toàn trên máy bạn: bản chép lời và ghi chú không bao giờ rời máy |
-| Chữ bạn gõ ở Gõ dịch và bản dịch của nó | Chỉ nằm trong bộ nhớ RAM tới khi bạn dán hoặc thoát ứng dụng; không ghi xuống đĩa, không gửi qua mạng, không có trong log hay báo cáo lỗi. Ứng dụng chép bản dịch vào clipboard của hệ điều hành để dán; bản dịch ở lại đó tới khi bạn chép thứ khác |
+| Chữ bạn gõ ở Gõ dịch và bản dịch của nó | Chỉ nằm trong bộ nhớ RAM tới khi bạn dán hoặc thoát ứng dụng; không ghi xuống đĩa, không có trong log hay báo cáo lỗi. Mặc định không gửi qua mạng; chỉ khi bạn tự bật model cloud thì chữ bạn gõ được gửi tới nhà cung cấp bạn chọn để dịch (mục 4, kết nối số 6). Ứng dụng chép bản dịch vào clipboard của hệ điều hành để dán; bản dịch ở lại đó tới khi bạn chép thứ khác |
 | Từ điển thuật ngữ, cài đặt | Lưu trên máy bạn |
 | Khóa mã hóa lịch sử, token bản quyền, token dùng thử, bộ đếm hạn mức, và (khi bạn đăng nhập) token tài khoản cùng email Google | Lưu trong kho khóa của hệ điều hành (Keychain của macOS, Credential Manager của Windows) |
 | Nhật ký hoạt động (log) | Lưu trên máy bạn, không chứa nội dung chép lời. Chỉ phần log liên quan đến một lỗi rời máy, trong báo cáo lỗi đã che dữ liệu cá nhân (mục 10); bạn cũng có thể gửi log cho hỗ trợ bằng nút trong ứng dụng |
@@ -60,7 +60,7 @@ Cũng trên macOS, việc hiện tên người nói dùng quyền **Trợ năng*
 
 Các bản ứng dụng trước 0.2.7 kết nối tới cùng các máy chủ trên dưới tên miền cũ `aitranslator.io.vn` của chúng tôi; website ở tên cũ tự chuyển sang `aitranslator.vn`.
 
-Không có kết nối nào khác, và không có kết nối nào mang âm thanh (kể cả âm thanh từ micro) hay chữ bạn gõ ở Gõ dịch. Nội dung chép lời hay bản dịch chỉ rời máy ở kết nối số 6, khi bạn tự bật model cloud.
+Không có kết nối nào khác, và không có kết nối nào mang âm thanh (kể cả âm thanh từ micro). Nội dung chép lời, bản dịch hay chữ bạn gõ ở Gõ dịch chỉ rời máy ở kết nối số 6, khi bạn tự bật model cloud.
 
 ## 5. Dữ liệu chúng tôi lưu trên máy chủ
 
@@ -213,7 +213,7 @@ Mục này nói về việc dùng model của bên thứ ba **chỉ khi bạn t�
 - **Điều kiện bật:** bạn nhập khóa API của chính mình cho ChatGPT (OpenAI), Gemini (Google) hay DeepSeek, rồi chọn nhà cung cấp đó. Khóa được cất trong kho khóa của hệ điều hành (macOS Keychain, Windows Credential Manager); ứng dụng không gửi khóa cho chúng tôi và không ghi khóa vào log.
 - **Khi dịch:** từng câu đang dịch được gửi tới nhà cung cấp bạn chọn. Có thể kèm các thuật ngữ trong từ điển thuật ngữ của bạn có mặt trong câu đó, hoặc, nếu bạn bật tùy chọn thử nghiệm dịch theo ngữ cảnh, câu liền trước.
 - **Khi lập ghi chú:** chữ của từng câu trong phiên (bản dịch sang ngôn ngữ bạn chọn, hoặc câu gốc nếu câu chưa được dịch), kèm số thứ tự và nhãn hay tên người nói nếu có (kể cả tên người tham dự nếu ứng dụng đã đọc được), cùng yêu cầu cố định của ứng dụng về cách lập ghi chú. Từ điển thuật ngữ không được gửi trong lần này.
-- **Không bao giờ gửi:** âm thanh (kể cả micro); email, license hay tài khoản của bạn; chữ bạn gõ ở Gõ dịch.
+- **Không bao giờ gửi:** âm thanh (kể cả micro); email, license hay tài khoản của bạn.
 - **Đồng ý:** với ghi chú cuộc họp, lần đầu dùng model cloud ứng dụng hiện hộp thoại nêu tên nhà cung cấp và chỉ gửi sau khi bạn đồng ý; đổi sang nhà cung cấp khác thì hỏi lại.
 - **Tắt:** chọn lại model trên máy (ở phần dịch trong Cài đặt, và ở màn hình Ghi chú) là ứng dụng ngừng gửi ngay. Ghi chú tạo bằng model trên máy không gửi gì đi.
 - **Phía nhà cung cấp:** họ nhận nội dung trực tiếp từ máy bạn và xử lý theo điều khoản, loại tài khoản và cài đặt dữ liệu của bạn với họ (mục 6). Việc họ giữ lại hay dùng nội dung đó là việc của họ; hãy đọc chính sách của họ trước khi bật. Chúng tôi không nhận bản sao.

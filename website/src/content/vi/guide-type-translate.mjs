@@ -49,7 +49,7 @@ export default {
 ${pageHero({
   crumbs,
   title: "Gõ dịch tin nhắn",
-  lead: "Gõ dịch giúp bạn nhắn tin cho người nói tiếng khác ở ô chat của app bạn đang dùng. Bạn gõ bằng tiếng của mình trong một ô soạn nổi, AI Translator dịch ngay trên máy, rồi dán bản dịch vào ô chat để bạn xem lại và gửi.",
+  lead: "Gõ dịch giúp bạn nhắn tin cho người nói tiếng khác ở ô chat của app bạn đang dùng. Bạn gõ bằng tiếng của mình trong một ô soạn nổi, AI Translator dịch ngay trên máy (trừ khi bạn tự bật model cloud: khi đó chữ bạn gõ được gửi tới nhà cung cấp bạn chọn), rồi dán bản dịch vào ô chat để bạn xem lại và gửi.",
   meta: `<span>Cập nhật {{updated}}</span>`,
 })}
 
