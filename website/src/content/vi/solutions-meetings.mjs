@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-11-13",
   llm: "Cách dùng AI Translator để dịch meeting, dịch cuộc họp trực tuyến Zoom, Teams, Google Meet, Zalo: chuẩn bị trước họp, dịch phụ đề cuộc họp thời gian thực, phím tắt khi họp, bản chép lời sau họp, app đã thử, quyền riêng tư và giới hạn.",
   llmTitle: "Dịch meeting, dịch cuộc họp trực tuyến không cần bot",
   body: () => `
@@ -107,6 +107,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "Sau cuộc họp", title: "Giữ lại những gì bạn cần" })}
 <p>Sau khi bấm <strong>Dừng</strong>, bấm <strong>Mở bản chép lời</strong> để thấy từng dòng với giờ, câu gốc và bản dịch; có ô tìm (biểu tượng kính lúp) và nút <em>Sao chép tất cả</em> ở mọi gói.</p>
 <p>Xuất TXT, SRT, Markdown và Lịch sử là tính năng Pro (xem <a href="/bang-gia/">bảng giá</a>). Lịch sử mặc định tắt; bật ở Cài đặt › Quyền riêng tư thì phiên được lưu trên máy, có mã hóa. App không tự lưu bản chép lời xuống đĩa; đây là bản chép chữ, không phải biên bản. Xem <a href="/huong-dan/lich-su-va-xuat-file/">lịch sử và xuất file</a>.</p>
+<p>Muốn có tóm tắt, quyết định và việc cần làm? Sau khi dừng phiên, bấm tạo <a href="/tinh-nang/#meeting-notes">Ghi chú cuộc họp</a>: AI đọc bản chép lời và viết bản nháp để bạn kiểm lại. Ghi chú không trừ thời lượng dịch.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

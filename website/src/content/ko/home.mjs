@@ -15,7 +15,7 @@ export const HOME_FAQ = [
   },
   {
     q: "AI Translator를 쓰려면 인터넷 연결이 필요한가요?",
-    a: `<p>번역하는 동안에는 필요 없습니다. 음성 인식, 번역, 자막 표시는 모두 내 컴퓨터에서 이루어집니다. 인터넷이 필요한 경우는 처음에 앱과 모델(약 1.3GB 또는 2.5GB)을 내려받을 때, 무료 체험을 등록할 때, 요금제를 구매할 때, 라이선스를 확인할 때(유료 요금제는 확인 사이에 최대 14일 동안 오프라인으로 사용할 수 있습니다), 그리고 앱을 업데이트할 때뿐입니다.</p>`,
+    a: `<p>기기 내 모델(기본값)을 쓰면 번역하는 동안에는 필요 없습니다. 음성 인식, 번역, 자막 표시는 모두 내 컴퓨터에서 이루어집니다. 번역에 클라우드 모델을 켰다면 번역하는 동안에도 연결이 필요합니다. 인터넷이 필요한 경우는 처음에 앱과 모델(약 1.3GB 또는 2.5GB)을 내려받을 때, 무료 체험을 등록할 때, 요금제를 구매할 때, 라이선스를 확인할 때(유료 요금제는 확인 사이에 최대 14일 동안 오프라인으로 사용할 수 있습니다), 그리고 앱을 업데이트할 때뿐입니다.</p>`,
   },
   {
     q: "회의 음성이 어딘가로 전송되나요?",
@@ -43,7 +43,7 @@ export default {
   description:
     "회의, 라이브 방송, YouTube, 동영상에 실시간 번역 자막. 입력 번역으로 채팅 답장도 상대방 언어로. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
   software: true,
-  modified: "2026-10-27",
+  modified: "2026-11-13",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "ko", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -53,14 +53,14 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS(Apple 실리콘) · Windows 10/11 · 10일 무료 체험</p>
 <h1 class="reveal">회의·라이브·YouTube·동영상·채팅을 <em>AI 실시간 번역</em>으로</h1>
-<p class="lead reveal"><strong>AI Translator</strong>는 macOS와 Windows용 AI 실시간 번역 데스크톱 앱입니다. 컴퓨터에서 재생되는 소리를 실시간으로 화면 위에 떠 있는 번역 자막으로 바꾸고, 내가 입력한 메시지를 상대방의 언어로 번역합니다. AI가 내 컴퓨터에서 실행되므로 음성과 회의 내용이 클라우드로 전송되지 않습니다. Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상, 컴퓨터로 보는 라이브 방송에서 쓸 수 있습니다.</p>
+<p class="lead reveal"><strong>AI Translator</strong>는 macOS와 Windows용 AI 실시간 번역 데스크톱 앱입니다. 컴퓨터에서 재생되는 소리를 실시간으로 화면 위에 떠 있는 번역 자막으로 바꾸고, 내가 입력한 메시지를 상대방의 언어로 번역합니다. AI가 내 컴퓨터에서 실행되므로 음성이 클라우드로 전송되지 않으며, 기본적으로 받아쓰기 내용도 컴퓨터에 남습니다. Zoom, Microsoft Teams, Google Meet, Zalo PC, 웨비나, 동영상, 컴퓨터로 보는 라이브 방송에서 쓸 수 있습니다.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ko/download/">다운로드 ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">사용법 보기</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} AI가 100% 기기에서 실행</li>
-<li>${icon("check")} 회의 데이터는 클라우드로 가지 않음</li>
+<li>${icon("check")} AI가 기본적으로 기기에서 실행</li>
+<li>${icon("check")} 음성은 클라우드로 가지 않음</li>
 <li>${icon("check")} 봇도 플러그인도 필요 없음</li>
 </ul>
 </div>
@@ -97,6 +97,7 @@ ${featureTabs({
         "다섯 가지 언어 중 어떤 두 언어 사이든 번역: 영어, 중국어, 일본어, 한국어, 베트남어. 말하는 언어는 자동으로 감지합니다",
         `화자가 문장을 마치면 자막이 나타납니다. Mac M4 Pro(Standard 모델 팩)에서 중앙값은 1.1초 미만이며, 다른 컴퓨터는 더 느릴 수 있습니다(<a href="/ko/features/">자세히 보기</a>)`,
         `Zoom, Teams, Meet, Zalo에서 쓸 수 있습니다. 대면 회의는 입력 소스를 <strong>마이크</strong>로 고르세요(<a href="/ko/features/#microphone">사용 방법</a>). 컴퓨터로 보는 라이브 방송에도 쓸 수 있습니다(<a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>)`,
+        `회의 노트: 회의가 끝나면 요약, 결정 사항, 할 일 만들기(<a href="/ko/features/#meeting-notes">자세히</a>)`,
       ],
       cta: { href: "/ko/features/", label: "모든 기능 보기" },
       media: demoVideo({ lang: "ko", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
@@ -149,11 +150,11 @@ ${appShot({ slug: "app-home-running", lang: "ko", alt: "세션 중인 AI Transla
 </div></section>
 
 <section class="section band-dark" id="private-on-device"><div class="container">
-${sectionHead({ eyebrow: "데이터는 내 컴퓨터에 남습니다", title: "AI가 내 컴퓨터에서 실행되므로 회의 내용이 밖으로 나가지 않습니다", center: true })}
+${sectionHead({ eyebrow: "데이터는 내 컴퓨터에 남습니다", title: "AI가 내 컴퓨터에서 실행되므로 회의 음성이 밖으로 나가지 않습니다", center: true })}
 ${dataFlow("ko")}
 <div class="grid grid-2">
 ${feature({ icon: "lock", title: "음성은 컴퓨터 밖으로 나가지 않음", text: "음성은 RAM에만 있으며 디스크에 저장되거나 네트워크로 전송되지 않습니다. macOS에서 네트워크 프록시로 확인했습니다. 연결이 끊겨도 자막이 계속 나옵니다.", accent: true })}
-${feature({ icon: "shield", title: "서버에 회의 내용 없음", text: "서버는 요금제 판매, 기기 활성화, 지원에 필요한 데이터만 저장하며(자세한 내용은 아래), 회의 내용은 저장하지 않습니다." })}
+${feature({ icon: "shield", title: "서버에 회의 내용 없음", text: "서버는 요금제 판매, 기기 활성화, 지원에 필요한 데이터만 저장하며(자세한 내용은 아래), 회의 내용은 저장하지 않습니다. 클라우드 모델을 직접 켜면 텍스트가 내 컴퓨터에서 내가 고른 제공업체로 바로 전송되며 우리 서버를 거치지 않습니다." })}
 </div>
 <details class="more-details reveal"><summary>서버는 정확히 무엇을 저장하나요?</summary><p>서버에는 이메일(구매 시, 또는 지원 채팅에 직접 남겼을 때), 로그인할 때의 Google 이메일, 주문, 라이선스, 기기 활성화 정보(해시 처리한 기기 ID와 기기 이름), Free 체험 시작 시점(해시 처리한 기기 ID), 라이선스 변경 기록, 개인 정보를 지운 오류 보고서(30일 보관), 채팅을 쓴 경우의 지원 채팅 메시지(90일 보관)만 저장하며, 회의 내용은 절대 저장하지 않습니다.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/ko/data-security/">데이터가 어디로 가는지 자세히 보기 ${icon("arrow-right")}</a></p>

@@ -14,8 +14,8 @@ export default {
     "Live translated subtitles in 5 languages, a subtitle bar, Type & Translate for chat, glossary, history and TXT/SRT/Markdown export. All offline, on your computer.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
-  llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, shortcuts, models).",
+  modified: "2026-11-13",
+  llm: "Complete list of what the app does today (live translated subtitles, subtitle bar, Type & Translate for chat messages, glossary, history, export, AI meeting notes, shortcuts, models).",
   llmTitle: "AI Translator features",
   body: () => `
 ${pageHero({ crumbs, title: "Live meeting translation features, running on your computer", lead: "This is what AI Translator can do today, exactly as it works in the app. Anything that is only in the paid plans is marked clearly." })}
@@ -27,6 +27,7 @@ ${pageHero({ crumbs, title: "Live meeting translation features, running on your 
 <a class="card card-link" href="#subtitle-bar"><h3>Subtitle bar</h3><p class="muted">Drag, lock, resize the text</p></a>
 <a class="card card-link" href="#read-aloud"><h3>Read aloud</h3><p class="muted">Hear the translation, Windows</p></a>
 <a class="card card-link" href="#transcript"><h3>Transcript</h3><p class="muted">History, export (Pro)</p></a>
+<a class="card card-link" href="#meeting-notes"><h3>Meeting notes</h3><p class="muted">Summary, decisions, action items</p></a>
 <a class="card card-link" href="#glossary"><h3>Glossary</h3><p class="muted">Names and terms (Pro)</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>Type &amp; Translate</h3><p class="muted">Chat in the other person's language</p></a>
 <a class="card card-link" href="#audio-source"><h3>Audio source</h3><p class="muted">Any meeting app, no bot</p></a>
@@ -36,12 +37,12 @@ ${pageHero({ crumbs, title: "Live meeting translation features, running on your 
 </div></section>
 
 <section class="section band-dark" id="on-device-ai"><div class="container">
-${sectionHead({ eyebrow: "On-device AI", title: "AI translation without putting your meeting in the cloud", text: "Two AI models, one for speech recognition and one for translation, run directly on your computer. No step sends your audio or meeting content to a server or a cloud AI service.", center: true })}
+${sectionHead({ eyebrow: "On-device AI", title: "AI translation without putting your meeting audio in the cloud", text: "Two AI models, one for speech recognition and one for translation, run directly on your computer. No step sends your audio to a server or a cloud AI service. By default the transcript and translation stay on your computer too; only if you turn on a cloud model with your own API key does text go to the provider you chose.", center: true })}
 ${dataFlow("en")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "Two AI models running locally", text: "One model recognizes speech and one translates. Both are downloaded once and then run on your machine using the GPU or the CPU.", accent: true })}
 ${feature({ icon: "zap", title: "Low latency because there is no detour", text: "There is no round trip to a server, so the translation appears right after the speaker finishes a sentence. Median under 1.1 seconds on a Mac M4 Pro." })}
-${feature({ icon: "lock", title: "Conversation data stays on your computer", text: "Audio lives only in RAM; the transcript and translation stay on your machine. History is off by default and, if you turn it on, is encrypted on your computer." })}
+${feature({ icon: "lock", title: "Conversation data stays on your computer", text: "Audio lives only in RAM; by default, the transcript and translation stay on your machine. History is off by default and, if you turn it on, is encrypted on your computer." })}
 </div>
 </div></section>
 
@@ -165,6 +166,27 @@ ${appShot({ slug: "app-history", lang: "en", alt: "History screen listing saved 
 </div>
 </div></section>
 
+<section class="section" id="meeting-notes"><div class="container">
+${sectionHead({ eyebrow: "Meeting notes", title: "After the meeting, one button gives you a summary, decisions and action items", text: "After you stop the session, click create notes: the AI reads the transcript and writes a summary plus extracted items such as decisions, action items and open questions. Every item links back to the original lines in the transcript so you can check it.", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>Cloud model: fast, with your own API key</h3>
+<p>If you have chosen ChatGPT, Gemini or DeepSeek for translation (with your own API key), the notes use that same model and, because nothing has to run on your computer, are usually much faster. The app asks before sending for the first time. The translation (or the original sentence, if it has not been translated) and the speaker labels go straight from your computer to the provider you chose, not through our server and without any audio.</p>
+</div>
+<div class="stack-lg reveal">
+<h3>On-device model: nothing is sent, slower</h3>
+<p>If you have not turned on a cloud model, the notes use an AI model running on your computer and the transcript never leaves it. It needs 16 GB of RAM or more and one extra download of about 2.6 GB. It is much slower than the cloud, and the result is a draft: re-check it before you use it.</p>
+</div>
+</div>
+${checkList([
+  "Created only <strong>after you stop the session</strong>: the app does not summarize during the meeting",
+  "The result is always labelled <strong>an AI-written draft</strong>; the AI can get who owns a task, a deadline or the main point wrong, so re-check it against the original lines",
+  "Edit it by hand in the app; export to Markdown or TXT <span class=\"badge badge-pro\">Pro</span>",
+  "Free can create notes 3 times during the trial, paid plans are unlimited; notes do not use translation time",
+])}
+<p class="small muted">A cloud model only runs when you turn it on and enter an API key. See <a href="/en/data-security/#model-cloud">where your data goes with a cloud model</a>.</p>
+</div></section>
+
 <section class="section" id="glossary"><div class="container">
 <div class="split wide-left reverse">
 <div>
@@ -265,6 +287,7 @@ ${sectionHead({ eyebrow: "By plan", title: "Which feature is in which plan", cen
 <tr><th scope="row">Glossary (up to 500 terms)</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Save session history</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Export to TXT, SRT, Markdown</th><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
+<tr><th scope="row">Meeting notes with AI</th><td>3 times during the trial</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr>
 <tr><th scope="row">Translation time</th><td>30 min per day, for 10 days</td><td>50 hours per 30 days</td><td>100 hours per 30 days, for 180 days</td><td>Unlimited, for 365 days</td></tr>
 <tr><th scope="row">Price (VietQR, VND)</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
 <tr><th scope="row">Price (international card, USD, excluding tax)</th><td>—</td><td>$3.99</td><td>$21.99</td><td>$39.99</td></tr>

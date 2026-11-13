@@ -56,7 +56,7 @@ export default {
     "AI Translator plans: Free 10-day trial, Monthly 50,000 ₫, 6 Months 269,000 ₫, Yearly 500,000 ₫. Pay by VietQR or international card; card auto-renewal is optional.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-15",
+  modified: "2026-11-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Pricing for the four plans (Free 10-day trial, Monthly 50,000 VND, 6 Months 269,000 VND, Yearly 500,000 VND), how translation time is counted, how to buy with VietQR (VND) or an international card (USD), changing plans, refunds and pricing questions.",
   llmTitle: "AI Translator pricing",
@@ -78,6 +78,7 @@ ${sectionHead({ eyebrow: "Compare", title: "What each plan includes", center: tr
 <tr><th scope="row">Price</th><td>0 ₫</td><td>50,000 ₫ per order<small>or $3.99 excl. tax</small></td><td>269,000 ₫ per order<small>or $21.99 excl. tax</small></td><td>500,000 ₫ per order<small>or $39.99 excl. tax</small></td></tr>
 <tr><th scope="row">How to pay</th><td>No payment needed</td><td>VietQR (VND) or international card (USD)</td><td>VietQR (VND) or international card (USD)</td><td>VietQR (VND) or international card (USD)</td></tr>
 <tr><th scope="row">Duration</th><td>10 days, once per computer</td><td>30 days per order</td><td>180 days per order</td><td>365 days per order</td></tr>
+<tr><th scope="row">Meeting notes with AI (does not use translation time)</th><td>3 times during the trial</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr>
 <tr><th scope="row">Translation time</th><td>30 minutes per day</td><td>50 hours (3,000 minutes) per 30-day cycle</td><td>100 hours (6,000 minutes) per 30-day cycle</td><td>Unlimited</td></tr>
 <tr><th scope="row">Live translated subtitles, 5 languages</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
 <tr><th scope="row">Customizable subtitle bar, shortcuts</th><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td></tr>
@@ -103,6 +104,7 @@ ${appShot({ slug: "app-upgrade", lang: "en", alt: "The Upgrade screen in the app
 ${checkList([
   "Time is measured by the <strong>length of the speech</strong> in the segments that have been translated, not by padding or silence",
   "Sentences <strong>already in the language</strong> you want to read, and segments that are skipped or could not be translated, <strong>do not count</strong>",
+  "Meeting notes with AI <strong>do not use</strong> translation time: Free can create them 3 times during the trial, paid plans are unlimited",
   "<strong>Free:</strong> the 30-minute allowance resets every day, usually at 00:00 on your computer's clock (at least 20 hours after the previous reset; the app shows the exact time it opens again)",
   "<strong>Monthly and 6 Months:</strong> a 30-day cycle that starts on the payment date, not on the calendar month (6 Months has six cycles in its 180 days, each with its own 100 hours)",
   "The app warns you when less than 5 minutes are left; when the allowance runs out, it stops the session and tells you when translation opens again",

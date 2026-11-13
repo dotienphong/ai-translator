@@ -14,7 +14,7 @@ export default {
     "5 种语言的实时翻译字幕、字幕条、聊天用的输入翻译、术语表、历史记录以及 TXT/SRT/Markdown 导出。全部在你的电脑上离线运行。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
+  modified: "2026-11-13",
   body: () => `
 ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", lead: "这里介绍 AI Translator 目前能做的事，与应用中的实际表现完全一致。只有付费套餐才有的功能都会明确标出。" })}
 
@@ -25,6 +25,7 @@ ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", 
 <a class="card card-link" href="#subtitle-bar"><h3>字幕条</h3><p class="muted">拖动、锁定、调整字号</p></a>
 <a class="card card-link" href="#read-aloud"><h3>朗读</h3><p class="muted">听译文（Windows）</p></a>
 <a class="card card-link" href="#transcript"><h3>转写记录</h3><p class="muted">历史记录、导出（Pro）</p></a>
+<a class="card card-link" href="#meeting-notes"><h3>会议笔记</h3><p class="muted">摘要、决议、待办事项</p></a>
 <a class="card card-link" href="#glossary"><h3>术语表</h3><p class="muted">人名和术语（Pro）</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>输入翻译</h3><p class="muted">用对方的语言聊天</p></a>
 <a class="card card-link" href="#audio-source"><h3>音频来源</h3><p class="muted">任何会议应用，无需机器人</p></a>
@@ -34,12 +35,12 @@ ${pageHero({ crumbs, title: "在你电脑上运行的会议实时翻译功能", 
 </div></section>
 
 <section class="section band-dark" id="on-device-ai"><div class="container">
-${sectionHead({ eyebrow: "设备端 AI", title: "AI 翻译，无需把会议放到云端", text: "两个 AI 模型，一个负责语音识别，一个负责翻译，直接在你的电脑上运行。没有任何环节会把你的音频或会议内容发送到服务器或云端 AI 服务。", center: true })}
+${sectionHead({ eyebrow: "设备端 AI", title: "AI 翻译，无需把会议音频放到云端", text: "两个 AI 模型，一个负责语音识别，一个负责翻译，直接在你的电脑上运行。没有任何环节会把你的音频发送到服务器或云端 AI 服务。默认情况下，转写内容和译文也留在你的电脑上，只有你用自己的 API 密钥开启云端模型时，文字才会发送给你选择的服务商。", center: true })}
 ${dataFlow("zh")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "两个在本地运行的 AI 模型", text: "一个模型识别语音，一个模型负责翻译。两者都只需下载一次，之后利用 GPU 或 CPU 在你的电脑上运行。", accent: true })}
 ${feature({ icon: "zap", title: "不绕路，所以延迟低", text: "不需要往返服务器，说话人说完一句话后译文很快就会出现。在 Mac M4 Pro 上中位数低于 1.1 秒。" })}
-${feature({ icon: "lock", title: "对话数据留在你的电脑上", text: "音频只存在于 RAM 中；转写文本和译文留在你的电脑上。历史记录默认关闭，开启后也会在你的电脑上加密保存。" })}
+${feature({ icon: "lock", title: "对话数据留在你的电脑上", text: "音频只存在于 RAM 中；默认情况下，转写文本和译文留在你的电脑上。历史记录默认关闭，开启后也会在你的电脑上加密保存。" })}
 </div>
 </div></section>
 
@@ -163,6 +164,27 @@ ${appShot({ slug: "app-history", lang: "zh", alt: "历史记录页面，列出�
 </div>
 </div></section>
 
+<section class="section" id="meeting-notes"><div class="container">
+${sectionHead({ eyebrow: "会议笔记", title: "会后一键生成摘要、决议和待办事项", text: "停止会话后，点击生成笔记：AI 会阅读转写记录，写出摘要，以及决议、待办事项和未解决的问题等提取项。每一项都能跳回转写记录中的原句，方便你核对。", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>云端模型：速度快，使用你自己的 API 密钥</h3>
+<p>如果你已选择 ChatGPT、Gemini 或 DeepSeek 来翻译（使用你自己的 API 密钥），笔记会用同一个模型，因为不在你的电脑上处理，通常快得多。第一次发送前，应用会先征求你的同意。译文（尚未翻译的句子则为原文）和说话人标签会直接从你的电脑发送给你选择的服务商，不经过我们的服务器，也不包含任何音频。</p>
+</div>
+<div class="stack-lg reveal">
+<h3>设备端模型：不发送任何内容，速度较慢</h3>
+<p>如果你没有开启云端模型，笔记由在你电脑上运行的 AI 模型生成，转写内容不会离开你的电脑。需要 16 GB 或更多内存，并额外下载约 2.6 GB（只需一次）。比云端慢得多，而且结果只是草稿：使用前请再核对一遍。</p>
+</div>
+</div>
+${checkList([
+  "只能在<strong>停止会话后</strong>生成：应用不会在会议进行中做摘要",
+  "结果始终标明<strong>由 AI 撰写的草稿</strong>；AI 可能弄错任务的负责人、期限或要点，所以请对照原句核对",
+  "可在应用内手动编辑；导出为 Markdown 或 TXT <span class=\"badge badge-pro\">Pro</span>",
+  "Free 在试用期内可以生成 3 次，付费套餐不限次数；笔记不消耗翻译时间",
+])}
+<p class="small muted">云端模型只有在你自己开启并输入 API 密钥后才会运行。请参阅<a href="/zh/data-security/#model-cloud">使用云端模型时数据去哪儿</a>。</p>
+</div></section>
+
 <section class="section" id="glossary"><div class="container">
 <div class="split wide-left reverse">
 <div>
@@ -263,6 +285,7 @@ ${sectionHead({ eyebrow: "按套餐", title: "各功能包含在哪些套餐中"
 <tr><th scope="row">术语表（最多 500 条）</th><td><span class="no">无</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">保存会话历史</th><td><span class="no">无</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">导出为 TXT、SRT、Markdown</th><td><span class="no">无</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
+<tr><th scope="row">AI 会议笔记</th><td>试用期内 3 次</td><td>不限次数</td><td>不限次数</td><td>不限次数</td></tr>
 <tr><th scope="row">翻译时间</th><td>每天 30 分钟，共 10 天</td><td>每 30 天 50 小时</td><td>180 天内每 30 天 100 小时</td><td>365 天内不限时长</td></tr>
 <tr><th scope="row">价格（VietQR，VND）</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
 <tr><th scope="row">价格（国际银行卡，USD，不含税）</th><td>—</td><td>US$3.99</td><td>US$21.99</td><td>US$39.99</td></tr>

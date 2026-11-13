@@ -15,7 +15,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Does AI Translator need an internet connection?",
-    a: `<p>Not while it is translating. Speech recognition, translation and subtitles all run on your computer. You only need the internet to download the app and the models the first time (about 1.3 GB or 2.5 GB), to register the free trial, to buy a plan, to verify your license (paid plans work offline for up to 14 days between checks) and to update the app.</p>`,
+    a: `<p>Not while it is translating, if you use the on-device model (the default): speech recognition, translation and subtitles all run on your computer. If you turn on a cloud model for translation, you need a connection while translating. You only need the internet to download the app and the models the first time (about 1.3 GB or 2.5 GB), to register the free trial, to buy a plan, to verify your license (paid plans work offline for up to 14 days between checks) and to update the app.</p>`,
   },
   {
     q: "Is my meeting audio sent anywhere?",
@@ -43,7 +43,7 @@ export default {
   description:
     "Real-time translation subtitles for Zoom, Teams, Meet, livestreams, YouTube and videos, plus Type & Translate for chat. AI runs offline on your computer.",
   software: true,
-  modified: "2026-10-27",
+  modified: "2026-11-13",
   llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [
@@ -55,14 +55,14 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · 10-day free trial</p>
 <h1 class="reveal">AI <em>real-time translation</em> for meetings, livestreams, YouTube, videos and chat messages</h1>
-<p class="lead reveal"><strong>AI Translator</strong> is an AI live translator for macOS and Windows: a desktop app that turns the audio playing on your computer into floating translated subtitles in real time, and translates the messages you type into the other person's language. The AI runs on your own machine, so your audio and meeting content never go to the cloud. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos or livestreams you watch on a computer.</p>
+<p class="lead reveal"><strong>AI Translator</strong> is an AI live translator for macOS and Windows: a desktop app that turns the audio playing on your computer into floating translated subtitles in real time, and translates the messages you type into the other person's language. The AI runs on your own machine, so your audio never goes to the cloud and, by default, the transcript stays on your computer too. Use it with Zoom, Microsoft Teams, Google Meet, Zalo PC, webinars, videos or livestreams you watch on a computer.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/en/download/">Download ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">See how to use it</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} AI runs 100% on your device</li>
-<li>${icon("check")} Meeting data never goes to the cloud</li>
+<li>${icon("check")} AI runs on your device by default</li>
+<li>${icon("check")} Audio never goes to the cloud</li>
 <li>${icon("check")} No bot, no plugin</li>
 </ul>
 </div>
@@ -99,6 +99,7 @@ ${featureTabs({
         "Five languages, translated between any two of them: English, Chinese, Japanese, Korean, Vietnamese; the spoken language is detected automatically",
         `Subtitles appear after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href="/en/features/">details</a>)`,
         `Works with Zoom, Teams, Meet and Zalo; in-person meetings through the <strong>Microphone</strong> source (<a href="/en/features/#microphone">how it works</a>); livestreams you watch on a computer (<a href="/en/solutions/livestream-translation/">livestream translation</a>)`,
+        `Meeting notes: a summary, decisions and action items after each meeting (<a href="/en/features/#meeting-notes">details</a>)`,
       ],
       cta: { href: "/en/features/", label: "See all features" },
       media: demoVideo({ lang: "en", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
@@ -151,11 +152,11 @@ ${appShot({ slug: "app-home-running", lang: "en", alt: "AI Translator main scree
 </div></section>
 
 <section class="section band-dark" id="private-on-device"><div class="container">
-${sectionHead({ eyebrow: "Your data stays on your computer", title: "The AI runs on your machine, so your meeting never leaves it", center: true })}
+${sectionHead({ eyebrow: "Your data stays on your computer", title: "The AI runs on your machine, so your meeting audio never leaves it", center: true })}
 ${dataFlow("en")}
 <div class="grid grid-2">
 ${feature({ icon: "lock", title: "Audio never leaves your computer", text: "Audio lives only in RAM: it is never written to disk and never sent over the network, which we checked with a network proxy on macOS. Subtitles keep coming even when your connection drops.", accent: true })}
-${feature({ icon: "shield", title: "No meeting content on our server", text: "Our server only stores what it needs to sell plans, activate devices and support you (details below), never meeting content." })}
+${feature({ icon: "shield", title: "No meeting content on our server", text: "Our server only stores what it needs to sell plans, activate devices and support you (details below), never meeting content. If you turn on a cloud model yourself, the text goes straight from your computer to the provider you chose, not through our server." })}
 </div>
 <details class="more-details reveal"><summary>What exactly does the server store?</summary><p>Our server only stores your email (when you buy, or when you choose to leave it in the support chat), your Google email when you sign in, orders, licenses, device-activation details (a hashed machine ID and device name), the Free-trial start (a hashed machine ID), a log of license changes, error reports with personal data scrubbed out (kept for 30 days) and support chat messages if you use the chat (kept for 90 days), never meeting content.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/en/data-security/">See exactly where your data goes ${icon("arrow-right")}</a></p>

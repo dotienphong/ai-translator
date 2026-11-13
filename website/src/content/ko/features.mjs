@@ -14,7 +14,7 @@ export default {
     "5개 언어 실시간 번역 자막, 자막 바, 채팅용 입력 번역, 용어집, 기록, TXT/SRT/Markdown 내보내기. 모두 내 컴퓨터에서 오프라인으로 실행됩니다.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
+  modified: "2026-11-13",
   body: () => `
 ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 번역 기능", lead: "AI Translator가 지금 할 수 있는 일을 앱에서 실제로 작동하는 그대로 소개합니다. 유료 요금제에만 있는 기능은 분명히 표시했습니다." })}
 
@@ -25,6 +25,7 @@ ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 �
 <a class="card card-link" href="#subtitle-bar"><h3>자막 바</h3><p class="muted">끌기, 잠금, 글자 크기 조절</p></a>
 <a class="card card-link" href="#read-aloud"><h3>읽어 주기</h3><p class="muted">번역을 음성으로 듣기 (Windows)</p></a>
 <a class="card card-link" href="#transcript"><h3>대본</h3><p class="muted">기록, 내보내기(Pro)</p></a>
+<a class="card card-link" href="#meeting-notes"><h3>회의 노트</h3><p class="muted">요약, 결정 사항, 할 일</p></a>
 <a class="card card-link" href="#glossary"><h3>용어집</h3><p class="muted">이름과 용어(Pro)</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>입력 번역</h3><p class="muted">상대방의 언어로 채팅</p></a>
 <a class="card card-link" href="#audio-source"><h3>오디오 소스</h3><p class="muted">모든 회의 앱, 봇 없이</p></a>
@@ -34,12 +35,12 @@ ${pageHero({ crumbs, title: "내 컴퓨터에서 실행되는 회의 실시간 �
 </div></section>
 
 <section class="section band-dark" id="on-device-ai"><div class="container">
-${sectionHead({ eyebrow: "기기 내 AI", title: "회의를 클라우드에 올리지 않는 AI 번역", text: "음성 인식용과 번역용, 두 개의 AI 모델이 내 컴퓨터에서 직접 실행됩니다. 음성이나 회의 내용을 서버나 클라우드 AI 서비스로 보내는 단계는 없습니다.", center: true })}
+${sectionHead({ eyebrow: "기기 내 AI", title: "회의 음성을 클라우드에 올리지 않는 AI 번역", text: "음성 인식용과 번역용, 두 개의 AI 모델이 내 컴퓨터에서 직접 실행됩니다. 음성을 서버나 클라우드 AI 서비스로 보내는 단계는 없습니다. 기본적으로 받아쓰기와 번역도 내 컴퓨터에 남으며, 내 API 키로 클라우드 모델을 직접 켰을 때만 텍스트가 내가 고른 제공업체로 전송됩니다.", center: true })}
 ${dataFlow("ko")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "로컬에서 실행되는 두 AI 모델", text: "하나는 음성을 인식하고, 하나는 번역합니다. 둘 다 한 번만 내려받으면 GPU나 CPU를 이용해 내 컴퓨터에서 실행됩니다.", accent: true })}
 ${feature({ icon: "zap", title: "돌아가지 않으니 지연이 낮습니다", text: "서버를 오갈 필요가 없어 화자가 문장을 마치면 바로 번역이 나타납니다. Mac M4 Pro에서 중앙값은 1.1초 미만입니다." })}
-${feature({ icon: "lock", title: "대화 데이터는 내 컴퓨터에 남습니다", text: "음성은 RAM에만 있고, 받아쓰기와 번역은 내 컴퓨터에 남습니다. 기록은 기본으로 꺼져 있으며, 켜더라도 내 컴퓨터에 암호화되어 저장됩니다." })}
+${feature({ icon: "lock", title: "대화 데이터는 내 컴퓨터에 남습니다", text: "음성은 RAM에만 있고, 기본적으로 받아쓰기와 번역은 내 컴퓨터에 남습니다. 기록은 기본으로 꺼져 있으며, 켜더라도 내 컴퓨터에 암호화되어 저장됩니다." })}
 </div>
 </div></section>
 
@@ -163,6 +164,27 @@ ${appShot({ slug: "app-history", lang: "ko", alt: "저장된 세션을 날짜와
 </div>
 </div></section>
 
+<section class="section" id="meeting-notes"><div class="container">
+${sectionHead({ eyebrow: "회의 노트", title: "회의가 끝나면 버튼 하나로 요약, 결정 사항, 할 일을", text: "세션을 중지한 후 노트 만들기를 누르면, AI가 대본을 읽고 요약과 결정 사항, 할 일, 아직 풀리지 않은 질문 같은 항목을 뽑아 씁니다. 각 항목은 대본의 원래 줄로 연결되므로 직접 비교해 확인할 수 있습니다.", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>클라우드 모델: 빠름, 내 API 키로</h3>
+<p>번역에 ChatGPT, Gemini 또는 DeepSeek(내 API 키)를 골라 두었다면 노트도 같은 모델을 쓰며, 내 컴퓨터에서 처리하지 않으므로 보통 훨씬 빠릅니다. 처음 보낼 때는 앱이 먼저 확인합니다. 번역(아직 번역되지 않은 문장은 원문)과 화자 라벨이 내 컴퓨터에서 내가 고른 제공업체로 바로 전송되며, 우리 서버를 거치지 않고 음성도 포함되지 않습니다.</p>
+</div>
+<div class="stack-lg reveal">
+<h3>기기 내 모델: 아무것도 보내지 않음, 더 느림</h3>
+<p>클라우드 모델을 켜지 않았다면 노트는 내 컴퓨터에서 실행되는 AI 모델이 만들고, 받아쓰기 내용은 컴퓨터 밖으로 나가지 않습니다. RAM 16 GB 이상과 추가로 약 2.6GB 다운로드(한 번만)가 필요합니다. 클라우드보다 훨씬 느리고 결과는 초안이므로, 쓰기 전에 다시 확인하세요.</p>
+</div>
+</div>
+${checkList([
+  "<strong>세션을 중지한 후</strong>에만 만들 수 있습니다. 앱은 회의 중에 요약하지 않습니다",
+  "결과에는 항상 <strong>AI가 쓴 초안</strong>이라고 표시됩니다. AI는 담당자, 기한, 핵심을 잘못 짚을 수 있으니 원래 줄과 대조해 다시 확인하세요",
+  "앱에서 직접 수정할 수 있고, Markdown이나 TXT로 내보내기는 <span class=\"badge badge-pro\">Pro</span>",
+  "Free는 체험 기간 동안 3번 만들 수 있고 유료 요금제는 무제한입니다. 노트는 번역 시간을 쓰지 않습니다",
+])}
+<p class="small muted">클라우드 모델은 내가 직접 켜고 API 키를 입력했을 때만 실행됩니다. <a href="/ko/data-security/#model-cloud">클라우드 모델을 쓸 때 데이터가 가는 곳</a>을 참고하세요.</p>
+</div></section>
+
 <section class="section" id="glossary"><div class="container">
 <div class="split wide-left reverse">
 <div>
@@ -263,6 +285,7 @@ ${sectionHead({ eyebrow: "요금제별", title: "어떤 기능이 어떤 요금�
 <tr><th scope="row">용어집(최대 500개)</th><td><span class="no">아니요</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td></tr>
 <tr><th scope="row">세션 기록 저장</th><td><span class="no">아니요</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td></tr>
 <tr><th scope="row">TXT, SRT, Markdown으로 내보내기</th><td><span class="no">아니요</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td></tr>
+<tr><th scope="row">AI 회의 노트</th><td>체험 기간 동안 3번</td><td>무제한</td><td>무제한</td><td>무제한</td></tr>
 <tr><th scope="row">번역 시간</th><td>하루 30분, 10일 동안</td><td>30일마다 50시간</td><td>180일 동안 30일마다 100시간</td><td>365일 동안 무제한</td></tr>
 <tr><th scope="row">가격(VietQR, VND)</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
 <tr><th scope="row">가격(해외 카드, USD, 세금 별도)</th><td>—</td><td>US$3.99</td><td>US$21.99</td><td>US$39.99</td></tr>

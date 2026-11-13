@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-11-13",
   body: () => `
 ${pageHero({
   crumbs,
@@ -105,6 +105,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "회의 후", title: "필요한 것을 남기기" })}
 <p><strong>중지</strong>를 누른 뒤 <strong>대본 열기</strong>를 누르면 모든 줄을 시간, 원문, 번역과 함께 볼 수 있습니다. 검색창(돋보기 아이콘)과 <em>모두 복사</em> 버튼은 모든 요금제에서 쓸 수 있습니다.</p>
 <p>TXT, SRT, Markdown으로 내보내기와 기록은 Pro 기능입니다(<a href="/ko/pricing/">요금</a> 참고). 기록은 기본적으로 꺼져 있으며, ‘설정 › 개인정보 보호’에서 켜면 세션마다 컴퓨터에 암호화되어 저장됩니다. 앱이 스스로 대본을 디스크에 저장하지는 않으며, 이는 텍스트 대본이지 회의록이 아닙니다. <a href="/ko/guide/history-and-export/">기록과 내보내기</a>를 참고하세요.</p>
+<p>요약, 결정 사항, 할 일이 필요하신가요? 세션을 중지한 후 <a href="/ko/features/#meeting-notes">회의 노트</a>를 만드세요. AI가 대본을 읽고 초안을 쓰므로, 다시 확인한 뒤에 쓰세요. 노트는 번역 시간을 쓰지 않습니다.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

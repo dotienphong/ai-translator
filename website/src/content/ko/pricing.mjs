@@ -54,7 +54,7 @@ export default {
     "10일 무료 체험과 Monthly, 6 Months, Yearly 선불 요금제 3가지. 해외 카드(US$3.99부터, 세금 별도) 또는 VietQR로 결제하며, 카드는 자동 갱신을 선택할 수 있습니다.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-11-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({ crumbs, title: "간단한 요금: 선불, 자동 갱신은 선택", lead: "10일 동안 무료로 써 보고, 쓸 만하다면 Monthly, 6 Months, Yearly 중에서 고르세요. 결제는 앱 안에서 시작하며, 베트남 은행에서 베트남 동(VND)으로 VietQR 결제를 하거나 해외 카드로 미국 달러(USD) 결제를 할 수 있습니다. 카드로 결제하면 브라우저에서 결제를 마칩니다. 키는 이메일로 받습니다." })}
@@ -74,6 +74,7 @@ ${sectionHead({ eyebrow: "비교", title: "요금제별 포함 내용", center: 
 <tr><th scope="row">가격</th><td>0 ₫</td><td>주문당 50,000 ₫<small>또는 US$3.99(세금 별도)</small></td><td>주문당 269,000 ₫<small>또는 US$21.99(세금 별도)</small></td><td>주문당 500,000 ₫<small>또는 US$39.99(세금 별도)</small></td></tr>
 <tr><th scope="row">결제 방법</th><td>결제 필요 없음</td><td>VietQR(VND) 또는 해외 카드(USD)</td><td>VietQR(VND) 또는 해외 카드(USD)</td><td>VietQR(VND) 또는 해외 카드(USD)</td></tr>
 <tr><th scope="row">기간</th><td>10일, 컴퓨터당 1회</td><td>주문당 30일</td><td>주문당 180일</td><td>주문당 365일</td></tr>
+<tr><th scope="row">AI 회의 노트(번역 시간을 쓰지 않음)</th><td>체험 기간 동안 3번</td><td>무제한</td><td>무제한</td><td>무제한</td></tr>
 <tr><th scope="row">번역 시간</th><td>하루 30분</td><td>30일 주기마다 50시간(3,000분)</td><td>30일 주기마다 100시간(6,000분)</td><td>무제한</td></tr>
 <tr><th scope="row">실시간 번역 자막, 5개 언어</th><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td></tr>
 <tr><th scope="row">맞춤 설정 가능한 자막 바, 단축키</th><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td><td><span class="yes">예</span></td></tr>
@@ -99,6 +100,7 @@ ${appShot({ slug: "app-upgrade", lang: "ko", alt: "한국어 앱의 업그레이
 ${checkList([
   "시간은 번역된 구간의 <strong>발화 길이</strong>로 재며, 앞뒤 여백이나 무음은 계산하지 않습니다",
   "<strong>이미 읽고 싶은 언어</strong>로 된 문장, 건너뛰었거나 번역하지 못한 구간은 <strong>계산하지 않습니다</strong>",
+  "AI 회의 노트는 번역 시간을 <strong>쓰지 않습니다</strong>. Free는 체험 기간 동안 3번, 유료 요금제는 무제한입니다",
   "<strong>Free:</strong> 30분 한도는 매일 초기화되며, 보통 컴퓨터 시계로 00:00입니다(직전 초기화로부터 최소 20시간 후, 다시 열리는 정확한 시각은 앱에 표시됩니다)",
   "<strong>Monthly와 6 Months:</strong> 30일 주기는 달력의 달이 아니라 결제일부터 시작합니다(6 Months는 180일 안에 주기가 여섯 번 있으며 주기마다 100시간)",
   "남은 시간이 5분 미만이면 앱이 알려 주고, 한도를 다 쓰면 세션을 멈추고 언제 다시 번역할 수 있는지 알려 줍니다",

@@ -15,7 +15,7 @@ export const HOME_FAQ = [
   },
   {
     q: "AI Translator có cần internet không?",
-    a: `<p>Khi đang dịch thì không. Nhận dạng giọng nói, dịch và hiện phụ đề đều chạy trên máy bạn. Internet chỉ cần cho vài việc: tải app và model lần đầu (khoảng 1,3 GB hoặc 2,5 GB), đăng ký dùng thử Free, mua gói, kiểm tra bản quyền (gói trả phí dùng offline tối đa 14 ngày giữa hai lần kiểm tra) và cập nhật app.</p>`,
+    a: `<p>Khi đang dịch thì không, nếu bạn dùng model trên máy (mặc định): nhận dạng giọng nói, dịch và hiện phụ đề đều chạy trên máy bạn. Nếu bạn tự bật model cloud để dịch thì cần mạng trong lúc dịch. Internet chỉ cần cho vài việc: tải app và model lần đầu (khoảng 1,3 GB hoặc 2,5 GB), đăng ký dùng thử Free, mua gói, kiểm tra bản quyền (gói trả phí dùng offline tối đa 14 ngày giữa hai lần kiểm tra) và cập nhật app.</p>`,
   },
   {
     q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
@@ -55,14 +55,14 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS (Apple Silicon) · Windows 10/11 · Dùng thử Free 10 ngày</p>
 <h1 class="reveal">Ứng dụng AI <em>dịch&nbsp;trực&nbsp;tiếp</em> cho Cuộc&nbsp;Họp, Livestream, YouTube, Video và tin&nbsp;nhắn</h1>
-<p class="lead reveal"><strong>AI Translator</strong> là app desktop dịch âm thanh đang phát trên máy thành phụ đề nổi trên màn hình, và dịch tin nhắn bạn gõ sang tiếng của người bên kia. AI chạy ngay trên máy, nên âm thanh và nội dung cuộc họp không lên cloud. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video hay livestream xem trên máy tính.</p>
+<p class="lead reveal"><strong>AI Translator</strong> là app desktop dịch âm thanh đang phát trên máy thành phụ đề nổi trên màn hình, và dịch tin nhắn bạn gõ sang tiếng của người bên kia. AI chạy ngay trên máy, nên âm thanh không lên cloud và, mặc định, chữ chép lời cũng ở lại trên máy. Dùng với Zoom, Microsoft Teams, Google Meet, Zalo PC, webinar, video hay livestream xem trên máy tính.</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/tai-xuong/">Tải xuống ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#cach-dung">Xem cách dùng</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} AI chạy 100% trên máy</li>
-<li>${icon("check")} Dữ liệu cuộc họp không lên cloud</li>
+<li>${icon("check")} AI chạy trên máy theo mặc định</li>
+<li>${icon("check")} Âm thanh không bao giờ lên cloud</li>
 <li>${icon("check")} Không bot, không plugin</li>
 </ul>
 </div>
@@ -99,6 +99,7 @@ ${featureTabs({
         "Năm ngôn ngữ, dịch qua lại mọi chiều: Anh, Trung, Nhật, Hàn, Việt; tự nhận diện ngôn ngữ đang nói",
         `Phụ đề hiện sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn), máy khác có thể chậm hơn (<a href="/tinh-nang/">chi tiết</a>)`,
         `Dùng với Zoom, Teams, Meet, Zalo; họp tại chỗ qua nguồn <strong>Micro</strong> (<a href="/tinh-nang/#micro">cách dùng</a>); livestream xem trên máy tính (<a href="/giai-phap/dich-livestream/">dịch livestream</a>)`,
+        `Ghi chú cuộc họp: tóm tắt, quyết định, việc cần làm sau mỗi buổi họp (<a href="/tinh-nang/#meeting-notes">chi tiết</a>)`,
       ],
       cta: { href: "/tinh-nang/", label: "Xem tất cả tính năng" },
       media: demoVideo({ lang: "vi", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
@@ -151,11 +152,11 @@ ${appShot({ slug: "app-home-running", lang: "vi", alt: "Màn hình chính của 
 </div></section>
 
 <section class="section band-dark" id="rieng-tu-tren-may"><div class="container">
-${sectionHead({ eyebrow: "Dữ liệu ở lại trên máy bạn", title: "AI chạy ngay trên máy, nên cuộc họp không rời khỏi máy", center: true })}
+${sectionHead({ eyebrow: "Dữ liệu ở lại trên máy bạn", title: "AI chạy ngay trên máy, nên âm thanh cuộc họp không rời khỏi máy", center: true })}
 ${dataFlow("vi")}
 <div class="grid grid-2">
 ${feature({ icon: "lock", title: "Âm thanh không rời máy", text: "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng (chúng tôi đã kiểm tra bằng proxy trên macOS). Mất mạng thì app vẫn dịch.", accent: true })}
-${feature({ icon: "shield", title: "Máy chủ không có nội dung cuộc họp", text: "Máy chủ chỉ lưu dữ liệu để bán gói, kích hoạt máy và hỗ trợ bạn (chi tiết bên dưới), không có nội dung cuộc họp." })}
+${feature({ icon: "shield", title: "Máy chủ không có nội dung cuộc họp", text: "Máy chủ chỉ lưu dữ liệu để bán gói, kích hoạt máy và hỗ trợ bạn (chi tiết bên dưới), không có nội dung cuộc họp. Nếu bạn tự bật model cloud, chữ đi thẳng từ máy bạn tới nhà cung cấp bạn chọn, không qua máy chủ của chúng tôi." })}
 </div>
 <details class="more-details reveal"><summary>Máy chủ lưu chính xác những gì?</summary><p>Máy chủ của chúng tôi chỉ lưu email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), email Google khi bạn đăng nhập, đơn hàng, license, thông tin kích hoạt máy (mã băm ID máy, tên máy), mốc dùng thử Free (mã băm ID máy), nhật ký thay đổi license, báo cáo lỗi đã che dữ liệu cá nhân (giữ 30 ngày) và tin nhắn chat hỗ trợ khi bạn dùng chat (giữ 90 ngày), không có nội dung cuộc họp.</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/bao-mat-du-lieu/">Xem chính xác dữ liệu nào đi đâu ${icon("arrow-right")}</a></p>

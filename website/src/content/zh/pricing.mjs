@@ -54,7 +54,7 @@ export default {
     "免费试用 10 天，以及 Monthly、6 Months、Yearly 三种预付套餐。可用国际银行卡（US$3.99 起，不含税）或 VietQR 支付，银行卡可选自动续费。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-11-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({ crumbs, title: "简单的价格：预付，自动续费可选", lead: "先免费试用 10 天，觉得有用再选择 Monthly、6 Months 或 Yearly。付款在应用内开始：可以从越南银行用越南盾（VND）通过 VietQR 支付，也可以用国际银行卡以美元（USD）支付；用银行卡时在浏览器中完成付款。密钥会通过邮件发送给你。" })}
@@ -74,6 +74,7 @@ ${sectionHead({ eyebrow: "对比", title: "每个套餐包含什么", center: tr
 <tr><th scope="row">价格</th><td>0 ₫</td><td>每单 50,000 ₫<small>或 US$3.99（不含税）</small></td><td>每单 269,000 ₫<small>或 US$21.99（不含税）</small></td><td>每单 500,000 ₫<small>或 US$39.99（不含税）</small></td></tr>
 <tr><th scope="row">付款方式</th><td>无需付款</td><td>VietQR（VND）或国际银行卡（USD）</td><td>VietQR（VND）或国际银行卡（USD）</td><td>VietQR（VND）或国际银行卡（USD）</td></tr>
 <tr><th scope="row">期限</th><td>10 天，每台电脑一次</td><td>每单 30 天</td><td>每单 180 天</td><td>每单 365 天</td></tr>
+<tr><th scope="row">AI 会议笔记（不消耗翻译时间）</th><td>试用期内 3 次</td><td>不限次数</td><td>不限次数</td><td>不限次数</td></tr>
 <tr><th scope="row">翻译时间</th><td>每天 30 分钟</td><td>每个 30 天周期 50 小时（3,000 分钟）</td><td>每个 30 天周期 100 小时（6,000 分钟）</td><td>不限时长</td></tr>
 <tr><th scope="row">实时翻译字幕，5 种语言</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
 <tr><th scope="row">可自定义的字幕条、快捷键</th><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td><td><span class="yes">有</span></td></tr>
@@ -99,6 +100,7 @@ ${appShot({ slug: "app-upgrade", lang: "zh", alt: "中文的应用升级页面�
 ${checkList([
   "时间按已翻译片段中<strong>语音的长度</strong>计算，不计算前后的空白或静音",
   "<strong>已经是你想阅读的语言</strong>的句子，以及被跳过或未能翻译的片段，<strong>都不计算</strong>",
+  "AI 会议笔记<strong>不消耗</strong>翻译时间：Free 在试用期内可以生成 3 次，付费套餐不限次数",
   "<strong>Free：</strong>30 分钟的额度每天重置，通常在你电脑时钟的 00:00（距上次重置至少 20 小时；应用会显示重新开放的确切时间）",
   "<strong>Monthly 和 6 Months：</strong>30 天周期从付款日开始，而不是按日历月（6 Months 的 180 天中有六个周期，每个周期各有 100 小时）",
   "剩余时间不足 5 分钟时应用会提醒你；额度用完时，它会停止会话，并告诉你何时可以再次翻译",

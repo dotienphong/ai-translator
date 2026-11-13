@@ -10,6 +10,7 @@ const crumbs = [
 const TOC = [
   { level: 2, id: "tren-may", text: "Dữ liệu nào ở lại trên máy bạn?" },
   { level: 2, id: "ket-noi-mang", text: "App kết nối mạng tới đâu?" },
+  { level: 2, id: "model-cloud", text: "Model cloud và Ghi chú cuộc họp" },
   { level: 2, id: "da-kiem", text: "Chúng tôi đã kiểm tra điều đó thế nào?" },
   { level: 2, id: "may-chu", text: "Máy chủ lưu gì và giữ bao lâu?" },
   { level: 2, id: "bao-cao-loi", text: "Báo cáo lỗi: app gửi gì khi gặp lỗi?" },
@@ -31,14 +32,14 @@ export default {
   description:
     "AI Translator xử lý âm thanh trên máy bạn, không gửi đi. Xem dữ liệu nào ở lại trên máy, app kết nối tới đâu, máy chủ lưu gì, giữ bao lâu và cách yêu cầu xóa.",
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
-  llm: "Dữ liệu ở lại trên máy, năm nơi app kết nối mạng, cách đã kiểm tra bằng proxy trên macOS, dữ liệu máy chủ lưu và thời gian giữ, báo cáo lỗi tự động (gửi gì, tắt thế nào), chat hỗ trợ (lưu gì, giữ bao lâu), bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
+  modified: "2026-11-13",
+  llm: "Dữ liệu ở lại trên máy, sáu nơi app kết nối mạng (gồm model cloud do bạn tự bật), cách đã kiểm tra bằng proxy trên macOS, dữ liệu máy chủ lưu và thời gian giữ, báo cáo lỗi tự động (gửi gì, tắt thế nào), chat hỗ trợ (lưu gì, giữ bao lâu), bên xử lý, lớp bảo vệ, trạng thái ký số và cách yêu cầu xóa dữ liệu.",
   llmTitle: "Dữ liệu và bảo mật của AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Dữ liệu của bạn đi đâu khi dùng AI Translator?",
-  lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bị gửi đi: nhận dạng giọng nói và dịch dùng model AI chạy trên máy, không có dịch vụ AI nào trên cloud tham gia. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm tra và những gì chưa kiểm.",
+  lead: "Âm thanh cuộc họp được xử lý hoàn toàn trên máy bạn và không bao giờ bị gửi đi: nhận dạng giọng nói luôn chạy trên máy. Mặc định, dịch và ghi chú cũng dùng model AI trên máy, nên chữ chép lời ở lại trên máy; chỉ khi bạn tự bật model cloud bằng khóa API của mình thì chữ (không phải âm thanh) mới đi thẳng tới nhà cung cấp bạn chọn. Trang này nêu từng loại dữ liệu: cái nào ở lại trên máy, cái nào đi qua mạng, cái nào lưu trên máy chủ của chúng tôi, kèm cách chúng tôi đã kiểm tra và những gì chưa kiểm.",
   meta: `<span>Cập nhật {{updated}}</span><span>Khớp với Chính sách quyền riêng tư: ${legalVersionLine("privacy.vi.md")}</span>`,
 })}
 
@@ -48,17 +49,17 @@ ${docLayout({
   tocTitle: "Trong trang này",
   body: `
 ${facts([
-  ["Xử lý AI", "Nhận dạng và dịch bằng model AI chạy trên máy bạn; không dùng AI trên cloud"],
-  ["Dữ liệu cuộc họp", "Chỉ ở trên máy bạn; máy chủ của chúng tôi không có"],
+  ["Xử lý AI", "Nhận dạng giọng nói luôn chạy trên máy bạn; dịch và ghi chú mặc định dùng model AI trên máy, model cloud chỉ chạy khi bạn tự bật và nhập khóa API"],
+  ["Dữ liệu cuộc họp", "Mặc định chỉ ở trên máy bạn, máy chủ của chúng tôi không có; nếu bạn tự bật model cloud, chữ đi thẳng tới nhà cung cấp bạn chọn"],
   ["Âm thanh", "Chỉ nằm trong RAM, không ghi đĩa, không gửi đi"],
-  ["Kết nối mạng", "Năm nơi; không nơi nào nhận âm thanh, chữ chép lời hay chữ bạn gõ ở Gõ dịch"],
+  ["Kết nối mạng", "Sáu nơi; không nơi nào nhận âm thanh hay chữ bạn gõ ở Gõ dịch; chữ chép lời chỉ đi tới nhà cung cấp cloud khi bạn tự bật model cloud"],
   ["Máy chủ lưu", "Email (khi mua, hay khi bạn tự để lại trong chat hỗ trợ), email Google khi bạn đăng nhập, đơn hàng, license, mã băm ID máy, báo cáo lỗi, tin nhắn chat hỗ trợ"],
   ["Giữ bao lâu", "Cho tới khi bạn yêu cầu xóa; báo cáo lỗi 30 ngày; chat hỗ trợ 90 ngày"],
   ["Đã kiểm", "Proxy và nettop trên macOS"],
   ["Ký số", "macOS ký ad-hoc, chưa notarize; Windows chưa ký"],
 ])}
 <h2 id="tren-may">Dữ liệu nào ở lại trên máy bạn?</h2>
-<p>Âm thanh, bản chép lời, bản dịch và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy. App không có quảng cáo và không có analytics. Dùng thử Free cần đăng nhập bằng Google, nên máy chủ lưu email Google của bạn cho tài khoản (xem <a href="#may-chu">Máy chủ lưu gì</a>). Gói trả phí không cần đăng nhập. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
+<p>Âm thanh và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy. Bản chép lời và bản dịch mặc định cũng ở lại trên máy; chỉ khi bạn tự bật model cloud thì chúng đi tới nhà cung cấp bạn chọn (xem <a href="#model-cloud">Model cloud và Ghi chú cuộc họp</a>). App không có quảng cáo và không có analytics. Dùng thử Free cần đăng nhập bằng Google, nên máy chủ lưu email Google của bạn cho tài khoản (xem <a href="#may-chu">Máy chủ lưu gì</a>). Gói trả phí không cần đăng nhập. Khi gặp lỗi, app gửi một báo cáo lỗi đã che dữ liệu cá nhân cho chúng tôi (xem <a href="#bao-cao-loi">Báo cáo lỗi</a>); báo cáo đó không có âm thanh, chữ chép lời hay bản dịch.</p>
 <div class="table-wrap" role="region" aria-label="Dữ liệu ở lại trên máy bạn" tabindex="0"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Cách xử lý</th></tr></thead>
 <tbody>
@@ -86,7 +87,7 @@ ${facts([
 <p>Tính năng này chưa đo bằng proxy như phần còn lại của app (xem “Chúng tôi đã kiểm tra điều đó thế nào?”). Toàn văn (kể cả công thức đọc tên) ở mục 2, 3, 4 và 10 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>.</p>
 
 <h2 id="ket-noi-mang">App kết nối mạng tới đâu?</h2>
-<p>Đúng năm nơi, và không nơi nào nhận âm thanh, nội dung chép lời hay chữ bạn gõ ở Gõ dịch. Nhận dạng giọng nói và dịch không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn), cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi. Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê năm kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
+<p>Đúng sáu nơi, và không nơi nào nhận âm thanh hay chữ bạn gõ ở Gõ dịch; nội dung chép lời chỉ tới nơi thứ sáu (nhà cung cấp model cloud), và chỉ khi bạn tự bật model cloud. Nhận dạng giọng nói và dịch bằng model trên máy không cần mạng. Trong lúc dịch, app chỉ có thể gửi các yêu cầu định kỳ tới máy chủ của chúng tôi (kiểm tra bản cập nhật, và kiểm tra bản quyền khi đến hạn), cùng tin chat hỗ trợ khi bạn đang mở mục Hỗ trợ hay bấm gửi. Mục 4 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a> cũng liệt kê sáu kết nối nhưng đếm theo mục đích (tải model và kiểm tra bản cập nhật cùng đi tới releases.aitranslator.vn; trang thanh toán của PayOS và của Creem gộp một mục; ba nhà cung cấp model cloud gộp một mục), còn bảng dưới đếm theo nơi nhận.</p>
 <div class="table-wrap" role="region" aria-label="Các nơi app kết nối mạng" tabindex="0"><table>
 <thead><tr><th scope="col">Nơi kết nối</th><th scope="col">Để làm gì</th><th scope="col">Gửi đi gì</th></tr></thead>
 <tbody>
@@ -94,8 +95,21 @@ ${facts([
 <tr><th scope="row">releases.aitranslator.vn</th><td>Tải model (gồm model nhận giọng, khoảng 26 MB, khi tính năng bật) và kiểm tra, tải bản cập nhật, và tải công thức đọc tên</td><td>Chỉ yêu cầu tải file</td></tr>
 <tr><th scope="row">Trang thanh toán PayOS (pay.payos.vn)</th><td>Thanh toán VietQR khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app</td></tr>
 <tr><th scope="row">Trang thanh toán Creem (www.creem.io)</th><td>Thanh toán bằng thẻ quốc tế khi bạn mua gói</td><td>Mở bằng trình duyệt của bạn, không phải trong app. Email bạn nhập đi từ máy chủ của chúng tôi sang Creem, không đi từ app (xem bảng “Bên nào khác xử lý dữ liệu?”)</td></tr>
+<tr><th scope="row">api.openai.com, generativelanguage.googleapis.com, api.deepseek.com (model cloud bạn chọn)</th><td>Dịch bằng model cloud và lập ghi chú cuộc họp. Chỉ khi bạn chọn model cloud này và nhập khóa API của chính bạn</td><td>Chữ cần dịch (kèm thuật ngữ khớp hoặc câu liền trước nếu có); với ghi chú, bản dịch (hoặc câu gốc nếu chưa dịch) cùng nhãn hoặc tên người nói. Không có âm thanh, và không đi qua máy chủ của chúng tôi</td></tr>
 <tr><th scope="row">aitranslator.vn (website này)</th><td>Liên kết ngoài (chính sách, hỗ trợ, trang tải) mở bằng trình duyệt hệ thống</td><td>App không gửi gì</td></tr>
 </tbody></table></div>
+
+<h2 id="model-cloud">Model cloud và Ghi chú cuộc họp</h2>
+<p>Mặc định, nhận dạng giọng nói, dịch và ghi chú cuộc họp đều chạy bằng model trên máy. Model cloud (ChatGPT của OpenAI, Gemini của Google, DeepSeek) là tùy chọn: chỉ chạy khi bạn tự bật và nhập khóa API của chính bạn. Khi đó app gọi thẳng từ máy bạn tới nhà cung cấp bạn chọn, không qua máy chủ của chúng tôi.</p>
+<ul>
+<li><strong>Gửi đi:</strong> chữ cần dịch, kèm thuật ngữ khớp trong từ điển hoặc câu liền trước nếu có; với ghi chú cuộc họp, là bản dịch (hoặc câu gốc nếu chưa dịch) cùng nhãn hoặc tên người nói.</li>
+<li><strong>Không bao giờ gửi:</strong> âm thanh (kể cả micro); email, license hay tài khoản của bạn; chữ bạn gõ ở Gõ dịch.</li>
+<li><strong>App hỏi trước:</strong> với ghi chú, app hỏi bạn đồng ý trước lần đầu gửi chữ chép lời tới nhà cung cấp; đổi nhà cung cấp thì app hỏi lại.</li>
+<li><strong>Khóa API</strong> nằm trong kho khóa của hệ điều hành; app không gửi khóa cho chúng tôi và không ghi khóa vào log.</li>
+<li><strong>Nhà cung cấp</strong> (OpenAI, Google, DeepSeek) không phải bên xử lý của chúng tôi: họ xử lý chữ theo chính sách và điều khoản của họ, nên hãy đọc chúng trước khi bật. Chúng tôi chưa đo kết nối này bằng proxy.</li>
+<li><strong>Dùng model trên máy</strong> (mặc định): ghi chú tạo bằng model trên máy không gửi gì đi.</li>
+</ul>
+<p>Chi tiết ở mục 16 của <a href="/chinh-sach-quyen-rieng-tu/">Chính sách quyền riêng tư</a>; cách dùng ghi chú ở <a href="/tinh-nang/#meeting-notes">Tính năng</a>.</p>
 
 <h2 id="da-kiem">Chúng tôi đã kiểm tra điều đó thế nào?</h2>
 <p>Trên macOS, chúng tôi cho app chạy sau một proxy bắt lưu lượng (mitmproxy), đo song song bằng <code>nettop</code>, rồi dịch một phiên bằng câu mẫu tiếng Anh phát lặp lại. Bản đo là bản release 0.1.0 ký ad-hoc, trên MacBook Pro M4 Pro, macOS 26.6.2, ngày 06/10/2026.</p>

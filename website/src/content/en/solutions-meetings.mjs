@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-25",
+  modified: "2026-11-13",
   llm: "How to use AI Translator as an AI meeting translator for live translated subtitles in Zoom, Teams, Google Meet and Zalo calls: preparing before the call, shortcuts during it, the transcript afterwards, apps tested, privacy notes and limits.",
   llmTitle: "AI meeting translator: translated subtitles for Zoom, Teams, Meet, Zalo",
   body: () => `
@@ -107,6 +107,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "After the meeting", title: "Keep what you need" })}
 <p>After you press <strong>Stop</strong>, press <strong>Open the transcript</strong> to see every line with its time, original text and translation; there is a search box (magnifier icon) and a <em>Copy all</em> button on every plan.</p>
 <p>Exporting to TXT, SRT or Markdown and History are Pro features (see <a href="/en/pricing/">pricing</a>). History is off by default; turn it on in Settings › Privacy and each session is saved on your computer, encrypted. The app does not save the transcript to disk on its own, and it is a text transcript, not meeting minutes. See <a href="/en/guide/history-and-export/">history and export</a>.</p>
+<p>Want a summary, decisions and action items? After you stop the session, create <a href="/en/features/#meeting-notes">Meeting notes</a>: the AI reads the transcript and writes a draft for you to re-check. Notes do not use translation time.</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

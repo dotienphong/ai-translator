@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-11-13",
   body: () => `
 ${pageHero({
   crumbs,
@@ -105,6 +105,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "会议之后", title: "留下你需要的内容" })}
 <p>按下<strong>停止</strong>后，再按<strong>打开转写记录</strong>，就能看到每一行及其时间、原文和译文；所有套餐都有搜索框（放大镜图标）和<em>全部复制</em>按钮。</p>
 <p>导出为 TXT、SRT 或 Markdown 以及历史记录是 Pro 功能（见<a href="/zh/pricing/">价格</a>）。历史记录默认关闭；在“设置 › 隐私”中开启后，每个会话都会加密保存在你的电脑上。应用不会自行把转写记录保存到磁盘，而且它是文字转写记录，不是会议纪要。请参阅<a href="/zh/guide/history-and-export/">历史记录和导出</a>。</p>
+<p>想要摘要、决议和待办事项？停止会话后，生成<a href="/zh/features/#meeting-notes">会议笔记</a>：AI 会阅读转写记录并写出草稿，请核对后再使用。笔记不消耗翻译时间。</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

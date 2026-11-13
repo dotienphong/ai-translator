@@ -15,7 +15,7 @@ export const HOME_FAQ = [
   },
   {
     q: "AI Translator の利用にインターネット接続は必要ですか？",
-    a: `<p>翻訳中は必要ありません。音声認識、翻訳、字幕の表示はすべてパソコン上で行われます。インターネットが必要なのは、初回にアプリとモデル（約 1.3 GB または 2.5 GB）をダウンロードするとき、無料お試しを登録するとき、プランを購入するとき、ライセンスを確認するとき（有料プランは確認と確認のあいだ最大 14 日間オフラインで使えます）、そしてアプリを更新するときだけです。</p>`,
+    a: `<p>オンデバイスのモデル（デフォルト）を使う場合、翻訳中は必要ありません。音声認識、翻訳、字幕の表示はすべてパソコン上で行われます。翻訳にクラウドモデルをオンにした場合は、翻訳中も接続が必要です。インターネットが必要なのは、初回にアプリとモデル（約 1.3 GB または 2.5 GB）をダウンロードするとき、無料お試しを登録するとき、プランを購入するとき、ライセンスを確認するとき（有料プランは確認と確認のあいだ最大 14 日間オフラインで使えます）、そしてアプリを更新するときだけです。</p>`,
   },
   {
     q: "会議の音声はどこかに送信されますか？",
@@ -43,7 +43,7 @@ export default {
   description:
     "会議、ライブ配信、YouTube、動画にリアルタイム翻訳字幕。入力翻訳でチャットの返信も相手の言語に。AI はパソコン上で動き、クラウドは使いません。",
   software: true,
-  modified: "2026-10-27",
+  modified: "2026-11-13",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "ja", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -53,14 +53,14 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple シリコン）· Windows 10/11 · 10 日間の無料お試し</p>
 <h1 class="reveal">会議・ライブ配信・YouTube・動画・チャットを <em>AI がリアルタイム翻訳</em></h1>
-<p class="lead reveal"><strong>AI Translator</strong> は、macOS と Windows 向けの、AI によるリアルタイム翻訳デスクトップアプリです。パソコンで再生されている音声をリアルタイムで画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳します。AI はあなたのパソコン上で動くため、音声や会議の内容がクラウドに送られることはありません。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、パソコンで見るライブ配信で使えます。</p>
+<p class="lead reveal"><strong>AI Translator</strong> は、macOS と Windows 向けの、AI によるリアルタイム翻訳デスクトップアプリです。パソコンで再生されている音声をリアルタイムで画面に浮かぶ翻訳字幕に変え、入力したメッセージを相手の言語に翻訳します。AI はあなたのパソコン上で動くため、音声がクラウドに送られることはなく、デフォルトでは文字起こしもパソコンに残ります。Zoom、Microsoft Teams、Google Meet、Zalo PC、ウェビナー、動画、パソコンで見るライブ配信で使えます。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/ja/download/">ダウンロード ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">使い方を見る</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} AI は 100% デバイス上で動作</li>
-<li>${icon("check")} 会議のデータはクラウドに送られません</li>
+<li>${icon("check")} AI はデフォルトでデバイス上で動作</li>
+<li>${icon("check")} 音声はクラウドに送られません</li>
 <li>${icon("check")} ボットもプラグインも不要</li>
 </ul>
 </div>
@@ -97,6 +97,7 @@ ${featureTabs({
         "5 つの言語のうち、どの 2 つのあいだでも翻訳：英語、中国語、日本語、韓国語、ベトナム語。話されている言語は自動で検出します",
         `話し手が文を言い終えると字幕が表示されます。Mac M4 Pro（Standard モデルパック）での中央値は 1.1 秒未満で、ほかのパソコンでは遅くなることがあります（<a href="/ja/features/">詳細</a>）`,
         `Zoom、Teams、Meet、Zalo で使えます。対面の会議は入力元を<strong>マイク</strong>にします（<a href="/ja/features/#microphone">使い方</a>）。パソコンで見るライブ配信にも使えます（<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>）`,
+        `会議ノート：会議のあとに要約、決定事項、やることを作成（<a href="/ja/features/#meeting-notes">詳しく</a>）`,
       ],
       cta: { href: "/ja/features/", label: "すべての機能を見る" },
       media: demoVideo({ lang: "ja", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
@@ -149,11 +150,11 @@ ${appShot({ slug: "app-home-running", lang: "ja", alt: "セッション中の AI
 </div></section>
 
 <section class="section band-dark" id="private-on-device"><div class="container">
-${sectionHead({ eyebrow: "データはあなたのパソコンに残ります", title: "AI はあなたのパソコンで動き、会議の内容は外に出ません", center: true })}
+${sectionHead({ eyebrow: "データはあなたのパソコンに残ります", title: "AI はあなたのパソコンで動き、会議の音声は外に出ません", center: true })}
 ${dataFlow("ja")}
 <div class="grid grid-2">
 ${feature({ icon: "lock", title: "音声はパソコンから出ません", text: "音声は RAM 上にだけ存在し、ディスクに書き込まれることもネットワークに送られることもありません。macOS でネットワークプロキシを使って確認しました。接続が途切れても字幕は表示され続けます。", accent: true })}
-${feature({ icon: "shield", title: "サーバーに会議の内容はありません", text: "サーバーが保存するのは、プランの販売、デバイスの有効化、サポートに必要なデータだけで（詳細は下記）、会議の内容は保存しません。" })}
+${feature({ icon: "shield", title: "サーバーに会議の内容はありません", text: "サーバーが保存するのは、プランの販売、デバイスの有効化、サポートに必要なデータだけで（詳細は下記）、会議の内容は保存しません。ご自身でクラウドモデルをオンにした場合、テキストはお使いのパソコンから選んだ提供元に直接送られ、私たちのサーバーは通りません。" })}
 </div>
 <details class="more-details reveal"><summary>サーバーは正確には何を保存しますか？</summary><p>サーバーに保存するのは、メールアドレス（購入時、またはサポートチャットにご自身で残したとき）、ログインしたときの Google のメールアドレス、注文、ライセンス、デバイスの有効化情報（ハッシュ化したマシン ID とデバイス名）、Free お試しの開始（ハッシュ化したマシン ID）、ライセンス変更の記録、個人情報を除いたエラーレポート（30 日間保存）、チャットを使った場合のサポートチャットのメッセージ（90 日間保存）だけで、会議の内容は一切保存しません。</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/ja/data-security/">データの行き先を詳しく見る ${icon("arrow-right")}</a></p>

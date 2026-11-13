@@ -16,7 +16,7 @@ export default {
   type: "article",
   published: "2026-10-08",
   breadcrumbs: crumbs,
-  modified: "2026-10-24",
+  modified: "2026-11-13",
   body: () => `
 ${pageHero({
   crumbs,
@@ -105,6 +105,7 @@ ${checkList([
 ${sectionHead({ eyebrow: "会議のあと", title: "必要なものを残す" })}
 <p><strong>停止</strong>を押したあと、<strong>文字起こしを開く</strong>を押すと、すべての行を時刻、原文、翻訳とともに確認できます。検索欄（虫めがねのアイコン）と<em>すべてコピー</em>ボタンは、どのプランでも使えます。</p>
 <p>TXT、SRT、Markdown への書き出しと履歴は Pro 機能です（<a href="/ja/pricing/">料金</a>をご覧ください）。履歴は初期設定でオフで、「設定 › プライバシー」でオンにすると、各セッションがパソコン上に暗号化して保存されます。アプリが文字起こしを勝手にディスクに保存することはなく、これは文字起こしのテキストであって、議事録ではありません。<a href="/ja/guide/history-and-export/">履歴と書き出し</a>をご覧ください。</p>
+<p>要約、決定事項、やることがほしいときは、セッションを停止した後に<a href="/ja/features/#meeting-notes">会議ノート</a>を作成してください。AI が文字起こしを読んで下書きを書くので、再確認してお使いください。ノートは翻訳時間を使いません。</p>
 </div></section>
 
 <section class="section section-alt"><div class="container narrow">

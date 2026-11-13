@@ -319,7 +319,9 @@ test("JSON-LD: câu trả lời FAQ không dính câu, tham chiếu @id đều c
 
 
 // Công nghệ lõi không được công bố: tên model, engine/thư viện chạy model, định dạng, khung app, kiến trúc nội bộ.
-const CORE_TECH = /whisper|hy-?mt|tencent|openai|madlad|nllb|llama|ggml|gguf|silero|tauri|\brust\b|cargo|\bmetal\b|vulkan|sqlcipher|sqlite|opencc|wasapi|core audio|process tap|\bengines?\b|quantiz|q8_0|q4_k|large-v3|\bWMT|ウィスパー|위스퍼|混元|テンセント|腾讯|騰訊|텐센트/i;
+// "openai" không nằm trong danh sách: chính sách quyền riêng tư phải gọi tên OpenAI, Google và DeepSeek vì chữ chép lời đi tới họ khi người dùng tự bật model cloud
+// (spec 2026-09-29 §10.1, mục 16 của chính sách). Tên nhà cung cấp cloud không phải công nghệ lõi; tên model chạy trên máy (whisper, qwen, gguf, llama) vẫn bị chặn.
+const CORE_TECH = /whisper|hy-?mt|tencent|madlad|nllb|llama|qwen|ggml|gguf|silero|tauri|\brust\b|cargo|\bmetal\b|vulkan|sqlcipher|sqlite|opencc|wasapi|core audio|process tap|\bengines?\b|quantiz|q8_0|q4_k|large-v3|\bWMT|ウィスパー|위스퍼|混元|テンセント|腾讯|騰訊|텐센트/i;
 
 /** Các chỗ trong `sources` (Map nơi → chữ) nêu công nghệ lõi, dạng "nơi: “từ” …ngữ cảnh…". Hàm thuần: test âm cố định ở test bên dưới. */
 const coreTechHits = (sources) =>
@@ -495,8 +497,8 @@ test("Về chúng tôi, Giải pháp, Tải xuống, Tính năng, Liên hệ và
     "/en/features/": ["$3.99", "$21.99", "$39.99"],
     "/lien-he/": ["Creem", "biên lai"],
     "/en/contact/": ["Creem", "receipt"],
-    "/bao-mat-du-lieu/": ["Đúng năm nơi", "www.creem.io", "Armitage Labs OÜ", "điền sẵn"],
-    "/en/data-security/": ["exactly five places", "www.creem.io", "Armitage Labs OÜ", "pre-fill"],
+    "/bao-mat-du-lieu/": ["Đúng sáu nơi", "www.creem.io", "Armitage Labs OÜ", "điền sẵn"],
+    "/en/data-security/": ["exactly six places", "www.creem.io", "Armitage Labs OÜ", "pre-fill"],
   };
   const errors = [];
   for (const [urlPath, needles] of Object.entries(need)) {
@@ -1150,8 +1152,8 @@ function sectionErrors(urlPath, wants, forbids = {}) {
 test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng hàng, hai cách trả, Creem là bên bán lại (merchant of record) và đơn hoàn tiền thì rút ngắn hạn hay thu hồi", () => {
   const vi = textOf(htmlByPath.get("/dieu-khoan/"));
   const en = textOf(htmlByPath.get("/en/terms/"));
-  const viNeeds = ["Phiên bản 1.8", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
-  const enNeeds = ["Version 1.8", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
+  const viNeeds = ["Phiên bản 1.9", "6 Months", "269.000 đ", "180 ngày", "3,99 USD", "21,99 USD", "39,99 USD", "VietQR", "thẻ quốc tế", "Creem", "Armitage Labs OÜ", "chưa gồm thuế"];
+  const enNeeds = ["Version 1.9", "6 Months", "269,000 VND", "180 days", "$3.99", "$21.99", "$39.99", "VietQR", "international card", "Creem", "Armitage Labs OÜ", "exclude tax"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/dieu-khoan/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/terms/: thiếu "${n}"`),
@@ -1231,8 +1233,8 @@ test("điều khoản (EULA) 1.3 nêu bốn gói với giá VND và USD đúng h
 test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (merchant of record), dữ liệu gửi và Creem tự thu, Creem giữ dữ liệu ngoài yêu cầu xóa, và website trong danh sách kết nối", () => {
   const vi = textOf(htmlByPath.get("/chinh-sach-quyen-rieng-tu/"));
   const en = textOf(htmlByPath.get("/en/privacy/"));
-  const viNeeds = ["Phiên bản 1.14", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
-  const enNeeds = ["Version 1.14", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
+  const viNeeds = ["Phiên bản 1.15", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "điền sẵn trang thanh toán", "số thẻ", "loại tiền"];
+  const enNeeds = ["Version 1.15", "PayOS", "Creem", "Armitage Labs OÜ", "Estonia", "pre-fill the payment page", "card number", "currency"];
   const errors = [
     ...viNeeds.filter((n) => !vi.includes(n)).map((n) => `/chinh-sach-quyen-rieng-tu/: thiếu "${n}"`),
     ...enNeeds.filter((n) => !en.includes(n)).map((n) => `/en/privacy/: thiếu "${n}"`),
@@ -1275,9 +1277,9 @@ test("chính sách quyền riêng tư 1.6 nêu Creem là bên bán lại (mercha
       const row = rowText(sections.get(n)?.html, lang[l][key]);
       for (const needle of rows[l][key]) if (!row.includes(needle)) errors.push(`${lang[l].path} mục ${n}, hàng "${lang[l][key]}": thiếu "${needle}" (hàng: ${row || "không có"})`);
     }
-    // Mục 4: năm nơi ứng dụng kết nối (website là nơi thứ năm), để câu "không có kết nối nào khác" đúng.
+    // Mục 4: sáu nơi ứng dụng kết nối (website là nơi thứ năm, model cloud do người dùng tự bật là nơi thứ sáu), để câu "không có kết nối nào khác" đúng.
     const items = (sections.get("4")?.html.match(/<li>/g) ?? []).length;
-    if (items !== 5) errors.push(`${lang[l].path} mục 4: ${items} nơi kết nối (cần 5, có website)`);
+    if (items !== 6) errors.push(`${lang[l].path} mục 4: ${items} nơi kết nối (cần 6, có website và model cloud)`);
   }
   errors.push(
     ...sectionErrors(
@@ -1396,7 +1398,7 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
           paragraphs: lines.filter((l) => !/^(- |\d+\. |\||#)/.test(l)).length,
         };
       });
-  for (const [name, count] of [["eula", 16], ["privacy", 15]]) {
+  for (const [name, count] of [["eula", 16], ["privacy", 16]]) {
     const vi = skeleton(docs[`${name}.vi.md`]);
     const en = skeleton(docs[`${name}.en.md`]);
     if (vi.length !== count) errors.push(`${name}.vi.md: ${vi.length} mục (giữ ${count} mục)`);
@@ -1416,7 +1418,7 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
   // hiệu lực không sớm hơn 2026-10-31. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
-  if (eulaHead?.version !== "1.8" || privacyHead?.version !== "1.14") errors.push("EULA 1.8 và chính sách 1.14");
+  if (eulaHead?.version !== "1.9" || privacyHead?.version !== "1.15") errors.push("EULA 1.9 và chính sách 1.15");
   if (eulaHead?.iso !== "2026-11-06") errors.push(`EULA 1.8 hiệu lực 2026-11-06, đang ghi ${eulaHead?.iso}`);
   if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.14 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
@@ -2776,14 +2778,10 @@ const STALE_SPEAKER_MUST_CATCH = [
   "자막에서 화자 구분하기",
 ];
 const STALE_SPEAKER_MUST_KEEP = [
-  "Bạn cần biên bản hoặc tóm tắt tự động. Chưa có.",
+  // Câu "chưa có biên bản hay tóm tắt tự động" từng được giữ ở đây vì đúng; từ khi có ghi chú cuộc họp nó sai và nằm ở STALE_NOTES_MUST_CATCH.
   "Phụ đề có thể hiện mỗi người một màu và tên từ Teams bản cài trên macOS.",
   "Hiện tên người đang nói từ Google Meet và Zoom, và phân biệt người nói trên Windows",
-  "You need automatic minutes or summaries. Not available.",
   "Showing speaker names from Google Meet and Zoom, and telling speakers apart on Windows",
-  "議事録の自動作成や要約が必要。対応していません。",
-  "你需要自动生成会议纪要或摘要。暂不提供。",
-  "자동 회의록이나 요약이 필요하다. 지원하지 않습니다.",
 ];
 
 test("luật câu cũ về người nói (STALE_SPEAKER) bắt câu cũ và không bắt câu đúng", () => {
@@ -3041,4 +3039,186 @@ test("trang Tải xuống (năm ngôn ngữ): tab Windows có khối Cách 1 t�
     assert.ok(winBlock.includes(`<code>${SITE.winInstaller.file}</code>`), `${p.path}: thiếu tên file ${SITE.winInstaller.file}`);
     assert.ok(!winBlock.includes("SHA256SUMS-windows.txt"), `${p.path}: không hiện liên kết SHA256SUMS-windows.txt`);
   }
+});
+
+// ---- Ghi chú cuộc họp (F14; spec 2026-11-11-ghi-chu-cuoc-hop-design; kế hoạch 05 Task 4) ----
+// Câu cũ đã sai khi có ghi chú: (1) nói chữ chép lời, bản dịch hay "dữ liệu cuộc họp" không bao giờ rời máy mà không nêu điều kiện (người dùng tự bật model cloud thì
+// chữ đi tới nhà cung cấp họ chọn; âm thanh thì vẫn không bao giờ rời máy nên câu về âm thanh không bị bắt); (2) nói chưa có tóm tắt hay biên bản; (3) nói tóm tắt trong lúc họp.
+// Câu đúng phải có chữ điều kiện cùng câu: mặc định, model trên máy, nếu bạn tự bật model cloud (ja: デフォルトでは, zh: 默认, ko: 기본적으로).
+const NOTES_HEDGE = {
+  vi: /mặc\s+định|model\s+trên\s+máy|model\s+cloud|trừ\s+khi|nếu\s+bạn\s+tự\s+bật/iu,
+  en: /by\s+default|on-device\s+model|cloud\s+model|unless\s+you|if\s+you\s+(?:turn|switch|choose|enable)/i,
+  ja: /デフォルトでは|クラウドモデル|自分で/,
+  zh: /默认|云端模型|自行开启/,
+  ko: /기본적으로|클라우드 모델|직접 켜/,
+};
+const STALE_NOTES = [
+  { id: "vi: AI chạy 100% trên máy (không điều kiện)", re: /100\s*%\s*trên\s+máy/iu, unless: NOTES_HEDGE.vi },
+  { id: "vi: không có dịch vụ AI trên cloud (không điều kiện)", re: /không\s+có\s+dịch\s+vụ\s+AI\s+nào\s+trên\s+cloud|không\s+dùng\s+AI\s+trên\s+cloud/iu, unless: NOTES_HEDGE.vi },
+  { id: "vi: dữ liệu cuộc họp không lên cloud (không điều kiện)", re: /(?:dữ\s+liệu|nội\s+dung)\s+cuộc\s+họp\s+(?:không\s+lên\s+cloud|không\s+rời)|không\s+gửi\s+dữ\s+liệu\s+cuộc\s+họp\s+lên\s+cloud|không\s+đưa\s+cuộc\s+họp\s+lên\s+cloud|(?<!âm\s+thanh\s+)cuộc\s+họp\s+không\s+rời\s+khỏi\s+máy|không\s+có\s+chuyến\s+đi\s+nào\s+lên\s+cloud/iu, unless: NOTES_HEDGE.vi },
+  { id: "vi: bản chép lời, bản dịch không rời máy (không điều kiện)", re: /(?:bản\s+chép\s+lời|bản\s+dịch)[^.]{0,60}(?:không\s+bao\s+giờ\s+rời|không\s+đi\s+qua\s+bên\s+thứ\s+ba)/iu, unless: NOTES_HEDGE.vi },
+  { id: "vi: chưa có biên bản hay tóm tắt", re: /Bạn\s+cần\s+biên\s+bản\s+hoặc\s+tóm\s+tắt\s+tự\s+động|Tóm\s+tắt\s+và\s+biên\s+bản\s+cuộc\s+họp/iu },
+  { id: "vi: tóm tắt trong lúc họp", re: /tóm\s+tắt\s+(?:ngay\s+)?(?:trong\s+lúc\s+họp|theo\s+thời\s+gian\s+thực)/iu, unless: /không|chưa|sau\s+khi/iu },
+  { id: "en: AI runs 100% on the device (unconditional)", re: /\b100\s*%\s+on\s+(?:your\s+)?(?:computer|machine|device)/i, unless: NOTES_HEDGE.en },
+  { id: "en: no cloud AI (unconditional)", re: /no\s+cloud\s+AI\b/i, unless: NOTES_HEDGE.en },
+  { id: "en: no meeting data sent to the cloud (unconditional)", re: /no\s+meeting\s+data\s+sent\s+to\s+the\s+cloud|so\s+your\s+meeting\s+never\s+leaves\s+it|nothing\s+(?:ever\s+)?leaves\s+your\s+(?:device|computer)/i, unless: NOTES_HEDGE.en },
+  { id: "en: transcript or translation never leaves (unconditional)", re: /(?:transcripts?|translations?)(?:(?!audio)[^.;]){0,60}(?:never\s+leave|stay\s+on\s+your|do\s+not\s+pass\s+through)/i, unless: new RegExp(NOTES_HEDGE.en.source + String.raw`|what\s+you\s+type\s+and\s+its\s+translation`, "i") },
+  { id: "en: no automatic minutes or summaries", re: /You\s+need\s+automatic\s+minutes\s+or\s+summaries|Meeting\s+summaries\s+and\s+minutes/i },
+  { id: "en: summaries during the meeting", re: /(?:live|real-time|during\s+the\s+meeting)\s+summar|summar\w+\s+(?:live|in\s+real\s+time|during\s+the\s+meeting)/i, unless: /\bno\b|\bnot\b|only\s+after|after\s+you\s+stop/i },
+  { id: "ja: AI は 100% パソコン上（条件なし）", re: /100\s*%\s*(?:デバイス|パソコン)上/, unless: NOTES_HEDGE.ja },
+  { id: "ja: クラウドの AI は使わない（条件なし）", re: /クラウドの AI(?: サービス)?\s*は(?:関わりません|使いません)/, unless: NOTES_HEDGE.ja },
+  { id: "ja: 会議のデータはクラウドに送らない（条件なし）", re: /会議のデータはクラウドに送(?:られ)?ません|会議をクラウドに預けない/, unless: NOTES_HEDGE.ja },
+  { id: "ja: 文字起こしと翻訳は第三者を通らない（条件なし）", re: /(?:文字起こし|翻訳)[^。]{0,40}第三者を通ることはありません/, unless: NOTES_HEDGE.ja },
+  { id: "ja: 議事録や要約は未対応", re: /議事録の自動作成や要約が必要|会議の要約と議事録/ },
+  { id: "zh: AI 100% 在设备上（无条件）", re: /100\s*%\s*在你的(?:设备|电脑)上/, unless: NOTES_HEDGE.zh },
+  { id: "zh: 不使用云端 AI（无条件）", re: /不涉及任何云端 AI 服务|不使用云端 AI(?!\s*模型)|没有任何云端 AI 服务参与/, unless: NOTES_HEDGE.zh },
+  { id: "zh: 会议数据不上传云端（无条件）", re: /会议数据(?:从不上传云端|不会发送到云端)|无需把会议放到云端/, unless: NOTES_HEDGE.zh },
+  { id: "zh: 转写和译文不离开电脑（无条件）", re: /(?:转写内容|译文|转写文本)[^。]{0,30}(?:不会经过任何第三方|不会离开你的电脑)/, unless: NOTES_HEDGE.zh },
+  { id: "zh: 会议纪要或摘要暂不提供", re: /你需要自动生成会议纪要或摘要|会议摘要和会议纪要/ },
+  { id: "ko: AI 가 100% 기기에서（조건 없음）", re: /100\s*%\s*(?:기기|내 컴퓨터)에서/, unless: NOTES_HEDGE.ko },
+  { id: "ko: 클라우드 AI 는 쓰지 않음（조건 없음）", re: /클라우드 AI 서비스는 관여하지 않습니다|클라우드 AI는 쓰지 않습니다|어떤 클라우드 AI 서비스도 관여하지 않으므로/, unless: NOTES_HEDGE.ko },
+  { id: "ko: 회의 데이터는 클라우드로 가지 않음（조건 없음）", re: /회의 데이터는 클라우드(?:로 가지 않음|로 보내지 않습니다)|회의를 클라우드에 올리지 않는/, unless: NOTES_HEDGE.ko },
+  { id: "ko: 받아쓰기와 번역은 제3자를 거치지 않음（조건 없음）", re: /(?:받아쓰기|번역)[^.]{0,30}제3자를 거치지 않습니다/, unless: NOTES_HEDGE.ko },
+  { id: "ko: 회의록이나 요약은 미지원", re: /자동 회의록이나 요약이 필요하다|회의 요약과 회의록/ },
+];
+const STALE_NOTES_MUST_CATCH = [
+  "AI chạy 100% trên máy",
+  "Dữ liệu cuộc họp không lên cloud",
+  "Phụ đề dịch bằng AI chạy trên máy bạn, không gửi dữ liệu cuộc họp lên cloud.",
+  "AI chạy ngay trên máy, nên cuộc họp không rời khỏi máy",
+  "Dịch bằng AI mà không đưa cuộc họp lên cloud",
+  "Không có chuyến đi nào lên cloud: âm thanh, bản chép lời và bản dịch ở lại trên máy bạn.",
+  "Không có dịch vụ AI nào trên cloud tham gia vào việc nhận dạng hay dịch cuộc họp, nên âm thanh, bản chép lời và bản dịch không đi qua bên thứ ba nào.",
+  "Âm thanh, bản chép lời, bản dịch và chữ bạn gõ ở Gõ dịch không bao giờ rời khỏi máy.",
+  "Có: nhận dạng giọng nói và dịch chạy 100% trên máy, không cần mạng sau khi đã tải model.",
+  "Bạn cần biên bản hoặc tóm tắt tự động. Chưa có.",
+  "Tóm tắt và biên bản cuộc họp",
+  "App tóm tắt trong lúc họp để bạn khỏi mất công.",
+  "AI runs 100% on your device",
+  "AI-translated subtitles that run on your computer, with no meeting data sent to the cloud.",
+  "The AI runs on your machine, so your meeting never leaves it",
+  "Speech recognition and translation use AI models running on your computer; no cloud AI",
+  "Audio, transcripts, translations and the text you type in Type & Translate never leave your computer.",
+  "Yes: speech recognition and translation run 100% on your computer and need no internet once the models are downloaded.",
+  "You need automatic minutes or summaries. Not available.",
+  "Meeting summaries and minutes",
+  "The app gives live summaries during the meeting.",
+  "AI は 100% デバイス上で動作",
+  "会議のデータはクラウドに送られません",
+  "音声認識と翻訳はパソコン上で動く AI モデルを使用。クラウドの AI は使いません",
+  "議事録の自動作成や要約が必要。対応していません。",
+  "会議の要約と議事録",
+  "AI 100% 在你的设备上运行",
+  "会议数据从不上传云端",
+  "由在你电脑上运行的 AI 生成翻译字幕，会议数据不会发送到云端。",
+  "语音识别和翻译使用在你电脑上运行的 AI 模型；不使用云端 AI",
+  "音频、转写内容、译文以及你在输入翻译中输入的文字，都不会离开你的电脑。",
+  "你需要自动生成会议纪要或摘要。暂不提供。",
+  "会议摘要和会议纪要",
+  "AI가 100% 기기에서 실행",
+  "회의 데이터는 클라우드로 가지 않음",
+  "내 컴퓨터에서 실행되는 AI로 번역 자막을 만듭니다. 회의 데이터는 클라우드로 보내지 않습니다.",
+  "음성 인식과 번역은 컴퓨터에서 실행되는 AI 모델을 사용하며, 클라우드 AI는 쓰지 않습니다",
+  "자동 회의록이나 요약이 필요하다. 지원하지 않습니다.",
+  "회의 요약과 회의록",
+];
+const STALE_NOTES_MUST_KEEP = [
+  "Âm thanh không rời khỏi máy.",
+  "Âm thanh cuộc họp không rời khỏi máy.",
+  "Âm thanh chỉ nằm trong RAM, không ghi đĩa, không gửi qua mạng.",
+  "Chữ bạn gõ và bản dịch được xử lý trên máy bạn, không gửi qua mạng, không ghi xuống đĩa.",
+  "Khi dùng model trên máy (mặc định), chữ chép lời không rời máy.",
+  "Phụ đề dịch bằng AI chạy trên máy bạn, mặc định không gửi dữ liệu cuộc họp lên cloud.",
+  "Nếu bạn tự bật model cloud, chữ đi thẳng từ máy bạn tới nhà cung cấp bạn chọn.",
+  "Ghi chú được tạo sau khi dừng phiên; app không có tóm tắt trong lúc họp.",
+  "Với model trên máy, nhận dạng giọng nói và dịch chạy trên máy, không cần mạng sau khi đã tải model.",
+  "Audio never leaves your computer.",
+  "Audio stays in RAM, is never written to disk and never sent over the network.",
+  "What you type and its translation are processed on your computer, not sent over the network.",
+  "By default, AI-translated subtitles run on your computer, with no meeting data sent to the cloud.",
+  "With an on-device model, the transcript and translation never leave your computer.",
+  "If you turn on a cloud model, the text goes straight from your computer to the provider you chose.",
+  "Notes are made after you stop the session; there are no summaries during the meeting.",
+  "音声はパソコンの外に出ません。",
+  "デフォルトでは会議のデータはクラウドに送りません。",
+  "デフォルトでは、文字起こしと翻訳は第三者を通ることはありません。自分でクラウドモデルをオンにしたときは別です。",
+  "音频不会离开你的电脑。",
+  "默认情况下，会议数据不会发送到云端。",
+  "使用本机模型时，转写内容和译文都不会离开你的电脑；自行开启云端模型则另当别论。",
+  "오디오는 컴퓨터를 떠나지 않습니다.",
+  "기본적으로 회의 데이터는 클라우드로 보내지 않습니다.",
+  "기본적으로 받아쓰기와 번역은 제3자를 거치지 않습니다. 클라우드 모델을 직접 켜면 다릅니다.",
+];
+
+/** Như staleHits nhưng tách thêm ở dấu câu CJK (。！？), vì sentencesOf chỉ tách ở dấu Latin: không tách thì chữ điều kiện ở một vế che được vế vô điều kiện. */
+const notesHits = (text) => staleHits(text.replace(/([。！？])/gu, "$1\n").replace(/([.!?])\s+(?=\p{Script=Hangul})/gu, "$1\n"), STALE_NOTES);
+
+test("luật câu cũ về ghi chú cuộc họp (STALE_NOTES) bắt câu cũ ở cả năm ngôn ngữ và không bắt câu đúng", () => {
+  assert.ok(STALE_NOTES_MUST_CATCH.length >= 30 && STALE_NOTES_MUST_KEEP.length >= 20);
+  const missed = STALE_NOTES_MUST_CATCH.filter((s) => notesHits(s).length === 0);
+  assert.deepEqual(missed, [], "câu cũ mà luật không bắt");
+  const extra = STALE_NOTES_MUST_KEEP.filter((s) => notesHits(s).length > 0).map((s) => `${s} → ${notesHits(s).map((h) => h.id).join(", ")}`);
+  assert.deepEqual(extra, [], "câu đúng mà luật bắt thừa");
+});
+
+test("không nguồn chữ nào của site còn câu cũ về ghi chú: dữ liệu không rời máy mà không có điều kiện, chưa có tóm tắt hay biên bản, tóm tắt trong lúc họp (năm ngôn ngữ, cả llms*.txt)", async () => {
+  const errors = [...(await siteTexts())].flatMap(([where, text]) => notesHits(text).map((h) => `${where}: còn câu cũ [${h.id}] "${h.sentence}"`));
+  assert.deepEqual(errors, []);
+});
+
+// Ghi chú ở Tính năng, Hỏi đáp và Bảng giá (năm ngôn ngữ): điều kiện (sau khi dừng phiên, RAM), bản nháp AI phải kiểm lại, số đo kèm điều kiện đo, hạn mức Free.
+const NOTES_PAGES = {
+  vi: { features: "/tinh-nang/", faq: "/cau-hoi-thuong-gap/", pricing: "/bang-gia/", meetings: "/giai-phap/dich-hop-truc-tuyen/", data: "/bao-mat-du-lieu/", home: "/", label: "Ghi chú cuộc họp", feat: ["bản nháp", "kiểm lại", "sau khi dừng phiên", "16 GB"], qa: ["16 GB", "bản nháp", "kiểm lại", "khoảng 14 phút", "khoảng 24 phút", "khóa API"] },
+  en: { features: "/en/features/", faq: "/en/faq/", pricing: "/en/pricing/", meetings: "/en/solutions/online-meeting-translation/", data: "/en/data-security/", home: "/en/", label: "Meeting notes", feat: ["draft", "re-check", "after you stop the session", "16 GB"], qa: ["16 GB", "draft", "re-check", "about 14 minutes", "about 24 minutes", "API key"] },
+  ja: { features: "/ja/features/", faq: "/ja/faq/", pricing: "/ja/pricing/", meetings: "/ja/solutions/online-meeting-translation/", data: "/ja/data-security/", home: "/ja/", label: "会議ノート", feat: ["下書き", "再確認", "セッションを停止した後", "16 GB"], qa: ["16 GB", "下書き", "再確認", "約 14 分", "約 24 分", "API キー"] },
+  zh: { features: "/zh/features/", faq: "/zh/faq/", pricing: "/zh/pricing/", meetings: "/zh/solutions/online-meeting-translation/", data: "/zh/data-security/", home: "/zh/", label: "会议笔记", feat: ["草稿", "核对", "停止会话后", "16 GB"], qa: ["16 GB", "草稿", "核对", "约 14 分钟", "约 24 分钟", "API 密钥"] },
+  ko: { features: "/ko/features/", faq: "/ko/faq/", pricing: "/ko/pricing/", meetings: "/ko/solutions/online-meeting-translation/", data: "/ko/data-security/", home: "/ko/", label: "회의 노트", feat: ["초안", "다시 확인", "세션을 중지한 후", "16 GB"], qa: ["16 GB", "초안", "다시 확인", "약 14분", "약 24분", "API 키"] },
+};
+
+test("ghi chú cuộc họp (năm ngôn ngữ): Tính năng có mục #meeting-notes với điều kiện và bản nháp, Hỏi đáp có số đo kèm điều kiện, trang chủ và Giải pháp họp dẫn tới mục đó", () => {
+  const errors = [];
+  for (const [lang, c] of Object.entries(NOTES_PAGES)) {
+    const featHtml = htmlByPath.get(c.features);
+    if (!/<section[^>]*\sid="meeting-notes"/.test(featHtml)) errors.push(`${c.features}: thiếu mục id="meeting-notes"`);
+    const feat = plainAmp(textOf(featHtml));
+    for (const n of [c.label, ...c.feat]) if (!feat.includes(n)) errors.push(`${c.features}: thiếu "${n}"`);
+    const faq = plainAmp(textOf(htmlByPath.get(c.faq)));
+    for (const n of c.qa) if (!faq.includes(n)) errors.push(`${c.faq}: thiếu "${n}"`);
+    if (!plainAmp(textOf(htmlByPath.get(c.home))).includes(c.label)) errors.push(`${c.home}: thiếu "${c.label}"`);
+    const meetings = htmlByPath.get(c.meetings);
+    if (!meetings?.includes(`${c.features}#meeting-notes`)) errors.push(`${c.meetings}: thiếu liên kết ${c.features}#meeting-notes`);
+    if (!plainAmp(textOf(meetings ?? "")).includes(c.label)) errors.push(`${c.meetings}: thiếu "${c.label}"`);
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("ghi chú cuộc họp: hàng ở bảng gói của Tính năng và Bảng giá, Free có 3 lần, bốn gói trả phí không giới hạn (không có số 3), năm ngôn ngữ", () => {
+  const errors = [];
+  for (const [lang, c] of Object.entries(NOTES_PAGES)) {
+    for (const urlPath of [c.features, c.pricing]) {
+      const html = htmlByPath.get(urlPath);
+      const row = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => m[1]).find((r) => textOf(/<th[^>]*>([\s\S]*?)<\/th>/.exec(r)?.[1] ?? "").includes(c.label));
+      if (!row) { errors.push(`${urlPath}: không có hàng "${c.label}" ở bảng gói`); continue; }
+      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => textOf(m[1]));
+      if (cells.length !== 4) errors.push(`${urlPath}: hàng "${c.label}" có ${cells.length} ô (cần 4: Free, Monthly, 6 Months, Yearly)`);
+      else {
+        if (!/\b3\b/.test(cells[0])) errors.push(`${urlPath}: ô Free của hàng "${c.label}" phải có "3": ${cells[0]}`);
+        for (const [i, cell] of cells.slice(1).entries()) if (/\d/.test(cell)) errors.push(`${urlPath}: gói trả phí #${i + 1} của hàng "${c.label}" không được ghi số: ${cell}`);
+      }
+    }
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("Dữ liệu và bảo mật nêu ba nhà cung cấp model cloud kèm điều kiện (chỉ khi bạn chọn và nhập khóa API) và một mục riêng cho model cloud và ghi chú, năm ngôn ngữ", () => {
+  const hosts = ["api.openai.com", "generativelanguage.googleapis.com", "api.deepseek.com"];
+  const errors = [];
+  for (const [lang, c] of Object.entries(NOTES_PAGES)) {
+    const html = htmlByPath.get(c.data);
+    const text = plainAmp(textOf(html));
+    for (const h of hosts) if (!text.includes(h)) errors.push(`${c.data}: thiếu ${h}`);
+    if (!/<h2[^>]*\sid="model-cloud"/.test(html)) errors.push(`${c.data}: thiếu mục id="model-cloud"`);
+    if (!text.includes(c.label)) errors.push(`${c.data}: thiếu "${c.label}"`);
+  }
+  assert.deepEqual(errors, []);
 });

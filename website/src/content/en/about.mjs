@@ -93,7 +93,6 @@ ${callout({ kind: "warn", title: "This is not a commitment.", text: "The list be
 <li>Windows ARM64 support</li>
 <li>Per-app audio capture on Windows</li>
 <li>Two-way speech translation, so your own voice can be translated for the other people in the meeting</li>
-<li>Meeting summaries and minutes</li>
 <li>A business plan for multiple devices</li>
 <li>More languages for the source audio and the translation (beyond the current five)</li>
 <li>More interface languages</li>

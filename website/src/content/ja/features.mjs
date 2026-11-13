@@ -14,7 +14,7 @@ export default {
     "5 言語のリアルタイム翻訳字幕、字幕バー、チャット用の入力翻訳、用語集、履歴、TXT/SRT/Markdown 書き出し。すべてパソコン上でオフラインで動きます。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
+  modified: "2026-11-13",
   body: () => `
 ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイム翻訳機能", lead: "AI Translator が今できることを、アプリでの実際の動きそのままにご紹介します。有料プランだけの機能ははっきり示しています。" })}
 
@@ -25,6 +25,7 @@ ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイ
 <a class="card card-link" href="#subtitle-bar"><h3>字幕バー</h3><p class="muted">ドラッグ、ロック、文字サイズ変更</p></a>
 <a class="card card-link" href="#read-aloud"><h3>読み上げ</h3><p class="muted">翻訳を音声で聞く（Windows）</p></a>
 <a class="card card-link" href="#transcript"><h3>文字起こし</h3><p class="muted">履歴、書き出し（Pro）</p></a>
+<a class="card card-link" href="#meeting-notes"><h3>会議ノート</h3><p class="muted">要約、決定事項、やること</p></a>
 <a class="card card-link" href="#glossary"><h3>用語集</h3><p class="muted">人名と用語（Pro）</p></a>
 <a class="card card-link" href="#type-and-translate"><h3>入力翻訳</h3><p class="muted">相手の言語でチャット</p></a>
 <a class="card card-link" href="#audio-source"><h3>音声ソース</h3><p class="muted">どの会議アプリでも、ボット不要</p></a>
@@ -34,12 +35,12 @@ ${pageHero({ crumbs, title: "パソコン上で動く、会議のリアルタイ
 </div></section>
 
 <section class="section band-dark" id="on-device-ai"><div class="container">
-${sectionHead({ eyebrow: "デバイス上の AI", title: "会議をクラウドに預けない AI 翻訳", text: "音声認識用と翻訳用の 2 つの AI モデルが、あなたのパソコン上で直接動きます。音声や会議の内容をサーバーやクラウドの AI サービスに送る工程はありません。", center: true })}
+${sectionHead({ eyebrow: "デバイス上の AI", title: "会議の音声をクラウドに預けない AI 翻訳", text: "音声認識用と翻訳用の 2 つの AI モデルが、あなたのパソコン上で直接動きます。音声をサーバーやクラウドの AI サービスに送る工程はありません。デフォルトでは文字起こしと翻訳もパソコンに残り、ご自身の API キーでクラウドモデルをオンにしたときだけ、選んだ提供元にテキストが送られます。", center: true })}
 ${dataFlow("ja")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "ローカルで動く 2 つの AI モデル", text: "1 つが音声を認識し、もう 1 つが翻訳します。どちらも一度ダウンロードすれば、GPU または CPU を使ってあなたのパソコン上で動きます。", accent: true })}
 ${feature({ icon: "zap", title: "遠回りしないから低遅延", text: "サーバーとの往復がないため、話し手が文を言い終えるとすぐに翻訳が表示されます。Mac M4 Pro での中央値は 1.1 秒未満です。" })}
-${feature({ icon: "lock", title: "会話のデータはパソコンに残ります", text: "音声は RAM 上にだけ存在し、文字起こしと翻訳はパソコンに残ります。履歴は初期設定でオフで、オンにした場合もパソコン上で暗号化されます。" })}
+${feature({ icon: "lock", title: "会話のデータはパソコンに残ります", text: "音声は RAM 上にだけ存在し、デフォルトでは文字起こしと翻訳もパソコンに残ります。履歴は初期設定でオフで、オンにした場合もパソコン上で暗号化されます。" })}
 </div>
 </div></section>
 
@@ -163,6 +164,27 @@ ${appShot({ slug: "app-history", lang: "ja", alt: "保存したセッション�
 </div>
 </div></section>
 
+<section class="section" id="meeting-notes"><div class="container">
+${sectionHead({ eyebrow: "会議ノート", title: "会議のあと、ボタン 1 つで要約・決定事項・やることを作成", text: "セッションを停止した後に「ノートを作成」を押すと、AI が文字起こしを読み、要約と、決定事項、やること、未解決の質問などの抜き出し項目を書きます。各項目は文字起こしの元の行に戻れるので、見比べて確認できます。", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>クラウドモデル：速い、ご自身の API キーで</h3>
+<p>翻訳に ChatGPT、Gemini、DeepSeek（ご自身の API キー）を選んでいる場合、ノートも同じモデルを使い、パソコン上で処理しないため、通常はずっと速く終わります。初めて送るときはアプリが確認します。翻訳（まだ翻訳されていない文は原文）と話者のラベルが、お使いのパソコンから選んだ提供元へ直接送られます。私たちのサーバーは通らず、音声も送られません。</p>
+</div>
+<div class="stack-lg reveal">
+<h3>オンデバイスのモデル：何も送らない、遅め</h3>
+<p>クラウドモデルをオンにしていなければ、ノートはパソコン上で動く AI モデルが作り、文字起こしがパソコンから出ることはありません。RAM 16 GB 以上と、追加で約 2.6 GB のダウンロード（1 回だけ）が必要です。クラウドよりずっと遅く、結果は下書きです。使う前に再確認してください。</p>
+</div>
+</div>
+${checkList([
+  "作成できるのは<strong>セッションを停止した後</strong>だけです。会議の最中に要約することはありません",
+  "結果には必ず<strong>AI が書いた下書き</strong>と表示されます。AI は担当者、期限、要点を取り違えることがあるため、元の行と照らして再確認してください",
+  "アプリ内で手で編集できます。Markdown または TXT への書き出しは <span class=\"badge badge-pro\">Pro</span>",
+  "Free はお試し期間中に 3 回まで作成でき、有料プランは無制限です。ノートは翻訳時間を使いません",
+])}
+<p class="small muted">クラウドモデルは、ご自身でオンにして API キーを入力したときだけ動きます。<a href="/ja/data-security/#model-cloud">クラウドモデル使用時のデータの行き先</a>をご覧ください。</p>
+</div></section>
+
 <section class="section" id="glossary"><div class="container">
 <div class="split wide-left reverse">
 <div>
@@ -263,6 +285,7 @@ ${sectionHead({ eyebrow: "プラン別", title: "どの機能がどのプラン�
 <tr><th scope="row">用語集（最大 500 件）</th><td><span class="no">なし</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td></tr>
 <tr><th scope="row">セッション履歴の保存</th><td><span class="no">なし</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td></tr>
 <tr><th scope="row">TXT、SRT、Markdown への書き出し</th><td><span class="no">なし</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td></tr>
+<tr><th scope="row">AI による会議ノート</th><td>お試し期間中に 3 回</td><td>無制限</td><td>無制限</td><td>無制限</td></tr>
 <tr><th scope="row">翻訳時間</th><td>1 日 30 分、10 日間</td><td>30 日ごとに 50 時間</td><td>180 日間、30 日ごとに 100 時間</td><td>365 日間、無制限</td></tr>
 <tr><th scope="row">価格（VietQR、VND）</th><td>0 ₫</td><td>50,000 ₫</td><td>269,000 ₫</td><td>500,000 ₫</td></tr>
 <tr><th scope="row">価格（国際カード、USD、税抜）</th><td>—</td><td>US$3.99</td><td>US$21.99</td><td>US$39.99</td></tr>

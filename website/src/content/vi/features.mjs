@@ -14,8 +14,8 @@ export default {
     "Phụ đề dịch trực tiếp 5 ngôn ngữ, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất TXT/SRT/Markdown. Tất cả chạy offline trên máy bạn.",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
-  llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất file, phím tắt, model).",
+  modified: "2026-11-13",
+  llm: "Danh sách đầy đủ tính năng đã có trong app (phụ đề dịch, thanh phụ đề, Gõ dịch tin nhắn, từ điển thuật ngữ, lịch sử, xuất file, ghi chú cuộc họp bằng AI, phím tắt, model).",
   llmTitle: "Tính năng của AI Translator",
   body: () => `
 ${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cuộc họp, chạy trên máy bạn", lead: "Dưới đây là những gì AI Translator làm được hôm nay, đúng như trong app. Tính năng nào chỉ có ở gói trả phí đều được ghi rõ." })}
@@ -26,6 +26,7 @@ ${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cu
 <a class="card card-link" href="#thanh-phu-de"><strong class="card-title">Thanh phụ đề</strong><p class="muted">Kéo, khóa, đổi cỡ chữ</p></a>
 <a class="card card-link" href="#nghe-dich"><strong class="card-title">Nghe bản dịch</strong><p class="muted">Đọc thành tiếng, Windows</p></a>
 <a class="card card-link" href="#ban-chep-loi"><strong class="card-title">Bản chép lời</strong><p class="muted">Lịch sử, xuất file (Pro)</p></a>
+<a class="card card-link" href="#meeting-notes"><strong class="card-title">Ghi chú cuộc họp</strong><p class="muted">Tóm tắt, quyết định, việc cần làm</p></a>
 <a class="card card-link" href="#tu-dien"><strong class="card-title">Từ điển thuật ngữ</strong><p class="muted">Tên riêng, thuật ngữ (Pro)</p></a>
 <a class="card card-link" href="#go-dich"><strong class="card-title">Gõ dịch</strong><p class="muted">Nhắn tin bằng tiếng người bên kia</p></a>
 <a class="card card-link" href="#nguon-am-thanh"><strong class="card-title">Nguồn âm thanh</strong><p class="muted">Mọi app họp, không bot</p></a>
@@ -35,12 +36,12 @@ ${pageHero({ crumbs, title: "Tính năng phụ đề dịch trực tiếp cho cu
 </div></section>
 
 <section class="section band-dark" id="ai-tren-may"><div class="container">
-${sectionHead({ eyebrow: "AI chạy trên máy", title: "Dịch bằng AI mà không đưa cuộc họp lên cloud", text: "Hai model AI, một để nhận dạng giọng nói, một để dịch, chạy trực tiếp trên máy tính của bạn. Không có bước nào gửi âm thanh hay nội dung cuộc họp tới một máy chủ hay dịch vụ AI trên cloud.", center: true })}
+${sectionHead({ eyebrow: "AI chạy trên máy", title: "Dịch bằng AI mà không đưa âm thanh cuộc họp lên cloud", text: "Hai model AI, một để nhận dạng giọng nói, một để dịch, chạy trực tiếp trên máy tính của bạn. Không có bước nào gửi âm thanh tới máy chủ hay dịch vụ AI trên cloud. Mặc định, chữ chép lời và bản dịch cũng ở lại trên máy; chỉ khi bạn tự bật model cloud bằng khóa API của mình thì chữ mới đi tới nhà cung cấp bạn chọn.", center: true })}
 ${dataFlow("vi")}
 <div class="grid grid-3">
 ${feature({ icon: "cpu", title: "Hai model AI chạy tại chỗ", text: "Một model nhận dạng giọng nói, một model dịch. Cả hai tải về một lần rồi chạy trên máy bạn bằng GPU hoặc CPU.", accent: true })}
 ${feature({ icon: "zap", title: "Độ trễ thấp vì không đi vòng", text: "Không có chuyến đi tới máy chủ, nên bản dịch hiện ngay sau khi người nói dừng câu. Trung vị dưới 1,1 giây trên Mac M4 Pro." })}
-${feature({ icon: "lock", title: "Dữ liệu cuộc hội thoại ở lại trên máy", text: "Âm thanh chỉ nằm trong RAM; bản chép lời và bản dịch ở trên máy bạn. Lịch sử mặc định tắt và, nếu bật, được mã hóa trên máy." })}
+${feature({ icon: "lock", title: "Dữ liệu cuộc hội thoại ở lại trên máy", text: "Âm thanh chỉ nằm trong RAM; mặc định, bản chép lời và bản dịch ở trên máy bạn. Lịch sử mặc định tắt và, nếu bật, được mã hóa trên máy." })}
 </div>
 </div></section>
 
@@ -162,6 +163,27 @@ ${appShot({ slug: "app-history", lang: "vi", alt: "Màn hình Lịch sử liệt
 </div>
 </div></section>
 
+<section class="section" id="meeting-notes"><div class="container">
+${sectionHead({ eyebrow: "Ghi chú cuộc họp bằng AI", title: "Sau cuộc họp, một nút ra tóm tắt, quyết định và việc cần làm", text: "Sau khi dừng phiên, bấm tạo ghi chú: AI đọc bản chép lời rồi viết phần tóm tắt cùng các mục trích như quyết định, việc cần làm và câu hỏi còn mở. Mỗi mục dẫn về những dòng gốc trong bản chép lời để bạn đối chiếu.", center: true })}
+<div class="split">
+<div class="stack-lg reveal">
+<h3>Model cloud: nhanh, bằng khóa API của bạn</h3>
+<p>Nếu bạn đã chọn ChatGPT, Gemini hoặc DeepSeek để dịch (bằng khóa API của chính bạn), ghi chú dùng đúng model đó; vì không phải chạy model trên máy nên thường nhanh hơn nhiều. App hỏi bạn trước khi gửi lần đầu. Bản dịch (hoặc câu gốc, nếu câu chưa được dịch) cùng nhãn người nói đi thẳng từ máy bạn tới nhà cung cấp bạn chọn, không qua máy chủ của chúng tôi và không kèm âm thanh.</p>
+</div>
+<div class="stack-lg reveal">
+<h3>Model trên máy: không gửi gì đi, chậm hơn</h3>
+<p>Nếu bạn chưa bật model cloud, ghi chú dùng model AI chạy trên máy và bản chép lời không rời máy. Cần RAM từ 16 GB và tải thêm một gói khoảng 2,6 GB, một lần. Chậm hơn nhiều so với cloud, và kết quả là bản nháp: hãy kiểm lại trước khi dùng.</p>
+</div>
+</div>
+${checkList([
+  "Chỉ tạo <strong>sau khi dừng phiên</strong>: app không tóm tắt trong lúc họp",
+  "Kết quả luôn ghi rõ là <strong>bản nháp do AI viết</strong>; AI có thể nhầm người nhận việc, hạn hay ý chính, nên hãy kiểm lại với dòng gốc",
+  "Sửa tay trong app; xuất Markdown hoặc TXT <span class=\"badge badge-pro\">Pro</span>",
+  "Gói Free tạo được 3 lần trong thời gian dùng thử, gói trả phí không giới hạn; ghi chú không trừ thời lượng dịch",
+])}
+<p class="small muted">Model cloud chỉ chạy khi bạn tự bật và nhập khóa API. Xem <a href="/bao-mat-du-lieu/#model-cloud">dữ liệu đi đâu khi dùng model cloud</a>.</p>
+</div></section>
+
 <section class="section" id="tu-dien"><div class="container">
 <div class="split wide-left reverse">
 <div>
@@ -261,6 +283,7 @@ ${sectionHead({ eyebrow: "Theo gói", title: "Tính năng nào ở gói nào", c
 <tr><th scope="row">Từ điển thuật ngữ (tối đa 500)</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Lưu lịch sử các phiên</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Xuất TXT, SRT, Markdown</th><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
+<tr><th scope="row">Ghi chú cuộc họp bằng AI</th><td>3 lần trong thời gian dùng thử</td><td>Không giới hạn</td><td>Không giới hạn</td><td>Không giới hạn</td></tr>
 <tr><th scope="row">Thời lượng dịch</th><td>30 phút mỗi ngày, 10 ngày</td><td>50 giờ mỗi 30 ngày</td><td>100 giờ mỗi 30 ngày, 180 ngày</td><td>Không giới hạn, 365 ngày</td></tr>
 <tr><th scope="row">Giá (VietQR, VND)</th><td>0 ₫</td><td>50.000 ₫</td><td>269.000 ₫</td><td>500.000 ₫</td></tr>
 <tr><th scope="row">Giá (thẻ quốc tế, USD, chưa gồm thuế)</th><td>—</td><td>3,99 USD</td><td>21,99 USD</td><td>39,99 USD</td></tr>

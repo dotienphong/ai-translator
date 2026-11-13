@@ -22,7 +22,7 @@ export const S = {
       you: "Máy bạn", audio: "âm thanh cuộc họp", net: "Internet", server: "Máy chủ nhà cung cấp", cloudAi: "cùng AI trên cloud",
       subs: "Phụ đề", backTo: "gửi về máy bạn", audioHere: "Âm thanh", onYour: "trên máy bạn", ai: "AI chạy trên máy bạn", models: "nhận dạng + dịch", screen: "Phụ đề", onScreen: "trên màn hình bạn",
       cloudNote: "Âm thanh cuộc họp rời khỏi máy bạn và được xử lý ở nơi bạn không kiểm soát.",
-      localNote: "Không có chuyến đi nào lên cloud: âm thanh, bản chép lời và bản dịch ở lại trên máy bạn.",
+      localNote: "Với model trên máy (mặc định), không có chuyến đi nào lên cloud: âm thanh, bản chép lời và bản dịch ở lại trên máy bạn.",
     },
     app: {
       freeOffer: "Free (dùng thử 10 ngày)",
@@ -57,7 +57,7 @@ export const S = {
       you: "Your computer", audio: "meeting audio", net: "Internet", server: "Provider server", cloudAi: "plus an AI on the cloud",
       subs: "Subtitles", backTo: "back to you", audioHere: "Audio", onYour: "on your computer", ai: "AI running on your computer", models: "recognition + translation", screen: "Subtitles", onScreen: "on your screen",
       cloudNote: "The meeting audio leaves your computer and is processed somewhere you do not control.",
-      localNote: "No trip to the cloud: the audio, the transcript and the translation stay on your computer.",
+      localNote: "With the on-device model (the default), no trip to the cloud: the audio, the transcript and the translation stay on your computer.",
     },
     app: {
       freeOffer: "Free trial (10 days)",
@@ -92,7 +92,7 @@ export const S = {
       you: "あなたのパソコン", audio: "会議の音声", net: "インターネット", server: "提供元のサーバー", cloudAi: "クラウド上の AI も",
       subs: "字幕", backTo: "あなたの元へ", audioHere: "音声", onYour: "あなたのパソコン上", ai: "パソコン上で動く AI", models: "音声認識 + 翻訳", screen: "字幕", onScreen: "あなたの画面に",
       cloudNote: "会議の音声があなたのパソコンを離れ、あなたが管理できない場所で処理されます。",
-      localNote: "クラウドへの往復はありません。音声、文字起こし、翻訳はすべてあなたのパソコンに残ります。",
+      localNote: "デフォルトでは、クラウドへの往復はありません。音声、文字起こし、翻訳はすべてあなたのパソコンに残ります。",
     },
     app: {
       freeOffer: "Free（10 日間の無料お試し）",
@@ -134,7 +134,7 @@ export const S = {
       you: "你的电脑", audio: "会议音频", net: "互联网", server: "服务商的服务器", cloudAi: "以及云端 AI",
       subs: "字幕", backTo: "传回你的电脑", audioHere: "音频", onYour: "在你的电脑上", ai: "在你电脑上运行的 AI", models: "语音识别 + 翻译", screen: "字幕", onScreen: "显示在你的屏幕上",
       cloudNote: "会议音频离开你的电脑，在你无法控制的地方被处理。",
-      localNote: "不经过云端：音频、转写内容和译文都留在你的电脑上。",
+      localNote: "默认不经过云端：音频、转写内容和译文都留在你的电脑上。",
     },
     app: {
       freeOffer: "Free（免费试用 10 天）",
@@ -176,7 +176,7 @@ export const S = {
       you: "내 컴퓨터", audio: "회의 음성", net: "인터넷", server: "제공업체 서버", cloudAi: "클라우드 AI 포함",
       subs: "자막", backTo: "내 컴퓨터로 전송", audioHere: "음성", onYour: "내 컴퓨터에서", ai: "내 컴퓨터에서 실행되는 AI", models: "음성 인식 + 번역", screen: "자막", onScreen: "내 화면에",
       cloudNote: "회의 음성이 내 컴퓨터를 떠나, 내가 통제할 수 없는 곳에서 처리됩니다.",
-      localNote: "클라우드를 거치지 않습니다. 음성, 받아쓰기, 번역이 모두 내 컴퓨터에 남습니다.",
+      localNote: "기본적으로 클라우드를 거치지 않습니다. 음성, 받아쓰기, 번역이 모두 내 컴퓨터에 남습니다.",
     },
     app: {
       freeOffer: "Free(10일 무료 체험)",

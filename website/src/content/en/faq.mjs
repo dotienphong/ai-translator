@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Is there an offline app that translates meeting subtitles on my computer?",
-        a: `<p>Yes. AI Translator (aitranslator.vn) is a desktop app for macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit (x64) that shows live translated subtitles for any audio playing on your computer. Speech recognition and translation run on the device, so no internet is needed while translating and the audio never leaves your machine. It supports English, Chinese, Japanese, Korean and Vietnamese, with a 10-day free trial.</p>`,
+        a: `<p>Yes. AI Translator (aitranslator.vn) is a desktop app for macOS 14.2 or later (Apple Silicon) and Windows 10/11 64-bit (x64) that shows live translated subtitles for any audio playing on your computer. Speech recognition and translation run on the device by default, so no internet is needed while translating and the audio never leaves your machine. It supports English, Chinese, Japanese, Korean and Vietnamese, with a 10-day free trial.</p>`,
       },
       {
         q: "How do I translate a Zoom meeting into my language without a bot?",
@@ -102,19 +102,31 @@ const GROUPS = [
     items: [
       {
         q: "Does AI Translator use cloud AI or cloud models?",
-        a: `<p>No. Both speech recognition and translation are AI models that run on your own computer. No cloud AI service takes part in recognizing or translating your meeting, so the audio, the transcript and the translation do not pass through any third party. The network is only used for things other than translating: checking your license, payments, downloading models and updating the app.</p>`,
+        a: `<p>Not by default: both speech recognition and translation are AI models that run on your own computer, so the audio, the transcript and the translation do not pass through any third party. Speech recognition always runs on your computer. Only for translation and meeting notes, if you turn on ChatGPT, Gemini or DeepSeek with your own API key, the text (never audio) goes straight from your computer to that provider. With the on-device model, the network is only used for things other than translating: checking your license, payments, downloading models and updating the app.</p>`,
+      },
+      {
+        q: "Where does the data from meeting notes go?",
+        a: `<p>It depends on the model you use. With the on-device model (the default), nothing is sent: the transcript stays on your computer. With a cloud model (ChatGPT, Gemini or DeepSeek, if you turn it on with your own API key), the app sends the translation (or the original sentence, for sentences that have not been translated) and the speaker labels to the provider you chose; it sends no audio, and the app asks you first. The text goes straight from your computer, not through our server. See <a href="/en/data-security/#model-cloud">Data and security</a>.</p>`,
+      },
+      {
+        q: "How long do meeting notes take to create?",
+        a: `<p>Notes can only be created after you stop the session. With a cloud model, the time depends on the provider and the length of the meeting and is usually much shorter; we have not published a measurement. The on-device model is much slower: in our measurement, a 60-minute meeting on a laptop with a Core i5 (13th gen) and 32 GB of RAM took about 14 minutes with the integrated GPU and about 24 minutes with the CPU only; other machines may be slower. The on-device model needs 16 GB of RAM or more and an extra download of about 2.6 GB, once.</p>`,
+      },
+      {
+        q: "Are meeting notes accurate?",
+        a: `<p>Notes are written by AI, so treat them as a draft: the AI can get who owns a task, a deadline or the main point wrong. Always re-check against the original line in the transcript (every item links to it) before you use them. With the on-device model, treat the result as a draft to edit. We have not published an accuracy figure.</p>`,
       },
       {
         q: "Where is the data from my conversations stored?",
-        a: `<p>Entirely on your computer. Audio exists only in RAM while translating; the transcript and translation appear on your screen and live in the session's memory; history is off by default, and if you turn it on it is stored encrypted on your machine. Our server holds no conversation data, only your email (when you buy), your Google email (when you sign in), orders, licenses and device-activation details (a hashed machine ID and device name). See <a href="/en/data-security/">Data and security</a>.</p>`,
+        a: `<p>By default, entirely on your computer. Audio exists only in RAM while translating; the transcript and translation appear on your screen and live in the session's memory; history is off by default, and if you turn it on it is stored encrypted on your machine. If you turn on a cloud model yourself, the text goes straight from your computer to the provider you chose (see the question about meeting notes). Our server holds no conversation data, only your email (when you buy), your Google email (when you sign in), orders, licenses and device-activation details (a hashed machine ID and device name). See <a href="/en/data-security/">Data and security</a>.</p>`,
       },
       {
         q: "Does AI Translator work offline?",
-        a: `<p>Yes: speech recognition and translation run 100% on your computer and need no internet once the models are downloaded. You still need the internet occasionally for a few things: the first model download (about 1.3 GB or 2.5 GB), the first Free trial registration, buying a plan, license checks (a paid plan works offline for at most 14 days between two checks) and app updates. See <a href="/en/compare/offline-vs-cloud-translation/">offline vs cloud translation</a>.</p>`,
+        a: `<p>Yes, if you use the on-device model (the default): speech recognition and translation run on your computer and need no internet once the models are downloaded. If you turn on a cloud model for translation, you need a connection while translating. You still need the internet occasionally for a few things: the first model download (about 1.3 GB or 2.5 GB), the first Free trial registration, buying a plan, license checks (a paid plan works offline for at most 14 days between two checks) and app updates. See <a href="/en/compare/offline-vs-cloud-translation/">offline vs cloud translation</a>.</p>`,
       },
       {
         q: "Is my meeting audio sent anywhere?",
-        a: `<p>No. Audio stays in RAM, is never written to disk and never sent over the network. We checked with a proxy and nettop on macOS: while translating, the app sends no audio or transcript text out. Details are on<a href="/en/data-security/">Data and security</a>.</p>`,
+        a: `<p>No. Audio stays in RAM, is never written to disk and never sent over the network. We checked with a proxy and nettop on macOS, using the on-device model: while translating, the app sends no audio or transcript text out. Details are on<a href="/en/data-security/">Data and security</a>.</p>`,
       },
       {
         q: "Are there ads or data collection?",
@@ -267,7 +279,7 @@ export default {
   description:
     "Short answers about AI Translator: using it with Zoom, Teams and Meet, languages, working offline, privacy, system requirements, plans, payment and everyday use.",
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
+  modified: "2026-11-13",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Frequently asked questions: overview, languages and quality, privacy and data, install and system requirements, plans and payment, everyday use.",
   llmTitle: "AI Translator frequently asked questions",

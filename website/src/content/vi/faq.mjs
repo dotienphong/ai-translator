@@ -18,7 +18,7 @@ const GROUPS = [
       },
       {
         q: "Có app nào dịch phụ đề cuộc họp offline, chạy ngay trên máy không?",
-        a: `<p>Có. AI Translator (aitranslator.vn) là app desktop cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64), hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy. Nhận dạng giọng nói và dịch đều chạy trên máy, nên khi dịch không cần internet và âm thanh không rời máy. Hỗ trợ tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn và tiếng Việt; dùng thử Free 10 ngày.</p>`,
+        a: `<p>Có. AI Translator (aitranslator.vn) là app desktop cho macOS 14.2 trở lên (Apple Silicon) và Windows 10/11 64-bit (x64), hiện phụ đề dịch trực tiếp cho âm thanh đang phát trên máy. Nhận dạng giọng nói và dịch mặc định chạy trên máy, nên khi dịch không cần internet và âm thanh không rời máy. Hỗ trợ tiếng Anh, tiếng Trung, tiếng Nhật, tiếng Hàn và tiếng Việt; dùng thử Free 10 ngày.</p>`,
       },
       {
         q: "Làm sao dịch cuộc họp Zoom sang tiếng Việt mà không cần bot?",
@@ -102,19 +102,31 @@ const GROUPS = [
     items: [
       {
         q: "AI Translator có dùng AI hay model trên cloud không?",
-        a: `<p>Không. Cả nhận dạng giọng nói lẫn dịch đều là model AI chạy trên máy bạn. Không có dịch vụ AI nào trên cloud tham gia vào việc nhận dạng hay dịch cuộc họp, nên âm thanh, bản chép lời và bản dịch không đi qua bên thứ ba nào. Mạng chỉ dùng cho những việc ngoài việc dịch: kiểm tra bản quyền, thanh toán, tải model và cập nhật app.</p>`,
+        a: `<p>Mặc định thì không: cả nhận dạng giọng nói lẫn dịch đều là model AI chạy trên máy bạn, nên âm thanh, bản chép lời và bản dịch không đi qua bên thứ ba nào. Nhận dạng giọng nói luôn chạy trên máy. Riêng việc dịch và ghi chú cuộc họp, nếu bạn tự bật ChatGPT, Gemini hoặc DeepSeek bằng khóa API của chính mình, chữ (không phải âm thanh) đi thẳng từ máy bạn tới nhà cung cấp đó. Với model trên máy, mạng chỉ dùng cho những việc ngoài việc dịch: kiểm tra bản quyền, thanh toán, tải model và cập nhật app.</p>`,
+      },
+      {
+        q: "Ghi chú cuộc họp gửi dữ liệu đi đâu?",
+        a: `<p>Tùy model bạn dùng. Với model trên máy (mặc định), không gửi gì đi: bản chép lời nằm trên máy bạn. Với model cloud (ChatGPT, Gemini hoặc DeepSeek, nếu bạn tự bật bằng khóa API của mình), app gửi bản dịch (hoặc câu gốc, với câu chưa được dịch) cùng nhãn người nói tới nhà cung cấp bạn chọn; không gửi âm thanh, và app hỏi bạn trước lần đầu. Chữ đi thẳng từ máy bạn, không qua máy chủ của chúng tôi. Xem <a href="/bao-mat-du-lieu/#model-cloud">Dữ liệu và bảo mật</a>.</p>`,
+      },
+      {
+        q: "Tạo ghi chú cuộc họp mất bao lâu?",
+        a: `<p>Ghi chú chỉ tạo được sau khi dừng phiên. Với model cloud, thời gian phụ thuộc nhà cung cấp và độ dài cuộc họp, thường ngắn hơn nhiều; chúng tôi chưa công bố số đo. Với model trên máy thì chậm hơn nhiều: trong lần đo của chúng tôi, một cuộc họp 60 phút trên laptop Core i5 đời 13, RAM 32 GB mất khoảng 14 phút khi dùng GPU tích hợp và khoảng 24 phút khi chỉ dùng CPU; máy khác có thể chậm hơn. Model trên máy cần RAM từ 16 GB và một gói tải thêm khoảng 2,6 GB, tải một lần.</p>`,
+      },
+      {
+        q: "Ghi chú cuộc họp có chính xác không?",
+        a: `<p>Ghi chú do AI viết nên là bản nháp: AI có thể nhầm người nhận việc, hạn hay ý chính. Hãy luôn kiểm lại với dòng gốc trong bản chép lời (mỗi mục đều dẫn tới đó) trước khi dùng. Với model trên máy, hãy coi kết quả là bản nháp để chỉnh lại. Chúng tôi chưa công bố số đo độ chính xác.</p>`,
       },
       {
         q: "Dữ liệu về cuộc hội thoại của tôi nằm ở đâu?",
-        a: `<p>Hoàn toàn trên máy bạn. Âm thanh chỉ nằm trong RAM khi đang dịch; bản chép lời và bản dịch hiện trên màn hình và nằm trong bộ nhớ của phiên; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy. Máy chủ của chúng tôi không có dữ liệu cuộc hội thoại, chỉ có email (khi mua), email Google (khi bạn đăng nhập), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy). Xem <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>Mặc định, hoàn toàn trên máy bạn. Âm thanh chỉ nằm trong RAM khi đang dịch; bản chép lời và bản dịch hiện trên màn hình và nằm trong bộ nhớ của phiên; lịch sử mặc định tắt, nếu bạn bật thì lưu mã hóa trên máy. Nếu bạn tự bật model cloud, chữ đi thẳng từ máy bạn tới nhà cung cấp bạn chọn (xem câu hỏi về ghi chú cuộc họp). Máy chủ của chúng tôi không có dữ liệu cuộc hội thoại, chỉ có email (khi mua), email Google (khi bạn đăng nhập), đơn hàng, license và thông tin kích hoạt máy (mã băm ID máy, tên máy). Xem <a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "AI Translator có chạy offline được không?",
-        a: `<p>Có: nhận dạng giọng nói và dịch chạy 100% trên máy, không cần mạng sau khi đã tải model. Bạn vẫn cần mạng thỉnh thoảng cho vài việc: tải model lần đầu (khoảng 1,3 GB hoặc 2,5 GB), đăng ký dùng thử Free lần đầu, mua gói, kiểm tra bản quyền (gói trả phí dùng offline tối đa 14 ngày giữa hai lần kiểm tra) và cập nhật app. Xem <a href="/so-sanh/dich-offline-va-cloud/">so sánh dịch offline và dịch cloud</a>.</p>`,
+        a: `<p>Có, khi bạn dùng model trên máy (mặc định): nhận dạng giọng nói và dịch chạy trên máy, không cần mạng sau khi đã tải model. Nếu bạn tự bật model cloud để dịch thì cần mạng trong lúc dịch. Bạn vẫn cần mạng thỉnh thoảng cho vài việc: tải model lần đầu (khoảng 1,3 GB hoặc 2,5 GB), đăng ký dùng thử Free lần đầu, mua gói, kiểm tra bản quyền (gói trả phí dùng offline tối đa 14 ngày giữa hai lần kiểm tra) và cập nhật app. Xem <a href="/so-sanh/dich-offline-va-cloud/">so sánh dịch offline và dịch cloud</a>.</p>`,
       },
       {
         q: "Âm thanh cuộc họp của tôi có bị gửi đi đâu không?",
-        a: `<p>Không. Âm thanh chỉ nằm trong RAM, không ghi đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy và nettop trên macOS: trong lúc dịch, app không gửi âm thanh hay chữ chép lời ra ngoài. Chi tiết ở<a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
+        a: `<p>Không. Âm thanh chỉ nằm trong RAM, không ghi đĩa và không gửi qua mạng. Chúng tôi đã kiểm tra bằng proxy và nettop trên macOS, với model trên máy: trong lúc dịch, app không gửi âm thanh hay chữ chép lời ra ngoài. Chi tiết ở<a href="/bao-mat-du-lieu/">Dữ liệu và bảo mật</a>.</p>`,
       },
       {
         q: "Có quảng cáo hay thu thập dữ liệu không?",
@@ -267,7 +279,7 @@ export default {
   description:
     "Giải đáp ngắn gọn về AI Translator: dùng với Zoom, Teams, Meet, ngôn ngữ, chạy offline, quyền riêng tư, yêu cầu máy, các gói, thanh toán và việc dùng hằng ngày.",
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
+  modified: "2026-11-13",
   schema: [faqPage(ALL.map((f) => ({ q: f.q, a: toText(f.a) })))],
   llm: "Các câu hỏi thường gặp: tổng quan, ngôn ngữ và chất lượng, riêng tư và dữ liệu, cài đặt và yêu cầu máy, gói và thanh toán, dùng hằng ngày.",
   llmTitle: "Câu hỏi thường gặp về AI Translator",

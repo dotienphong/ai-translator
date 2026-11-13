@@ -15,7 +15,7 @@ export const HOME_FAQ = [
   },
   {
     q: "使用 AI Translator 需要联网吗？",
-    a: `<p>翻译时不需要。语音识别、翻译和字幕显示都在你的电脑上完成。只有在以下情况下需要联网：第一次下载应用和模型（约 1.3 GB 或 2.5 GB）、登记免费试用、购买套餐、验证许可证（付费套餐在两次验证之间最多可离线使用 14 天）以及更新应用。</p>`,
+    a: `<p>使用设备端模型（默认）时，翻译时不需要。语音识别、翻译和字幕显示都在你的电脑上完成。如果你为翻译开启云端模型，翻译时就需要联网。只有在以下情况下需要联网：第一次下载应用和模型（约 1.3 GB 或 2.5 GB）、登记免费试用、购买套餐、验证许可证（付费套餐在两次验证之间最多可离线使用 14 天）以及更新应用。</p>`,
   },
   {
     q: "我的会议音频会被发送到别处吗？",
@@ -43,7 +43,7 @@ export default {
   description:
     "为会议、直播、YouTube 和视频提供实时翻译字幕，输入翻译可把聊天回复译成对方的语言。AI 在你的电脑上运行，不经过云端。",
   software: true,
-  modified: "2026-10-27",
+  modified: "2026-11-13",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "zh", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -53,14 +53,14 @@ export default {
 <div>
 <p class="pill reveal"><span class="dot"></span> macOS（Apple 芯片）· Windows 10/11 · 免费试用 10 天</p>
 <h1 class="reveal"><em>AI 实时翻译</em>会议、直播、YouTube、视频和聊天消息</h1>
-<p class="lead reveal"><strong>AI Translator</strong> 是一款适用于 macOS 和 Windows 的 AI 实时翻译桌面应用：把电脑上播放的音频实时变成悬浮在屏幕上的翻译字幕，并把你输入的消息翻译成对方的语言。AI 在你自己的电脑上运行，所以你的音频和会议内容不会被发送到云端。可用于 Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会、视频，以及你在电脑上观看的直播。</p>
+<p class="lead reveal"><strong>AI Translator</strong> 是一款适用于 macOS 和 Windows 的 AI 实时翻译桌面应用：把电脑上播放的音频实时变成悬浮在屏幕上的翻译字幕，并把你输入的消息翻译成对方的语言。AI 在你自己的电脑上运行，所以你的音频不会被发送到云端，默认情况下转写内容也留在你的电脑上。可用于 Zoom、Microsoft Teams、Google Meet、Zalo PC、网络研讨会、视频，以及你在电脑上观看的直播。</p>
 <div class="hero-actions reveal">
 <a class="btn btn-primary btn-lg" href="/zh/download/">下载 ${icon("arrow-right")}</a>
 <a class="btn btn-secondary btn-lg" href="#how-to-use">了解使用方法</a>
 </div>
 <ul class="trust reveal">
-<li>${icon("check")} AI 100% 在你的设备上运行</li>
-<li>${icon("check")} 会议数据从不上传云端</li>
+<li>${icon("check")} AI 默认在你的设备上运行</li>
+<li>${icon("check")} 音频从不上传云端</li>
 <li>${icon("check")} 无需机器人，无需插件</li>
 </ul>
 </div>
@@ -97,6 +97,7 @@ ${featureTabs({
         "五种语言，任意两种之间互译：英语、中文、日语、韩语、越南语；自动检测说话的语言",
         `说话人说完一句话后，字幕就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href="/zh/features/">详细信息</a>）`,
         `可用于 Zoom、Teams、Meet 和 Zalo；线下会议把采集来源选为<strong>麦克风</strong>（<a href="/zh/features/#microphone">使用方法</a>）；也适用于你在电脑上观看的直播（<a href="/zh/solutions/livestream-translation/">直播翻译</a>）`,
+        `会议笔记：会后生成摘要、决议和待办事项（<a href="/zh/features/#meeting-notes">详情</a>）`,
       ],
       cta: { href: "/zh/features/", label: "查看全部功能" },
       media: demoVideo({ lang: "zh", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
@@ -149,11 +150,11 @@ ${appShot({ slug: "app-home-running", lang: "zh", alt: "会话进行中的 AI Tr
 </div></section>
 
 <section class="section band-dark" id="private-on-device"><div class="container">
-${sectionHead({ eyebrow: "你的数据留在你的电脑上", title: "AI 在你的电脑上运行，会议内容不会离开它", center: true })}
+${sectionHead({ eyebrow: "你的数据留在你的电脑上", title: "AI 在你的电脑上运行，会议音频不会离开它", center: true })}
 ${dataFlow("zh")}
 <div class="grid grid-2">
 ${feature({ icon: "lock", title: "音频不离开你的电脑", text: "音频只存在于 RAM 中：从不写入磁盘，也从不通过网络发送，我们已在 macOS 上用网络代理验证过。网络断开时字幕也会继续出现。", accent: true })}
-${feature({ icon: "shield", title: "服务器上没有会议内容", text: "服务器只保存销售套餐、激活设备和提供支持所需的数据（详见下方），从不保存会议内容。" })}
+${feature({ icon: "shield", title: "服务器上没有会议内容", text: "服务器只保存销售套餐、激活设备和提供支持所需的数据（详见下方），从不保存会议内容。如果你自行开启云端模型，文字会直接从你的电脑发送给你选择的服务商，不经过我们的服务器。" })}
 </div>
 <details class="more-details reveal"><summary>服务器具体保存哪些数据？</summary><p>我们的服务器只保存你的电子邮箱（购买时，或你在客服聊天中自愿留下时）、登录时的 Google 邮箱、订单、许可证、设备激活信息（经过哈希处理的设备 ID 和设备名称）、Free 试用的开始时间（经过哈希处理的设备 ID）、许可证变更记录、去除了个人数据的错误报告（保存 30 天），以及你使用客服聊天时的聊天消息（保存 90 天），从不保存会议内容。</p></details>
 <p class="center-text reveal"><a class="btn btn-secondary" href="/zh/data-security/">详细了解你的数据去向 ${icon("arrow-right")}</a></p>

@@ -54,7 +54,7 @@ export default {
     "Bốn gói AI Translator: Free dùng thử 10 ngày, Monthly 50.000 ₫, 6 Months 269.000 ₫, Yearly 500.000 ₫. Trả trước bằng VietQR hoặc thẻ quốc tế (USD).",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-15",
+  modified: "2026-11-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   llm: "Bảng giá bốn gói (Free dùng thử 10 ngày, Monthly 50.000 đ, 6 Months 269.000 đ, Yearly 500.000 đ), cách tính thời lượng, cách mua bằng VietQR (VND) hoặc thẻ quốc tế (USD), đổi gói, hoàn tiền và câu hỏi về giá.",
   llmTitle: "Bảng giá AI Translator",
@@ -76,6 +76,7 @@ ${sectionHead({ eyebrow: "So sánh", title: "Mỗi gói gồm những gì", cent
 <tr><th scope="row">Giá</th><td>0 ₫</td><td>50.000 ₫ mỗi đơn<small>hoặc 3,99 USD, chưa gồm thuế</small></td><td>269.000 ₫ mỗi đơn<small>hoặc 21,99 USD, chưa gồm thuế</small></td><td>500.000 ₫ mỗi đơn<small>hoặc 39,99 USD, chưa gồm thuế</small></td></tr>
 <tr><th scope="row">Cách thanh toán</th><td>Không cần</td><td>VietQR (VND) hoặc thẻ quốc tế (USD)</td><td>VietQR (VND) hoặc thẻ quốc tế (USD)</td><td>VietQR (VND) hoặc thẻ quốc tế (USD)</td></tr>
 <tr><th scope="row">Thời hạn</th><td>10 ngày, mỗi máy một lần</td><td>30 ngày mỗi đơn</td><td>180 ngày mỗi đơn</td><td>365 ngày mỗi đơn</td></tr>
+<tr><th scope="row">Ghi chú cuộc họp bằng AI (không trừ thời lượng dịch)</th><td>3 lần trong thời gian dùng thử</td><td>Không giới hạn</td><td>Không giới hạn</td><td>Không giới hạn</td></tr>
 <tr><th scope="row">Thời lượng dịch</th><td>30 phút mỗi ngày</td><td>50 giờ (3000 phút) mỗi chu kỳ 30 ngày</td><td>100 giờ (6000 phút) mỗi chu kỳ 30 ngày</td><td>Không giới hạn</td></tr>
 <tr><th scope="row">Phụ đề dịch trực tiếp, 5 ngôn ngữ</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
 <tr><th scope="row">Thanh phụ đề tùy chỉnh, phím tắt</th><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span></td></tr>
@@ -101,6 +102,7 @@ ${appShot({ slug: "app-upgrade", lang: "vi", alt: "Màn hình Nâng cấp trong 
 ${checkList([
   "Thời lượng tính theo <strong>độ dài tiếng nói</strong> của các đoạn đã dịch xong, không tính đệm hay lúc im lặng",
   "Câu <strong>đã ở đúng ngôn ngữ</strong> bạn muốn đọc, đoạn bị bỏ hoặc chưa dịch được <strong>không bị tính</strong>",
+  "Ghi chú cuộc họp bằng AI <strong>không trừ</strong> thời lượng dịch: Free tạo được 3 lần trong thời gian dùng thử, gói trả phí không giới hạn",
   "<strong>Free:</strong> hạn mức 30 phút đặt lại mỗi ngày, thường lúc 00:00 giờ máy (cách lần đặt lại trước ít nhất 20 giờ; app báo giờ mở lại cụ thể)",
   "<strong>Monthly và 6 Months:</strong> chu kỳ 30 ngày tính từ ngày thanh toán, không theo tháng dương lịch (6 Months có sáu chu kỳ trong 180 ngày, mỗi chu kỳ 100 giờ)",
   "Còn dưới 5 phút thì app nhắc; hết hạn mức thì dừng phiên và báo thời điểm mở lại",

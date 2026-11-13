@@ -93,7 +93,6 @@ ${callout({ kind: "warn", title: "Đây chưa phải cam kết.", text: "Danh s�
 <li>Hỗ trợ Windows ARM64</li>
 <li>Thu âm thanh theo từng app trên Windows</li>
 <li>Dịch hai chiều bằng giọng nói, để giọng của bạn cũng được dịch cho người cùng họp</li>
-<li>Tóm tắt và biên bản cuộc họp</li>
 <li>Gói doanh nghiệp cho nhiều máy</li>
 <li>Thêm ngôn ngữ cho âm thanh nguồn và bản dịch (ngoài năm ngôn ngữ hiện có)</li>
 <li>Thêm ngôn ngữ giao diện</li>

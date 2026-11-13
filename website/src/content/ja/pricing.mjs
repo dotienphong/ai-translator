@@ -54,7 +54,7 @@ export default {
     "10 日間の無料お試しと、Monthly、6 Months、Yearly の 3 つの前払いプラン。国際カード（US$3.99 から、税抜）または VietQR で支払い、カードでは自動更新も選べます。",
   software: true,
   breadcrumbs: crumbs,
-  modified: "2026-10-22",
+  modified: "2026-11-13",
   schema: [faqPage(PRICING_FAQ.map((f) => ({ q: f.q, a: f.a })))],
   body: () => `
 ${pageHero({ crumbs, title: "シンプルな料金：前払い、自動更新は任意", lead: "10 日間無料でお試しいただき、役に立つと感じたら Monthly、6 Months、Yearly からお選びください。お支払いはアプリの中から始め、ベトナムの銀行からのベトナムドン（VND）での VietQR、または米ドル（USD）での国際カードで支払えます。カードの場合はブラウザーで支払いを完了します。キーはメールで届きます。" })}
@@ -74,6 +74,7 @@ ${sectionHead({ eyebrow: "比較", title: "各プランに含まれるもの", c
 <tr><th scope="row">価格</th><td>0 ₫</td><td>1 回の注文で 50,000 ₫<small>または US$3.99（税抜）</small></td><td>1 回の注文で 269,000 ₫<small>または US$21.99（税抜）</small></td><td>1 回の注文で 500,000 ₫<small>または US$39.99（税抜）</small></td></tr>
 <tr><th scope="row">支払い方法</th><td>支払い不要</td><td>VietQR（VND）または国際カード（USD）</td><td>VietQR（VND）または国際カード（USD）</td><td>VietQR（VND）または国際カード（USD）</td></tr>
 <tr><th scope="row">期間</th><td>10 日間、1 台につき 1 回</td><td>1 回の注文で 30 日</td><td>1 回の注文で 180 日</td><td>1 回の注文で 365 日</td></tr>
+<tr><th scope="row">AI による会議ノート（翻訳時間は使いません）</th><td>お試し期間中に 3 回</td><td>無制限</td><td>無制限</td><td>無制限</td></tr>
 <tr><th scope="row">翻訳時間</th><td>1 日 30 分</td><td>30 日サイクルごとに 50 時間（3,000 分）</td><td>30 日サイクルごとに 100 時間（6,000 分）</td><td>無制限</td></tr>
 <tr><th scope="row">リアルタイム翻訳字幕、5 言語</th><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td></tr>
 <tr><th scope="row">カスタマイズできる字幕バー、ショートカット</th><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td><td><span class="yes">あり</span></td></tr>
@@ -99,6 +100,7 @@ ${appShot({ slug: "app-upgrade", lang: "ja", alt: "日本語のアプリのア�
 ${checkList([
   "時間は、翻訳された部分の<strong>発話の長さ</strong>で測ります。前後の余白や無音は数えません",
   "<strong>すでに読みたい言語</strong>で話された文や、スキップされた部分、翻訳できなかった部分は<strong>数えません</strong>",
+  "AI による会議ノートは翻訳時間を<strong>使いません</strong>。Free はお試し期間中に 3 回まで、有料プランは無制限です",
   "<strong>Free：</strong>30 分の枠は毎日リセットされ、通常はパソコンの時計で 0:00 です（前回のリセットから最低 20 時間後。再開する正確な時刻はアプリに表示されます）",
   "<strong>Monthly と 6 Months：</strong>30 日のサイクルは暦の月ではなく、支払った日から始まります（6 Months は 180 日の中に 6 つのサイクルがあり、それぞれに 100 時間）",
   "残りが 5 分を切るとアプリが知らせます。枠を使い切るとセッションを止め、次に翻訳できる時刻を表示します",

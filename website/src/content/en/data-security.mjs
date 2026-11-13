@@ -10,6 +10,7 @@ const crumbs = [
 const TOC = [
   { level: 2, id: "on-device", text: "What data stays on your computer?" },
   { level: 2, id: "network", text: "Where does the app connect?" },
+{ level: 2, id: "model-cloud", text: "Meeting notes and cloud models" },
   { level: 2, id: "verified", text: "How did we check that?" },
   { level: 2, id: "server", text: "What do our servers store, and for how long?" },
   { level: 2, id: "error-reports", text: "Error reports: what does the app send?" },
@@ -31,14 +32,14 @@ export default {
   description:
     "AI Translator processes audio on your computer and never sends it out. See what stays on your device, where it connects, what servers store, and how to delete it.",
   breadcrumbs: crumbs,
-  modified: "2026-11-03",
-  llm: "What data stays on your device, the five places the app connects to, how it was checked with a proxy on macOS, what our servers store and for how long, automatic error reports (what is sent, how to turn them off), the support chat (what is stored, for how long), processors, protections, signing status and how to request deletion.",
+  modified: "2026-11-13",
+  llm: "What data stays on your device, the six places the app connects to (including a cloud model you turn on yourself), how it was checked with a proxy on macOS, what our servers store and for how long, automatic error reports (what is sent, how to turn them off), the support chat (what is stored, for how long), processors, protections, signing status and how to request deletion.",
   llmTitle: "Data and security in AI Translator",
   body: () => `
 ${pageHero({
   crumbs,
   title: "Where does your data go when you use AI Translator?",
-  lead: "Meeting audio is processed entirely on your computer and is never sent out: speech recognition and translation use AI models that run on your machine, and no cloud AI service takes part. This page walks through each kind of data: what stays on your computer, what crosses the network and what our servers store, plus how we checked it and what we have not checked.",
+  lead: "Meeting audio is processed entirely on your computer and is never sent out: speech recognition always runs on your machine. By default, translation and meeting notes also use AI models on your machine, so the transcript stays there; only if you turn on a cloud model with your own API key does text (never audio) go straight to the provider you chose. This page walks through each kind of data: what stays on your computer, what crosses the network and what our servers store, plus how we checked it and what we have not checked.",
   meta: `<span>Updated {{updated}}</span><span>Matches the Privacy policy: ${legalVersionLine("privacy.en.md")}</span>`,
 })}
 
@@ -48,17 +49,17 @@ ${docLayout({
   tocTitle: "On this page",
   body: `
 ${facts([
-  ["AI processing", "Speech recognition and translation use AI models running on your computer; no cloud AI"],
-  ["Meeting data", "Only on your computer; our server has none"],
+  ["AI processing", "Speech recognition always runs on your computer; translation and notes use on-device AI models by default, and a cloud model only runs if you turn it on and enter your own API key"],
+  ["Meeting data", "By default only on your computer, and our server has none; if you turn on a cloud model yourself, the text goes straight to the provider you chose"],
   ["Audio", "Only in RAM, never written to disk, never sent out"],
-  ["Network", "Five places; none of them receives audio, transcripts or the text you type in Type &amp; Translate"],
+  ["Network", "Six places; none of them receives audio or the text you type in Type &amp; Translate; transcript text only reaches the cloud-model provider, and only if you turn on a cloud model"],
   ["Servers store", "Email (when you buy, or when you choose to leave it in the support chat), your Google email when you sign in, orders, licenses, hashed machine ID, error reports, support chat messages"],
   ["Kept for", "Until you ask us to delete it; error reports 30 days; support chat 90 days"],
   ["Checked", "Proxy and nettop on macOS"],
   ["Code signing", "macOS ad-hoc signed, not notarized; Windows not signed"],
 ])}
 <h2 id="on-device">What data stays on your computer?</h2>
-<p>Audio, transcripts, translations and the text you type in Type &amp; Translate never leave your computer. The app has no ads and no analytics. The Free trial needs you to sign in with Google, so our server stores your Google email for the account (see <a href="#server">What the server stores</a>). Paid plans need no sign-in. When it hits an error, it sends us an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>); that report contains no audio, no transcript text and no translation.</p>
+<p>Audio and the text you type in Type &amp; Translate never leave your computer. By default, transcripts and translations stay there too; only if you turn on a cloud model do they go to the provider you chose (see <a href="#model-cloud">Meeting notes and cloud models</a>). The app has no ads and no analytics. The Free trial needs you to sign in with Google, so our server stores your Google email for the account (see <a href="#server">What the server stores</a>). Paid plans need no sign-in. When it hits an error, it sends us an error report with personal data scrubbed out (see <a href="#error-reports">Error reports</a>); that report contains no audio, no transcript text and no translation.</p>
 <div class="table-wrap" role="region" aria-label="Data that stays on your computer" tabindex="0"><table>
 <thead><tr><th scope="col">Data</th><th scope="col">How it is handled</th></tr></thead>
 <tbody>
@@ -86,7 +87,7 @@ ${facts([
 <p>This feature has not been measured with the traffic proxy the way the rest of the app was (see “How did we check that?”): it is not measured with the proxy yet. The full text (including the name-reading recipe) is in sections 2, 3, 4 and 10 of the <a href="/en/privacy/">Privacy policy</a>.</p>
 
 <h2 id="network">Where does the app connect?</h2>
-<p>To exactly five places, and none of them receives audio, transcript content or the text you type in Type &amp; Translate. Speech recognition and translation need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due), plus support chat messages while you have the Support screen open or press send. Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists five connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.vn; the PayOS and Creem payment pages are one item), while the table below counts them by destination.</p>
+<p>To exactly six places. None of them receives audio or the text you type in Type &amp; Translate; transcript content only reaches the sixth (a cloud-model provider), and only if you turn on a cloud model. Speech recognition, and translation with the on-device model, need no network. While translating, the app may only send scheduled requests to our own servers (an update check, and a license check when one is due), plus support chat messages while you have the Support screen open or press send. Section 4 of the <a href="/en/privacy/">Privacy policy</a> also lists six connections but counts them by purpose (model downloads and update checks both go to releases.aitranslator.vn; the PayOS and Creem payment pages are one item; the three cloud-model providers are one item), while the table below counts them by destination.</p>
 <div class="table-wrap" role="region" aria-label="Places the app connects to" tabindex="0"><table>
 <thead><tr><th scope="col">Connects to</th><th scope="col">What for</th><th scope="col">What is sent</th></tr></thead>
 <tbody>
@@ -94,8 +95,21 @@ ${facts([
 <tr><th scope="row">releases.aitranslator.vn</th><td>Downloading models (including the speaker model, about 26 MB, once the feature is on), checking for and downloading app updates, and downloading the name-reading recipe</td><td>File download requests only</td></tr>
 <tr><th scope="row">PayOS payment page (pay.payos.vn)</th><td>VietQR payment when you buy a plan</td><td>Opens in your browser, not inside the app</td></tr>
 <tr><th scope="row">Creem payment page (www.creem.io)</th><td>International card payment when you buy a plan</td><td>Opens in your browser, not inside the app. Your email goes to Creem from our server, not from the app (see “Who else processes data?”)</td></tr>
+<tr><th scope="row">api.openai.com, generativelanguage.googleapis.com, api.deepseek.com (the cloud model you choose)</th><td>Translating with a cloud model and creating meeting notes. Only if you choose this cloud model and enter your own API key</td><td>The text to translate (with matching glossary terms or the previous sentence, if any); for notes, the translation (or the original sentence if it has not been translated) plus speaker labels or names. No audio, and it does not pass through our server</td></tr>
 <tr><th scope="row">aitranslator.vn (this website)</th><td>External links (policies, support, download page) open in your system browser</td><td>The app sends nothing</td></tr>
 </tbody></table></div>
+
+<h2 id="model-cloud">Meeting notes and cloud models</h2>
+<p>By default, speech recognition, translation and meeting notes all run with models on your computer. A cloud model (ChatGPT from OpenAI, Gemini from Google, DeepSeek) is optional: it only runs when you turn it on and enter your own API key. Then the app calls the provider you chose straight from your computer, not through our server.</p>
+<ul>
+<li><strong>Sent:</strong> the text to translate, with matching glossary terms or the previous sentence if there is one; for meeting notes, the translation (or the original sentence if it has not been translated) plus speaker labels or names.</li>
+<li><strong>Never sent:</strong> audio (including the microphone); your email, license or account; the text you type in Type &amp; Translate.</li>
+<li><strong>The app asks first:</strong> for notes, the app asks you to agree before it sends the transcript to a provider for the first time, and asks again if you change provider.</li>
+<li><strong>Your API key</strong> is kept in your operating system's key store; the app does not send it to us and does not write it to logs.</li>
+<li><strong>The provider</strong> (OpenAI, Google, DeepSeek) is not our processor: it handles the text under its own policy and terms, so read them before you turn it on. We have not measured these connections with a proxy.</li>
+<li><strong>With the on-device model</strong> (the default), notes made on your computer send nothing.</li>
+</ul>
+<p>Details are in section 16 of the <a href="/en/privacy/">Privacy policy</a>; how to use notes is on the <a href="/en/features/#meeting-notes">Features</a> page.</p>
 
 <h2 id="verified">How did we check that?</h2>
 <p>On macOS we ran the app behind a traffic-capturing proxy (mitmproxy), measured in parallel with <code>nettop</code>, and translated a session using a sample English sentence played on repeat. The build was release 0.1.0, ad-hoc signed, on a MacBook Pro M4 Pro with macOS 26.6.2, on 6 October 2026.</p>
