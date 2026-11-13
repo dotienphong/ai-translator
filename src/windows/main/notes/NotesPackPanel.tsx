@@ -1,4 +1,4 @@
-import { translate, type MessageKey, type Params, type UiLanguage } from "../../../i18n";
+import { errorKey, translate, type MessageKey, type Params, type UiLanguage } from "../../../i18n";
 import { formatBytes, type NotesPack } from "../../../lib/models";
 
 export interface NotesPackPanelProps {
@@ -27,6 +27,11 @@ export function NotesPackPanel(p: NotesPackPanelProps) {
     <div className="notes-pack">
       <h3 className="notes-block-title">{t("notes.pack.title")}</h3>
       <p className="hint">{t("notes.pack.size", { size: formatBytes(pack.bytes, p.lang) })}</p>
+      {pack.state === "missing" && pack.error && (
+        <p className="notice error" role="alert">
+          {t(errorKey(pack.error))}
+        </p>
+      )}
       {pack.state === "downloading" && <progress max={100} value={percent} aria-label={t("notes.pack.title")} />}
       <div className="notes-pack-actions">
         {pack.state === "missing" && (

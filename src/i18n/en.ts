@@ -65,7 +65,7 @@ export const en = {
   "notes.local.warning.remember": "Don't ask again",
   "notes.local.warning.go": "Create notes",
   "notes.consent.title": "Send this session's translation to {company}?",
-  "notes.consent.body": "To create notes, the app sends the translation of the selected session, with speaker labels, to {company} using your API key. Audio and the original sentences are not sent. Nothing goes through AI Translator's servers.",
+  "notes.consent.body": "To create notes, the app sends the translation of the selected session, with speaker labels, to {company} using your API key. Audio is not sent; a sentence that has no translation is sent in its original wording. Nothing goes through AI Translator's servers.",
   "notes.consent.accept": "Agree and create notes",
   "notes.overwrite.title": "Replace the existing notes?",
   "notes.overwrite.body": "The existing notes of this session will be replaced.",

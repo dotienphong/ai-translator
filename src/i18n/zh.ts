@@ -66,7 +66,7 @@ export const zh: Record<MessageKey, string> = {
   "notes.local.warning.remember": "不再询问",
   "notes.local.warning.go": "生成纪要",
   "notes.consent.title": "将此会话的译文发送给 {company}？",
-  "notes.consent.body": "为了生成纪要，应用会使用您的 API 密钥，把所选会话的译文（含说话人标签）发送给 {company}。音频和原句不会被发送。任何内容都不会经过 AI Translator 的服务器。",
+  "notes.consent.body": "为了生成纪要，应用会使用您的 API 密钥，把所选会话的译文（含说话人标签）发送给 {company}。音频不会被发送；没有译文的句子会以原句发送。任何内容都不会经过 AI Translator 的服务器。",
   "notes.consent.accept": "同意并生成纪要",
   "notes.overwrite.title": "覆盖现有纪要？",
   "notes.overwrite.body": "此会话现有的纪要将被替换。",

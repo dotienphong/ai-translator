@@ -65,7 +65,7 @@ export const vi: Record<MessageKey, string> = {
   "notes.local.warning.remember": "Không hỏi lại",
   "notes.local.warning.go": "Tạo ghi chú",
   "notes.consent.title": "Gửi bản dịch của phiên này tới {company}?",
-  "notes.consent.body": "Để tạo ghi chú, app gửi bản dịch của phiên đã chọn, kèm nhãn người nói, tới {company} bằng API key của bạn. Âm thanh và câu gốc không được gửi. Không gì đi qua máy chủ của AI Translator.",
+  "notes.consent.body": "Để tạo ghi chú, app gửi bản dịch của phiên đã chọn, kèm nhãn người nói, tới {company} bằng API key của bạn. Âm thanh không được gửi; câu nào chưa có bản dịch thì gửi câu gốc của nó. Không gì đi qua máy chủ của AI Translator.",
   "notes.consent.accept": "Đồng ý và tạo ghi chú",
   "notes.overwrite.title": "Ghi đè ghi chú hiện có?",
   "notes.overwrite.body": "Ghi chú hiện có của phiên này sẽ bị thay.",

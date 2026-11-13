@@ -179,6 +179,9 @@ pub struct NotesPack {
     pub bytes: u64,
     pub done: u64,
     pub min_ram_mib: u64,
+    /// Mã lỗi của lần tải gần nhất không xong (`modelsDownloadFailed`, `modelsChecksum`, `modelsDisk`); chỉ có khi `Missing`. Lần tải
+    /// mới hay xóa gói thì bỏ.
+    pub error: Option<&'static str>,
 }
 
 /// Gói ghi chú đã tải xong: đường dẫn, SHA-256 theo manifest (engine chỉ chạy khi file băm ra đúng giá trị này) và cỡ ngữ cảnh.
@@ -325,6 +328,7 @@ pub struct ModelService {
     /// Đang tải gói ghi chú; `done` là số byte đã có của file; `pause` để hủy.
     notes_downloading: AtomicBool,
     notes_done: AtomicU64,
+    notes_error: std::sync::Mutex<Option<&'static str>>,
     notes_pause: Pause,
     /// Móc "trước phiên" (xem [`ModelService::set_before_session`]).
     before_session: Mutex<Option<SessionHook>>,
@@ -375,6 +379,7 @@ impl ModelService {
             store: Store::new(&cfg.dir),
             notes_downloading: AtomicBool::new(false),
             notes_done: AtomicU64::new(0),
+            notes_error: std::sync::Mutex::new(None),
             notes_pause: Pause::default(),
             before_session: Mutex::new(None),
             tts: TtsStore::new(&cfg.dir),
@@ -1297,6 +1302,7 @@ impl ModelService {
                 bytes: 0,
                 done: 0,
                 min_ram_mib: 0,
+                error: None,
             };
         };
         let bytes = model.file.bytes;
@@ -1314,6 +1320,7 @@ impl ModelService {
             bytes,
             done,
             min_ram_mib: model.min_ram_mib,
+            error: if state == NotesPackState::Missing { *self.notes_error.lock().unwrap() } else { None },
         }
     }
 
@@ -1385,6 +1392,7 @@ impl ModelService {
         let work = OwnedWork(self.clone());
         self.notes_pause.clear();
         self.notes_done.store(part, Ordering::SeqCst);
+        *self.notes_error.lock().unwrap() = None;
         let downloading = NotesDownloading::start(self);
         let view = self.changed(app);
         let (service, app) = (self.clone(), app.clone());
@@ -1432,7 +1440,10 @@ impl ModelService {
         match result {
             Ok(()) => log::info!("đã tải xong gói ghi chú trên máy"),
             Err("paused") => log::info!("đã hủy tải gói ghi chú trên máy, giữ phần đã tải"),
-            Err(code) => log::warn!("không tải được gói ghi chú trên máy: {code}"),
+            Err(code) => {
+                log::warn!("không tải được gói ghi chú trên máy: {code}");
+                *self.notes_error.lock().unwrap() = Some(code);
+            }
         }
     }
 
@@ -1454,6 +1465,7 @@ impl ModelService {
         self.store
             .delete_entry(&model.file)
             .map_err(|e| CommandError::new(errors::MODELS_DISK, None, e.to_string()))?;
+        *self.notes_error.lock().unwrap() = None;
         drop(work);
         Ok(self.changed(app))
     }
@@ -2924,6 +2936,7 @@ mod tests {
         assert_eq!(notes["state"], "missing");
         assert!(h.service().notes_ready().is_none());
         assert!(!h.dir().join("notes-model.gguf").exists(), "file sai không được đặt vào chỗ");
+    assert_eq!(notes["error"], "modelsChecksum", "giao diện phải biết vì sao không tải được: {notes}");
     }
 
     #[test]

@@ -13,9 +13,9 @@ import {
   tauriIpc,
 } from "../../../lib/ipc";
 import type { NotesPack } from "../../../lib/models";
-import { type Gate, type GateInput, type NotesSource, gate as gateOf, sourceLabel, sourceOf } from "../../../lib/notes";
+import { type Gate, type GateInput, type NotesSource, gate as gateOf, sourceLabel, sourceOf, templateOf } from "../../../lib/notes";
 import { dateTime, localOffsetMinutes } from "../../../lib/subtitleView";
-import type { UiError } from "../../../store/app";
+import { type UiError, toUiError } from "../../../store/app";
 import { type NotesDialog, type NotesNotice, type NotesStoreState, sameRef } from "../../../store/notes";
 import { useApp } from "../appStore";
 import { notesStore, useNotes } from "../dataStores";
@@ -390,7 +390,7 @@ export function NotesScreen() {
   const error = useNotes((s) => s.error);
   const models = useModels((s) => s.view);
   const loadModels = useModels((s) => s.load);
-  const [template, setTemplate] = useState<NotesTemplate>("meeting");
+  const template = templateOf(settings);
   const [keys, setKeys] = useState<TranslationKeysStatus | null>(null);
   const [pendingSelect, setPendingSelect] = useState<TranscriptRef | null>(null);
   // Thời điểm dựng của ghi chú lúc bắt đầu sửa: ghi chú đổi sang bản khác trong lúc sửa thì báo (`staleDraft`).
@@ -454,6 +454,9 @@ export function NotesScreen() {
     existing,
   });
 
+  // Lệnh của gói bị từ chối (hết chỗ, đang bận, không có nguồn): hiện ở thanh báo lỗi của màn hình, không nuốt.
+  const showError = (e: unknown) => notesStore.setState({ error: toUiError(e) });
+
   const generate = (forceLocal = false) => {
     const local: NotesSource = { kind: "local" };
     void notesStore.getState().request(input(forceLocal ? local : undefined), template, forceLocal);
@@ -485,7 +488,7 @@ export function NotesScreen() {
         if (draft !== null) setPendingSelect(ref);
         else void notesStore.getState().select(ref);
       }}
-      onTemplate={setTemplate}
+      onTemplate={(next) => void updateSettings({ notesTemplate: next })}
       onGenerate={() => generate()}
       onCancel={() => void notesStore.getState().cancel()}
       onEdit={(next) => notesStore.getState().edit(next)}
@@ -505,9 +508,9 @@ export function NotesScreen() {
       }}
       onUpgrade={() => navigate("upgrade")}
       onUseLocal={() => generate(true)}
-      onDownloadPack={() => void tauriIpc.invoke("download_notes_pack").then(() => loadModels()).catch(() => {})}
-      onCancelPack={() => void tauriIpc.invoke("cancel_notes_download").then(() => loadModels()).catch(() => {})}
-      onDeletePack={() => void tauriIpc.invoke("delete_notes_pack").then(() => loadModels()).catch(() => {})}
+      onDownloadPack={() => void tauriIpc.invoke("download_notes_pack").then(() => loadModels()).catch(showError)}
+      onCancelPack={() => void tauriIpc.invoke("cancel_notes_download").then(() => loadModels()).catch(showError)}
+      onDeletePack={() => void tauriIpc.invoke("delete_notes_pack").then(() => loadModels()).catch(showError)}
       onAuto={(on) => void updateSettings({ notesAuto: on })}
       onDismissError={() => notesStore.setState({ error: null })}
       onConfirmDiscard={() => {

@@ -74,6 +74,8 @@ export interface NotesPack {
   bytes: number;
   done: number;
   minRamMib: number;
+  /** Mã lỗi của lần tải gần nhất không xong; chỉ có khi `missing`. */
+  error?: string | null;
 }
 
 export interface ModelsView {

@@ -66,7 +66,7 @@ export const ko: Record<MessageKey, string> = {
   "notes.local.warning.remember": "다시 묻지 않기",
   "notes.local.warning.go": "노트 만들기",
   "notes.consent.title": "이 세션의 번역문을 {company}에 보낼까요?",
-  "notes.consent.body": "노트를 만들기 위해 앱이 선택한 세션의 번역문을 화자 라벨과 함께 사용자의 API 키로 {company}에 보냅니다. 오디오와 원문은 보내지 않습니다. AI Translator 서버를 거치는 것은 없습니다.",
+  "notes.consent.body": "노트를 만들기 위해 앱이 선택한 세션의 번역문을 화자 라벨과 함께 사용자의 API 키로 {company}에 보냅니다. 오디오는 보내지 않습니다. 번역이 없는 문장은 원문 그대로 보냅니다. AI Translator 서버를 거치는 것은 없습니다.",
   "notes.consent.accept": "동의하고 노트 만들기",
   "notes.overwrite.title": "기존 노트를 덮어쓸까요?",
   "notes.overwrite.body": "이 세션의 기존 노트가 교체됩니다.",

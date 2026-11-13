@@ -973,6 +973,24 @@ pub fn release_models<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Như [`release_models`] cho người gọi không giữ việc bảo trì của `ModelService` (ghi chú trên máy): chờ lần chạy sẵn xong rồi
+/// chỉ tắt tiến trình phụ khi lúc đó không có phiên nào bắt đầu hay chạy. Phiên có thể bắt đầu trong lúc chờ (tới 180 s, lâu hơn
+/// lúc móc chờ việc ghi chú); tắt lúc đó là tắt bộ tiến trình phụ của chính phiên đó. Trả `false` khi từ chối vì có phiên.
+pub fn release_idle_models<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Some(session) = app.try_state::<Session>() else {
+        return true;
+    };
+    wait_for_prewarm(&session);
+    let in_session = app
+        .try_state::<AppState>()
+        .is_some_and(|s| matches!(s.status().session, SessionStatus::Starting | SessionStatus::Running));
+    if in_session {
+        return false;
+    }
+    session.deps.release_models();
+    true
+}
+
 /// File model đang được dùng ngoài gói đang chọn: gói của phiên gần nhất (người gọi chỉ tính nó khi phiên đang bắt
 /// đầu hay đang chạy) và file mà bộ tiến trình phụ hiện có đã nạp (QE-1 của review cuối 04).
 pub fn models_in_use<R: Runtime>(app: &AppHandle<R>) -> (Option<String>, Vec<PathBuf>) {

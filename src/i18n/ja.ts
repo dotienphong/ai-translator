@@ -66,7 +66,7 @@ export const ja: Record<MessageKey, string> = {
   "notes.local.warning.remember": "次回から確認しない",
   "notes.local.warning.go": "メモを作成",
   "notes.consent.title": "このセッションの翻訳を{company}に送信しますか？",
-  "notes.consent.body": "メモを作成するため、選択したセッションの翻訳文を話者ラベル付きで、あなたのAPIキーを使って{company}に送信します。音声と原文は送信されません。AI Translatorのサーバーは経由しません。",
+  "notes.consent.body": "メモを作成するため、選択したセッションの翻訳文を話者ラベル付きで、あなたのAPIキーを使って{company}に送信します。音声は送信されません。翻訳がない文は原文のまま送信されます。AI Translatorのサーバーは経由しません。",
   "notes.consent.accept": "同意してメモを作成",
   "notes.overwrite.title": "既存のメモを上書きしますか？",
   "notes.overwrite.body": "このセッションの既存のメモは置き換えられます。",

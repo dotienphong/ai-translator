@@ -11,6 +11,7 @@ import {
   linesForRefs,
   sourceLabel,
   sourceOf,
+  templateOf,
   withItem,
 } from "./notes";
 
@@ -183,5 +184,14 @@ describe("linesForRefs", () => {
     ]);
     expect(linesForRefs(lines, [0, -2, 1.5, 2]).map((r) => r.seq)).toEqual([2]);
     expect(linesForRefs(lines, [])).toEqual([]);
+  });
+});
+
+describe("templateOf", () => {
+  it("uses_the_saved_template_and_falls_back_to_meeting_when_settings_are_not_loaded_or_have_none", () => {
+    expect(templateOf({ notesTemplate: "lecture" })).toBe("lecture");
+    expect(templateOf({ notesTemplate: "brief" })).toBe("brief");
+    expect(templateOf({})).toBe("meeting");
+    expect(templateOf(null)).toBe("meeting");
   });
 });

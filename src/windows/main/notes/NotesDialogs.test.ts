@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { vi as viText } from "../../../i18n";
+import { en, ja, ko, vi as viText, zh } from "../../../i18n";
 import type { NotesSource } from "../../../lib/notes";
 import { NotesDialogs, type NotesDialogsProps } from "./NotesDialogs";
 
@@ -43,6 +43,29 @@ describe("NotesDialogs", () => {
     expect(markup).toContain('type="checkbox"');
     expect(markup).toContain(viText["notes.local.warning.remember"]);
     expect(buttons(markup).some((b) => b.includes(viText["notes.local.warning.go"]))).toBe(true);
+  });
+
+  it("the_consent_in_every_language_says_untranslated_lines_are_sent_in_their_original_wording", () => {
+    // Câu chưa có bản dịch (cùng ngôn ngữ, dịch lỗi, bỏ qua) được gửi bằng câu gốc (notes::chunk::text_of): hộp đồng ý không được nói ngược lại.
+    const old: Record<string, string> = {
+      vi: "Âm thanh và câu gốc không được gửi",
+      en: "Audio and the original sentences are not sent",
+      ja: "音声と原文は送信されません",
+      zh: "音频和原句不会被发送",
+      ko: "오디오와 원문은 보내지 않습니다",
+    };
+    const marker: Record<string, string> = {
+      vi: "chưa có bản dịch",
+      en: "has no translation",
+      ja: "翻訳がない文",
+      zh: "没有译文的句子",
+      ko: "번역이 없는 문장",
+    };
+    for (const [lang, dict] of Object.entries({ vi: viText, en, ja, zh, ko })) {
+      const body = dict["notes.consent.body"];
+      expect(body, lang).not.toContain(old[lang]);
+      expect(body, lang).toContain(marker[lang]);
+    }
   });
 
   it("the_consent_names_the_selected_provider", () => {

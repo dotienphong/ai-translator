@@ -26,8 +26,11 @@ pub fn use_gpu(windows: bool, probed: Option<&probe::ProbeOutcome>) -> bool {
 /// (SHA-256, không chạy binary chưa kiểm), chọn GPU/CPU, log trong thư mục log của app. Lỗi binary là `Engine` (mã
 /// `notesEngineFailed`).
 pub fn spec<R: Runtime>(app: &AppHandle<R>, ready: &NotesReady) -> Result<LocalSpec, NotesError> {
-    // Tiến trình phụ rảnh của lần dịch trước còn giữ model và VRAM; phiên dịch không chạy lúc này (`notes::service::decide`).
-    crate::session::release_models(app);
+    // Tiến trình phụ rảnh của lần dịch trước còn giữ model và VRAM. Phiên dịch không chạy lúc bấm (`notes::service::decide`) nhưng
+    // có thể bắt đầu trong lúc chờ lần chạy sẵn: khi đó dừng việc này (móc đầu phiên đã đặt cờ tạm dừng), không tắt bộ của phiên.
+    if !crate::session::release_idle_models(app) {
+        return Err(NotesError::Cancelled);
+    }
     let engine_error = |what: &str| NotesError::Engine(what.to_string());
     let dir = paths::binaries_dir().map_err(|_| engine_error("không tìm thấy thư mục llama-server"))?;
     let files = paths::sidecar_files(&dir, paths::TARGET, tauri::is_dev(), cfg!(windows));

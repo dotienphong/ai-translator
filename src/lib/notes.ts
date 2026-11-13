@@ -1,5 +1,5 @@
 import type { MessageKey, Params } from "../i18n";
-import type { Notes, Settings, Subtitle } from "./ipc";
+import type { Notes, NotesTemplate, Settings, Subtitle } from "./ipc";
 import type { NotesPackState } from "./models";
 
 // Các quyết định thuần của màn hình "Ghi chú cuộc họp" (spec 2026-11-11-ghi-chu-cuoc-hop-design.md mục 2, 6, 7, 9): nguồn
@@ -13,6 +13,11 @@ export type NotesSource = { kind: "local" } | { kind: "cloud"; provider: CloudPr
 const PROVIDER_NAME: Record<CloudProvider, string> = { openai: "ChatGPT", gemini: "Gemini", deepseek: "DeepSeek" };
 // Công ty nhận bản dịch khi gửi đi (hộp đồng ý, spec mục 9). Local không gửi đi đâu nên không có.
 const COMPANY: Record<CloudProvider, string> = { openai: "OpenAI", gemini: "Google", deepseek: "DeepSeek" };
+
+// Mẫu ghi chú đã chọn nằm ở cài đặt (`notesTemplate`, cũng là mẫu của ghi chú tự tạo); cài đặt chưa nạp thì "Cuộc họp".
+export function templateOf(s: Pick<Settings, "notesTemplate"> | null | undefined): NotesTemplate {
+  return s?.notesTemplate ?? "meeting";
+}
 
 // Nguồn của ghi chú đi theo nguồn dịch (Cài đặt > Model), không có cài đặt riêng. Cài đặt chưa nạp thì coi là Local: không đoán
 // một nhà cung cấp cloud.

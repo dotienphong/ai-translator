@@ -25,6 +25,13 @@ const html = (p: NotesPackPanelProps) => renderToStaticMarkup(createElement(Note
 const buttons = (markup: string) => (markup.match(/<button [^>]*>[\s\S]*?<\/button>/g) ?? []).map((b) => b.replace(/<[^>]+>/g, ""));
 
 describe("NotesPackPanel", () => {
+  it("a_failed_download_shows_why_and_still_offers_the_download", () => {
+    const markup = html(props({ state: "missing", error: "modelsDownloadFailed" }));
+    expect(markup).toContain(viText["error.modelsDownloadFailed"]);
+    expect(buttons(markup)).toEqual([viText["notes.pack.download"]]);
+    expect(html(props({ state: "missing" }))).not.toContain(viText["error.modelsDownloadFailed"]);
+  });
+
   it("unavailable_renders_nothing", () => {
     expect(html(props({ state: "unavailable" }))).toBe("");
   });

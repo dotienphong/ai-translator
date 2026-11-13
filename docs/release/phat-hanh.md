@@ -2037,7 +2037,7 @@ App "ngủ" ở phần Local khi manifest chưa có khóa `notes` dùng được
 
 Làm đúng mục 2: merge nhánh `ghi-chu-cuoc-hop` vào `main`, nâng bốn file lên số phiên bản mới, đợi CI, hỏi chủ dự án rồi đẩy tag, kiểm R2 và SHA-256, GitHub Release. **Deploy website sau cùng**, sau khi bản app đã lên (website nói về tính năng đã có) và sau khi chủ dự án đã đọc lại các trang ja/zh/ko (20.7).
 
-Kiểm "Local ngủ" trên bản đã cài (không phải bản dev): Cài đặt › Model **không** có khối "Gói ghi chú trên máy"; chọn model dịch là một model cloud đã có khóa thì dừng phiên xong thấy nút tạo ghi chú.
+Kiểm "Local ngủ" trên bản đã cài (không phải bản dev): Ghi chú cuộc họp › Thiết lập **không** có khối "Gói ghi chú trên máy" (khối này chỉ nằm ở đó, không nằm ở Cài đặt › Model); chọn model dịch là một model cloud đã có khóa thì dừng phiên xong thấy nút tạo ghi chú.
 
 ### 20.4. Bật Local [CHỦ DỰ ÁN]
 
@@ -2050,10 +2050,9 @@ Model: `Qwen3.5-4B-Q4_K_M.gguf`, **2 740 937 888 byte**, SHA-256 `00fe7986ff5f6b
    pnpm models:notes add --file <đường dẫn Qwen3.5-4B-Q4_K_M.gguf> --min-app-version <số bản app vừa phát hành>
    ```
    Tùy chọn: `--min-ram-mib N` (mặc định 15360), `--ctx N` (mặc định 16384), `--license-id <id>` (mặc định `Apache-2.0`), `--version <chuỗi>`. Lệnh kiểm theo luật của app (`Manifest::notes_entry`) và từ chối mục sai; chạy `add` lần hai thì **thay** mục `notes` cũ.
-2. **Đặt model và giấy phép lên R2** (**trước** manifest, vì app tải model theo manifest). Dùng `wrangler` như mục 16.5, hay `rclone` như mục 13.1 (`--s3-no-check-bucket`):
+2. **Đặt model và giấy phép lên R2** (**trước** manifest, vì app tải model theo manifest). File model nặng 2,74 GB nên dùng `rclone` như mục 13.1 (remote `r2:`, `--s3-no-check-bucket`, đúng lệnh của `scripts/models/update-publish.mjs`); `wrangler r2 object put` bị giới hạn cỡ file (khoảng 315 MiB) nên chỉ dùng cho file giấy phép nhỏ:
    ```bash
-   pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/notes/00fe7986ff5f/Qwen3.5-4B-Q4_K_M.gguf" \
-     --file <đường dẫn Qwen3.5-4B-Q4_K_M.gguf> --content-type application/octet-stream --remote
+   rclone copyto <đường dẫn Qwen3.5-4B-Q4_K_M.gguf> r2:ai-translator-releases/models/notes/00fe7986ff5f/Qwen3.5-4B-Q4_K_M.gguf --s3-no-check-bucket --immutable
    pnpm -C server exec wrangler r2 object put "ai-translator-releases/models/notes/00fe7986ff5f/Notes-Apache-2.0-LICENSE.txt" \
      --file licenses/models/Notes-Apache-2.0-LICENSE.txt --content-type text/plain --remote
    curl -s https://releases.aitranslator.vn/models/notes/00fe7986ff5f/Qwen3.5-4B-Q4_K_M.gguf | shasum -a 256
@@ -2068,7 +2067,7 @@ Model: `Qwen3.5-4B-Q4_K_M.gguf`, **2 740 937 888 byte**, SHA-256 `00fe7986ff5f6b
    ```
    Kiểm lại bằng lệnh `curl … | node -e …` ở đầu mục 16.5 (đổi `b.speaker` thành `b.notes`): `sequence <N+1>` và có `notes`. Kiểm DNS bằng `dig @8.8.8.8 releases.aitranslator.vn` nếu `curl` lỗi.
 5. **Kiểm trên bản đã cài** (app kiểm manifest tối đa một lần mỗi ngày, nên đợi tới khoảng 25 giờ hay mở lại app quá hạn):
-   - Máy **≥ 16 GB RAM**: Cài đặt › Model hiện khối "Gói ghi chú trên máy"; bấm tải (khoảng 2,6 GB), xong tạo được một ghi chú bằng model trên máy sau khi dừng một phiên.
+   - Máy **≥ 16 GB RAM**: Ghi chú cuộc họp › Thiết lập hiện khối "Gói ghi chú trên máy"; bấm tải (khoảng 2,6 GB), xong tạo được một ghi chú bằng model trên máy sau khi dừng một phiên.
    - Máy **< 16 GB** (hay hạ tạm `min_ram_mib` trong một manifest thử, **không** đăng manifest thử lên production): thấy câu `notes.pack.ramTooLow` ("Máy cần từ {gb} GB RAM để tạo ghi chú bằng model trên máy. Hãy chọn một model cloud ở Cài đặt > Model.").
    - Bằng proxy hay `nettop` (`bench/phase1/acceptance/RUNBOOK-mac.md`): ghi chú tạo bằng model trên máy không tạo kết nối nào ngoài tải gói từ `releases.aitranslator.vn`.
 
