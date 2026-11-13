@@ -769,6 +769,7 @@ export const en = {
   "error.notesOffline": "Could not reach the provider. Check your connection and try again.",
   "error.notesAuthFailed": "The provider rejected the API key. Check the key.",
   "error.notesRateLimited": "The key hit the provider's limit. Try again later.",
+  "error.notesNoBalance": "The provider account is out of balance. Top up and try again.",
   "error.notesCloudFailed": "The provider returned an error. Try again later.",
   "error.notesEngineFailed": "Could not create the notes. Try again.",
   "error.notesCancelled": "Cancelled.",

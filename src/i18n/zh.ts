@@ -768,6 +768,7 @@ export const zh: Record<MessageKey, string> = {
   "error.notesOffline": "无法连接服务商。请检查网络连接后重试。",
   "error.notesAuthFailed": "服务商拒绝了 API 密钥。请检查密钥。",
   "error.notesRateLimited": "密钥已达到服务商的限额。请稍后重试。",
+  "error.notesNoBalance": "服务商账户余额不足。请充值后重试。",
   "error.notesCloudFailed": "服务商返回了错误。请稍后重试。",
   "error.notesEngineFailed": "无法生成笔记。请重试。",
   "error.notesCancelled": "已取消。",

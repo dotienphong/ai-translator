@@ -163,6 +163,7 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::NOTES_OFFLINE,
     errors::NOTES_AUTH_FAILED,
     errors::NOTES_RATE_LIMITED,
+    errors::NOTES_NO_BALANCE,
     errors::NOTES_CLOUD_FAILED,
     errors::NOTES_ENGINE_FAILED,
     errors::NOTES_CANCELLED,

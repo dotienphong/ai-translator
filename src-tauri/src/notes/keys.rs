@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, Runtime};
 
-use crate::cloud_mt::{GEMINI_KEY_ENTRY, OPENAI_KEY_ENTRY};
+use crate::cloud_mt::{DEEPSEEK_KEY_ENTRY, GEMINI_KEY_ENTRY, OPENAI_KEY_ENTRY};
 use crate::security::keystore::Keystore;
 use crate::settings::NotesProvider;
 
@@ -25,6 +25,7 @@ pub fn api_key<R: Runtime>(app: &AppHandle<R>, provider: NotesProvider) -> Optio
         NotesProvider::Local => return None,
         NotesProvider::Openai => OPENAI_KEY_ENTRY,
         NotesProvider::Gemini => GEMINI_KEY_ENTRY,
+        NotesProvider::Deepseek => DEEPSEEK_KEY_ENTRY,
     };
     with_keystore(app, |ks| {
         let bytes = ks.get(entry).ok()??;
@@ -39,7 +40,7 @@ pub fn api_key<R: Runtime>(app: &AppHandle<R>, provider: NotesProvider) -> Optio
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::cloud_mt::{GEMINI_KEY_ENTRY, OPENAI_KEY_ENTRY};
+    use crate::cloud_mt::{DEEPSEEK_KEY_ENTRY, GEMINI_KEY_ENTRY, OPENAI_KEY_ENTRY};
     use crate::security::keystore::Keystore;
     use crate::settings::NotesProvider;
     use crate::test_support::mock_app;
@@ -58,6 +59,16 @@ mod tests {
         // Dù có key ở mục nào thì Local vẫn không có key.
         ks.set(GEMINI_KEY_ENTRY, b"AIza-2\n").unwrap();
         assert_eq!(api_key(app.handle(), NotesProvider::Local), None);
+    }
+
+    #[test]
+    fn deepseek_key_is_read_from_its_own_entry() {
+        let app = mock_app();
+        let ks = app.state::<Arc<Keystore>>();
+        ks.set(OPENAI_KEY_ENTRY, b"sk-1").unwrap();
+        assert_eq!(api_key(app.handle(), NotesProvider::Deepseek), None);
+        ks.set(DEEPSEEK_KEY_ENTRY, b" ds-1\n").unwrap();
+        assert_eq!(api_key(app.handle(), NotesProvider::Deepseek), Some("ds-1".to_string()));
     }
 
     #[test]

@@ -256,7 +256,8 @@ pub enum TranslationProvider {
     Deepseek,
 }
 
-/// Nguồn tạo ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design.md): model trên máy (mặc định), ChatGPT hoặc Gemini.
+/// Nơi sinh ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design.md G2). Không phải cài đặt: lấy theo `translation_provider`
+/// (`from_translation`) và lưu cùng ghi chú để biết ghi chú sinh ra từ đâu.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NotesProvider {
@@ -264,6 +265,19 @@ pub enum NotesProvider {
     Local,
     Openai,
     Gemini,
+    Deepseek,
+}
+
+impl NotesProvider {
+    /// Nguồn ghi chú theo model dịch người dùng đã chọn ở Cài đặt > Model.
+    pub fn from_translation(p: TranslationProvider) -> Self {
+        match p {
+            TranslationProvider::Local => Self::Local,
+            TranslationProvider::Openai => Self::Openai,
+            TranslationProvider::Gemini => Self::Gemini,
+            TranslationProvider::Deepseek => Self::Deepseek,
+        }
+    }
 }
 
 /// Mẫu ghi chú: cuộc họp (mặc định), bài giảng, hoặc bản tóm tắt ngắn.
@@ -365,9 +379,10 @@ pub struct Settings {
     /// Model của Gemini (Google API), mặc định `gemini-2.0-flash`.
     #[serde(default = "default_gemini_model")]
     pub gemini_model: String,
-    /// Nguồn tạo ghi chú cuộc họp: `local` (mặc định), `openai`, hoặc `gemini`. File của bản trước chưa có khóa này thì lấy mặc định.
+    /// Người dùng đã bấm "Không hỏi lại" ở cảnh báo khi tạo ghi chú bằng model trên máy, mặc định chưa. Nguồn ghi chú không có
+    /// cài đặt riêng: lấy theo `translation_provider`.
     #[serde(default)]
-    pub notes_provider: NotesProvider,
+    pub notes_local_ack: bool,
     /// Tự tạo ghi chú khi phiên kết thúc, mặc định tắt.
     #[serde(default)]
     pub notes_auto: bool,
@@ -484,7 +499,7 @@ impl Settings {
             translation_provider: TranslationProvider::Local,
             openai_model: default_openai_model(),
             gemini_model: default_gemini_model(),
-            notes_provider: NotesProvider::Local,
+            notes_local_ack: false,
             notes_auto: false,
             notes_template: NotesTemplate::Meeting,
             notes_cloud_consent: false,

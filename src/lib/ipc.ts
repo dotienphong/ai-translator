@@ -28,8 +28,8 @@ export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "fa
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
 // Nguồn dịch văn bản (`settings::TranslationProvider`, spec 2026-11-07-cloud-mt-fallback-design.md).
-// Nguồn và mẫu của ghi chú cuộc họp (`settings::NotesProvider`, `settings::NotesTemplate`, spec 2026-11-11-ghi-chu-cuoc-hop-design.md).
-export type NotesProvider = "local" | "openai" | "gemini";
+// Nguồn của ghi chú lấy theo nguồn dịch (`NotesProvider::from_translation`), không có cài đặt riêng. Nguồn và mẫu của ghi chú cuộc họp (`settings::NotesProvider`, `settings::NotesTemplate`, spec 2026-11-11-ghi-chu-cuoc-hop-design.md).
+export type NotesProvider = "local" | "openai" | "gemini" | "deepseek";
 export type NotesTemplate = "meeting" | "lecture" | "brief";
 export type TranslationProvider = "local" | "openai" | "gemini" | "deepseek";
 export const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"] as const;
@@ -133,7 +133,7 @@ export interface Settings {
   translationProvider?: TranslationProvider;
   openaiModel?: string;
   geminiModel?: string;
-  notesProvider?: NotesProvider;
+  notesLocalAck?: boolean;
   notesAuto?: boolean;
   notesTemplate?: NotesTemplate;
   notesCloudConsent?: boolean;
@@ -251,7 +251,7 @@ export interface OverlayView {
   translationProvider?: TranslationProvider;
   openaiModel?: string;
   geminiModel?: string;
-  notesProvider?: NotesProvider;
+  notesLocalAck?: boolean;
   notesAuto?: boolean;
   notesTemplate?: NotesTemplate;
   notesCloudConsent?: boolean;
@@ -280,7 +280,7 @@ export interface ComposeView {
   translationProvider?: TranslationProvider;
   openaiModel?: string;
   geminiModel?: string;
-  notesProvider?: NotesProvider;
+  notesLocalAck?: boolean;
   notesAuto?: boolean;
   notesTemplate?: NotesTemplate;
   notesCloudConsent?: boolean;

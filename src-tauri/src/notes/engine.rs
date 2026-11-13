@@ -45,6 +45,8 @@ pub enum NotesError {
     AuthFailed,
     /// Bị giới hạn tốc độ.
     RateLimited,
+    /// Tài khoản nhà cung cấp hết số dư (HTTP 402).
+    NoBalance,
     /// Máy chủ cloud trả mã HTTP lỗi.
     Cloud(u16),
     /// Phản hồi của engine không đọc được.
@@ -64,6 +66,7 @@ impl NotesError {
             Self::Offline => errors::NOTES_OFFLINE,
             Self::AuthFailed => errors::NOTES_AUTH_FAILED,
             Self::RateLimited => errors::NOTES_RATE_LIMITED,
+            Self::NoBalance => errors::NOTES_NO_BALANCE,
             Self::Cloud(_) | Self::BadResponse => errors::NOTES_CLOUD_FAILED,
             Self::Cancelled => errors::NOTES_CANCELLED,
             Self::Engine(_) => errors::NOTES_ENGINE_FAILED,
@@ -91,6 +94,7 @@ mod tests {
             (NotesError::Offline, errors::NOTES_OFFLINE, "notesOffline"),
             (NotesError::AuthFailed, errors::NOTES_AUTH_FAILED, "notesAuthFailed"),
             (NotesError::RateLimited, errors::NOTES_RATE_LIMITED, "notesRateLimited"),
+            (NotesError::NoBalance, errors::NOTES_NO_BALANCE, "notesNoBalance"),
             (NotesError::Cloud(500), errors::NOTES_CLOUD_FAILED, "notesCloudFailed"),
             (NotesError::BadResponse, errors::NOTES_CLOUD_FAILED, "notesCloudFailed"),
             (NotesError::Cancelled, errors::NOTES_CANCELLED, "notesCancelled"),
@@ -107,6 +111,7 @@ mod tests {
                 | NotesError::Offline
                 | NotesError::AuthFailed
                 | NotesError::RateLimited
+                | NotesError::NoBalance
                 | NotesError::Cloud(_)
                 | NotesError::BadResponse
                 | NotesError::Cancelled

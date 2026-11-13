@@ -3616,7 +3616,7 @@ fn notes_app(save_history: bool) -> tauri::App<tauri::test::MockRuntime> {
     );
     let state = app.state::<AppState>();
     let mut s = state.settings();
-    s.notes_provider = crate::settings::NotesProvider::Gemini;
+    s.translation_provider = crate::settings::TranslationProvider::Gemini;
     s.notes_cloud_consent = true;
     state.replace_settings(&mut s);
     app.state::<Arc<crate::security::keystore::Keystore>>()

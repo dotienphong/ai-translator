@@ -768,6 +768,7 @@ export const vi: Record<MessageKey, string> = {
   "error.notesOffline": "Không kết nối được tới nhà cung cấp. Kiểm tra mạng rồi thử lại.",
   "error.notesAuthFailed": "Nhà cung cấp từ chối API key. Kiểm tra lại key.",
   "error.notesRateLimited": "Key đã chạm giới hạn của nhà cung cấp. Thử lại sau.",
+  "error.notesNoBalance": "Tài khoản nhà cung cấp đã hết số dư. Nạp thêm rồi thử lại.",
   "error.notesCloudFailed": "Nhà cung cấp trả lỗi. Thử lại sau.",
   "error.notesEngineFailed": "Không tạo được ghi chú. Thử lại.",
   "error.notesCancelled": "Đã hủy.",

@@ -431,16 +431,16 @@ mod tests {
     /// Spec 2026-11-11-ghi-chu-cuoc-hop: bốn cài đặt của ghi chú cuộc họp, mặc định và vá từng khóa.
     #[test]
     fn notes_settings_default_and_patch() {
-        use crate::settings::{NotesProvider, NotesTemplate};
+        use crate::settings::NotesTemplate;
         let d = current();
         assert_eq!(
-            (d.notes_provider, d.notes_auto, d.notes_template, d.notes_cloud_consent),
-            (NotesProvider::Local, false, NotesTemplate::Meeting, false)
+            (d.notes_local_ack, d.notes_auto, d.notes_template, d.notes_cloud_consent),
+            (false, false, NotesTemplate::Meeting, false)
         );
         let s = apply(
             &d,
             &json!({
-                "notesProvider": "gemini",
+                "notesLocalAck": true,
                 "notesAuto": true,
                 "notesTemplate": "brief",
                 "notesCloudConsent": true
@@ -448,12 +448,12 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            (s.notes_provider, s.notes_auto, s.notes_template, s.notes_cloud_consent),
-            (NotesProvider::Gemini, true, NotesTemplate::Brief, true)
+            (s.notes_local_ack, s.notes_auto, s.notes_template, s.notes_cloud_consent),
+            (true, true, NotesTemplate::Brief, true)
         );
         assert_eq!(
-            apply(&d, &json!({ "notesProvider": "claude" })),
-            Err(Invalid::new("notesProvider", Reason::WrongType))
+            apply(&d, &json!({ "notesLocalAck": "yes" })),
+            Err(Invalid::new("notesLocalAck", Reason::WrongType))
         );
         assert_eq!(
             apply(&d, &json!({ "notesAuto": "yes" })),

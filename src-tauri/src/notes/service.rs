@@ -385,7 +385,7 @@ impl NotesService {
             .map_or(SessionStatus::Idle, |s| s.status().session);
         let settings = settings_of(app);
         let pro = pro::is_pro(app);
-        let provider = settings.notes_provider;
+        let provider = NotesProvider::from_translation(settings.translation_provider);
         let key = keys::api_key(app, provider);
         let lines = chunk::lines_of(&t);
         let facts = Facts {
@@ -404,6 +404,7 @@ impl NotesService {
         let model = match provider {
             NotesProvider::Openai => settings.openai_model.clone(),
             NotesProvider::Gemini => settings.gemini_model.clone(),
+            NotesProvider::Deepseek => settings.deepseek_model.clone(),
             NotesProvider::Local => String::new(),
         };
         let template = template.unwrap_or(settings.notes_template);
@@ -903,6 +904,20 @@ mod tests {
         }
     }
 
+    /// G2: nguồn ghi chú chính là nguồn dịch đang chọn, không có cài đặt riêng.
+    #[test]
+    fn the_notes_source_follows_the_translation_provider() {
+        use crate::settings::TranslationProvider as T;
+        for (t, n) in [
+            (T::Local, NotesProvider::Local),
+            (T::Openai, NotesProvider::Openai),
+            (T::Gemini, NotesProvider::Gemini),
+            (T::Deepseek, NotesProvider::Deepseek),
+        ] {
+            assert_eq!(NotesProvider::from_translation(t), n);
+        }
+    }
+
     const STARTED_AT: u64 = 1_790_000_000_000;
 
     /// App giả: Pro (theo `pro`), nguồn Gemini đã đồng ý, có key Gemini, và một phiên ba câu vừa dừng. Mã test nạp câu vào
@@ -912,7 +927,7 @@ mod tests {
         set_pro(&app, pro);
         let state = app.state::<AppState>();
         let mut s = state.settings();
-        s.notes_provider = NotesProvider::Gemini;
+        s.translation_provider = crate::settings::TranslationProvider::Gemini;
         s.notes_cloud_consent = true;
         state.replace_settings(&mut s);
         app.state::<Arc<Keystore>>()

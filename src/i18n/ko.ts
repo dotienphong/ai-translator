@@ -768,6 +768,7 @@ export const ko: Record<MessageKey, string> = {
   "error.notesOffline": "제공업체에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.",
   "error.notesAuthFailed": "제공업체가 API 키를 거부했습니다. 키를 확인하세요.",
   "error.notesRateLimited": "키가 제공업체의 한도에 도달했습니다. 나중에 다시 시도하세요.",
+  "error.notesNoBalance": "제공업체 계정의 잔액이 부족합니다. 충전한 뒤 다시 시도하세요.",
   "error.notesCloudFailed": "제공업체에서 오류가 반환되었습니다. 나중에 다시 시도하세요.",
   "error.notesEngineFailed": "노트를 만들지 못했습니다. 다시 시도하세요.",
   "error.notesCancelled": "취소되었습니다.",

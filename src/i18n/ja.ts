@@ -768,6 +768,7 @@ export const ja: Record<MessageKey, string> = {
   "error.notesOffline": "プロバイダーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
   "error.notesAuthFailed": "プロバイダーが API キーを拒否しました。キーを確認してください。",
   "error.notesRateLimited": "キーがプロバイダーの上限に達しました。しばらくしてからもう一度お試しください。",
+  "error.notesNoBalance": "プロバイダーのアカウント残高が不足しています。チャージしてからもう一度お試しください。",
   "error.notesCloudFailed": "プロバイダーがエラーを返しました。しばらくしてからもう一度お試しください。",
   "error.notesEngineFailed": "ノートを作成できませんでした。もう一度お試しください。",
   "error.notesCancelled": "キャンセルしました。",

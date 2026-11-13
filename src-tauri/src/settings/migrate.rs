@@ -470,10 +470,10 @@ mod tests {
     /// là hỏng; giá trị sai thì về mặc định và được báo trong `rejected`.
     #[test]
     fn an_old_file_without_the_notes_keys_gets_defaults() {
-        use crate::settings::{NotesProvider, NotesTemplate};
+        use crate::settings::NotesTemplate;
         let raw = object(json!({ "schemaVersion": 1 }));
         let loaded = load(raw, defaults());
-        assert_eq!(loaded.settings.notes_provider, NotesProvider::Local);
+        assert!(!loaded.settings.notes_local_ack);
         assert!(loaded.rejected.is_empty());
         let raw = object(json!({ "schemaVersion": 1, "notesTemplate": "essay" }));
         let loaded = load(raw, defaults());

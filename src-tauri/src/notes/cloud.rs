@@ -12,6 +12,7 @@ use crate::settings::NotesProvider;
 
 const OPENAI_BASE: &str = "https://api.openai.com";
 const GEMINI_BASE: &str = "https://generativelanguage.googleapis.com";
+const DEEPSEEK_BASE: &str = "https://api.deepseek.com";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 /// Chặn trên cỡ phản hồi đọc vào bộ nhớ: máy chủ không đáng tin tới mức cho phép nó đẩy dữ liệu vô hạn.
@@ -48,6 +49,7 @@ impl CloudNotes {
             NotesProvider::Local => return Err(NotesError::Engine("nhà cung cấp cloud không hợp lệ".into())),
             NotesProvider::Openai => OPENAI_BASE,
             NotesProvider::Gemini => GEMINI_BASE,
+            NotesProvider::Deepseek => DEEPSEEK_BASE,
         };
         if api_key.trim().is_empty() {
             return Err(NotesError::KeyMissing);
@@ -100,6 +102,27 @@ impl CloudNotes {
             .json(&body)
     }
 
+    /// DeepSeek nhận kiểu OpenAI; mặc định nó bật chế độ suy luận (chậm và ăn `max_tokens`), nên luôn tắt như `cloud_mt`.
+    fn deepseek_request(&self, req: &NotesRequest) -> reqwest::blocking::RequestBuilder {
+        let messages: Vec<Value> = req
+            .messages
+            .iter()
+            .map(|m| json!({ "role": role_name(m.role, "assistant"), "content": m.content }))
+            .collect();
+        let body = json!({
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.0,
+            "max_tokens": req.max_tokens,
+            "response_format": { "type": "json_object" },
+            "thinking": { "type": "disabled" },
+        });
+        self.http
+            .post(format!("{}/chat/completions", self.base))
+            .bearer_auth(&self.api_key)
+            .json(&body)
+    }
+
     fn gemini_request(&self, req: &NotesRequest) -> reqwest::blocking::RequestBuilder {
         let contents: Vec<Value> = req
             .messages
@@ -138,6 +161,7 @@ fn role_name(role: Role, assistant_name: &'static str) -> &'static str {
 fn error_for_status(status: u16) -> NotesError {
     match status {
         401 | 403 => NotesError::AuthFailed,
+        402 => NotesError::NoBalance,
         429 => NotesError::RateLimited,
         other => NotesError::Cloud(other),
     }
@@ -193,6 +217,7 @@ impl NotesEngine for CloudNotes {
         let builder = match self.provider {
             NotesProvider::Openai => self.openai_request(req),
             NotesProvider::Gemini => self.gemini_request(req),
+            NotesProvider::Deepseek => self.deepseek_request(req),
             NotesProvider::Local => return Err(NotesError::Engine("nhà cung cấp cloud không hợp lệ".into())),
         };
         // Lỗi gửi hay quá hạn: không ghi nội dung lỗi (có thể chứa địa chỉ).
@@ -285,6 +310,44 @@ mod tests {
     }
 
     #[test]
+    fn deepseek_request_disables_thinking_and_reply_is_read_like_openai() {
+        let (base, seen) = serve(vec![(
+            200,
+            vec![],
+            r#"{"choices":[{"message":{"content":"{\"summary\":\"s\"}"}}]}"#,
+        )]);
+        let e = CloudNotes::new(NotesProvider::Deepseek, "deepseek-flash", "ds-test".into())
+            .unwrap()
+            .with_base(&base);
+        assert_eq!(
+            e.generate(&req(), &AtomicBool::new(false)).unwrap(),
+            r#"{"summary":"s"}"#
+        );
+        let s = &seen.lock().unwrap()[0];
+        assert_eq!(
+            (s.method.as_str(), s.path.as_str(), s.authorization.as_deref()),
+            ("POST", "/chat/completions", Some("Bearer ds-test"))
+        );
+        assert_eq!(
+            (&s.body["model"], &s.body["thinking"]["type"], &s.body["response_format"]["type"]),
+            (&json!("deepseek-flash"), &json!("disabled"), &json!("json_object"))
+        );
+        assert_eq!(s.body["messages"][1], json!({ "role": "assistant", "content": "a" }));
+        assert!(s.body.get("stream").is_none());
+    }
+
+    #[test]
+    fn openai_request_never_carries_the_deepseek_thinking_field() {
+        let (base, seen) = serve(vec![(
+            200,
+            vec![],
+            r#"{"choices":[{"message":{"content":"x"}}]}"#,
+        )]);
+        assert_eq!(openai(&base).generate(&req(), &AtomicBool::new(false)).unwrap(), "x");
+        assert!(seen.lock().unwrap()[0].body.get("thinking").is_none());
+    }
+
+    #[test]
     fn gemini_request_and_reply() {
         let (base, seen) = serve(vec![(
             200,
@@ -335,6 +398,7 @@ mod tests {
         for (status, want) in [
             (401, NotesError::AuthFailed),
             (403, NotesError::AuthFailed),
+            (402, NotesError::NoBalance),
             (429, NotesError::RateLimited),
             (500, NotesError::Cloud(500)),
             (200, NotesError::BadResponse),

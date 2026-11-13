@@ -258,7 +258,12 @@ mod tests {
     fn every_field_and_every_provider_and_template_round_trips() {
         let (mut c, dir) = conn("round-trip");
         let id = history::save(&mut c, &transcript()).unwrap().unwrap();
-        for source in [NotesProvider::Local, NotesProvider::Openai, NotesProvider::Gemini] {
+        for source in [
+            NotesProvider::Local,
+            NotesProvider::Openai,
+            NotesProvider::Gemini,
+            NotesProvider::Deepseek,
+        ] {
             for template in [NotesTemplate::Meeting, NotesTemplate::Lecture, NotesTemplate::Brief] {
                 let s = Stored {
                     created_at: 42,
@@ -292,7 +297,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             (src.as_str(), tpl.as_str()),
-            ("gemini", "brief"),
+            ("deepseek", "brief"),
             "chữ thường như serde"
         );
         let _ = std::fs::remove_dir_all(dir);

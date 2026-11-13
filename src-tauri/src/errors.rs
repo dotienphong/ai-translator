@@ -176,6 +176,8 @@ pub const NOTES_OFFLINE: &str = "notesOffline";
 pub const NOTES_AUTH_FAILED: &str = "notesAuthFailed";
 /// Key chạm giới hạn của nhà cung cấp (`NotesError::RateLimited`).
 pub const NOTES_RATE_LIMITED: &str = "notesRateLimited";
+/// Tài khoản nhà cung cấp hết số dư (HTTP 402 của DeepSeek, `NotesError::NoBalance`).
+pub const NOTES_NO_BALANCE: &str = "notesNoBalance";
 /// Nhà cung cấp trả lỗi hay phản hồi không đọc được (`NotesError::Cloud`, `BadResponse`).
 pub const NOTES_CLOUD_FAILED: &str = "notesCloudFailed";
 /// Engine ghi chú lỗi khác (`NotesError::Engine`).
@@ -338,6 +340,7 @@ mod tests {
                 NOTES_OFFLINE,
                 NOTES_AUTH_FAILED,
                 NOTES_RATE_LIMITED,
+                NOTES_NO_BALANCE,
                 NOTES_CLOUD_FAILED,
                 NOTES_ENGINE_FAILED,
                 NOTES_CANCELLED,
@@ -383,12 +386,13 @@ mod tests {
             NOTES_OFFLINE,
             NOTES_AUTH_FAILED,
             NOTES_RATE_LIMITED,
+            NOTES_NO_BALANCE,
             NOTES_CLOUD_FAILED,
             NOTES_ENGINE_FAILED,
             NOTES_CANCELLED,
         ];
         let set: std::collections::HashSet<_> = codes.iter().collect();
-        assert_eq!(set.len(), 13);
+        assert_eq!(set.len(), 14);
         assert!(codes.iter().all(|c| c.starts_with("notes")));
     }
 }
