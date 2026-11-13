@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { licenseFiles, mergeAbout, npmPackages, renderNotices, spdxAllowed, tomlStringArray } from "./notices.mjs";
+import { licenseFiles, mergeAbout, nativeComponents, npmPackages, renderNotices, spdxAllowed, tomlStringArray } from "./notices.mjs";
 
 const root = join(import.meta.dirname, "..", "..");
 const ALLOW = ["Apache-2.0", "MIT", "Apache-2.0 WITH LLVM-exception", "BSD-3-Clause"];
@@ -159,4 +159,22 @@ test("mọi file giấy phép model trong licenses/models/ có mặt trong danh 
     assert.ok(source.includes(`licenses/models/${file}`), `${file} chưa được notices.mjs đưa vào THIRD_PARTY_NOTICES`);
   }
   assert.ok(source.includes("3D-Speaker ERes2Net"), "thiếu mục model nhận giọng (Apache-2.0)");
+});
+
+// Model ghi chú cuộc họp (kế hoạch 05 Task 2): một mục có nguồn, bản chuyển GGUF và nguyên văn Apache-2.0. Repo GGUF của Unsloth không có
+// file LICENSE hay NOTICE riêng (thẻ model ghi apache-2.0), nên không có NOTICE để nối.
+test("model ghi chú: mục THIRD_PARTY_NOTICES có tiêu đề, dòng Source theo revision đã ghim và nguyên văn Apache-2.0", () => {
+  const text = renderNotices({ rust: [], npm: [], native: nativeComponents(null, "") });
+  const title = "Meeting-notes model: Qwen3.5-4B (Apache-2.0), GGUF conversion by Unsloth";
+  const at = text.indexOf(title);
+  assert.ok(at >= 0, "thiếu mục model ghi chú");
+  const next = text.indexOf(`\n${"-".repeat(78)}\n`, at + title.length + 80);
+  const section = next < 0 ? text.slice(at) : text.slice(at, next);
+  assert.ok(
+    section.includes("Source: https://huggingface.co/unsloth/Qwen3.5-4B-GGUF (revision e87f176479d0855a907a41277aca2f8ee7a09523)"),
+    "thiếu dòng Source với revision ghim",
+  );
+  assert.ok(section.includes("Apache License") && section.includes("Version 2.0, January 2004"), "thiếu tiêu đề Apache-2.0");
+  assert.ok(section.includes("TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"), "thiếu phần điều khoản Apache-2.0");
+  assert.ok(section.includes("limitations under the License."), "thiếu phần cuối Apache-2.0");
 });

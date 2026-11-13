@@ -6,7 +6,7 @@
 //     từng gói. Giấy phép phải nằm trong allow-list của deny.toml.
 //   - C/C++ trong tiến trình phụ: whisper.cpp và ggml (third_party/), llama.cpp cùng các thư viện nó nhúng (mã nguồn đã
 //     clone ở --llama-src, đúng commit khóa trong versions.env).
-//   - Model: Hy-MT2, trọng số Whisper, Silero VAD, 3D-Speaker ERes2Net, VieNeu-TTS và codec MOSS (licenses/models/).
+//   - Model: Hy-MT2, trọng số Whisper, Silero VAD, 3D-Speaker ERes2Net, VieNeu-TTS, codec MOSS và model ghi chú cuộc họp Qwen3.5-4B (licenses/models/).
 //
 //   node scripts/release/notices.mjs --out THIRD_PARTY_NOTICES.txt --llama-src <thư mục llama.cpp> [--onnxruntime-src <thư mục>]
 //   (bản Windows thêm --onnxruntime-src: mã nguồn ONNX Runtime của onnxruntime.dll, đúng commit khóa trong versions.env)
@@ -207,6 +207,17 @@ export function nativeComponents(llamaSrc, llamaTag, ortSrc = null, ortTag = nul
         "The files are used as published; the models were not retrained or fine-tuned. They are downloaded once to your computer and run\n" +
         "only on your computer.\n",
     },
+    {
+      title: "Meeting-notes model: Qwen3.5-4B (Apache-2.0), GGUF conversion by Unsloth",
+      text:
+        "The on-device meeting-notes model is Qwen3.5-4B (Qwen team, Alibaba Cloud) in the GGUF conversion and Q4_K_M quantization\n" +
+        "published by Unsloth. The model card states the Apache License, Version 2.0 (text below); the conversion repository has no\n" +
+        "separate LICENSE or NOTICE file.\n" +
+        "Source: https://huggingface.co/unsloth/Qwen3.5-4B-GGUF (revision e87f176479d0855a907a41277aca2f8ee7a09523)\n" +
+        "The file is used as published; the model was not retrained or fine-tuned. It is downloaded once to your computer, only when you\n" +
+        "turn on the on-device meeting-notes pack, and runs only on your computer.\n",
+      files: [join(root, "licenses/models/Notes-Apache-2.0-LICENSE.txt")],
+    },
   );
   return items;
 }
@@ -233,7 +244,7 @@ export function renderNotices({ rust, npm, native }) {
   out.push(RULE, "Native libraries and models", RULE, "");
   for (const item of native) {
     out.push(LINE, item.title, LINE, "");
-    const texts = item.text !== undefined ? [item.text] : item.files.map((file) => readFileSync(file, "utf8"));
+    const texts = [...(item.text !== undefined ? [item.text] : []), ...(item.files ?? []).map((file) => readFileSync(file, "utf8"))];
     for (const text of texts) out.push(text.trim(), "");
   }
   return `${out.join("\n")}\n`;
