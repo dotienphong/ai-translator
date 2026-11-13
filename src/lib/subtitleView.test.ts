@@ -244,4 +244,17 @@ describe("translationBadge", () => {
       isFallback: true,
     });
   });
+
+  it("hiển thị nguồn dịch DeepSeek kèm model, mặc định là deepseek-flash", () => {
+    expect(
+      translationBadge("deepseek", "gpt-4o-mini", "gemini-3.1-flash-lite", false, "Local", "Local (dự phòng)", "deepseek-v4-pro"),
+    ).toEqual({ text: "DeepSeek · deepseek-v4-pro", isFallback: false });
+    expect(translationBadge("deepseek", undefined, undefined, false)).toEqual({
+      text: "DeepSeek · deepseek-flash",
+      isFallback: false,
+    });
+    expect(
+      translationBadge("deepseek", undefined, undefined, true, "Local", "Local (dự phòng)", "deepseek-flash"),
+    ).toEqual({ text: "Local (dự phòng)", isFallback: true });
+  });
 });

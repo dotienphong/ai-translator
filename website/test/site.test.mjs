@@ -3012,7 +3012,7 @@ test("Chính sách quyền riêng tư (vi, en) trên website nêu đăng nhập 
   assert.deepEqual(errors, []);
 });
 
-test("trang Tải xuống (năm ngôn ngữ): tab Windows có khối Cách 1 Microsoft Store, Cách 2 tải trực tiếp .exe, Cách 3 lệnh PowerShell", async () => {
+test("trang Tải xuống (năm ngôn ngữ): tab Windows có khối Cách 1 tải trực tiếp .exe, Cách 2 Microsoft Store, Cách 3 lệnh PowerShell", async () => {
   const conf = JSON.parse(await readFile(path.join(ROOT, "..", "src-tauri/tauri.conf.json"), "utf8"));
   assert.equal(SITE.winInstaller.file, `AI Translator_${conf.version}_x64-setup.exe`);
   assert.equal(SITE.winInstaller.url, `https://releases.aitranslator.vn/${conf.version}/AI%20Translator_${conf.version}_x64-setup.exe`);
@@ -3020,20 +3020,20 @@ test("trang Tải xuống (năm ngôn ngữ): tab Windows có khối Cách 1 Mic
   for (const p of pages.filter((x) => x.id === "download")) {
     const html = htmlByPath.get(p.path);
     const winId = p.lang === "vi" ? "cai-windows" : "install-windows";
-    const storeId = p.lang === "vi" ? "cai-store" : "install-store";
     const exeId = p.lang === "vi" ? "tai-exe" : "download-exe";
+    const storeId = p.lang === "vi" ? "cai-store" : "install-store";
     const psId = p.lang === "vi" ? "cai-powershell" : "install-powershell";
     const winStart = html.indexOf(`id="${winId}"`);
     assert.ok(winStart > 0, `${p.path}: thiếu #${winId}`);
     const winBlock = html.slice(winStart, html.indexOf("</section>", winStart));
-    const storeCardPos = winBlock.indexOf(`<div class="dl-method dl-method-primary" id="${storeId}">`);
-    const exeCardPos = winBlock.indexOf(`<div class="dl-method" id="${exeId}">`);
+    const exeCardPos = winBlock.indexOf(`<div class="dl-method dl-method-primary" id="${exeId}">`);
+    const storeCardPos = winBlock.indexOf(`<div class="dl-method" id="${storeId}">`);
     const psCardPos = winBlock.indexOf(`<div class="dl-method" id="${psId}">`);
     const psPos = winBlock.indexOf("irm https://aitranslator.vn/install.ps1 | iex");
     const morePos = winBlock.indexOf('<div class="panel-more">');
     assert.ok(
-      storeCardPos > 0 && exeCardPos > storeCardPos && psCardPos > exeCardPos && psPos > psCardPos && morePos > psPos,
-      `${p.path}: thứ tự khối phải là Store (${storeId}) -> Exe (${exeId}) -> PowerShell (${psId}) -> .panel-more`,
+      exeCardPos > 0 && storeCardPos > exeCardPos && psCardPos > storeCardPos && psPos > psCardPos && morePos > psPos,
+      `${p.path}: thứ tự khối phải là Exe (${exeId}) -> Store (${storeId}) -> PowerShell (${psId}) -> .panel-more`,
     );
     assert.ok(winBlock.includes(`href="${SITE.msStore.appUrl}"`), `${p.path}: thiếu liên kết ${SITE.msStore.appUrl}`);
     assert.ok(winBlock.includes(`href="${SITE.msStore.webUrl}"`), `${p.path}: thiếu liên kết ${SITE.msStore.webUrl}`);

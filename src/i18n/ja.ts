@@ -739,6 +739,7 @@ export const ja: Record<MessageKey, string> = {
   "settings.model.provider.local": "端末内モデル（Local・推奨）",
   "settings.model.provider.openai": "ChatGPT (OpenAI API)",
   "settings.model.provider.gemini": "Gemini (Google API)",
+  "settings.model.provider.deepseek": "DeepSeek (DeepSeek API)",
   "settings.model.provider.hint": "オフラインや API エラー時は、中断しないよう自動的に端末内モデルへ切り替わります。",
   "settings.model.cloudModel": "モデル",
   "settings.model.apiKey": "API キー",

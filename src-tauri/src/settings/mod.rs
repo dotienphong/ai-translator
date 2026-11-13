@@ -245,7 +245,7 @@ pub struct MeetingHintSettings {
 }
 
 /// Nguồn dịch văn bản (spec 2026-11-07-cloud-mt-fallback-design.md §3.1): Model trên máy (mặc định), ChatGPT (OpenAI API),
-/// hoặc Gemini (Google API). Khi chọn Cloud mà mất mạng hoặc lỗi API, phiên tự động dự phòng về `Local`.
+/// Gemini (Google API) hoặc DeepSeek (DeepSeek API, spec 2026-11-13-deepseek-cloud-mt-design.md). Khi chọn Cloud mà mất mạng hoặc lỗi API, phiên tự động dự phòng về `Local`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TranslationProvider {
@@ -253,6 +253,7 @@ pub enum TranslationProvider {
     Local,
     Openai,
     Gemini,
+    Deepseek,
 }
 
 /// Nguồn tạo ghi chú cuộc họp (spec 2026-11-11-ghi-chu-cuoc-hop-design.md): model trên máy (mặc định), ChatGPT hoặc Gemini.
@@ -281,12 +282,20 @@ pub const DEFAULT_OPENAI_MODEL: &str = "gpt-4o-mini";
 pub const GEMINI_MODELS: &[&str] = &["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"];
 pub const DEFAULT_GEMINI_MODEL: &str = "gemini-3.1-flash-lite";
 
+/// Mã model của DeepSeek API: `deepseek-flash` là DeepSeek V4.1 Flash, `deepseek-v4-pro` là dòng Pro.
+pub const DEEPSEEK_MODELS: &[&str] = &["deepseek-flash", "deepseek-v4-pro"];
+pub const DEFAULT_DEEPSEEK_MODEL: &str = "deepseek-flash";
+
 fn default_openai_model() -> String {
     DEFAULT_OPENAI_MODEL.to_string()
 }
 
 fn default_gemini_model() -> String {
     DEFAULT_GEMINI_MODEL.to_string()
+}
+
+fn default_deepseek_model() -> String {
+    DEFAULT_DEEPSEEK_MODEL.to_string()
 }
 
 /// Toàn bộ cài đặt. Tên khóa trong file JSON là tên trường dạng camelCase.
@@ -347,7 +356,7 @@ pub struct Settings {
     /// Gói model đang dùng (§6.7): mã gói trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest, Đ7).
     /// `None` là chưa có gói nào. Chỉ đổi qua lệnh của kế hoạch 04 (gói phải đã tải xong).
     pub model_tier: Option<String>,
-    /// Nguồn dịch văn bản: `local` (mặc định), `openai`, hoặc `gemini` (spec 2026-11-07-cloud-mt-fallback-design.md).
+    /// Nguồn dịch văn bản: `local` (mặc định), `openai`, `gemini`, hoặc `deepseek` (spec 2026-11-07-cloud-mt-fallback-design.md).
     #[serde(default)]
     pub translation_provider: TranslationProvider,
     /// Model của ChatGPT (OpenAI API), mặc định `gpt-4o-mini`.
@@ -368,6 +377,10 @@ pub struct Settings {
     /// Người dùng đã đồng ý gửi nội dung cuộc họp lên Cloud để tạo ghi chú, mặc định chưa.
     #[serde(default)]
     pub notes_cloud_consent: bool,
+    /// Model của DeepSeek (DeepSeek API), mặc định `deepseek-flash` (V4.1 Flash). File cài đặt của bản trước chưa có khóa
+    /// này thì lấy mặc định.
+    #[serde(default = "default_deepseek_model")]
+    pub deepseek_model: String,
     pub hotkeys: Hotkeys,
     pub save_history: bool,
     /// Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17-diagnostics-reports-design.md §5). Cài mới: `false` cho tới
@@ -475,6 +488,7 @@ impl Settings {
             notes_auto: false,
             notes_template: NotesTemplate::Meeting,
             notes_cloud_consent: false,
+            deepseek_model: default_deepseek_model(),
             hotkeys: Hotkeys {
                 toggle_session: "Ctrl+Alt+T".into(),
                 toggle_overlay: "Ctrl+Alt+H".into(),
@@ -585,6 +599,9 @@ impl Settings {
         }
         if !GEMINI_MODELS.contains(&self.gemini_model.as_str()) {
             return Err(Invalid::new("geminiModel", Reason::OutOfRange));
+        }
+        if !DEEPSEEK_MODELS.contains(&self.deepseek_model.as_str()) {
+            return Err(Invalid::new("deepseekModel", Reason::OutOfRange));
         }
         hotkeys::check_all(&self.hotkeys.bindings()).map_err(|(action, error)| {
             let reason = match error {

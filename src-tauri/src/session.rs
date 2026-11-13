@@ -229,7 +229,7 @@ pub fn plan_for(settings: &Settings, options: StartOptions) -> CapturePlan {
     }
 }
 
-/// Khi dịch bằng Cloud (ChatGPT/Gemini), mỗi lượt gọi qua Internet mất ~600–800 ms. Nếu giữ ngưỡng ngắt đoạn mặc định
+/// Khi dịch bằng Cloud (ChatGPT/Gemini/DeepSeek), mỗi lượt gọi qua Internet mất ~600–800 ms. Nếu giữ ngưỡng ngắt đoạn mặc định
 /// 50 ms (thiết kế riêng cho Model Local trên GPU), mỗi nhịp lấy hơi 50 ms giữa các từ sẽ cắt đoạn mới và hủy (`cancel`)
 /// request Cloud của đoạn trước khi nó chưa kịp trả chữ về, gây hiện tượng trễ kéo dài suốt cả câu. Đặt ngưỡng ngắt câu
 /// tối thiểu là 200 ms khi dùng Cloud để câu ngắt vừa phải, phản hồi nhanh nhạy và không bị dồn quá dài.
@@ -276,7 +276,7 @@ pub fn engine_config(
             .collect(),
     };
     // Chỉ bật "dịch trong lúc người nói chưa dừng" khi dùng Model Local trên máy đủ nhanh.
-    // Nguồn Cloud (ChatGPT/Gemini) có độ trễ mạng qua Internet nên không dùng dịch tạm đầu câu,
+    // Nguồn Cloud (ChatGPT/Gemini/DeepSeek) có độ trễ mạng qua Internet nên không dùng dịch tạm đầu câu,
     // đồng thời nâng ngưỡng ngắt đoạn tối thiểu lên 500 ms để tránh cắt vụn và hủy liên hoàn các request Cloud đang chạy,
     // và điều chỉnh hàng đợi MT (gộp sớm khi đầy 2 câu, nới lỏng cảnh báo trễ lên 9s).
     let cloud_active = settings.translation_provider != TranslationProvider::Local;
@@ -2506,8 +2506,12 @@ mod tests {
         assert_eq!(local_cfg.pipeline.segmenter.end_silence_ms, 50);
         assert!(local_cfg.streaming_supported);
 
-        // Gemini / OpenAI: tắt streaming_supported (dịch tạm đầu câu) và nâng end_silence_ms tối thiểu lên 200 ms.
-        for provider in [TranslationProvider::Gemini, TranslationProvider::Openai] {
+        // Gemini / OpenAI / DeepSeek: tắt streaming_supported (dịch tạm đầu câu) và nâng end_silence_ms tối thiểu lên 200 ms.
+        for provider in [
+            TranslationProvider::Gemini,
+            TranslationProvider::Openai,
+            TranslationProvider::Deepseek,
+        ] {
             settings.translation_provider = provider;
             let cloud_cfg = engine_config(
                 &settings,

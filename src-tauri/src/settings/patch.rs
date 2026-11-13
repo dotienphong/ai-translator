@@ -381,6 +381,7 @@ mod tests {
         assert_eq!(d.translation_provider, TranslationProvider::Local);
         assert_eq!(d.openai_model, "gpt-4o-mini");
         assert_eq!(d.gemini_model, "gemini-3.1-flash-lite");
+        assert_eq!(d.deepseek_model, "deepseek-flash");
 
         let s_alias = apply(&d, &json!({ "openaiModel": "chatgpt-4o-mini" })).unwrap();
         assert_eq!(s_alias.openai_model, "chatgpt-4o-mini");
@@ -409,6 +410,21 @@ mod tests {
         assert_eq!(
             apply(&d, &json!({ "geminiModel": "gemini-1.0" })),
             Err(Invalid::new("geminiModel", Reason::OutOfRange))
+        );
+
+        let ds = apply(
+            &d,
+            &json!({ "translationProvider": "deepseek", "deepseekModel": "deepseek-v4-pro" }),
+        )
+        .unwrap();
+        assert_eq!(ds.translation_provider, TranslationProvider::Deepseek);
+        assert_eq!(ds.deepseek_model, "deepseek-v4-pro");
+        // Đổi sang DeepSeek không đụng tới model đã chọn của ChatGPT và Gemini.
+        assert_eq!(ds.openai_model, d.openai_model);
+        assert_eq!(ds.gemini_model, d.gemini_model);
+        assert_eq!(
+            apply(&d, &json!({ "deepseekModel": "deepseek-chat" })),
+            Err(Invalid::new("deepseekModel", Reason::OutOfRange))
         );
     }
 

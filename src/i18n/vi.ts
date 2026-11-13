@@ -739,6 +739,7 @@ export const vi: Record<MessageKey, string> = {
   "settings.model.provider.local": "Model trên máy (Local — khuyên dùng)",
   "settings.model.provider.openai": "ChatGPT (OpenAI API)",
   "settings.model.provider.gemini": "Gemini (Google API)",
+  "settings.model.provider.deepseek": "DeepSeek (DeepSeek API)",
   "settings.model.provider.hint": "Nếu mất mạng hoặc API lỗi, app tự chuyển sang Model trên máy để không ngắt quãng.",
   "settings.model.cloudModel": "Model dịch",
   "settings.model.apiKey": "Mã API Key",

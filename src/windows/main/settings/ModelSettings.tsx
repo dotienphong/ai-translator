@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  DEEPSEEK_MODELS,
+  DEFAULT_DEEPSEEK_MODEL,
+  type DeepseekModel,
   GEMINI_MODELS,
   type GeminiModel,
   OPENAI_MODELS,
@@ -31,7 +34,12 @@ const GEMINI_MODEL_LABELS: Record<string, string> = {
   "gemini-3.5-flash-lite": "gemini-3.5-flash-lite (Cân bằng tốc độ & chất lượng)",
 };
 
-// Nhóm Cài đặt "Model" (§4.3): chọn nguồn dịch (Local / ChatGPT / Gemini), cấu hình model + API Key, và quản lý gói model Local.
+const DEEPSEEK_MODEL_LABELS: Record<string, string> = {
+  "deepseek-flash": "deepseek-flash (DeepSeek V4.1 Flash - Nhanh, tiết kiệm)",
+  "deepseek-v4-pro": "deepseek-v4-pro (DeepSeek Pro - Chất lượng cao hơn, chậm hơn)",
+};
+
+// Nhóm Cài đặt "Model" (§4.3): chọn nguồn dịch (Local / ChatGPT / Gemini / DeepSeek), cấu hình model + API Key, và quản lý gói model Local.
 export function ModelSettings() {
   const t = useT();
   const settings = useApp((s) => s.settings);
@@ -45,6 +53,9 @@ export function ModelSettings() {
   const geminiModel = GEMINI_MODELS.includes(settings?.geminiModel as any)
     ? (settings?.geminiModel as GeminiModel)
     : "gemini-3.1-flash-lite";
+  const deepseekModel = DEEPSEEK_MODELS.includes(settings?.deepseekModel as any)
+    ? (settings?.deepseekModel as DeepseekModel)
+    : DEFAULT_DEEPSEEK_MODEL;
 
   const [keys, setKeys] = useState<TranslationKeysStatus | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
@@ -75,19 +86,23 @@ export function ModelSettings() {
     };
   }, [provider]);
 
-  const activeCloud = provider === "openai" || provider === "gemini" ? provider : null;
+  const activeCloud = provider === "openai" || provider === "gemini" || provider === "deepseek" ? provider : null;
   const keyConfigured =
     activeCloud === "openai"
       ? (keys?.openaiConfigured ?? false)
       : activeCloud === "gemini"
         ? (keys?.geminiConfigured ?? false)
-        : false;
+        : activeCloud === "deepseek"
+          ? (keys?.deepseekConfigured ?? false)
+          : false;
   const keyHint =
     activeCloud === "openai"
       ? (keys?.openaiHint ?? null)
       : activeCloud === "gemini"
         ? (keys?.geminiHint ?? null)
-        : null;
+        : activeCloud === "deepseek"
+          ? (keys?.deepseekHint ?? null)
+          : null;
 
   const saveKey = async (rawKey: string) => {
     if (!activeCloud || savingKey) return;
@@ -137,6 +152,7 @@ export function ModelSettings() {
             <option value="local">{t("settings.model.provider.local")}</option>
             <option value="openai">{t("settings.model.provider.openai")}</option>
             <option value="gemini">{t("settings.model.provider.gemini")}</option>
+            <option value="deepseek">{t("settings.model.provider.deepseek")}</option>
           </select>
         </Field>
         {provider === "openai" && (
@@ -164,6 +180,21 @@ export function ModelSettings() {
               {GEMINI_MODELS.map((m) => (
                 <option key={m} value={m}>
                   {GEMINI_MODEL_LABELS[m] ?? m}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {provider === "deepseek" && (
+          <Field label={t("settings.model.cloudModel")} htmlFor="cloud-model">
+            <select
+              id="cloud-model"
+              value={deepseekModel}
+              onChange={(e) => void updateSettings({ deepseekModel: e.target.value as DeepseekModel })}
+            >
+              {DEEPSEEK_MODELS.map((m) => (
+                <option key={m} value={m}>
+                  {DEEPSEEK_MODEL_LABELS[m] ?? m}
                 </option>
               ))}
             </select>

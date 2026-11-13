@@ -166,34 +166,34 @@ for (const page of PAGES) {
     await p.close();
   });
 
-  test(`${page.lang}: Windows: có khối Cách 1 Microsoft Store ở trên, khối Cách 2 tải trực tiếp .exe, và khối Cách 3 ba bước PowerShell ở dưới`, { skip }, async () => {
+  test(`${page.lang}: Windows: có khối Cách 1 tải trực tiếp .exe ở trên, khối Cách 2 Microsoft Store, và khối Cách 3 ba bước PowerShell ở dưới`, { skip }, async () => {
     const p = await open(page, { ua: UA.win });
     const info = await p.eval(`(() => {
       const win = document.getElementById(${JSON.stringify(page.win)});
       const methods = [...win.querySelectorAll(":scope > .dl-method")];
-      const storeCard = methods[0];
-      const exeCard = methods[1];
+      const exeCard = methods[0];
+      const storeCard = methods[1];
       const psCard = methods[2];
+      const exeBtn = exeCard?.querySelector('a.btn[href$="-setup.exe"]');
       const storeBtn = storeCard?.querySelector('a.btn[href^="ms-windows-store:"]');
       const storeWeb = storeCard?.querySelector('a[href*="apps.microsoft.com"]');
-      const exeBtn = exeCard?.querySelector('a.btn[href$="-setup.exe"]');
       return {
         methodCount: methods.length,
-        firstPrimary: storeCard?.classList.contains("dl-method-primary") ?? false,
+        firstPrimary: exeCard?.classList.contains("dl-method-primary") ?? false,
+        exeHref: exeBtn?.getAttribute("href") ?? null,
+        exeCode: exeBtn?.querySelector("code")?.textContent ?? null,
         storeAppHref: storeBtn?.getAttribute("href") ?? null,
         storeWebHref: storeWeb?.getAttribute("href") ?? null,
         flowSteps: psCard?.querySelectorAll(".flow > li").length ?? 0,
-        exeHref: exeBtn?.getAttribute("href") ?? null,
-        exeCode: exeBtn?.querySelector("code")?.textContent ?? null,
       };
     })()`);
     assert.equal(info.methodCount, 3);
     assert.equal(info.firstPrimary, true);
+    assert.equal(info.exeHref, SITE.winInstaller.url);
+    assert.equal(info.exeCode, SITE.winInstaller.file);
     assert.equal(info.storeAppHref, SITE.msStore.appUrl);
     assert.equal(info.storeWebHref, SITE.msStore.webUrl);
     assert.equal(info.flowSteps, 3);
-    assert.equal(info.exeHref, SITE.winInstaller.url);
-    assert.equal(info.exeCode, SITE.winInstaller.file);
     await p.close();
   });
 

@@ -740,6 +740,7 @@ export const en = {
   "settings.model.provider.local": "On-device model (Local — recommended)",
   "settings.model.provider.openai": "ChatGPT (OpenAI API)",
   "settings.model.provider.gemini": "Gemini (Google API)",
+  "settings.model.provider.deepseek": "DeepSeek (DeepSeek API)",
   "settings.model.provider.hint": "If offline or the API fails, the app automatically falls back to the on-device model.",
   "settings.model.cloudModel": "Model",
   "settings.model.apiKey": "API Key",

@@ -28,10 +28,10 @@ export type UpdateCheck = "idle" | "checking" | "downloading" | "upToDate" | "fa
 // Mã gói model trong manifest (`standard`, `lite`, hay gói thêm sau bằng manifest).
 export type ModelTier = string;
 // Nguồn dịch văn bản (`settings::TranslationProvider`, spec 2026-11-07-cloud-mt-fallback-design.md).
-export type TranslationProvider = "local" | "openai" | "gemini";
 // Nguồn và mẫu của ghi chú cuộc họp (`settings::NotesProvider`, `settings::NotesTemplate`, spec 2026-11-11-ghi-chu-cuoc-hop-design.md).
 export type NotesProvider = "local" | "openai" | "gemini";
 export type NotesTemplate = "meeting" | "lecture" | "brief";
+export type TranslationProvider = "local" | "openai" | "gemini" | "deepseek";
 export const OPENAI_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"] as const;
 export type OpenaiModel = (typeof OPENAI_MODELS)[number];
 export const GEMINI_MODELS = [
@@ -39,12 +39,18 @@ export const GEMINI_MODELS = [
   "gemini-3.5-flash-lite",
 ] as const;
 export type GeminiModel = (typeof GEMINI_MODELS)[number];
+// Mã model của DeepSeek API (`settings::DEEPSEEK_MODELS`): `deepseek-flash` là DeepSeek V4.1 Flash (mặc định), `deepseek-v4-pro` là dòng Pro.
+export const DEEPSEEK_MODELS = ["deepseek-flash", "deepseek-v4-pro"] as const;
+export type DeepseekModel = (typeof DEEPSEEK_MODELS)[number];
+export const DEFAULT_DEEPSEEK_MODEL: DeepseekModel = "deepseek-flash";
 
 export interface TranslationKeysStatus {
   openaiConfigured: boolean;
   openaiHint: string | null;
   geminiConfigured: boolean;
   geminiHint: string | null;
+  deepseekConfigured?: boolean;
+  deepseekHint?: string | null;
 }
 // App họp mà gợi ý bật dịch nhận biết (`meeting_scan::hint::HintApp`, spec 2026-11-01-goi-y-bat-dich-khi-hop). Chrome và Edge là một "meet".
 export type HintApp = "teams" | "zoom" | "meet";
@@ -131,6 +137,7 @@ export interface Settings {
   notesAuto?: boolean;
   notesTemplate?: NotesTemplate;
   notesCloudConsent?: boolean;
+  deepseekModel?: string;
   hotkeys: Record<HotkeyAction, string>;
   saveHistory: boolean;
   // Gửi báo cáo lỗi tự động cho nhà phát triển (spec 2026-10-17 §5). Cài mới: `false` cho tới khi qua bước Điều khoản (ô tích sẵn);
@@ -248,6 +255,7 @@ export interface OverlayView {
   notesAuto?: boolean;
   notesTemplate?: NotesTemplate;
   notesCloudConsent?: boolean;
+  deepseekModel?: string;
 }
 
 // Phần cài đặt và nội dung của cửa sổ gợi ý bật dịch (`meeting_hint::HintView`, spec 2026-11-01-goi-y-bat-dich-khi-hop §5): chỉ ngôn
@@ -276,6 +284,7 @@ export interface ComposeView {
   notesAuto?: boolean;
   notesTemplate?: NotesTemplate;
   notesCloudConsent?: boolean;
+  deepseekModel?: string;
   translationFallback?: boolean;
 }
 

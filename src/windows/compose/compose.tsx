@@ -112,6 +112,7 @@ function Compose() {
     view.translationFallback,
     t("overlay.engine.local"),
     t("overlay.engine.fallback"),
+    view.deepseekModel,
   );
   const status = s.loading
     ? t("compose.loading")
