@@ -5,6 +5,7 @@ pub mod bundled_name;
 pub mod first_run;
 pub mod gpu_crash;
 pub mod integrity;
+pub mod notes_local;
 pub mod paths;
 pub mod probe;
 
@@ -311,7 +312,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Result<Pr
     })
 }
 
-fn default_sidecar_env() -> Vec<(String, String)> {
+pub(crate) fn default_sidecar_env() -> Vec<(String, String)> {
     if cfg!(windows) {
         vec![
             // Tránh crash Access Violation (0xc0000005) trong ggml-vulkan do bug driver NVIDIA với extension VK_NV_cooperative_matrix2 (báo cáo thật R-ATR4-EAR7).

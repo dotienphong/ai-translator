@@ -167,6 +167,9 @@ pub const SKIPPED_CODES: &[&str] = &[
     errors::NOTES_CLOUD_FAILED,
     errors::NOTES_ENGINE_FAILED,
     errors::NOTES_CANCELLED,
+    errors::NOTES_LOCAL_PACK_MISSING,
+    errors::NOTES_LOCAL_SESSION_ACTIVE,
+    errors::NOTES_PAUSED_FOR_SESSION,
 ];
 
 /// Mã lỗi này có gửi báo cáo không.

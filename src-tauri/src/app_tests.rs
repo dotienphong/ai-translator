@@ -3609,7 +3609,7 @@ fn notes_app(save_history: bool) -> tauri::App<tauri::test::MockRuntime> {
     crate::notes::install_with(
         app.handle(),
         Arc::new(
-            |_provider: crate::settings::NotesProvider, _model: &str, _key: Option<String>| {
+            |_spec: crate::notes::service::EngineSpec, _cancel: &std::sync::atomic::AtomicBool| {
                 Ok(Box::new(CannedNotes) as Box<dyn crate::notes::engine::NotesEngine>)
             },
         ),

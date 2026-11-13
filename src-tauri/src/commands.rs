@@ -267,14 +267,18 @@ pub async fn get_notes<R: Runtime>(app: AppHandle<R>, target: TranscriptRef) -> 
 }
 
 /// Bắt đầu tạo ghi chú cho `target`; trả ngay (trạng thái `running`), tiến độ và kết quả đến qua `notes://changed`. `template`
-/// không gửi thì lấy mẫu trong cài đặt.
+/// không gửi thì lấy mẫu trong cài đặt. `force_local: true` dùng model trên máy cho lần này dù nguồn dịch đang chọn là cloud.
 #[tauri::command]
 pub async fn generate_notes<R: Runtime>(
     app: AppHandle<R>,
     target: TranscriptRef,
     template: Option<NotesTemplate>,
+    force_local: Option<bool>,
 ) -> Result<NotesView, CommandError> {
-    blocking(app, move |app| data::notes_service(app)?.start(app, target, template)).await
+    blocking(app, move |app| {
+        data::notes_service(app)?.start(app, target, template, force_local.unwrap_or(false))
+    })
+    .await
 }
 
 /// Hủy việc tạo ghi chú đang chạy (không có việc nào thì không làm gì). Chạy trên luồng `blocking` như các lệnh ghi chú

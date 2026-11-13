@@ -762,7 +762,7 @@ export const ja: Record<MessageKey, string> = {
   "error.notesSessionRunning": "このセッションのノートを作成する前に、翻訳を停止してください。",
   "error.notesEmpty": "このセッションにはノートにできる内容がありません。",
   "error.notesFreeUsedUp": "お試しに含まれる 3 回分のノートを使い切りました。続けて使うにはアップグレードしてください。",
-  "error.notesLocalUnavailable": "この端末にノート用のモデルがありません。ChatGPT または Gemini を選ぶか、ノート用パックをダウンロードしてください。",
+  "error.notesLocalUnavailable": "このパソコンでは、オンデバイスのモデルでメモを作成できません。設定 > モデルでクラウドモデルを選んでください。",
   "error.notesConsentRequired": "このセッションのテキストを選択したプロバイダーに送信するには、同意が必要です。",
   "error.notesKeyMissing": "選択したプロバイダーの API キーが保存されていません。",
   "error.notesOffline": "プロバイダーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
@@ -772,4 +772,7 @@ export const ja: Record<MessageKey, string> = {
   "error.notesCloudFailed": "プロバイダーがエラーを返しました。しばらくしてからもう一度お試しください。",
   "error.notesEngineFailed": "ノートを作成できませんでした。もう一度お試しください。",
   "error.notesCancelled": "キャンセルしました。",
+  "error.notesLocalPackMissing": "オンデバイスのメモ用パックがまだダウンロードされていません。ダウンロードしてからもう一度お試しください。",
+  "error.notesLocalSessionActive": "翻訳中のため、オンデバイスのモデルではメモを作成できません。セッションを停止してからもう一度お試しください。",
+  "error.notesPausedForSession": "翻訳セッションが始まったため、メモの作成を一時停止しました。会議の後でもう一度作成してください。",
 };

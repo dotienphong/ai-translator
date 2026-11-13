@@ -19,8 +19,9 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::chunk::{self, PromptLine};
 use super::cloud::CloudNotes;
-use super::engine::{NotesEngine, NotesError};
+use super::engine::{Interrupt, NotesEngine, NotesError};
 use super::job::{self, Outcome};
+use super::local::{LocalNotes, LocalSpec};
 use super::keys;
 use super::quota::{self, FREE_NOTES};
 use super::schema::{self, Notes};
@@ -28,6 +29,7 @@ use super::store::{self, Stored};
 use crate::data::{self, TranscriptRef};
 use crate::errors::{self, CommandError};
 use crate::license::manager::TrialStatus;
+use crate::models::service::{ModelService, NotesPackState, NotesReady};
 use crate::settings::{NotesProvider, NotesTemplate, Settings, UiLanguage};
 use crate::state::{AppState, SessionStatus};
 use crate::transcript::history::HistoryError;
@@ -50,10 +52,15 @@ pub struct Facts {
     pub provider: NotesProvider,
     pub consent: bool,
     pub has_key: bool,
+    /// Trạng thái gói ghi chú trên máy (chỉ xét khi `provider` là `Local`).
+    pub local: NotesPackState,
+    /// Có phiên dịch đang `Starting`/`Running`, bất kể mục tiêu của ghi chú (model trên máy không chạy chung với phiên dịch).
+    pub session_active: bool,
 }
 
 /// Được bắt đầu không, theo đúng thứ tự: bận → phiên hiện tại đang `Starting`/`Running` (không tóm tắt nửa phiên) → không
-/// có câu → hạn mức (`quota::check`) → nguồn `Local` (chưa có) → chưa đồng ý gửi Cloud → thiếu key. `Err` là mã lỗi.
+/// có câu → hạn mức (`quota::check`) → nguồn `Local` (gói không dùng được trên máy này → chưa tải → có phiên dịch đang chạy;
+/// không cần đồng ý gửi ra ngoài hay key) → chưa đồng ý gửi Cloud → thiếu key. `Err` là mã lỗi.
 pub fn decide(f: &Facts) -> Result<(), &'static str> {
     if f.busy {
         return Err(errors::NOTES_BUSY);
@@ -66,7 +73,12 @@ pub fn decide(f: &Facts) -> Result<(), &'static str> {
     }
     quota::check(f.pro, f.trial, f.free_used)?;
     if f.provider == NotesProvider::Local {
-        return Err(errors::NOTES_LOCAL_UNAVAILABLE);
+        return match f.local {
+            NotesPackState::Unavailable | NotesPackState::RamTooLow => Err(errors::NOTES_LOCAL_UNAVAILABLE),
+            NotesPackState::Missing | NotesPackState::Downloading => Err(errors::NOTES_LOCAL_PACK_MISSING),
+            NotesPackState::Installed if f.session_active => Err(errors::NOTES_LOCAL_SESSION_ACTIVE),
+            NotesPackState::Installed => Ok(()),
+        };
     }
     if !f.consent {
         return Err(errors::NOTES_CONSENT_REQUIRED);
@@ -77,16 +89,34 @@ pub fn decide(f: &Facts) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Dựng engine cho một việc: nguồn, tên model, API key (nếu có). Test thay bằng engine giả.
-pub type EngineFactory =
-    Arc<dyn Fn(NotesProvider, &str, Option<String>) -> Result<Box<dyn NotesEngine>, NotesError> + Send + Sync>;
+/// Engine cần dựng cho một việc.
+#[derive(Clone, Debug)]
+pub enum EngineSpec {
+    /// Nhà cung cấp cloud: nguồn, tên model, API key (nếu có).
+    Cloud {
+        provider: NotesProvider,
+        model: String,
+        key: Option<String>,
+    },
+    /// `llama-server` riêng của ghi chú trên máy.
+    Local(LocalSpec),
+}
 
-/// Engine thật: `CloudNotes` với key của người dùng; không có key thì `KeyMissing`.
+/// Dựng engine cho một việc. Cờ hủy bật khi người dùng hủy hay phiên dịch bắt đầu: engine `Local` đang nạp model phải dừng
+/// ngay. Test thay bằng engine giả.
+pub type EngineFactory = Arc<dyn Fn(EngineSpec, &AtomicBool) -> Result<Box<dyn NotesEngine>, NotesError> + Send + Sync>;
+
+/// Engine thật: `CloudNotes` với key của người dùng (không có key thì `KeyMissing`), hay `LocalNotes::start`.
 pub fn live_factory() -> EngineFactory {
     Arc::new(
-        |provider: NotesProvider, model: &str, key: Option<String>| -> Result<Box<dyn NotesEngine>, NotesError> {
-            let key = key.ok_or(NotesError::KeyMissing)?;
-            Ok(Box::new(CloudNotes::new(provider, model, key)?))
+        |spec: EngineSpec, cancel: &AtomicBool| -> Result<Box<dyn NotesEngine>, NotesError> {
+            match spec {
+                EngineSpec::Cloud { provider, model, key } => {
+                    let key = key.ok_or(NotesError::KeyMissing)?;
+                    Ok(Box::new(CloudNotes::new(provider, &model, key)?))
+                }
+                EngineSpec::Local(spec) => Ok(Box::new(LocalNotes::start(&spec, cancel)?)),
+            }
         },
     )
 }
@@ -145,6 +175,12 @@ struct Job {
     target: TranscriptRef,
     cancel: Arc<AtomicBool>,
     progress: Option<(usize, usize)>,
+    /// Việc dùng model trên máy: bị tạm dừng khi một phiên dịch bắt đầu (`NotesService::pause_for_session`).
+    local: bool,
+    /// Cách dừng ngay engine, đặt khi engine đã dựng xong.
+    interrupt: Option<Interrupt>,
+    /// Bật khi luồng việc đã bỏ engine (tiến trình của nó đã dừng).
+    done: Arc<AtomicBool>,
 }
 
 enum Phase {
@@ -231,6 +267,21 @@ fn free_used<R: Runtime>(app: &AppHandle<R>) -> u32 {
     keys::with_keystore(app, quota::used).unwrap_or(FREE_NOTES)
 }
 
+/// Cách dựng engine, chạy trên luồng việc (dựng engine `Local` mất cả phút để nạp model): nhận cờ hủy của việc.
+type Build = Box<dyn FnOnce(&AtomicBool) -> Result<Box<dyn NotesEngine>, NotesError> + Send>;
+
+/// Bật `done` khi bị bỏ, sau mọi thứ khai báo sau nó trong cùng khối (nên sau khi engine đã bị bỏ).
+struct DoneOnDrop(Arc<AtomicBool>);
+
+impl Drop for DoneOnDrop {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+/// Chờ tối đa chừng này cho engine `Local` dừng hẳn khi phiên dịch bắt đầu (móc "trước phiên" được phép chờ).
+const PAUSE_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
 /// Những gì luồng việc cần, chép lúc bắt đầu: luồng không đọc lại bản chép lời đang sống.
 struct Work {
     id: u64,
@@ -257,6 +308,12 @@ pub struct NotesService {
     /// Test chen việc vào giữa lúc chép bản chép lời và lúc đăng ký việc.
     #[cfg(test)]
     after_snapshot: Mutex<Option<SnapshotHook>>,
+    /// Test đặt gói ghi chú trên máy (app giả không có manifest): trạng thái và gói sẵn sàng.
+    #[cfg(test)]
+    local: Mutex<Option<(NotesPackState, Option<NotesReady>)>>,
+    /// Số lần việc `Local` bỏ gói vì file sai SHA-256.
+    #[cfg(test)]
+    discarded: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl NotesService {
@@ -273,6 +330,34 @@ impl NotesService {
             trial: Mutex::new(None),
             #[cfg(test)]
             after_snapshot: Mutex::new(None),
+            #[cfg(test)]
+            local: Mutex::new(None),
+            #[cfg(test)]
+            discarded: Arc::default(),
+        }
+    }
+
+    /// Test đặt gói ghi chú trên máy.
+    #[cfg(test)]
+    pub fn set_local(&self, state: NotesPackState, ready: Option<NotesReady>) {
+        *self.local.lock().unwrap_or_else(PoisonError::into_inner) = Some((state, ready));
+    }
+
+    /// Số lần việc `Local` đã bỏ gói hỏng.
+    #[cfg(test)]
+    pub fn discarded(&self) -> usize {
+        self.discarded.load(Ordering::SeqCst)
+    }
+
+    /// Trạng thái gói ghi chú trên máy và, khi đã tải xong, gói để chạy.
+    fn local_pack<R: Runtime>(&self, app: &AppHandle<R>) -> (NotesPackState, Option<NotesReady>) {
+        #[cfg(test)]
+        if let Some(forced) = self.local.lock().unwrap_or_else(PoisonError::into_inner).clone() {
+            return forced;
+        }
+        match app.try_state::<Arc<ModelService>>() {
+            Some(models) => (models.notes_pack().state, models.notes_ready()),
+            None => (NotesPackState::Unavailable, None),
         }
     }
 
@@ -352,12 +437,14 @@ impl NotesService {
         })
     }
 
-    /// Bắt đầu tạo ghi chú cho `target` (`template` không truyền thì lấy `notes_template` của cài đặt).
+    /// Bắt đầu tạo ghi chú cho `target` (`template` không truyền thì lấy `notes_template` của cài đặt). `force_local` dùng model
+    /// trên máy cho lần này, bất kể nguồn dịch đang chọn.
     pub fn start<R: Runtime>(
         &self,
         app: &AppHandle<R>,
         target: TranscriptRef,
         template: Option<NotesTemplate>,
+        force_local: bool,
     ) -> Result<NotesView, CommandError> {
         let epoch = {
             let inner = lock(&self.inner);
@@ -385,8 +472,18 @@ impl NotesService {
             .map_or(SessionStatus::Idle, |s| s.status().session);
         let settings = settings_of(app);
         let pro = pro::is_pro(app);
-        let provider = NotesProvider::from_translation(settings.translation_provider);
-        let key = keys::api_key(app, provider);
+        let provider = if force_local {
+            NotesProvider::Local
+        } else {
+            NotesProvider::from_translation(settings.translation_provider)
+        };
+        let local = provider == NotesProvider::Local;
+        let key = if local { None } else { keys::api_key(app, provider) };
+        let (pack, ready) = if local {
+            self.local_pack(app)
+        } else {
+            (NotesPackState::Unavailable, None)
+        };
         let lines = chunk::lines_of(&t);
         let facts = Facts {
             busy: false,
@@ -399,18 +496,51 @@ impl NotesService {
             provider,
             consent: settings.notes_cloud_consent,
             has_key: key.is_some(),
+            local: pack,
+            session_active: matches!(session, SessionStatus::Starting | SessionStatus::Running),
         };
         decide(&facts).map_err(refuse)?;
-        let model = match provider {
-            NotesProvider::Openai => settings.openai_model.clone(),
-            NotesProvider::Gemini => settings.gemini_model.clone(),
-            NotesProvider::Deepseek => settings.deepseek_model.clone(),
-            NotesProvider::Local => String::new(),
-        };
         let template = template.unwrap_or(settings.notes_template);
-        let engine = (self.factory)(provider, &model, key).map_err(|e| refuse(e.code()))?;
+        // Cloud dựng ngay (lỗi từ chối ngay lúc bấm); Local dựng trên luồng việc vì nạp model mất cả phút và phải hủy được.
+        let (model, build): (String, Build) = if local {
+            let Some(ready) = ready else {
+                return Err(refuse(errors::NOTES_LOCAL_PACK_MISSING));
+            };
+            let (factory, handle) = (self.factory.clone(), app.clone());
+            #[cfg(test)]
+            let discarded = self.discarded.clone();
+            let model = ready.id.clone();
+            let build: Build = Box::new(move |cancel: &AtomicBool| {
+                let spec = local_spec(&handle, &ready)?;
+                match factory(EngineSpec::Local(spec), cancel) {
+                    Err(NotesError::ModelCorrupt) => {
+                        discard_pack(&handle);
+                        #[cfg(test)]
+                        discarded.fetch_add(1, Ordering::SeqCst);
+                        Err(NotesError::ModelCorrupt)
+                    }
+                    other => other,
+                }
+            });
+            (model, build)
+        } else {
+            let model = match provider {
+                NotesProvider::Openai => settings.openai_model.clone(),
+                NotesProvider::Gemini => settings.gemini_model.clone(),
+                NotesProvider::Deepseek => settings.deepseek_model.clone(),
+                NotesProvider::Local => String::new(),
+            };
+            let spec = EngineSpec::Cloud {
+                provider,
+                model: model.clone(),
+                key,
+            };
+            let engine = (self.factory)(spec, &AtomicBool::new(false)).map_err(|e| refuse(e.code()))?;
+            (model, Box::new(move |_: &AtomicBool| Ok(engine)))
+        };
 
         let cancel = Arc::new(AtomicBool::new(false));
+        let done = Arc::new(AtomicBool::new(false));
         let (id, changed) = {
             let mut inner = lock(&self.inner);
             if matches!(inner.phase, Phase::Running(_)) {
@@ -428,6 +558,9 @@ impl NotesService {
                 target,
                 cancel: cancel.clone(),
                 progress: None,
+                local,
+                interrupt: None,
+                done: done.clone(),
             });
             (id, inner.changed(target))
         };
@@ -447,7 +580,7 @@ impl NotesService {
         let handle = app.clone();
         let spawned = std::thread::Builder::new()
             .name("notes-job".into())
-            .spawn(move || run_job(&handle, &inner, engine, &cancel, work));
+            .spawn(move || run_job(&handle, &inner, build, &cancel, work, done));
         if spawned.is_err() {
             log::error!("không mở được luồng tạo ghi chú");
             if let Some(changed) = fail(&self.inner, id, errors::NOTES_ENGINE_FAILED) {
@@ -464,6 +597,39 @@ impl NotesService {
         if let Some(target) = stopped {
             log::info!("đã hủy việc tạo ghi chú");
             events::notes_changed(app, &NotesChanged::idle(target));
+        }
+    }
+
+    /// Một phiên dịch sắp bắt đầu (móc "trước phiên" của `ModelService`): phiên dịch luôn thắng, nên việc đang dùng model trên
+    /// máy dừng ngay (kill `llama-server`) và kết thúc `failed` với `notesPausedForSession`; không lưu ghi chú, không tính lượt
+    /// Free. Chờ tới khi tiến trình đó đã dừng (tối đa [`PAUSE_WAIT`]) để phiên không tranh GPU/RAM với nó. Việc Cloud không bị
+    /// dừng. Không có việc nào hay việc không phải `Local` thì không làm gì.
+    pub fn pause_for_session<R: Runtime>(&self, app: &AppHandle<R>) {
+        let paused = {
+            let mut inner = lock(&self.inner);
+            let Phase::Running(job) = &inner.phase else {
+                return;
+            };
+            if !job.local {
+                return;
+            }
+            let (target, interrupt, done) = (job.target, job.interrupt.clone(), job.done.clone());
+            job.cancel.store(true, Ordering::SeqCst);
+            inner.phase = Phase::Failed {
+                target,
+                code: errors::NOTES_PAUSED_FOR_SESSION.to_string(),
+            };
+            (inner.changed(target), interrupt, done)
+        };
+        let (changed, interrupt, done) = paused;
+        log::info!("tạm dừng việc tạo ghi chú trên máy vì phiên dịch bắt đầu");
+        if let Some(interrupt) = interrupt {
+            interrupt();
+        }
+        events::notes_changed(app, &changed);
+        let since = Instant::now();
+        while !done.load(Ordering::SeqCst) && since.elapsed() < PAUSE_WAIT {
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
     }
 
@@ -547,15 +713,62 @@ fn fail(inner: &Mutex<Inner>, id: u64, code: &str) -> Option<NotesChanged> {
     Some(inner.changed(target))
 }
 
+/// File gói ghi chú băm ra sai SHA-256: bỏ gói (người dùng tải lại) và báo giao diện.
+fn discard_pack<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(models) = app.try_state::<Arc<ModelService>>() {
+        models.discard_notes_pack();
+    }
+    crate::models::service::changed(app);
+}
+
+/// Cách chạy `llama-server` cho gói ghi chú đã tải (kiểm binary, GPU, log): `sidecar::notes_local`.
+#[cfg(not(test))]
+fn local_spec<R: Runtime>(app: &AppHandle<R>, ready: &NotesReady) -> Result<LocalSpec, NotesError> {
+    crate::sidecar::notes_local::spec(app, ready)
+}
+
+/// Test không có `llama-server` thật đã kiểm: engine giả nhận spec trỏ vào gói của test.
+#[cfg(test)]
+fn local_spec<R: Runtime>(_app: &AppHandle<R>, ready: &NotesReady) -> Result<LocalSpec, NotesError> {
+    Ok(LocalSpec {
+        exe: std::path::PathBuf::from("llama-server-test"),
+        model: ready.path.clone(),
+        model_sha256: ready.sha256.clone(),
+        ctx: ready.ctx,
+        ..LocalSpec::default()
+    })
+}
+
 /// Thân của luồng `notes-job`.
 fn run_job<R: Runtime>(
     app: &AppHandle<R>,
     inner: &Mutex<Inner>,
-    engine: Box<dyn NotesEngine>,
+    build: Build,
     cancel: &AtomicBool,
     work: Work,
+    done: Arc<AtomicBool>,
 ) {
+    // Khai báo trước `engine`: bị bỏ sau engine, nên `done` chỉ bật khi engine (và tiến trình của nó) đã dừng.
+    let _done = DoneOnDrop(done);
     let began = Instant::now();
+    let engine = match build(cancel) {
+        Ok(engine) => engine,
+        Err(e) => {
+            log::warn!("không dựng được engine ghi chú: {} (nguồn {:?})", e.code(), work.provider);
+            if let Some(changed) = fail(inner, work.id, e.code()) {
+                events::notes_changed(app, &changed);
+            }
+            return;
+        }
+    };
+    if let Some(interrupt) = engine.interrupter() {
+        let mut guard = lock(inner);
+        if let Phase::Running(job) = &mut guard.phase
+            && job.id == work.id
+        {
+            job.interrupt = Some(interrupt);
+        }
+    }
     let mut progress = |done: usize, total: usize| {
         let changed = {
             let mut guard = lock(inner);
@@ -708,7 +921,8 @@ mod tests {
     use crate::errors;
     use crate::events;
     use crate::license::manager::TrialStatus;
-    use crate::notes::engine::{Limits, NotesEngine, NotesError, NotesRequest};
+    use crate::models::service::{ModelService, NotesPackState, NotesReady};
+    use crate::notes::engine::{Interrupt, Limits, NotesEngine, NotesError, NotesRequest};
     use crate::notes::schema::{Item, MAX_SUMMARY_CHARS, Notes};
     use crate::notes::{quota, store};
     use crate::security::keystore::Keystore;
@@ -730,6 +944,8 @@ mod tests {
             provider: NotesProvider::Gemini,
             consent: true,
             has_key: true,
+            local: NotesPackState::Installed,
+            session_active: false,
         }
     }
 
@@ -786,12 +1002,15 @@ mod tests {
             }),
             Err(errors::NOTES_FREE_USED_UP)
         );
+        // Model trên máy đã tải: không cần đồng ý gửi ra ngoài hay API key.
         assert_eq!(
             decide(&Facts {
                 provider: NotesProvider::Local,
+                consent: false,
+                has_key: false,
                 ..ok()
             }),
-            Err(errors::NOTES_LOCAL_UNAVAILABLE)
+            Ok(())
         );
         assert_eq!(
             decide(&Facts { consent: false, ..ok() }),
@@ -801,6 +1020,59 @@ mod tests {
             decide(&Facts { has_key: false, ..ok() }),
             Err(errors::NOTES_KEY_MISSING)
         );
+    }
+
+    /// Nguồn `Local`: gói không dùng được → chưa tải → có phiên dịch đang chạy → được; các luật đứng trước giữ thứ tự.
+    #[test]
+    fn decide_local_rules() {
+        use NotesPackState as P;
+        let local = |state, session_active| Facts {
+            provider: NotesProvider::Local,
+            consent: false,
+            has_key: false,
+            local: state,
+            session_active,
+            ..ok()
+        };
+        let table = [
+            (P::Unavailable, false, Err(errors::NOTES_LOCAL_UNAVAILABLE)),
+            (P::Unavailable, true, Err(errors::NOTES_LOCAL_UNAVAILABLE)),
+            (P::RamTooLow, false, Err(errors::NOTES_LOCAL_UNAVAILABLE)),
+            (P::RamTooLow, true, Err(errors::NOTES_LOCAL_UNAVAILABLE)),
+            (P::Missing, false, Err(errors::NOTES_LOCAL_PACK_MISSING)),
+            (P::Missing, true, Err(errors::NOTES_LOCAL_PACK_MISSING)),
+            (P::Downloading, false, Err(errors::NOTES_LOCAL_PACK_MISSING)),
+            (P::Downloading, true, Err(errors::NOTES_LOCAL_PACK_MISSING)),
+            (P::Installed, false, Ok(())),
+            (P::Installed, true, Err(errors::NOTES_LOCAL_SESSION_ACTIVE)),
+        ];
+        for (state, active, want) in table {
+            assert_eq!(decide(&local(state, active)), want, "{state:?}, phiên đang chạy: {active}");
+        }
+        let installed = local(P::Installed, true);
+        let running = Facts {
+            session: SessionStatus::Running,
+            ..installed
+        };
+        // Phiên hiện tại còn chạy thì vẫn là `notesSessionRunning` (luật cũ, đứng trước); phiên trong Lịch sử thì model trên máy
+        // không chạy chung với phiên dịch.
+        assert_eq!(decide(&running), Err(errors::NOTES_SESSION_RUNNING));
+        assert_eq!(
+            decide(&Facts {
+                is_current: false,
+                ..running
+            }),
+            Err(errors::NOTES_LOCAL_SESSION_ACTIVE)
+        );
+        assert_eq!(decide(&Facts { busy: true, ..installed }), Err(errors::NOTES_BUSY));
+        assert_eq!(
+            decide(&Facts {
+                usable_lines: 0,
+                ..installed
+            }),
+            Err(errors::NOTES_EMPTY)
+        );
+        assert_eq!(decide(&Facts { pro: false, ..installed }), Err(errors::PRO_REQUIRED));
     }
 
     // ---- Dịch vụ, với engine giả có cổng chặn ----
@@ -816,11 +1088,15 @@ mod tests {
     struct Script {
         reply: Reply,
         gate: Option<Receiver<()>>,
+        /// Đầu gửi của cổng: `interrupter` của engine giả mở cổng (như kill `llama-server` làm request đang chặn thoát).
+        release: Option<Sender<()>>,
     }
 
     struct Fake {
         reply: Reply,
         gate: Option<Mutex<Receiver<()>>>,
+        release: Option<Sender<()>>,
+        killed: Arc<AtomicBool>,
         seen: Arc<Mutex<Vec<NotesRequest>>>,
     }
 
@@ -834,6 +1110,15 @@ mod tests {
         }
         fn count_tokens(&self, text: &str) -> usize {
             text.split_whitespace().count()
+        }
+        fn interrupter(&self) -> Option<Interrupt> {
+            let (killed, release) = (self.killed.clone(), self.release.clone());
+            Some(Arc::new(move || {
+                killed.store(true, Ordering::SeqCst);
+                if let Some(release) = &release {
+                    let _ = release.send(());
+                }
+            }))
         }
         fn generate(&self, req: &NotesRequest, _cancel: &AtomicBool) -> Result<String, NotesError> {
             self.seen.lock().unwrap().push(req.clone());
@@ -854,31 +1139,59 @@ mod tests {
     struct Engines {
         scripts: Arc<Mutex<VecDeque<Script>>>,
         seen: Arc<Mutex<Vec<NotesRequest>>>,
+        /// Mỗi lần dựng engine: `local` hay `cloud:<nguồn>:<model>`.
+        specs: Arc<Mutex<Vec<String>>>,
+        /// Lỗi cho lần dựng engine kế tiếp (thay vì dựng).
+        build_error: Arc<Mutex<Option<NotesError>>>,
+        /// `interrupter` của một engine giả đã được gọi.
+        killed: Arc<AtomicBool>,
     }
 
     impl Engines {
         fn factory(&self) -> EngineFactory {
             let me = self.clone();
-            Arc::new(move |_provider: NotesProvider, _model: &str, _key: Option<String>| {
+            Arc::new(move |spec: EngineSpec, _cancel: &AtomicBool| {
+                let name = match &spec {
+                    EngineSpec::Cloud { provider, model, .. } => format!("cloud:{provider:?}:{model}"),
+                    EngineSpec::Local(_) => "local".to_string(),
+                };
+                me.specs.lock().unwrap().push(name);
+                if let Some(e) = me.build_error.lock().unwrap().take() {
+                    return Err(e);
+                }
                 let script = me.scripts.lock().unwrap().pop_front().unwrap_or(Script {
                     reply: Reply::Text(json("s1")),
                     gate: None,
+                    release: None,
                 });
                 Ok(Box::new(Fake {
                     reply: script.reply,
                     gate: script.gate.map(Mutex::new),
+                    release: script.release,
+                    killed: me.killed.clone(),
                     seen: me.seen.clone(),
                 }) as Box<dyn NotesEngine>)
             })
         }
+        fn fail_build(&self, error: NotesError) {
+            *self.build_error.lock().unwrap() = Some(error);
+        }
         /// Xếp một kịch bản có cổng; trả đầu gửi để mở cổng.
         fn gated(&self, reply: Reply) -> Sender<()> {
             let (tx, rx) = mpsc::channel();
-            self.scripts.lock().unwrap().push_back(Script { reply, gate: Some(rx) });
+            self.scripts.lock().unwrap().push_back(Script {
+                reply,
+                gate: Some(rx),
+                release: Some(tx.clone()),
+            });
             tx
         }
         fn push(&self, reply: Reply) {
-            self.scripts.lock().unwrap().push_back(Script { reply, gate: None });
+            self.scripts.lock().unwrap().push_back(Script {
+                reply,
+                gate: None,
+                release: None,
+            });
         }
         fn requests(&self) -> usize {
             self.seen.lock().unwrap().len()
@@ -985,7 +1298,7 @@ mod tests {
         let events = record(&app);
         let svc = service(&engines);
         let gate = engines.gated(Reply::Text(json("s1")));
-        let v = svc.start(app.handle(), CUR, None).unwrap();
+        let v = svc.start(app.handle(), CUR, None, false).unwrap();
         assert_eq!(v.status, JobStatus::Running);
         gate.send(()).unwrap();
         wait_until("có ghi chú", || {
@@ -1028,7 +1341,7 @@ mod tests {
         let (app, engines) = setup(true);
         let id = save_to_history(&app);
         let svc = service(&engines);
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("có ghi chú", || {
             summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
         });
@@ -1061,9 +1374,9 @@ mod tests {
         let (app, engines) = setup(true);
         let svc = service(&engines);
         let gate = engines.gated(Reply::Text(json("s1")));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("engine đang chạy", || engines.requests() == 1);
-        let err = svc.start(app.handle(), CUR, None).unwrap_err();
+        let err = svc.start(app.handle(), CUR, None, false).unwrap_err();
         assert_eq!(err.code, errors::NOTES_BUSY);
         svc.cancel(app.handle());
         assert_eq!(svc.view(app.handle(), CUR).unwrap().status, JobStatus::Idle);
@@ -1081,7 +1394,7 @@ mod tests {
         let target = TranscriptRef::History { id };
         let gate = engines.gated(Reply::Text(json("s1")));
         assert_eq!(
-            svc.start(app.handle(), target, None).unwrap().status,
+            svc.start(app.handle(), target, None, false).unwrap().status,
             JobStatus::Running
         );
         crate::db::with(app.handle(), |c| history::delete(c, id)).unwrap();
@@ -1101,7 +1414,7 @@ mod tests {
         let (app, engines) = setup(true);
         let svc = service(&engines);
         engines.push(Reply::Fail(NotesError::RateLimited));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("lỗi", || {
             svc.view(app.handle(), CUR).unwrap().status == JobStatus::Failed
         });
@@ -1116,13 +1429,13 @@ mod tests {
         svc.set_trial(Some(TrialStatus::Active));
         let used = || crate::notes::keys::with_keystore(app.handle(), quota::used).unwrap();
         engines.push(Reply::Fail(NotesError::Offline));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("lỗi", || {
             svc.view(app.handle(), CUR).unwrap().status == JobStatus::Failed
         });
         assert_eq!(used(), 0);
         assert_eq!(svc.view(app.handle(), CUR).unwrap().free_left, Some(3));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("có ghi chú", || {
             summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
         });
@@ -1131,7 +1444,7 @@ mod tests {
         assert_eq!((v.free_left, v.persisted, v.status), (Some(2), false, JobStatus::Idle));
         // Hết dùng thử: cần Pro.
         svc.set_trial(Some(TrialStatus::Ended));
-        let err = svc.start(app.handle(), CUR, None).unwrap_err();
+        let err = svc.start(app.handle(), CUR, None, false).unwrap_err();
         assert_eq!(err.code, errors::PRO_REQUIRED);
     }
 
@@ -1139,7 +1452,7 @@ mod tests {
     fn save_edit_validates_and_marks_edited() {
         let (app, engines) = setup(true);
         let svc = service(&engines);
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("có ghi chú", || {
             summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
         });
@@ -1171,7 +1484,7 @@ mod tests {
         assert_eq!(err.code, "outOfRange");
         assert_eq!(svc.view(app.handle(), CUR).unwrap().notes, Some(n));
         let gate = engines.gated(Reply::Text(json("s2")));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         let err = svc.save_edit(app.handle(), CUR, Notes::default()).unwrap_err();
         assert_eq!(err.code, errors::NOTES_BUSY);
         gate.send(()).unwrap();
@@ -1225,12 +1538,12 @@ mod tests {
         let (app, engines) = setup(true);
         crate::notes::install_with(app.handle(), engines.factory());
         let svc = app.state::<NotesService>();
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("có ghi chú", || {
             summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
         });
         let gate = engines.gated(Reply::Text(json("s2")));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("engine đang chạy", || engines.requests() == 2);
         crate::notes::forget(app.handle());
         let v = svc.view(app.handle(), CUR).unwrap();
@@ -1241,18 +1554,191 @@ mod tests {
         assert_eq!((v.status, v.notes), (JobStatus::Idle, None));
     }
 
+    /// Gói ghi chú trên máy đã tải xong, cho test.
+    fn ready() -> NotesReady {
+        NotesReady {
+            id: "notes-qwen35-4b".into(),
+            path: std::path::PathBuf::from("notes-test.gguf"),
+            sha256: "ab".repeat(32),
+            ctx: 16_384,
+        }
+    }
+
+    /// Dịch vụ có gói ghi chú trên máy đã tải xong.
+    fn local_service(engines: &Engines) -> NotesService {
+        let svc = service(engines);
+        svc.set_local(NotesPackState::Installed, Some(ready()));
+        svc
+    }
+
+    /// `force_local` đổi nguồn của lần này sang model trên máy dù nguồn dịch là Gemini; ghi chú lưu nguồn `Local` và `id` của
+    /// gói; không ép thì vẫn dùng engine cloud.
+    #[test]
+    fn force_local_uses_the_local_engine_even_with_a_cloud_provider() {
+        let (app, engines) = setup(true);
+        let svc = local_service(&engines);
+        svc.start(app.handle(), CUR, None, true).unwrap();
+        wait_until("có ghi chú", || {
+            summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
+        });
+        assert_eq!(*engines.specs.lock().unwrap(), ["local"]);
+        let stored = svc.view(app.handle(), CUR).unwrap().notes.unwrap();
+        assert_eq!((stored.source, stored.model.as_str()), (NotesProvider::Local, "notes-qwen35-4b"));
+        svc.start(app.handle(), CUR, None, false).unwrap();
+        wait_until("xong lần cloud", || {
+            engines.specs.lock().unwrap().len() == 2 && svc.view(app.handle(), CUR).unwrap().status == JobStatus::Idle
+        });
+        let specs = engines.specs.lock().unwrap().clone();
+        assert!(specs[1].starts_with("cloud:Gemini:"), "{specs:?}");
+    }
+
+    /// Chọn model trên máy mà chưa dùng được thì bị từ chối ngay, trước khi dựng engine.
+    #[test]
+    fn a_local_start_is_refused_before_any_engine_when_it_cannot_run() {
+        let (app, engines) = setup(true);
+        let svc = service(&engines);
+        let refused = |svc: &NotesService, target| svc.start(app.handle(), target, None, true).unwrap_err().code;
+        // Không có manifest (app giả): gói không có.
+        assert_eq!(refused(&svc, CUR), errors::NOTES_LOCAL_UNAVAILABLE);
+        svc.set_local(NotesPackState::RamTooLow, None);
+        assert_eq!(refused(&svc, CUR), errors::NOTES_LOCAL_UNAVAILABLE);
+        for state in [NotesPackState::Missing, NotesPackState::Downloading] {
+            svc.set_local(state, None);
+            assert_eq!(refused(&svc, CUR), errors::NOTES_LOCAL_PACK_MISSING, "{state:?}");
+        }
+        // Đã tải, nhưng có phiên dịch đang chạy: ghi chú của phiên trong Lịch sử cũng phải chờ.
+        svc.set_local(NotesPackState::Installed, Some(ready()));
+        let id = save_to_history(&app);
+        app.state::<AppState>().update_status(|s| s.session = SessionStatus::Running);
+        assert_eq!(
+            refused(&svc, TranscriptRef::History { id }),
+            errors::NOTES_LOCAL_SESSION_ACTIVE
+        );
+        assert_eq!(engines.specs.lock().unwrap().len(), 0, "chưa dựng engine nào");
+    }
+
+    /// Phiên dịch bắt đầu thì việc ghi chú trên máy dừng ngay: engine bị ngắt, việc kết thúc `failed` với
+    /// `notesPausedForSession`, không có ghi chú nào được lưu và không tính lượt Free.
+    #[test]
+    fn a_session_start_pauses_a_running_local_job() {
+        let (app, engines) = setup(false);
+        let svc = local_service(&engines);
+        svc.set_trial(Some(TrialStatus::Active));
+        let events = record(&app);
+        let _gate = engines.gated(Reply::Text(json("s1")));
+        svc.start(app.handle(), CUR, None, true).unwrap();
+        wait_until("engine nhận yêu cầu", || engines.requests() >= 1);
+        svc.pause_for_session(app.handle());
+        assert!(engines.killed.load(Ordering::SeqCst), "engine phải bị ngắt");
+        let v = svc.view(app.handle(), CUR).unwrap();
+        assert_eq!(
+            (v.status, v.error.as_deref(), v.notes.is_none(), v.free_left),
+            (JobStatus::Failed, Some(errors::NOTES_PAUSED_FOR_SESSION), true, Some(3))
+        );
+        // Engine trả kết quả muộn (cổng đã mở): bị bỏ, không đè trạng thái, không lưu, không tính lượt.
+        std::thread::sleep(Duration::from_millis(150));
+        let v = svc.view(app.handle(), CUR).unwrap();
+        assert_eq!((v.status, v.notes.is_none(), v.free_left), (JobStatus::Failed, true, Some(3)));
+        assert!(!svc.has_memory());
+        assert!(
+            events
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|e| e.contains("notesPausedForSession")),
+            "giao diện phải được báo"
+        );
+        // Tạo lại được sau khi họp xong.
+        svc.start(app.handle(), CUR, None, true).unwrap();
+        wait_until("có ghi chú", || {
+            summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
+        });
+    }
+
+    /// Móc "trước phiên" của `ModelService` do `notes::install` cài: `begin_session` dừng việc ghi chú trên máy rồi mới bắt đầu.
+    #[test]
+    fn the_models_before_session_hook_pauses_the_local_job() {
+        let (app, engines) = setup(true);
+        crate::notes::install_with(app.handle(), engines.factory());
+        let svc = app.state::<NotesService>();
+        svc.set_local(NotesPackState::Installed, Some(ready()));
+        let _gate = engines.gated(Reply::Text(json("s1")));
+        svc.start(app.handle(), CUR, None, true).unwrap();
+        wait_until("engine nhận yêu cầu", || engines.requests() >= 1);
+        let begun = app.state::<Arc<ModelService>>().begin_session(|| "begin").unwrap();
+        assert_eq!(begun, "begin");
+        assert!(engines.killed.load(Ordering::SeqCst));
+        assert_eq!(
+            svc.view(app.handle(), CUR).unwrap().error.as_deref(),
+            Some(errors::NOTES_PAUSED_FOR_SESSION)
+        );
+    }
+
+    /// Việc Cloud không bị phiên dịch dừng.
+    #[test]
+    fn a_session_start_leaves_a_cloud_job_running() {
+        let (app, engines) = setup(true);
+        let svc = service(&engines);
+        let gate = engines.gated(Reply::Text(json("s1")));
+        svc.start(app.handle(), CUR, None, false).unwrap();
+        wait_until("engine nhận yêu cầu", || engines.requests() >= 1);
+        svc.pause_for_session(app.handle());
+        assert!(!engines.killed.load(Ordering::SeqCst));
+        assert_eq!(svc.view(app.handle(), CUR).unwrap().status, JobStatus::Running);
+        gate.send(()).unwrap();
+        wait_until("có ghi chú", || {
+            summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
+        });
+        // Không có việc nào: không làm gì.
+        svc.pause_for_session(app.handle());
+        assert_eq!(svc.view(app.handle(), CUR).unwrap().status, JobStatus::Idle);
+    }
+
+    /// File gói băm ra sai SHA-256: gói bị bỏ (người dùng tải lại) và việc kết thúc `notesLocalPackMissing`.
+    #[test]
+    fn a_wrong_sha256_discards_the_pack_and_reports_it_missing() {
+        let (app, engines) = setup(true);
+        let svc = local_service(&engines);
+        engines.fail_build(NotesError::ModelCorrupt);
+        svc.start(app.handle(), CUR, None, true).unwrap();
+        wait_until("lỗi", || {
+            svc.view(app.handle(), CUR).unwrap().status == JobStatus::Failed
+        });
+        let v = svc.view(app.handle(), CUR).unwrap();
+        assert_eq!((v.error.as_deref(), v.notes.is_none()), (Some(errors::NOTES_LOCAL_PACK_MISSING), true));
+        assert_eq!(svc.discarded(), 1);
+        assert_eq!(engines.requests(), 0);
+    }
+
+    /// Dựng engine trên máy lỗi khác (binary không đúng bản...) thì là lỗi engine, không bỏ gói.
+    #[test]
+    fn another_local_build_error_keeps_the_pack() {
+        let (app, engines) = setup(true);
+        let svc = local_service(&engines);
+        engines.fail_build(NotesError::Engine("llama-server không đúng bản".into()));
+        svc.start(app.handle(), CUR, None, true).unwrap();
+        wait_until("lỗi", || {
+            svc.view(app.handle(), CUR).unwrap().status == JobStatus::Failed
+        });
+        assert_eq!(
+            svc.view(app.handle(), CUR).unwrap().error.as_deref(),
+            Some(errors::NOTES_ENGINE_FAILED)
+        );
+        assert_eq!(svc.discarded(), 0);
+    }
+
     #[test]
     fn a_panicking_engine_ends_failed_and_the_service_recovers() {
         let (app, engines) = setup(true);
         let svc = service(&engines);
         engines.push(Reply::Panic);
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("lỗi", || {
             svc.view(app.handle(), CUR).unwrap().status == JobStatus::Failed
         });
         let v = svc.view(app.handle(), CUR).unwrap();
         assert_eq!(v.error.as_deref(), Some(errors::NOTES_ENGINE_FAILED));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("có ghi chú", || {
             summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
         });
@@ -1265,11 +1751,11 @@ mod tests {
         let events = record(&app);
         let svc = service(&engines);
         let old = engines.gated(Reply::Text(json("old")));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("engine cũ đang chạy", || engines.requests() == 1);
         svc.cancel(app.handle());
         let new = engines.gated(Reply::Text(json("new")));
-        assert_eq!(svc.start(app.handle(), CUR, None).unwrap().status, JobStatus::Running);
+        assert_eq!(svc.start(app.handle(), CUR, None, false).unwrap().status, JobStatus::Running);
         // Việc cũ xong trước, trong lúc việc mới còn chạy: không đổi gì.
         wait_until("engine mới đang chạy", || engines.requests() == 2);
         old.send(()).unwrap();
@@ -1301,7 +1787,7 @@ mod tests {
         let svc = service(&engines);
         for session in [SessionStatus::Running, SessionStatus::Starting] {
             app.state::<AppState>().update_status(|s| s.session = session);
-            let err = svc.start(app.handle(), CUR, None).unwrap_err();
+            let err = svc.start(app.handle(), CUR, None, false).unwrap_err();
             assert_eq!(err.code, errors::NOTES_SESSION_RUNNING);
             assert_eq!(svc.view(app.handle(), CUR).unwrap().status, JobStatus::Idle);
         }
@@ -1316,7 +1802,7 @@ mod tests {
         let (app, engines) = setup(true);
         let svc = service(&engines);
         svc.set_after_snapshot(Box::new(|s: &NotesService| s.forget()));
-        let err = svc.start(app.handle(), CUR, None).unwrap_err();
+        let err = svc.start(app.handle(), CUR, None, false).unwrap_err();
         assert_eq!(err.code, errors::NOTES_EMPTY);
         std::thread::sleep(Duration::from_millis(200));
         assert_eq!(engines.requests(), 0);
@@ -1324,7 +1810,7 @@ mod tests {
         assert_eq!((v.status, v.notes), (JobStatus::Idle, None));
         assert!(!svc.has_memory());
         // Lần sau (không bị xóa xen giữa) vẫn chạy bình thường.
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("có ghi chú", || {
             summary(&svc.view(app.handle(), CUR).unwrap()).is_some()
         });
@@ -1337,7 +1823,7 @@ mod tests {
         svc.set_trial(Some(TrialStatus::Active));
         let used = || crate::notes::keys::with_keystore(app.handle(), quota::used).unwrap();
         let gate = engines.gated(Reply::Text(json("s1")));
-        svc.start(app.handle(), CUR, None).unwrap();
+        svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("engine đang chạy", || engines.requests() == 1);
         // Phiên mới bắt đầu trong lúc việc còn chạy (mã test ghi bản chép lời, như `session.rs`).
         app.state::<TranscriptStore>().begin(2, STARTED_AT + 120_000, "vi");
@@ -1386,7 +1872,7 @@ mod tests {
         crate::notes::install_with(app.handle(), engines.factory());
         let svc = app.state::<NotesService>();
         let gate = engines.gated(Reply::Text(json("s1")));
-        svc.start(app.handle(), TranscriptRef::History { id }, None).unwrap();
+        svc.start(app.handle(), TranscriptRef::History { id }, None, false).unwrap();
         wait_until("engine đang chạy", || engines.requests() == 1);
         let path = app.state::<crate::db::DataStore>().path();
         assert!(path.exists());

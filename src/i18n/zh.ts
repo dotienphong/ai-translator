@@ -762,7 +762,7 @@ export const zh: Record<MessageKey, string> = {
   "error.notesSessionRunning": "请先停止翻译，再为此会话生成笔记。",
   "error.notesEmpty": "此会话中没有可用于生成笔记的内容。",
   "error.notesFreeUsedUp": "试用中包含的 3 次笔记已用完。请升级后继续使用。",
-  "error.notesLocalUnavailable": "这台电脑上没有笔记模型。请选择 ChatGPT 或 Gemini，或下载笔记包。",
+  "error.notesLocalUnavailable": "这台电脑无法使用本机模型生成笔记。请在“设置 > 模型”中选择云端模型。",
   "error.notesConsentRequired": "需要你同意，才能将此会话的文字发送给所选服务商。",
   "error.notesKeyMissing": "尚未保存所选服务商的 API 密钥。",
   "error.notesOffline": "无法连接服务商。请检查网络连接后重试。",
@@ -772,4 +772,7 @@ export const zh: Record<MessageKey, string> = {
   "error.notesCloudFailed": "服务商返回了错误。请稍后重试。",
   "error.notesEngineFailed": "无法生成笔记。请重试。",
   "error.notesCancelled": "已取消。",
+  "error.notesLocalPackMissing": "尚未下载本机笔记模型包。请下载后重试。",
+  "error.notesLocalSessionActive": "正在翻译，暂时无法用本机模型生成笔记。请先停止会话再重试。",
+  "error.notesPausedForSession": "因翻译会话已开始，笔记生成已暂停。会议结束后请重新生成。",
 };

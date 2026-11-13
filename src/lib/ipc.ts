@@ -789,9 +789,13 @@ export interface Commands {
   clear_history: { args: undefined; result: number };
   // Ghi chú cuộc họp bằng AI (chỉ cửa sổ chính). `get_notes`, `generate_notes`, `save_notes` cho phiên trong Lịch sử cần Pro.
   // `generate_notes` trả ngay khi việc bắt đầu (`status: "running"`); tiến độ và kết quả đến qua `notes://changed`. `template` không
-  // gửi thì lấy mẫu trong cài đặt. Lỗi có mã `notes*` (xem `error.notes*`).
+  // gửi thì lấy mẫu trong cài đặt. `forceLocal: true` dùng model trên máy cho lần này dù nguồn dịch đang chọn là cloud. Lỗi có mã
+  // `notes*` (xem `error.notes*`).
   get_notes: { args: { target: TranscriptRef }; result: NotesView };
-  generate_notes: { args: { target: TranscriptRef; template?: NotesTemplate | null }; result: NotesView };
+  generate_notes: {
+    args: { target: TranscriptRef; template?: NotesTemplate | null; forceLocal?: boolean | null };
+    result: NotesView;
+  };
   cancel_notes: { args: undefined; result: null };
   save_notes: { args: { target: TranscriptRef; notes: Notes }; result: NotesView };
   // Pro. Mã các phiên trong Lịch sử đã có ghi chú.

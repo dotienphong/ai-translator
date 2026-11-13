@@ -184,6 +184,12 @@ pub const NOTES_CLOUD_FAILED: &str = "notesCloudFailed";
 pub const NOTES_ENGINE_FAILED: &str = "notesEngineFailed";
 /// Người dùng hủy việc tạo ghi chú (`NotesError::Cancelled`).
 pub const NOTES_CANCELLED: &str = "notesCancelled";
+/// Chọn model trên máy cho ghi chú mà gói ghi chú chưa tải xong (hay file gói hỏng, `NotesError::ModelCorrupt`): tải gói rồi thử lại.
+pub const NOTES_LOCAL_PACK_MISSING: &str = "notesLocalPackMissing";
+/// Đang có phiên dịch chạy nên chưa tạo được ghi chú bằng model trên máy (cùng một GPU/RAM): dừng phiên rồi thử lại.
+pub const NOTES_LOCAL_SESSION_ACTIVE: &str = "notesLocalSessionActive";
+/// Việc tạo ghi chú bằng model trên máy bị tạm dừng vì một phiên dịch vừa bắt đầu (phiên dịch luôn thắng): tạo lại sau khi họp xong.
+pub const NOTES_PAUSED_FOR_SESSION: &str = "notesPausedForSession";
 
 impl CommandError {
     pub fn new(code: &str, field: Option<&str>, message: impl Into<String>) -> Self {
@@ -344,6 +350,9 @@ mod tests {
                 NOTES_CLOUD_FAILED,
                 NOTES_ENGINE_FAILED,
                 NOTES_CANCELLED,
+                NOTES_LOCAL_PACK_MISSING,
+                NOTES_LOCAL_SESSION_ACTIVE,
+                NOTES_PAUSED_FOR_SESSION,
             ]
             .map(String::from),
         );
@@ -390,9 +399,12 @@ mod tests {
             NOTES_CLOUD_FAILED,
             NOTES_ENGINE_FAILED,
             NOTES_CANCELLED,
+            NOTES_LOCAL_PACK_MISSING,
+            NOTES_LOCAL_SESSION_ACTIVE,
+            NOTES_PAUSED_FOR_SESSION,
         ];
         let set: std::collections::HashSet<_> = codes.iter().collect();
-        assert_eq!(set.len(), 14);
+        assert_eq!(set.len(), 17);
         assert!(codes.iter().all(|c| c.starts_with("notes")));
     }
 }

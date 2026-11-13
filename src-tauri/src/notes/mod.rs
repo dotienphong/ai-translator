@@ -1,12 +1,13 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Ghi chú cuộc họp bằng AI (spec 2026-11-11-ghi-chu-cuoc-hop-design): dựng ghi chú từ bản chép lời.
 
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use tauri::{AppHandle, Listener, Manager, Runtime};
 
 use crate::data::TranscriptRef;
 use crate::events;
+use crate::models::service::ModelService;
 use crate::state::AppState;
 use service::{EngineFactory, NotesChanged, NotesService};
 
@@ -33,6 +34,16 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) {
 /// ghi chú khi phiên dừng (chỉ khi người dùng bật `notes_auto`).
 pub(crate) fn install_with<R: Runtime>(app: &AppHandle<R>, factory: EngineFactory) {
     app.manage(NotesService::new(factory));
+    // Phiên dịch luôn thắng việc ghi chú trên máy: trước khi một phiên bắt đầu, việc đó dừng và nhả GPU/RAM (bỏ qua khi app
+    // chưa có `ModelService`).
+    if let Some(models) = app.try_state::<Arc<ModelService>>() {
+        let handle = app.clone();
+        models.set_before_session(Box::new(move || {
+            if let Some(service) = handle.try_state::<NotesService>() {
+                service.pause_for_session(&handle);
+            }
+        }));
+    }
     let state: Mutex<Auto> = Mutex::new(Auto::default());
     let handle = app.clone();
     app.listen_any(events::STATUS_CHANGED, move |event| {
@@ -80,7 +91,7 @@ fn auto_start<R: Runtime>(app: &AppHandle<R>) {
         let Some(service) = handle.try_state::<NotesService>() else {
             return;
         };
-        if let Err(e) = service.start(&handle, TranscriptRef::Current, None) {
+        if let Err(e) = service.start(&handle, TranscriptRef::Current, None, false) {
             log::info!("không tự tạo ghi chú: {}", e.code);
         }
     });

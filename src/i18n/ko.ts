@@ -762,7 +762,7 @@ export const ko: Record<MessageKey, string> = {
   "error.notesSessionRunning": "이 세션의 노트를 만들기 전에 번역을 중지하세요.",
   "error.notesEmpty": "이 세션에는 노트로 만들 내용이 없습니다.",
   "error.notesFreeUsedUp": "체험판에 포함된 노트 3회를 모두 사용했습니다. 계속 사용하려면 업그레이드하세요.",
-  "error.notesLocalUnavailable": "이 컴퓨터에 노트용 모델이 없습니다. ChatGPT 또는 Gemini를 선택하거나 노트 팩을 다운로드하세요.",
+  "error.notesLocalUnavailable": "이 컴퓨터에서는 기기 내 모델로 노트를 만들 수 없습니다. 설정 > 모델에서 클라우드 모델을 선택하세요.",
   "error.notesConsentRequired": "이 세션의 텍스트를 선택한 제공업체에 보내려면 동의가 필요합니다.",
   "error.notesKeyMissing": "선택한 제공업체의 API 키가 저장되어 있지 않습니다.",
   "error.notesOffline": "제공업체에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.",
@@ -772,4 +772,7 @@ export const ko: Record<MessageKey, string> = {
   "error.notesCloudFailed": "제공업체에서 오류가 반환되었습니다. 나중에 다시 시도하세요.",
   "error.notesEngineFailed": "노트를 만들지 못했습니다. 다시 시도하세요.",
   "error.notesCancelled": "취소되었습니다.",
+  "error.notesLocalPackMissing": "기기 내 노트 모델 팩을 아직 다운로드하지 않았습니다. 다운로드한 후 다시 시도하세요.",
+  "error.notesLocalSessionActive": "번역 중이라 기기 내 모델로 노트를 만들 수 없습니다. 세션을 중지한 후 다시 시도하세요.",
+  "error.notesPausedForSession": "번역 세션이 시작되어 노트 생성을 일시 중지했습니다. 회의가 끝난 후 다시 생성하세요.",
 };

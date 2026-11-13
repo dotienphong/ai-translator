@@ -7,6 +7,7 @@
 //! RAM và được che khỏi log. Phần HTTP tách riêng thành [`Client`] để test bằng server giả, không cần tiến trình thật.
 
 use std::collections::hash_map::RandomState;
+use std::fs::File;
 use std::hash::{BuildHasher, Hasher};
 use std::path::PathBuf;
 use std::process::Child;
@@ -19,7 +20,7 @@ use pipeline::llama::{self, LlamaLaunch};
 use pipeline::{logfile, process};
 use serde_json::{Value, json};
 
-use super::engine::{Format, Limits, NotesEngine, NotesError, NotesRequest, Role, Strategy};
+use super::engine::{Format, Interrupt, Limits, NotesEngine, NotesError, NotesRequest, Role, Strategy};
 use crate::sidecar::integrity::sha256_file;
 
 /// Thời gian chờ server nạp model và báo sẵn sàng.
@@ -33,7 +34,7 @@ pub const LOG_NAME: &str = "notes-llama-server.log";
 const POLL: Duration = Duration::from_millis(200);
 
 /// Cách chạy engine local: `llama-server`, model đã tải (kèm SHA-256 phải khớp), ngữ cảnh và nơi ghi log.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LocalSpec {
     pub exe: PathBuf,
     pub model: PathBuf,
@@ -41,6 +42,11 @@ pub struct LocalSpec {
     pub ctx: u32,
     pub use_gpu: bool,
     pub log: PathBuf,
+    /// Biến môi trường của tiến trình (cùng bộ với `llama-server` của dịch, ví dụ tránh lỗi driver Vulkan trên Windows).
+    pub env: Vec<(String, String)>,
+    /// Handle chỉ-đọc của binary đã kiểm (Windows, `integrity::Verified::locks`): giữ tới khi engine bị bỏ để binary không bị
+    /// thay giữa lúc kiểm và lúc chạy.
+    pub hold: Arc<Vec<File>>,
 }
 
 /// Cổng trong dòng `llama_server: listening on http://127.0.0.1:<cổng>` mà server in ra stderr sau khi nạp xong model. Chỉ
@@ -232,6 +238,8 @@ impl Drop for Proc {
 pub struct LocalNotes {
     client: Client,
     proc: Proc,
+    /// Sống lâu hơn `proc` (khai báo sau): binary vẫn bị khóa tới khi tiến trình đã dừng.
+    _hold: Arc<Vec<File>>,
 }
 
 impl std::fmt::Debug for LocalNotes {
@@ -250,10 +258,11 @@ impl LocalNotes {
     pub fn start(spec: &LocalSpec, cancel: &AtomicBool) -> Result<Self, NotesError> {
         let actual = sha256_file(&spec.model).map_err(|_| NotesError::Engine("không đọc được model ghi chú".into()))?;
         if !actual.eq_ignore_ascii_case(spec.model_sha256.trim()) {
-            return Err(NotesError::Engine("model ghi chú sai SHA-256".into()));
+            return Err(NotesError::ModelCorrupt);
         }
         let mut launch = LlamaLaunch::new(&spec.exe, &spec.model, &spec.log);
         launch.use_gpu = spec.use_gpu;
+        launch.env = spec.env.clone();
         // Đứng sau `-c 2048` của `llama::command`: llama.cpp lấy giá trị cuối.
         launch.extra_args = vec![
             "-c".into(),
@@ -311,7 +320,11 @@ impl LocalNotes {
                 },
                 Some(c) => {
                     if c.healthy() {
-                        return Ok(Self { client: c, proc });
+                        return Ok(Self {
+                            client: c,
+                            proc,
+                            _hold: spec.hold.clone(),
+                        });
                     }
                     client = Some(c);
                     std::thread::sleep(POLL);
@@ -342,6 +355,11 @@ impl NotesEngine for LocalNotes {
 
     fn strategy(&self) -> Strategy {
         Strategy::Verified
+    }
+
+    fn interrupter(&self) -> Option<Interrupt> {
+        let killer = self.killer();
+        Some(Arc::new(move || killer.kill()))
     }
 
     /// Một luồng trong `thread::scope` xem `cancel` mỗi 200 ms và kill server khi bật, để request đang chặn thoát ngay.
@@ -494,9 +512,10 @@ mod tests {
             ctx: 16_384,
             use_gpu: false,
             log: model.with_file_name(LOG_NAME),
+            ..LocalSpec::default()
         };
         match LocalNotes::start(&spec, &AtomicBool::new(false)) {
-            Err(NotesError::Engine(msg)) => assert!(msg.contains("SHA-256"), "{msg}"),
+            Err(NotesError::ModelCorrupt) => {}
             other => panic!("{other:?}"),
         }
         // Đúng SHA-256 thì qua bước băm và mới lỗi ở chỗ chạy `exe` không tồn tại: chứng tỏ băm đi trước.
@@ -534,6 +553,7 @@ mod tests {
             ctx: 16_384,
             use_gpu: std::env::var("NOTES_USE_GPU").is_ok_and(|v| v == "1"),
             log: dir.join(LOG_NAME),
+            ..LocalSpec::default()
         };
         let say = |seq: u32, who: &str, text: &str| PromptLine {
             seq,

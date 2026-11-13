@@ -72,6 +72,8 @@ pub enum NotesError {
     BadResponse,
     /// Người dùng hủy.
     Cancelled,
+    /// File model ghi chú trên máy băm ra khác SHA-256 của manifest (hỏng hay bị thay): bỏ gói, tải lại.
+    ModelCorrupt,
     /// Lỗi khác của engine (model local), kèm mô tả.
     Engine(String),
 }
@@ -88,6 +90,7 @@ impl NotesError {
             Self::NoBalance => errors::NOTES_NO_BALANCE,
             Self::Cloud(_) | Self::BadResponse => errors::NOTES_CLOUD_FAILED,
             Self::Cancelled => errors::NOTES_CANCELLED,
+            Self::ModelCorrupt => errors::NOTES_LOCAL_PACK_MISSING,
             Self::Engine(_) => errors::NOTES_ENGINE_FAILED,
         }
     }
@@ -102,7 +105,15 @@ pub trait NotesEngine: Send {
     fn strategy(&self) -> Strategy {
         Strategy::Standard
     }
+    /// Cách dừng ngay engine từ luồng khác, kể cả khi `generate` đang chặn (engine chạy tiến trình riêng: kill nó). Cloud không
+    /// có (`None`): hủy qua cờ `cancel` là đủ.
+    fn interrupter(&self) -> Option<Interrupt> {
+        None
+    }
 }
+
+/// Dừng ngay một engine từ luồng khác ([`NotesEngine::interrupter`]).
+pub type Interrupt = std::sync::Arc<dyn Fn() + Send + Sync>;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -126,6 +137,11 @@ mod tests {
                 errors::NOTES_ENGINE_FAILED,
                 "notesEngineFailed",
             ),
+            (
+                NotesError::ModelCorrupt,
+                errors::NOTES_LOCAL_PACK_MISSING,
+                "notesLocalPackMissing",
+            ),
         ];
         for (error, constant, literal) in table {
             // Không dùng `_`: thêm biến thể mà quên ở đây thì không biên dịch được.
@@ -138,6 +154,7 @@ mod tests {
                 | NotesError::Cloud(_)
                 | NotesError::BadResponse
                 | NotesError::Cancelled
+                | NotesError::ModelCorrupt
                 | NotesError::Engine(_) => {}
             }
             assert_eq!(error.code(), constant, "{error:?}");

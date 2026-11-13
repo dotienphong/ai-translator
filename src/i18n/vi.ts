@@ -762,7 +762,7 @@ export const vi: Record<MessageKey, string> = {
   "error.notesSessionRunning": "Dừng dịch rồi mới tạo ghi chú cho phiên này.",
   "error.notesEmpty": "Phiên này chưa có câu nào để ghi chú.",
   "error.notesFreeUsedUp": "Bạn đã dùng hết 3 lần tạo ghi chú của bản dùng thử. Nâng cấp để dùng tiếp.",
-  "error.notesLocalUnavailable": "Chưa có model ghi chú trên máy. Chọn ChatGPT hay Gemini, hoặc tải gói ghi chú.",
+  "error.notesLocalUnavailable": "Máy này không dùng được model trên máy cho ghi chú. Chọn một model cloud ở Cài đặt > Model.",
   "error.notesConsentRequired": "Cần bạn đồng ý gửi nội dung phiên tới nhà cung cấp đã chọn.",
   "error.notesKeyMissing": "Chưa có API key cho nguồn đã chọn.",
   "error.notesOffline": "Không kết nối được tới nhà cung cấp. Kiểm tra mạng rồi thử lại.",
@@ -772,4 +772,7 @@ export const vi: Record<MessageKey, string> = {
   "error.notesCloudFailed": "Nhà cung cấp trả lỗi. Thử lại sau.",
   "error.notesEngineFailed": "Không tạo được ghi chú. Thử lại.",
   "error.notesCancelled": "Đã hủy.",
+  "error.notesLocalPackMissing": "Chưa tải gói ghi chú trên máy. Tải gói rồi thử lại.",
+  "error.notesLocalSessionActive": "Đang dịch nên chưa tạo ghi chú bằng model trên máy được. Dừng phiên rồi thử lại.",
+  "error.notesPausedForSession": "Đã tạm dừng tạo ghi chú vì phiên dịch bắt đầu. Tạo lại sau khi họp xong.",
 };

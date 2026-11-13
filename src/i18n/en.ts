@@ -763,7 +763,7 @@ export const en = {
   "error.notesSessionRunning": "Stop translating before creating notes for this session.",
   "error.notesEmpty": "This session has nothing to take notes from.",
   "error.notesFreeUsedUp": "You have used the 3 notes included in the trial. Upgrade to keep using it.",
-  "error.notesLocalUnavailable": "The on-device notes model is not available. Choose ChatGPT or Gemini, or download the notes pack.",
+  "error.notesLocalUnavailable": "This computer can't run the on-device notes model. Choose a cloud model in Settings > Model.",
   "error.notesConsentRequired": "Your consent is needed to send this session's text to the chosen provider.",
   "error.notesKeyMissing": "No API key is saved for the chosen provider.",
   "error.notesOffline": "Could not reach the provider. Check your connection and try again.",
@@ -773,6 +773,9 @@ export const en = {
   "error.notesCloudFailed": "The provider returned an error. Try again later.",
   "error.notesEngineFailed": "Could not create the notes. Try again.",
   "error.notesCancelled": "Cancelled.",
+  "error.notesLocalPackMissing": "The on-device notes pack isn't downloaded yet. Download it and try again.",
+  "error.notesLocalSessionActive": "A translation session is running, so notes can't be made with the on-device model. Stop the session and try again.",
+  "error.notesPausedForSession": "Notes generation was paused because a translation session started. Generate again after the meeting.",
 } as const;
 
 export type MessageKey = keyof typeof en;

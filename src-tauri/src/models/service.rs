@@ -184,6 +184,8 @@ pub struct NotesPack {
 /// Gói ghi chú đã tải xong: đường dẫn, SHA-256 theo manifest (engine chỉ chạy khi file băm ra đúng giá trị này) và cỡ ngữ cảnh.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NotesReady {
+    /// `id` của mục `notes` trong manifest: ghi chú đã tạo lưu nó làm tên model.
+    pub id: String,
     pub path: PathBuf,
     pub sha256: String,
     pub ctx: u32,
@@ -1332,6 +1334,7 @@ impl ModelService {
         let model = manifest.manifest.notes_model(&self.cfg.app_version)?;
         let pack = self.notes_pack_of(Some(&manifest.manifest), self.ram_mib());
         (pack.state == NotesPackState::Installed).then(|| NotesReady {
+            id: model.file.id.clone(),
             path: self.store.path(&model.file.file),
             sha256: model.file.sha256,
             ctx: model.ctx,
