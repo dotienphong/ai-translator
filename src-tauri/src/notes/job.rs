@@ -6,10 +6,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use serde::Serialize;
 
 use super::chunk::{self, PromptLine};
-use super::engine::{Format, Message, NotesEngine, NotesError, NotesRequest, Role};
+use super::engine::{Format, Message, NotesEngine, NotesError, NotesRequest, Role, Strategy};
 use super::prompt;
 use super::schema::{self, ActionItem, Item, MAX_SUMMARY_CHARS, Notes};
+use super::verify;
 use crate::settings::NotesTemplate;
+
+/// `max_tokens` của một lượt kiểm một việc (cấu hình `c16kx`): phán quyết chỉ vài chục token.
+const VERIFY_MAX_TOKENS: u32 = 140;
 
 /// Kết quả một lần dựng ghi chú.
 #[derive(Clone, Debug, PartialEq)]
@@ -21,6 +25,33 @@ pub struct Outcome {
     pub failed_chunks: usize,
     /// Có nhóm reduce phải gộp cơ học vì model không trả được JSON đúng hình.
     pub reduce_fallback: bool,
+    /// Số đếm của lượt kiểm việc cần làm (chỉ chiến lược `Verified`; `Standard` để mặc định).
+    pub verify: VerifyStats,
+}
+
+/// Số đếm của lượt kiểm việc cần làm.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct VerifyStats {
+    /// Số việc đã hỏi model.
+    pub checked: usize,
+    /// Số việc bị bỏ vì model nói không còn là việc cần làm.
+    pub dropped: usize,
+    /// Số việc được giữ mà `owner` hay `due` đổi so với bản map.
+    pub edited: usize,
+    /// Số việc giữ nguyên vì không đọc được phán quyết (kể cả sau khi thử lại).
+    pub unparsed: usize,
+    /// Số việc bị bỏ vì không có `refs`, không hỏi model.
+    pub no_refs: usize,
+}
+
+/// Một việc cần làm đưa vào prompt kiểm: một dòng JSON, khóa đúng thứ tự mẫu đã đo, `n` luôn là 1 (lô một việc).
+#[derive(Serialize)]
+struct VerifyItem<'a> {
+    n: u32,
+    text: &'a str,
+    owner: &'a str,
+    due: &'a str,
+    refs: &'a [u32],
 }
 
 /// Một lượt hỏi model (có thử lại một lần): ghi chú đọc được (nếu có) và chuỗi cuối cùng nhận được.
@@ -37,15 +68,17 @@ fn check_cancel(cancel: &AtomicBool) -> Result<(), NotesError> {
     }
 }
 
-/// Hỏi model một lần; JSON sai thì hỏi lại đúng một lần với `[user: prompt, assistant: chuỗi vừa nhận, user: FIX]`.
-/// Kiểm `cancel` trước mỗi lần gọi engine. Mọi `Err` của engine trả nguyên.
-fn ask(
+/// Hỏi model một lần; câu trả lời không đọc được (`parse` trả `None`) thì hỏi lại đúng một lần với
+/// `[user: prompt, assistant: chuỗi vừa nhận, user: FIX]`. Kiểm `cancel` trước mỗi lần gọi engine. Mọi `Err` của engine
+/// trả nguyên. Trả kết quả đọc được (nếu có) và chuỗi cuối cùng nhận được.
+fn ask_parsed<T>(
     engine: &dyn NotesEngine,
     cancel: &AtomicBool,
-    lines: &[PromptLine],
     prompt: String,
     max_tokens: u32,
-) -> Result<Asked, NotesError> {
+    format: Format,
+    parse: &dyn Fn(&str) -> Option<T>,
+) -> Result<(Option<T>, String), NotesError> {
     check_cancel(cancel)?;
     let mut messages = vec![Message {
         role: Role::User,
@@ -55,15 +88,12 @@ fn ask(
         &NotesRequest {
             messages: messages.clone(),
             max_tokens,
-            format: Format::Notes,
+            format,
         },
         cancel,
     )?;
-    if let Some((notes, _)) = schema::parse(&raw, lines) {
-        return Ok(Asked {
-            notes: Some(notes),
-            raw,
-        });
+    if let Some(parsed) = parse(&raw) {
+        return Ok((Some(parsed), raw));
     }
     check_cancel(cancel)?;
     messages.push(Message {
@@ -74,8 +104,28 @@ fn ask(
         role: Role::User,
         content: prompt::FIX.to_string(),
     });
-    let raw = engine.generate(&NotesRequest { messages, max_tokens, format: Format::Notes }, cancel)?;
-    let notes = schema::parse(&raw, lines).map(|(n, _)| n);
+    let raw = engine.generate(
+        &NotesRequest {
+            messages,
+            max_tokens,
+            format,
+        },
+        cancel,
+    )?;
+    Ok((parse(&raw), raw))
+}
+
+/// Hỏi model lấy ghi chú đủ bốn phần (`Format::Notes`), có thử lại một lần.
+fn ask(
+    engine: &dyn NotesEngine,
+    cancel: &AtomicBool,
+    lines: &[PromptLine],
+    prompt: String,
+    max_tokens: u32,
+) -> Result<Asked, NotesError> {
+    let (notes, raw) = ask_parsed(engine, cancel, prompt, max_tokens, Format::Notes, &|raw| {
+        schema::parse(raw, lines).map(|(n, _)| n)
+    })?;
     Ok(Asked { notes, raw })
 }
 
@@ -111,6 +161,12 @@ fn merge_mechanically(group: &[Notes], lines: &[PromptLine]) -> Notes {
         merged.action_items.extend(n.action_items.iter().cloned());
         merged.open_questions.extend(n.open_questions.iter().cloned());
     }
+    normalized(merged, lines)
+}
+
+/// Đưa ghi chú đã gộp qua `schema::parse` (trên toàn bộ `lines`) để giới hạn và `refs` được chuẩn hóa; không đọc được thì
+/// giữ phần tóm tắt dạng thô.
+fn normalized(merged: Notes, lines: &[PromptLine]) -> Notes {
     match schema::parse(&json_line(&merged), lines) {
         Some((notes, _)) => notes,
         None => raw_notes(merged.summary),
@@ -149,9 +205,13 @@ pub fn run(
         chunks: chunks.len(),
         failed_chunks: 0,
         reduce_fallback: false,
+        verify: VerifyStats::default(),
     };
     if chunks.is_empty() {
         return Ok(out);
+    }
+    if engine.strategy() == Strategy::Verified {
+        return run_verified(lines, target_lang, template, engine, cancel, progress, &chunks, out);
     }
     let total = if chunks.len() > 1 {
         chunks.len().saturating_add(1)
@@ -227,6 +287,141 @@ pub fn run(
     Ok(out)
 }
 
+/// Chiến lược `Verified` (model local, cấu hình `c16kx` của bench): map chặt từng đoạn, gộp cơ học các bản, một lượt chỉ để
+/// viết tóm tắt chung, rồi kiểm từng việc cần làm với các câu quanh `refs` của nó.
+///
+/// - Việc không có `refs` bị bỏ, không hỏi model. Phán quyết không đọc được thì giữ việc. `text` của việc không bao giờ đổi.
+/// - `owner` mới chỉ nhận khi có thật trong cuộc họp; `due` mới có chữ CJK trong ghi chú không viết bằng zh/ja/ko thì giữ
+///   `due` cũ.
+/// - `progress`: `total` là số đoạn, cộng 1 nếu có lượt tóm tắt, cộng số việc có `refs` (tính lại sau khi gộp xong).
+#[allow(clippy::too_many_arguments)]
+fn run_verified(
+    lines: &[PromptLine],
+    target_lang: &str,
+    template: NotesTemplate,
+    engine: &dyn NotesEngine,
+    cancel: &AtomicBool,
+    progress: &mut dyn FnMut(usize, usize),
+    chunks: &[Vec<PromptLine>],
+    mut out: Outcome,
+) -> Result<Outcome, NotesError> {
+    let limits = engine.limits();
+    let mut total = chunks.len().saturating_add(usize::from(chunks.len() > 1));
+    let mut done = 0usize;
+    let mut tick = |done: &mut usize, total: usize| {
+        *done = done.saturating_add(1);
+        progress((*done).min(total), total);
+    };
+
+    let mut parts: Vec<Notes> = Vec::new();
+    let mut last_raw = String::new();
+    for c in chunks {
+        let p = prompt::map_strict(template, target_lang, &chunk::render(c));
+        let asked = ask(engine, cancel, lines, p, limits.max_map)?;
+        match asked.notes {
+            Some(n) => parts.push(n),
+            None => out.failed_chunks = out.failed_chunks.saturating_add(1),
+        }
+        last_raw = asked.raw;
+        tick(&mut done, total);
+    }
+    if parts.is_empty() {
+        out.notes = raw_notes(last_raw);
+        return Ok(out);
+    }
+
+    // Gộp: một bản dùng luôn; nhiều bản thì gộp cơ học rồi để model chỉ viết lại phần tóm tắt.
+    let summarize = parts.len() > 1;
+    let mut notes = if summarize {
+        normalized(verify::merge_items(&parts), lines)
+    } else {
+        parts.swap_remove(0)
+    };
+    if notes.raw {
+        out.notes = notes;
+        return Ok(out);
+    }
+    let with_refs = notes.action_items.iter().filter(|a| !a.refs.is_empty()).count();
+    total = chunks
+        .len()
+        .saturating_add(usize::from(summarize))
+        .saturating_add(with_refs);
+    if summarize {
+        let summaries: Vec<String> = parts
+            .iter()
+            .map(|n| serde_json::to_string(&n.summary).unwrap_or_default())
+            .collect();
+        let (summary, _) = ask_parsed(
+            engine,
+            cancel,
+            prompt::reduce_summary(target_lang, &summaries.join("\n")),
+            limits.max_reduce,
+            Format::Summary,
+            &verify::parse_summary,
+        )?;
+        match summary {
+            Some(s) => notes.summary = s.chars().take(MAX_SUMMARY_CHARS).collect(),
+            None => out.reduce_fallback = true,
+        }
+        tick(&mut done, total);
+    }
+
+    // Kiểm từng việc cần làm.
+    let cjk_target = matches!(target_lang, "zh" | "ja" | "ko");
+    let mut kept: Vec<ActionItem> = Vec::new();
+    for item in std::mem::take(&mut notes.action_items) {
+        if item.refs.is_empty() {
+            out.verify.no_refs = out.verify.no_refs.saturating_add(1);
+            continue;
+        }
+        out.verify.checked = out.verify.checked.saturating_add(1);
+        let item_json = serde_json::to_string(&VerifyItem {
+            n: 1,
+            text: &item.text,
+            owner: &item.owner,
+            due: &item.due,
+            refs: &item.refs,
+        })
+        .unwrap_or_default();
+        let ask_text = prompt::verify(target_lang, &chunk::render_verify(lines, &item.refs, 1), &item_json);
+        let (verdict, _) = ask_parsed(
+            engine,
+            cancel,
+            ask_text,
+            VERIFY_MAX_TOKENS,
+            Format::Verdict,
+            &verify::parse_verdict,
+        )?;
+        tick(&mut done, total);
+        match verdict {
+            None => {
+                out.verify.unparsed = out.verify.unparsed.saturating_add(1);
+                kept.push(item);
+            }
+            Some(v) if !v.keep => out.verify.dropped = out.verify.dropped.saturating_add(1),
+            Some(v) => {
+                let owner = if verify::owner_known(&v.owner, lines) {
+                    v.owner.trim().to_string()
+                } else {
+                    String::new()
+                };
+                let due = if !cjk_target && verify::has_cjk(&v.due) {
+                    item.due.clone()
+                } else {
+                    v.due.trim().to_string()
+                };
+                if owner != item.owner || due != item.due {
+                    out.verify.edited = out.verify.edited.saturating_add(1);
+                }
+                kept.push(ActionItem { owner, due, ..item });
+            }
+        }
+    }
+    notes.action_items = kept;
+    out.notes = notes;
+    Ok(out)
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -236,7 +431,7 @@ mod tests {
 
     use super::*;
     use crate::notes::chunk::PromptLine;
-    use crate::notes::engine::{Limits, NotesEngine, NotesError, NotesRequest, Role};
+    use crate::notes::engine::{Format, Limits, NotesEngine, NotesError, NotesRequest, Role, Strategy};
     use crate::notes::schema::Notes;
     use crate::settings::NotesTemplate;
 
@@ -257,6 +452,9 @@ mod tests {
         budget: usize,
         replies: RefCell<VecDeque<Result<String, NotesError>>>,
         seen: RefCell<Vec<NotesRequest>>,
+        strategy: Strategy,
+        /// Bật cờ hủy ngay trong lần gọi `generate` thứ n (đếm từ 1).
+        cancel_on_call: Option<usize>,
     }
     impl NotesEngine for Scripted {
         fn limits(&self) -> Limits {
@@ -269,8 +467,14 @@ mod tests {
         fn count_tokens(&self, text: &str) -> usize {
             count(text)
         }
-        fn generate(&self, req: &NotesRequest, _cancel: &AtomicBool) -> Result<String, NotesError> {
+        fn strategy(&self) -> Strategy {
+            self.strategy
+        }
+        fn generate(&self, req: &NotesRequest, cancel: &AtomicBool) -> Result<String, NotesError> {
             self.seen.borrow_mut().push(req.clone());
+            if self.cancel_on_call == Some(self.seen.borrow().len()) {
+                cancel.store(true, Ordering::SeqCst);
+            }
             self.replies
                 .borrow_mut()
                 .pop_front()
@@ -297,8 +501,37 @@ mod tests {
             budget,
             replies: RefCell::new(replies.iter().map(|r| r.clone().map(str::to_string)).collect()),
             seen: RefCell::new(Vec::new()),
+            strategy: Strategy::Standard,
+            cancel_on_call: None,
         };
         let r = run(lines, "vi", NotesTemplate::Meeting, &engine, cancel, progress);
+        (r, engine.seen.into_inner())
+    }
+
+    /// Chạy chiến lược `Verified` với ngôn ngữ đích `lang`; `cancel_on_call` bật cờ hủy trong lần gọi engine thứ n.
+    fn go_verified(
+        lang: &str,
+        budget: usize,
+        lines: &[PromptLine],
+        replies: &[Result<&str, NotesError>],
+        cancel_on_call: Option<usize>,
+        progress: &mut dyn FnMut(usize, usize),
+    ) -> (Result<Outcome, NotesError>, Vec<NotesRequest>) {
+        let engine = Scripted {
+            budget,
+            replies: RefCell::new(replies.iter().map(|r| r.clone().map(str::to_string)).collect()),
+            seen: RefCell::new(Vec::new()),
+            strategy: Strategy::Verified,
+            cancel_on_call,
+        };
+        let r = run(
+            lines,
+            lang,
+            NotesTemplate::Meeting,
+            &engine,
+            &AtomicBool::new(false),
+            progress,
+        );
         (r, engine.seen.into_inner())
     }
     fn go_with(
@@ -526,5 +759,217 @@ mod tests {
         assert_eq!(progress.len(), 9);
         assert!(progress.iter().all(|&(d, t)| t == 6 && d <= t));
         assert_eq!(progress.last(), Some(&(6, 6)));
+    }
+
+    // ---- Chiến lược `Verified` (model local) ----
+
+    fn ln(seq: u32, who: Option<&str>, text: &str, source: Option<&str>) -> PromptLine {
+        PromptLine {
+            seq,
+            speaker: who.map(str::to_string),
+            text: text.into(),
+            source: source.map(str::to_string),
+        }
+    }
+    /// Một bản map có đúng các việc cần làm cho trước: mỗi việc là `(text, due, refs)`.
+    fn map_with(actions: &[(&str, &str, &[u32])]) -> String {
+        let items: Vec<String> = actions
+            .iter()
+            .map(|(text, due, refs)| {
+                let r = format!("{refs:?}").replace(' ', "");
+                format!(r#"{{"text":"{text}","owner":"","due":"{due}","refs":{r}}}"#)
+            })
+            .collect();
+        format!(
+            r#"{{"summary":"s","decisions":[],"action_items":[{}],"open_questions":[]}}"#,
+            items.join(",")
+        )
+    }
+    const KEEP_MINH: &str = r#"{"items":[{"n":1,"keep":true,"owner":"Minh","due":"thứ Sáu"}]}"#;
+    const DROP: &str = r#"{"items":[{"n":1,"keep":false,"owner":"","due":""}]}"#;
+    const KEEP_PLAIN: &str = r#"{"items":[{"n":1,"keep":true,"owner":"","due":""}]}"#;
+
+    fn four_lines() -> Vec<PromptLine> {
+        vec![
+            ln(1, Some("Minh"), "Tôi gửi báo cáo", Some("I'll send the report")),
+            ln(2, Some("Lan"), "Đặt phòng giúp tôi", None),
+            ln(3, None, "Được", None),
+            ln(4, None, "UNIQUE4", None),
+        ]
+    }
+
+    #[test]
+    fn verified_single_chunk_checks_each_action_item() {
+        let map = map_with(&[("gửi báo cáo", "", &[1]), ("đặt phòng", "", &[2])]);
+        let (r, seen) = go_verified(
+            "vi",
+            1000,
+            &four_lines(),
+            &[Ok(&map), Ok(KEEP_MINH), Ok(DROP)],
+            None,
+            &mut |_, _| {},
+        );
+        let r = r.unwrap();
+        assert_eq!(r.notes.action_items.len(), 1);
+        assert_eq!(
+            (r.notes.action_items[0].owner.as_str(), r.notes.action_items[0].due.as_str()),
+            ("Minh", "thứ Sáu")
+        );
+        assert_eq!(r.notes.action_items[0].text, "gửi báo cáo");
+        assert_eq!(
+            r.verify,
+            VerifyStats {
+                checked: 2,
+                dropped: 1,
+                edited: 1,
+                unparsed: 0,
+                no_refs: 0
+            }
+        );
+        assert_eq!(
+            seen.iter().map(|q| q.format).collect::<Vec<_>>(),
+            [Format::Notes, Format::Verdict, Format::Verdict]
+        );
+        assert_eq!(seen[1].max_tokens, 140);
+        let ask = &seen[1].messages[0].content;
+        assert!(ask.contains("[1] ") && !ask.contains("UNIQUE4"), "{ask}");
+    }
+
+    #[test]
+    fn verified_keeps_an_item_when_the_verdict_is_unreadable() {
+        let map = map_with(&[("gửi báo cáo", "", &[1])]);
+        let (r, seen) = go_verified("vi", 1000, &four_lines(), &[Ok(&map), Ok("rác"), Ok("rác")], None, &mut |_, _| {});
+        let r = r.unwrap();
+        assert_eq!(r.notes.action_items.len(), 1);
+        assert_eq!((r.verify.unparsed, r.verify.checked, r.verify.dropped), (1, 1, 0));
+        assert_eq!(seen.len(), 3);
+    }
+
+    #[test]
+    fn verified_drops_items_without_refs_without_asking() {
+        let map = map_with(&[("việc mồ côi", "", &[])]);
+        let (r, seen) = go_verified("vi", 1000, &four_lines(), &[Ok(&map)], None, &mut |_, _| {});
+        let r = r.unwrap();
+        assert!(r.notes.action_items.is_empty());
+        assert_eq!((r.verify.no_refs, r.verify.checked), (1, 0));
+        assert_eq!(seen.len(), 1);
+    }
+
+    #[test]
+    fn verified_clears_an_unknown_owner_and_ignores_a_cjk_due_for_vi() {
+        let map = map_with(&[("gửi báo cáo", "thứ 6", &[1])]);
+        let ghost = r#"{"items":[{"n":1,"keep":true,"owner":"Ghost","due":"金曜日"}]}"#;
+        let (r, _) = go_verified("vi", 1000, &four_lines(), &[Ok(&map), Ok(ghost)], None, &mut |_, _| {});
+        let item = &r.unwrap().notes.action_items[0];
+        assert_eq!((item.owner.as_str(), item.due.as_str()), ("", "thứ 6"));
+        let (r, _) = go_verified("ja", 1000, &four_lines(), &[Ok(&map), Ok(ghost)], None, &mut |_, _| {});
+        let item = &r.unwrap().notes.action_items[0];
+        assert_eq!((item.owner.as_str(), item.due.as_str()), ("", "金曜日"));
+    }
+
+    #[test]
+    fn verified_many_chunks_merges_mechanically_and_only_writes_a_summary() {
+        let p1 = r#"{"summary":"s1","decisions":[{"text":"d","refs":[1]}],"action_items":[],"open_questions":[]}"#;
+        let p2 = r#"{"summary":"s2","decisions":[{"text":" D ","refs":[2]}],"action_items":[],"open_questions":[]}"#;
+        let (r, seen) = go_verified(
+            "vi",
+            5,
+            &[pl(1, 4), pl(2, 4)],
+            &[Ok(p1), Ok(p2), Ok("bad"), Ok("bad")],
+            None,
+            &mut |_, _| {},
+        );
+        let r = r.unwrap();
+        assert_eq!(r.notes.decisions.len(), 1);
+        assert_eq!(r.notes.decisions[0].refs, vec![1, 2]);
+        assert!(r.reduce_fallback);
+        assert_eq!(r.notes.summary, "s1\ns2");
+        assert_eq!(
+            seen.iter().map(|q| q.format).collect::<Vec<_>>(),
+            [Format::Notes, Format::Notes, Format::Summary, Format::Summary]
+        );
+        assert_eq!(seen[2].max_tokens, 1500);
+        // lượt tóm tắt chỉ nhận chuỗi tóm tắt của từng bản, mỗi bản một dòng
+        assert!(seen[2].messages[0].content.ends_with("Parts:\n\"s1\"\n\"s2\""), "{}", seen[2].messages[0].content);
+    }
+
+    #[test]
+    fn verified_uses_the_model_summary_when_it_is_readable() {
+        let p1 = r#"{"summary":"s1","decisions":[],"action_items":[],"open_questions":[]}"#;
+        let p2 = r#"{"summary":"s2","decisions":[],"action_items":[],"open_questions":[]}"#;
+        let (r, _) = go_verified(
+            "vi",
+            5,
+            &[pl(1, 4), pl(2, 4)],
+            &[Ok(p1), Ok(p2), Ok(r#"{"summary": " Tóm tắt chung. "}"#)],
+            None,
+            &mut |_, _| {},
+        );
+        let r = r.unwrap();
+        assert_eq!((r.notes.summary.as_str(), r.reduce_fallback), ("Tóm tắt chung.", false));
+    }
+
+    #[test]
+    fn verified_progress_counts_chunks_summary_and_items() {
+        let a = map_with(&[("việc A", "", &[1]), ("việc B", "", &[1])]);
+        let b = map_with(&[("việc C", "", &[2])]);
+        let mut got: Vec<(usize, usize)> = Vec::new();
+        let (r, _) = go_verified(
+            "vi",
+            5,
+            &[pl(1, 4), pl(2, 4)],
+            &[
+                Ok(&a),
+                Ok(&b),
+                Ok(r#"{"summary":"chung"}"#),
+                Ok(KEEP_PLAIN),
+                Ok(KEEP_PLAIN),
+                Ok(KEEP_PLAIN),
+            ],
+            None,
+            &mut |d, t| got.push((d, t)),
+        );
+        r.unwrap();
+        assert_eq!(got.last(), Some(&(6, 6)), "{got:?}");
+        assert!(got.windows(2).all(|w| w[0].0 <= w[1].0), "done không giảm: {got:?}");
+        assert!(got.iter().all(|&(d, t)| d <= t), "done không vượt total: {got:?}");
+    }
+
+    #[test]
+    fn verified_stops_on_cancel_between_items() {
+        let map = map_with(&[("việc A", "", &[1]), ("việc B", "", &[2])]);
+        let (r, seen) = go_verified(
+            "vi",
+            1000,
+            &four_lines(),
+            &[Ok(&map), Ok(KEEP_PLAIN), Ok(KEEP_PLAIN)],
+            Some(2),
+            &mut |_, _| {},
+        );
+        assert_eq!(r.unwrap_err(), NotesError::Cancelled);
+        assert_eq!(seen.len(), 2);
+    }
+
+    #[test]
+    fn verified_engine_errors_stop_the_job() {
+        let map = map_with(&[("việc A", "", &[1])]);
+        let (r, _) = go_verified(
+            "vi",
+            1000,
+            &four_lines(),
+            &[Ok(&map), Err(NotesError::Engine("hỏng".into()))],
+            None,
+            &mut |_, _| {},
+        );
+        assert_eq!(r.unwrap_err(), NotesError::Engine("hỏng".into()));
+    }
+
+    #[test]
+    fn standard_strategy_is_unchanged() {
+        let (r, seen) = go(&[pl(1, 4), pl(2, 4), pl(3, 4)], &[Ok(OK1), Ok(OK2), Ok(ALL)]);
+        let r = r.unwrap();
+        assert!(seen.iter().all(|q| q.format == Format::Notes));
+        assert_eq!(r.verify, VerifyStats::default());
+        assert_eq!(seen.len(), 3);
     }
 }
