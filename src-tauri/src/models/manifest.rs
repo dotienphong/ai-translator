@@ -19,6 +19,9 @@
 //! - `tts` (spec 2026-11-02-doc-ban-dich-tts-design): gói model giọng đọc ở khóa gốc, nhiều file (đường dẫn tương đối trong
 //!   `models/tts`), không thuộc gói ASR nào. Đọc lỏng như `speaker`: mục sai hay cần app mới hơn thì chỉ mất giọng đọc
 //!   ([`Manifest::tts_pack`]); app cũ bỏ qua khóa lạ ở gốc.
+//! - `notes` (spec 2026-11-11-ghi-chu-cuoc-hop §4): gói model ghi chú cuộc họp chạy trên máy, một file ở khóa gốc, không thuộc
+//!   gói ASR nào. Đọc lỏng như `speaker`: mục sai hay cần app mới hơn thì chỉ mất ghi chú trên máy ([`Manifest::notes_model`]);
+//!   app cũ bỏ qua khóa lạ ở gốc. Thiếu mục này thì mọi thứ của ghi chú trên máy "ngủ".
 //!
 //! Khóa lạ trong phần thân bị bỏ qua (manifest mới hơn app); khóa thiếu là lỗi.
 
@@ -47,6 +50,9 @@ pub enum Kind {
     /// này trong `files` vẫn bị từ chối như với app cũ (test `an_unknown_kind_in_files_breaks_this_app`).
     #[serde(skip)]
     Speaker,
+    /// Model ghi chú cuộc họp (khóa gốc `notes`). Như `Speaker`: không bao giờ đọc từ `files`.
+    #[serde(skip)]
+    Notes,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,6 +158,9 @@ pub struct Manifest {
     /// Gói model giọng đọc, thô; đọc qua [`Manifest::tts_pack`].
     #[serde(default)]
     pub tts: Option<serde_json::Value>,
+    /// Mục gói ghi chú cuộc họp, thô; đọc qua [`Manifest::notes_model`].
+    #[serde(default)]
+    pub notes: Option<serde_json::Value>,
 }
 
 /// Trường đầu tiên không hợp lệ, dạng `files[2].sha256`.
@@ -241,6 +250,32 @@ struct SpeakerEntry {
     sha256: String,
     license_id: String,
     min_app_version: String,
+}
+
+/// Model ghi chú không lớn hơn chừng này (Qwen3.5-4B Q4_K_M: 2,55 GiB).
+pub const MAX_NOTES_BYTES: u64 = 4 << 30;
+
+/// Mục `notes` của manifest (spec 2026-11-11-ghi-chu-cuoc-hop §4).
+#[derive(Deserialize)]
+struct NotesEntry {
+    id: String,
+    version: String,
+    file: String,
+    url: String,
+    bytes: u64,
+    sha256: String,
+    license_id: String,
+    min_app_version: String,
+    min_ram_mib: u64,
+    ctx: u32,
+}
+
+/// Gói ghi chú đã đọc: file model, RAM tối thiểu của máy và cỡ ngữ cảnh `llama-server` phải mở.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NotesModel {
+    pub file: FileEntry,
+    pub min_ram_mib: u64,
+    pub ctx: u32,
 }
 
 /// Một file model giọng đọc không lớn hơn chừng này (backbone int8/fp32 của VieNeu v3 Turbo: 415 MB).
@@ -503,6 +538,73 @@ impl Manifest {
         })
     }
 
+    /// Gói ghi chú cho app bản `app_version`. `None` khi không có khóa, mục sai (ghi log), hay cần app mới hơn.
+    pub fn notes_model(&self, app_version: &str) -> Option<NotesModel> {
+        let value = self.notes.as_ref()?;
+        let model = match self.notes_entry(value) {
+            Ok(model) => model,
+            Err(field) => {
+                log::warn!("manifest: mục `notes.{field}` không hợp lệ, bỏ qua ghi chú trên máy");
+                return None;
+            }
+        };
+        (version(&model.file.min_app_version)? <= version(app_version)?).then_some(model)
+    }
+
+    fn notes_entry(&self, value: &serde_json::Value) -> Result<NotesModel, String> {
+        let e: NotesEntry = serde_json::from_value(value.clone()).map_err(|_| "json".to_string())?;
+        let speaker_taken = |taken: &dyn Fn(&serde_json::Value) -> bool| self.speaker.as_ref().is_some_and(taken);
+        let checks = [
+            (
+                "id",
+                is_id(&e.id, 64)
+                    && !self.files.iter().any(|f| f.id == e.id)
+                    && !speaker_taken(&|s| s.get("id").and_then(|v| v.as_str()) == Some(e.id.as_str())),
+            ),
+            ("version", !e.version.is_empty() && e.version.len() <= 32),
+            (
+                "file",
+                is_safe_file_name(&e.file)
+                    && !self.files.iter().any(|f| f.file.eq_ignore_ascii_case(&e.file))
+                    && !speaker_taken(&|s| {
+                        s.get("file")
+                            .and_then(|v| v.as_str())
+                            .is_some_and(|f| f.eq_ignore_ascii_case(&e.file))
+                    }),
+            ),
+            ("url", is_model_url(&e.url)),
+            ("bytes", e.bytes > 0 && e.bytes <= MAX_NOTES_BYTES),
+            ("sha256", is_sha256(&e.sha256)),
+            (
+                "license_id",
+                !e.license_id.trim().is_empty() && e.license_id.len() <= 64,
+            ),
+            ("min_app_version", version(&e.min_app_version).is_some()),
+            ("min_ram_mib", (8192..=65536).contains(&e.min_ram_mib)),
+            ("ctx", (8192..=32768).contains(&e.ctx)),
+        ];
+        if let Some((field, _)) = checks.iter().find(|(_, ok)| !ok) {
+            return Err((*field).to_string());
+        }
+        Ok(NotesModel {
+            file: FileEntry {
+                id: e.id,
+                tier: Vec::new(),
+                kind: Kind::Notes,
+                version: e.version,
+                file: e.file,
+                url: e.url,
+                bytes: e.bytes,
+                sha256: e.sha256,
+                license_id: e.license_id,
+                min_app_version: e.min_app_version,
+                prompt: None,
+            },
+            min_ram_mib: e.min_ram_mib,
+            ctx: e.ctx,
+        })
+    }
+
     /// Ngưỡng của nhận giọng: mặc định, đè bằng `speaker_config` nếu đọc được và hợp lệ (`SpeakerConfig::validate`, cùng luật
     /// worker dùng).
     pub fn speaker_config(&self) -> SpeakerConfig {
@@ -701,6 +803,61 @@ pub(crate) mod tests {
         });
         let m = parse(&value).unwrap();
         assert_eq!(m.files_of("standard").len(), 4);
+    }
+
+    /// Mục `notes` hợp lệ (gói ghi chú Qwen3.5-4B Q4_K_M).
+    fn notes_entry(min_app_version: &str) -> Value {
+        json!({
+            "id": "notes-qwen35-4b", "version": "1", "file": "Qwen3.5-4B-Q4_K_M.gguf",
+            "url": "notes/00fe7986ff5f/Qwen3.5-4B-Q4_K_M.gguf", "bytes": 2_740_937_888u64,
+            "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+            "license_id": "Apache-2.0", "min_app_version": min_app_version,
+            "min_ram_mib": 15360, "ctx": 16384
+        })
+    }
+
+    /// Spec 2026-11-11-ghi-chu-cuoc-hop §4: gói ghi chú ở khóa gốc `notes`, chỉ dùng khi app đủ mới.
+    #[test]
+    fn the_notes_entry_is_read_when_valid_and_new_enough() {
+        let mut value = sample();
+        value["notes"] = notes_entry("0.3.0");
+        let m = parse(&value).unwrap();
+        let n = m.notes_model("0.3.0").unwrap();
+        assert_eq!(
+            (n.file.kind, n.min_ram_mib, n.ctx, n.file.bytes),
+            (Kind::Notes, 15360, 16384, 2_740_937_888)
+        );
+        assert!(n.file.tier.is_empty());
+        assert_eq!(m.notes_model("0.2.9"), None);
+        assert_eq!(parse(&sample()).unwrap().notes_model("9.0.0"), None, "manifest không có khóa");
+    }
+
+    /// Mục sai chỉ làm mất ghi chú trên máy; manifest và các gói vẫn dùng được.
+    #[test]
+    fn a_bad_notes_entry_only_loses_local_notes() {
+        for (field, bad) in [
+            ("ctx", json!(2048)),
+            ("min_ram_mib", json!(1024)),
+            ("sha256", json!("abc")),
+            ("bytes", json!(5u64 << 30)),
+            ("url", json!("http://khong-an-toan/x.gguf")),
+            ("id", json!("silero-vad")),
+            ("file", json!("silero_vad_v6.2.3.onnx")),
+        ] {
+            let mut value = sample();
+            value["notes"] = notes_entry("0.3.0");
+            value["notes"][field] = bad;
+            let m = parse(&value).unwrap();
+            assert_eq!(m.notes_model("9.9.9"), None, "{field}");
+            assert_eq!(m.files_of("standard").len(), 4);
+        }
+    }
+
+    #[test]
+    fn a_notes_kind_inside_files_is_still_refused() {
+        let mut value = sample();
+        value["files"][0]["kind"] = json!("notes");
+        assert!(parse(&value).is_err());
     }
 
     /// Vì sao không đưa model nhúng giọng vào `files`: một `kind` lạ làm app hiện tại từ chối cả manifest.
