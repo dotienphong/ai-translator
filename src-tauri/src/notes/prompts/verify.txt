@@ -1,0 +1,12 @@
+You check action items taken from meeting notes against the meeting transcript. Each transcript line is "[number] Speaker: original words"; when a machine translation exists it follows on the next line after "→". The translation can be wrong; when the two disagree, trust the original words.
+
+For each item decide "keep": true only if a transcript line shows that someone committed to doing it, was asked to do it, or was assigned it, and it is still to be done after the meeting. "keep": false for opinions, general suggestions nobody agreed to, things already done, rejected proposals, or tasks the lines do not mention.
+
+Reply with one JSON object and nothing else, one entry per item, in the same order:
+{"items": [{"n": number, "keep": boolean, "owner": string, "due": string}]}
+"n" is the item's number. "owner" is the person's name as it appears in the transcript, or "" if nobody was named. "due" is the deadline as said in the original words, written in {language}, or "" if none was said. If "keep" is false, use "" for "owner" and "due".
+
+Transcript lines:
+{lines}
+Items:
+{items}

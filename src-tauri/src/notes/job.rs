@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use serde::Serialize;
 
 use super::chunk::{self, PromptLine};
-use super::engine::{Message, NotesEngine, NotesError, NotesRequest, Role};
+use super::engine::{Format, Message, NotesEngine, NotesError, NotesRequest, Role};
 use super::prompt;
 use super::schema::{self, ActionItem, Item, MAX_SUMMARY_CHARS, Notes};
 use crate::settings::NotesTemplate;
@@ -55,6 +55,7 @@ fn ask(
         &NotesRequest {
             messages: messages.clone(),
             max_tokens,
+            format: Format::Notes,
         },
         cancel,
     )?;
@@ -73,7 +74,7 @@ fn ask(
         role: Role::User,
         content: prompt::FIX.to_string(),
     });
-    let raw = engine.generate(&NotesRequest { messages, max_tokens }, cancel)?;
+    let raw = engine.generate(&NotesRequest { messages, max_tokens, format: Format::Notes }, cancel)?;
     let notes = schema::parse(&raw, lines).map(|(n, _)| n);
     Ok(Asked { notes, raw })
 }

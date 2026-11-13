@@ -23,6 +23,25 @@ pub struct Message {
 pub struct NotesRequest {
     pub messages: Vec<Message>,
     pub max_tokens: u32,
+    /// Dạng câu trả lời mong đợi. Cloud không đọc; engine local chọn khuôn đầu ra theo nó.
+    pub format: Format,
+}
+
+/// Dạng câu trả lời của một yêu cầu: ghi chú đủ bốn phần, riêng bản tóm tắt (`{"summary": …}`), hay kết luận kiểm một việc
+/// cần làm (`{"items": [{"n", "keep", "owner", "due"}]}`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Format {
+    Notes,
+    Summary,
+    Verdict,
+}
+
+/// Cách `job::run` dựng ghi chú: `Standard` là map rồi reduce bằng model (cloud); `Verified` là map chặt, gộp cơ học,
+/// reduce chỉ để tóm tắt và kiểm từng việc cần làm (model local).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Strategy {
+    Standard,
+    Verified,
 }
 
 /// Giới hạn của engine: `budget` là ngân sách token cho phần chữ của một đoạn map (và của một nhóm reduce),
@@ -79,6 +98,10 @@ pub trait NotesEngine: Send {
     fn limits(&self) -> Limits;
     fn count_tokens(&self, text: &str) -> usize;
     fn generate(&self, req: &NotesRequest, cancel: &AtomicBool) -> Result<String, NotesError>;
+    /// Cách dựng ghi chú hợp với engine này; mặc định (cloud) là `Standard`.
+    fn strategy(&self) -> Strategy {
+        Strategy::Standard
+    }
 }
 
 #[cfg(test)]

@@ -21,6 +21,7 @@ pub mod render;
 pub mod schema;
 pub mod service;
 pub mod store;
+pub mod verify;
 
 /// Cài dịch vụ ghi chú với engine thật. Gọi một lần ở `setup`.
 pub fn install<R: Runtime>(app: &AppHandle<R>) {
@@ -114,6 +115,7 @@ mod tests {
         ("schema.rs", include_str!("schema.rs")),
         ("service.rs", include_str!("service.rs")),
         ("store.rs", include_str!("store.rs")),
+        ("verify.rs", include_str!("verify.rs")),
     ];
 
     /// Phần mã chạy thật của một file: bỏ từ `mod tests` trở đi (test được phép dựng bản chép lời giả và gọi những thứ này).

@@ -262,6 +262,7 @@ mod tests {
         NotesRequest {
             messages: vec![m(Role::User, "p"), m(Role::Assistant, "a"), m(Role::User, "f")],
             max_tokens: 800,
+            format: crate::notes::engine::Format::Notes,
         }
     }
 

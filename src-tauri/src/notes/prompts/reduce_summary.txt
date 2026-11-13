@@ -1,0 +1,6 @@
+Below are short summaries of consecutive parts of one meeting, in order, one per line. Write one summary of the whole meeting in {language}: 4 to 8 sentences. Use only what the parts say.
+
+Reply with one JSON object and nothing else: {"summary": string}
+
+Parts:
+{parts}

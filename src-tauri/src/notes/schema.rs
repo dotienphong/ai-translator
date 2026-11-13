@@ -59,7 +59,7 @@ pub struct Stats {
 }
 
 /// Bỏ mọi khối `<think>…</think>`; khối mở mà không đóng (model bị cắt giữa lúc suy nghĩ) thì bỏ từ chỗ mở tới hết.
-fn strip_think(raw: &str) -> String {
+pub(super) fn strip_think(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut rest = raw;
     while let Some((before, after)) = rest.split_once("<think>") {
@@ -74,7 +74,7 @@ fn strip_think(raw: &str) -> String {
 }
 
 /// Đoạn từ `{` đầu tiên tới `}` khớp ngoặc của nó; ngoặc trong chuỗi JSON (có xét `\"`) không tính.
-fn extract_object(s: &str) -> Option<&str> {
+pub(super) fn extract_object(s: &str) -> Option<&str> {
     let start = s.find('{')?;
     let mut depth = 0usize;
     let mut in_string = false;
