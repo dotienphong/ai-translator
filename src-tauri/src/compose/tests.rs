@@ -379,15 +379,16 @@ fn logs_never_hold_what_was_typed() {
     );
 }
 
-/// Spec §1.2: chiều cao theo nội dung, trong khoảng 120–420 px.
+/// Spec §1.2: chiều cao theo nội dung, trong khoảng 80–420 px. Sàn phải thấp hơn chiều cao thật nhỏ nhất của khung (ô vừa mở,
+/// khoảng 103 px ở 16 px/rem): sàn cao hơn thì cửa sổ cao hơn khung và thừa một dải trong suốt ở dưới.
 #[test]
 fn the_height_stays_within_bounds() {
     let app = mock_app();
     let compose = window(&app, "compose");
-    for height in [50.0, 300.0, 9999.0] {
+    for height in [50.0, 104.0, 300.0, 9999.0] {
         invoke(&compose, "compose_resize", json!({ "height": height })).unwrap();
     }
-    assert_eq!(compose_calls(&app), ["height 120", "height 300", "height 420"]);
+    assert_eq!(compose_calls(&app), ["height 80", "height 104", "height 300", "height 420"]);
 }
 
 /// Spec §5: nút của hộp lỗi đóng ô soạn rồi mở cửa sổ chính ở đúng màn hình.

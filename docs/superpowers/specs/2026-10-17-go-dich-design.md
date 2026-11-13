@@ -38,7 +38,7 @@
 ### 1.2 Ô soạn
 
 - **Vị trí:** giữa màn hình đang có con trỏ chuột theo chiều ngang, mép trên cách đỉnh màn hình 25% chiều cao màn hình (kiểu Spotlight). Không kéo được, không nhớ vị trí.
-- **Kích thước:** rộng 560 px (logic); cao theo nội dung, từ 120 tới 420 px.
+- **Kích thước:** rộng 560 px (logic); cao theo nội dung, từ 80 tới 420 px (sàn 80 thấp hơn chiều cao thật nhỏ nhất của khung, khoảng 103 px, để cửa sổ trong suốt không cao hơn khung; sàn 120 từng để thừa một dải trong suốt ở dưới ô vừa mở).
 - **Nổi trên mọi cửa sổ**, kể cả app đang toàn màn hình, như thanh phụ đề (§4.4 của spec gốc).
 - **Giao diện:** theo cài đặt sáng/tối và ngôn ngữ giao diện của app.
 - **Nội dung, từ trên xuống:**

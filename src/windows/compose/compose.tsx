@@ -68,7 +68,7 @@ function Compose() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
-  // Chiều cao cửa sổ theo nội dung, mỗi khung hình nhiều nhất một lần; phía Rust giữ trong khoảng 120–420 px.
+  // Chiều cao cửa sổ theo nội dung, mỗi khung hình nhiều nhất một lần; phía Rust giữ trong khoảng 80–420 px.
   useEffect(() => {
     const el = root.current;
     if (!el) return;

@@ -48,8 +48,10 @@ pub const LABEL: &str = "compose";
 /// Chữ gõ dài tối đa, tính theo ký tự: giới hạn dữ liệu từ giao diện (spec §1.2; §10.2 của spec gốc).
 pub const MAX_TEXT_CHARS: usize = 4000;
 /// Bề rộng và chiều cao của ô soạn, px logic (spec §1.2). Giao diện xin đổi chiều cao theo nội dung, trong khoảng này.
+/// `MIN_HEIGHT` chỉ là sàn chống số đo bất thường và phải thấp hơn chiều cao thật nhỏ nhất của khung (ô vừa mở, khoảng 103 px):
+/// cao hơn thì cửa sổ trong suốt cao hơn khung và thừa một dải trong suốt ở dưới.
 pub const WIDTH: f64 = 560.0;
-pub const MIN_HEIGHT: f64 = 120.0;
+pub const MIN_HEIGHT: f64 = 80.0;
 pub const MAX_HEIGHT: f64 = 420.0;
 
 /// Thao tác trên cửa sổ ô soạn và với hệ điều hành. Bản thật ở `native_macos.rs`, `native_windows.rs` (kế hoạch 03); test dùng
