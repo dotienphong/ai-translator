@@ -1,4 +1,4 @@
-import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, notesDemo, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
@@ -7,6 +7,19 @@ const VIDEO_ITEMS = [
   { kind: "typing", text: `Gõ dịch chuyển câu trả lời tiếng Việt thành tiếng Anh để gửi tin nhắn. Video ${videoMeta("vi", "typing").seconds} giây, có tiếng.`, label: "Video demo AI Translator: Gõ dịch", fallback: "Tải video (MP4, 1 MB)" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
+
+// Chữ mẫu của hình minh họa ở tab Ghi chú (không phải ảnh chụp app; xem notesDemo trong components.mjs).
+const NOTES_MOCK = {
+  doc: "Ghi chú cuộc họp",
+  badge: "Bản nháp",
+  note: "Minh họa màn hình Ghi chú cuộc họp: bốn khối Tóm tắt, Quyết định, Việc cần làm và Câu hỏi mở, kèm nhãn Bản nháp vì ghi chú do AI viết nên cần kiểm lại.",
+  sections: [
+    { k: "Tóm tắt", items: ["Nhóm chốt đưa bản thử nghiệm cho hai khách hàng trước, dự toán ngân sách gửi trước thứ Sáu."] },
+    { k: "Quyết định", items: ["Chạy bản thử nghiệm với hai khách hàng đầu tiên."] },
+    { k: "Việc cần làm", items: ["Lan gửi bản dự toán ngân sách trước thứ Sáu.", "Minh chuẩn bị danh sách hai khách hàng dùng thử."] },
+    { k: "Câu hỏi mở", items: ["Có cần thêm một buổi xem lại tiến độ trước khi phát hành không?"] },
+  ],
+};
 
 export const HOME_FAQ = [
   {
@@ -43,8 +56,8 @@ export default {
   description:
     "Phụ đề dịch trực tiếp cho họp Zoom, Teams, Meet, livestream, YouTube, video; Gõ dịch tin nhắn sang tiếng người bên kia. AI chạy trên máy, âm thanh không lên cloud.",
   software: true,
-  modified: "2026-10-27",
-  llm: "Trang chủ: AI Translator là gì, dịch cuộc họp và livestream bằng phụ đề, Gõ dịch tin nhắn, xem lại lịch sử bản chép lời, hướng dẫn sử dụng bốn bước, dữ liệu ở lại trên máy, bảng giá và câu hỏi thường gặp.",
+  modified: "2026-11-14",
+  llm: "Trang chủ: AI Translator là gì, dịch cuộc họp và livestream bằng phụ đề, ghi chú cuộc họp (tóm tắt, quyết định, việc cần làm), Gõ dịch tin nhắn, xem lại lịch sử bản chép lời, hướng dẫn sử dụng bốn bước, dữ liệu ở lại trên máy, bảng giá và câu hỏi thường gặp.",
   llmTitle: "AI Translator: trang chủ",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
@@ -85,7 +98,7 @@ ${demo({
 </div></section>
 
 <section class="section" id="tinh-nang-chinh"><div class="container">
-${sectionHead({ eyebrow: "Tính năng chính", title: "Dịch họp, Gõ dịch, xem lại lịch sử", center: true })}
+${sectionHead({ eyebrow: "Tính năng chính", title: "Dịch họp, ghi chú, Gõ dịch và lịch sử", center: true })}
 ${featureTabs({
   listLabel: "Chọn tính năng",
   tabs: [
@@ -99,10 +112,24 @@ ${featureTabs({
         "Năm ngôn ngữ, dịch qua lại mọi chiều: Anh, Trung, Nhật, Hàn, Việt; tự nhận diện ngôn ngữ đang nói",
         `Phụ đề hiện sau khi người nói dừng câu: trung vị dưới 1,1 giây trên Mac M4 Pro (gói model Chuẩn), máy khác có thể chậm hơn (<a href="/tinh-nang/">chi tiết</a>)`,
         `Dùng với Zoom, Teams, Meet, Zalo; họp tại chỗ qua nguồn <strong>Micro</strong> (<a href="/tinh-nang/#micro">cách dùng</a>); livestream xem trên máy tính (<a href="/giai-phap/dich-livestream/">dịch livestream</a>)`,
-        `Ghi chú cuộc họp: tóm tắt, quyết định, việc cần làm sau mỗi buổi họp (<a href="/tinh-nang/#meeting-notes">chi tiết</a>)`,
       ],
       cta: { href: "/tinh-nang/", label: "Xem tất cả tính năng" },
       media: demoVideo({ lang: "vi", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "ghi-chu",
+      icon: "file",
+      label: "Ghi chú cuộc họp",
+      title: "Họp xong, có ngay tóm tắt, quyết định và việc cần làm",
+      lead: "Dừng phiên dịch rồi bấm tạo ghi chú: AI đọc bản chép lời và viết ra bốn khối Tóm tắt, Quyết định, Việc cần làm và Câu hỏi mở. Mỗi ý dẫn về đúng câu gốc để bạn đối chiếu.",
+      bullets: [
+        "Bản nháp do AI viết, nên kiểm lại trước khi gửi; sửa tay được ngay trong app",
+        "Chỉ tạo <strong>sau khi dừng phiên</strong>: app không tóm tắt trong lúc họp",
+        `Dùng model bạn đã chọn ở Cài đặt › Model: trên máy (mặc định, chữ chép lời không rời máy) hoặc ChatGPT, Gemini, DeepSeek bằng khóa API của bạn (<a href="/tinh-nang/#meeting-notes">cách hoạt động</a>)`,
+        "Gói trả phí không giới hạn; gói Free tạo được 3 lần trong thời gian dùng thử; không trừ thời lượng dịch",
+      ],
+      cta: { href: "/tinh-nang/#meeting-notes", label: "Xem chi tiết Ghi chú cuộc họp" },
+      media: notesDemo(NOTES_MOCK),
     },
     {
       id: "go-dich",

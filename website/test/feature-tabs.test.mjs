@@ -34,13 +34,13 @@ after(async () => {
   rmSync(DIST, { recursive: true, force: true });
 });
 
-const EN_IDS = ["meeting-translation", "type-and-translate", "history"];
+const EN_IDS = ["meeting-translation", "meeting-notes", "type-and-translate", "history"];
 const PAGES = [
-  { lang: "vi", path: "/", ids: ["dich-cuoc-hop", "go-dich", "lich-su"], tabs: ["Dịch họp", "Gõ dịch", "Lịch sử"] },
-  { lang: "en", path: "/en/", ids: EN_IDS, tabs: ["Meetings", "Type & Translate", "History"] },
-  { lang: "ja", path: "/ja/", ids: EN_IDS, tabs: ["会議の翻訳", "入力翻訳", "履歴"] },
-  { lang: "zh", path: "/zh/", ids: EN_IDS, tabs: ["会议翻译", "输入翻译", "历史记录"] },
-  { lang: "ko", path: "/ko/", ids: EN_IDS, tabs: ["회의 번역", "입력 번역", "기록"] },
+  { lang: "vi", path: "/", ids: ["dich-cuoc-hop", "ghi-chu", "go-dich", "lich-su"], tabs: ["Dịch họp", "Ghi chú cuộc họp", "Gõ dịch", "Lịch sử"] },
+  { lang: "en", path: "/en/", ids: EN_IDS, tabs: ["Meetings", "Meeting notes", "Type & Translate", "History"] },
+  { lang: "ja", path: "/ja/", ids: EN_IDS, tabs: ["会議の翻訳", "会議ノート", "入力翻訳", "履歴"] },
+  { lang: "zh", path: "/zh/", ids: EN_IDS, tabs: ["会议翻译", "会议笔记", "输入翻译", "历史记录"] },
+  { lang: "ko", path: "/ko/", ids: EN_IDS, tabs: ["회의 번역", "회의 노트", "입력 번역", "기록"] },
 ];
 
 const state = (p) =>
@@ -57,14 +57,14 @@ const state = (p) =>
   })()`);
 
 for (const page of PAGES) {
-  test(`${page.lang}: ba tab đủ nhãn; tab đầu mở sẵn, chỉ panel đầu hiện, chỉ tab đang chọn nằm trong thứ tự Tab`, { skip }, async () => {
+  test(`${page.lang}: bốn tab đủ nhãn; tab đầu mở sẵn, chỉ panel đầu hiện, chỉ tab đang chọn nằm trong thứ tự Tab`, { skip }, async () => {
     const p = await browser.newPage({ width: 1280, height: 900 });
     await p.goto(base + page.path);
     const s = await state(p);
     assert.deepEqual(s.labels, page.tabs);
     assert.deepEqual(s.selected, [page.ids[0]]);
     assert.deepEqual(s.visible, [page.ids[0]]);
-    assert.deepEqual(s.tabindex, [0, -1, -1]);
+    assert.deepEqual(s.tabindex, [0, -1, -1, -1]);
     assert.notEqual(s.list, "none", "thanh tab phải hiện khi có JS");
     assert.deepEqual(p.errors, []);
     await p.close();
@@ -73,7 +73,7 @@ for (const page of PAGES) {
   test(`${page.lang}: bấm tab đổi panel và URL; ảnh, video trong panel vừa mở hiện rõ (không kẹt opacity 0)`, { skip }, async () => {
     const p = await browser.newPage({ width: 1280, height: 900 });
     await p.goto(base + page.path);
-    for (const id of [page.ids[1], page.ids[2], page.ids[0]]) {
+    for (const id of [page.ids[1], page.ids[2], page.ids[3], page.ids[0]]) {
       await p.click(`[role="tab"][aria-controls="${id}"]`);
       const s = await state(p);
       assert.deepEqual(s.visible, [id]);
@@ -117,7 +117,7 @@ for (const page of PAGES) {
     await p.close();
   });
 
-  test(`${page.lang}: khối tab không tràn ngang ở các cỡ màn hình, ba tab, sáng và tối`, { skip }, async () => {
+  test(`${page.lang}: khối tab không tràn ngang ở các cỡ màn hình, bốn tab, sáng và tối`, { skip }, async () => {
     for (const [w, mobile] of [[320, true], [375, true], [768, false], [1280, false]]) {
       for (const dark of [false, true]) {
         const p = await browser.newPage({ width: w, height: 800, mobile, dark });
@@ -139,7 +139,7 @@ for (const page of PAGES) {
     }
   });
 
-  test(`${page.lang}: tắt JavaScript: cả ba panel hiện nối nhau với h3, không thanh tab, video vẫn có thanh điều khiển`, { skip }, async () => {
+  test(`${page.lang}: tắt JavaScript: cả bốn panel hiện nối nhau với h3, không thanh tab, video vẫn có thanh điều khiển`, { skip }, async () => {
     const p = await browser.newPage({ width: 1280, height: 900 });
     await p.setJS(false);
     await p.goto(base + page.path);
@@ -150,8 +150,8 @@ for (const page of PAGES) {
       videos: [...document.querySelectorAll("[data-ftabs] video")].map((v) => v.controls),
       bars: [...document.querySelectorAll('[data-ftabs] [role="tabpanel"]')].map((e) => { const b = getComputedStyle(e, "::before"); return b.content + " " + b.backgroundImage; }),
     }))()`);
-    assert.deepEqual(r.panels, [true, true, true]);
-    assert.deepEqual(r.titles, [true, true, true]);
+    assert.deepEqual(r.panels, [true, true, true, true]);
+    assert.deepEqual(r.titles, [true, true, true, true]);
     assert.equal(r.list, "none");
     assert.deepEqual(r.videos, [true, true]);
     for (const b of r.bars) assert.match(b, /^(none|normal) none$/, `không JS thì không có thanh màu trên panel (${b})`);
@@ -168,13 +168,13 @@ for (const page of PAGES.slice(0, 2)) {
     await p.press("ArrowRight");
     assert.deepEqual((await state(p)).selected, [page.ids[1]]);
     assert.equal(await focused(), page.ids[1], "tiêu điểm đi theo tab");
-    assert.deepEqual((await state(p)).tabindex, [-1, 0, -1]);
+    assert.deepEqual((await state(p)).tabindex, [-1, 0, -1, -1]);
     await p.press("End");
-    assert.deepEqual((await state(p)).selected, [page.ids[2]]);
+    assert.deepEqual((await state(p)).selected, [page.ids[3]]);
     await p.press("ArrowRight");
     assert.deepEqual((await state(p)).selected, [page.ids[0]], "quay vòng về tab đầu");
     await p.press("ArrowLeft");
-    assert.deepEqual((await state(p)).selected, [page.ids[2]], "quay vòng về tab cuối");
+    assert.deepEqual((await state(p)).selected, [page.ids[3]], "quay vòng về tab cuối");
     await p.press("Home");
     assert.deepEqual((await state(p)).selected, [page.ids[0]]);
     await p.close();
@@ -197,7 +197,7 @@ test("vi: mỗi tab một màu; chữ trên nền tab đang chọn đạt 4.5:1 
     const p = await browser.newPage({ width: 1280, height: 900, dark });
     await p.goto(base + "/");
     const froms = [];
-    for (const i of [0, 1, 2]) {
+    for (const i of [0, 1, 2, 3]) {
       await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
       const s = await p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => {
         const cs = getComputedStyle(t);
@@ -212,16 +212,15 @@ test("vi: mỗi tab một màu; chữ trên nền tab đang chọn đạt 4.5:1 
         assert.ok(r >= 4.5, `${mode} tab ${i + 1}: chữ ${t.on} trên ${end} chỉ ${r.toFixed(2)}:1`);
       }
       assert.match(t.image, /linear-gradient/, `${mode}: tab đang chọn phải đổ gradient`);
-      s.forEach((o, j) => j !== i && assert.equal(o.image, "none", `${mode}: tab ${j + 1} chưa chọn không được có gradient`));
-      froms.push(t.from);
+      s.forEach((o, j) => j !== i && assert.equal(o.image, "none", `${mode}: tab ${j + 1} chưa chọn không được có gradient`));      froms.push(t.from);
     }
-    assert.equal(new Set(froms).size, 3, `${mode}: ba tab phải có ba màu khác nhau (${froms})`);
+    assert.equal(new Set(froms).size, 4, `${mode}: bốn tab phải có bốn màu khác nhau (${froms})`);
     assert.deepEqual(p.errors, []);
     await p.close();
   }
 });
 
-// Bộ biến màu của ba tab (đọc trên chính nút tab).
+// Bộ biến màu của bốn tab (đọc trên chính nút tab).
 const TAB_VARS = ["--tab", "--tab-from", "--tab-to", "--tab-on", "--tab-glow", "--tab-base", "--tab-tint"];
 const tabVars = (p) =>
   p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => {
@@ -257,7 +256,7 @@ test("vi: chế độ tương phản cao (forced-colors): tab đang chọn tô H
     await p.goto(base + "/");
     assert.equal(await p.eval(`matchMedia("(forced-colors: active)").matches`), true, `${mode}: Chrome không giả lập được forced-colors`);
     const rgb = (c) => c.replace(/^rgba?\(([^,]+),\s*([^,]+),\s*([^,)]+).*$/, "$1,$2,$3");
-    for (const i of [0, 1, 2]) {
+    for (const i of [0, 1, 2, 3]) {
       await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
       const s = await p.eval(`[...document.querySelectorAll('[data-ftabs] [role="tab"]')].map((t) => ({
         bg: getComputedStyle(t).backgroundColor, icon: getComputedStyle(t.querySelector(".icon")).color,
@@ -294,10 +293,10 @@ const hexToRgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 
 const hasContent = (c) => c !== "none" && c !== "normal";
 
 for (const page of PAGES.slice(0, 2)) {
-  test(`${page.lang}: chỉ tab đang chọn có mũi nhọn chỉ xuống nội dung, cho cả ba tab`, { skip }, async () => {
+  test(`${page.lang}: chỉ tab đang chọn có mũi nhọn chỉ xuống nội dung, cho cả bốn tab`, { skip }, async () => {
     const p = await browser.newPage({ width: 1280, height: 900 });
     await p.goto(base + page.path);
-    for (const i of [0, 1, 2, 0]) {
+    for (const i of [0, 1, 2, 3, 0]) {
       await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
       const s = await indicator(p);
       assert.equal(s.selected, i);
@@ -314,7 +313,7 @@ for (const page of PAGES.slice(0, 2)) {
   });
 }
 
-test("vi: thanh màu trên nội dung lấy màu tab đang chọn (1→2→3→1), sáng và tối, kể cả đổi giao diện lúc đang chạy", { skip }, async () => {
+test("vi: thanh màu trên nội dung lấy màu tab đang chọn (1→2→3→4→1), sáng và tối, kể cả đổi giao diện lúc đang chạy", { skip }, async () => {
   // Không bật giảm chuyển động: quy tắc giảm chuyển động cho mọi phần tử (kể cả ::before/::after) transition 0,01 ms trên mọi thuộc
   // tính, đọc ngay sau khi đổi sẽ ra màu đang chuyển; mũi nhọn và thanh vốn không có transition nên đọc ngay là màu cuối.
   const check = async (p, where) => {
@@ -329,12 +328,12 @@ test("vi: thanh màu trên nội dung lấy màu tab đang chọn (1→2→3→1
     const p = await browser.newPage({ width: 1280, height: 900, dark });
     await p.goto(base + "/");
     const bars = [];
-    for (const i of [0, 1, 2, 0]) {
+    for (const i of [0, 1, 2, 3, 0]) {
       await p.click(`[data-ftabs] [role="tab"]:nth-child(${i + 1})`);
       bars.push((await check(p, `${mode} tab ${i + 1}`)).bar.image);
     }
-    assert.equal(new Set(bars).size, 3, `${mode}: ba tab phải cho ba màu thanh khác nhau`);
-    assert.equal(bars[3], bars[0], `${mode}: quay về tab 1 thì thanh về màu tab 1`);
+    assert.equal(new Set(bars).size, 4, `${mode}: bốn tab phải cho bốn màu thanh khác nhau`);
+    assert.equal(bars[4], bars[0], `${mode}: quay về tab 1 thì thanh về màu tab 1`);
     assert.deepEqual(p.errors, []);
     await p.close();
   }

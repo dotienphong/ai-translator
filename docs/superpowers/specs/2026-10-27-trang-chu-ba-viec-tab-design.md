@@ -119,3 +119,13 @@ Hero, Bảng giá, lời mời cuối trang, các trang con (Tính năng, Hướ
 - **Người lướt nhanh có thể không bấm sang Gõ dịch hay Lịch sử.** Thanh tab to, có icon, tab đầu mở sẵn; hero và nút Tải xuống không đổi; Gõ dịch còn ở bước 4 của phần Cách dùng.
 - **Video trong tab ẩn:** nội dung vẫn có trong HTML (không JS thì hiện hết), nhưng không chắc Google còn chọn video làm kết quả video; trang chưa dựa vào đó. JSON-LD `VideoObject` giữ.
 - **Bản ja/zh/ko do Claude viết, chưa có người bản ngữ duyệt** (đã chấp nhận từ trước); test chỉ bắt lệch cấu trúc, không bắt lệch nghĩa.
+
+## Bổ sung 2026-11-14: tab thứ tư "Ghi chú cuộc họp"
+
+Ghi chú cuộc họp ra mắt ở app 0.7.0 (spec `2026-11-11-ghi-chu-cuoc-hop-design.md`, mục 12 đã liệt kê website), nên khối tab có bốn tab theo thứ tự: **Dịch họp, Ghi chú cuộc họp, Gõ dịch, Lịch sử**. Tab Ghi chú đứng sau Dịch họp vì ghi chú là kết quả của chính phiên dịch; gạch đầu dòng "Ghi chú cuộc họp" cũ ở tab Dịch họp bỏ để không lặp.
+
+- Id panel: `ghi-chu` (vi) / `meeting-notes` (en, ja, zh, ko). Nhãn tab là nhãn đầy đủ "Ghi chú cuộc họp" / "Meeting notes" / "会議ノート" / "会议笔记" / "회의 노트", khớp câu bắt buộc của test ghi chú ở `test/site.test.mjs` (`NOTES_PAGES.label` phải có ở trang chủ).
+- Chữ của tab: bốn khối (Tóm tắt, Quyết định, Việc cần làm, Câu hỏi mở), chỉ tạo sau khi dừng phiên, bản nháp do AI viết phải kiểm lại, dùng model đã chọn (trên máy mặc định, hoặc ChatGPT/Gemini/DeepSeek bằng khóa API của người dùng), hạn mức Free 3 lần và không trừ thời lượng dịch. Câu về chữ chép lời luôn kèm điều kiện ("mặc định") theo luật `STALE_NOTES`.
+- Hình: chưa có ảnh chụp màn hình Ghi chú (máy chụp giao diện chỉ chạy trên macOS), nên tab dùng hình minh họa dựng bằng HTML (`notesDemo` ở `src/build/components.mjs`) trong `llm-skip`, có nhãn "Bản nháp" và câu ghi rõ là minh họa. Chụp được ảnh thật thì thay bằng `appShot` slug `app-notes`.
+- Giao diện: `.ftabs-list` chia bốn cột, `max-width: 1000px`; thêm bộ màu thứ tư (tím, sáng và tối) theo token `--tab-4-*` như mục trên; chữ trên nền đạt 4.5:1 với cả hai đầu gradient (đo: sáng 5,20:1 và 8,06:1; tối 9,32:1 và 6,24:1).
+- Test cập nhật: `test/feature-tabs.test.mjs` (bốn tab ở năm ngôn ngữ, bốn màu, bàn phím quay vòng bốn tab, bản tắt JS hiện bốn panel), `tools/measure-home.mjs` (chụp thêm `tab-vi-ghi-chu.png`), `website/README.md`.

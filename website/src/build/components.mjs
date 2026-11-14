@@ -66,6 +66,24 @@ ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}
 </figure>`;
 };
 
+/**
+ * Minh họa kết quả "Ghi chú cuộc họp" cho tab Ghi chú của trang chủ: khung cửa sổ giống ảnh chụp app nhưng dựng bằng HTML/CSS, vì máy
+ * chụp ảnh giao diện (scripts/ui-preview) chỉ chạy được trên macOS. `note` là câu mô tả đọc cho trình đọc màn hình (aria-label) và
+ * chú thích dưới hình; bốn khối trong `sections` theo thứ tự Tóm tắt, Quyết định, Việc cần làm, Câu hỏi mở. Nằm trong `llm-skip`:
+ * đây là hình trang trí, chữ mẫu không vào llms*.txt. Chữ trong này là chữ mẫu, không phải số đo hay lời hứa về sản phẩm.
+ * Chụp được ảnh thật của màn hình Ghi chú thì thay bằng `appShot` (slug app-notes).
+ */
+export const notesDemo = ({ doc, badge, sections, note }) => `<!--llm-skip--><figure class="shot window notes-demo reveal" role="img" aria-label="${esc(note)}">
+<div class="bar" aria-hidden="true"><i></i><span>AI Translator</span></div>
+<div class="notes-body" aria-hidden="true">
+<p class="notes-head"><span>${esc(doc)}</span><span class="notes-badge">${esc(badge)}</span></p>
+${sections
+  .map((s) => `<div class="notes-sec"><p class="notes-k">${esc(s.k)}</p><ul>${s.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`)
+  .join("")}
+</div>
+<figcaption>${esc(note)}</figcaption>
+</figure><!--/llm-skip-->`;
+
 /** Ảnh thanh phụ đề (nền trong suốt) đặt trên nền tối giống màn hình họp. */
 export const overlayShot = ({ slug, lang, alt, caption }) => {
   const file = `${slug}.${lang}.webp`;

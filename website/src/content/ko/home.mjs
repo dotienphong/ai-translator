@@ -1,4 +1,4 @@
-import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, notesDemo, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
@@ -7,6 +7,19 @@ const VIDEO_ITEMS = [
   { kind: "typing", text: `입력 번역이 한국어로 쓴 답장을 영어로 바꿔 채팅 입력란에 붙여 넣습니다. ${videoMeta("ko", "typing").seconds}초 분량, 소리가 있는 영상입니다.`, label: "AI Translator 데모 영상: 입력 번역", fallback: "영상 내려받기(MP4, 1MB)" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
+
+// 회의 노트 탭에 넣는 예시 이미지의 글 (앱 화면 사진이 아닙니다. components.mjs 의 notesDemo 참고).
+const NOTES_MOCK = {
+  doc: "회의 노트",
+  badge: "초안",
+  note: "회의 노트 화면 예시: 요약, 결정 사항, 할 일, 남은 질문 네 부분과 AI가 작성한 노트라서 확인이 필요하다는 것을 알리는 '초안' 표시.",
+  sections: [
+    { k: "요약", items: ["먼저 두 고객에게 시험판을 제공하고 예산 추정안을 금요일 전에 보내기로 했습니다."] },
+    { k: "결정 사항", items: ["처음 두 고객과 시험판을 진행합니다."] },
+    { k: "할 일", items: ["Lan이 금요일 전에 예산 추정안을 보냅니다.", "Minh이 시험판을 쓸 고객 두 곳의 명단을 준비합니다."] },
+    { k: "남은 질문", items: ["출시 전에 일정을 한 번 더 확인해야 할까요?"] },
+  ],
+};
 
 export const HOME_FAQ = [
   {
@@ -43,7 +56,7 @@ export default {
   description:
     "회의, 라이브 방송, YouTube, 동영상에 실시간 번역 자막. 입력 번역으로 채팅 답장도 상대방 언어로. AI가 내 컴퓨터에서 실행되며 클라우드를 쓰지 않습니다.",
   software: true,
-  modified: "2026-11-13",
+  modified: "2026-11-14",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "ko", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -83,7 +96,7 @@ ${demo({
 </div></section>
 
 <section class="section" id="main-features"><div class="container">
-${sectionHead({ eyebrow: "주요 기능", title: "회의 번역, 입력 번역, 기록", center: true })}
+${sectionHead({ eyebrow: "주요 기능", title: "회의 번역, 회의 노트, 입력 번역, 기록", center: true })}
 ${featureTabs({
   listLabel: "기능 선택",
   tabs: [
@@ -97,10 +110,24 @@ ${featureTabs({
         "다섯 가지 언어 중 어떤 두 언어 사이든 번역: 영어, 중국어, 일본어, 한국어, 베트남어. 말하는 언어는 자동으로 감지합니다",
         `화자가 문장을 마치면 자막이 나타납니다. Mac M4 Pro(Standard 모델 팩)에서 중앙값은 1.1초 미만이며, 다른 컴퓨터는 더 느릴 수 있습니다(<a href="/ko/features/">자세히 보기</a>)`,
         `Zoom, Teams, Meet, Zalo에서 쓸 수 있습니다. 대면 회의는 입력 소스를 <strong>마이크</strong>로 고르세요(<a href="/ko/features/#microphone">사용 방법</a>). 컴퓨터로 보는 라이브 방송에도 쓸 수 있습니다(<a href="/ko/solutions/livestream-translation/">라이브 방송 번역</a>)`,
-        `회의 노트: 회의가 끝나면 요약, 결정 사항, 할 일 만들기(<a href="/ko/features/#meeting-notes">자세히</a>)`,
       ],
       cta: { href: "/ko/features/", label: "모든 기능 보기" },
       media: demoVideo({ lang: "ko", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "meeting-notes",
+      icon: "file",
+      label: "회의 노트",
+      title: "회의가 끝나면 요약, 결정 사항, 할 일이 바로 나옵니다",
+      lead: "세션을 중지하고 노트를 만들면 AI가 대본을 읽고 요약, 결정 사항, 할 일, 남은 질문 네 부분으로 정리합니다. 각 항목은 원문 문장으로 이어져 바로 확인할 수 있습니다.",
+      bullets: [
+        "AI가 쓴 초안이므로 보내기 전에 다시 확인하세요. 앱 안에서 직접 고칠 수 있습니다",
+        "<strong>세션을 중지한 후</strong>에만 만들 수 있습니다. 회의 중에는 요약하지 않습니다",
+        `'설정 › 모델'에서 고른 모델을 씁니다: 내 컴퓨터의 모델(기본적으로 대본이 컴퓨터를 떠나지 않음) 또는 내 API 키로 쓰는 ChatGPT, Gemini, DeepSeek(<a href="/ko/features/#meeting-notes">원리</a>)`,
+        "유료 요금제는 무제한, Free는 체험 기간에 3회까지 만들 수 있으며 번역 시간을 쓰지 않습니다",
+      ],
+      cta: { href: "/ko/features/#meeting-notes", label: "회의 노트 자세히 보기" },
+      media: notesDemo(NOTES_MOCK),
     },
     {
       id: "type-and-translate",

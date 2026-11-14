@@ -1,4 +1,4 @@
-import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, notesDemo, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
@@ -7,6 +7,19 @@ const VIDEO_ITEMS = [
   { kind: "typing", text: `Type & Translate turns an English reply into Vietnamese for a chat message. ${videoMeta("en", "typing").seconds}-second video with sound.`, label: "AI Translator demo video: Type & Translate", fallback: "Download the video (MP4, 1 MB)" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
+
+// Sample text for the illustration in the Notes tab (not an app screenshot; see notesDemo in components.mjs).
+const NOTES_MOCK = {
+  doc: "Meeting notes",
+  badge: "Draft",
+  note: "Illustration of the Meeting notes screen: four blocks — Summary, Decisions, Action items and Open questions — with a Draft badge because the AI writes the notes and you need to re-check them.",
+  sections: [
+    { k: "Summary", items: ["The team agreed to ship the pilot to two customers first and to send the budget estimate before Friday."] },
+    { k: "Decisions", items: ["Run the pilot with the first two customers."] },
+    { k: "Action items", items: ["Lan sends the budget estimate before Friday.", "Minh prepares the list of two pilot customers."] },
+    { k: "Open questions", items: ["Do we need another timeline review before release?"] },
+  ],
+};
 
 export const HOME_FAQ = [
   {
@@ -43,8 +56,8 @@ export default {
   description:
     "Real-time translation subtitles for Zoom, Teams, Meet, livestreams, YouTube and videos, plus Type & Translate for chat. AI runs offline on your computer.",
   software: true,
-  modified: "2026-11-13",
-  llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
+  modified: "2026-11-14",
+  llm: "Home page: what AI Translator is, meeting and livestream translation with subtitles, meeting notes (summary, decisions, action items), Type & Translate for chat messages, reviewing transcript history, a four-step how-to, data that stays on your computer, pricing and frequently asked questions.",
   llmTitle: "AI Translator: home",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
@@ -85,7 +98,7 @@ ${demo({
 </div></section>
 
 <section class="section" id="main-features"><div class="container">
-${sectionHead({ eyebrow: "Main features", title: "Meeting translation, Type & Translate, History", center: true })}
+${sectionHead({ eyebrow: "Main features", title: "Meeting translation, notes, Type & Translate, History", center: true })}
 ${featureTabs({
   listLabel: "Choose a feature",
   tabs: [
@@ -99,10 +112,24 @@ ${featureTabs({
         "Five languages, translated between any two of them: English, Chinese, Japanese, Korean, Vietnamese; the spoken language is detected automatically",
         `Subtitles appear after the speaker finishes a sentence: a median under 1.1 seconds on a Mac M4 Pro (Standard model pack), and other computers may be slower (<a href="/en/features/">details</a>)`,
         `Works with Zoom, Teams, Meet and Zalo; in-person meetings through the <strong>Microphone</strong> source (<a href="/en/features/#microphone">how it works</a>); livestreams you watch on a computer (<a href="/en/solutions/livestream-translation/">livestream translation</a>)`,
-        `Meeting notes: a summary, decisions and action items after each meeting (<a href="/en/features/#meeting-notes">details</a>)`,
       ],
       cta: { href: "/en/features/", label: "See all features" },
       media: demoVideo({ lang: "en", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "meeting-notes",
+      icon: "file",
+      label: "Meeting notes",
+      title: "After the meeting: a summary, the decisions and the action items",
+      lead: "Stop the session and create the notes: the AI reads the transcript and writes four blocks — Summary, Decisions, Action items and Open questions. Every item links back to the original line so you can check it.",
+      bullets: [
+        "An AI-written draft, so re-check it before you send it; you can edit it in the app",
+        "Only <strong>after you stop the session</strong>: there are no summaries during the meeting",
+        `Uses the model you picked in Settings › Model: on your computer (by default, the transcript stays on your machine) or ChatGPT, Gemini or DeepSeek with your own API key (<a href="/en/features/#meeting-notes">how it works</a>)`,
+        "Unlimited on paid plans; the Free plan can create notes 3 times during the trial; notes do not use translation time",
+      ],
+      cta: { href: "/en/features/#meeting-notes", label: "Read about meeting notes" },
+      media: notesDemo(NOTES_MOCK),
     },
     {
       id: "type-and-translate",

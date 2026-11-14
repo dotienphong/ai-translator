@@ -1,4 +1,4 @@
-import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, notesDemo, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
@@ -7,6 +7,19 @@ const VIDEO_ITEMS = [
   { kind: "typing", text: `入力翻訳が日本語の返信を英語に変えてチャット欄に貼り付けます。${videoMeta("ja", "typing").seconds} 秒、音声付きの動画です。`, label: "AI Translator デモ動画：入力翻訳", fallback: "動画をダウンロード（MP4、1 MB）" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
+
+// 会議ノートのタブに置くイメージ図のテキスト（アプリの画面写真ではありません。components.mjs の notesDemo を参照）。
+const NOTES_MOCK = {
+  doc: "会議ノート",
+  badge: "下書き",
+  note: "会議ノート画面のイメージ：要約、決定事項、やること、未解決の質問の 4 つのブロックと、AI が書いたノートなので確認が必要なことを示す「下書き」の表示。",
+  sections: [
+    { k: "要約", items: ["まず 2 社の顧客に試験版を提供し、予算見積もりを金曜日までに送ることが決まりました。"] },
+    { k: "決定事項", items: ["最初の 2 社で試験版を実施する。"] },
+    { k: "やること", items: ["Lan が金曜日までに予算見積もりを送る。", "Minh が試験版を使う顧客 2 社のリストを用意する。"] },
+    { k: "未解決の質問", items: ["公開前にもう一度スケジュールを確認する必要があるか。"] },
+  ],
+};
 
 export const HOME_FAQ = [
   {
@@ -43,7 +56,7 @@ export default {
   description:
     "会議、ライブ配信、YouTube、動画にリアルタイム翻訳字幕。入力翻訳でチャットの返信も相手の言語に。AI はパソコン上で動き、クラウドは使いません。",
   software: true,
-  modified: "2026-11-13",
+  modified: "2026-11-14",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "ja", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -83,7 +96,7 @@ ${demo({
 </div></section>
 
 <section class="section" id="main-features"><div class="container">
-${sectionHead({ eyebrow: "主な機能", title: "会議の翻訳、入力翻訳、履歴", center: true })}
+${sectionHead({ eyebrow: "主な機能", title: "会議の翻訳、会議ノート、入力翻訳、履歴", center: true })}
 ${featureTabs({
   listLabel: "機能を選ぶ",
   tabs: [
@@ -97,10 +110,24 @@ ${featureTabs({
         "5 つの言語のうち、どの 2 つのあいだでも翻訳：英語、中国語、日本語、韓国語、ベトナム語。話されている言語は自動で検出します",
         `話し手が文を言い終えると字幕が表示されます。Mac M4 Pro（Standard モデルパック）での中央値は 1.1 秒未満で、ほかのパソコンでは遅くなることがあります（<a href="/ja/features/">詳細</a>）`,
         `Zoom、Teams、Meet、Zalo で使えます。対面の会議は入力元を<strong>マイク</strong>にします（<a href="/ja/features/#microphone">使い方</a>）。パソコンで見るライブ配信にも使えます（<a href="/ja/solutions/livestream-translation/">ライブ配信の翻訳</a>）`,
-        `会議ノート：会議のあとに要約、決定事項、やることを作成（<a href="/ja/features/#meeting-notes">詳しく</a>）`,
       ],
       cta: { href: "/ja/features/", label: "すべての機能を見る" },
       media: demoVideo({ lang: "ja", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "meeting-notes",
+      icon: "file",
+      label: "会議ノート",
+      title: "会議が終われば、要約・決定事項・やることがすぐ手に入る",
+      lead: "セッションを停止してノートを作成すると、AI が文字起こしを読み、要約、決定事項、やること、未解決の質問の 4 つのブロックにまとめます。各項目は元の文に結び付いているので、その場で確認できます。",
+      bullets: [
+        "AI が書いた下書きなので、送る前に確認してください。アプリ内で手直しもできます",
+        "作成できるのは<strong>セッションを停止した後</strong>だけです。会議中に要約することはありません",
+        `「設定 › モデル」で選んだモデルを使います：パソコン上のモデル（デフォルトでは文字起こしがパソコンの外に出ません）、またはご自身の API キーによる ChatGPT、Gemini、DeepSeek（<a href="/ja/features/#meeting-notes">仕組み</a>）`,
+        "有料プランは無制限、Free はお試し期間中に 3 回まで。翻訳時間は消費しません",
+      ],
+      cta: { href: "/ja/features/#meeting-notes", label: "会議ノートの詳細を見る" },
+      media: notesDemo(NOTES_MOCK),
     },
     {
       id: "type-and-translate",

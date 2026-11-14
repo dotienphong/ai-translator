@@ -1,4 +1,4 @@
-import { dataFlow, demo, demoVideo, feature, featureTabs, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
+import { dataFlow, demo, demoVideo, feature, featureTabs, notesDemo, steps, plansGrid, faq, ctaBand, sectionHead, icon, appShot } from "../../build/components.mjs";
 import { faqPage, videoObject } from "../../build/schema.mjs";
 import { videoMeta } from "../../build/mp4.mjs";
 
@@ -7,6 +7,19 @@ const VIDEO_ITEMS = [
   { kind: "typing", text: `输入翻译把你用中文写的回复转成英文并粘贴到聊天框。视频时长 ${videoMeta("zh", "typing").seconds} 秒，有声音。`, label: "AI Translator 演示视频：输入翻译", fallback: "下载视频（MP4，1 MB）" },
 ];
 const [MEETING_VIDEO, TYPING_VIDEO] = VIDEO_ITEMS;
+
+// 会议笔记标签页里那张示意图的文字（不是应用截图；见 components.mjs 的 notesDemo）。
+const NOTES_MOCK = {
+  doc: "会议笔记",
+  badge: "草稿",
+  note: "会议笔记界面的示意：摘要、决议、待办事项、未解决的问题四个部分，并标注「草稿」，因为笔记由 AI 撰写，需要核对。",
+  sections: [
+    { k: "摘要", items: ["团队决定先把测试版提供给两家客户，预算估算在周五前发出。"] },
+    { k: "决议", items: ["先在最初两家客户中运行测试版。"] },
+    { k: "待办事项", items: ["Lan 在周五前发出预算估算。", "Minh 准备两家测试客户的名单。"] },
+    { k: "未解决的问题", items: ["发布前是否需要再确认一次时间安排？"] },
+  ],
+};
 
 export const HOME_FAQ = [
   {
@@ -43,7 +56,7 @@ export default {
   description:
     "为会议、直播、YouTube 和视频提供实时翻译字幕，输入翻译可把聊天回复译成对方的语言。AI 在你的电脑上运行，不经过云端。",
   software: true,
-  modified: "2026-11-13",
+  modified: "2026-11-14",
   schema: [
     faqPage(HOME_FAQ.map((f) => ({ q: f.q, a: f.a }))),
     ...VIDEO_ITEMS.map((v) => videoObject({ lang: "zh", kind: v.kind, name: v.label, description: v.text, uploadDate: "2026-10-26" })),
@@ -83,7 +96,7 @@ ${demo({
 </div></section>
 
 <section class="section" id="main-features"><div class="container">
-${sectionHead({ eyebrow: "主要功能", title: "会议翻译、输入翻译、历史记录", center: true })}
+${sectionHead({ eyebrow: "主要功能", title: "会议翻译、会议笔记、输入翻译、历史记录", center: true })}
 ${featureTabs({
   listLabel: "选择功能",
   tabs: [
@@ -97,10 +110,24 @@ ${featureTabs({
         "五种语言，任意两种之间互译：英语、中文、日语、韩语、越南语；自动检测说话的语言",
         `说话人说完一句话后，字幕就会出现：在 Mac M4 Pro（Standard 模型包）上中位数低于 1.1 秒，其他电脑可能更慢（<a href="/zh/features/">详细信息</a>）`,
         `可用于 Zoom、Teams、Meet 和 Zalo；线下会议把采集来源选为<strong>麦克风</strong>（<a href="/zh/features/#microphone">使用方法</a>）；也适用于你在电脑上观看的直播（<a href="/zh/solutions/livestream-translation/">直播翻译</a>）`,
-        `会议笔记：会后生成摘要、决议和待办事项（<a href="/zh/features/#meeting-notes">详情</a>）`,
       ],
       cta: { href: "/zh/features/", label: "查看全部功能" },
       media: demoVideo({ lang: "zh", kind: MEETING_VIDEO.kind, label: MEETING_VIDEO.label, fallback: MEETING_VIDEO.fallback }),
+    },
+    {
+      id: "meeting-notes",
+      icon: "file",
+      label: "会议笔记",
+      title: "会议结束后，立刻得到摘要、决议和待办事项",
+      lead: "停止会话后点创建笔记：AI 读取转写记录，写出摘要、决议、待办事项和未解决的问题四个部分。每一条都链接回原句，方便你核对。",
+      bullets: [
+        "由 AI 撰写的草稿，发送前请核对；可以直接在应用里修改",
+        "只在<strong>停止会话后</strong>创建：会议进行中不会生成摘要",
+        `使用你在“设置 › 模型”里选的模型：电脑上的模型（默认，转写内容不会离开电脑），或用你自己的 API 密钥使用 ChatGPT、Gemini、DeepSeek（<a href="/zh/features/#meeting-notes">原理</a>）`,
+        "付费套餐不限次数，Free 在试用期间可以创建 3 次；不消耗翻译时间",
+      ],
+      cta: { href: "/zh/features/#meeting-notes", label: "查看会议笔记详情" },
+      media: notesDemo(NOTES_MOCK),
     },
     {
       id: "type-and-translate",

@@ -4,7 +4,7 @@
 //                                                  cao trang ở 1280 và 375 px, năm ngôn ngữ (cần Chrome; chữ ja/zh/ko không tách bằng
 //                                                  khoảng trắng nên con số của chúng chỉ để so trước và sau)
 //   node tools/measure-home.mjs --shots=<thư mục>  như --browser, và chụp ảnh: home-<lang>-1280.png, home-<lang>-375.png (toàn
-//                                                  trang), home-vi-375-dark.png, tab-vi-<id>.png (ba tab ở 1280 px)
+//                                                  trang), home-vi-375-dark.png, tab-vi-<id>.png (bốn tab ở 1280 px)
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -87,7 +87,7 @@ try {
           await dark.close();
           const p = await browser.newPage({ width: 1280, height: 900 });
           await p.goto(base + HOME.vi);
-          for (const id of ["dich-cuoc-hop", "go-dich", "lich-su"]) {
+          for (const id of ["dich-cuoc-hop", "ghi-chu", "go-dich", "lich-su"]) {
             const tab = `[role="tab"][aria-controls="${id}"]`;
             if (await p.eval(`Boolean(document.querySelector(${JSON.stringify(tab)}))`)) {
               await p.click(tab);
