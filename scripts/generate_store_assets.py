@@ -558,9 +558,113 @@ def generate_screenshots():
             render_html_to_png(html, W, H, out_file)
 
 
+def generate_super_hero_art():
+    print("\n--- Generating 16:9 Super Hero Art (Without text/logo for Store Banner & Trailer) ---")
+    for (w, h) in [(1920, 1080), (3840, 2160)]:
+        out_file = os.path.join(STORE_DIR, f"store_super_hero_art_{w}x{h}.png")
+        scale = w / 1920.0
+        
+        html = f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{
+    width: {w}px;
+    height: {h}px;
+    background: radial-gradient(ellipse at 50% 45%, #172a4d 0%, #0d172e 50%, #060a14 100%);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }}
+  .ambient-glow-1 {{
+    position: absolute;
+    top: -15%;
+    left: 20%;
+    width: {int(1000 * scale)}px;
+    height: {int(1000 * scale)}px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.08) 50%, transparent 70%);
+    border-radius: 50%;
+    filter: blur({int(50 * scale)}px);
+  }}
+  .ambient-glow-2 {{
+    position: absolute;
+    bottom: -15%;
+    right: 20%;
+    width: {int(900 * scale)}px;
+    height: {int(900 * scale)}px;
+    background: radial-gradient(circle, rgba(147, 51, 234, 0.25) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%);
+    border-radius: 50%;
+    filter: blur({int(50 * scale)}px);
+  }}
+  .wave-container {{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }}
+  svg {{
+    width: {int(1600 * scale)}px;
+    height: {int(600 * scale)}px;
+    opacity: 0.9;
+  }}
+</style>
+</head>
+<body>
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+  <div class="wave-container">
+    <svg viewBox="0 0 1600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.1" />
+          <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.7" />
+          <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.95" />
+          <stop offset="75%" stop-color="#818cf8" stop-opacity="0.7" />
+          <stop offset="100%" stop-color="#c084fc" stop-opacity="0.1" />
+        </linearGradient>
+        <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#2563eb" stop-opacity="0.1" />
+          <stop offset="30%" stop-color="#38bdf8" stop-opacity="0.5" />
+          <stop offset="70%" stop-color="#a855f7" stop-opacity="0.6" />
+          <stop offset="100%" stop-color="#ec4899" stop-opacity="0.1" />
+        </linearGradient>
+        <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.05" />
+          <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.5" />
+          <stop offset="100%" stop-color="#6366f1" stop-opacity="0.05" />
+        </linearGradient>
+      </defs>
+      <!-- Flowing audio translation soundwaves -->
+      <path d="M0 300 Q200 120 400 300 T800 300 T1200 300 T1600 300" stroke="url(#grad1)" stroke-width="4.5" stroke-linecap="round" />
+      <path d="M0 300 Q200 480 400 300 T800 300 T1200 300 T1600 300" stroke="url(#grad1)" stroke-width="2.5" stroke-dasharray="8 8" opacity="0.6" />
+      
+      <path d="M0 300 C300 160 500 440 800 300 C1100 160 1300 440 1600 300" stroke="url(#grad2)" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M0 300 C250 400 550 180 800 300 C1050 420 1350 200 1600 300" stroke="url(#grad3)" stroke-width="3" stroke-linecap="round" />
+      
+      <circle cx="800" cy="300" r="10" fill="#38bdf8" filter="drop-shadow(0 0 14px #38bdf8)" />
+      <circle cx="600" cy="230" r="6" fill="#818cf8" filter="drop-shadow(0 0 10px #818cf8)" />
+      <circle cx="1000" cy="370" r="6" fill="#c084fc" filter="drop-shadow(0 0 10px #c084fc)" />
+      <circle cx="400" cy="300" r="7" fill="#60a5fa" filter="drop-shadow(0 0 10px #60a5fa)" />
+      <circle cx="1200" cy="300" r="7" fill="#818cf8" filter="drop-shadow(0 0 10px #818cf8)" />
+      <circle cx="200" cy="210" r="5" fill="#38bdf8" opacity="0.8" />
+      <circle cx="1400" cy="390" r="5" fill="#c084fc" opacity="0.8" />
+    </svg>
+  </div>
+</body>
+</html>"""
+        render_html_to_png(html, w, h, out_file)
+
+
 if __name__ == "__main__":
     generate_box_art()
     generate_poster_art()
+    generate_super_hero_art()
     generate_screenshots()
     print("\nALL ASSETS SUCCESSFULLY GENERATED IN store_upload/ !")
 
