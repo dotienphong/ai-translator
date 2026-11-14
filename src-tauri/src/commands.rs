@@ -709,6 +709,8 @@ pub fn tts_status<R: Runtime>(app: AppHandle<R>, svc: State<'_, crate::tts::TtsS
     crate::tts::status(&app, &svc)
 }
 
+/// Chưa cửa sổ nào được cấp lệnh này: cửa sổ chính không gọi, overlay dùng `overlay_tts_warmup`. Cần thì thêm vào `MAIN_COMMANDS`
+/// và `capabilities/main.json` (`acl_tests` giữ hai danh sách khớp nhau).
 #[tauri::command]
 pub fn tts_warmup<R: Runtime>(app: AppHandle<R>, svc: State<'_, crate::tts::TtsService>) -> Result<(), CommandError> {
     crate::tts::warmup(&app, &svc)
@@ -756,6 +758,8 @@ pub async fn tts_list_voices<R: Runtime>(app: AppHandle<R>) -> Result<crate::tts
     .map_err(|e| CommandError::new(errors::UNKNOWN, None, e.to_string()))?
 }
 
+/// Chưa cửa sổ nào được cấp lệnh này: giao diện dừng giọng đọc bằng `tts_stop`. Cần thì thêm vào `MAIN_COMMANDS`
+/// và `capabilities/main.json` (`acl_tests` giữ hai danh sách khớp nhau).
 #[tauri::command]
 pub fn tts_cancel(svc: State<'_, crate::tts::TtsService>, id: u64) {
     crate::tts::cancel(&svc, id);
@@ -927,9 +931,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "support_delete",
     "support_machine_info",
     "tts_status",
-    "tts_warmup",
     "tts_speak",
-    "tts_cancel",
     "tts_mark_playing",
     "tts_stop",
     "tts_list_voices",
