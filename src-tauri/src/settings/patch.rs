@@ -443,7 +443,11 @@ mod tests {
         assert!(!s.notes_cloud_consent);
         let same = apply(&d, &json!({ "translationProvider": "gemini" })).unwrap();
         assert!(same.notes_cloud_consent);
-        let both = apply(&d, &json!({ "translationProvider": "openai", "notesCloudConsent": true })).unwrap();
+        let both = apply(
+            &d,
+            &json!({ "translationProvider": "openai", "notesCloudConsent": true }),
+        )
+        .unwrap();
         assert!(both.notes_cloud_consent);
     }
 

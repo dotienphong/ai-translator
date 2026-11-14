@@ -175,10 +175,7 @@ mod tests {
             "[2] Same\n[3] Minh: I'll send it Friday\n    → Tôi gửi thứ Sáu\n"
         );
         assert_eq!(render_verify(&lines, &[1], 1), "[1] Lan: Hello\n    → Chào\n[2] Same\n");
-        assert_eq!(
-            render_verify(&lines, &[u32::MAX, 0], 1),
-            "[1] Lan: Hello\n    → Chào\n"
-        );
+        assert_eq!(render_verify(&lines, &[u32::MAX, 0], 1), "[1] Lan: Hello\n    → Chào\n");
         assert_eq!(render_verify(&lines, &[], 1), "");
     }
 

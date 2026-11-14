@@ -1309,7 +1309,10 @@ impl ModelService {
         let (state, done) = if ram_mib < model.min_ram_mib {
             (NotesPackState::RamTooLow, 0)
         } else if self.notes_downloading.load(Ordering::SeqCst) {
-            (NotesPackState::Downloading, self.notes_done.load(Ordering::SeqCst).min(bytes))
+            (
+                NotesPackState::Downloading,
+                self.notes_done.load(Ordering::SeqCst).min(bytes),
+            )
         } else if self.store.is_installed(&model.file) {
             (NotesPackState::Installed, bytes)
         } else {
@@ -1320,7 +1323,11 @@ impl ModelService {
             bytes,
             done,
             min_ram_mib: model.min_ram_mib,
-            error: if state == NotesPackState::Missing { *self.notes_error.lock().unwrap() } else { None },
+            error: if state == NotesPackState::Missing {
+                *self.notes_error.lock().unwrap()
+            } else {
+                None
+            },
         }
     }
 
@@ -1370,7 +1377,11 @@ impl ModelService {
             .and_then(|u| source::file_url(u, &model.file))
             .ok_or_else(|| CommandError::new(errors::MODELS_NO_SOURCE, None, "chưa có URL manifest"))?;
         if self.client().is_none() {
-            return Err(CommandError::new(errors::MODELS_DOWNLOAD_FAILED, None, "không tạo được client HTTP"));
+            return Err(CommandError::new(
+                errors::MODELS_DOWNLOAD_FAILED,
+                None,
+                "không tạo được client HTTP",
+            ));
         }
         let part = std::fs::metadata(self.store.part(&model.file))
             .map(|m| m.len())
@@ -2895,11 +2906,17 @@ mod tests {
         publish_notes(&h, 64, 15_360);
         h.call("load_models", json!({})).unwrap();
         let notes = notes_state(&h);
-        assert_eq!((notes["state"].clone(), notes["minRamMib"].clone()), ("ramTooLow".into(), 15_360.into()));
+        assert_eq!(
+            (notes["state"].clone(), notes["minRamMib"].clone()),
+            ("ramTooLow".into(), 15_360.into())
+        );
         let refused = h.call("download_notes_pack", json!({})).unwrap_err();
         assert!(refused.contains("\"code\":\"notesLocalUnavailable\""), "{refused}");
         assert!(
-            h.server.requests().iter().all(|r| !r.path.ends_with("notes-model.gguf")),
+            h.server
+                .requests()
+                .iter()
+                .all(|r| !r.path.ends_with("notes-model.gguf")),
             "không tải gì"
         );
     }
@@ -2910,7 +2927,10 @@ mod tests {
         let (data, sha) = publish_notes(&h, 64, 15_360);
         h.call("load_models", json!({})).unwrap();
         let before = notes_state(&h);
-        assert_eq!((before["state"].clone(), before["bytes"].clone()), ("missing".into(), 64.into()));
+        assert_eq!(
+            (before["state"].clone(), before["bytes"].clone()),
+            ("missing".into(), 64.into())
+        );
         let view = h.call("download_notes_pack", json!({})).unwrap();
         assert_eq!(view["notes"]["state"], "downloading", "trả ngay, tải trên luồng nền");
         let done = wait_notes(&h, "installed");
@@ -2919,7 +2939,11 @@ mod tests {
         assert_eq!((ready.ctx, ready.sha256.as_str()), (16384, sha.as_str()));
         assert_eq!(std::fs::read(&ready.path).unwrap(), data);
         assert!(
-            h.events.lock().unwrap().iter().any(|v| v["notes"]["state"] == "downloading"),
+            h.events
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|v| v["notes"]["state"] == "downloading"),
             "giao diện nhận trạng thái đang tải"
         );
         assert!(!h.service().busy());
@@ -2935,8 +2959,14 @@ mod tests {
         let notes = wait_notes(&h, "missing");
         assert_eq!(notes["state"], "missing");
         assert!(h.service().notes_ready().is_none());
-        assert!(!h.dir().join("notes-model.gguf").exists(), "file sai không được đặt vào chỗ");
-    assert_eq!(notes["error"], "modelsChecksum", "giao diện phải biết vì sao không tải được: {notes}");
+        assert!(
+            !h.dir().join("notes-model.gguf").exists(),
+            "file sai không được đặt vào chỗ"
+        );
+        assert_eq!(
+            notes["error"], "modelsChecksum",
+            "giao diện phải biết vì sao không tải được: {notes}"
+        );
     }
 
     #[test]
@@ -2975,7 +3005,9 @@ mod tests {
             .collect();
         assert_eq!(ranges.first(), Some(&None));
         assert!(
-            ranges.last().is_some_and(|r| r.as_deref().is_some_and(|r| r.starts_with("bytes="))),
+            ranges
+                .last()
+                .is_some_and(|r| r.as_deref().is_some_and(|r| r.starts_with("bytes="))),
             "tải tiếp, không tải lại từ đầu: {ranges:?}"
         );
     }

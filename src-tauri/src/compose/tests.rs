@@ -341,11 +341,22 @@ fn releasing_idle_models_is_refused_while_a_session_runs() {
     let deps = FakeDeps::default();
     let releases = deps.releases.clone();
     let app = mock_app_with(deps);
-    assert!(crate::session::release_idle_models(app.handle()), "không có phiên: tắt được");
+    assert!(
+        crate::session::release_idle_models(app.handle()),
+        "không có phiên: tắt được"
+    );
     assert_eq!(*releases.lock().unwrap(), 1);
-    app.state::<AppState>().update_status(|s| s.session = SessionStatus::Running);
-    assert!(!crate::session::release_idle_models(app.handle()), "phiên đang chạy: từ chối");
-    assert_eq!(*releases.lock().unwrap(), 1, "không tắt tiến trình phụ của phiên đang chạy");
+    app.state::<AppState>()
+        .update_status(|s| s.session = SessionStatus::Running);
+    assert!(
+        !crate::session::release_idle_models(app.handle()),
+        "phiên đang chạy: từ chối"
+    );
+    assert_eq!(
+        *releases.lock().unwrap(),
+        1,
+        "không tắt tiến trình phụ của phiên đang chạy"
+    );
 }
 
 /// Spec §3.4, §8.1: mỗi yêu cầu dịch đều chuẩn bị tiến trình phụ trước khi dùng bộ dịch. Bản thật chạm
@@ -388,7 +399,10 @@ fn the_height_stays_within_bounds() {
     for height in [50.0, 104.0, 300.0, 9999.0] {
         invoke(&compose, "compose_resize", json!({ "height": height })).unwrap();
     }
-    assert_eq!(compose_calls(&app), ["height 80", "height 104", "height 300", "height 420"]);
+    assert_eq!(
+        compose_calls(&app),
+        ["height 80", "height 104", "height 300", "height 420"]
+    );
 }
 
 /// Spec §5: nút của hộp lỗi đóng ô soạn rồi mở cửa sổ chính ở đúng màn hình.

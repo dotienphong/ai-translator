@@ -327,7 +327,12 @@ impl Store {
 
     /// Xóa một file model ngoài gói (khóa gốc như `notes`): file đã tải, phần dở, và bỏ khỏi danh sách đã tải.
     pub fn delete_entry(&self, entry: &FileEntry) -> std::io::Result<()> {
-        for name in self.installed().into_iter().filter(|i| i.id == entry.id).map(|i| i.file) {
+        for name in self
+            .installed()
+            .into_iter()
+            .filter(|i| i.id == entry.id)
+            .map(|i| i.file)
+        {
             remove_if_exists(&self.path(&name))?;
         }
         remove_if_exists(&self.path(&entry.file))?;

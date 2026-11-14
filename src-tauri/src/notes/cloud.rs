@@ -330,7 +330,11 @@ mod tests {
             ("POST", "/chat/completions", Some("Bearer ds-test"))
         );
         assert_eq!(
-            (&s.body["model"], &s.body["thinking"]["type"], &s.body["response_format"]["type"]),
+            (
+                &s.body["model"],
+                &s.body["thinking"]["type"],
+                &s.body["response_format"]["type"]
+            ),
             (&json!("deepseek-flash"), &json!("disabled"), &json!("json_object"))
         );
         assert_eq!(s.body["messages"][1], json!({ "role": "assistant", "content": "a" }));
@@ -339,11 +343,7 @@ mod tests {
 
     #[test]
     fn openai_request_never_carries_the_deepseek_thinking_field() {
-        let (base, seen) = serve(vec![(
-            200,
-            vec![],
-            r#"{"choices":[{"message":{"content":"x"}}]}"#,
-        )]);
+        let (base, seen) = serve(vec![(200, vec![], r#"{"choices":[{"message":{"content":"x"}}]}"#)]);
         assert_eq!(openai(&base).generate(&req(), &AtomicBool::new(false)).unwrap(), "x");
         assert!(seen.lock().unwrap()[0].body.get("thinking").is_none());
     }
@@ -528,11 +528,23 @@ mod tests {
         };
         let lines = vec![
             say(1, "Lan", "Chào mọi người, hôm nay ta chốt kế hoạch ra mắt bản 2.0."),
-            say(2, "Minh", "Mình đề nghị ra mắt vào ngày 15 tháng 12, vì đội kiểm thử cần thêm hai tuần."),
-            say(3, "Lan", "Được, chốt ngày 15 tháng 12. Minh, bạn gửi bản kiểm thử cho tôi trước thứ Sáu nhé."),
+            say(
+                2,
+                "Minh",
+                "Mình đề nghị ra mắt vào ngày 15 tháng 12, vì đội kiểm thử cần thêm hai tuần.",
+            ),
+            say(
+                3,
+                "Lan",
+                "Được, chốt ngày 15 tháng 12. Minh, bạn gửi bản kiểm thử cho tôi trước thứ Sáu nhé.",
+            ),
             say(4, "Minh", "Vâng, tôi sẽ gửi bản kiểm thử trước thứ Sáu."),
             say(5, "Hoa", "Còn ngân sách quảng cáo thì sao? Chúng ta chưa có con số."),
-            say(6, "Lan", "Đó là câu hỏi còn mở, Hoa tìm hiểu rồi báo lại trong cuộc họp tuần sau."),
+            say(
+                6,
+                "Lan",
+                "Đó là câu hỏi còn mở, Hoa tìm hiểu rồi báo lại trong cuộc họp tuần sau.",
+            ),
         ];
         let engine = CloudNotes::new(NotesProvider::Deepseek, "deepseek-flash", key).unwrap();
         let started = std::time::Instant::now();

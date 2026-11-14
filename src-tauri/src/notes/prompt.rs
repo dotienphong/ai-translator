@@ -133,7 +133,10 @@ mod tests {
     fn map_strict_uses_the_measured_meeting_template_and_the_old_ones_otherwise() {
         let p = map_strict(NotesTemplate::Meeting, "vi", "[1] hi");
         assert!(p.contains("Write the notes in Vietnamese") && p.contains("Not action items"));
-        assert!(p.ends_with("Transcript:\n[1] hi\n"), "mẫu bench kết thúc bằng xuống dòng, giữ nguyên");
+        assert!(
+            p.ends_with("Transcript:\n[1] hi\n"),
+            "mẫu bench kết thúc bằng xuống dòng, giữ nguyên"
+        );
         for t in [NotesTemplate::Lecture, NotesTemplate::Brief] {
             assert_eq!(map_strict(t, "ja", "T"), map(t, "ja", "T"), "{t:?}");
         }
@@ -154,7 +157,10 @@ mod tests {
         assert!(p.contains("written in Japanese"));
         assert!(p.ends_with("Transcript lines:\nL\nItems:\nI"));
         let p = verify("en", "say {language} {items}", "item {lines}");
-        assert!(p.contains("say {language} {items}"), "{{lines}} thay sau cùng, chữ của câu không bị thay lại");
+        assert!(
+            p.contains("say {language} {items}"),
+            "{{lines}} thay sau cùng, chữ của câu không bị thay lại"
+        );
     }
 
     #[test]

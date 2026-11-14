@@ -829,7 +829,11 @@ pub(crate) mod tests {
         );
         assert!(n.file.tier.is_empty());
         assert_eq!(m.notes_model("0.2.9"), None);
-        assert_eq!(parse(&sample()).unwrap().notes_model("9.0.0"), None, "manifest không có khóa");
+        assert_eq!(
+            parse(&sample()).unwrap().notes_model("9.0.0"),
+            None,
+            "manifest không có khóa"
+        );
     }
 
     /// Mục sai chỉ làm mất ghi chú trên máy; manifest và các gói vẫn dùng được.

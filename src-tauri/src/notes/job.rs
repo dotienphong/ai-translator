@@ -812,7 +812,10 @@ mod tests {
         let r = r.unwrap();
         assert_eq!(r.notes.action_items.len(), 1);
         assert_eq!(
-            (r.notes.action_items[0].owner.as_str(), r.notes.action_items[0].due.as_str()),
+            (
+                r.notes.action_items[0].owner.as_str(),
+                r.notes.action_items[0].due.as_str()
+            ),
             ("Minh", "thứ Sáu")
         );
         assert_eq!(r.notes.action_items[0].text, "gửi báo cáo");
@@ -838,7 +841,14 @@ mod tests {
     #[test]
     fn verified_keeps_an_item_when_the_verdict_is_unreadable() {
         let map = map_with(&[("gửi báo cáo", "", &[1])]);
-        let (r, seen) = go_verified("vi", 1000, &four_lines(), &[Ok(&map), Ok("rác"), Ok("rác")], None, &mut |_, _| {});
+        let (r, seen) = go_verified(
+            "vi",
+            1000,
+            &four_lines(),
+            &[Ok(&map), Ok("rác"), Ok("rác")],
+            None,
+            &mut |_, _| {},
+        );
         let r = r.unwrap();
         assert_eq!(r.notes.action_items.len(), 1);
         assert_eq!((r.verify.unparsed, r.verify.checked, r.verify.dropped), (1, 1, 0));
@@ -890,7 +900,11 @@ mod tests {
         );
         assert_eq!(seen[2].max_tokens, 1500);
         // lượt tóm tắt chỉ nhận chuỗi tóm tắt của từng bản, mỗi bản một dòng
-        assert!(seen[2].messages[0].content.ends_with("Parts:\n\"s1\"\n\"s2\""), "{}", seen[2].messages[0].content);
+        assert!(
+            seen[2].messages[0].content.ends_with("Parts:\n\"s1\"\n\"s2\""),
+            "{}",
+            seen[2].messages[0].content
+        );
     }
 
     #[test]

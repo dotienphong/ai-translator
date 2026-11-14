@@ -139,10 +139,8 @@ mod tests {
 
     #[test]
     fn verdicts_are_read_strictly() {
-        let v = parse_verdict(
-            r#"<think>x</think> ok {"items": [{"n": 1, "keep": true, "owner": "Minh", "due": 5}]}"#,
-        )
-        .unwrap();
+        let v = parse_verdict(r#"<think>x</think> ok {"items": [{"n": 1, "keep": true, "owner": "Minh", "due": 5}]}"#)
+            .unwrap();
         assert_eq!((v.keep, v.owner.as_str(), v.due.as_str()), (true, "Minh", ""));
         assert!(
             !parse_verdict(r#"{"items": [{"n": 1, "keep": false, "owner": "", "due": ""}]}"#)
@@ -164,8 +162,17 @@ mod tests {
 
     #[test]
     fn summaries_are_read_trimmed_and_never_empty() {
-        assert_eq!(parse_summary(r#"<think>x</think>{"summary": "  Tóm tắt.  "}"#).as_deref(), Some("Tóm tắt."));
-        for bad in ["", "chữ thô", r#"{"summary": "   "}"#, r#"{"summary": 3}"#, r#"{"khac": "x"}"#] {
+        assert_eq!(
+            parse_summary(r#"<think>x</think>{"summary": "  Tóm tắt.  "}"#).as_deref(),
+            Some("Tóm tắt.")
+        );
+        for bad in [
+            "",
+            "chữ thô",
+            r#"{"summary": "   "}"#,
+            r#"{"summary": 3}"#,
+            r#"{"khac": "x"}"#,
+        ] {
             assert!(parse_summary(bad).is_none(), "{bad}");
         }
     }

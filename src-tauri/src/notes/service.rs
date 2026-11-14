@@ -21,8 +21,8 @@ use super::chunk::{self, PromptLine};
 use super::cloud::CloudNotes;
 use super::engine::{Interrupt, NotesEngine, NotesError};
 use super::job::{self, Outcome};
-use super::local::{LocalNotes, LocalSpec};
 use super::keys;
+use super::local::{LocalNotes, LocalSpec};
 use super::quota::{self, FREE_NOTES};
 use super::schema::{self, Notes};
 use super::store::{self, Stored};
@@ -754,7 +754,11 @@ fn run_job<R: Runtime>(
     let engine = match build(cancel) {
         Ok(engine) => engine,
         Err(e) => {
-            log::warn!("không dựng được engine ghi chú: {} (nguồn {:?})", e.code(), work.provider);
+            log::warn!(
+                "không dựng được engine ghi chú: {} (nguồn {:?})",
+                e.code(),
+                work.provider
+            );
             if let Some(changed) = fail(inner, work.id, e.code()) {
                 events::notes_changed(app, &changed);
             }
@@ -1048,7 +1052,11 @@ mod tests {
             (P::Installed, true, Err(errors::NOTES_LOCAL_SESSION_ACTIVE)),
         ];
         for (state, active, want) in table {
-            assert_eq!(decide(&local(state, active)), want, "{state:?}, phiên đang chạy: {active}");
+            assert_eq!(
+                decide(&local(state, active)),
+                want,
+                "{state:?}, phiên đang chạy: {active}"
+            );
         }
         let installed = local(P::Installed, true);
         let running = Facts {
@@ -1065,7 +1073,13 @@ mod tests {
             }),
             Err(errors::NOTES_LOCAL_SESSION_ACTIVE)
         );
-        assert_eq!(decide(&Facts { busy: true, ..installed }), Err(errors::NOTES_BUSY));
+        assert_eq!(
+            decide(&Facts {
+                busy: true,
+                ..installed
+            }),
+            Err(errors::NOTES_BUSY)
+        );
         assert_eq!(
             decide(&Facts {
                 usable_lines: 0,
@@ -1073,7 +1087,13 @@ mod tests {
             }),
             Err(errors::NOTES_EMPTY)
         );
-        assert_eq!(decide(&Facts { pro: false, ..installed }), Err(errors::PRO_REQUIRED));
+        assert_eq!(
+            decide(&Facts {
+                pro: false,
+                ..installed
+            }),
+            Err(errors::PRO_REQUIRED)
+        );
     }
 
     // ---- Dịch vụ, với engine giả có cổng chặn ----
@@ -1584,7 +1604,10 @@ mod tests {
         });
         assert_eq!(*engines.specs.lock().unwrap(), ["local"]);
         let stored = svc.view(app.handle(), CUR).unwrap().notes.unwrap();
-        assert_eq!((stored.source, stored.model.as_str()), (NotesProvider::Local, "notes-qwen35-4b"));
+        assert_eq!(
+            (stored.source, stored.model.as_str()),
+            (NotesProvider::Local, "notes-qwen35-4b")
+        );
         svc.start(app.handle(), CUR, None, false).unwrap();
         wait_until("xong lần cloud", || {
             engines.specs.lock().unwrap().len() == 2 && svc.view(app.handle(), CUR).unwrap().status == JobStatus::Idle
@@ -1610,7 +1633,8 @@ mod tests {
         // Đã tải, nhưng có phiên dịch đang chạy: ghi chú của phiên trong Lịch sử cũng phải chờ.
         svc.set_local(NotesPackState::Installed, Some(ready()));
         let id = save_to_history(&app);
-        app.state::<AppState>().update_status(|s| s.session = SessionStatus::Running);
+        app.state::<AppState>()
+            .update_status(|s| s.session = SessionStatus::Running);
         assert_eq!(
             refused(&svc, TranscriptRef::History { id }),
             errors::NOTES_LOCAL_SESSION_ACTIVE
@@ -1639,7 +1663,10 @@ mod tests {
         // Engine trả kết quả muộn (cổng đã mở): bị bỏ, không đè trạng thái, không lưu, không tính lượt.
         std::thread::sleep(Duration::from_millis(150));
         let v = svc.view(app.handle(), CUR).unwrap();
-        assert_eq!((v.status, v.notes.is_none(), v.free_left), (JobStatus::Failed, true, Some(3)));
+        assert_eq!(
+            (v.status, v.notes.is_none(), v.free_left),
+            (JobStatus::Failed, true, Some(3))
+        );
         assert!(!svc.has_memory());
         assert!(
             events
@@ -1706,7 +1733,10 @@ mod tests {
             svc.view(app.handle(), CUR).unwrap().status == JobStatus::Failed
         });
         let v = svc.view(app.handle(), CUR).unwrap();
-        assert_eq!((v.error.as_deref(), v.notes.is_none()), (Some(errors::NOTES_LOCAL_PACK_MISSING), true));
+        assert_eq!(
+            (v.error.as_deref(), v.notes.is_none()),
+            (Some(errors::NOTES_LOCAL_PACK_MISSING), true)
+        );
         assert_eq!(svc.discarded(), 1);
         assert_eq!(engines.requests(), 0);
     }
@@ -1756,7 +1786,10 @@ mod tests {
         wait_until("engine cũ đang chạy", || engines.requests() == 1);
         svc.cancel(app.handle());
         let new = engines.gated(Reply::Text(json("new")));
-        assert_eq!(svc.start(app.handle(), CUR, None, false).unwrap().status, JobStatus::Running);
+        assert_eq!(
+            svc.start(app.handle(), CUR, None, false).unwrap().status,
+            JobStatus::Running
+        );
         // Việc cũ xong trước, trong lúc việc mới còn chạy: không đổi gì.
         wait_until("engine mới đang chạy", || engines.requests() == 2);
         old.send(()).unwrap();
@@ -1873,7 +1906,8 @@ mod tests {
         crate::notes::install_with(app.handle(), engines.factory());
         let svc = app.state::<NotesService>();
         let gate = engines.gated(Reply::Text(json("s1")));
-        svc.start(app.handle(), TranscriptRef::History { id }, None, false).unwrap();
+        svc.start(app.handle(), TranscriptRef::History { id }, None, false)
+            .unwrap();
         wait_until("engine đang chạy", || engines.requests() == 1);
         let path = app.state::<crate::db::DataStore>().path();
         assert!(path.exists());

@@ -264,12 +264,7 @@ impl LocalNotes {
         launch.use_gpu = spec.use_gpu;
         launch.env = spec.env.clone();
         // Đứng sau `-c 2048` của `llama::command`: llama.cpp lấy giá trị cuối.
-        launch.extra_args = vec![
-            "-c".into(),
-            spec.ctx.to_string(),
-            "--cache-ram".into(),
-            "0".into(),
-        ];
+        launch.extra_args = vec!["-c".into(), spec.ctx.to_string(), "--cache-ram".into(), "0".into()];
         let key = random_key();
         let log = logfile::RotatingLog::open(&spec.log, logfile::MAX_BYTES, logfile::KEEP)
             .map_err(|_| NotesError::Engine("không mở được log llama-server".into()))?;
@@ -279,11 +274,7 @@ impl LocalNotes {
         let stderr = child.stderr.take();
         let child = Arc::new(Mutex::new(child));
         let Some(stderr) = stderr else {
-            drop(Proc {
-                child,
-                pid,
-                pump: None,
-            });
+            drop(Proc { child, pid, pump: None });
             return Err(NotesError::Engine("llama-server không có stderr".into()));
         };
         // Cổng chỉ lấy từ stderr của chính tiến trình con (pipe riêng), không dò qua mạng.
@@ -430,7 +421,10 @@ mod tests {
             let (base, seen) = serve(vec![(200, vec![], r#"{"choices":[{"message":{"content":"ok"}}]}"#)]);
             assert_eq!(client(&base).chat(&req(format)).unwrap(), "ok");
             let sent = seen.lock().unwrap()[0].clone();
-            assert_eq!((sent.method.as_str(), sent.path.as_str()), ("POST", "/v1/chat/completions"));
+            assert_eq!(
+                (sent.method.as_str(), sent.path.as_str()),
+                ("POST", "/v1/chat/completions")
+            );
             assert_eq!(sent.authorization.as_deref(), Some("Bearer k"));
             let body = &sent.body;
             assert_eq!(body["temperature"], 0);
@@ -441,7 +435,12 @@ mod tests {
             assert_eq!(body["response_format"]["json_schema"]["name"], "notes");
             let schema = &body["response_format"]["json_schema"]["schema"];
             assert_eq!(schema["additionalProperties"], false);
-            let got: Vec<&str> = schema["required"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+            let got: Vec<&str> = schema["required"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_str().unwrap())
+                .collect();
             assert_eq!(got, required, "{format:?}");
         }
     }
@@ -457,9 +456,17 @@ mod tests {
 
     #[test]
     fn a_reply_without_content_is_a_bad_response() {
-        for body in [r#"{"choices":[]}"#, r#"{"choices":[{"message":{}}]}"#, "không phải JSON"] {
+        for body in [
+            r#"{"choices":[]}"#,
+            r#"{"choices":[{"message":{}}]}"#,
+            "không phải JSON",
+        ] {
             let (base, _) = serve(vec![(200, vec![], body)]);
-            assert_eq!(client(&base).chat(&req(Format::Notes)).unwrap_err(), NotesError::BadResponse, "{body}");
+            assert_eq!(
+                client(&base).chat(&req(Format::Notes)).unwrap_err(),
+                NotesError::BadResponse,
+                "{body}"
+            );
         }
     }
 
@@ -480,8 +487,14 @@ mod tests {
 
     #[test]
     fn listening_port_reads_only_the_loopback_line() {
-        assert_eq!(listening_port("llama_server: listening on http://127.0.0.1:51234"), Some(51234));
-        assert_eq!(listening_port("main: server is listening on http://127.0.0.1:8080 - starting"), Some(8080));
+        assert_eq!(
+            listening_port("llama_server: listening on http://127.0.0.1:51234"),
+            Some(51234)
+        );
+        assert_eq!(
+            listening_port("main: server is listening on http://127.0.0.1:8080 - starting"),
+            Some(8080)
+        );
         for bad in [
             "llama_server: listening on http://0.0.0.0:51234",
             "listening on http://192.168.1.2:80",
@@ -563,11 +576,23 @@ mod tests {
         };
         let lines = vec![
             say(1, "Lan", "Chào mọi người, hôm nay ta chốt kế hoạch ra mắt bản 2.0."),
-            say(2, "Minh", "Mình đề nghị ra mắt vào ngày 15 tháng 12, và để kiểm thử cần thêm hai tuần."),
-            say(3, "Lan", "Được, chốt ngày 15 tháng 12. Minh, bạn gửi bản kiểm thử cho tôi trước thứ Sáu nhé."),
+            say(
+                2,
+                "Minh",
+                "Mình đề nghị ra mắt vào ngày 15 tháng 12, và để kiểm thử cần thêm hai tuần.",
+            ),
+            say(
+                3,
+                "Lan",
+                "Được, chốt ngày 15 tháng 12. Minh, bạn gửi bản kiểm thử cho tôi trước thứ Sáu nhé.",
+            ),
             say(4, "Minh", "Vâng, tôi sẽ gửi bản kiểm thử trước thứ Sáu."),
             say(5, "Hoa", "Còn ngân sách quảng cáo thì sao? Chúng ta chưa có con số."),
-            say(6, "Lan", "Đó là câu hỏi còn mở, Hoa tìm hiểu rồi báo lại trong cuộc họp tuần sau."),
+            say(
+                6,
+                "Lan",
+                "Đó là câu hỏi còn mở, Hoa tìm hiểu rồi báo lại trong cuộc họp tuần sau.",
+            ),
         ];
         let started = Instant::now();
         let engine = LocalNotes::start(&spec, &AtomicBool::new(false)).unwrap();
@@ -581,7 +606,10 @@ mod tests {
             .unwrap()
             .json()
             .unwrap();
-        assert_eq!(props["default_generation_settings"]["n_ctx"], 16_384, "server phải chạy đúng ngữ cảnh đã yêu cầu");
+        assert_eq!(
+            props["default_generation_settings"]["n_ctx"], 16_384,
+            "server phải chạy đúng ngữ cảnh đã yêu cầu"
+        );
         let mut last = (0, 0);
         let out = crate::notes::job::run(
             &lines,

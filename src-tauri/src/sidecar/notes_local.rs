@@ -38,9 +38,7 @@ pub fn spec<R: Runtime>(app: &AppHandle<R>, ready: &NotesReady) -> Result<LocalS
         log::warn!("llama-server của ghi chú không qua kiểm: {e}");
         engine_error("llama-server không đúng bản")
     })?;
-    let probed = app
-        .try_state::<GpuProbe>()
-        .and_then(|probe| probe.get(PROBE_WAIT));
+    let probed = app.try_state::<GpuProbe>().and_then(|probe| probe.get(PROBE_WAIT));
     let log = app
         .path()
         .app_log_dir()
