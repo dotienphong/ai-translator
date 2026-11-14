@@ -5,7 +5,9 @@
 //! - Mặc định tắt. Mọi việc chạy trên **một luồng riêng** (`listen`), nơi `Ducker` và COM được dựng và dùng; luồng giao diện chỉ gửi
 //!   lệnh qua kênh, không chờ.
 //! - Mọi lời gọi vào backend bọc `catch_unwind`: panic hay lỗi ⇒ trả âm lượng, hạ cờ, báo `listenFailed` lên overlay, luồng sống
-//!   tiếp (bật lại được). Không `unwrap`/`expect` trên đường chạy.
+//!   tiếp (bật lại được). Phần panic chỉ đúng ở bản dev và test: bản phát hành build `panic = "abort"` (`[profile.release]` ở
+//!   `Cargo.toml` gốc), panic ở đâu thì app thoát ngay và `catch_unwind` không kịp chạy; âm lượng đang hạ được trả ở lần mở app
+//!   sau (`restore_on_start`, nhờ file `listen-duck.json`). Không `unwrap`/`expect` trên đường chạy.
 //! - Cờ [`is_engaged`] chỉ để đường thu biết đang hạ (bộ bù mức, Task 3); tắt thì đường thu không đổi gì.
 //! - macOS: chưa hỗ trợ (spec §9): lệnh trả `supported: false`, không dựng luồng nào.
 
@@ -75,7 +77,7 @@ pub(crate) enum Cmd {
     Shutdown,
 }
 
-/// Chạy `f` mà panic không lan ra: `None` nếu panic.
+/// Chạy `f` mà panic không lan ra: `None` nếu panic. Chỉ có tác dụng khi panic unwind (dev, test); bản phát hành `panic = "abort"`.
 fn guarded<T>(f: impl FnOnce() -> T) -> Option<T> {
     catch_unwind(AssertUnwindSafe(f)).ok()
 }

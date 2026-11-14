@@ -785,7 +785,8 @@ fn run_job<R: Runtime>(
             events::notes_changed(app, &changed);
         }
     };
-    // Engine hỏng (panic) không được để dịch vụ kẹt ở `running`; nội dung panic không vào log hay sự kiện.
+    // Engine hỏng (panic) không được để dịch vụ kẹt ở `running`; nội dung panic không vào log hay sự kiện. Chỉ có tác dụng khi panic
+    // unwind (dev, test): bản phát hành build `panic = "abort"`, panic làm app thoát ngay nên không còn dịch vụ nào để kẹt.
     let result = catch_unwind(AssertUnwindSafe(|| {
         job::run(
             &work.lines,
