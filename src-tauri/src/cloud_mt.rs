@@ -41,6 +41,13 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(12);
 const WARMUP_TTL_SECS: u64 = 45;
 const MAX_CONSECUTIVE_FAILURES: usize = 3;
+/// Số lần liên tiếp không đọc được kho khóa (lỗi, không phải "chưa có key") trước khi coi như Cloud không dùng được và dự phòng về Local.
+/// Mỗi câu gọi `get_cloud` hai lần (`count_tokens` rồi `stream`) nên 4 lần ≈ 2 câu.
+const MAX_KEY_READ_ERRORS: usize = 4;
+
+/// Tăng mỗi lần [`set_api_key`] lưu hay xóa một API key. [`AppCloudProvider`] giữ key đã đọc và chỉ đọc lại kho khóa của hệ điều hành
+/// khi số này hoặc nguồn dịch đổi, để mỗi câu dịch không phải mở kho khóa (macOS: mỗi lần mở chạy `/usr/bin/security` vài lần).
+static KEY_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn is_fatal_cloud_error(err: &MtError) -> bool {
     match err {
@@ -96,16 +103,26 @@ fn read_key_from_store(ks: &Keystore, entry: &str) -> Option<String> {
     (!trimmed.is_empty()).then_some(trimmed)
 }
 
-fn read_provider_key<R: Runtime>(app: &AppHandle<R>, provider: TranslationProvider) -> Option<String> {
+/// `Ok(None)`: chưa lưu key. `Err(())`: không đọc được kho khóa (lỗi thoáng qua, kho bị khóa...), khác với "chưa có key".
+fn try_read_provider_key<R: Runtime>(app: &AppHandle<R>, provider: TranslationProvider) -> Result<Option<String>, ()> {
     let entry = match provider {
-        TranslationProvider::Local => return None,
+        TranslationProvider::Local => return Ok(None),
         TranslationProvider::Openai => OPENAI_KEY_ENTRY,
         TranslationProvider::Gemini => GEMINI_KEY_ENTRY,
         TranslationProvider::Deepseek => DEEPSEEK_KEY_ENTRY,
     };
-    with_keystore(app, |ks| Ok(read_key_from_store(ks, entry)))
-        .ok()
-        .flatten()
+    let Some(bytes) = with_keystore(app, |ks| ks.get(entry)).map_err(|_| ())? else {
+        return Ok(None);
+    };
+    let raw = String::from_utf8(bytes).unwrap_or_default();
+    let key = raw.trim().to_string();
+    Ok((!key.is_empty()).then_some(key))
+}
+
+/// Chỉ test dùng: bản chạy thật cần phân biệt lỗi đọc với "chưa có key" nên gọi [`try_read_provider_key`].
+#[cfg(test)]
+fn read_provider_key<R: Runtime>(app: &AppHandle<R>, provider: TranslationProvider) -> Option<String> {
+    try_read_provider_key(app, provider).ok().flatten()
 }
 
 pub fn get_keys_status<R: Runtime>(app: &AppHandle<R>) -> TranslationKeysStatus {
@@ -151,6 +168,7 @@ pub fn set_api_key<R: Runtime>(
         }
     })
     .map_err(|e| CommandError::new(errors::UNKNOWN, Some("apiKey"), e.to_string()))?;
+    KEY_GENERATION.fetch_add(1, Ordering::SeqCst);
     reset_translation_fallback(app);
     Ok(get_keys_status(app))
 }
@@ -200,15 +218,57 @@ struct AppCloudProvider<R: Runtime> {
     cached_endpoint: String,
     cached_model: String,
     cached_key: String,
+    /// Nguồn dịch và [`KEY_GENERATION`] lúc `cached_key` được đọc từ kho khóa; khớp thì không đọc lại.
+    key_checked: Option<(TranslationProvider, u64)>,
+    /// Số lần liên tiếp không đọc được kho khóa (xem [`MAX_KEY_READ_ERRORS`]).
+    key_read_errors: usize,
     cached_cloud: Option<Box<dyn Mt>>,
+}
+
+impl<R: Runtime> AppCloudProvider<R> {
+    /// API key của nguồn dịch `provider`: dùng lại bản đã đọc nếu nguồn dịch và [`KEY_GENERATION`] chưa đổi, không thì đọc kho khóa.
+    /// `Ok(None)`: chưa có key. `Err(())`: tạm thời không đọc được kho khóa (đếm vào `key_read_errors`).
+    fn resolve_key(&mut self, provider: TranslationProvider) -> Result<Option<String>, ()> {
+        // Đọc số thế hệ TRƯỚC khi đọc kho khóa: nếu `set_api_key` chạy xen giữa, lần gọi sau thấy số đã đổi và đọc lại.
+        let generation = KEY_GENERATION.load(Ordering::SeqCst);
+        if self.key_checked == Some((provider, generation)) && !self.cached_key.is_empty() {
+            return Ok(Some(self.cached_key.clone()));
+        }
+        match try_read_provider_key(&self.app, provider) {
+            Ok(Some(key)) => {
+                self.key_read_errors = 0;
+                self.key_checked = Some((provider, generation));
+                Ok(Some(key))
+            }
+            Ok(None) => {
+                self.key_read_errors = 0;
+                self.key_checked = None;
+                Ok(None)
+            }
+            Err(()) => {
+                self.key_read_errors += 1;
+                self.key_checked = None;
+                Err(())
+            }
+        }
+    }
+
+    fn clear_cloud(&mut self) {
+        self.cached_cloud = None;
+        self.cached_endpoint.clear();
+        self.cached_model.clear();
+        self.cached_key.clear();
+    }
 }
 
 impl<R: Runtime> DynamicCloud for AppCloudProvider<R> {
     fn get_cloud<'a>(&'a mut self) -> Result<Option<&'a mut (dyn Mt + 'a)>, ()> {
-        let Some(state) = self.app.try_state::<AppState>() else {
-            return Err(());
+        let settings = {
+            let Some(state) = self.app.try_state::<AppState>() else {
+                return Err(());
+            };
+            state.settings()
         };
-        let settings = state.settings();
         let (endpoint, model) = match settings.translation_provider {
             TranslationProvider::Local => {
                 self.cached_cloud = None;
@@ -221,13 +281,16 @@ impl<R: Runtime> DynamicCloud for AppCloudProvider<R> {
             TranslationProvider::Gemini => (GEMINI_CHAT_ENDPOINT, settings.gemini_model),
             TranslationProvider::Deepseek => (DEEPSEEK_CHAT_ENDPOINT, settings.deepseek_model),
         };
-        let key = match read_provider_key(&self.app, settings.translation_provider) {
-            Some(k) if !k.trim().is_empty() => k,
-            _ => {
-                self.cached_cloud = None;
-                self.cached_endpoint.clear();
-                self.cached_model.clear();
-                self.cached_key.clear();
+        let key = match self.resolve_key(settings.translation_provider) {
+            Ok(Some(key)) => key,
+            Ok(None) => {
+                self.clear_cloud();
+                return Ok(None);
+            }
+            // Lỗi đọc kho khóa có thể chỉ thoáng qua: câu này dịch bằng Local, không bật cờ dự phòng; câu sau đọc lại.
+            Err(()) if self.key_read_errors < MAX_KEY_READ_ERRORS => return Err(()),
+            Err(()) => {
+                self.clear_cloud();
                 return Ok(None);
             }
         };
@@ -268,6 +331,8 @@ pub fn wrap_mt<R: Runtime>(app: &AppHandle<R>, local: Box<dyn Mt>, fell_back: Ar
         cached_endpoint: String::new(),
         cached_model: String::new(),
         cached_key: String::new(),
+        key_checked: None,
+        key_read_errors: 0,
         cached_cloud: None,
     };
     Box::new(FallbackMt::dynamic(
@@ -283,19 +348,22 @@ static LAST_OPENAI_WARMUP_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic
 static LAST_GEMINI_WARMUP_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 static LAST_DEEPSEEK_WARMUP_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-fn shared_http_client() -> reqwest::blocking::Client {
-    SHARED_HTTP
-        .get_or_init(|| {
-            reqwest::blocking::Client::builder()
-                .connect_timeout(CONNECT_TIMEOUT)
-                .timeout(REQUEST_TIMEOUT)
-                .tcp_nodelay(true)
-                .pool_idle_timeout(Some(Duration::from_secs(120)))
-                .pool_max_idle_per_host(8)
-                .build()
-                .expect("không khởi tạo được HTTP client cho Cloud MT")
-        })
-        .clone()
+/// Không dùng `expect`: lớp TLS của hệ điều hành không khởi tạo được thì trả lỗi để [`FallbackMt`] về Model Local, không làm app thoát.
+fn shared_http_client() -> Result<reqwest::blocking::Client, MtError> {
+    if let Some(client) = SHARED_HTTP.get() {
+        return Ok(client.clone());
+    }
+    let client = reqwest::blocking::Client::builder()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(REQUEST_TIMEOUT)
+        // API key nằm trong header (`Authorization`, `x-goog-api-key`): không theo chuyển hướng sang địa chỉ khác (như `notes/cloud.rs`).
+        .redirect(reqwest::redirect::Policy::none())
+        .tcp_nodelay(true)
+        .pool_idle_timeout(Some(Duration::from_secs(120)))
+        .pool_max_idle_per_host(8)
+        .build()
+        .map_err(|_| MtError::Failed("không khởi tạo được HTTP client cho Cloud MT".into()))?;
+    Ok(SHARED_HTTP.get_or_init(|| client).clone())
 }
 
 fn now_epoch_secs() -> u64 {
@@ -328,7 +396,9 @@ fn prewarm_connection_in_background(endpoint: &str, api_key: &str) {
     slot.store(now, Ordering::Relaxed);
     let key = api_key.to_string();
     std::thread::spawn(move || {
-        let http = shared_http_client();
+        let Ok(http) = shared_http_client() else {
+            return;
+        };
         let req = if is_gemini {
             http.get("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1")
                 .header("x-goog-api-key", key)
@@ -437,12 +507,13 @@ impl CloudMt {
         let endpoint = endpoint.into();
         let model = model.into();
         let api_key = api_key.into();
+        let http = shared_http_client()?;
         prewarm_connection_in_background(&endpoint, &api_key);
         Ok(Self {
             endpoint,
             model,
             api_key,
-            http: shared_http_client(),
+            http,
         })
     }
 }
@@ -588,7 +659,8 @@ fn read_cloud_stream(
 /// Nguồn Cloud động cho [`FallbackMt`]: cho phép nhận biết thay đổi nguồn dịch (Local / OpenAI / Gemini / DeepSeek),
 /// đổi model hoặc API Key ngay giữa phiên dịch mà không cần khởi động lại phiên.
 pub trait DynamicCloud: Send {
-    /// - `Err(())`: người dùng chọn Local -> dịch bằng model Local, không kích hoạt cờ fallback.
+    /// - `Err(())`: người dùng chọn Local (hoặc tạm thời không đọc được API key) -> dịch câu này bằng model Local,
+    ///   không kích hoạt cờ fallback; câu sau hỏi lại.
     /// - `Ok(Some(cloud))`: người dùng chọn Cloud và đã cấu hình API key -> dịch bằng Cloud.
     /// - `Ok(None)`: người dùng chọn Cloud nhưng chưa có API key -> kích hoạt fallback về Local.
     #[allow(clippy::result_unit_err)]
@@ -709,6 +781,10 @@ impl Mt for FallbackMt {
         req: &ChatRequest,
         on_delta: &mut dyn FnMut(&str) -> ControlFlow<()>,
     ) -> Result<StreamEnd, MtError> {
+        // Đã dự phòng về Local thì mọi nhánh dưới đều dịch bằng Local; khỏi gọi `get_cloud` (đọc kho khóa) cho từng câu.
+        if self.fell_back.load(Ordering::SeqCst) {
+            return self.local.stream(req, on_delta);
+        }
         if let Some(d) = self.dynamic.as_mut() {
             let cloud_target = match d.get_cloud() {
                 Err(()) => return self.local.stream(req, on_delta),
@@ -1191,6 +1267,96 @@ mod tests {
         assert_eq!(end.text, "Xin chào thế giới");
         assert_eq!(end.finish_reason.as_deref(), Some("stop"));
         assert!(!end.cancelled);
+    }
+
+    #[test]
+    fn shared_http_client_builds_without_panicking() {
+        assert!(shared_http_client().is_ok());
+        assert!(shared_http_client().is_ok());
+    }
+
+    fn provider_for<R: Runtime>(app: &AppHandle<R>) -> AppCloudProvider<R> {
+        AppCloudProvider {
+            app: app.clone(),
+            cached_endpoint: String::new(),
+            cached_model: String::new(),
+            cached_key: String::new(),
+            key_checked: None,
+            key_read_errors: 0,
+            cached_cloud: None,
+        }
+    }
+
+    #[test]
+    fn app_cloud_provider_sees_a_changed_api_key_without_restarting_the_session() {
+        let app = mock_app();
+        let mut provider = provider_for(app.handle());
+        assert_eq!(provider.resolve_key(TranslationProvider::Deepseek), Ok(None));
+        assert_eq!(provider.key_checked, None);
+
+        set_api_key(app.handle(), TranslationProvider::Deepseek, "sk-first-0001").unwrap();
+        let first = Ok(Some("sk-first-0001".to_string()));
+        assert_eq!(provider.resolve_key(TranslationProvider::Deepseek), first);
+        assert!(provider.key_checked.is_some());
+        // `get_cloud` giữ key sau khi dựng CloudMt; lần gọi sau dùng lại bản đã giữ.
+        provider.cached_key = "sk-first-0001".to_string();
+        assert_eq!(provider.resolve_key(TranslationProvider::Deepseek), first);
+
+        set_api_key(app.handle(), TranslationProvider::Deepseek, "sk-second-0002").unwrap();
+        let second = Ok(Some("sk-second-0002".to_string()));
+        assert_eq!(provider.resolve_key(TranslationProvider::Deepseek), second);
+
+        // Đổi sang nguồn dịch khác thì đọc key của nguồn đó, đổi về lại vẫn đúng key cũ.
+        assert_eq!(provider.resolve_key(TranslationProvider::Openai), Ok(None));
+        assert_eq!(provider.resolve_key(TranslationProvider::Deepseek), second);
+
+        set_api_key(app.handle(), TranslationProvider::Deepseek, "").unwrap();
+        assert_eq!(provider.resolve_key(TranslationProvider::Deepseek), Ok(None));
+        assert_eq!(provider.key_read_errors, 0);
+    }
+
+    #[test]
+    fn fallback_mt_stops_asking_the_cloud_provider_once_fallen_back() {
+        struct Counting {
+            calls: Arc<AtomicUsize>,
+        }
+        impl DynamicCloud for Counting {
+            fn get_cloud<'a>(&'a mut self) -> Result<Option<&'a mut (dyn Mt + 'a)>, ()> {
+                self.calls.fetch_add(1, Ordering::SeqCst);
+                Ok(None)
+            }
+        }
+
+        let provider_calls = Arc::new(AtomicUsize::new(0));
+        let local_calls = Arc::new(AtomicUsize::new(0));
+        let fell_back = Arc::new(AtomicBool::new(false));
+        let mut mt = FallbackMt::dynamic(
+            Box::new(Counting {
+                calls: provider_calls.clone(),
+            }),
+            Box::new(ScriptedMt::new(
+                local_calls.clone(),
+                vec![ok_stream("Một"), ok_stream("Hai"), ok_stream("Ba")],
+            )),
+            fell_back.clone(),
+            Arc::new(|| {}),
+        );
+
+        let out = translate(&mut mt, &job("Sentence 1"), &MtConfig::default(), &mut |_| {
+            ControlFlow::Continue(())
+        });
+        assert!(matches!(out, Outcome::Done(ref t) if t.text == "Một"));
+        assert!(fell_back.load(Ordering::SeqCst));
+        let asked_while_falling_back = provider_calls.load(Ordering::SeqCst);
+
+        for text in ["Sentence 2", "Sentence 3"] {
+            let out = translate(&mut mt, &job(text), &MtConfig::default(), &mut |_| {
+                ControlFlow::Continue(())
+            });
+            assert!(matches!(out, Outcome::Done(_)));
+        }
+        assert_eq!(local_calls.load(Ordering::SeqCst), 3);
+        assert_eq!(provider_calls.load(Ordering::SeqCst), asked_while_falling_back);
     }
 
     #[test]
