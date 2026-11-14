@@ -1455,12 +1455,12 @@ test("văn bản pháp lý (điều khoản và chính sách ở docs/legal): b�
       }
     }
   }
-  // EULA lên 1.8 và chính sách lên 1.14 (đăng nhập bằng Google, spec 2026-11-05-dang-nhap-google, hiệu lực 2026-11-06); chính sách
+  // EULA 1.9 và chính sách 1.15 (model cloud và ghi chú cuộc họp, app 0.7.0) hiệu lực 2026-11-14, ngày phát hành 0.7.0; chính sách
   // hiệu lực không sớm hơn 2026-10-31. Đổi ngày phát hành thật thì sửa ở đây và ở README.
   const privacyHead = docHeader(docs["privacy.vi.md"]);
   const eulaHead = docHeader(docs["eula.vi.md"]);
   if (eulaHead?.version !== "1.9" || privacyHead?.version !== "1.15") errors.push("EULA 1.9 và chính sách 1.15");
-  if (eulaHead?.iso !== "2026-11-06") errors.push(`EULA 1.8 hiệu lực 2026-11-06, đang ghi ${eulaHead?.iso}`);
+  if (eulaHead?.iso !== "2026-11-14") errors.push(`EULA 1.9 hiệu lực 2026-11-14, đang ghi ${eulaHead?.iso}`);
   if (!privacyHead || privacyHead.iso < "2026-10-31") errors.push(`chính sách 1.14 hiệu lực từ 2026-10-31 trở đi, đang ghi ${privacyHead?.iso}: đặt ngày phát hành thật (docs/legal/README.md, "Đổi ngày hiệu lực")`);
   assert.deepEqual(errors, []);
 });
