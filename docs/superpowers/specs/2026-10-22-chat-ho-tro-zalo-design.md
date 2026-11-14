@@ -74,7 +74,7 @@ Token đi trong header `Authorization: Bearer <token>`. Mọi thân là JSON, t�
 | `GET /v1/support/status` | `{ enabled }`. Khung chat gọi khi mở; tắt thì hiện email support@ thay ô nhập |
 | `POST /v1/support/messages` | Gửi tin `{ text, lang, source, page?, context? }`. Không có token thì tạo cuộc chat mới và trả `{ token }` kèm tin vừa lưu. `text` sau khi bỏ khoảng trắng hai đầu phải dài 1–1000 ký tự; bỏ ký tự điều khiển trừ xuống dòng. `page` và `context` chỉ được nhận ở tin đầu tiên |
 | `GET /v1/support/messages?after=<id>` | `{ enabled, status, messages: [{ id, sender, text, created_at }] }`, các tin có `id > after` |
-| `PUT /v1/support/email` | `{ email }` (định dạng hợp lệ, tối đa 254 ký tự), hay `null` để bỏ. Báo Zalo "✉️ khách đã để lại email" (không kèm địa chỉ) |
+| `PUT /v1/support/email` | `{ email }` (định dạng hợp lệ, tối đa 254 ký tự), hay `null` để bỏ. Báo Zalo "✉️ khách đã để lại email: <địa chỉ>" (kèm địa chỉ, cập nhật 2026-10-31; chính sách quyền riêng tư mục 11 nói đúng điều này) |
 | `DELETE /v1/support/conversation` | Xóa cuộc chat và mọi tin. Báo Zalo "🗑 khách đã xóa cuộc chat" |
 
 Mã lỗi (thân `{ error }`): `support_disabled` (503), `conversation_closed` (403, cuộc chat bị chặn), `invalid_token` (401), `invalid_request` (400, kèm `field`), `rate_limited` (429, kèm `Retry-After`), `support_busy` (429, chạm trần toàn hệ thống).
@@ -102,7 +102,7 @@ Phụ đề không hiện khi họp Teams
 ```
 
 - Dòng `🆕` chỉ ở tin đầu tiên của mỗi cuộc chat. `source` là `app-debug` thì ghi `app (debug)`.
-- **Dữ liệu tới Zalo chỉ gồm:** nội dung tin, mã cuộc chat, nguồn, ngôn ngữ, trang (web), thông tin máy (app, khi khách để tích). **Email của khách không bao giờ gửi qua Zalo** (có test chặn).
+- **Dữ liệu tới Zalo chỉ gồm:** nội dung tin, mã cuộc chat, nguồn, ngôn ngữ, trang (web), thông tin máy (app, khi khách để tích). **Địa chỉ email của khách chỉ tới Zalo trong thông báo "đã để lại email"** (`BOT_TEXT.emailSaved`, cập nhật 2026-10-31); các hàm dựng chữ khác không nhận email (có test chặn).
 - Server thử chuyển ngay trong request (`ctx.waitUntil`). Mỗi tin được giữ chỗ (`claimed_at`) trước khi gửi; bên nào thấy tin chờ cũ nhất của cuộc chat đang được bên khác giữ (chưa quá 60 giây) thì dừng, bên đang giữ gửi tiếp các tin sau theo thứ tự `id`. Giữ chỗ quá 60 giây (Worker bị dừng giữa chừng) thì cron giữ chỗ lại. Gửi ít nhất một lần: Zalo đã nhận mà hết thời gian chờ thì tin có thể tới hai lần. Dòng `🆕` đi kèm tin đầu tiên **tới được** Zalo của cuộc chat.
 - Thất bại (mạng, `5xx`, token sai) thì tin vẫn được lưu và khách vẫn thấy "Đã gửi". Cron gửi lại (mục 2.6).
 

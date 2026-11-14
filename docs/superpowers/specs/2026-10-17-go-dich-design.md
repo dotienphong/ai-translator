@@ -211,7 +211,7 @@ Không xác nhận được ô kia đã nhận chữ hay chưa: hệ điều hà
 
 ## 6. Quyền riêng tư và pháp lý
 
-- **Không có request mạng nào** từ Gõ dịch: dịch chạy trên máy; luật bản quyền dùng token đã lưu. Danh sách kết nối của A7 (§3.3 của spec gốc) không đổi.
+- **Mặc định không có request mạng nào** từ Gõ dịch: dịch chạy trên máy; luật bản quyền dùng token đã lưu. (Cập nhật 2026-11-14: từ khi có model cloud do người dùng tự bật, spec `2026-11-07-cloud-mt-fallback-design.md`, nếu nguồn dịch là cloud thì chữ gõ đi tới nhà cung cấp đã chọn, đúng như chính sách quyền riêng tư 1.15.) Danh sách kết nối của A7 (§3.3 của spec gốc) không đổi.
 - **Chữ gõ và bản dịch chỉ nằm trong bộ nhớ**: không vào bản chép lời, lịch sử, file nào trên đĩa, log hay báo cáo lỗi. Log của Gõ dịch chỉ ghi số liệu (số ký tự, số dòng, thời gian dịch, kết quả, mã lỗi), không bao giờ ghi chữ. Có test: chạy luồng dịch và dán với chữ đánh dấu, rồi kiểm log và hàng đợi báo cáo không chứa chữ đó. Không dựa vào bước che dữ liệu của báo cáo lỗi để giấu chữ.
 - **App chỉ ghi vào clipboard**, không đọc clipboard, và không đọc chữ hay nội dung gì từ app khác. Quyền Trợ năng chỉ dùng để gửi phím dán.
 - **Chính sách quyền riêng tư** (hiện là bản 1.3): có thể cần thêm một câu về việc ghi vào clipboard và xin quyền Trợ năng trên Mac. Chủ dự án quyết có sửa không, và sửa thì nâng phiên bản chính sách theo quy trình của `docs/legal`.
@@ -251,7 +251,7 @@ S1 hay S2 không đạt thì dừng lại, báo chủ dự án và xem lại thi
 | GD2 | Thời gian từ lúc gửi yêu cầu tới `compose://done` (đọc từ log), 20 câu chat thật tiếng Việt từ 5 tới 30 từ, tiến trình phụ đã nạp: p50 ≤ 1,0 giây |
 | GD3 | Vừa có phiên phụ đề vừa gõ (một tin mỗi khoảng 10 giây trong 5 phút): đo A2 (§3.3 của spec gốc) có và không có Gõ dịch, ghi lại mức trễ thêm để chủ dự án xem; không có ngưỡng đạt |
 | GD4 | Bấm ⌃⌥G ở từng app của GD1: không app nào tự làm việc riêng của nó cùng lúc (kiểm trùng phím trên macOS) |
-| GD5 | Proxy mạng (công cụ của A7) trong lúc dùng Gõ dịch: không có request nào |
+| GD5 | Proxy mạng (công cụ của A7) trong lúc dùng Gõ dịch với nguồn dịch Local (mặc định): không có request nào |
 | GD6 | Sau khi dùng, log của app không chứa chữ đã gõ hay bản dịch |
 
 Windows: chạy lại GD1, GD4, GD5, GD6 khi có máy.
